@@ -24,7 +24,7 @@
  * doing, the person's own values of both put back as it ends. A conversation
  * the engine has not marked keeps them untouched.
  *
- * All of it happens in Claude Code's terminal app alone, from 2.1.282.
+ * All of it happens in Claude Code's terminal app alone, from 2.1.287.
  * Elsewhere — an IDE extension, Claude Code on the web, an older Claude
  * Code — the session is not announced, and the module draws, keeps and sets
  * nothing.
@@ -77,7 +77,7 @@ const MARKER = 'workflow'
 const KEPT = 'gate.json'
 
 /** The oldest Claude Code the mod runs on, major, minor and patch. */
-const OLDEST = [2, 1, 282]
+const OLDEST = [2, 1, 287]
 
 /** A release's version, as `claude --version` prints it. */
 const RELEASE = /^(\d+)\.(\d+)\.(\d+)$/
@@ -209,9 +209,9 @@ function isSupported(version: string): boolean {
 /**
  * Whether the mod applies to the session, read as the engine's boot reads
  * it: Claude Code's terminal app — the `cli` entrypoint, not Claude Code on
- * the web — at a version the mod runs on. Function hooks can be on anywhere:
- * an IDE extension or an older Claude Code reads the same user settings, and
- * Claude Code can switch them on for an account.
+ * the web — at a version the mod runs on. Claude Code loads the mod wherever
+ * mods are on — an IDE extension's session, or an older Claude Code's with
+ * function hooks switched on — so the check is the mod's own.
  */
 async function isApplicable($: EngineInterface): Promise<boolean> {
   if (

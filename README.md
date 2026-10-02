@@ -121,7 +121,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
 - **tmux session labels.** Opt in per project and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases and the menus between them, restoring the original name on exit and bringing the label back when you resume a session.
-- **Gates you can press.** The workflows come with a Claude Code mod: while the terminal is the only screen attached, every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it. In Claude Code's terminal app, the first run switches it on in your Claude Code settings and asks you to restart Claude Code once.
+- **Gates you can press.** The workflows come with a Claude Code mod: while the terminal is the only screen attached, every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it. It runs in Claude Code's terminal app, where mods are on by default from 2.1.287.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
 
 ## Documentation
@@ -140,7 +140,7 @@ The [full documentation](docs/README.md) covers every phase in detail, the engin
 | [Configuration](docs/configuration.md) | Install, project defaults, gate modes |
 | [History](docs/history.md) | Where this came from and how it evolved |
 
-**Setup:** Node 18+, and Claude Code 2.1.282+ in its terminal app, which the workflows are built for — on the web or in an IDE extension the menus stay text and support is soft, fixes welcome. There is no setup procedure: in the terminal app the first run switches the Claude Code mod on and asks for one restart, and your first working session sets everything else up in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
+**Setup:** Node 18+, and Claude Code 2.1.287+ in its terminal app, which the workflows are built for — on the web or in an IDE extension the menus stay text and support is soft, fixes welcome. There is no setup procedure: your first working session sets everything up in chat. Optional: an OpenAI(-compatible) key for semantic search, entered in your terminal, never the chat.
 
 **Managing the install:** commit the installed files to share the workflows with your team or use them in Claude Code for Web. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
 

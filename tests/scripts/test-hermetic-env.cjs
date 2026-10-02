@@ -2,9 +2,10 @@
 
 // The suite's own guard: the hermetic environment is pinned, every node test
 // file adopts it, a knowledge store built under it reaches no embedding
-// provider, and Claude Code's user settings resolve inside it. A future
-// suite that forgets the module fails here rather than silently reading the
-// developer's config, billing their key, or writing their settings.
+// provider, and Claude Code's config directory is never the developer's own.
+// A future suite that forgets the module fails here rather than silently
+// reading the developer's config, billing their key, or writing their
+// settings.
 
 const hermeticEnv = require('./hermetic-env.cjs');
 
@@ -16,7 +17,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
-const { userSettingsPath } = require('../../skills/workflow-engine/scripts/domain/settings.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
 
 const HERMETIC_MODULE = './hermetic-env.cjs';
@@ -85,7 +85,7 @@ describe('hermetic environment — the pins', () => {
     );
   });
 
-  it('Claude Code\'s config directory is set, exists, and holds nothing — boot writes the user\'s settings there, so no test reaches the developer\'s own', () => {
+  it('Claude Code\'s config directory is set, exists, and holds nothing — no test reaches the developer\'s own', () => {
     const dir = process.env.CLAUDE_CONFIG_DIR;
     assert.ok(dir, 'CLAUDE_CONFIG_DIR is set');
     assert.ok(fs.existsSync(dir), `${dir} exists`);
@@ -163,7 +163,7 @@ describe('hermetic environment — no embedding provider', () => {
   });
 });
 
-describe('hermetic environment — Claude Code\'s user settings', () => {
+describe('hermetic environment — Claude Code\'s config directory', () => {
   /** The Claude Code config directory a fresh process pins, inheriting `inherited`. */
   function pinnedUnder(inherited) {
     const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(process.env.CLAUDE_CONFIG_DIR)`],
@@ -171,10 +171,6 @@ describe('hermetic environment — Claude Code\'s user settings', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     return res.stdout.trim();
   }
-
-  it('the user settings boot writes resolve inside the pinned directory', () => {
-    assert.strictEqual(userSettingsPath(), path.join(process.env.CLAUDE_CONFIG_DIR, 'settings.json'));
-  });
 
   it('a process the suite spawns keeps the pinned directory — requiring the module twice pins once', () => {
     assert.strictEqual(pinnedUnder(process.env.CLAUDE_CONFIG_DIR), process.env.CLAUDE_CONFIG_DIR);

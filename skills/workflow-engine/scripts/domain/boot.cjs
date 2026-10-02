@@ -38,7 +38,7 @@ const { commitPathspecScoped } = require('./commit.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
-const { syncGateSurface } = require('./gate-surface.cjs');
+const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
@@ -93,13 +93,12 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, the worktree include, the user's Claude Code settings, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, the worktree include, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {boolean} worktree_include_installed this boot changed `.worktreeinclude` — a knowledge file appended; false when it left the file as it was
- * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.282, both touching no file; where it can: `on` where it is running, its announcement in boot's own environment; otherwise `restart` where this boot wrote the function-hooks flag into the user's Claude Code settings, `not-running` where the flag was already there, `settings-unreadable` where that file could not be read or written — workflow-start stops on all four
- * @property {string} [claude_settings] the user's Claude Code settings file the gate sync read — present wherever it ran, absent with `unavailable` and `outdated`
+ * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod, which boot writes nothing for — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.287; where it can: `on` where it is running, its announcement in boot's own environment, and `not-running` where it is not — workflow-start shows a notice on `not-running` and carries on with typed menus, and stops on `outdated`
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
  * @property {import('./baseline.cjs').BaselineSignal|null} [baseline_signal] present only while baseline is `none` — the repository facts the judgment is made from; null when there is no git history to read
@@ -257,14 +256,11 @@ function boot(cwd) {
   const commitOwn = !migrations.changed;
   const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
   const worktreeIncludeInstalled = installWorktreeInclude(cwd, commitOwn, warnings);
-  const gate = syncGateSurface(cwd);
-  if (gate.error) warnings.push(`gate surface not synced: ${gate.error}`);
   tidyConversations();
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: gate.status, baseline, walkthrough: walkthroughState(cwd).status };
-  if (gate.settings) result.claude_settings = gate.settings;
+  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
