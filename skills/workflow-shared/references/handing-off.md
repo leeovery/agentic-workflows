@@ -10,13 +10,12 @@ The engine checks the move and says how it travels: the gate mod carries it into
 
 The caller provides these via context before loading:
 
-- `skill` — the skill the work moves into.
-- `args` — its arguments, space-separated, exactly as the skill takes them.
+- `route` — the move as the skill's slash command and its arguments, `/{skill} {args}`, exactly as the skill is invoked.
 
 ## A. Hand Off
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs handoff {skill} {args}
+node .claude/skills/workflow-engine/scripts/engine.cjs handoff {route}
 ```
 
 #### If the call was refused

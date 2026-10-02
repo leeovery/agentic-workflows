@@ -96,4 +96,4 @@ Set `target_phase` = the number's phase in `revisitable_phases`.
 
 ## D. Hand Off
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-{target_phase}-entry`, args = `quick-fix {work_unit}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-{target_phase}-entry quick-fix {work_unit}`.
