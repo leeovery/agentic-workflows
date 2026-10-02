@@ -62,11 +62,15 @@ continuation once the turn ended.
   | Start | A continue menu | In place | In place |
   | A continue menu, the epic menu | A phase, discovery | In place | Clears |
   | A concluded phase (the bridge) | The next phase, the epic menu | Plan mode | Clears |
-  | Review's route back, scoping's type change, discovery's conclusion, the roadmap's pull | Their next skill | Plan mode | Clears |
+  | Review's route back, scoping's type change, discovery's conclusion, the roadmap's pull into a feature | Their next skill | Plan mode | Clears |
+  | Discovery into a roadmap genesis, a recognition pull, the roadmap's pull into an epic's discovery | The roadmap, discovery | In place | In place — the conversation carries on |
   | Anywhere | Help; back to the start menu | In place | In place |
 
   The roadmap and the baseline hold conversations and write artifacts, so
-  they are work. A concluding phase still invokes the bridge in place —
+  they are work. A move that carries the live conversation on — the shaping
+  conversation into a roadmap genesis, a recognition pull, an epic pulled
+  from the roadmap continuing into its discovery — is one conversation,
+  never a handoff. A concluding phase still invokes the bridge in place —
   the bridge is the short step that decides where the work goes, and it
   ends in the handoff.
 
@@ -74,7 +78,9 @@ continuation once the turn ended.
   skill against the handoff table — every target skill and the arguments
   it takes — and each argument against its shape: a work type, a work unit
   the project holds, a topic name, a mode word, an inbox path that exists,
-  the literal `none` where the skill takes it. Anything else is refused.
+  the literal `none` where the skill takes it. Anything else is refused;
+  `none` joins the reserved work-unit names, so the placeholder can never
+  name a unit.
   The engine composes the continuation itself (``Invoke `/<skill>
   <args>`.``); Claude never writes it, and nothing travels but the skill
   and its arguments. The answer says which way the work goes:
@@ -102,22 +108,35 @@ continuation once the turn ended.
   workflow conversation by construction, so that clear leaves the settings
   as they are.
 
-- **H5 — the continuation reads as where the work went.** The
-  workflow-gates-rows mod redraws the continuation's transcript row — the
-  plugin's message — as the handoff's display line, as it redraws a sent
-  gate answer.
+- **H5 — the continuation reads as where the work went.** Before it sends,
+  the mod leaves what it sends, with the handoff's display line, in the new
+  conversation's folder — the record a sent gate answer leaves — and the
+  workflow-gates-rows mod draws the continuation's transcript row as that
+  line. The folder is the new conversation's from its first moment: the
+  conversation is a workflow one by construction, and the engine marks it
+  at its first call.
 
 - **H6 — a conclusion rolls straight on.** No stop stands where plan
   mode's approval dialog stood. A next-phase gate the bridge shows today
   is a real choice (skip review, revisit an earlier phase) and stays; the
-  pick hands off. An epic's conclusion hands off to a fresh epic menu, and
-  the pick hands off again, so the menu never shares a context with phase
-  work.
+  pick hands off. An epic's conclusion hands off to a fresh epic menu —
+  `/workflow-continue-epic {wu} {completed_phase} {outcome}` — and the pick
+  hands off again, so the menu never shares a context with phase work. The
+  epic menu skill takes over the two things only the bridge's epic
+  continuation did: the banner saying what just concluded or paused (none
+  after a cancel or a postpone, whose receipt was the session's), and the
+  offer to complete an epic whose work is all done — made wherever the menu
+  shows, the state deriving it. The bridge's epic continuation becomes the
+  handoff. What a concluding turn shows after its last gate is a receipt
+  the person has already confirmed; the clear takes it, and the next
+  context opens on the banner or the next phase's title.
 
 - **H7 — no mod, in place.** Where the engine answers `inline`, the prose
   invokes the skill in the same context. Nothing is asked of the person.
   Without the mod a conclusion's context carries into the next phase;
-  compaction remains the safety valve.
+  compaction remains the safety valve. The laboratory's fresh context —
+  a scientific control — comes from the clear, so without the mod it runs
+  in place too.
 
 - **H8 — nothing passes but the skill and its arguments.** Anything that
   would have to cross marks a gap in the workflow: it belongs in the
@@ -128,19 +147,25 @@ continuation once the turn ended.
   real use, the answer is a discovery argument for the person's opening
   words, never a free note.
 
-- **H9 — plan mode goes; the setting stays.** Every plan-mode handoff is
+- **H9 — background work at a handoff is today's.** A session can hand off
+  with an agent still running — research and discussion proceed past their
+  in-flight gates, and three pauses carry no in-flight check. Plan mode's
+  clear has the same exposure; the lab establishes what the mod's clear
+  does to a running agent, and the design follows from that.
+
+- **H10 — plan mode goes; the setting stays.** Every plan-mode handoff is
   replaced. The project setting migration 034 installed
   (`showClearContextOnPlanAccept`) is left alone — it may be there by
   choice — and the docs say it served only the old handoff.
 
-- **H10 — the framework sheds what a session rarely uses, with no
+- **H11 — the framework sheds what a session rarely uses, with no
   rewording.** `answering-how-it-works.md` loads when a question about the
   system arrives, not at every skill's head (one line in
   `instructions.md` says when); voice's Devil's Advocate section moves
   into research, discussion and discovery, the conversations that use it.
   About 1.1k tokens a session.
 
-- **H11 — tests.** Engine: the handoff command's contract — the table,
+- **H12 — tests.** Engine: the handoff command's contract — the table,
   every argument shape and refusal, the announced and unannounced answers,
   the composed text. Mods: arming on the conversation's own call alone,
   the cut, clear before send, Esc disarming, the harness kept across the
@@ -150,7 +175,7 @@ continuation once the turn ended.
   the walker never continues into the next skill; cases that ended at plan
   mode end at the handoff.
 
-- **H12 — removable by construction.** One engine command, one table, one
+- **H13 — removable by construction.** One engine command, one table, one
   announcement, one set of mod hooks; every prose site reads one answer.
 
 ## The stack
@@ -185,9 +210,14 @@ targets change.
 
 - 2026-10-01 — measured the start menu's weight; lab spike passed
   (clear and send from a mod; direct command refused; listings re-sent);
-  rulings H1–H10 agreed with Lee: one mechanism, no stop after a
+  rulings agreed with Lee: one mechanism, no stop after a
   conclusion, no note, no plan mode even without the mod, the plan-mode
   setting left alone, entry folds into process.
 - 2026-10-02 — main moved the mod to Claude Code 2.1.287 (mods on by
   default) and the Desktop app's Code tab; the handoff's clear and send
   get a Desktop lab check, hence H3's own announcement.
+- 2026-10-02 — two audits (every skill-to-skill transition with its
+  arguments; the start, continue and entry layer): moves that carry a live
+  conversation stay in place; the epic menu takes the banner and the
+  completion offer; `none` is reserved; background agents at a handoff
+  get a lab check.
