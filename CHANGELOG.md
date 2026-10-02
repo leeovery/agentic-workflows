@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.9] - 2026-10-02
+
+🔧 Changed
+- The gate mod now runs in the Claude Desktop app's Code tab as well as the terminal — menus draw as buttons above the prompt there too.
+- Claude Code mods are on by default from 2.1.287, so the workflows no longer write `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` into your Claude Code settings or ask for a restart on first run.
+- If the mod isn't running, `/workflow-start` now shows a notice naming the likely causes and carries on with typed menus instead of stopping.
+- The minimum Claude Code version for the gate mod is now 2.1.287; `/workflow-start` stops with update instructions on anything older.
+- Messages you send from the Desktop app now count as yours, so they clear the gate they answer.
+
+🗑️ Removed
+- A migration removes the `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS` line earlier releases wrote into your user-level Claude Code settings, since 2.1.287 ignores it.
+
 ## [0.8.8] - 2026-10-01
 
 🔧 Changed
