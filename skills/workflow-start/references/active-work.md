@@ -41,11 +41,11 @@ This skill ends. The invoked skill will load into context and provide additional
 
 #### If `action` is `open_baseline`
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-baseline`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
 
 #### If `action` is `open_roadmap`
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-roadmap`, args = `open`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-roadmap open`.
 
 #### If `action` is `open_help`
 

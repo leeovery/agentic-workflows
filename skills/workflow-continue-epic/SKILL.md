@@ -245,6 +245,6 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with ne
 
 ## Step 10: Route Selection
 
-Split the `route` stored for the user's selection — the selected `ACTIONS` entry's route from epic-display-and-menu.md, e.g. `/workflow-discussion-entry epic {work_unit} {topic}` — into the skill it names, without the slash, as `{route_skill}`, and the arguments after it as `{route_args}`. Selections with route `(internal)` resolve inside that reference and never reach this step.
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from epic-display-and-menu.md, e.g. `/workflow-discussion-entry epic {work_unit} {topic}`. Selections with route `(internal)` resolve inside that reference and never reach this step.
 
-Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with skill = `{route_skill}`, args = `{route_args}`.
+Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.

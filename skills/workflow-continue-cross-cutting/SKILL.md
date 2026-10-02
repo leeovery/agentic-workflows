@@ -138,6 +138,6 @@ Load **[cross-cutting-display-and-menu.md](references/cross-cutting-display-and-
 
 ## Step 6: Route Selection
 
-Split the `route` stored for the user's selection — the selected `ACTIONS` entry's route from cross-cutting-display-and-menu.md, e.g. `/workflow-discussion-entry cross-cutting {work_unit}` — into the skill it names, without the slash, as `{route_skill}`, and the arguments after it as `{route_args}`.
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from cross-cutting-display-and-menu.md, e.g. `/workflow-discussion-entry cross-cutting {work_unit}`.
 
-Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with skill = `{route_skill}`, args = `{route_args}`.
+Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.
