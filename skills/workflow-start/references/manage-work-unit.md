@@ -93,9 +93,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render pivot-continuation
 
 **If user chose `c/continue`:**
 
-Invoke the `/workflow-continue-epic` skill.
+Invoke `/workflow-continue-epic {selected.name}`.
 
-**STOP.** Do not proceed — terminal condition.
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
 **If user chose `b/back`:**
 
