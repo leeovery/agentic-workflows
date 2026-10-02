@@ -121,7 +121,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.
 - **tmux session labels.** Opt in per project and your tmux session renames to show exactly where you're working — `myproject · payments · discussion · auth-flow` — as sessions move through phases and the menus between them, restoring the original name on exit and bringing the label back when you resume a session.
-- **Gates you can press.** The workflows come with a Claude Code mod: while the terminal is the only screen attached, every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it. In Claude Code's terminal app, the first run switches it on in your Claude Code settings and asks you to restart Claude Code once.
+- **Gates you can press.** The workflows come with a Claude Code mod: while the terminal is the only screen attached, every menu is drawn as buttons above the prompt, where they stay put while the transcript scrolls — a click picks a row, and a second click or Enter sends it. It runs in Claude Code's terminal app, where mods are on by default from 2.1.287.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run.
 
 ## Documentation
