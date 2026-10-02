@@ -44,7 +44,7 @@ const TYPE_LABELS = {
 
 /**
  * workunit complete / cancel / reactivate / pivot receipts. `complete` in
- * pipeline context (the bridge) renders the full "{Type} Completed" banner
+ * pipeline context (the bridge, the epic menu) renders the full "{Type} Completed" banner
  * instead of the one-line confirmation. `pivot` is advisory-only — its
  * user-facing continuation is the pivot-continuation menu, owned by the
  * caller's menu step.

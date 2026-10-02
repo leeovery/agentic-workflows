@@ -4066,8 +4066,9 @@ function requeueOffer(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// Bridge continuation surfaces — work-unit-level: pipeline completion
-// displays and the continuation gates the bridge presents between phases.
+// Pipeline continuation surfaces — work-unit-level: the completion and
+// pause banners, the gates the bridge presents between phases, and the epic
+// menu's completion offer.
 // Address-backed (work_type from the manifest); phases ride as flags.
 // ---------------------------------------------------------------------------
 
@@ -4116,10 +4117,10 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 }
 
 /**
- * The bridge's paused banner — `phase-completed`'s sibling for a phase
+ * The epic menu's paused banner — `phase-completed`'s sibling for a phase
  * leaving on a wait. Derived, never told: the phase's in-progress items
  * holding waits, each named with what it awaits. A peer can land the wait
- * between the gate and the bridge, so no holder left renders the bare line
+ * between the gate and the banner, so no holder left renders the bare line
  * rather than refusing.
  * @param {string} cwd
  * @param {{dotpath: string, phase?: string}} args

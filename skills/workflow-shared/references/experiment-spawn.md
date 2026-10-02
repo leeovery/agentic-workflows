@@ -64,7 +64,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-spawn-g
 
 #### If `yes`
 
-The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands. Everything is already committed; hand off to the pipeline bridge as a pause — its handoff is the laboratory's fresh context:
+The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands. Everything is already committed; hand off to the pipeline bridge as a pause:
 
 > *Output the next fenced block as markdown (not a code block):*
 

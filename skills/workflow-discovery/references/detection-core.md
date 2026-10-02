@@ -34,7 +34,7 @@ Resolve in order of cost + terminality — settle the cheap, terminal shapes fir
 
 So confirming "epic" *required* surfacing the topics: by the time epic commits you already hold the topic seeds. Topic discovery is the **deepening** of the same exploration, not a fresh start.
 
-**Completeness asymmetry.** The feature↔epic *boundary* needs *higher* confidence than epic topic-enumeration — the boundary has no safety net, but topic-enumeration does (gap-analysis keeps hydrating the map at every bridge). Explore the boundary carefully; don't over-invest in exhaustive topic lists at initial discovery.
+**Completeness asymmetry.** The feature↔epic *boundary* needs *higher* confidence than epic topic-enumeration — the boundary has no safety net, but topic-enumeration does (gap-analysis keeps hydrating the map at every return to the epic menu). Explore the boundary carefully; don't over-invest in exhaustive topic lists at initial discovery.
 
 ## C. Substance signals (what to listen for)
 

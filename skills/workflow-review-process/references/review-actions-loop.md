@@ -15,7 +15,7 @@ C. Approval overview (spec defects settled first)
 D. Process task (per-task approval loop)
 E. Route on results
 F. Create tasks in plan → invoke-task-author.md, invoke-review-task-writer.md
-G. Re-open implementation + plan mode handoff
+G. Re-open implementation + hand off
 ```
 
 ---
@@ -268,39 +268,10 @@ For each plan that received new tasks:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "review({work_unit}): re-open implementation tracking" --topic review/{topic}
 ```
 
-Then enter plan mode and write the following plan. Resolve `{work_type}` from the manifest when not already in context:
+Resolve `{work_type}` from the manifest when not already in context:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-```
-# Review Actions Complete: {work_unit}
-
-Review findings have been synthesized into {N} implementation tasks.
-
-## Summary
-
-{Summary, e.g., "auth-flow: 3 tasks in Phase 9"}
-
-## Next Step
-
-Invoke `/workflow-implementation-entry {work_type} {work_unit} {topic}`
-
-Arguments: work_type = {work_type}, work_unit = {work_unit}, topic = {topic}
-The skill will detect the new tasks and start executing them.
-
-## Context
-
-- Plan updated: {work_unit}
-- Tasks created: {total count}
-- Implementation tracking: re-opened
-
-## How to proceed
-
-Clear context and continue. The fresh session will start
-implementation and pick up the new review remediation tasks
-automatically.
-```
-
-Exit plan mode. The user will approve and clear context, and the fresh session will pick up with the implementation entry skill routing to the new tasks.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with skill = `workflow-implementation-entry`, args = `{work_type} {work_unit} {topic}`.

@@ -4,7 +4,7 @@
 
 ---
 
-Finalise the discovery session and hand off through the bridge. Used by every work type — the bridge returns an epic to its menu and hands every other type off to its first phase, each in a clean context.
+Finalise the discovery session and hand off through the bridge. Used by every work type — the bridge returns an epic to its menu and hands every other type off to its first phase.
 
 Two anti-patterns (all work types):
 
@@ -28,9 +28,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "di
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Discovery complete — entering plan mode to hand off the next step in a clean context.
+> Discovery complete — handing the work to its next step.
 ```
 
-`next_phase` is the destination the endpoint supplied, or the literal `none` when it supplied nothing (the bridge treats `none` as absent and computes the destination itself).
+`next_phase` is the destination the endpoint supplied, or the literal `none` when it supplied nothing — an epic, which the bridge returns to its menu.
 
 Invoke `/workflow-bridge {work_unit} discovery {next_phase}` via the Skill tool.
