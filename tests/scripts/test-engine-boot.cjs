@@ -1615,6 +1615,26 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
+  it('a symlinked project settings file gets the hooks at the file it names — the link stands, an existing target or one not yet made', () => {
+    const link = path.join(fix.project, '.claude/settings.json');
+    const permissions = { allow: ['Bash(ls)'] };
+    for (const [name, before, after] of [
+      ['shared-settings.json', json({ permissions }), json({ permissions, ...HOOKS_ONLY })],
+      ['fresh-settings.json', null, hooked(WORKFLOW_HOOKS)],
+    ]) {
+      const target = path.join(fix.root, 'shared', name);
+      if (before !== null) writeFile(fix.root, `shared/${name}`, before);
+      fs.rmSync(link, { force: true });
+      fs.symlinkSync(target, link);
+      const res = bootWith();
+      assert.strictEqual(res.session_hooks_installed, true, name);
+      assert.deepStrictEqual(res.warnings, [], name);
+      assert.ok(fs.lstatSync(link).isSymbolicLink(), `${name}: still a link`);
+      assert.strictEqual(fs.readlinkSync(link), target, name);
+      assert.strictEqual(fs.readFileSync(target, 'utf8'), after, name);
+    }
+  });
+
   it('a session-hooks commit git refuses is a warning, never a block — the hooks are on disk', () => {
     dropSettings();
     writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
