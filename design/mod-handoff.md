@@ -78,7 +78,9 @@ continuation once the turn ended.
   skill against the handoff table — every target skill and the arguments
   it takes — and each argument against its shape: a work type, a work unit
   the project holds, a topic name, a mode word, an inbox path that exists,
-  the literal `none` where the skill takes it. Anything else is refused;
+  the literal `none` where the skill takes it, the unit still in progress.
+  The skill may be named as its slash command, so a menu's stored route
+  passes as it stands. Anything else is refused;
   `none` joins the reserved work-unit names, so the placeholder can never
   name a unit.
   The engine composes the continuation itself (``Invoke `/<skill>
@@ -96,8 +98,10 @@ continuation once the turn ended.
   `mod` only under that announcement. A `HANDOFF` section in a Bash result
   of the conversation's own call (never a subagent's) arms the handoff and
   is cut from what Claude sees. At `turn.complete` an armed handoff, once
-  the turn's own chain has run, starts a timer that runs `clear` and then
-  submits the continuation. Esc ends the turn aborted, and an aborted turn
+  the turn's own chain has run, starts a timer that runs `clear`, shows a
+  toast naming where the work went (`Handed off → Planning · auth-flow`) —
+  the screen flips, and the toast says why — and then submits the
+  continuation. Esc ends the turn aborted, and an aborted turn
   disarms: Esc means stop. A handoff and a gate never share a turn — the
   prose ends the turn at the handoff.
 
@@ -206,6 +210,15 @@ skills become one if they differ only by type, and workflow-start's rare
 branches move into references. The handoff table is the one place its
 targets change.
 
+Settled for it: the `storage_paths` backfills nine process files run
+mid-session (a plan predating the field, which arrived 2026-07-23) are
+dropped, with no migration. Raised first when its design opens: the
+epic menu's row that starts one proposed grouping goes down the entry's
+topic path, which never registers the grouping's consult references, so
+such a specification can conclude without them — while no grouping in
+five epics has declared one. Fix it on both routes, or retire consult
+references and let the knowledge base carry sibling decisions.
+
 ## Log
 
 - 2026-10-01 — measured the start menu's weight; lab spike passed
@@ -221,3 +234,6 @@ targets change.
   conversation stay in place; the epic menu takes the banner and the
   completion offer; `none` is reserved; background agents at a handoff
   get a lab check.
+- 2026-10-02 — slices 1–3 built (#1457 → #1458 → #1463, stack #1459): the
+  toast at the clear; a closed unit takes no handoff; the handoff loaded
+  with the move as its slash command, a stored route passing as it stands.
