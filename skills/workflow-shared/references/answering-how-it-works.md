@@ -1,6 +1,6 @@
 # Answering How It Works
 
-*Shared reference for all workflow skills. Loaded via [framework.md](framework.md).*
+*Shared reference for all workflow skills. Loaded at the question, per [instructions.md](instructions.md).*
 
 ---
 
