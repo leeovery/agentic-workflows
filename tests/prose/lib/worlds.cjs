@@ -288,8 +288,13 @@ function hashPaths(paths) {
   return hash.digest('hex');
 }
 
-/** What every world is built from, whichever case it belongs to. */
-const SHARED_INPUTS = [MAINLINES_DIR, path.join(ROOT, 'skills/workflow-engine/scripts')];
+/** What every world is built from, whichever case it belongs to — the
+ *  migrations among it, since every recipe's boot runs them. */
+const SHARED_INPUTS = [
+  MAINLINES_DIR,
+  path.join(ROOT, 'skills/workflow-engine/scripts'),
+  path.join(ROOT, 'skills/workflow-migrate/scripts'),
+];
 
 let sharedDigest = null;
 

@@ -440,10 +440,11 @@ describe('the recipe hash: what a world is built from', () => {
     assert.strictEqual(worlds.hashPaths([path.join(os.tmpdir(), 'prose-hash-absent')]), worlds.hashPaths([]));
   });
 
-  it('every world\'s hash covers the mainlines and the engine tree, the knowledge base\'s code among it', () => {
+  it('every world\'s hash covers the mainlines, the engine tree — the knowledge base\'s code among it — and the migrations every boot runs', () => {
     assert.deepStrictEqual(worlds.SHARED_INPUTS, [
       worlds.MAINLINES_DIR,
       path.join(worlds.ROOT, 'skills/workflow-engine/scripts'),
+      path.join(worlds.ROOT, 'skills/workflow-migrate/scripts'),
     ]);
     // Taken once per process and reused by every case — so it has to be the
     // real digest of those inputs, or an engine change would skip past a
