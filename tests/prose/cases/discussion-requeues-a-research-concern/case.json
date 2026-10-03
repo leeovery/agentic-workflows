@@ -43,7 +43,8 @@
     "skills/workflow-discussion-process/references/document-review.md",
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-discussion-process/references/conclude-discussion.md",
-    "skills/workflow-shared/references/closing-recap.md"
+    "skills/workflow-shared/references/closing-recap.md",
+    "skills/workflow-shared/references/in-flight-agents.md"
   ],
   "answers": [
     "c — continue"
@@ -60,7 +61,8 @@
       "render requeue-offer search-relevance.discussion.synonym-handling",
       "topic requeue search-relevance discussion research synonym-handling",
       "discussion-map set search-relevance synonym-handling result-caching decided",
-      "render wait-gate search-relevance.discussion.synonym-handling"
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "agent scan search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [
       "topic absorb search-relevance",
@@ -71,12 +73,14 @@
       "engine.cjs knowledge index",
       "topic complete",
       "render conclude-gate",
-      "render closing-gate"
+      "render closing-gate",
+      "render in-flight-agents-gate"
     ],
     "calls_in_order": [
       "render requeue-offer search-relevance.discussion.synonym-handling",
       "topic requeue search-relevance discussion research synonym-handling",
-      "render wait-gate search-relevance.discussion.synonym-handling"
+      "render wait-gate search-relevance.discussion.synonym-handling",
+      "agent scan search-relevance discussion synonym-handling"
     ]
   }
 }

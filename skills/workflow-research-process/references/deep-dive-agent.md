@@ -132,7 +132,7 @@ The research session continues — do not wait for the agent to return.
 
 ## C. Land and Fold
 
-Entered from the session loop's check at natural breaks — a thread's pause, a synthesis moment, the user's done-signal, and the first loop iteration of a resumed session — and from the in-flight gate's wait at conclusion. Read the store:
+Entered from the session loop's check at natural breaks — a thread's pause, a synthesis moment, the user's done-signal, and the first loop iteration of a resumed session — and from the in-flight check as the session leaves, at a conclusion or a pause. Read the store:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} research {topic}
@@ -188,7 +188,7 @@ Take the lowest-numbered `pending` row and fold it — one transaction of judgme
    node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question}" --origin deep-dive-{NNN} --parent {parent slug}
    ```
 
-   A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and raised through the session wrapper's off-topic route at the next break — **C. Topic Awareness** on an epic, **E. Off-Topic Concerns** on a single-topic work type. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step, in this same turn when step 5 asks nothing; a fold entered from the conclusion's in-flight gate carries it into Open Threads instead, where the discussion's own laboratory offer meets it.
+   A line the file already covers is folded as a note in the section instead. One another topic owns is folded as a note and raised through the session wrapper's off-topic route at the next break — **C. Topic Awareness** on an epic, **D. Off-Topic Concerns** on a single-topic work type. A measurement line becomes a thread the same way — what the measurement would settle, as the question — and is the laboratory's cue the session loop picks up at its next step, in this same turn when step 5 asks nothing; a fold entered from the in-flight check makes no offer — the thread stays open on the register, which a conclusion carries into Open Threads, where the discussion's own laboratory offer meets it.
 
    Then commit the fold — the section, the thread's move, and the opened threads in one write, nothing unrelated, the dive's id in the subject:
 

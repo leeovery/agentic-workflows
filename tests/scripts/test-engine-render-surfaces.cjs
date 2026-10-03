@@ -6927,6 +6927,23 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     assert.match(out, /\*\*`w\/wait`\*\*/);
   });
 
+  it('a pause words the ask and both rows for the pause — the statement and the keys are the conclusion\'s', () => {
+    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '1', pause: '1' }), [
+      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      'There is still 1 background agent working.',
+      '',
+      '**`◆ Wait, or pause now?`**',
+      '',
+      '**`w/wait`**    → Wait for results before pausing',
+      '**`p/proceed`** → Pause now (results will persist in cache for the next',
+      `${NB(12)}session)`,
+      '',
+    ].join('\n'));
+    assert.match(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '3', pause: '1' }),
+      /There are still 3 background agents working\.\n\n\*\*`◆ Wait, or pause now\?`\*\*/);
+  });
+
   it('perspective-offer renders the tension statement then the ask byte-exactly — discussion only', () => {
     const file = writePayload(dir, 'p.json', { tension: 'Ship Now ↔ Strategic Timing' });
     assert.strictEqual(renderSurface(dir, 'perspective-offer', { dotpath: 'pay.discussion.checkout', file }), [

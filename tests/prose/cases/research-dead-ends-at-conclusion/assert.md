@@ -13,10 +13,11 @@ The prose should have taken this path:
    the knowledge base once as a contextual query, and routes into the
    epic research session
 4. the user signals they are done with nothing to add. The session loop's
-   triage check reads the queue and finds it empty; no dive is in
-   flight, so the walk enters topic completion
+   triage check reads the queue and finds it empty, and the walk enters
+   topic completion
 5. topic completion re-reads the triage queue — still empty — checks the
-   waits (nothing owed), and runs the closing checks in order: document
+   waits (nothing owed), finds no dive in flight, and runs the closing
+   checks in order: document
    review reconciles the session against the file and finds it already
    says what the session said; the compliance check passes silently. No
    review is dispatched — research has none

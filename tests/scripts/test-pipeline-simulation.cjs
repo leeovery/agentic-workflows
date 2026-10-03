@@ -594,6 +594,20 @@ function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
   return shown;
 }
 
+// A research or discussion session pauses through the in-flight check: it
+// scans the topic's agents, and where any are still running the gate, worded
+// for the pause, asks whether to wait for them before the handoff. Answers
+// the rows in flight.
+/** @param {Sim} sim @param {string} wu @param {'research'|'discussion'} phase @param {string} topic */
+function pauseCheck(sim, wu, phase, topic) {
+  const running = sim.run(['agent', 'scan', wu, phase, topic]).in_flight;
+  if (running.length) {
+    assert.match(sim.render(['in-flight-agents-gate', `${wu}.${phase}.${topic}`, '--count', String(running.length), '--pause'], { expect: 'content' }),
+      /\*\*`◆ Wait, or pause now\?`\*\*[\s\S]*Wait for results before pausing[\s\S]*Pause now/);
+  }
+  return running;
+}
+
 function walkToLiveImplementation(sim, wu, topic) {
   label(sim, wu, 'specification', topic);
   sim.run(['topic', 'start', wu, 'specification', topic]);
@@ -948,9 +962,11 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits research on the topic/);
     assert.match(sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
       /awaits research on "Ledger" \(parked — not yet started\)/);
-    // The wait gate's yes hands the session to the bridge as a pause: its
-    // banner names what the unit's one conversation awaits — the linear
-    // clause drops the topic name — and the continuation routes to the research.
+    // The wait gate's yes runs the in-flight check, then hands the session to
+    // the bridge as a pause: its banner names what the unit's one
+    // conversation awaits — the linear clause drops the topic name — and the
+    // continuation routes to the research.
+    assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
       /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(parked — not yet started\)\.\n$/);
     sim.run(['topic', 'start', wu, 'research', wu]);
@@ -1894,8 +1910,9 @@ describe('pipeline simulation', () => {
       /awaits research on the topic — conclude the research to release the wait/);
     const waitGate = sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'content' });
     assert.match(waitGate, /Conclusion blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
-    // The pause hands off to the epic menu, whose banner names the paused
-    // conversation by topic.
+    // The pause runs the in-flight check, then hands off to the epic menu,
+    // whose banner names the paused conversation by topic.
+    assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', 'beta'), []);
     assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'paused'),
       /"Beta" awaits research on the topic \(parked — not yet started\)\./);
     const betaRows = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
@@ -4797,12 +4814,17 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['wait-gate', `${wu}.discussion.timing`], { expect: 'content' }),
       /Conclusion blocked — this discussion awaits experiment evidence \(E1\)/);
     sim.refuses(['render', 'wait-gate', `${wu}.discussion.layout`], /no discussion item "layout" — nothing to hold shut/);
-    // A yes at either pause hands the session to the bridge and on to the
-    // epic menu, whose banner names the phase's waiting conversation — each
-    // spawn phase its own; a phase outside the conversation pair never pauses
-    // on a wait.
+    // A yes at either pause runs the in-flight check — a review this session
+    // dispatched is still running, so the gate asks in the pause's words, and
+    // a proceed leaves it running — then hands the session to the bridge and
+    // on to the epic menu, whose banner names the phase's waiting
+    // conversation — each spawn phase its own; a phase outside the
+    // conversation pair never pauses on a wait.
+    sim.run(['agent', 'dispatch', wu, 'discussion', 'timing', '--kind', 'review']);
+    assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', 'timing').map((r) => r.id), ['review-001']);
     assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'paused'),
       /\nDiscussion paused for ".*" — "Timing" awaits experiment evidence \(E1\)\.\n$/);
+    assert.deepStrictEqual(pauseCheck(sim, wu, 'research', 'layout'), []);
     assert.match(arriveAtEpicMenu(sim, wu, 'research', 'paused'),
       /\nResearch paused for ".*" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
     sim.refuses(['render', 'phase-paused', wu, '--phase', 'experiment'], /--phase must be <research\|discussion\|planning>/);
@@ -4949,7 +4971,9 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}): spawn E1 frame-budget`, '--topic', `discussion/${wu}`]);
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits experiment evidence/);
 
-    // The pause hands off to the laboratory, which starts in a fresh context.
+    // The pause runs the in-flight check, then hands off to the laboratory,
+    // which starts in a fresh context.
+    assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
     bridgeTo(sim, wu, 'experiment');
     label(sim, wu, 'experiment', wu);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
