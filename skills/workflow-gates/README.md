@@ -138,6 +138,31 @@ process brings it back. A plain conversation in the same project keeps Claude
 Code's defaults and the person's own settings: the mod never touches either
 there.
 
+## What the spinner says
+
+In a conversation the engine has marked, on the terminal app and the Desktop
+app, the spinner keeps Claude Code's animation and ellipsis, its word the
+phase the conversation works in — `Discussing`, `Specifying`, `Implementing
+task 2.3`, `Shaping` in discovery, `Roadmapping`, `Assessing` at the baseline
+— from the position the engine keeps in the conversation's folder
+(`position.json`). The drawing alone changes, never what Claude reads. The
+mod reads the position once for each conversation the spinner draws in, and
+again after each engine call that moves it (`session label`, `session
+repair`, `task start`, `task complete`), never per frame. At a work unit's
+menu or the start menu it keeps Claude Code's word, and on the Desktop app a
+step that names itself (`Creating notes.md`) keeps its words.
+
+## What it refuses
+
+In a conversation the engine has marked, a Write, Edit or NotebookEdit aimed
+at a manifest the engine keeps — the project's `.workflows/manifest.json`, or
+a work unit's `.workflows/{work-unit}/manifest.json` — is refused with one
+line telling Claude to write it through the engine's `manifest` verbs. Where
+the path leads is what counts: a relative path, `..` and a symbolic link are
+followed, and a manifest not written yet is placed by its nearest folder that
+exists. Any other file under `.workflows/`, a `manifest.json` anywhere else,
+and every write in a plain conversation go through. Bash is not guarded.
+
 ## How it compacts a workflow conversation
 
 Claude Code's own summary of a conversation leaves Claude re-reading nothing,

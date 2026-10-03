@@ -39,6 +39,7 @@ import type {
 } from 'claude-code'
 
 import { compaction } from './compaction.ts'
+import { guard } from './guard.ts'
 import {
   IDLE,
   NO_SENDS,
@@ -48,6 +49,7 @@ import {
   type Option,
   type Sends,
 } from './layout.ts'
+import { spinner } from './spinner.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -1016,5 +1018,7 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  spinner(on)
+  guard(on)
   compaction(on)
 }
