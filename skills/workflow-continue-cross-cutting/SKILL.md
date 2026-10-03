@@ -138,8 +138,6 @@ Load **[cross-cutting-display-and-menu.md](references/cross-cutting-display-and-
 
 ## Step 6: Route Selection
 
-Invoke the `route` stored for the user's selection — the selected `ACTIONS` entry's route from cross-cutting-display-and-menu.md (e.g. `/workflow-discussion-entry cross-cutting {work_unit}`).
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from cross-cutting-display-and-menu.md, e.g. `/workflow-discussion-entry cross-cutting {work_unit}`.
 
-Skills receive positional arguments: `$0` = work_type (`cross-cutting`), `$1` = work_unit. Topic is inferred from work_unit.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.

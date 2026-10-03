@@ -7,3 +7,6 @@ it; loyalty waits in `v1`. No roadmap session is open.
 The user comes back to the roadmap with a new launch capability in
 mind — gift cards — and wants to understand what placing it beside
 work already underway would mean before they choose.
+
+They picked the start menu's `r/roadmap` row, and the work was handed to
+the roadmap: the session opens cold there in its open mode.

@@ -1,7 +1,7 @@
 The prose should have taken this path:
 
-1. the empty project is shown as such, and starting unsure routes into
-   discovery with no pre-seed
+1. discovery takes the new-work path with no pre-seed — the work unit
+   given as `none`
 2. the shaping conversation reads as product-altitude — a brand-new
    product with staged ambition, no single unit of work on the table —
    and the gate states that read; on the user's confirm the flow invokes

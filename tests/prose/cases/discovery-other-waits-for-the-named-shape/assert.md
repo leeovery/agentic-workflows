@@ -1,7 +1,6 @@
 The prose should have taken this path:
 
-1. the empty project is shown as such, and starting a feature routes
-   into discovery with the work unit given as `none`
+1. discovery reads the mode from the work unit given as `none`
 2. discovery takes the new-work path, treats the pre-seeded feature
    type as a hint, and shapes from the user's description of the copy
    button

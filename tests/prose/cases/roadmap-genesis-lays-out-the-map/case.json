@@ -1,9 +1,8 @@
 {
   "origin": "the product road's genesis walk had no coverage — a shaping conversation reads as product-altitude, routes to the roadmap before any work unit exists, lays the product out in horizons, and banks it with zero commitments",
-  "entry": "workflow-start",
+  "entry": "workflow-discovery",
   "world": "claims",
   "files": [
-    "skills/workflow-start/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,8 +10,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/answering-how-it-works.md",
-    "skills/workflow-start/references/empty-state.md",
-    "skills/workflow-start/references/route-to-discovery.md",
     "skills/workflow-discovery/SKILL.md",
     "skills/workflow-discovery/references/opener-pattern.md",
     "skills/workflow-discovery/references/shape-and-confirm.md",
@@ -29,7 +26,6 @@
     "skills/workflow-roadmap/references/conclude.md"
   ],
   "answers": [
-    "s — start something new",
     "y — that's the right read, lay it out as a roadmap",
     "y — commit these items to the roadmap"
   ],
@@ -37,7 +33,6 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "engine.cjs boot",
       "roadmap session open",
       "commit --roadmap",
       "workflow-roadmap/scripts/gateway.cjs proposal --file",
@@ -46,7 +41,6 @@
       "session label roadmap"
     ],
     "calls_in_order": [
-      "engine.cjs boot",
       "session label roadmap",
       "roadmap session open",
       "workflow-roadmap/scripts/gateway.cjs proposal --file",

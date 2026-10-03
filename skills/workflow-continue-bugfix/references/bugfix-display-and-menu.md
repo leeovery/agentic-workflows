@@ -6,7 +6,7 @@
 
 Display the selected bugfix's pipeline state, then collect the user's proceed-or-revisit choice. The caller provides `work_unit` — the bugfix's work unit name.
 
-This reference stores the selected `ACTIONS` entry's `action` and `route` and returns control to the caller, which invokes the route.
+This reference stores the selected `ACTIONS` entry's `action` and `route` and returns control to the caller, which hands the work off along the route.
 
 ---
 

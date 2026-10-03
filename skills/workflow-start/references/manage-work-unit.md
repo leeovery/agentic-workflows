@@ -30,9 +30,7 @@ Emit the TITLE section, then the MENU section, each verbatim per its marker.
 
 #### If user chose `a/baseline`
 
-Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
 
 #### If user chose a number
 
@@ -95,9 +93,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render pivot-continuation
 
 **If user chose `c/continue`:**
 
-Invoke the `/workflow-continue-epic` skill.
+Invoke `/workflow-continue-epic {selected.name}`.
 
-**STOP.** Do not proceed — terminal condition.
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
 **If user chose `b/back`:**
 

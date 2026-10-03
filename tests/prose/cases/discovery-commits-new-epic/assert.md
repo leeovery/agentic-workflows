@@ -1,11 +1,11 @@
 The prose should have taken this path:
 
-1. the empty project is shown as such, and starting an epic routes into
-   discovery with the work unit given as `none`
+1. discovery reads the mode from the work unit given as `none` and takes
+   the new-work path, with no seed material to read
 2. the work type is put to the user at the gate and committed on their
    answer — the pre-seed is a hint, and the several interacting strands
-   they describe are what makes it an epic rather than the menu key they
-   pressed
+   they describe are what makes it an epic rather than the pre-seed it
+   arrived with
 3. the name is derived from what the user described and never put back
    to them — no suggestion, no gate — and one engine transaction creates
    the work unit, installs the session log staged in the cache, and

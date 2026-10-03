@@ -1,6 +1,6 @@
 # Handing Off
 
-*Shared reference. Loaded by the bridge's continuations and review's route back to implementation.*
+*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu, the continue menus, the bridge's continuations, and review's route back to implementation.*
 
 ---
 

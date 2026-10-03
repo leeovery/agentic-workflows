@@ -41,15 +41,11 @@ This skill ends. The invoked skill will load into context and provide additional
 
 #### If `action` is `open_baseline`
 
-Invoke `/workflow-baseline` — it reads the baseline status and routes itself.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
 
 #### If `action` is `open_roadmap`
 
-Invoke `/workflow-roadmap open` — it reads the roadmap state and routes itself.
-
-This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-roadmap open`.
 
 #### If `action` is `open_help`
 
