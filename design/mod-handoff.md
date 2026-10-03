@@ -151,11 +151,15 @@ continuation once the turn ended.
   real use, the answer is a discovery argument for the person's opening
   words, never a free note.
 
-- **H9 — background work at a handoff is today's.** A session can hand off
-  with an agent still running — research and discussion proceed past their
-  in-flight gates, and three pauses carry no in-flight check. Plan mode's
-  clear has the same exposure; the lab establishes what the mod's clear
-  does to a running agent, and the design follows from that.
+- **H9 — no agent runs across a handoff unless the person leaves it.**
+  Every exit that hands off — a conclusion, the pause into an experiment,
+  research or discussion pausing on their waits — runs one in-flight check
+  first (`workflow-shared/references/in-flight-agents.md`): this session's
+  agents still in flight stop on the gate, whose `wait` takes in their
+  results and keeps the session, and whose `proceed` leaves them running,
+  their results persisting in cache. A pause's gate is worded for a pause.
+  Research's close takes discussion's order — the waits, then the check —
+  so a pause is never asked as a conclusion.
 
 - **H10 — plan mode goes; the setting stays.** Every plan-mode handoff is
   replaced. The project setting migration 034 installed
@@ -237,3 +241,6 @@ references and let the knowledge base carry sibling decisions.
 - 2026-10-02 — slices 1–3 built (#1457 → #1458 → #1463, stack #1459): the
   toast at the clear; a closed unit takes no handoff; the handoff loaded
   with the move as its slash command, a stored route passing as it stands.
+- 2026-10-03 — lab Block 1 passed (a pick into a discussion: clear, toast,
+  redrawn row; the new conversation 61k lighter than the menu's); H9 settled
+  with Lee — the three pauses take the conclusion's in-flight check.
