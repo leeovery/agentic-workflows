@@ -16,13 +16,14 @@ The prose should have taken this path:
    epic research session; the loop's first iteration finds the triage
    queue empty and nothing landed — no dive was ever dispatched, and the
    store says so
-4. the user signals they are done. The in-flight check reads the store
-   and finds nothing running, so the walk enters topic completion with
-   no wait-or-proceed gate
+4. the user signals they are done, and the walk enters topic
+   completion
 5. topic completion re-reads the triage queue — still empty — reads
    the research item's reconcile flag (none), fetches the wait gate
    and gets nothing back (no experiment wait, nothing owed — no gate
-   emitted, nothing blocks), and runs the closing checks
+   emitted, nothing blocks); the in-flight check then reads the store
+   and finds nothing running, so no wait-or-proceed gate renders; and
+   it runs the closing checks
    in order: document review reconciles the session against the file
    and finds it already says what the session said; the compliance
    check passes silently. No review is dispatched — research has none

@@ -174,38 +174,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render closing-gate {work
 
 ## E. In-Flight Agent Check
 
-The last gate before leaving the session, whichever path led here. Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` and read the response's `in_flight` list (agents dispatched but not yet returned). An agent dispatched by an earlier session cannot still be running — each row's `created` timestamp tells you which those are; close each (`agent incorporate`), re-scan, and count only this session's. A dead `synthesis` row is the exception: handle it per **D. Check and Surface** in **[perspective-agents.md](perspective-agents.md)** — closed *and* re-dispatched, so the council's tensions aren't lost.
+The last gate before leaving the session, whichever path led here.
 
-#### If no agents are in flight
+→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, exit = `conclude`.
 
-→ Return to **[the skill](../SKILL.md)** for **Step 6**.
-
-#### If agents are still running and the review-running gate's `yes` led here
-
-The wait is already chosen — no second ask.
-
-→ Proceed to **F. Wait for Results**.
-
-#### If agents are still running
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render in-flight-agents-gate {work_unit}.discussion.{topic} --count {N}
-```
-
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-**If `wait`:**
-
-→ Proceed to **F. Wait for Results**.
-
-**If `proceed`:**
+#### If `result` is `leave`
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.
 
-## F. Wait for Results
+#### If `result` is `stay`
 
-Watch for `agent scan` to promote each in-flight row to `pending`. When none remain in flight, delegate surfacing to the surfacing protocol loaded by review-agent.md and perspective-agents.md. The protocol applies the never-dump rules: two-phase surfacing, one finding at a time. Treat the current moment as a natural break — we are at phase conclusion, so the break check will pass. The ceremony stays open: once what came back is walked, the session loop's check re-enters **G. Concluding** and these gates classify afresh.
+The ceremony stays open: once what came back is walked, the session loop's check re-enters **G. Concluding** and these gates classify afresh.
 
 → Return to caller for **B. Session Loop**.

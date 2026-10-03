@@ -36,7 +36,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 
-   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the closing gates' wait for a running review and the walk of what it found, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` at the wait gate ends the ceremony (its `y/yes` ends the session itself, through the bridge); so does landed input the close reads and puts to the user (**L. Landed Input**) — their answer is a fresh signal, or the conversation carrying on; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened, or one with nothing on it, ends it at **H. The Map Gate**. Nothing else ends it.
+   **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the wait for agents still running as the session leaves — at the closing gates or the wait gate's pause — and the walk of what came back, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` at the wait gate ends the ceremony (its `y/yes` ends the session itself, through the bridge); so does landed input the close reads and puts to the user (**L. Landed Input**) — their answer is a fresh signal, or the conversation carrying on; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened, or one with nothing on it, ends it at **H. The Map Gate**. Nothing else ends it.
 2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
@@ -181,21 +181,7 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 
 **If `yes`:**
 
-Commit any uncommitted session work with the session's cadence commit:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
-```
-
-Then hand off to the pipeline bridge as a pause — what this discussion waits on is entered first, and its own door stays shut until it lands:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Paused with the waits queued — the closing ceremony runs once everything this discussion waits on has landed, and this discussion concludes once every wait releases.
-```
-
-Invoke `/workflow-bridge {work_unit} discussion none paused`.
+→ Proceed to **M. Pausing**.
 
 **If `keep`:**
 
@@ -420,3 +406,35 @@ Put what the read weighs to the user now — each verdict as evidence, the waiti
 Nothing landed. No output.
 
 → Return to caller.
+
+---
+
+## M. Pausing
+
+Entered from the wait gate's `yes` in **G. Concluding**.
+
+→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, exit = `pause`.
+
+#### If `result` is `stay`
+
+The ceremony stays open: once what came back is walked, the session loop's check re-enters **G. Concluding**, and the wait gate asks again.
+
+→ Return to **B. Session Loop**.
+
+#### If `result` is `leave`
+
+Commit any uncommitted session work with the session's cadence commit:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic discussion/{topic} -m "discussion({work_unit}/{topic}): {what changed}"
+```
+
+Then hand off to the pipeline bridge as a pause — what this discussion waits on is entered first, and its own door stays shut until it lands:
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Paused with the waits queued — the closing ceremony runs once everything this discussion waits on has landed, and this discussion concludes once every wait releases.
+```
+
+Invoke `/workflow-bridge {work_unit} discussion none paused`.
