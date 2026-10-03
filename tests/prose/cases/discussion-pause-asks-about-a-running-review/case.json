@@ -1,0 +1,84 @@
+{
+  "origin": "a pause handed the session off with a background agent still running — the wait gate's yes, the experiment spawn's now, and research's pause ran no in-flight check, so an agent this session dispatched lost the conversation that sent it the moment the handoff cleared it. This walk pins the pause's check: a review the user asked for is still in flight when they wrap up, the wait gate's yes reads the store, and the in-flight gate asks in the pause's words before anything hands off",
+  "entry": "workflow-discussion-entry",
+  "world": "claims",
+  "answers": [
+    "c — continue"
+  ],
+  "conduct": "The user settled the retry policy in an earlier sitting and handed webhook timing to the laboratory; they know the discussion is waiting on that measurement. Before stepping away they want a fresh pair of eyes over what the document says so far, and they open by asking directly for a review of the discussion as it stands. They decide nothing, settle nothing, and add no new material; if asked whether anything changed for them, nothing has. Once the review is dispatched and announced they do not wait for it — they say that covers it for now and ask to wrap up. Told the discussion cannot conclude while it waits on the measurement and asked whether to pause it, they say yes. They decline optional extras and never introduce new material.",
+  "stubs": {
+    "discussion-review-clean": "not at the dispatch — the review stays in flight while the user wraps up and takes the pause; once the session has taken the in-flight gate's wait, write the content to the path the dispatch response returned, and let the next scan find it"
+  },
+  "invariants": {
+    "calls_include": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "agent dispatch pay discussion pay --kind review --final",
+      "render wait-gate pay.discussion.pay",
+      "agent scan pay discussion pay",
+      "render in-flight-agents-gate pay.discussion.pay --count 1 --pause"
+    ],
+    "calls_in_order": [
+      "manifest get pay.discussion.pay status",
+      "render resume-gate pay.discussion.pay",
+      "agent dispatch pay discussion pay --kind review --final",
+      "dispatch:workflow-discussion-review",
+      "render wait-gate pay.discussion.pay",
+      "agent scan pay discussion pay",
+      "render in-flight-agents-gate pay.discussion.pay --count 1 --pause"
+    ],
+    "calls_exclude": [
+      "agent ack",
+      "agent surface",
+      "agent incorporate",
+      "--kind perspective",
+      "discussion-map set",
+      "discussion-map add",
+      "experiment create",
+      "render closing-gate",
+      "render defer-gate",
+      "render conclude-gate",
+      "topic complete",
+      "engine.cjs knowledge index"
+    ],
+    "dispatches": [
+      {
+        "agent": "workflow-discussion-review",
+        "count": 1
+      }
+    ]
+  },
+  "files": [
+    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-discussion-entry/references/validate-research.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-entry/references/validate-phase.md",
+    "skills/workflow-shared/references/reconcile-advisory.md",
+    "skills/workflow-discussion-entry/references/invoke-skill.md",
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/resume-detection.md",
+    "skills/workflow-discussion-process/references/discussion-guidelines.md",
+    "skills/workflow-discussion-process/references/meeting-assistant.md",
+    "skills/workflow-discussion-process/references/guidelines.md",
+    "skills/workflow-discussion-process/references/template.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/contextual-query.md",
+    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/landing-shared-files.md",
+    "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-discussion-process/references/review-agent.md",
+    "skills/workflow-discussion-process/references/perspective-agents.md",
+    "skills/workflow-discussion-process/references/background-agent-surfacing.md",
+    "skills/workflow-shared/references/composing-a-raise.md",
+    "skills/workflow-shared/references/making-it-land.md",
+    "skills/workflow-shared/references/natural-breaks.md",
+    "skills/workflow-shared/references/in-flight-agents.md"
+  ]
+}

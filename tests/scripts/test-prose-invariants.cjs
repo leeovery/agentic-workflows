@@ -780,9 +780,13 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-start'), []);
   });
 
-  it('accepts an entry skill, which a bridge plan invokes after a context clear', () => {
+  it('accepts an entry skill, where a handoff lands a phase in a fresh context', () => {
     assert.deepEqual(cases.entryErrors('workflow-implementation-entry'), []);
     assert.deepEqual(cases.entryErrors('workflow-specification-entry'), []);
+  });
+
+  it('accepts the epic menu, where a handoff lands an epic phase\'s conclusion', () => {
+    assert.deepEqual(cases.entryErrors('workflow-continue-epic'), []);
   });
 
   it('accepts discovery, the one continuation that is not an entry skill', () => {
@@ -794,7 +798,7 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-help'), []);
   });
 
-  it('rejects a navigation skill — always invoked by workflow-start, never cold', () => {
+  it('rejects any other navigation skill — always invoked by workflow-start, never cold', () => {
     const [error] = cases.entryErrors('workflow-continue-feature');
     assert.match(error, /not somewhere a session starts/);
   });

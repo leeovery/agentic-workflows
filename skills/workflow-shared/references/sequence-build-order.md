@@ -1,6 +1,6 @@
 # Sequence Build Order
 
-*Shared reference. Loaded by `workflow-continue-epic` and `workflow-bridge`.*
+*Shared reference. Loaded by `workflow-continue-epic` — its Step 8 and its menu's `o/order`.*
 
 ---
 

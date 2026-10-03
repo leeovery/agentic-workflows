@@ -288,6 +288,10 @@ describe('gate payload — the statement', () => {
 
     assert.strictEqual(gate.question, 'Wait, or conclude now?');
     assert.strictEqual(gate.statement, 'There are still 2 background agents working.');
+
+    const paused = gateOf(output(dir, ['render', 'in-flight-agents-gate', 'auth.discussion.auth', '--count', '2', '--pause'], { env: ANNOUNCED }));
+    assert.strictEqual(paused.question, 'Wait, or pause now?');
+    assert.strictEqual(paused.statement, 'There are still 2 background agents working.');
   });
 
   it('a question the frame glyphs by hand is the question, and every head line above it is statement', () => {

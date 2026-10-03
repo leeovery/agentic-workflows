@@ -20,7 +20,7 @@ Emit its `DISPLAY: not found` section verbatim per its marker.
 
 #### Otherwise
 
-Run the scoped discovery for the selected epic and hold its output as **the most recent discovery output** — Steps 5–8 read `discovery_map`, `analysis_caches`, `needs_sequencing`, and `build_order_needs_sequencing` from it:
+Run the scoped discovery for the selected epic and hold its output as **the most recent discovery output** — Steps 5–9 read `discovery_map`, `analysis_caches`, `needs_sequencing`, `build_order_needs_sequencing`, and `all_done` from it:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs {work_unit}

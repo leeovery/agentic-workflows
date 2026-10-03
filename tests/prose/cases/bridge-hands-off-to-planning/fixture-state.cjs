@@ -2,7 +2,7 @@
 
 // The feature's discussion is complete; the specification has not
 // begun. The walk concludes the specification and crosses the
-// pipeline continuation into the bridge's plan-mode handoff.
+// pipeline continuation into the bridge's handoff to planning.
 
 const m = require('../../mainlines/feature.cjs');
 

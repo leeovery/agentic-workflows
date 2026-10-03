@@ -28,7 +28,7 @@ The prose should have taken this path:
    engine's one-command completion, the completion banner is fetched
    via render workunit-receipt with the pipeline flag and its
    confirmation section emitted verbatim, and the walk stops at
-   the terminal condition — no next-phase gate, no plan mode, no
+   the terminal condition — no next-phase gate, no handoff, no
    planning phase
 
 Further claims:
@@ -43,5 +43,5 @@ Further claims:
   incorporated, work_type cross-cutting, status completed, and a
   completed_at stamp
 - no planning, implementation, or review item exists anywhere; no
-  plan-mode content was produced; no promotion occurred
+  handoff was made; no promotion occurred
 - no cache directory for the work unit remains after the completion

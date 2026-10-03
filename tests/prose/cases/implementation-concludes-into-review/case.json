@@ -1,5 +1,5 @@
 {
-  "origin": "no case crossed the implementation→review hop — nothing walked the implementation conclude gate, and no bridge case started from implementation. Two defects sat there unseen: the gate's `no` arm sent a finished implementation back into the task loop, which found nothing to run and re-dispatched the analysis it had already converged; and the bridge stopped the user twice with the same question on the way to review. This pins the hop: a clean analysis cycle, the conclude gate's Ask answered from the record the session holds, the gate set aside until the user is ready to move on and then put back for its answer, with no analysis re-run, the completion, and the bridge's single next-phase gate landing the plan-mode handoff to review",
+  "origin": "no case crossed the implementation→review hop — nothing walked the implementation conclude gate, and no bridge case started from implementation. Two defects sat there unseen: the gate's `no` arm sent a finished implementation back into the task loop, which found nothing to run and re-dispatched the analysis it had already converged; and the bridge stopped the user twice with the same question on the way to review. This pins the hop: a clean analysis cycle, the conclude gate's Ask answered from the record the session holds, the gate set aside until the user is ready to move on and then put back for its answer, with no analysis re-run, the completion, and the bridge's single next-phase gate landing the handoff to review",
   "entry": "workflow-implementation-entry",
   "world": "claims",
   "files": [
@@ -35,7 +35,8 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-implementation-process/references/conclude-implementation.md",
     "skills/workflow-bridge/SKILL.md",
-    "skills/workflow-bridge/references/feature-continuation.md"
+    "skills/workflow-bridge/references/feature-continuation.md",
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "y — skip project skills again",
@@ -69,7 +70,8 @@
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev implementation --next review",
       "manifest set pay.implementation.pay project_skills []",
-      "manifest set pay.implementation.pay linters []"
+      "manifest set pay.implementation.pay linters []",
+      "handoff workflow-review-entry feature pay"
     ],
     "calls_in_order": [
       "render code-gate pay.implementation.pay",
@@ -85,7 +87,8 @@
       "session label pay",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "render next-phase-gate pay --prev implementation --next review"
+      "render next-phase-gate pay --prev implementation --next review",
+      "handoff workflow-review-entry feature pay"
     ],
     "calls_exclude": [
       "impl(pay): analysis cycle 2",

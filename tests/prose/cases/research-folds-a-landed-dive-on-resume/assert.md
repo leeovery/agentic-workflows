@@ -38,10 +38,10 @@ The prose should have taken this path:
    alternative — never a script, never a menu; the turn ends there
    awaiting the user, who declines — no lab, no inline count — and says
    they are done
-8. the wrapper routes to its in-flight handling: the fold check finds
-   nothing pending and nothing in flight, no gate, and the close
-   proceeds — the triage queue reads empty, the wait gate answers empty,
-   the document review reconciles the file against a conversation that
+8. the wrapper enters topic completion: the triage queue reads empty,
+   the wait gate answers empty, and the in-flight check finds nothing
+   pending and nothing in flight, no gate, so the close proceeds — the
+   document review reconciles the file against a conversation that
    added nothing, and the compliance check passes
 9. the conclude gate renders with the register above its menu — the
    learned threads, the open ones (the user's label-freshness question

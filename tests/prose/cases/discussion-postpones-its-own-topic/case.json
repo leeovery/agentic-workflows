@@ -34,8 +34,7 @@
     "skills/workflow-shared/references/choosing-a-horizon.md",
     "skills/workflow-bridge/SKILL.md",
     "skills/workflow-bridge/references/epic-continuation.md",
-    "skills/workflow-shared/references/topic-discovery-dispatch.md",
-    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "c — continue"
@@ -52,7 +51,7 @@
       "agent scan search-relevance discussion behavioural-ranking",
       "topic postpone search-relevance behavioural-ranking --horizon v2",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
-      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+      "handoff workflow-continue-epic search-relevance discussion postponed"
     ],
     "calls_in_order": [
       "render resume-gate search-relevance.discussion.behavioural-ranking",
@@ -62,7 +61,7 @@
       "agent scan search-relevance discussion behavioural-ranking",
       "topic postpone search-relevance behavioural-ranking",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
-      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+      "handoff workflow-continue-epic search-relevance discussion postponed"
     ],
     "calls_exclude": [
       "topic complete",
@@ -79,7 +78,8 @@
       "discovery-map",
       "workunit cancel",
       "topic reopen",
-      "agent dispatch"
+      "agent dispatch",
+      "workflow-continue-epic/scripts/gateway.cjs"
     ]
   }
 }

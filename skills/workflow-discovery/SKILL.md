@@ -291,7 +291,7 @@ The single exit for every work type — both paths arrive from the Step 14 compl
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Wrapping up — committing, then handing off through the bridge to the next step in a clean context.
+> Wrapping up — committing, then handing the work to its next step.
 ```
 
 Load **[conclude-discovery.md](references/conclude-discovery.md)** and follow its instructions as written.

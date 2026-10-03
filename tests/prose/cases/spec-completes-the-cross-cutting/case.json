@@ -69,7 +69,8 @@
       "workunit create",
       "render next-phase-gate",
       "workunit promote",
-      "topic start error-handling planning"
+      "topic start error-handling planning",
+      "engine.cjs handoff"
     ]
   }
 }

@@ -2109,21 +2109,35 @@ function perspectiveOffer(cwd, { dotpath, file }) {
   ));
 }
 
-// in-flight-agents-gate — the wait-or-conclude gate a session takes when
-// background agents are still running at conclusion. Research and discussion
-// both dispatch and both conclude, so the gate serves the pair. Served to the
-// epic and feature sessions alike: the shape is one gate, and the count is
-// the session's own (this session's dispatches, an earlier session's dead
-// rows already closed), so it rides as a scalar flag rather than being
+// in-flight-agents-gate — the wait-or-leave gate a session takes when
+// background agents are still running as it leaves. Research and discussion
+// both dispatch, and both leave by concluding or by pausing, so the gate
+// serves the pair; `--pause` words it for the pause. Served to the epic and
+// feature sessions alike: the shape is one gate, and the count is the
+// session's own (this session's dispatches, an earlier session's dead rows
+// already closed), so it rides as a scalar flag rather than being
 // re-derived. The opening line reports what is still running; the ask
-// beneath it is fixed.
+// beneath it is fixed per exit.
+
+const IN_FLIGHT_EXITS = {
+  conclude: {
+    question: 'Wait, or conclude now?',
+    wait: 'Wait for results before concluding',
+    proceed: 'Conclude now (results will persist in cache for reference)',
+  },
+  pause: {
+    question: 'Wait, or pause now?',
+    wait: 'Wait for results before pausing',
+    proceed: 'Pause now (results will persist in cache for the next session)',
+  },
+};
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, count?: string}} args
+ * @param {{dotpath: string, count?: string, pause?: string}} args
  * @returns {string}
  */
-function inFlightAgentsGate(cwd, { dotpath, count }) {
+function inFlightAgentsGate(cwd, { dotpath, count, pause }) {
   const { phase } = resolveAddress(cwd, dotpath, 'in-flight-agents-gate');
   if (phase !== 'research' && phase !== 'discussion') {
     throw new Error(`render in-flight-agents-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
@@ -2132,13 +2146,14 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`render in-flight-agents-gate: --count must be a positive integer, got "${count}"`);
   }
+  const exit = IN_FLIGHT_EXITS[pause ? 'pause' : 'conclude'];
   return section('MENU: in-flight agents gate', MENU_INSTRUCTION, menu(
     n === 1 ? 'There is still 1 background agent working.' : `There are still ${n} background agents working.`,
     [
-      cmdOption('w', 'wait', 'Wait for results before concluding'),
-      cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
+      cmdOption('w', 'wait', exit.wait),
+      cmdOption('p', 'proceed', exit.proceed),
     ],
-    { question: 'Wait, or conclude now?' },
+    { question: exit.question },
   ));
 }
 
@@ -4066,8 +4081,9 @@ function requeueOffer(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// Bridge continuation surfaces — work-unit-level: pipeline completion
-// displays and the continuation gates the bridge presents between phases.
+// Pipeline continuation surfaces — work-unit-level: the completion and
+// pause banners, the gates the bridge presents between phases, and the epic
+// menu's completion offer.
 // Address-backed (work_type from the manifest); phases ride as flags.
 // ---------------------------------------------------------------------------
 
@@ -4116,10 +4132,10 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 }
 
 /**
- * The bridge's paused banner — `phase-completed`'s sibling for a phase
+ * The epic menu's paused banner — `phase-completed`'s sibling for a phase
  * leaving on a wait. Derived, never told: the phase's in-progress items
  * holding waits, each named with what it awaits. A peer can land the wait
- * between the gate and the bridge, so no holder left renders the bare line
+ * between the gate and the banner, so no holder left renders the bare line
  * rather than refusing.
  * @param {string} cwd
  * @param {{dotpath: string, phase?: string}} args

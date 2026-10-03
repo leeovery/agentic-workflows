@@ -38,7 +38,10 @@ The prose should have taken this path:
 8. the now-or-later gate is fetched from the engine and its menu
    emitted verbatim; the user says yes
 9. the session pauses mid-phase with no closing ceremony — no document
-   review, no completion attempt — says where the ball sits (E1 queued;
+   review, no completion attempt. Before it hands off, the in-flight
+   check reads the store: no dive was ever dispatched, so nothing is
+   dead, nothing is in flight, and no wait-or-pause gate renders. It
+   says where the ball sits (E1 queued;
    the research concludes once the evidence lands) and hands off to the
    pipeline bridge as a pause: the invocation carries the work unit, the
    phase research, the literal `none` for the next phase, and `paused`.

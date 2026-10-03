@@ -694,7 +694,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The pause continues the work unit at what it waits on\./);
     assert.match(out, /◆ Pause here\?/);
     assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and continue the work unit at the research/);
-    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause lands in plan mode, never on a menu — no epic vocabulary');
+    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause hands off to what it waits on, never to a menu — no epic vocabulary');
   });
 
   it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
@@ -738,7 +738,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   });
 });
 
-describe('phase-paused — the bridge banner for a conversation leaving on a wait', () => {
+describe('phase-paused — the epic menu\'s banner for a conversation leaving on a wait', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
@@ -783,7 +783,7 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
       /^.*\nResearch paused for "Lab" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
   });
 
-  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the bridge', () => {
+  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the banner', () => {
     writeManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
@@ -4218,7 +4218,7 @@ describe('selection projection', () => {
   });
 });
 
-describe('bridge continuation surfaces', () => {
+describe('pipeline continuation surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -6925,6 +6925,23 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     const out = renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '2' });
     assert.match(out, /There are still 2 background agents working\./);
     assert.match(out, /\*\*`w\/wait`\*\*/);
+  });
+
+  it('a pause words the ask and both rows for the pause — the statement and the keys are the conclusion\'s', () => {
+    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '1', pause: '1' }), [
+      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      'There is still 1 background agent working.',
+      '',
+      '**`◆ Wait, or pause now?`**',
+      '',
+      '**`w/wait`**    → Wait for results before pausing',
+      '**`p/proceed`** → Pause now (results will persist in cache for the next',
+      `${NB(12)}session)`,
+      '',
+    ].join('\n'));
+    assert.match(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '3', pause: '1' }),
+      /There are still 3 background agents working\.\n\n\*\*`◆ Wait, or pause now\?`\*\*/);
   });
 
   it('perspective-offer renders the tension statement then the ask byte-exactly — discussion only', () => {

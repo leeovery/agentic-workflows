@@ -16,7 +16,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
    Then, at a natural break — a thread's pause, a synthesis moment, the user's done-signal, or the first iteration of a resumed session — check for landed deep dives: follow **C. Land and Fold** in **[deep-dive-agent.md](deep-dive-agent.md)**. Never skip it on memory of what was dispatched: the store answers that, and a resumed session may hold dives from an earlier sitting. Mid-thread, defer — a landed report keeps.
 
-2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next. A number about to bear a decision — or a measurement thread on the register, a dive's Opened line — is the laboratory's cue: offer it through the session wrapper's **F. The Experiment Offer**.
+2. **Explore** — Probe the topic from a relevant angle. Use the funnel technique: broad first, specific later. Choose your probe type deliberately. One question at a time — wait for the answer before asking the next. A number about to bear a decision — or a measurement thread on the register, a dive's Opened line — is the laboratory's cue: offer it through the session wrapper's **E. The Experiment Offer**.
 
    A question neither of you can answer from the room, worth more than a lookup, is the deep dive's cue — offer it through **A. Offer** in **[deep-dive-agent.md](deep-dive-agent.md)**. A thread the user is carrying out to the conclusion is not reached, it is handed on: no offer rides a done-signal.
 
