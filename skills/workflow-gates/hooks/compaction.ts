@@ -7,6 +7,8 @@
  *
  * Only the main conversation of a conversation the engine has marked, at a
  * position that names a skill; everything else compacts as Claude Code does.
+ * What it hands up is recorded in the conversation's folder as
+ * `compacted.json`, which the rows mod draws the message's row from.
  */
 import type { EngineInterface, On, SessionMessage } from 'claude-code'
 
@@ -46,18 +48,43 @@ const SUMMARY_ASK = [
 
 const SAID = 'Said in the conversation and not yet written down:'
 
-/** What the engine answers for a conversation's position: its message, and the skill it names. */
-type Position = { text: string; skill: string | null }
+/** The file in the conversation's folder the compaction's message is recorded in. */
+const COMPACTED = 'compacted.json'
 
-/** Whether the engine has marked the session's conversation as one that runs the workflows. */
-async function isWorkflow($: EngineInterface): Promise<boolean> {
+const PLACE_SEPARATOR = ' › '
+
+/**
+ * What the engine answers for a conversation's position: its message, the
+ * skill it names, and the place as words.
+ */
+type Position = { text: string; skill: string | null; place: string }
+
+/** What a compaction the mod answered leaves for the rows mod to draw its row from. */
+export type Compacted = { text: string; place: string; kept: number }
+
+/**
+ * The session's own conversation's folder where the engine has marked it as
+ * one that runs the workflows; null for any other conversation.
+ */
+async function workflowFolder($: EngineInterface): Promise<string | null> {
   const folder = folderOf(
     await $.env.get('WORKFLOWS_CONFIG_DIR'),
     await $.env.get('HOME'),
     await $.session.id(),
   )
 
-  return folder !== null && (await $.fs.exists(`${folder}/${MARKER}`))
+  return folder !== null && (await $.fs.exists(`${folder}/${MARKER}`)) ? folder : null
+}
+
+/**
+ * A position as words — the work unit, its phase and its topic, the topic
+ * left out where it is the work unit, as the tmux label reads it.
+ */
+export function placeOf(position: unknown): string {
+  const { name, phase, topic } = (position ?? {}) as Record<string, unknown>
+  const words = [name, phase, topic === name ? undefined : topic]
+
+  return words.filter((word): word is string => typeof word === 'string').join(PLACE_SEPARATOR)
 }
 
 /** The engine's `conversation position` answer, from its POSITION line; null where it gave none. */
@@ -66,10 +93,14 @@ export function positionIn(stdout: string): Position | null {
   const at = lines.findIndex(line => line.startsWith(POSITION_MARKER))
 
   try {
-    const { text, skill } = JSON.parse(lines[at + 1] ?? '') as Partial<Position>
+    const { text, skill, position } = JSON.parse(lines[at + 1] ?? '') as {
+      text?: unknown
+      skill?: unknown
+      position?: unknown
+    }
 
     return at !== -1 && typeof text === 'string'
-      ? { text, skill: typeof skill === 'string' ? skill : null }
+      ? { text, skill: typeof skill === 'string' ? skill : null, place: placeOf(position) }
       : null
   } catch {
     return null
@@ -118,9 +149,38 @@ export function summaryPrompt(transcript: string, instructions: string | undefin
   return `${SUMMARY_ASK}${asked}\n\n<conversation>\n${transcript}\n</conversation>`
 }
 
+/** Whether the summary found nothing said and not written down. */
+const isNothing = (summary: string) => /^(nothing\.?)?$/i.test(summary.trim())
+
 /** The message the compaction hands up: the engine's note, and what was said where there is any. */
 export function answerOf(note: string, summary: string): string {
-  return /^(nothing\.?)?$/i.test(summary.trim()) ? note : `${note}\n\n${SAID}\n${summary.trim()}`
+  return isNothing(summary) ? note : `${note}\n\n${SAID}\n${summary.trim()}`
+}
+
+/**
+ * How many points the summary keeps: its list's items at the top level, or
+ * one where it says something in no list; none where it found nothing.
+ */
+export function pointsIn(summary: string): number {
+  if (isNothing(summary)) {
+    return 0
+  }
+
+  const items = summary.split('\n').filter(line => /^([-*•+]|\d+[.)])\s/.test(line))
+
+  return Math.max(1, items.length)
+}
+
+/**
+ * Records what the compaction hands up in the conversation's folder. A record
+ * that cannot be written costs the drawing alone, never the compaction.
+ */
+async function record($: EngineInterface, folder: string, compacted: Compacted) {
+  try {
+    await $.fs.write(`${folder}/${COMPACTED}`, JSON.stringify(compacted))
+  } catch {
+    // The row draws as Claude Code draws it.
+  }
 }
 
 /** A message the mod writes into the conversation. */
@@ -128,7 +188,9 @@ const message = (text: string): SessionMessage => ({ role: 'user', text, toolUse
 
 export function compaction(on: On) {
   on('session.compact', async ($, e, next) => {
-    if (e.agentId !== undefined || !(await isWorkflow($))) {
+    const folder = e.agentId === undefined ? await workflowFolder($) : null
+
+    if (folder === null) {
       return next(e)
     }
 
@@ -157,11 +219,19 @@ export function compaction(on: On) {
     if (!summary.isAnswered) {
       const compacted = await next(e)
 
-      return compacted.messages === undefined
-        ? compacted
-        : { ...compacted, messages: [message(position.text), ...compacted.messages] }
+      if (compacted.messages === undefined) {
+        return compacted
+      }
+
+      await record($, folder, { text: position.text, place: position.place, kept: 0 })
+
+      return { ...compacted, messages: [message(position.text), ...compacted.messages] }
     }
 
-    return { messages: [message(answerOf(position.text, summary.text))] }
+    const text = answerOf(position.text, summary.text)
+
+    await record($, folder, { text, place: position.place, kept: pointsIn(summary.text) })
+
+    return { messages: [message(text)] }
   }).catch(($, e, next) => next(e))
 }

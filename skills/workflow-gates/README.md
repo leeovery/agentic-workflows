@@ -154,6 +154,13 @@ recent part, since what was said long ago has had the session's natural
 breaks to reach the document Claude re-reads. Words typed after `/compact`
 go to the completion too, and a list of nothing leaves the note alone.
 
+Claude Code stores that message as an ordinary user row and would draw it as
+a prompt the person typed. So the mod records what it hands up in the
+conversation's folder as `compacted.json` — the message's text, the place it
+carries on in as words (`fumi › discussion › management-window`), and how many
+unwritten points it kept — and `workflow-gates-rows` draws the row from it as
+one dim note.
+
 It does so in a conversation the engine has marked, in its main loop, at a
 position that names a skill. A subagent's transcript, a plain conversation,
 a work unit's menu or the start menu, and an engine that cannot answer all

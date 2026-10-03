@@ -25,7 +25,9 @@
 //                  `conversation position` names files for
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press (the mod's own)
-//   rows.json      each answer row the rows mod redrew, by message id (its own)
+//   compacted.json the message the mod last handed up for a compaction, with
+//                  the place and the points it kept (the mod's own)
+//   rows.json      each row the rows mod redrew, by message id (its own)
 //
 // A folder goes at any project's boot once its transcript is gone: Claude
 // Code has deleted the conversation, so nothing can resume it, and whatever

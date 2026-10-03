@@ -1,7 +1,7 @@
 import type { ModelCompleteResult, On, SessionCompactInput, SessionMessage } from 'claude-code'
 import { describe, expect, test, tier } from 'claude-code/testing'
 
-import { TRANSCRIPT_CAP, answerOf, positionIn, transcriptOf } from '../hooks/compaction.ts'
+import { TRANSCRIPT_CAP, answerOf, placeOf, pointsIn, positionIn, transcriptOf } from '../hooks/compaction.ts'
 
 tier('user')
 
@@ -15,6 +15,9 @@ const HOME = '/Users/person'
 const ROOT = '/Users/person/app'
 
 const ENGINE = `${ROOT}/.claude/skills/workflow-engine/scripts/engine.cjs`
+
+/** Where the conversation `s0` keeps the record of the compaction the mod answered. */
+const COMPACTED = `${HOME}/.config/workflows/conversations/s0/compacted.json`
 
 const NOTE = [
   `This conversation is working in the discussion of "ledger" in "payments". To carry on there, re-read \`${ROOT}/.claude/skills/workflow-discussion-process/SKILL.md\` in full and follow its load directives, then re-read these in full:`,
@@ -101,7 +104,8 @@ const NOT_ANSWERED: ModelCompleteResult = {
  * engine `marked`, what the engine's `conversation position` answers
  * (`engine`: its standard output and exit code, or a start that fails), what
  * the summary's model answers, and Claude Code's own compaction. `calls`
- * records each run, completion and compaction the mod asked for.
+ * records each run, completion and compaction the mod asked for, and
+ * `written` each file it wrote, by path; `refusesWrites` fails every write.
  */
 function world(
   on: On,
@@ -109,13 +113,20 @@ function world(
     marked?: readonly string[]
     engine?: { stdout: string; exitCode?: number } | 'unstartable'
     summary?: ModelCompleteResult
+    refusesWrites?: boolean
   } = {},
 ) {
-  const { marked = ['s0'], engine = { stdout: engineSays(AT_DISCUSSION) }, summary = answered(SAID) } = options
+  const {
+    marked = ['s0'],
+    engine = { stdout: engineSays(AT_DISCUSSION) },
+    summary = answered(SAID),
+    refusesWrites = false,
+  } = options
   const calls = {
     runs: [] as { argv: readonly string[]; cwd?: string }[],
     completions: [] as { model: string; prompt: string; maxTokens?: number; timeoutMs?: number }[],
     compactions: 0,
+    written: new Map<string, string>(),
   }
 
   on('env.get', ($, e) => ({ value: e.name === 'HOME' ? HOME : undefined }))
@@ -124,6 +135,16 @@ function world(
   on('fs.exists', ($, e) => ({
     value: marked.some(id => e.path === `${HOME}/.config/workflows/conversations/${id}/workflow`),
   }))
+
+  on('fs.write', ($, e) => {
+    if (refusesWrites) {
+      throw new Error(`EACCES: ${e.path}`)
+    }
+
+    calls.written.set(e.path, e.text)
+
+    return { value: undefined }
+  })
 
   on('process.run', ($, e) => {
     calls.runs.push({ argv: e.argv, cwd: e.init?.cwd })
@@ -224,6 +245,67 @@ describe('a workflow conversation\'s compaction', () => {
   })
 })
 
+describe('the record of a compaction the mod answered', () => {
+  /** The record the mod left in the conversation's folder. */
+  const recorded = (calls: { written: Map<string, string> }): unknown =>
+    JSON.parse(calls.written.get(COMPACTED) ?? 'null')
+
+  test('holds the message handed up, the place as words, and the points kept', async ($, on) => {
+    const calls = world(on)
+
+    await $.session.compact(compactionOf())
+
+    expect(recorded(calls)).toEqual({
+      text: `${NOTE}\n\nSaid in the conversation and not yet written down:\n${SAID}`,
+      place: 'payments › discussion › ledger',
+      kept: 2,
+    })
+  })
+
+  test('keeps no points where nothing was said', async ($, on) => {
+    const calls = world(on, { summary: answered('Nothing.') })
+
+    await $.session.compact(compactionOf())
+
+    expect(recorded(calls)).toEqual({ text: NOTE, place: 'payments › discussion › ledger', kept: 0 })
+  })
+
+  test('holds the note where Claude Code compacts and the note goes ahead of what it hands up', async ($, on) => {
+    const calls = world(on, { summary: NOT_ANSWERED })
+
+    await $.session.compact(compactionOf())
+
+    expect(recorded(calls)).toEqual({ text: NOTE, place: 'payments › discussion › ledger', kept: 0 })
+  })
+
+  test('is never written where the mod does not answer the compaction', async ($, on) => {
+    const unmarked = world(on, { marked: [] })
+
+    await $.session.compact(compactionOf())
+    await $.session.compact(compactionOf({ agentId: 'a1' }))
+
+    expect([...unmarked.written.keys()]).toEqual([])
+  })
+
+  test('is not written for a precompute', async ($, on) => {
+    const calls = world(on)
+
+    await $.session.compact(compactionOf({ trigger: 'precompute' }))
+
+    expect([...calls.written.keys()]).toEqual([])
+  })
+
+  test('that cannot be written costs the compaction nothing', async ($, on) => {
+    world(on, { refusesWrites: true })
+
+    expect(await $.session.compact(compactionOf())).toEqual({
+      messages: [
+        { role: 'user', text: `${NOTE}\n\nSaid in the conversation and not yet written down:\n${SAID}`, toolUses: [] },
+      ],
+    })
+  })
+})
+
 describe('what compacts as Claude Code does', () => {
   test('a subagent\'s transcript, asking the engine nothing', async ($, on) => {
     const calls = world(on)
@@ -312,10 +394,26 @@ describe('transcriptOf', () => {
 
 describe('positionIn and answerOf', () => {
   test('the engine\'s POSITION line read whole; anything else reads as none', () => {
-    expect(positionIn(engineSays(AT_DISCUSSION))).toEqual({ text: NOTE, skill: AT_DISCUSSION.skill })
-    expect(positionIn(engineSays(AT_MENU))).toEqual({ text: AT_MENU.text, skill: null })
+    expect(positionIn(engineSays(AT_DISCUSSION))).toEqual({ text: NOTE, skill: AT_DISCUSSION.skill, place: 'payments › discussion › ledger' })
+    expect(positionIn(engineSays(AT_MENU))).toEqual({ text: AT_MENU.text, skill: null, place: 'payments' })
     expect(positionIn('{"text":"no marker"}')).toBe(null)
     expect(positionIn('=== POSITION (json for the gate mod — never display) ===\nnot json')).toBe(null)
+  })
+
+  test('the place as words, the topic left out where it is the work unit', () => {
+    expect(placeOf({ name: 'fumi', phase: 'discussion', topic: 'management-window' })).toBe('fumi › discussion › management-window')
+    expect(placeOf({ name: 'fix', phase: 'scoping', topic: 'fix' })).toBe('fix › scoping')
+    expect(placeOf({ name: 'roadmap' })).toBe('roadmap')
+    expect(positionIn(engineSays(AT_DISCUSSION))?.place).toBe('payments › discussion › ledger')
+  })
+
+  test('the points a summary keeps: its top-level items, one for words in no list, none for nothing', () => {
+    expect(pointsIn(SAID)).toBe(2)
+    expect(pointsIn('1. One.\n2. Two.\n   - a detail\n3) Three.')).toBe(3)
+    expect(pointsIn('* One point.')).toBe(1)
+    expect(pointsIn('The person wants banker\'s rounding.')).toBe(1)
+    expect(pointsIn('Nothing.')).toBe(0)
+    expect(pointsIn('')).toBe(0)
   })
 
   test('the note alone where nothing was said', () => {

@@ -23,3 +23,14 @@ folder the way the workflows' engine does. A conversation that
 does not run the workflows has no folder, nor does one in a process that names
 neither a home directory nor `WORKFLOWS_CONFIG_DIR`: there the mod writes
 nothing and draws the row as Claude Code does.
+
+It also draws the row of the message `workflow-gates` hands up for a
+compaction — which Claude Code stores as an ordinary user row — as one dim
+note cut to the row's width:
+`⟳ Compacted · carrying on in fumi › discussion › management-window · 4 unwritten points kept`,
+with `1 unwritten point kept` for one and no count where none were kept. It
+knows the row by the record the mod leaves in the conversation's folder as
+`compacted.json` as it hands the message up: a row whose text is the
+recorded message draws the note, kept in `rows.json` like an answer's line.
+A row that does not open as the engine's note costs no read, and ctrl+o
+shows the message in full.
