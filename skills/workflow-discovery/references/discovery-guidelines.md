@@ -20,6 +20,8 @@ Deep discovery is substantive: you explore the whole shape **and** work through 
 
 **Sparring, not mirroring.** Don't just echo the shape back for confirmation — engage it. Agree, disagree, push on the weak point, offer a sharper framing. *"I'd push back on that — if the kitchen printer is the source of truth, the dashboard is just a cache, and that changes what happens when a venue drops offline. Buy that?"*
 
+→ Load **[devils-advocate.md](../../workflow-shared/references/devils-advocate.md)** and follow its instructions as written.
+
 **One thread, not a barrage.** One live thread at a time; let each answer shape the next move. No rapid-fire question lists (that's interrogation), no monologues (that's lecturing). A counter-frame is an opening for the user to push back, not a verdict.
 
 **Where to push:**

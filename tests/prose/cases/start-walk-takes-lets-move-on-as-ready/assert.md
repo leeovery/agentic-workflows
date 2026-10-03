@@ -1,8 +1,7 @@
 The prose should have taken this path:
 
 1. loads the shared framework — instructions, casing conventions, voice,
-   altitude, ask-or-decide, and the rule for answering questions about
-   how the system works — before any state is read
+   altitude, and ask-or-decide — before any state is read
 2. runs the boot pipeline, and since no migrations applied and the
    knowledge base is ready, raises neither the migrations confirmation
    nor the knowledge gate
@@ -16,9 +15,11 @@ The prose should have taken this path:
    first run, emits it in the forms its own markers name, and stops
 6. on `n`, renders the second screen in full and stops
 7. reads the free text as a question rather than an unrecognised key,
-   and answers it in a few ordinary sentences drawn from the glossary —
-   what a phase is, and how it sits with a team that works in one pass —
-   with no engine verb, file path or skill name in the answer
+   loads the rule for answering questions about how the system works at
+   the question, and answers it in a few ordinary sentences drawn from
+   the glossary — what a phase is, and how it sits with a team that
+   works in one pass — with no engine verb, file path or skill name in
+   the answer
 8. the question set the menu aside: the answer ends without a menu or a
    gate, and the walk stops
 9. the fourth scripted answer — "ok, let's move on" — says the user is
