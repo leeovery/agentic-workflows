@@ -15,7 +15,7 @@ const assert = require('node:assert');
 const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
 
 const ANNOUNCED = { WORKFLOWS_HANDOFF: '1' };
@@ -23,6 +23,12 @@ const ANNOUNCED = { WORKFLOWS_HANDOFF: '1' };
 const DATA_MARKER = '=== DATA (reason from this — never display or parse the sections below) ===';
 const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
 const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ===';
+
+// The phases an epic enters with no topic — the entry picks or starts one.
+const EPIC_TOPICLESS = ['research', 'discussion', 'specification'];
+
+// Every phase an epic's conclusion can name: its discovery, then its pipeline.
+const EPIC_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 
 const IDEA = '.workflows/.inbox/ideas/2026-01-01--dark-mode.md';
 const BUG = '.workflows/.inbox/bugs/2026-01-02--flaky-login.md';
@@ -126,6 +132,26 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
+  it('the epic menu takes a pause from every phase its paused banner names', () => {
+    for (const phase of WAITING_PHASES) {
+      assert.strictEqual(payloadOf(carried(dir, ['workflow-continue-epic', 'fumi', phase, 'paused'])).args,
+        `fumi ${phase} paused`);
+    }
+  });
+
+  it('an epic\'s research, discussion and specification take the epic alone — the entry picks or starts the topic', () => {
+    for (const phase of EPIC_TOPICLESS) {
+      const name = phase.charAt(0).toUpperCase() + phase.slice(1);
+      assert.strictEqual(payloadOf(carried(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'])).line, `→ ${name} · fumi`);
+    }
+  });
+
+  it('discovery into an existing epic takes the work type epic or none, and no seeds', () => {
+    assert.strictEqual(inline(dir, ['workflow-discovery', 'none', 'fumi']),
+      inlineAnswer('workflow-discovery', 'none fumi', '→ Discovery · fumi'));
+    assert.strictEqual(payloadOf(carried(dir, ['workflow-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
+  });
+
   it('every phase entry takes each work type its pipeline holds — the line names the phase and the topic, else the unit', () => {
     for (const type of VALID_WORK_TYPES) {
       const unit = `${type}-unit`;
@@ -133,8 +159,10 @@ describe('engine handoff — the composed answer for every target', () => {
       for (const phase of WORK_TYPE_PIPELINES[type]) {
         const skill = `workflow-${phase}-entry`;
         const name = phase.charAt(0).toUpperCase() + phase.slice(1);
-        assert.strictEqual(inline(dir, [skill, type, unit]),
-          inlineAnswer(skill, `${type} ${unit}`, `→ ${name} · ${unit}`), `${skill} ${type}`);
+        if (type !== 'epic' || EPIC_TOPICLESS.includes(phase)) {
+          assert.strictEqual(inline(dir, [skill, type, unit]),
+            inlineAnswer(skill, `${type} ${unit}`, `→ ${name} · ${unit}`), `${skill} ${type}`);
+        }
         assert.strictEqual(inline(dir, [skill, type, unit, 'checkout']),
           inlineAnswer(skill, `${type} ${unit} checkout`, `→ ${name} · checkout`), `${skill} ${type} with a topic`);
       }
@@ -246,6 +274,14 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['workflow-discovery', 'epic', 'ghost'], /^work unit "ghost" not found$/);
   });
 
+  it('discovery into an existing epic refuses a work type that would start new work, and any seeds', () => {
+    for (const type of VALID_WORK_TYPES.filter((t) => t !== 'epic')) {
+      refused(dir, ['workflow-discovery', type, 'fumi'], new RegExp(`^the work type into an existing epic must be one of epic\\|none — got "${type}"$`));
+    }
+    refused(dir, ['workflow-discovery', 'epic', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery — got "\.workflows\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
+    refused(dir, ['workflow-discovery', 'none', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery/);
+  });
+
   it('discovery refuses seeds that are not live inbox items on disk, named once each', () => {
     refused(dir, ['workflow-discovery', 'feature', 'none', '.workflows/.inbox/ideas/2026-01-09--ghost.md'], /inbox file not found/);
     refused(dir, ['workflow-discovery', 'feature', 'none', '.workflows/.inbox/.archived/ideas/x.md'], /not a live inbox path/);
@@ -272,6 +308,20 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['workflow-continue-epic', 'fumi', 'discussion', 'abandoned'], /^the outcome must be one of completed\|paused\|cancelled\|postponed — got "abandoned"$/);
   });
 
+  it('the epic menu refuses a pause from a phase its paused banner cannot name', () => {
+    for (const phase of EPIC_PHASES.filter((p) => !WAITING_PHASES.includes(p))) {
+      refused(dir, ['workflow-continue-epic', 'fumi', phase, 'paused'],
+        new RegExp(`^the phase that paused must be one of ${WAITING_PHASES.join('\\|')} — got "${phase}"$`));
+    }
+  });
+
+  it('an epic\'s planning, implementation, review and experiment refuse the epic alone — they enter at a topic', () => {
+    for (const phase of WORK_TYPE_PIPELINES.epic.filter((p) => !EPIC_TOPICLESS.includes(p))) {
+      refused(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'],
+        new RegExp(`^an epic enters ${phase} at a topic — only research\\|discussion\\|specification take the epic alone$`));
+    }
+  });
+
   it('a phase entry refuses a work type its pipeline does not hold', () => {
     for (const type of VALID_WORK_TYPES) {
       createManifest(dir, `${type}-unit`, { work_type: type });
@@ -285,8 +335,14 @@ describe('engine handoff — refusals', () => {
 
   it('a phase entry refuses a work unit the project does not hold, or holds as another type', () => {
     refused(dir, ['workflow-planning-entry', 'feature', 'ghost'], /^work unit "ghost" not found$/);
-    refused(dir, ['workflow-planning-entry', 'epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['workflow-planning-entry', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
     refused(dir, ['workflow-planning-entry', 'feature', 'none'], /^work unit "none" not found$/);
+  });
+
+  it('a work unit whose manifest does not parse refuses as corrupt, never as a unit not found', () => {
+    createFile(dir, '.workflows/broken/manifest.json', '{not json');
+    refused(dir, ['workflow-planning-entry', 'feature', 'broken'], /^invalid JSON in .*\/\.workflows\/broken\/manifest\.json: /);
+    refused(dir, ['workflow-continue-epic', 'broken'], /^invalid JSON in /);
   });
 
   it('a work unit no longer in progress refuses — a handoff moves into work in progress', () => {
@@ -307,5 +363,12 @@ describe('engine handoff — refusals', () => {
     for (const arg of ['note window', 'note\twindow', 'it\'s', 'say"so']) {
       refused(dir, ['workflow-discussion-entry', 'epic', 'fumi', arg], /cannot travel as one argument — whitespace and quotes split it$/);
     }
+  });
+
+  it('an argument holding a backtick refuses, the quoted seeds included — it would end the continuation\'s code span', () => {
+    refused(dir, ['workflow-discussion-entry', 'epic', 'fumi', '`x`'], /^"`x`" cannot travel in the continuation — a backtick ends its code span$/);
+    const ticked = '.workflows/.inbox/ideas/2026-01-05--a`b.md';
+    createFile(dir, ticked, '# Ticked\n');
+    refused(dir, ['workflow-discovery', 'feature', 'none', ticked], /cannot travel in the continuation — a backtick ends its code span$/);
   });
 });

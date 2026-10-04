@@ -19,6 +19,7 @@ const { section, menu, menuFrame, cmdOption, labelParts, callout, MENU_INSTRUCTI
 const { escapeMarkdown } = require('./worklist.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
+const { entrySkill } = require('../handoff.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -78,16 +79,6 @@ const STAGES = EPIC_PIPELINE.reduce((/** @type {{name: string, phases: string[]}
 }, []);
 
 const STATUS_ORDER = ['proposed', 'triaged', 'in-progress', 'completed', 'cancelled', 'promoted'];
-
-const PHASE_ENTRY_SKILL = {
-  research: 'workflow-research-entry',
-  experiment: 'workflow-experiment-entry',
-  discussion: 'workflow-discussion-entry',
-  specification: 'workflow-specification-entry',
-  planning: 'workflow-planning-entry',
-  implementation: 'workflow-implementation-entry',
-  review: 'workflow-review-entry',
-};
 
 // The conversation phases' actions come from the map's own vocabulary; the
 // build phases' are the menu's.
@@ -547,7 +538,7 @@ function epicKey(detail) {
 
 /** @param {string} action @param {string} workUnit @param {string} topic */
 function topicRoute(action, workUnit, topic) {
-  return `/${PHASE_ENTRY_SKILL[/** @type {keyof typeof ACTION_PHASE} */ (ACTION_PHASE[action])]} epic ${workUnit} ${topic}`;
+  return `/${entrySkill(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)])} epic ${workUnit} ${topic}`;
 }
 
 // The triage cue rides every row shape: the bare start rows carry it as
@@ -736,7 +727,7 @@ function commandOptions(workUnit, detail, hasMap) {
       : 'review or regroup specifications';
     opts.push({
       key: 's', word: 'spec', action: 'analyze_discussions', topic: null,
-      route: `/workflow-specification-entry epic ${workUnit}`,
+      route: `/${entrySkill('specification')} epic ${workUnit}`,
       label: { head: 'Analyze / regroup discussions', tail: desc },
     });
   }
@@ -761,12 +752,12 @@ function commandOptions(workUnit, detail, hasMap) {
   if (!hasMap) opts.push(discoveryOpt);
   opts.push({
     key: 'd', word: 'discuss', action: 'new_discussion', topic: null,
-    route: `/workflow-discussion-entry epic ${workUnit}`,
+    route: `/${entrySkill('discussion')} epic ${workUnit}`,
     label: hasMap ? 'Start a discussion on a new topic' : 'Start new discussion',
   });
   opts.push({
     key: 'r', word: 'research', action: 'new_research', topic: null,
-    route: `/workflow-research-entry epic ${workUnit}`,
+    route: `/${entrySkill('research')} epic ${workUnit}`,
     label: hasMap ? 'Start research on a new topic' : 'Start new research',
   });
   if (hasMap && !detail.active_session) opts.push(discoveryOpt);
@@ -1194,8 +1185,7 @@ function selectionSubView(title, empty, question, action, rows, { allLocked } = 
 
 /** Group ItemRefs by phase in pipeline order. @param {ItemRef[]} items @returns {ItemRef[]} */
 function pipelineOrdered(items) {
-  const order = Object.keys(PHASE_ENTRY_SKILL);
-  return [...items].sort((a, b) => order.indexOf(a.phase) - order.indexOf(b.phase));
+  return [...items].sort((a, b) => EPIC_PIPELINE.indexOf(a.phase) - EPIC_PIPELINE.indexOf(b.phase));
 }
 
 /**

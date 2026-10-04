@@ -135,9 +135,9 @@ function isPlainName(name) {
 /**
  * Why a manifest key or label is illegal, or null when it is fine: dots break
  * the field surface's dot-path addressing, slashes break paths. One sentence,
- * two readers — the roadmap's validators throw it, the postpone's plan carries
- * it as a lock, so a refusal at the gate and a refusal at the write say the
- * same thing.
+ * two readers — `assertLegalName` throws it, the postpone's plan carries it as
+ * a lock, so a refusal at the gate and a refusal at the write say the same
+ * thing.
  * @param {string} kind @param {*} name
  * @returns {string|null}
  */
@@ -145,6 +145,12 @@ function illegalNameReason(kind, name) {
   return typeof name !== 'string' || name === '' || /[./]/.test(name)
     ? `"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`
     : null;
+}
+
+/** Refuses a name `illegalNameReason` refuses, with its reason. @param {string} kind @param {*} name */
+function assertLegalName(kind, name) {
+  const illegal = illegalNameReason(kind, name);
+  if (illegal !== null) throw new Error(illegal);
 }
 
 /** @param {string} origin */
@@ -243,6 +249,7 @@ module.exports = {
   KEBAB_SLUG_PATTERN,
   isPlainName,
   illegalNameReason,
+  assertLegalName,
   VALID_THREAD_STATUSES,
   isThreadOrigin,
   IMPORT_PHASES,
