@@ -1245,6 +1245,47 @@ describe('pipeline simulation', () => {
       /\nSpecification paused for "Panes"\.\n$/);
   });
 
+  it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
+    // A discussion reroutes a concern to a topic it opens (create-discovery-
+    // topic B): the row lands with no summary or description for the next
+    // epic entry to draft. The conclusion's arrival meets it at Step 5, the
+    // backfill commits, and backfill-checks C hands the menu off with the
+    // arguments it arrived with — the fresh menu recovers nothing and leads
+    // with the banner.
+    const wu = 'reroutes';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Reroutes', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+      [{ name: 'alpha', routing: 'discussion', summary: 'Alpha', description: 'What alpha settles.' }])]);
+    sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
+    const toRecover = () => EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu))
+      .split('\n').filter((line) => /summary=absent|description=absent/.test(line));
+
+    label(sim, wu, 'discussion', 'alpha');
+    sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
+    sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
+    sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'reroute:alpha', '--backfill', '--force-dismissed']);
+    const concern = sim.write('.workflows/.cache/scratch/reroute.md', '### Off-topic\n*From: alpha · discussion · 2026-01-01*\n\nDetails.\n');
+    sim.run(['topic', 'triage', wu, 'discussion', 'beta', '--concern', concern, '--slug', 'off-topic',
+      '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
+    sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+
+    handoff(sim, 'workflow-continue-epic', wu, 'discussion', 'completed');
+    arrive(sim, wu);
+    assert.deepStrictEqual(toRecover().map((line) => line.match(/^ {2}- \S+ (\S+) /)[1]), ['beta']);
+    // The stub has no file to draft from: the batch, then the unsourced gate,
+    // whose provide row lands the person's summary.
+    sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
+    sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file',
+      sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/backfill-ops.json`,
+      [{ op: 'set', path: `${wu}.discovery.beta`, fields: { summary: 'Beta', description: 'What beta settles.' } }])]);
+    sim.run(['commit', wu, '-m', `discovery(${wu}): backfill 2 discovery provenance field(s) from source files`, '--discovery']);
+
+    assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Reroutes"\./);
+    assert.deepStrictEqual(toRecover(), [], 'the fresh menu finds nothing to recover');
+  });
+
   it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', async () => {
     const wu = 'crash-fix';
     const log = sessionLog(sim, wu);

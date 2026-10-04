@@ -11,6 +11,7 @@ The caller provides via context:
 - `work_unit` — the epic's work unit name
 - `qualifying_sources` — legacy-bridge detector output (parsed from `detect.cjs`)
 - `items_to_recover` — list of map rows where `summary=absent` or `description=absent`
+- `completed_phase`, `outcome` — what the epic menu received, where it arrived from a phase that concluded, paused or left its topic; unset otherwise
 
 ## A. Legacy-Bridge Gate
 
@@ -38,13 +39,13 @@ Re-filter `discovery_map` for rows where `summary=absent` or `description=absent
 
 Load **[summary-backfill.md](summary-backfill.md)** with work_unit = `{work_unit}`, items_to_recover = `{items_to_recover}`.
 
-→ On return, proceed to **C. Advise Restart**.
+→ On return, proceed to **C. Start Afresh**.
 
 #### If `items_to_recover` is empty
 
-→ Proceed to **C. Advise Restart**.
+→ Proceed to **C. Start Afresh**.
 
-## C. Advise Restart
+## C. Start Afresh
 
 #### If nothing was committed this pass
 
@@ -54,7 +55,7 @@ No legacy split ran and the batch wrote nothing (skipped) — no recovery work l
 
 #### Otherwise
 
-Mutations from A and B are already committed. Returning to the caller would continue Step 6 onward inside the same conversation, but the backfill pass — particularly legacy decomposition — is context-heavy by design. Hand the user a fresh window before the rest of `/workflow-continue-epic` runs.
+Mutations from A and B are already committed, and the backfill pass — particularly legacy decomposition — is context-heavy by design, so the epic menu starts afresh rather than continuing in this conversation.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -65,9 +66,9 @@ Mutations from A and B are already committed. Returning to the caller would cont
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Backfill work is recorded and committed. This pass was context-heavy — decomposing legacy research files and drafting missing discovery summaries from source content.
->
-> Run `/clear`, then `/workflow-start` to pick up with a clean window. The backfill gates will be no-ops on the next pass: legacy sources are now renamed and excluded, and populated summaries skip the recovery filter — the normal epic flow takes over immediately.
+> Backfill work is recorded and committed — legacy research files decomposed and missing discovery summaries drafted from source content. The epic picks up from here.
 ```
 
-**STOP.** Do not proceed — terminal condition. Do not return to the caller's Step 6.
+Set `route` = `/workflow-continue-epic {work_unit} {completed_phase} {outcome}` where `completed_phase` and `outcome` are set, else `/workflow-continue-epic {work_unit}`.
+
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `{route}`.

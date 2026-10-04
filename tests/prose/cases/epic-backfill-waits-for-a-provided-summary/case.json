@@ -15,7 +15,8 @@
     "skills/workflow-continue-epic/SKILL.md",
     "skills/workflow-continue-epic/references/validate-selection.md",
     "skills/workflow-continue-epic/references/backfill-checks.md",
-    "skills/workflow-continue-epic/references/summary-backfill.md"
+    "skills/workflow-continue-epic/references/summary-backfill.md",
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "1 — continue the Search Relevance epic",
@@ -31,14 +32,16 @@
       "legacy-research-split/scripts/detect.cjs search-relevance",
       "render summary-backfill-gate search-relevance --variant batch",
       "render summary-backfill-gate search-relevance --variant unsourced",
-      "manifest apply search-relevance"
+      "manifest apply search-relevance",
+      "handoff /workflow-continue-epic search-relevance"
     ],
     "calls_in_order": [
       "workflow-continue-epic/scripts/gateway.cjs search-relevance",
       "render summary-backfill-gate search-relevance --variant batch",
       "render summary-backfill-gate search-relevance --variant unsourced",
       "manifest apply search-relevance",
-      "discovery(search-relevance): backfill"
+      "discovery(search-relevance): backfill",
+      "handoff /workflow-continue-epic search-relevance"
     ],
     "calls_exclude": [
       "discovery-map sequence",

@@ -18,9 +18,13 @@ The prose should have taken this path:
    summary as given, with a description drawn from it, and both land
    in one `manifest apply` over a written ops file, then one discovery
    commit
-7. with recovery work committed, the prose advises a fresh window and
-   stops at its terminal condition — the epic's map is never sequenced
-   and its dashboard never rendered in this pass
+7. with recovery work committed, the epic menu starts afresh: the
+   handoff names `workflow-continue-epic` with the work unit alone —
+   the epic arrived from the start menu, from no phase — and the line
+   naming where the work goes is the turn's last text; the walk stops
+   at the handoff. The epic's map is never sequenced and its dashboard
+   never rendered in this pass, and nothing tells the user to run
+   /clear or /workflow-start
 
 Further claims:
 

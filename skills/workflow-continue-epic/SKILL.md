@@ -139,9 +139,9 @@ Then read `discovery_map` from the most recent discovery output and filter for r
 
 #### Otherwise
 
-Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`.
+Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`, completed_phase = `{completed_phase}`, outcome = `{outcome}`.
 
-backfill-checks is terminal when recovery work landed — it commits and stops, advising the user to `/clear` and re-run `/workflow-start`. It returns only when nothing was written (the batch declined); the skipped items re-offer on the next entry.
+backfill-checks is terminal when recovery work landed — it commits and hands the epic menu off to start afresh, carrying the arguments it arrived with. It returns only when nothing was written (the batch declined); the skipped items re-offer on the next entry.
 
 → On return, proceed to **Step 6**.
 
