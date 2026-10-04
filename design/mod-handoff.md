@@ -99,10 +99,13 @@ continuation once the turn ended.
   `mod` only under that announcement. A `HANDOFF` section in a Bash result
   of the conversation's own call (never a subagent's) arms the handoff and
   is cut from what Claude sees. At `turn.complete` an armed handoff, once
-  the turn's own chain has run, starts a timer that runs `clear`, shows a
-  toast naming where the work went (`Handed off → Planning · auth-flow`) —
-  the screen flips, and the toast says why — and then submits the
-  continuation. Esc ends the turn aborted, and an aborted turn
+  the turn's own chain has run, starts a timer that runs `clear`, submits
+  the continuation — into the prompt box for Enter where the send is
+  dropped — and shows a toast naming where the work went (`Handed off →
+  Planning · auth-flow`): the screen flips, and the toast says why. Where
+  neither the send nor the box took, the toast carries the continuation
+  for the person to send. Nothing else failing at the turn's end keeps a
+  handoff from being carried. Esc ends the turn aborted, and an aborted turn
   disarms: Esc means stop. A handoff and a gate never share a turn — the
   prose ends the turn at the handoff.
 
@@ -173,11 +176,15 @@ continuation once the turn ended.
   Research's close takes discussion's order — the waits, then the check —
   so a pause is never asked as a conclusion.
 
-- **H10 — plan mode goes; the setting stays.** Every plan-mode handoff is
-  replaced. The project setting migration 034 writes
-  (`showClearContextOnPlanAccept`, still written into every new project,
-  the migration being frozen) is left alone — it may be there by choice —
-  and the docs say nothing uses it now and it can be removed.
+- **H10 — plan mode goes, and so does its setting.** Every plan-mode
+  handoff is replaced. Migration 034 wrote `showClearContextOnPlanAccept:
+  true` into the project's settings for a button Claude Code had turned off
+  by default; migration 067 removes it where it reads `true` (a `false` is
+  the person's own and stands). Where the project had it committed before
+  this start, the migration's notice — a note a migration hands back
+  through boot, shown in workflow-start's migration summary — tells the
+  person it was removed and that they can add it back; a new project,
+  where 034 wrote it moments earlier in the same run, loses it silently.
 
 - **H11 — the framework sheds what a session rarely uses, with no
   rewording.** `answering-how-it-works.md` loads when a question about the
@@ -261,3 +268,5 @@ references and let the knowledge base carry sibling decisions.
   moves above the conclusion gate; a specification's gap pause takes the
   bridge; the plan-mode setting's docs corrected for new projects. Decided
   in the pass: a handoff the mod failed to take falls back to in place.
+- 2026-10-04 — Lee reversed the setting ruling: migration 067 removes it,
+  with a migration notice to the person; the toast follows the send.
