@@ -85,6 +85,9 @@ type Sent =
 /** A move into work the engine named: the continuation to send, and its line. */
 type Handoff = { text: string; line: string }
 
+/** How long a continuation the mod could not carry stays on screen to send. */
+const UNCARRIED_TOAST_MS = 30_000
+
 /**
  * Where each conversation that runs the workflows keeps what belongs to it,
  * in the workflows' system config directory.
@@ -383,12 +386,16 @@ const submit = ($: EngineInterface, gate: Gate, option: Option) =>
     label: option.head,
   })
 
+/** Whether `attempt` took; one that fails did not. */
+const took = (attempt: Promise<boolean>) => attempt.catch(() => false)
+
 /**
- * Carries a handoff: the conversation cleared, a toast saying where the work
- * went, then the continuation sent into the new one, recorded with its line in
- * that conversation's folder first. A clear that fails sends in place, so the
- * work still goes on; a send that fails or is dropped waits in the prompt box
- * for Enter.
+ * Carries a handoff: the conversation cleared, then the continuation sent into
+ * the new one, recorded with its line in that conversation's folder first,
+ * and a toast saying where the work went. A clear that fails sends in place,
+ * so the work still goes on; a send that fails or is dropped waits in the
+ * prompt box for Enter; where the box refuses it too, the toast holds the
+ * continuation for the person to send.
  */
 async function handOff($: EngineInterface, { text, line }: Handoff) {
   try {
@@ -397,16 +404,16 @@ async function handOff($: EngineInterface, { text, line }: Handoff) {
     // Not cleared: the continuation goes on in this conversation.
   }
 
-  $.ui.toast(`Handed off ${line}`)
+  const isCarried =
+    (await took(deliver($, { answer: text, line }))) ||
+    (await took(fill($, text)))
 
-  let isSent = false
-
-  try {
-    isSent = await deliver($, { answer: text, line })
-  } finally {
-    if (!isSent) {
-      await fill($, text)
-    }
+  if (isCarried) {
+    $.ui.toast(`Handed off ${line}`)
+  } else {
+    $.ui.toast(`Not handed off ${line} — send this to carry on: ${text}`, {
+      timeoutMs: UNCARRIED_TOAST_MS,
+    })
   }
 }
 
@@ -811,24 +818,6 @@ export const register: Register = on => {
     }
   }
 
-  /**
-   * The stdout of a Bash call with any handoff's payload cut out, the handoff
-   * armed where the call is the conversation's own.
-   */
-  const takeHandoff = (e: AgentLoop, stdout: string): string => {
-    const carried = handoffIn(stdout)
-
-    if (carried === null) {
-      return stdout
-    }
-
-    if (inConversation(e)) {
-      handoff = carried.handoff
-    }
-
-    return carried.text
-  }
-
   // Announced, never always-on: the engine collects a gate, and composes a
   // handoff for this module to carry, only for a session that asked, and
   // every Bash child inherits this. Where the mod does not apply nothing is
@@ -901,14 +890,20 @@ export const register: Register = on => {
   // Every engine call marks the conversation that made it, whatever its exit,
   // so after each of the conversation's own commands the mark says whether it
   // runs the workflows; a command that only mentions the engine marks nothing.
+  // A failure replays the payloads uncut, so the harness never fails the call
+  // and nothing is armed until nothing more can fail.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const result = await next(e)
 
-    if (
-      inConversation(e) &&
-      (await markedFolder($, await $.session.id())) !== null
-    ) {
-      await harnessOn($)
+    try {
+      if (
+        inConversation(e) &&
+        (await markedFolder($, await $.session.id())) !== null
+      ) {
+        await harnessOn($)
+      }
+    } catch {
+      // The harness waits for the conversation's next call.
     }
 
     if (result.deny !== undefined || result.isError === true) {
@@ -916,16 +911,18 @@ export const register: Register = on => {
     }
 
     const record = result.result
-    const stdout = takeHandoff(e, record.stdout)
+    const carried = handoffIn(record.stdout)
+    const stdout = carried === null ? record.stdout : carried.text
     const stated = gateIn(stdout)
+    const isArmed = stated !== null && (await isForBand($, e))
 
-    if (stated === null) {
-      return stdout === record.stdout
-        ? result
-        : { result: { ...record, stdout } }
+    if (carried !== null && inConversation(e)) {
+      handoff = carried.handoff
     }
 
-    const isArmed = await isForBand($, e)
+    if (stated === null) {
+      return carried === null ? result : { result: { ...record, stdout } }
+    }
 
     if (isArmed) {
       band.armed = stated.gate
@@ -952,7 +949,8 @@ export const register: Register = on => {
   // A held answer is not kept: it waits on a turn no resume brings back. It
   // sends once the turn is over, and one not sent is put back as a pick; the
   // answer of a pick whose gate went leaves the prompt box. A handoff the turn
-  // armed is carried once it is over; an Esc means stop, and carries nothing.
+  // armed is carried once it is over, whatever else at its end fails; an Esc
+  // means stop, and carries nothing.
   on('turn.complete', async ($, e, next) => {
     if (!inConversation(e)) {
       return next(e)
@@ -962,59 +960,59 @@ export const register: Register = on => {
 
     handoff = null
 
-    const settled = endTurn(e.isAborted)
-    const { drawn } = band
+    try {
+      const settled = endTurn(e.isAborted)
+      const { drawn } = band
 
-    owed = null
+      owed = null
 
-    if (drawn !== null) {
-      $.ui.invalidate('ui.render')
-    }
+      if (drawn !== null) {
+        $.ui.invalidate('ui.render')
+      }
 
-    const place = await placeOf($)
+      const place = await placeOf($)
 
-    await keep($, place, drawn)
-    seen = place
+      await keep($, place, drawn)
+      seen = place
 
-    const answered = await next(e)
-    const { held, gone } = settled
+      const answered = await next(e)
+      const { held, gone } = settled
 
-    if (gone !== null) {
-      await unpick($, gone)
-    }
+      if (gone !== null) {
+        await unpick($, gone)
+      }
 
-    if (held !== null && drawn !== null) {
-      const answer = answerOf(held.option)
-      let isSent = false
+      if (held !== null && drawn !== null) {
+        const answer = answerOf(held.option)
+        let isSent = false
 
-      isSending = true
+        isSending = true
 
-      try {
-        isSent = held.isToSend && (await submit($, drawn, held.option))
-      } finally {
-        isSending = false
+        try {
+          isSent = held.isToSend && (await submit($, drawn, held.option))
+        } finally {
+          isSending = false
 
-        if (!isSent && (await fill($, answer))) {
-          band.picked = answer
-          $.ui.invalidate('ui.render')
+          if (!isSent && (await fill($, answer))) {
+            band.picked = answer
+            $.ui.invalidate('ui.render')
+          }
         }
       }
-    }
 
-    if (carried !== null && !e.isAborted) {
-      // A command cannot run inside a hook the turn waits on, so the clear
-      // runs from a timer once this hook is done — proven in the lab.
-      $.clock.after(0, () => {
-        isClearingForHandoff = true
-        void handOff($, carried)
-          .catch(() => undefined)
-          .finally(() => {
+      return answered
+    } finally {
+      if (carried !== null && !e.isAborted) {
+        // A command cannot run inside a hook the turn waits on, so the clear
+        // runs from a timer once this hook is done — proven in the lab.
+        $.clock.after(0, () => {
+          isClearingForHandoff = true
+          void handOff($, carried).finally(() => {
             isClearingForHandoff = false
           })
-      })
+        })
+      }
     }
-
-    return answered
   }).catch(($, e, next) => next(e))
 
   // A drawing while a read-back is owed — a reload's first, the first after

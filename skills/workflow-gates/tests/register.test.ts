@@ -397,6 +397,12 @@ const HANDOFF_CALL = {
 /** The same call made inside a subagent's loop. */
 const SUBAGENT_HANDOFF = { ...HANDOFF_CALL, agentId: 'a1' }
 
+/**
+ * What the mod asks of the world carrying a handoff: the clear, the send's
+ * record and the send, then the toast saying where the work went.
+ */
+const CARRIED = ['clear', 'write', `submit ${CONTINUATION}`, `toast Handed off ${WHERE}`]
+
 /** What the mod asked of the world, the band's redraws left out. */
 const askedOf = (calls: readonly string[]) =>
   calls.filter(call => call !== 'invalidate')
@@ -548,12 +554,13 @@ const SHORT_MOUNT = { ...MOUNT, props: { ...BAND, maxRows: 11 } }
  * and `written` records it, and `environment` holds it as it stands.
  * `version` is the Claude Code the session runs on, the oldest the mod runs
  * on unless given.
- * `calls` is what the mod asked of it, in order; `fills: false` is a box that
- * refuses the text; `submits: false` takes the submission but never lands it,
- * which is the submit that fails, and `drops` refuses it with that reason;
- * `disk` holds each send's record a second on its clock, which is the clock
- * the mod reads; `lag` is awaited before a read of the transcript or of a kept gate
- * is answered. A `clear` the mod runs ends the conversation for a /clear and
+ * `calls` is what the mod asked of it, in order, and `toasts` each toast it
+ * showed; `fills: false` is a box that refuses the text; `submits: false`
+ * takes the submission but never lands it, which is the submit that fails,
+ * and `drops` refuses it with that reason; `disk` holds each send's record a
+ * second on its clock, which is the clock the mod reads; `lag` is awaited
+ * before a read of the transcript, of a kept gate or of the engine's mark is
+ * answered. A `clear` the mod runs ends the conversation for a /clear and
  * goes on as `AFTER_CLEAR` with an empty transcript, as core's does, and
  * `clears: false` refuses it. A submission made while idle resolves once the turn it opens
  * has started, as core's does; `engineWrites` changes what the next Bash call
@@ -584,7 +591,7 @@ function world(
     drops?: string
     clears?: boolean
     disk?: MockClock
-    lag?: (read: 'transcript' | 'kept') => Promise<void>
+    lag?: (read: 'transcript' | 'kept' | 'mark') => Promise<void>
     marked?: readonly string[]
     kept?: Readonly<Record<string, unknown>>
   } = {},
@@ -606,6 +613,7 @@ function world(
   const calls: string[] = []
   const filled: string[] = []
   const submitted: string[] = []
+  const toasts: { text: string; timeoutMs?: number }[] = []
   const written: { name: string; value?: string }[] = []
   const files = new Map<string, string>([
     ...marked.map(id => [marker(id), ''] as const),
@@ -639,7 +647,13 @@ function world(
     return { value: [...transcript] }
   })
 
-  on('fs.exists', ($, e) => ({ value: files.has(e.path) }))
+  on('fs.exists', async ($, e) => {
+    if (e.path.endsWith('/workflow')) {
+      await lag?.('mark')
+    }
+
+    return { value: files.has(e.path) }
+  })
 
   on('fs.read', async ($, e) => {
     const { path } = e
@@ -730,6 +744,7 @@ function world(
 
   on('ui.toast', ($, e) => {
     calls.push(`toast ${e.text}`)
+    toasts.push({ text: e.text, timeoutMs: e.timeoutMs })
 
     return { value: undefined }
   })
@@ -797,6 +812,7 @@ function world(
     calls,
     filled,
     submitted,
+    toasts,
     written,
     environment,
     files,
@@ -3882,8 +3898,8 @@ describe('register', () => {
     )
   })
 
-  test('the turn a handoff ended clears the conversation, says where the work went, then records the continuation in the new one’s folder and sends it', async ($, on) => {
-    const { calls, files, submitted, clock } = world($, on, HANDED_OFF)
+  test('the turn a handoff ended clears the conversation, records the continuation in the new one’s folder and sends it, then says where the work went', async ($, on) => {
+    const { calls, files, submitted, toasts, clock } = world($, on, HANDED_OFF)
 
     await $.session.start(SESSION)
     await $.tool.call(HANDOFF_CALL)
@@ -3893,7 +3909,8 @@ describe('register', () => {
 
     await clock.settle()
 
-    expect(askedOf(calls)).toEqual(['clear', `toast Handed off ${WHERE}`, 'write', `submit ${CONTINUATION}`])
+    expect(askedOf(calls)).toEqual(CARRIED)
+    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: undefined }])
     expect(submitted).toEqual([CONTINUATION])
     expect(sentIn(files, AFTER_CLEAR)).toEqual({ answer: CONTINUATION, line: WHERE })
     expect(files.has(sentAt('s0')), 'the conversation it left records nothing').toBe(false)
@@ -3927,7 +3944,7 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
     await clock.settle()
 
-    expect(askedOf(calls)).toEqual(['clear', `toast Handed off ${WHERE}`, 'write', `submit ${CONTINUATION}`])
+    expect(askedOf(calls)).toEqual(CARRIED)
   })
 
   test('an Esc on the turn that handed off carries nothing, then or at the next turn’s end: Esc means stop', async ($, on) => {
@@ -3984,8 +4001,8 @@ describe('register', () => {
     expect(harnessHeld(environment)).toEqual(OWN)
   })
 
-  test('a send the session drops waits in the prompt box for Enter, no send left recorded', async ($, on) => {
-    const { filled, submitted, files, clock } = world($, on, HANDED_OFF, {
+  test('a send the session drops waits in the prompt box for Enter, no send left recorded, and the toast says where the work went', async ($, on) => {
+    const { filled, submitted, files, toasts, clock } = world($, on, HANDED_OFF, {
       drops: 'the prompt was queued',
     })
 
@@ -3997,10 +4014,11 @@ describe('register', () => {
     expect(submitted).toEqual([CONTINUATION])
     expect(filled).toEqual([CONTINUATION])
     expect(files.get(sentAt(AFTER_CLEAR))).toBe('null')
+    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: undefined }])
   })
 
   test('a send that fails waits in the prompt box for Enter all the same', async ($, on) => {
-    const { filled, clock } = world($, on, HANDED_OFF, { submits: false })
+    const { filled, toasts, clock } = world($, on, HANDED_OFF, { submits: false })
 
     await $.session.start(SESSION)
     await $.tool.call(HANDOFF_CALL)
@@ -4008,6 +4026,34 @@ describe('register', () => {
     await clock.settle()
 
     expect(filled).toEqual([CONTINUATION])
+    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: undefined }])
+  })
+
+  test('a continuation neither sent nor taken by the prompt box stays on screen in a toast for the person to send, never the toast that says it went', async ($, on) => {
+    const { calls, toasts, clock } = world($, on, HANDED_OFF, {
+      submits: false,
+      fills: false,
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual([
+      'clear',
+      'write',
+      `submit ${CONTINUATION}`,
+      'write',
+      `fill ${CONTINUATION}`,
+      `toast Not handed off ${WHERE} — send this to carry on: ${CONTINUATION}`,
+    ])
+    expect(toasts).toEqual([
+      {
+        text: `Not handed off ${WHERE} — send this to carry on: ${CONTINUATION}`,
+        timeoutMs: 30_000,
+      },
+    ])
   })
 
   test('a clear that fails sends in place, so the work still goes on, and a later clear still takes the harness off', async ($, on) => {
@@ -4021,10 +4067,104 @@ describe('register', () => {
     await $.turn.complete(TURN_END)
     await clock.settle()
 
-    expect(askedOf(calls)).toEqual(['clear', `toast Handed off ${WHERE}`, 'write', `submit ${CONTINUATION}`])
+    expect(askedOf(calls)).toEqual(CARRIED)
     expect(sentIn(files)).toEqual({ answer: CONTINUATION, line: WHERE })
 
     await $.session.end(CLEARED)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+
+  test('a handoff is carried even where the turn’s end cannot read the transcript to keep the band', async ($, on) => {
+    let isFailing = false
+
+    const { calls, submitted, clock } = world($, on, HANDED_OFF, {
+      lag: async read => {
+        if (isFailing && read === 'transcript') {
+          throw new Error('the transcript could not be read')
+        }
+      },
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+
+    isFailing = true
+    await $.turn.complete(TURN_END)
+    isFailing = false
+
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual(CARRIED)
+    expect(submitted).toEqual([CONTINUATION])
+  })
+
+  test('a handoff is cut and armed even where reading the engine’s mark for the harness fails', async ($, on) => {
+    let isFailing = false
+
+    const { calls, clock } = world($, on, HANDED_OFF, {
+      marked: ['s0'],
+      lag: async read => {
+        if (isFailing && read === 'mark') {
+          throw new Error('the mark could not be read')
+        }
+      },
+    })
+
+    await $.session.start(SESSION)
+
+    isFailing = true
+    const answered = stdoutOf(await $.tool.call(HANDOFF_CALL))
+    isFailing = false
+
+    expect(answered).toBe([...HANDOFF_SECTIONS, ''].join('\n'))
+
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(askedOf(calls)).toEqual(CARRIED)
+  })
+
+  test('the person leaving while a handoff is still being carried takes the harness off: only the handoff’s own clear keeps it', async ($, on) => {
+    const clock = mock.clock(on)
+
+    const { written } = world($, on, HANDED_OFF, {
+      clears: false,
+      disk: clock,
+      marked: ['s0'],
+    })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+
+    await $.session.end(QUIT)
+    await clock.advance(1000)
+
+    expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
+  })
+
+  test('a /clear while the continuation is still being sent takes the harness off: the handoff’s clear keeps it once', async ($, on) => {
+    const clock = mock.clock(on)
+
+    const { written } = world($, on, HANDED_OFF, { disk: clock, marked: ['s0'] })
+
+    await $.session.start(SESSION)
+    await $.tool.call(HANDOFF_CALL)
+    await $.turn.complete(TURN_END)
+    await clock.settle()
+
+    expect(harnessIn(written)).toEqual(HARNESS_ON)
+
+    await $.session.end({
+      ...CLEARED,
+      sessionId: AFTER_CLEAR,
+      resume: { id: AFTER_CLEAR },
+    })
+    await clock.advance(1000)
 
     expect(harnessIn(written)).toEqual([...HARNESS_ON, ...HARNESS_OFF])
   })
