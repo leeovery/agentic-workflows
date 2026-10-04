@@ -111,8 +111,6 @@ Further claims:
   consolidation_gate_mode all end gated. The work unit stays
   in-progress — never completed, never cancelled — and no review item
   exists
-- the handoff carries the skill and its two arguments and nothing
-  else: no session learnings, no enrichment
 - no code was written: the four source and test files hold exactly what
   the fixture left them holding, and no new source or test file exists
   outside the workflow directory

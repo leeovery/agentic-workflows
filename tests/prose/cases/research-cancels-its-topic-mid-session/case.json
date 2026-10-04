@@ -45,7 +45,7 @@
       "agent scan search-relevance research synonym-handling",
       "topic cancel search-relevance discovery synonym-handling",
       "render topic-receipt search-relevance.discovery.synonym-handling --verb cancel",
-      "handoff workflow-continue-epic search-relevance research cancelled"
+      "handoff /workflow-continue-epic search-relevance research cancelled"
     ],
     "calls_in_order": [
       "render resume-gate search-relevance.research.synonym-handling",
@@ -53,7 +53,7 @@
       "agent scan search-relevance research synonym-handling",
       "topic cancel search-relevance discovery synonym-handling",
       "render topic-receipt search-relevance.discovery.synonym-handling --verb cancel",
-      "handoff workflow-continue-epic search-relevance research cancelled"
+      "handoff /workflow-continue-epic search-relevance research cancelled"
     ],
     "calls_exclude": [
       "render research-conclude-gate",

@@ -60,9 +60,6 @@ The prose should have taken this path:
 
 Further claims:
 
-- the handoff carries the skill and its two arguments and nothing
-  else: no session learnings, no enrichment, no note of what the
-  conversation hopes
 - no experiment entry was invoked and no experiment record moved past
   `conceived` — the laboratory starts in the next context, not in this
   one

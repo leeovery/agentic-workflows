@@ -51,7 +51,7 @@
       "agent scan search-relevance discussion behavioural-ranking",
       "topic postpone search-relevance behavioural-ranking --horizon v2",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
-      "handoff workflow-continue-epic search-relevance discussion postponed"
+      "handoff /workflow-continue-epic search-relevance discussion postponed"
     ],
     "calls_in_order": [
       "render resume-gate search-relevance.discussion.behavioural-ranking",
@@ -61,7 +61,7 @@
       "agent scan search-relevance discussion behavioural-ranking",
       "topic postpone search-relevance behavioural-ranking",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb postpone",
-      "handoff workflow-continue-epic search-relevance discussion postponed"
+      "handoff /workflow-continue-epic search-relevance discussion postponed"
     ],
     "calls_exclude": [
       "topic complete",

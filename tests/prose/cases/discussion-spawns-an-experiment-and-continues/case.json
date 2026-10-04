@@ -60,7 +60,7 @@
       "render wait-gate pay.discussion.pay",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "handoff workflow-experiment-entry feature pay"
+      "handoff /workflow-experiment-entry feature pay"
     ],
     "calls_in_order": [
       "write:.workflows/.cache/pay/discussion/pay/problem.md",
@@ -69,7 +69,7 @@
       "render wait-gate pay.discussion.pay",
       "session label pay",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "handoff workflow-experiment-entry feature pay"
+      "handoff /workflow-experiment-entry feature pay"
     ],
     "calls_exclude": [
       "topic complete pay discussion pay",

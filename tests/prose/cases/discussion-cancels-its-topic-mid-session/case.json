@@ -48,7 +48,7 @@
       "agent scan search-relevance discussion behavioural-ranking",
       "topic cancel search-relevance discovery behavioural-ranking",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb cancel",
-      "handoff workflow-continue-epic search-relevance discussion cancelled"
+      "handoff /workflow-continue-epic search-relevance discussion cancelled"
     ],
     "calls_in_order": [
       "render resume-gate search-relevance.discussion.behavioural-ranking",
@@ -56,7 +56,7 @@
       "agent scan search-relevance discussion behavioural-ranking",
       "topic cancel search-relevance discovery behavioural-ranking",
       "render topic-receipt search-relevance.discovery.behavioural-ranking --verb cancel",
-      "handoff workflow-continue-epic search-relevance discussion cancelled"
+      "handoff /workflow-continue-epic search-relevance discussion cancelled"
     ],
     "calls_exclude": [
       "topic complete",

@@ -28,9 +28,6 @@ The prose should have taken this path:
 
 Further claims:
 
-- the handoff carries the skill and its two arguments and nothing
-  else: no session learnings, no enrichment, no note of what the
-  session knows
 - the specification item ends completed with its source incorporated;
   the work unit stays in-progress — never completed, never cancelled
 - no planning item exists and no planning entry was invoked — the

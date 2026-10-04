@@ -59,7 +59,7 @@
       "render next-phase-gate pay --prev implementation --next review",
       "manifest set pay.implementation.pay project_skills []",
       "manifest set pay.implementation.pay linters []",
-      "handoff workflow-review-entry feature pay"
+      "handoff /workflow-review-entry feature pay"
     ],
     "calls_in_order": [
       "render code-gate pay.implementation.pay",
@@ -74,7 +74,7 @@
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev implementation --next review",
-      "handoff workflow-review-entry feature pay"
+      "handoff /workflow-review-entry feature pay"
     ],
     "calls_exclude": [
       "task analysis-cycle pay pay",
