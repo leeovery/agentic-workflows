@@ -147,13 +147,16 @@ behaviour: not a deviation, not a missing write.
 
 The fourth: no gate mod runs in a walk, and the world stands in for
 one. Every command a walker runs in a world carries the mod's handoff
-announcement, so `engine handoff` answers `handoff: mod` and the prose
-ends the turn there: the walk stops at the recorded handoff call, its
+announcement, and a handoff call's `HANDOFF` section is cut from what
+comes back, as the mod takes it, so `engine handoff` answers `handoff:
+mod` and the prose ends the turn there: the walk stops at the recorded
+handoff call, its
 `DISPLAY: handoff` line the last thing emitted. That stop is correct
 behaviour: not a deviation, not a walk that died early, and not a
 missing invocation of the next skill — in a live session the mod
-carries the work into a fresh conversation. The other answer,
-`handoff: inline`, never arises in a walk.
+carries the work into a fresh conversation. The other answers —
+`handoff: inline`, and a `HANDOFF` section the mod left in the result —
+never arise in a walk.
 
 The fifth: no agent runs in a walk. Where the prose dispatches one, the
 walker makes the call as the prose composes it, and a harness hook holds

@@ -1,8 +1,9 @@
 'use strict';
 
 // Every command a walker runs in a world announces the handoff stand-in, so
-// the engine answers a handoff `mod` and the walk ends at the recorded call
-// rather than running on into the next skill. Two failures matter: a
+// the engine answers a handoff `mod`, the stand-in takes it as the mod does —
+// its HANDOFF section cut from the result — and the walk ends at the recorded
+// call rather than running on into the next skill. Two failures matter: a
 // walker's world command left unannounced, and an announcement reaching a
 // command that is not a walker's in a world — the orchestrator's, or one
 // run anywhere else.
@@ -16,7 +17,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { ANNOUNCEMENT, unannounced } = require('../prose/lib/announce-handoff.cjs');
+const { ANNOUNCEMENT, announced, unannounced } = require('../prose/lib/announce-handoff.cjs');
 const { ENGINE } = require('../prose/lib/worlds.cjs');
 
 const HOOK = path.join(__dirname, '..', 'prose', 'lib', 'announce-handoff.cjs');
@@ -52,7 +53,7 @@ afterEach(() => {
 
 describe('prose handoff announcement', () => {
   it('announces the handoff on a walker command run in a world, keeping the rest of the input', () => {
-    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-review-entry feature pay`;
+    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs manifest get pay status`;
     const out = fire(bash(command));
     assert.deepStrictEqual(out, {
       hookSpecificOutput: {
@@ -60,6 +61,13 @@ describe('prose handoff announcement', () => {
         updatedInput: { command: `${ANNOUNCEMENT}${command}`, description: 'Run the engine' },
       },
     });
+  });
+
+  it('takes a handoff call as the mod does — its output through the cut', () => {
+    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-review-entry feature pay`;
+    const out = fire(bash(command)).hookSpecificOutput.updatedInput.command;
+    assert.strictEqual(out, announced(command));
+    assert.notStrictEqual(out, `${ANNOUNCEMENT}${command}`, 'a handoff call is more than announced');
   });
 
   it('finds the world in the working directory when the command names none', () => {
@@ -94,17 +102,34 @@ describe('prose handoff announcement', () => {
     assert.strictEqual(r.stdout, '');
   });
 
-  it('gives the engine the announcement it answers `mod` to', () => {
+  it('gives the engine the announcement it answers `mod` to, and cuts the HANDOFF section from what comes back', () => {
     fs.mkdirSync(path.join(world, '.workflows'));
-    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff workflow-baseline`));
-    const run = spawnSync('bash', ['-c', out.hookSpecificOutput.updatedInput.command], { encoding: 'utf8' });
-    assert.strictEqual(run.status, 0, run.stderr);
-    assert.match(run.stdout, /^handoff: mod$/m);
-    assert.match(run.stdout, /^=== HANDOFF /m);
+    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff workflow-baseline && echo after`));
+    // The walker's commands run in the developer's shell — bash or zsh.
+    const shells = ['bash', 'zsh'].filter((shell) => spawnSync(shell, ['-c', 'true']).status === 0);
+    for (const shell of shells) {
+      const run = spawnSync(shell, ['-c', out.hookSpecificOutput.updatedInput.command], { encoding: 'utf8' });
+      assert.strictEqual(run.status, 0, `${shell}: ${run.stderr}`);
+      assert.match(run.stdout, /^handoff: mod$/m);
+      assert.match(run.stdout, /^=== DISPLAY: handoff .*\n→ Baseline$/m);
+      assert.ok(!run.stdout.includes('=== HANDOFF'), `${shell}: the section is cut`);
+      assert.ok(!run.stdout.includes('"skill"'), `${shell}: its payload with it`);
+      assert.match(run.stdout, /^after$/m, `${shell}: what follows the section stands`);
+    }
   });
 
-  it('takes the announcement off for the record, and nothing else', () => {
+  it('keeps a refused handoff\'s exit status and its error through the cut', () => {
+    fs.mkdirSync(path.join(world, '.workflows'));
+    const out = fire(bash(`cd ${world} && node ${ENGINE} handoff workflow-nowhere`));
+    const run = spawnSync('bash', ['-c', out.hookSpecificOutput.updatedInput.command], { encoding: 'utf8' });
+    assert.strictEqual(run.status, 1);
+    assert.match(run.stderr, /workflow-nowhere\\" is not a handoff target/);
+  });
+
+  it('takes the stand-in off for the record, and nothing else', () => {
+    const handoff = 'cd x && node engine.cjs handoff workflow-baseline';
     assert.strictEqual(unannounced(`${ANNOUNCEMENT}cd x && ls`), 'cd x && ls');
+    assert.strictEqual(unannounced(announced(handoff)), handoff);
     assert.strictEqual(unannounced('cd x && ls'), 'cd x && ls');
   });
 });

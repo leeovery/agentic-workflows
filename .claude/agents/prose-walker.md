@@ -154,7 +154,8 @@ any harness substitutions. Follow it exactly.
   extension and `mv` it to `.md` — the mechanism the product's own
   agents use. Expected, not a `DEVIATION`, no marker.
 - **A handoff ends the walk.** The world stands in for the gate mod,
-  so every handoff the prose makes answers `handoff: mod`. Emit what
+  so every handoff the prose makes answers `handoff: mod` and comes back
+  with its `HANDOFF` section cut, as the mod takes it. Emit what
   the prose says to emit and STOP there: in a live session the mod
   clears the conversation and the next skill starts in a fresh one, so
   nothing after the handoff is this walk's — never read on into the

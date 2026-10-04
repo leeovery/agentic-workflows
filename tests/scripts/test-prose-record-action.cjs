@@ -16,6 +16,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+const { announced } = require('../prose/lib/announce-handoff.cjs');
+
 const HOOK = path.join(__dirname, '..', 'prose', 'lib', 'record-action.cjs');
 const LOG = '.walk-actions.log';
 
@@ -65,16 +67,16 @@ describe('prose recorder — tool events', () => {
     assert.match(row, /^PreToolUse\tBash\t/);
   });
 
-  it('records a command as the walker wrote it, without the handoff announcement in front', () => {
+  it('records a command as the walker wrote it, without the handoff stand-in around it', () => {
     fire({
       hook_event_name: 'PostToolUse',
       tool_name: 'Bash',
       agent_type: 'prose-walker',
-      tool_input: { command: `export WORKFLOWS_HANDOFF=1; cd ${world} && engine handoff workflow-review-entry feature pay` },
+      tool_input: { command: announced(`cd ${world} && engine.cjs handoff workflow-review-entry feature pay`) },
       tool_response: { stdout: 'handoff: mod', stderr: '' },
     });
     const [row] = logLines();
-    assert.match(row, /^PostToolUse\tBash\tcd \. && engine handoff workflow-review-entry feature pay\tok\t/);
+    assert.match(row, /^PostToolUse\tBash\tcd \. && engine\.cjs handoff workflow-review-entry feature pay\tok\t/);
   });
 
   it('keeps a long command whole once the world path collapses — the checks match against it', () => {
