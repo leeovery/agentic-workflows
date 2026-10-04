@@ -5545,14 +5545,19 @@ function shapeGateSurface(_cwd, _args) {
 }
 
 /**
- * workflow-start's migration summary — the payload is the session's summary
- * and, where the run updated files, its two counts.
+ * workflow-start's migration summary — the payload is the session's summary,
+ * the notices the run handed back for the person, and, where the run updated
+ * files, its two counts.
  * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function migrationsAppliedSurface(cwd, { file }) {
   if (!file) throw new Error('render migrations-applied: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'migrations-applied');
   if (!isFilled(p.summary)) throw new Error('render migrations-applied: "summary" must be a non-empty string');
+  const notices = p.notices ?? [];
+  if (!Array.isArray(notices) || !notices.every(isFilled)) {
+    throw new Error('render migrations-applied: "notices" must be a list of non-empty strings');
+  }
   const given = ['migrations', 'files'].filter((key) => p[key] !== undefined);
   if (given.length === 1) {
     throw new Error('render migrations-applied: "migrations" and "files" come together — both counts, or neither where the run updated no file');
@@ -5560,7 +5565,11 @@ function migrationsAppliedSurface(cwd, { file }) {
   for (const key of given) {
     if (!Number.isInteger(p[key]) || p[key] < 1) throw new Error(`render migrations-applied: "${key}" must be a positive integer`);
   }
-  return migrationsApplied({ summary: p.summary.trim(), counts: given.length ? { migrations: p.migrations, files: p.files } : null });
+  return migrationsApplied({
+    summary: p.summary.trim(),
+    notices: notices.map((notice) => notice.trim()),
+    counts: given.length ? { migrations: p.migrations, files: p.files } : null,
+  });
 }
 
 /** The epic synthesis' topic sort confirm. @param {string} _cwd @param {object} _args @returns {string} */

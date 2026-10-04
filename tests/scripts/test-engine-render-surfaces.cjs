@@ -5534,6 +5534,27 @@ describe('baseline surfaces', () => {
     assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a rerouted concern.\n'));
   });
 
+  it('migrations-applied: each notice the run handed back stands beneath the summary, above the counts', () => {
+    const told = writePayload(dir, '.workflows/.cache/migrations-applied.json', {
+      summary: 'Removed a setting the workflows no longer use.',
+      notices: ['Removed `showClearContextOnPlanAccept` — add it back if you want it. ', 'A second thing to know.'],
+      migrations: 1,
+      files: 1,
+    });
+    assert.ok(renderSurface(dir, 'migrations-applied', { file: told }).endsWith([
+      '**Migrations Applied**',
+      '',
+      'Removed a setting the workflows no longer use.',
+      '',
+      'Removed `showClearContextOnPlanAccept` — add it back if you want it.',
+      '',
+      'A second thing to know.',
+      '',
+      '1 migration(s), 1 file(s) updated.',
+      '',
+    ].join('\n')));
+  });
+
   it('migrations-applied: refuses a payload it cannot render truthfully', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', {}), /--file <payload\.json> is required/);
     const blank = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: ' ' });
@@ -5542,6 +5563,10 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: half }), /come together/);
     const zero = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: zero }), /"files" must be a positive integer/);
+    for (const notices of ['one notice', [''], [3]]) {
+      const bad = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', notices });
+      assert.throws(() => renderSurface(dir, 'migrations-applied', { file: bad }), /"notices" must be a list of non-empty strings/);
+    }
   });
 
   it('the boot gates are static menus: the migration confirm and the tmux label opt-in', () => {

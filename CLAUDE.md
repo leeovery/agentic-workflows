@@ -210,12 +210,14 @@ Migrations keep workflow files in sync with current system design (run via `engi
     id: '050',
     description: 'short summary',
     info: 'optional — what the migration does, project-agnostic',
-    run({ projectDir, reportUpdate, reportSkip }) { /* ...; may return { verify: '…' } */ },
+    run({ projectDir, reportUpdate, reportSkip }) { /* ...; may return { verify: '…', notice: '…' } */ },
   };
   ```
   Read/write the owned paths (above) under `projectDir` (always `.`). Signal outcome only through `reportUpdate()` / `reportSkip()` (display counters — call `reportUpdate()` once per changed unit); never write to stdout. A thrown error aborts the run; if a migration should instead degrade to a skip on unexpected input, catch internally and `reportSkip()`.
 
   **Verification addenda** (optional): when a migration transforms judgment-written content its code can only exact-match, export `info` (what the migration does, any project) and have `run()` return `{ verify: '…' }` — natural-language instructions for what to check in this project, returned on skip paths too (a skip can be a false negative: content the parser didn't recognise). Addenda from migrations executed this boot ride the boot response (`migrations.verify`); workflow-start Step 0.1 performs the checks with judgment before the migration confirm gate and folds fixes into the migration commit. Addenda fire once — never again for a recorded migration.
+
+  **Notices** (optional): when the person should be told something a migration did — a setting it took out that they may want back — have `run()` return `{ notice: '…' }`, a sentence written for them (beside `verify` where both apply). Notices from migrations executed this boot ride the boot response (`migrations.notices`), and workflow-start Step 0.1 shows each in its migration summary. A notice fires once, like an addendum.
 
 **Adding a new migration:**
 1. Create `skills/workflow-migrate/scripts/migrations/NNN-description.cjs` (next number after the highest existing)

@@ -120,6 +120,10 @@ if (mode === 'update') {
   ran = 0;
   process.stdout.write('[SKIP] No changes needed\\n');
 }
+// STUB_MIGRATE_NOTICES is the notices payload line, emitted under its marker.
+if (process.env.STUB_MIGRATE_NOTICES) {
+  process.stdout.write('---MIGRATION_NOTICES---\\n' + process.env.STUB_MIGRATE_NOTICES + '\\n');
+}
 // The run report every completed run ends with — STUB_MIGRATE_REPORT
 // substitutes the payload line, STUB_MIGRATE_NO_REPORT plays a runner from
 // before the marker existed.
@@ -215,7 +219,7 @@ describe('engine boot', () => {
     const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
       ok: true,
-      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [] },
+      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] },
       knowledge: 'ready',
       indexed: true,
       compacted: true,
@@ -472,6 +476,29 @@ describe('engine boot', () => {
     // The migration landed in the project's .workflows tree.
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/marker.md')));
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
+  });
+
+  it('carries the run\'s notices for the person, stripped from the report', () => {
+    const notices = [{ id: '067', description: 'a removal', notice: 'Removed a setting — add it back if you want it.' }];
+    const res = runEngine(stubbed, fix.project, ['boot'], {
+      STUB_MIGRATE_MODE: 'update',
+      STUB_MIGRATE_NOTICES: JSON.stringify(notices),
+    });
+
+    assert.deepStrictEqual(res.migrations.notices, notices);
+    assert.deepStrictEqual(res.migrations.verify, []);
+    assert.strictEqual(res.migrations.output, '1 migration(s) applied, 2 file(s) updated.');
+    assert.deepStrictEqual(res.warnings, []);
+  });
+
+  it('notices boot cannot read degrade to a warning and an empty list', () => {
+    for (const payload of ['not json', '{"notice": "not a list"}']) {
+      const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_NOTICES: payload });
+      assert.deepStrictEqual(res.migrations.notices, [], payload);
+      assert.strictEqual(res.warnings.length, 1, payload);
+      assert.match(res.warnings[0], /^migration notices unreadable: /, payload);
+      assert.ok(!res.migrations.output.includes('MIGRATION_NOTICES'), payload);
+    }
   });
 
   it('a migration touching config files commits none of them — the reviewed commit takes them with the rest', () => {
