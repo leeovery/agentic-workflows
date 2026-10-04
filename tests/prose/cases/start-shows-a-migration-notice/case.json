@@ -1,0 +1,39 @@
+{
+  "origin": "a migration can hand the person a notice, and 067 does where it removes a plan-mode setting the project had committed — nothing walked the notice from the boot response through workflow-start's migration summary to the person",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "git status --short -- .workflows .claude/settings.json",
+      "git diff HEAD -- .workflows .claude/settings.json",
+      "render migrations-applied --file .workflows/.cache/migrations-applied.json",
+      "render migration-gate"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "git status --short -- .workflows .claude/settings.json",
+      "git diff HEAD -- .workflows .claude/settings.json",
+      "write:.workflows/.cache/migrations-applied.json",
+      "render migrations-applied --file .workflows/.cache/migrations-applied.json",
+      "render migration-gate"
+    ],
+    "calls_exclude": [
+      "commit --migrations",
+      "chore: apply workflow migrations",
+      "workflow-start/scripts/gateway.cjs",
+      "engine.cjs knowledge setup"
+    ]
+  }
+}
