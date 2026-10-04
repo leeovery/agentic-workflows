@@ -3112,7 +3112,16 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
 
-    // Going backwards: resuming is not starting — start refuses, reopen works.
+    // Going backwards from the bridge's revisit arm: the gate offers the
+    // completed discussion, the revisit menu numbers it, and the pick hands
+    // off to its entry — where resuming is not starting: start refuses,
+    // reopen works.
+    arrive(sim, wu);
+    assert.match(BRIDGE.format(BRIDGE.discover(sim.dir, wu)), /^revisitable_phases: discussion$/m);
+    assert.match(sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' }),
+      /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
+    assert.match(sim.render(['revisit-phases', wu], { expect: 'content' }), /\*\*`1`\*\* +→ Discussion — \*completed\*/);
+    handoff(sim, 'workflow-discussion-entry', 'feature', wu);
     sim.refuses(['topic', 'start', wu, 'discussion', wu], /reopen/);
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
     sim.render(['phase-note', `${wu}.discussion.${wu}`, '--verb', 'Reopening'], { expect: 'content' });
