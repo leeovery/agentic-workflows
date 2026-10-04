@@ -55,7 +55,7 @@ The prose should have taken this path:
     no discarded grouping and no reverted join — the topic was the
     epic's own, so an item is born rather than re-waited — and the
     session adds no line of its own
-12. the session hands off to the pipeline bridge with the **postponed**
+12. the session invokes the pipeline bridge with the **postponed**
     outcome and the next phase as `none`. No phase banner is rendered on
     the way through — neither the completed banner nor the paused one:
     the receipt was the session's

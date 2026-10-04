@@ -61,7 +61,7 @@ Emit the call's MENU section verbatim per its marker.
 
    **Otherwise:** nothing to sweep — continue.
 
-6. Hand off to the pipeline bridge:
+6. Invoke the pipeline bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

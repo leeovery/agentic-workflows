@@ -40,7 +40,7 @@ The prose should have taken this path:
 10. the receipt is fetched from the engine and emitted; the response's
     `discarded`, `abandoned`, and `released_waits` all come back empty,
     so the session adds no line of its own
-11. the session hands off to the pipeline bridge with the cancelled
+11. the session invokes the pipeline bridge with the cancelled
     outcome and the next phase as `none`. No phase banner is rendered on
     the way through — neither the completed banner nor the paused one:
     the receipt was the session's

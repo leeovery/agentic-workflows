@@ -45,7 +45,7 @@ The prose should have taken this path:
    gate renders; the cadence commit runs only over
    uncommitted session work — a clean tree makes it a no-op, not a
    miss — the session says where the ball sits — the ceremony runs once
-   the research has landed — and hands off to the pipeline bridge as a
+   the research has landed — and invokes the pipeline bridge as a
    pause: the invocation carries the work unit, the phase discussion,
    the literal `none` for the next phase, and `paused`. Nothing tells
    the user to run /clear or /workflow-start, and no terminal stop

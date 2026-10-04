@@ -15,7 +15,7 @@ The skills are organised into tiers, each with a narrow role, so that a given mo
 | **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, and routes you everywhere else. |
 | **First phase** | Discovery. Shapes brand-new work, settles its type, and persists it. |
 | **Navigation** | The per-type dashboards. They show a work unit's current state and route you to whichever phase comes next. |
-| **Phase entry** | Thin intake coordinators. They validate that a phase can start, gather its opening context, and hand off — without ever engaging the subject matter. |
+| **Phase entry** | Thin intake coordinators. They validate that a phase can start, gather its opening context, and pass the work to the phase itself — without ever engaging the subject matter. |
 | **Processing** | The phases themselves, where the actual work happens: the conversations, the documents, the loops. |
 | **Bridge** | Decides where the work goes when a phase ends, and hands it off. |
 | **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely. |

@@ -776,7 +776,7 @@ Skills with a `## Resuming After Context Refresh` protocol re-load `framework.md
 
 Capture skills (`workflow-log-*`) are exempt — they are deliberately structureless, with no steps, no references, and no gates.
 
-**Gets extracted:** User interaction sequences, display/output formatting, handoff templates, discovery parsing, analysis logic, routing logic with significant conditional content.
+**Gets extracted:** User interaction sequences, display/output formatting, context-block templates, discovery parsing, analysis logic, routing logic with significant conditional content.
 
 ### Load Directive Format
 
@@ -933,7 +933,7 @@ Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge
 | Name | Purpose |
 |------|---------|
 | `gather-context.md` | User interview / context gathering questions |
-| `invoke-skill.md` | Handoff to processing skill |
+| `invoke-skill.md` | Context block invoking the processing skill |
 | `route-scenario.md` | Scenario routing (for skills with branching) |
 | `validate-{thing}.md` | Pre-flight validation (plan exists, spec completed, etc.) |
 | `display-{variant}.md` | Display outputs (for skills with multiple displays) |

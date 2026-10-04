@@ -76,7 +76,7 @@ The conversation continues with `{id}` queued — as after `later`, the session 
 
 **If `result` is `leave`:**
 
-Everything is already committed; hand off to the pipeline bridge as a pause:
+Everything is already committed; invoke the pipeline bridge as a pause:
 
 > *Output the next fenced block as markdown (not a code block):*
 

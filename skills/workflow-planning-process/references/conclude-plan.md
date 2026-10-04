@@ -26,7 +26,7 @@ Commit the session's work:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): pause — the specification is unsettled" --topic planning/{topic}
 ```
 
-Then hand off to the pipeline bridge as a pause:
+Then invoke the pipeline bridge as a pause:
 
 > *Output the next fenced block as markdown (not a code block):*
 

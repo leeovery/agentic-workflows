@@ -153,13 +153,15 @@ any harness substitutions. Follow it exactly.
   armed substitution calls for one, write the same path with a `.txt`
   extension and `mv` it to `.md` — the mechanism the product's own
   agents use. Expected, not a `DEVIATION`, no marker.
-- **A handoff ends the walk.** The world stands in for the gate mod,
-  so every handoff the prose makes answers `handoff: mod` and comes back
-  with its `HANDOFF` section cut, as the mod takes it. Emit what
-  the prose says to emit and STOP there: in a live session the mod
-  clears the conversation and the next skill starts in a fresh one, so
-  nothing after the handoff is this walk's — never read on into the
-  skill it names. Expected, not a `DEVIATION`, no marker.
+- **The engine's `handoff` call ends the walk.** The world stands in
+  for the gate mod, so every `engine.cjs handoff` the prose runs answers
+  `handoff: mod` and comes back with its `HANDOFF` section cut, as the
+  mod takes it. Emit what the prose says to emit and STOP there: in a
+  live session the mod clears the conversation and the next skill starts
+  in a fresh one, so nothing after that call is this walk's — never read
+  on into the skill it names. Expected, not a `DEVIATION`, no marker.
+  Every other skill the prose invokes — an entry its processing skill, a
+  phase the bridge — runs in place, and the walk goes on into it.
 - **An inline `` !`command` `` directive will not have run.** That
   substitution happens when a skill is loaded live; here the prose is read
   as a file, so the literal backtick line is what you see. The prose gives

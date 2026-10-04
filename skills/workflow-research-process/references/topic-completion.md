@@ -76,7 +76,7 @@ Commit any uncommitted session work with the session's cadence commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
 ```
 
-Then hand off to the pipeline bridge as a pause:
+Then invoke the pipeline bridge as a pause:
 
 > *Output the next fenced block as markdown (not a code block):*
 
