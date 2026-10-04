@@ -49,7 +49,7 @@ Read `all_done` from the most recent discovery output — true once every topic 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Every topic has been through review and nothing is left open.
+> Completing it closes the epic — it moves to the start menu's completed work, where it can be reactivated if more turns up.
 ```
 
 Render and emit the section verbatim per its marker:
