@@ -60,9 +60,9 @@ Drop the refused entries from `import_paths` — they land nothing — and re-de
 
 → Return to **B. Author the Session Log**.
 
-#### If the response is `ok: false` naming a work unit that already exists
+#### If the response is `ok: false` refusing the name — it already exists, is reserved, or names a phase
 
-The derived name is taken and nothing was created. Derive a different kebab-case name from the `description` — more specific than the one refused, never a numeric suffix — and hold it as `work_unit`. The staging path carries the name, so the log re-stages under it.
+The derived name is one the engine cannot take, and nothing was created. Derive a different kebab-case name from the `description` — more specific than the one refused, never a numeric suffix — and hold it as `work_unit`. The staging path carries the name, so the log re-stages under it.
 
 → Return to **B. Author the Session Log**.
 
