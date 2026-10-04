@@ -63,6 +63,7 @@ continuation once the turn ended.
   | A continue menu, the epic menu | A phase, discovery | In place | Clears |
   | A concluded phase (the bridge) | The next phase, the epic menu | Plan mode | Clears |
   | Review's route back, scoping's type change, discovery's conclusion, the roadmap's pull into a feature | Their next skill | Plan mode | Clears |
+  | A specification pausing on a routed gap | The bridge, as a pause | Its continue menu, in place | Clears |
   | Discovery into a roadmap genesis, a recognition pull, the roadmap's pull into an epic's discovery | The roadmap, discovery | In place | In place — the conversation carries on |
   | Anywhere | Help; back to the start menu | In place | In place |
 
@@ -125,18 +126,29 @@ continuation once the turn ended.
   is a real choice (skip review, revisit an earlier phase) and stays; the
   pick hands off. An epic's conclusion hands off to a fresh epic menu —
   `/workflow-continue-epic {wu} {completed_phase} {outcome}` — and the pick
-  hands off again, so the menu never shares a context with phase work. The
+  hands off again, so the menu never shares a context with phase work. A
+  specification that pauses on a gap it routed takes the bridge as a pause,
+  as planning does: an epic's menu opens on "Specification paused for … —
+  awaiting …", and a linear unit hands straight into the reopened
+  discussion where the gap now waits. The
   epic menu skill takes over the two things only the bridge's epic
   continuation did: the banner saying what just concluded or paused (none
   after a cancel or a postpone, whose receipt was the session's), and the
   offer to complete an epic whose work is all done — made wherever the menu
   shows, the state deriving it. The bridge's epic continuation becomes the
-  handoff. What a concluding turn shows after its last gate is a receipt
-  the person has already confirmed; the clear takes it, and the next
-  context opens on the banner or the next phase's title.
+  handoff. What a concluding turn shows after its last gate is gone with
+  the clear, so nothing new is shown there: a conclusion's recap — the
+  session's story — sits above its conclusion gate, read while the gate
+  waits; a cancel's or postpone's receipt repeats what its confirm gate
+  already named; and the next context opens on the banner or the next
+  phase's title.
 
 - **H7 — no mod, in place.** Where the engine answers `inline`, the prose
   invokes the skill in the same context. Nothing is asked of the person.
+  The engine answers `mod` from the announcement alone, so a mod that
+  fails to take the handoff — its hook threw, it was unloaded — leaves the
+  `HANDOFF` section in the result; the prose meets that as `inline` and
+  invokes in place, as a gate falls back to its text menu.
   Without the mod a conclusion's context carries into the next phase;
   compaction remains the safety valve. The laboratory's fresh context —
   a scientific control — comes from the clear, so without the mod it runs
@@ -162,9 +174,10 @@ continuation once the turn ended.
   so a pause is never asked as a conclusion.
 
 - **H10 — plan mode goes; the setting stays.** Every plan-mode handoff is
-  replaced. The project setting migration 034 installed
-  (`showClearContextOnPlanAccept`) is left alone — it may be there by
-  choice — and the docs say it served only the old handoff.
+  replaced. The project setting migration 034 writes
+  (`showClearContextOnPlanAccept`, still written into every new project,
+  the migration being frozen) is left alone — it may be there by choice —
+  and the docs say nothing uses it now and it can be removed.
 
 - **H11 — the framework sheds what a session rarely uses, with no
   rewording.** `answering-how-it-works.md` loads when a question about the
@@ -244,3 +257,7 @@ references and let the knowledge base carry sibling decisions.
 - 2026-10-03 — lab Block 1 passed (a pick into a discussion: clear, toast,
   redrawn row; the new conversation 61k lighter than the menu's); H9 settled
   with Lee — the three pauses take the conclusion's in-flight check.
+- 2026-10-04 — review pass (eight dimensions) settled with Lee: the recap
+  moves above the conclusion gate; a specification's gap pause takes the
+  bridge; the plan-mode setting's docs corrected for new projects. Decided
+  in the pass: a handoff the mod failed to take falls back to in place.
