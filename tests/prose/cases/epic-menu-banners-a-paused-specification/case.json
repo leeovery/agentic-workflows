@@ -1,0 +1,45 @@
+{
+  "origin": "a specification that routes a gap into its source pauses through the bridge, whose handoff lands the epic on its menu with the pause — the paused banner gained the specification, naming the sources it awaits, and nothing walked it",
+  "entry": "workflow-continue-epic",
+  "files": [
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md"
+  ],
+  "invariants": {
+    "calls_include": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "session label search-relevance",
+      "render phase-paused search-relevance --phase specification",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "session label search-relevance",
+      "render phase-paused search-relevance --phase specification",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "render phase-completed",
+      "render epic-all-done-gate",
+      "render summary-backfill-gate",
+      "engine.cjs handoff",
+      "agent dispatch",
+      "discovery-map sequence",
+      "build-order sequence",
+      "topic start",
+      "topic complete",
+      "topic reopen",
+      "workunit complete"
+    ]
+  }
+}
