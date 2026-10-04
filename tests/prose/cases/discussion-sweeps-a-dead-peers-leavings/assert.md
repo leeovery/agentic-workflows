@@ -20,7 +20,8 @@ The prose should have taken this path:
    clean, and the gate is satisfied with nothing to surface
 7. the document review and the compliance self-check run over the
    document, and the conclusion is reached
-8. the conclusion runs in order: the queue is empty, the user confirms,
+8. the conclusion runs in order: the queue is empty, the closing recap
+   renders above the conclude gate, the user confirms,
    the summary is confirmed populated, the topic is completed through the
    engine — which indexes the artifact — and the conclusion's own commit
    carries the topic scope, in one call
@@ -31,7 +32,8 @@ The prose should have taken this path:
    the synonym handling discussion has no heartbeat at all, so its
    document is a dead session's leavings and is committed on its own
    topic's scope, with the sweep marker
-10. the walk stops there, before the closing recap
+10. the discussion's closure signpost follows, and the walk stops at the
+    bridge invocation
 
 Further claims:
 

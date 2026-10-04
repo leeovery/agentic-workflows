@@ -6,6 +6,8 @@
 
 The user has already reviewed findings and agreed on fix direction. This step confirms the investigation is complete and handles pipeline continuation.
 
+→ Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `investigation`, work_unit = `{work_unit}`, topic = `{topic}`.
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.investigation.{topic}
 ```
@@ -57,11 +59,7 @@ On return:
    node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.investigation.{topic} --verb complete --warn
    ```
 
-3. Closing recap:
-
-   → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `investigation`, work_unit = `{work_unit}`, topic = `{topic}`.
-
-4. Closure signpost:
+3. Closure signpost:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -69,4 +67,4 @@ On return:
 > Investigation complete. The specification phase will formalise the fix approach into a document that drives planning.
 ```
 
-5. Invoke `/workflow-bridge {work_unit} investigation`.
+4. Invoke `/workflow-bridge {work_unit} investigation`.

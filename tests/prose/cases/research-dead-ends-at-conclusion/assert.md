@@ -24,17 +24,18 @@ The prose should have taken this path:
 6. the session judges the dead-end question **before** rendering, from
    the topic's own conclusion — the answer is no, and nothing under this
    name is left to weigh — so the gate is rendered with `--dead-end` and
-   the three-row menu carries the dead-end option; the register is empty,
-   so no display precedes the menu. The judgment is the session's: the
-   flag is passed, never derived by the engine
+   the three-row menu carries the dead-end option; the closing recap
+   sits above the gate, and the register is empty, so no register
+   display precedes the menu. The judgment is the session's: the flag
+   is passed, never derived by the engine
 7. the user takes the dead end. The map item is marked first, with no
    commit of its own — the conclusion's commit carries the manifest
    change
 8. the conclusion runs with the dead-end closure: the queue is checked a
    final time, the register holds nothing open or parked so no Open
    Threads section is written, the research completes and indexes, and
-   one conclusion commit closes it. Presence clears, the sweep finds no
-   leavings, and the closing recap runs
+   one conclusion commit closes it. Presence clears, and the sweep finds
+   no leavings
 9. the closing signpost is the dead-end one — the topic is closed, no
    discussion follows, the file stays on the map and in the knowledge
    base as record, and reopening it from the map makes it actionable

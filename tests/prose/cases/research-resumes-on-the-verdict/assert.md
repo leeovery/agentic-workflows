@@ -28,15 +28,15 @@ The prose should have taken this path:
 6. the closing checks run: document review reconciles the file against
    the session; the compliance check passes. No review is dispatched —
    research has none
-7. the conclude gate renders without the dead-end row — the session
-   never judged this topic a dead end, and the findings carry forward
-   under its own name — and with no register display above it, the
-   register being empty; the user concludes
+7. the closing recap renders, then the conclude gate without the
+   dead-end row — the session never judged this topic a dead end, and
+   the findings carry forward under its own name — and with no register
+   display above it, the register being empty; the user concludes
 8. the completion the wait once blocked now passes: the register holds
    nothing open so no Open Threads section is written, the research
    completes and indexes, the conclusion commit closes it, presence clears,
-   the sweep finds no leavings, the closing recap runs, and the walk
-   stops at the bridge invocation
+   the sweep finds no leavings, and the walk stops at the bridge
+   invocation
 
 Further claims:
 

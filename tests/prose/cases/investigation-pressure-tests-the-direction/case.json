@@ -28,7 +28,8 @@
     "skills/workflow-investigation-process/references/findings-signoff.md",
     "skills/workflow-investigation-process/references/fix-exploration.md",
     "skills/workflow-investigation-process/references/fix-validation.md",
-    "skills/workflow-investigation-process/references/conclude-investigation.md"
+    "skills/workflow-investigation-process/references/conclude-investigation.md",
+    "skills/workflow-shared/references/closing-recap.md"
   ],
   "answers": [
     "c — pick the investigation up where it left off",

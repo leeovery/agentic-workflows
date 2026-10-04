@@ -29,7 +29,8 @@ The prose should have taken this path:
    check passes silently. No review is dispatched — research has none
 6. the dead-end question is judged before rendering, from the topic's
    own conclusion — the findings carry forward under this name — so the
-   flag is omitted; the conclude gate is fetched from the engine and
+   flag is omitted; the closing recap — questions in, findings out —
+   sits above the gate; the conclude gate is fetched from the engine and
    its response carries the register as a DISPLAY section above the
    MENU: the four threads with the parked reason beneath its row, then
    the two-row menu with no dead-end option; both emitted verbatim, the
@@ -42,8 +43,7 @@ The prose should have taken this path:
    {note}`), and no line for either learned thread, whose answers are
    already in the body — written **before** the completion; the research
    completes and indexes; one conclusion commit closes it, the Open Threads
-   write riding it; presence clears, the sweep finds no leavings, and
-   the closing recap runs — questions in, findings out
+   write riding it; presence clears, and the sweep finds no leavings
 8. the closing signpost is the discussion one — the discussion phase
    will use these findings — not the dead-end one; the walk stops at the
    bridge invocation
