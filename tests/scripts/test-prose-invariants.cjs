@@ -789,12 +789,13 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-continue-epic'), []);
   });
 
-  it('accepts discovery, the one continuation that is not an entry skill', () => {
+  it('accepts discovery, the roadmap and the baseline, where a handoff lands their own work', () => {
     assert.deepEqual(cases.entryErrors('workflow-discovery'), []);
+    assert.deepEqual(cases.entryErrors('workflow-roadmap'), []);
+    assert.deepEqual(cases.entryErrors('workflow-baseline'), []);
   });
 
-  it('accepts the project-level places the start menu opens as their own sessions', () => {
-    assert.deepEqual(cases.entryErrors('workflow-roadmap'), []);
+  it('accepts help, the start menu\'s own row', () => {
     assert.deepEqual(cases.entryErrors('workflow-help'), []);
   });
 
