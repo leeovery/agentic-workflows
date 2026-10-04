@@ -40,10 +40,12 @@ The prose should have taken this path:
    is blocked pending input. The closing gates are never loaded and no
    completion is attempted — the session never asks the engine to do
    what it would refuse
-8. the user takes the pause; uncommitted session work is committed with
-   the cadence commit, the session says where the ball sits — the
-   closing ceremony waits for the evidence — and hands off to the
-   pipeline bridge as a pause: the invocation carries the work unit,
+8. the user takes the pause; the in-flight check reads the store first
+   and finds nothing of this session's running, so no wait-or-pause
+   gate renders; uncommitted session work is committed with the
+   cadence commit, the session says where the ball sits — the closing
+   ceremony waits for the evidence — and invokes the pipeline bridge
+   as a pause: the invocation carries the work unit,
    the phase discussion, the literal `none` for the next phase, and
    `paused`. Nothing tells the user to run /clear or /workflow-start
 9. the bridge reads the work type — feature, not discovery, not epic —

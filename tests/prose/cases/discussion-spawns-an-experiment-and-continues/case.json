@@ -27,6 +27,7 @@
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
+    "skills/workflow-shared/references/in-flight-agents.md",
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
     "skills/workflow-discussion-process/references/background-agent-surfacing.md",
@@ -58,6 +59,7 @@
       "render experiment-spawn-gate pay.discussion.pay --id E1",
       "topic queue pay discussion pay",
       "render wait-gate pay.discussion.pay",
+      "agent scan pay discussion pay",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
       "handoff /workflow-experiment-entry feature pay"
@@ -67,6 +69,7 @@
       "experiment create pay pay",
       "render experiment-spawn-gate pay.discussion.pay",
       "render wait-gate pay.discussion.pay",
+      "agent scan pay discussion pay",
       "session label pay",
       "workflow-bridge/scripts/gateway.cjs pay",
       "handoff /workflow-experiment-entry feature pay"
@@ -84,6 +87,7 @@
       "manifest get pay.discussion.pay awaiting_experiments",
       "render phase-completed",
       "render next-phase-gate",
+      "render in-flight-agents-gate",
       "workunit complete",
       "topic start pay experiment"
     ]
