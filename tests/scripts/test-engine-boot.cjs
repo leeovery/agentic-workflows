@@ -1710,6 +1710,10 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(typeof first.migrations.output, 'string');
     // No work-unit artifacts in the fixture — no migration hands over checks.
     assert.deepStrictEqual(first.migrations.verify, []);
+    // 034 sets the plan-mode key and 067 takes it out in the same run: the
+    // project never had it, so nothing is said.
+    assert.deepStrictEqual(first.migrations.notices, []);
+    assert.ok(!('showClearContextOnPlanAccept' in JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'))));
     // The trimmed report never leaks the prose stop-gate lines or the machine blocks.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
     assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
@@ -1839,6 +1843,32 @@ describe('engine boot verification addenda (real scripts)', () => {
     // Second boot: recorded — nothing re-fires.
     const second = runEngine(real, project, ['boot']);
     assert.deepStrictEqual(second.migrations.verify, []);
+  });
+});
+
+describe('engine boot migration notices (real scripts)', () => {
+  let root;
+  let project;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-notices-'));
+    project = setupProject(root);
+  });
+  afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  it('tells the person of a plan-mode setting the project had committed, once', () => {
+    writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
+    git(project, ['commit', '-q', '-am', 'plan mode on']);
+
+    const res = runEngine(real, project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    assert.deepStrictEqual(res.migrations.notices.map((n) => n.id), ['067']);
+    assert.match(res.migrations.notices[0].notice, /^Removed `showClearContextOnPlanAccept` from `\.claude\/settings\.json`/);
+    assert.ok(!res.migrations.output.includes('MIGRATION_NOTICES'), 'plumbing stripped from the report');
+    assert.strictEqual(res.migrations.changed, true);
+    assert.ok(!('showClearContextOnPlanAccept' in JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'))));
+    // Second boot: recorded — nothing re-fires.
+    assert.deepStrictEqual(runEngine(real, project, ['boot']).migrations.notices, []);
   });
 });
 
