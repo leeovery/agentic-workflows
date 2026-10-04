@@ -66,7 +66,9 @@ handoff's one table of targets.
    detection, the interview; duplicate reads and dead arms dropped.
 4. The four linear continue skills become one, keyed by the work unit with
    its type read from the manifest; each navigation menu gains a back row
-   to the start menu.
+   to the start menu. Every continue skill's pick-a-unit step is
+   unreachable — the epic menu's too, since the mod handoff stack made
+   pivot and absorb pass the epic's name — and goes.
 5. `workflow-start`'s rare branches move into references.
 6. Legacy residue goes (the audit's list: the experiment series'
    `cancelled` branch, specification's `analysis-rerun` scenario, the
