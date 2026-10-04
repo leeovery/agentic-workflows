@@ -21,12 +21,12 @@
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs view",
-      "handoff workflow-roadmap open"
+      "handoff /workflow-roadmap open"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs view",
-      "handoff workflow-roadmap open"
+      "handoff /workflow-roadmap open"
     ],
     "calls_exclude": [
       "workflow-roadmap/scripts/gateway.cjs",

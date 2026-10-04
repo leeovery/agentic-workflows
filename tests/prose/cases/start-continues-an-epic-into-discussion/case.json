@@ -33,7 +33,7 @@
       "legacy-research-split/scripts/detect.cjs search-relevance",
       "discovery-map sequence search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
-      "handoff workflow-discussion-entry epic search-relevance behavioural-ranking"
+      "handoff /workflow-discussion-entry epic search-relevance behavioural-ranking"
     ],
     "calls_in_order": [
       "engine.cjs boot",
@@ -42,7 +42,7 @@
       "session label search-relevance",
       "discovery-map sequence search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
-      "handoff workflow-discussion-entry epic search-relevance behavioural-ranking"
+      "handoff /workflow-discussion-entry epic search-relevance behavioural-ranking"
     ],
     "calls_exclude": [
       "discovery-map add",

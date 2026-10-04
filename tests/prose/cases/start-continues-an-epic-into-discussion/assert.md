@@ -24,9 +24,9 @@ The prose should have taken this path:
    alone, with the discovery map — and the second scripted answer
    selects the behavioural-ranking discussion entry; no soft gate fires
    (a discussion entry carries none)
-7. the handoff: the stored route is split into the skill it names and
-   the arguments after it, and the engine's handoff names
-   `workflow-discussion-entry` with epic, the work unit, and the topic;
+7. the handoff: the stored route passes to the engine's handoff as it
+   stands, `/workflow-discussion-entry` with epic, the work unit, and
+   the topic;
    the line naming where the work goes is the turn's last text, and
    the walk stops at the handoff
 

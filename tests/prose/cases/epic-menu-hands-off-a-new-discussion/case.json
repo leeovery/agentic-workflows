@@ -28,14 +28,14 @@
       "workflow-start/scripts/gateway.cjs",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render epic-soft-gate search-relevance --action new_discussion",
-      "handoff workflow-discussion-entry epic search-relevance"
+      "handoff /workflow-discussion-entry epic search-relevance"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render epic-soft-gate search-relevance --action new_discussion",
-      "handoff workflow-discussion-entry epic search-relevance"
+      "handoff /workflow-discussion-entry epic search-relevance"
     ],
     "calls_exclude": [
       "query-intent",

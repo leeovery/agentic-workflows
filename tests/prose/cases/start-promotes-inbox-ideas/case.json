@@ -27,13 +27,13 @@
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
-      "handoff workflow-discovery none none .workflows/.inbox/ideas/2026-01-01--filter-default-view.md,.workflows/.inbox/ideas/2026-01-01--saved-search-filters.md"
+      "handoff /workflow-discovery none none .workflows/.inbox/ideas/2026-01-01--filter-default-view.md,.workflows/.inbox/ideas/2026-01-01--saved-search-filters.md"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
-      "handoff workflow-discovery none none"
+      "handoff /workflow-discovery none none"
     ],
     "calls_exclude": [
       "inbox archive",

@@ -21,12 +21,12 @@
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs view",
-      "handoff workflow-discovery feature none none"
+      "handoff /workflow-discovery feature none none"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs view",
-      "handoff workflow-discovery feature none none"
+      "handoff /workflow-discovery feature none none"
     ],
     "calls_exclude": [
       "saved",

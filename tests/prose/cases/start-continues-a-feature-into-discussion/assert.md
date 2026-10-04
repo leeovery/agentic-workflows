@@ -12,9 +12,8 @@ The prose should have taken this path:
 4. the feature's pipeline state renders; with nothing to revisit, no
    proceed-or-revisit menu is put to the user — the continue action's
    stored route is taken directly
-5. the handoff: the stored route is split into the skill it names and
-   the arguments after it, and the engine's handoff names
-   `workflow-discussion-entry` with `feature pay`; the line naming where
+5. the handoff: the stored route passes to the engine's handoff as it
+   stands, `/workflow-discussion-entry feature pay`; the line naming where
    the work goes is the turn's last text, and the walk stops at the
    handoff
 

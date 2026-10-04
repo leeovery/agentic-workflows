@@ -16,9 +16,9 @@ The prose should have taken this path:
    scripted answer picks the `d` command option — start a discussion on
    a new topic; the soft gate is fetched for that selection, with no
    topic, and comes back empty
-5. the handoff: the stored route is split into the skill it names and
-   the arguments after it, and the engine's handoff names
-   `workflow-discussion-entry` with epic and the work unit — no topic;
+5. the handoff: the stored route passes to the engine's handoff as it
+   stands, `/workflow-discussion-entry` with epic and the work unit —
+   no topic;
    the line naming where the work goes is the turn's last text, and the
    walk stops at the handoff
 
