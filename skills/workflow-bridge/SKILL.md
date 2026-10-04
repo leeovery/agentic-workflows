@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Ba
 
 Decide where the work goes when a phase concludes or pauses, then hand it off.
 
-A phase invokes this skill as it ends. A linear work type's next phase is derived from state, with the one real choice offered where there is one — skip review, revisit an earlier phase; discovery supplies its destination, since the next phase isn't in state yet; an epic returns to its menu. Every route ends in the handoff.
+A phase invokes this skill as it ends. A linear work type's next phase is derived from state, with the one real choice offered where there is one — skip review, revisit an earlier phase; discovery supplies its destination, since the next phase isn't in state yet; an epic returns to its menu. Every route ends in the handoff but the pipeline's end, which completes the work unit.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -16,8 +16,8 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.workflows/`). Held downstream as `{work_unit}`.
-- `$1` — **completed_phase**: the phase handing off — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
-- `$2` — **next_phase** (optional): the destination, where the caller already knows it — discovery handing a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` otherwise.
+- `$1` — **completed_phase**: the phase the work is leaving — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
+- `$2` — **next_phase** (optional): the destination, where the caller already knows it — discovery sending a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` otherwise.
 - `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, or a specification pausing on a gap it routed, with `$2` as `none`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way, both with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
 
 ---
@@ -28,18 +28,6 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Read Work Type and Run Discovery`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Working out where the work goes next.
 ```
 
 Read work type from the manifest:
@@ -113,15 +101,3 @@ Load **[cross-cutting-continuation.md](references/cross-cutting-continuation.md)
 #### If work type is `epic`
 
 Load **[epic-continuation.md](references/epic-continuation.md)** and follow its instructions as written.
-
----
-
-## Notes
-
-**Linear** continuations (feature, bugfix, quick-fix, cross-cutting) take `next_phase` from the discovery script. `done` completes the work unit. A pause continues at what the phase waits on, with no offer. Otherwise the next-phase gate offers what state allows — skip review on the review hop, revisit an earlier phase — and an empty gate continues straight on. The work hands off to `workflow-{phase}-entry {work_type} {work_unit}`.
-
-**Epic** continuation hands off to the epic menu, `workflow-continue-epic {work_unit} {completed_phase} {outcome}` — an epic has no single next phase, so the person picks the next move there. The menu shows the banner for what just concluded or paused, and offers to complete the epic when its work is all done.
-
-**Discovery** continuation hands an epic to its menu with no banner, and every other work type to its first phase.
-
-Nothing passes but the skill and its arguments: what the next skill needs is on disk.
