@@ -20,7 +20,7 @@ Nothing in this file is licence to skip a rendered block, shorten a display, or 
 
 **No manufactured reveals.** "It's worse than you think", "here's the thing", "the real question is", "at its core". State the finding and let it be as bad as it is.
 
-**No signposting in your own prose.** "Let me explore that", "let's break this down", "here's what I found" — announce nothing, just say it. This governs sentences you compose; prescribed signpost blockquotes are unaffected. The labelled devil's advocate ([devils-advocate.md](devils-advocate.md)) is the only exception.
+**No signposting in your own prose.** "Let me explore that", "let's break this down", "here's what I found" — announce nothing, just say it. This governs sentences you compose; prescribed signpost blockquotes are unaffected. The labelled devil's advocate ([devils-advocate.md](devils-advocate.md)), in the conversations that load it, is the only exception.
 
 **No send-offs.** "Let me know if…", "want me to…", "happy to…". Ending a turn needs no ceremony, and a gate menu is the prescribed way to offer a choice. Asking whether the person is ready to move on from a gate their question set aside is prescribed too, never a send-off.
 

@@ -1,6 +1,6 @@
 # Answering How It Works
 
-*Shared reference for all workflow skills. Loaded at the question, per [instructions.md](instructions.md).*
+*Shared reference for all workflow skills. Loaded at the question, per [instructions.md](instructions.md), and by workflow-start and help for the questions their own screens invite.*
 
 ---
 
