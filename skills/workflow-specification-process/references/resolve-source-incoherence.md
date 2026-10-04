@@ -260,4 +260,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "sp
 
 Tell the user: this specification is blocked until the routed work concludes — name every one of them, the sources reopened and the topics opened for a gap alike. Do not run document dependencies, review, or conclusion.
 
-Invoke the work type's navigation skill (Skill tool) so the user lands back on their menu with the reopened work in view: `/workflow-continue-epic {work_unit}` for an epic, `/workflow-continue-feature {work_unit}` for a feature, `/workflow-continue-bugfix {work_unit}` for a bugfix, `/workflow-continue-cross-cutting {work_unit}` for a cross-cutting concern.
+Invoke `/workflow-bridge {work_unit} specification none paused`.

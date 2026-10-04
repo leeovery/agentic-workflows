@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES, NO_ARGUMENT, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 const { parseInboxPaths } = require('./inbox.cjs');
@@ -154,7 +154,7 @@ const TARGETS = {
       if (phase !== undefined) {
         assertOneOf('the phase', phase, EPIC_DETAIL_PHASES);
         assertOneOf('the outcome', outcome, OUTCOMES);
-        if (outcome === 'paused') assertOneOf('the phase that paused', phase, WAITING_PHASES);
+        if (outcome === 'paused') assertOneOf('the phase that paused', phase, PAUSING_PHASES);
       }
       assertWorkUnit(cwd, unit, 'epic');
     },

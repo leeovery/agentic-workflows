@@ -738,7 +738,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   });
 });
 
-describe('phase-paused — the epic menu\'s banner for a conversation leaving on a wait', () => {
+describe('phase-paused — the epic menu\'s banner for a phase leaving on a pause', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
@@ -807,11 +807,64 @@ describe('phase-paused — the epic menu\'s banner for a conversation leaving on
       `${HEADER}\nPlanning paused for "Pay" — awaiting its specification (back in progress).\n`);
   });
 
-  it('is loud on a missing phase, a phase that holds no wait, a dotted address, and an unknown unit', () => {
+  it('a paused specification names the sources it routed a gap into — reopened, or opened and parked', () => {
+    writeManifest(dir, 'fumi', {
+      phases: {
+        discussion: {
+          items: {
+            'note-window': { status: 'in-progress' },
+            sync: { status: 'triaged' },
+            layout: { status: 'completed' },
+          },
+        },
+        specification: {
+          items: {
+            windows: {
+              status: 'in-progress',
+              sources: {
+                'note-window': { status: 'stale' },
+                sync: { status: 'pending' },
+                layout: { status: 'pending' },
+              },
+            },
+            panes: { status: 'in-progress', sources: { layout: { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'fumi', phase: 'specification' }),
+      `${HEADER}\nSpecification paused for "Fumi" — "Windows" awaits the note-window and sync discussions.\n`,
+      'a source still to extract whose discussion has concluded is the specification\'s own work, never a wait');
+  });
+
+  it('a linear specification names the record it awaits by its phase — a bugfix\'s investigation', () => {
+    writeManifest(dir, 'crash-fix', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { items: { 'crash-fix': { status: 'in-progress' } } },
+        specification: { items: { 'crash-fix': { status: 'in-progress', sources: { 'crash-fix': { status: 'stale' } } } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'crash-fix', phase: 'specification' }),
+      `${HEADER}\nSpecification paused for "Crash Fix" — awaiting the crash-fix investigation.\n`);
+  });
+
+  it('a specification whose routed work has concluded renders the bare line', () => {
+    writeManifest(dir, 'fumi', {
+      phases: {
+        discussion: { items: { 'note-window': { status: 'completed' } } },
+        specification: { items: { windows: { status: 'in-progress', sources: { 'note-window': { status: 'stale' } } } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'fumi', phase: 'specification' }),
+      `${HEADER}\nSpecification paused for "Fumi".\n`);
+  });
+
+  it('is loud on a missing phase, a phase that never pauses, a dotted address, and an unknown unit', () => {
     writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'specification' }),
-      /--phase must be <research\|discussion\|planning> — the phases that pause on a wait; got "specification"/);
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'implementation' }),
+      /--phase must be <research\|discussion\|planning\|specification> — the phases that pause; got "implementation"/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
   });

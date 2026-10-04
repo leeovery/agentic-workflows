@@ -1192,6 +1192,59 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.review.items[wu].status, 'in-progress', 'the review stays open for the next cycle');
   });
 
+  it('a specification pausing on a gap it routed goes through the bridge — a linear unit into the reopened record, an epic to its menu', () => {
+    // The gap exit (resolve-source-incoherence B → D): the concern lands in
+    // the source's triage queue, reopening it and staling the spec's row;
+    // the pause commits the session's work and hands off as a pause. The
+    // gap routes into the first of the specification's sources.
+    const pauseOnGap = (wu, sourcePhase, spec, [source, ...rest]) => {
+      label(sim, wu, 'specification', spec);
+      sim.run(['topic', 'start', wu, 'specification', spec]);
+      sim.run(['manifest', 'set', `${wu}.specification.${spec}`,
+        ...[source, ...rest].map((name) => `sources.${name}.status=incorporated`)]);
+      const concern = sim.write('.workflows/.cache/scratch/spec-gap.md', '### Gap — retry window\n\nWhat the spec needs decided.\n');
+      const landed = sim.run(['topic', 'triage', wu, sourcePhase, source,
+        '--concern', concern, '--slug', 'retry-window', '-m', `spec(${wu}): gap routed to ${source}`]);
+      assert.strictEqual(landed.reopened, true);
+      assert.deepStrictEqual(landed.sources_staled, [spec]);
+      sim.run(['commit', wu, '-m', `spec(${wu}): pause — gap routed to ${source}`, '--topic', `specification/${spec}`]);
+    };
+
+    // A linear unit hands straight into the record the gap reopened — the
+    // bridge's paused arm takes the derived next phase and offers nothing.
+    const feature = 'retry';
+    sim.run(['workunit', 'create', feature, 'feature', '--description', 'Retries', '--session-log-file', sessionLog(sim, feature)]);
+    sim.run(['topic', 'start', feature, 'discussion', feature]);
+    sim.write(`.workflows/${feature}/discussion/${feature}.md`, `# Discussion — ${feature}\n`);
+    sim.run(['topic', 'complete', feature, 'discussion', feature]);
+    pauseOnGap(feature, 'discussion', feature, [feature]);
+    bridgeTo(sim, feature, 'discussion');
+
+    const bugfix = 'stall';
+    sim.run(['workunit', 'create', bugfix, 'bugfix', '--description', 'Stalls', '--session-log-file', sessionLog(sim, bugfix)]);
+    sim.run(['topic', 'start', bugfix, 'investigation', bugfix]);
+    sim.write(`.workflows/${bugfix}/investigation/${bugfix}.md`, `# Investigation — ${bugfix}\n`);
+    sim.run(['topic', 'complete', bugfix, 'investigation', bugfix]);
+    pauseOnGap(bugfix, 'investigation', bugfix, [bugfix]);
+    bridgeTo(sim, bugfix, 'investigation');
+
+    // An epic returns to its menu, whose banner names what the specification
+    // awaits; the routed discussion's re-conclusion leaves the bare line.
+    const epic = 'panes';
+    mappedEpic(sim, epic, ['note-window', 'layout']);
+    for (const topic of ['note-window', 'layout']) {
+      sim.run(['topic', 'start', epic, 'discussion', topic]);
+      sim.write(`.workflows/${epic}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
+      sim.run(['topic', 'complete', epic, 'discussion', topic]);
+    }
+    pauseOnGap(epic, 'discussion', 'windows', ['note-window', 'layout']);
+    assert.match(arriveAtEpicMenu(sim, epic, 'specification', 'paused'),
+      /\nSpecification paused for "Panes" — "Windows" awaits the note-window discussion\.\n$/);
+    sim.run(['topic', 'complete', epic, 'discussion', 'note-window']);
+    assert.match(sim.render(['phase-paused', epic, '--phase', 'specification'], { expect: 'content' }),
+      /\nSpecification paused for "Panes"\.\n$/);
+  });
+
   it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', async () => {
     const wu = 'crash-fix';
     const log = sessionLog(sim, wu);
@@ -4827,7 +4880,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(pauseCheck(sim, wu, 'research', 'layout'), []);
     assert.match(arriveAtEpicMenu(sim, wu, 'research', 'paused'),
       /\nResearch paused for ".*" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
-    sim.refuses(['render', 'phase-paused', wu, '--phase', 'experiment'], /--phase must be <research\|discussion\|planning>/);
+    sim.refuses(['render', 'phase-paused', wu, '--phase', 'experiment'], /--phase must be <research\|discussion\|planning\|specification>/);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders

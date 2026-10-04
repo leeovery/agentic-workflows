@@ -18,7 +18,7 @@ This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.workflows/`). Held downstream as `{work_unit}`.
 - `$1` — **completed_phase**: the phase handing off — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
 - `$2` — **next_phase** (optional): the destination, where the caller already knows it — discovery handing a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` otherwise.
-- `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, with `$2` as `none`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way, both with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
+- `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, or a specification pausing on a gap it routed, with `$2` as `none`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way, both with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
 
 ---
 

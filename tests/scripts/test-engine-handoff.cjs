@@ -15,7 +15,7 @@ const assert = require('node:assert');
 const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, WAITING_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { HANDOFF_TARGETS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
 
 const ANNOUNCED = { WORKFLOWS_HANDOFF: '1' };
@@ -133,7 +133,7 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('the epic menu takes a pause from every phase its paused banner names', () => {
-    for (const phase of WAITING_PHASES) {
+    for (const phase of PAUSING_PHASES) {
       assert.strictEqual(payloadOf(carried(dir, ['workflow-continue-epic', 'fumi', phase, 'paused'])).args,
         `fumi ${phase} paused`);
     }
@@ -309,9 +309,9 @@ describe('engine handoff — refusals', () => {
   });
 
   it('the epic menu refuses a pause from a phase its paused banner cannot name', () => {
-    for (const phase of EPIC_PHASES.filter((p) => !WAITING_PHASES.includes(p))) {
+    for (const phase of EPIC_PHASES.filter((p) => !PAUSING_PHASES.includes(p))) {
       refused(dir, ['workflow-continue-epic', 'fumi', phase, 'paused'],
-        new RegExp(`^the phase that paused must be one of ${WAITING_PHASES.join('\\|')} — got "${phase}"$`));
+        new RegExp(`^the phase that paused must be one of ${PAUSING_PHASES.join('\\|')} — got "${phase}"$`));
     }
   });
 

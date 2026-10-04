@@ -94,11 +94,37 @@ function openSources(item) {
     .map(([name, r]) => ({ name, status: r.status }));
 }
 
-// Discussion statuses that hold shut every specification sourcing them: a
+// Source statuses that hold shut every specification sourcing them: a
 // source back in-progress (a gap routed into it), and a topic the gap exit
 // opened and parked as a stub no session has drained. Either way the
 // specification waits for a record that has not concluded.
 const OPEN_SOURCE_STATUSES = ['in-progress', 'triaged'];
+
+/**
+ * The phase a work type's specification extracts its sources from — the
+ * investigation where the pipeline holds one, the discussion otherwise.
+ * @param {string} workType
+ * @returns {'investigation'|'discussion'}
+ */
+function specSourcePhase(workType) {
+  const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
+  return pipeline.includes('investigation') ? 'investigation' : 'discussion';
+}
+
+/**
+ * The sources a specification awaits, by name: its rows not yet
+ * incorporated whose record is still open — a source a gap was routed back
+ * into, or a topic the gap exit opened and parked. Empty once each has
+ * concluded. Derived, never stored.
+ * @param {object} manifest @param {string} topic
+ * @returns {string[]}
+ */
+function awaitedSources(manifest, topic) {
+  const phase = specSourcePhase(manifest.work_type);
+  return openSources(itemOf(manifest, 'specification', topic))
+    .map((row) => row.name)
+    .filter((name) => OPEN_SOURCE_STATUSES.includes(itemOf(manifest, phase, name)?.status ?? ''));
+}
 
 /**
  * The non-terminal specification items whose `sources` name `discussion`,
@@ -1342,6 +1368,8 @@ module.exports = {
   sourceRow,
   openSources,
   OPEN_SOURCE_STATUSES,
+  specSourcePhase,
+  awaitedSources,
   sourcingSpecs,
   UNIT_PHASES,
   unitItems,

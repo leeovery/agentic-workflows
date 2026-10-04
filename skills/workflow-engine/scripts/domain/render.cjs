@@ -54,13 +54,13 @@ const { revisitablePhases, revisitPhasesSection } = require('./projections/worku
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
-const { waitGate, phasePaused, researchWaitState } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
@@ -4133,10 +4133,11 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 
 /**
  * The epic menu's paused banner — `phase-completed`'s sibling for a phase
- * leaving on a wait. Derived, never told: the phase's in-progress items
- * holding waits, each named with what it awaits. A peer can land the wait
- * between the gate and the banner, so no holder left renders the bare line
- * rather than refusing.
+ * leaving on a pause. Derived, never told: the phase's in-progress items
+ * still awaiting something, each named with what it awaits — a conversation
+ * or a plan its waits, a specification the sources it routed a gap into. A
+ * peer can land what was awaited between the pause and the banner, so no
+ * holder left renders the bare line rather than refusing.
  * @param {string} cwd
  * @param {{dotpath: string, phase?: string}} args
  * @returns {string}
@@ -4144,13 +4145,17 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 function phasePausedSurface(cwd, { dotpath, phase }) {
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'phase-paused');
   if (!isFilled(phase)) throw new Error('render phase-paused: --phase is required');
-  if (!WAITING_PHASES.includes(phase)) {
-    throw new Error(`render phase-paused: --phase must be <${WAITING_PHASES.join('|')}> — the phases that pause on a wait; got "${phase}"`);
+  if (!PAUSING_PHASES.includes(phase)) {
+    throw new Error(`render phase-paused: --phase must be <${PAUSING_PHASES.join('|')}> — the phases that pause; got "${phase}"`);
   }
+  /** @type {(topic: string) => string} */
+  const owed = phase === 'specification'
+    ? (topic) => owedSources(awaitedSources(manifest, topic), specSourcePhase(manifest.work_type))
+    : (topic) => owedWaits(waits(manifest, phase, topic), 'the topic');
   const holders = phaseItems(manifest, phase)
     .filter((item) => item.status === 'in-progress')
-    .map((item) => ({ topic: item.name, waits: waits(manifest, phase, item.name) }))
-    .filter((holder) => holder.waits.length > 0);
+    .map((item) => ({ topic: item.name, owed: owed(item.name) }))
+    .filter((holder) => holder.owed !== '');
   return phasePaused(phase, workUnit, holders);
 }
 
