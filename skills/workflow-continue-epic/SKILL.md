@@ -58,7 +58,7 @@ The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, 
 
 ## Step 2: Check Count and Arguments
 
-This skill receives positional arguments, each optional:
+This skill receives positional arguments, each optional — one not given is unset, whatever an earlier skill in this conversation held under the same name:
 - `$0` — **work_unit**: the epic to continue. Held downstream as `{work_unit}`.
 - `$1` — **completed_phase**: the phase that just concluded or paused, where the epic arrives from one. Held downstream as `{completed_phase}`.
 - `$2` — **outcome**: given with `$1` — `completed`, `paused`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
