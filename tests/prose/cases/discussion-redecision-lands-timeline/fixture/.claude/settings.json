@@ -1,5 +1,4 @@
 {
-  "showClearContextOnPlanAccept": true,
   "permissions": {
     "allow": [
       "Edit(.workflows/**)",
