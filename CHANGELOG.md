@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.10] - 2026-10-05
+
+✨ Added
+- Mod-driven handoffs — when a phase concludes or you pick work from a menu, the workflow-gates mod clears the conversation and starts the next step in a fresh context, with a toast saying where the work went.
+- `engine handoff` command that validates every move into work (target skill and arguments) and composes the continuation, so nothing but the skill and its arguments crosses the clear.
+- Epic menu now opens with a banner for the phase that just concluded or paused, and offers to complete the epic once all work is done.
+- A specification that pauses on a gap it routed now hands off through the bridge as a pause, naming the sources it awaits.
+- Migrations can hand back a notice for the person, shown in the migration summary at `/workflow-start`.
+
+🔧 Changed
+- Plan mode is gone from the workflows — a conclusion rolls straight on to the next phase with no approval dialog to dismiss.
+- Without the mod, handoffs fall back to invoking the next skill in the same conversation.
+- Pausing from research, discussion or an experiment spawn now first checks for background agents still running and offers to wait, as a conclusion does.
+- Closing recaps now appear above the conclusion gate, so you read them while the gate waits.
+- The gate-rows mod draws a handoff's continuation as a line naming where the work went (e.g. `→ Discussion · note-window`).
+- `none` is now a reserved work-unit name.
+- The framework loads less at every session start — the "how it works" answering rules load only when a question arrives, and the devil's-advocate guidance loads only in research, discussion and discovery.
+
+🗑️ Removed
+- The `showClearContextOnPlanAccept` project setting — a new migration removes it from `.claude/settings.json` and tells you if your project had it committed.
+
 ## [0.8.9] - 2026-10-02
 
 🔧 Changed
