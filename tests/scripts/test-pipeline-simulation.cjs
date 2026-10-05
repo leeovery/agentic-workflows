@@ -255,15 +255,23 @@ const IN_PLACE_SKILLS = [
   'workflow-help',
 ];
 
-// A route the engine builds into a work skill hands off, so the handoff
-// table must take it as it stands — a route and the table can never drift.
+// A route the engine builds into a work skill hands off as it stands, so the
+// handoff table must take it whole and carry it unchanged — a route and the
+// table can never drift.
 /** @param {string} dir @param {{route?: string|null}[]} keys @param {string} label */
 function auditRoutes(dir, keys, label) {
   for (const { route } of keys) {
     if (!route) continue;
-    const [skill, ...args] = route.slice(1).split(' ');
+    const [named, ...args] = shellWords(route);
+    const skill = named.slice(1);
     if (HANDOFF_TARGETS.includes(skill)) {
-      assert.doesNotThrow(() => resolveHandoff(dir, skill, args), `[${label}] the handoff refuses ${route}`);
+      let text;
+      try {
+        ({ text } = resolveHandoff(dir, named, args));
+      } catch (err) {
+        assert.fail(`[${label}] the handoff refuses ${route}: ${err.message}`);
+      }
+      assert.strictEqual(text, `Invoke \`${route}\`.`, `[${label}] the handoff does not carry ${route} as it stands`);
     } else {
       assert.ok(IN_PLACE_SKILLS.includes(skill), `[${label}] ${route} reaches neither a handoff target nor a menu`);
     }
@@ -550,22 +558,32 @@ function label(sim, wu, phase, topic) {
   assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
 }
 
-// A move into work, as the prose makes it through handing-off.md: the engine
-// checks the skill and its arguments against the handoff table and names
-// where the work goes. Unannounced, the session invokes the skill in place;
-// announced, the gate mod carries the continuation the engine composed.
-/** @param {Sim} sim @param {string} skill @param {...string} args */
-function handoff(sim, skill, ...args) {
-  const argv = ['handoff', skill, ...args];
+// The words a shell makes of a route written into a command: split at spaces,
+// a double-quoted span one word without its quotes.
+/** @param {string} route @returns {string[]} */
+function shellWords(route) {
+  return [...route.matchAll(/"([^"]*)"|\S+/g)].map((m) => m[1] ?? m[0]);
+}
+
+// A move into work, as the prose makes it through handing-off.md: the route —
+// the skill's slash command and its arguments — passes to the engine as it
+// stands, which checks it against the handoff table and names where the work
+// goes. Unannounced, the session invokes the DATA's skill with its args in
+// place; announced, the gate mod carries the continuation the engine composed.
+// Either way what is invoked is the route itself.
+/** @param {Sim} sim @param {string} route */
+function handoff(sim, route) {
+  const argv = ['handoff', ...shellWords(route)];
   const inline = sim.engine(argv);
-  assert.strictEqual(inline.code, 0, `[handoff ${args.join(' ')}] refused\n${inline.stderr}`);
+  assert.strictEqual(inline.code, 0, `[handoff ${route}] refused\n${inline.stderr}`);
   assert.match(inline.stdout, /^handoff: inline$/m);
-  assert.match(inline.stdout, new RegExp(`^skill: ${skill}$`, 'm'));
   assert.ok(!inline.stdout.includes('=== HANDOFF'), 'the payload is the mod\'s, present only announced');
+  const data = (/** @type {string} */ field) => inline.stdout.match(new RegExp(`^${field}: (.*)$`, 'm'))?.[1];
+  assert.strictEqual([`/${data('skill')}`, data('args')].filter(Boolean).join(' '), route, 'invoked in place, the skill takes the route as it stands');
   const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, WORKFLOWS_HANDOFF: '1' } });
   assert.match(carried.stdout, /^handoff: mod$/m);
   const payload = JSON.parse(carried.stdout.split(/^=== HANDOFF .*$/m)[1].trim());
-  assert.strictEqual(payload.text, `Invoke \`/${[skill, ...args].join(' ')}\`.`, 'nothing travels but the skill and its arguments');
+  assert.strictEqual(payload.text, `Invoke \`${route}\`.`, 'nothing travels but the route');
   return payload;
 }
 
@@ -574,7 +592,7 @@ function handoff(sim, skill, ...args) {
 /** @param {Sim} sim @param {string} wu @param {string} phase */
 function bridgeTo(sim, wu, phase) {
   assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, phase, `the bridge derives ${phase}`);
-  handoff(sim, `workflow-${phase}-entry`, sim.manifest(wu).work_type, wu);
+  handoff(sim, `/workflow-${phase}-entry ${sim.manifest(wu).work_type} ${wu}`);
 }
 
 // An epic phase's conclusion, pause or in-session exit hands off to the epic
@@ -584,7 +602,7 @@ function bridgeTo(sim, wu, phase) {
 // all done. Answers the banner rendered, empty when none is.
 /** @param {Sim} sim @param {string} wu @param {string} phase @param {string} [outcome] @returns {string} */
 function arriveAtEpicMenu(sim, wu, phase, outcome = 'completed') {
-  handoff(sim, 'workflow-continue-epic', wu, phase, outcome);
+  handoff(sim, `/workflow-continue-epic ${wu} ${phase} ${outcome}`);
   arrive(sim, wu);
   const banner = { completed: 'phase-completed', paused: 'phase-paused' }[outcome];
   const shown = banner ? sim.render([banner, wu, '--phase', phase], { expect: 'content' }) : '';
@@ -606,6 +624,57 @@ function pauseCheck(sim, wu, phase, topic) {
       /\*\*`◆ Wait, or pause now\?`\*\*[\s\S]*Wait for results before pausing[\s\S]*Pause now/);
   }
   return running;
+}
+
+// A menu's pick into work hands off along the route the menu built for it, as
+// it stands.
+/** @param {Sim} sim @param {{action: string, topic?: string, route?: string|null}[]} keys @param {string} action @param {string} [topic] */
+function pickRoute(sim, keys, action, topic) {
+  const key = keys.find((k) => k.action === action && (topic === undefined || k.topic === topic));
+  assert.ok(key && key.route, `the menu routes ${action}${topic === undefined ? '' : ` on ${topic}`} into work`);
+  return handoff(sim, key.route);
+}
+
+/** The epic menu's pick into work. @param {Sim} sim @param {string} wu @param {string} action @param {string} [topic] */
+function epicPick(sim, wu, action, topic) {
+  return pickRoute(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys, action, topic);
+}
+
+/** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} type @param {string} wu @param {string} action */
+function linearPick(sim, type, wu, action) {
+  const gateway = GATEWAYS[type.replace('-', '')];
+  const unit = LIB.detail.unitsOf(LIB.detail.typeConfig(type), gateway.discover(sim.dir)).find((u) => u.name === wu);
+  return pickRoute(sim, LIB.project.workUnitMenu(type, unit).keys, action);
+}
+
+/** The start menu, or the empty state's, as the project stands. @param {Sim} sim */
+function startKeys(sim) {
+  const result = GATEWAYS.start.discover(sim.dir);
+  return (result.state.has_any_work ? startMenu(result) : LIB.project.emptyMenu(result)).keys;
+}
+
+// route-to-discovery: new work goes to discovery with its work type's
+// pre-seed, no work unit, and its inbox seeds quoted — `none` where it has none.
+/** @param {Sim} sim @param {string} workType @param {string} seeds */
+function toDiscovery(sim, workType, seeds) {
+  return handoff(sim, `/workflow-discovery ${workType} none "${seeds}"`);
+}
+
+// The start menu's new-work row builds no route — it goes to discovery with
+// the row's pre-seed and no seeds.
+/** @param {Sim} sim @param {string} preSeed */
+function startNew(sim, preSeed) {
+  assert.ok(startKeys(sim).some((k) => k.action === 'start_new' && k.pre_seed === preSeed), `the start menu offers new ${preSeed} work`);
+  return toDiscovery(sim, preSeed, 'none');
+}
+
+// The working set's w/work (inbox-working-set F): a set of one type goes to
+// discovery, the type its pre-seed and the items' inbox paths its seeds.
+/** @param {Sim} sim @param {string[]} paths */
+function workTheSet(sim, paths) {
+  const set = LIB.detail.workingSetDetail(sim.dir, paths);
+  assert.ok(set.uniform, 'only a set of one type is worked');
+  return toDiscovery(sim, set.set_type, set.items.map((/** @type {{path: string}} */ item) => item.path).join(','));
 }
 
 function walkToLiveImplementation(sim, wu, topic) {
@@ -876,6 +945,9 @@ describe('pipeline simulation', () => {
 
   it('feature: discovery → discussion → spec → plan → implement → review → complete', () => {
     const wu = 'pay';
+    // The start menu's new-feature pick hands the work to discovery, whose
+    // confirm creates the unit.
+    startNew(sim, 'feature');
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Payments feature', '--session-log-file', log]);
     // Discovery's single-phase endpoint (first-phase-routing A): which of
@@ -889,7 +961,7 @@ describe('pipeline simulation', () => {
     // empty and the continuation goes straight to the handoff.
     sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
     // Discovery's conclusion hands the work to the first phase it settled.
-    handoff(sim, 'workflow-discussion-entry', 'feature', wu);
+    handoff(sim, `/workflow-discussion-entry feature ${wu}`);
 
     // First phase: discussion (topic = work unit for single-topic types).
     // The entry fetches the research gate before any status read.
@@ -942,6 +1014,24 @@ describe('pipeline simulation', () => {
     assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
   });
 
+  it('start: a working set of inbox ideas hands discovery its seeds, which the work-type commit lands', () => {
+    const ideas = [
+      sim.write('.workflows/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
+      sim.write('.workflows/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
+    ];
+    assert.ok(startKeys(sim).some((k) => k.action === 'view_inbox'), 'the start menu offers the inbox');
+    // Ideas carry no work type, so discovery decides it.
+    const route = `/workflow-discovery none none "${ideas.join(',')}"`;
+    assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);
+    const wu = 'saved-filters';
+    const created = sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved search filters',
+      '--session-log-file', sessionLog(sim, wu), ...ideas.flatMap((seed) => ['--seed', seed])]);
+    assert.deepStrictEqual(created.seeds.map((seed) => seed.source), ['inbox:idea', 'inbox:idea']);
+    // The commit moved the seeds out of the inbox, and the handoff checks each
+    // is still there — so it can only come first.
+    sim.refuses(['handoff', ...shellWords(route)], /inbox file not found/);
+  });
+
   it('feature: research parked beneath the live discussion routes the continue to the research and holds the discussion shut', () => {
     const wu = 'ledger';
     const log = sessionLog(sim, wu);
@@ -969,6 +1059,8 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
       /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(parked — not yet started\)\.\n$/);
+    // The feature's continue menu proceeds to the research, handing off to it.
+    assert.strictEqual(linearPick(sim, 'feature', wu, 'continue').line, '→ Research · ledger');
     sim.run(['topic', 'start', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
@@ -1077,7 +1169,8 @@ describe('pipeline simulation', () => {
     sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /rerouted concerns are parked in its research triage/);
 
     // The research lands — the discussion row returns, the gate clears, and
-    // the discussion is born.
+    // the discussion is born; each row the menu offers hands off to its entry.
+    epicPick(sim, wu, 'start_research', 'alpha');
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
@@ -1086,6 +1179,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     assert.strictEqual(JSON.stringify(sim.manifest(wu).phases.research.items.alpha.threads), registerBefore, 'completion leaves the register whole');
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['start_discussion_after_research']);
+    epicPick(sim, wu, 'start_discussion_after_research', 'alpha');
     sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
 
@@ -1187,7 +1281,7 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'updated', '2026-07-23']);
     sim.run(['commit', wu, '-m', `review(${wu}): re-open implementation tracking`, '--topic', `review/${wu}`]);
     assert.strictEqual(sim.read(['manifest', 'get', wu, 'work_type']), 'feature');
-    const carried = handoff(sim, 'workflow-implementation-entry', 'feature', wu, wu);
+    const carried = handoff(sim, `/workflow-implementation-entry feature ${wu} ${wu}`);
     assert.strictEqual(carried.line, `→ Implementation · ${wu}`);
     assert.strictEqual(sim.manifest(wu).phases.review.items[wu].status, 'in-progress', 'the review stays open for the next cycle');
   });
@@ -1270,7 +1364,7 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
-    handoff(sim, 'workflow-continue-epic', wu, 'discussion', 'completed');
+    handoff(sim, `/workflow-continue-epic ${wu} discussion completed`);
     arrive(sim, wu);
     assert.deepStrictEqual(toRecover().map((line) => line.match(/^ {2}- \S+ (\S+) /)[1]), ['beta']);
     // The stub has no file to draft from: the batch, then the unsourced gate,
@@ -1288,10 +1382,11 @@ describe('pipeline simulation', () => {
 
   it('bugfix: investigation → spec (source pinned to topic) → delivery → complete', async () => {
     const wu = 'crash-fix';
+    startNew(sim, 'bugfix');
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'bugfix', '--description', 'Fix the crash', '--session-log-file', log]);
 
-    handoff(sim, 'workflow-investigation-entry', 'bugfix', wu);
+    handoff(sim, `/workflow-investigation-entry bugfix ${wu}`);
     label(sim, wu, 'investigation', wu);
     sim.run(['topic', 'start', wu, 'investigation', wu]);
     sim.write(`.workflows/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
@@ -1314,6 +1409,9 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `investigation(${wu}): root cause`, '--topic', `investigation/${wu}`]);
     sim.render(['conclude-gate', `${wu}.investigation.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
+    // A session that stops here resumes from the bugfix's continue menu, which
+    // hands off where the bridge does.
+    assert.strictEqual(linearPick(sim, 'bugfix', wu, 'continue').line, `→ Specification · ${wu}`);
 
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
@@ -1380,12 +1478,13 @@ describe('pipeline simulation', () => {
 
   it('quick-fix: scoping registers spec+plan in one pass → verification → review → complete', () => {
     const wu = 'typo';
+    startNew(sim, 'quick-fix');
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Rename a flag', '--session-log-file', log]);
 
     // Scoping (write-tasks): the spec commits BEFORE the baseline is captured,
     // so spec_commit always names a commit containing the specification.
-    handoff(sim, 'workflow-scoping-entry', 'quick-fix', wu);
+    handoff(sim, `/workflow-scoping-entry quick-fix ${wu}`);
     label(sim, wu, 'scoping', wu);
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
     sim.run(['topic', 'start', wu, 'specification', wu]);
@@ -1414,6 +1513,9 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'scoping', wu]);
     sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
     sim.render(['phase-completed', wu, '--phase', 'scoping', '--paths'], { expect: 'content' });
+    // A session that stops here resumes from the quick-fix's continue menu,
+    // which hands off where the bridge does.
+    assert.strictEqual(linearPick(sim, 'quick-fix', wu, 'continue').line, `→ Implementation · ${wu}`);
 
     // Implementation (verification workflow) + review — task init creates.
     bridgeTo(sim, wu, 'implementation');
@@ -1463,7 +1565,7 @@ describe('pipeline simulation', () => {
       { read: 'The shape is clear and the questions are trade-offs — I\'d start with discussion.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
-    handoff(sim, 'workflow-discussion-entry', 'feature', wu);
+    handoff(sim, `/workflow-discussion-entry feature ${wu}`);
 
     // The promoted feature runs its first phase normally.
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -1473,6 +1575,7 @@ describe('pipeline simulation', () => {
 
   it('cross-cutting: the discussion→specification hop offers proceed or revisit, never the skip', () => {
     const wu = 'error-shape';
+    startNew(sim, 'cross-cutting');
     sim.run(['workunit', 'create', wu, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, wu)]);
     // Cross-cutting takes the same first-phase choice as a feature; the
     // fixed-first-phase types never reach the gate at all.
@@ -1480,7 +1583,7 @@ describe('pipeline simulation', () => {
       { read: 'Discussion is the usual spine here — research is optional.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`r\/research`\*\* +→ Explore feasibility and options first, no/);
-    handoff(sim, 'workflow-discussion-entry', 'cross-cutting', wu);
+    handoff(sim, `/workflow-discussion-entry cross-cutting ${wu}`);
     label(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -1494,6 +1597,9 @@ describe('pipeline simulation', () => {
     assert.match(hop, /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     assert.ok(!hop.includes('d/done'), hop);
     sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
+    // A session that stops here resumes from the cross-cutting continue menu,
+    // which hands off where the bridge does.
+    assert.strictEqual(linearPick(sim, 'cross-cutting', wu, 'continue').line, `→ Specification · ${wu}`);
     bridgeTo(sim, wu, 'specification');
   });
 
@@ -1539,6 +1645,7 @@ describe('pipeline simulation', () => {
 
   it('epic: map lifecycle, per-topic phases, grouping supersession, cancel/reactivate', () => {
     const wu = 'overhaul';
+    startNew(sim, 'epic');
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Payments overhaul', '--session-log-file', log]);
 
@@ -1571,14 +1678,23 @@ describe('pipeline simulation', () => {
     // The discovery session's cadence commit: its own paths only — a live
     // research or discussion session's topic file is never swept.
     sim.run(['commit', wu, '--discovery', '-m', `discovery(${wu}): shape the map`]);
+    // A session interrupted here resumes from the epic menu, whose discovery
+    // row hands the epic back to discovery.
+    assert.strictEqual(epicPick(sim, wu, 'continue_discovery').line, `→ Discovery · ${wu}`);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): synthesise 3 topics`]);
     // The discovery hand-off lands on the epic menu — the bridge's discovery
     // continuation into workflow-continue-epic, no banner — which labels the
     // work unit alone on arrival.
-    handoff(sim, 'workflow-continue-epic', wu);
+    handoff(sim, `/workflow-continue-epic ${wu}`);
     arrive(sim, wu);
+    // Its d and r doors hand off with the epic alone: the entry asks for the
+    // topic.
+    assert.strictEqual(epicPick(sim, wu, 'new_discussion').args, `epic ${wu}`);
+    assert.strictEqual(epicPick(sim, wu, 'new_research').args, `epic ${wu}`);
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
+    // Each menu pick into a topic's phase hands off to that phase's entry.
+    assert.strictEqual(epicPick(sim, wu, 'start_research', 'alpha').args, `epic ${wu} alpha`);
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
     // The thread register — what alpha set out to learn. Every verb is a
     // locked manifest write with no commit; the register renders as a lens
@@ -1636,6 +1752,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.alpha`, 'reconcile_needed']), 'true');
     sim.run(['manifest', 'delete', `${wu}.research.alpha`, 'reconcile_needed']);
 
+    epicPick(sim, wu, 'start_discussion_after_research', 'alpha');
     sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
 
@@ -1662,6 +1779,7 @@ describe('pipeline simulation', () => {
 
     // Beta discussed to a decided map; gamma-prime cancelled mid-flight and
     // reactivated later.
+    epicPick(sim, wu, 'start_discussion', 'beta');
     sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
     // A signal over a map with nothing on it takes the map gate's empty
@@ -2081,7 +2199,9 @@ describe('pipeline simulation', () => {
     // Grouping: alpha and beta unify into one spec; sources gate, then the
     // per-topic spec items are superseded by the unified one. The analysis
     // asks first (display-analyze A), and the map's provenance recovery has
-    // its own two stops (summary-backfill B and D).
+    // its own two stops (summary-backfill B and D). The menu's specification
+    // row hands off to the entry with no topic.
+    assert.strictEqual(epicPick(sim, wu, 'analyze_discussions').args, `epic ${wu}`);
     sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
     sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
@@ -2153,6 +2273,7 @@ describe('pipeline simulation', () => {
     // The soft gate is engine-rendered and empty when nothing sits ahead —
     // unified is the whole live set, so planning it raises no concern.
     sim.render(['epic-soft-gate', wu, '--action', 'start_planning', '--topic', 'unified'], { expect: 'empty' });
+    epicPick(sim, wu, 'start_planning', 'unified');
 
     // A dep-blocked plan loses its implementation row; the u/unblock option
     // and the unblock-menu sub-view are the escape hatch, and marking the
@@ -2531,10 +2652,11 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'push', `${wu}.implementation.alpha`, 'consolidated_phases', '1']);
     sim.run(['task', 'complete', wu, 'alpha', 'alpha-1-1', '--phase', '1', '--phase-complete']);
     sim.run(['topic', 'complete', wu, 'implementation', 'alpha']);
-    // Short of the last review the menu shows the banner and no offer.
-    assert.match(sim.render(['phase-completed', wu, '--phase', 'implementation'], { expect: 'content' }),
-      /Implementation completed for "Wrapup"\./);
+    // Short of the last review the menu shows the banner and no offer, and
+    // its review row hands off to the review entry.
+    assert.match(arriveAtEpicMenu(sim, wu, 'implementation'), /Implementation completed for "Wrapup"\./);
     assert.match(EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /^all_done: false$/m);
+    assert.strictEqual(epicPick(sim, wu, 'start_review', 'alpha').line, '→ Review · alpha');
     sim.run(['topic', 'start', wu, 'review', 'alpha']);
     sim.run(['topic', 'complete', wu, 'review', 'alpha']);
 
@@ -3121,7 +3243,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' }),
       /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     assert.match(sim.render(['revisit-phases', wu], { expect: 'content' }), /\*\*`1`\*\* +→ Discussion — \*completed\*/);
-    handoff(sim, 'workflow-discussion-entry', 'feature', wu);
+    handoff(sim, `/workflow-discussion-entry feature ${wu}`);
     sim.refuses(['topic', 'start', wu, 'discussion', wu], /reopen/);
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
     sim.render(['phase-note', `${wu}.discussion.${wu}`, '--verb', 'Reopening'], { expect: 'content' });
@@ -3397,6 +3519,9 @@ describe('pipeline simulation', () => {
     sim.run(['roadmap', 'session', 'open', '--session-log-file', genesis]);
     sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
     sim.run(['roadmap', 'session', 'close', '-m', 'roadmap: close session 001']);
+    // The start menu's roadmap row hands off to the home, which labels itself.
+    assert.strictEqual(pickRoute(sim, startKeys(sim), 'open_roadmap').args, 'open');
+    arrive(sim, 'roadmap');
 
     // The home's converse over no open session: nothing is predicted. The
     // user places an item themselves — a direct add, an op recorded under
@@ -4396,6 +4521,8 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'archived-delete-gate', '--path', '.workflows/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
     sim.refuses(['render', 'archived-actions', '--path', '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
+    // The offer's yes hands off to the assessment, which labels itself.
+    assert.strictEqual(handoff(sim, '/workflow-baseline').line, '→ Baseline');
     arrive(sim, 'baseline');
     sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);
     const verdict = sim.run(['baseline', 'record', 'native']);

@@ -1,8 +1,6 @@
 The prose should have taken this path:
 
-1. the start screen is not empty despite there being no work units — the
-   roadmap section stands in, and the `r/roadmap` row routes into the
-   roadmap skill's open mode
+1. the roadmap skill opens in its open mode
 2. the home snapshot shows the map; the pull renders the working set
    with only the waiting items, and the selection resolves through its
    numbered table

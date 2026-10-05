@@ -1,0 +1,43 @@
+{
+  "origin": "capture-to-pipeline: two promoted ideas arrive at discovery as seeds, are read and sketched as one, shaped into one feature, and land as the work unit's seeds at the work-type commit",
+  "entry": "workflow-discovery",
+  "world": "claims",
+  "files": [
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-discovery/SKILL.md",
+    "skills/workflow-discovery/references/detection-core.md",
+    "skills/workflow-discovery/references/opener-pattern.md",
+    "skills/workflow-discovery/references/shape-and-confirm.md",
+    "skills/workflow-discovery/references/confirm-trigger.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md"
+  ],
+  "answers": [
+    "Exactly that — it's one feature. Saved filters on the orders list: a user names a combination of status, date range, and customer, it appears in a dropdown above the list, and they can mark one saved filter as their default view on login. Per-user, not shared, and nothing else about the orders list changes. Call it saved-filters. No files beyond what you've read.",
+    "y — that's the right shape, set it up"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workunit create saved-filters feature",
+      "--seed .workflows/.inbox/ideas/2026-01-01--saved-search-filters.md",
+      "--seed .workflows/.inbox/ideas/2026-01-01--filter-default-view.md"
+    ],
+    "calls_exclude": [
+      "render name-gate",
+      "inbox archive",
+      "inbox restore",
+      "inbox delete",
+      "discovery-map",
+      "discovery-session close",
+      "topic start",
+      "--import"
+    ]
+  }
+}

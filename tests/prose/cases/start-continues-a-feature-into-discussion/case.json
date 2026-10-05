@@ -1,7 +1,6 @@
 {
-  "origin": "restores the continue-* coverage retired when mid-session entries were outlawed — the whole spine from the dashboard through feature navigation and discussion entry to the phase's first commit",
+  "origin": "the continue-* spine from the dashboard through feature navigation — validation, the straight-through proceed with nothing to revisit — to the handoff into the discussion entry; the entry's own new arm and the discussion's initialisation are discussion-runs-to-convergence's",
   "entry": "workflow-start",
-  "world": "claims",
   "files": [
     "skills/workflow-start/SKILL.md",
     "skills/workflow-shared/references/framework.md",
@@ -15,32 +14,17 @@
     "skills/workflow-continue-feature/SKILL.md",
     "skills/workflow-continue-feature/references/validate-selection.md",
     "skills/workflow-continue-feature/references/feature-display-and-menu.md",
-    "skills/workflow-discussion-entry/SKILL.md",
-    "skills/workflow-discussion-entry/references/validate-research.md",
-    "skills/workflow-shared/references/ensure-discovery-item.md",
-    "skills/workflow-discussion-entry/references/invoke-skill.md",
-    "skills/workflow-discussion-process/SKILL.md",
-    "skills/workflow-discussion-process/references/initialize-discussion.md",
-    "skills/workflow-shared/references/read-prior-record.md",
-    "skills/workflow-shared/references/seed-context.md",
-    "skills/workflow-shared/references/read-brief-context.md",
-    "skills/workflow-discussion-process/references/template.md"
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "1 — continue the Pay feature"
   ],
   "invariants": {
-    "engine_before_write": true,
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
       "workflow-continue-feature/scripts/gateway.cjs",
-      "manifest get pay.discussion.pay status",
-      "manifest get pay description",
-      "manifest get pay.research.pay status",
-      "topic start pay discussion pay",
-      "discussion-map add pay pay",
-      "discussion(pay): initialize pay discussion"
+      "handoff /workflow-discussion-entry feature pay"
     ],
     "calls_in_order": [
       "engine.cjs boot",
@@ -48,18 +32,15 @@
       "workflow-continue-feature/scripts/gateway.cjs",
       "session label pay",
       "workflow-continue-feature/scripts/gateway.cjs view pay",
-      "manifest get pay.discussion.pay status",
-      "topic start pay discussion pay",
-      "write:.workflows/pay/discussion/pay.md",
-      "discussion-map add pay pay",
-      "discussion(pay): initialize pay discussion"
+      "handoff /workflow-discussion-entry feature pay"
     ],
     "calls_exclude": [
-      "topic complete",
-      "topic reopen",
-      "discovery-map add",
+      "render entry-gate",
+      "manifest get pay.discussion",
+      "topic start",
+      "discussion-map",
       "manifest set",
-      "engine.cjs knowledge index"
+      "engine.cjs commit"
     ]
   }
 }

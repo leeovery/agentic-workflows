@@ -134,9 +134,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render absorb-continuatio
 
 #### If user chose `c/continue`
 
-Invoke the `/workflow-continue-epic` skill.
+Invoke `/workflow-continue-epic {target_epic}`.
 
-**STOP.** Do not proceed — terminal condition.
+This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 
 #### If user chose `b/back`
 

@@ -5,3 +5,6 @@ horizon, loyalty in `v1`. No work units exist; nothing has ever been
 pulled into delivery.
 
 The user is back, ready to commit a first slice to building.
+
+They picked the start menu's `r/roadmap` row, and the work was handed to
+the roadmap: the session opens cold there in its open mode.

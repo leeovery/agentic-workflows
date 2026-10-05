@@ -1,10 +1,8 @@
 The prose should have taken this path:
 
-1. initialisation runs the boot pipeline and the start screen renders
-   the active work — the `launch` epic — with the `r/roadmap` row; the
-   first answer routes into the roadmap skill's open mode
+1. the roadmap skill opens in its open mode
 2. the roadmap home renders from its snapshot, `mvp` showing ordering
-   in delivery beside its two waiting items; the second answer resolves
+   in delivery beside its two waiting items; the first answer resolves
    to the converse action through the home's ACTIONS entry
 3. a fresh product session opens — no session was left open — and
    the user places gift cards in `mvp` themselves: a direct add, no

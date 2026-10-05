@@ -1,9 +1,8 @@
 {
   "origin": "discovery — the universal first phase, walked to its durability boundary: the work-type commit, where a work unit first exists on disk",
-  "entry": "workflow-start",
+  "entry": "workflow-discovery",
   "world": "claims",
   "files": [
-    "skills/workflow-start/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,8 +10,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/answering-how-it-works.md",
-    "skills/workflow-start/references/empty-state.md",
-    "skills/workflow-start/references/route-to-discovery.md",
     "skills/workflow-discovery/SKILL.md",
     "skills/workflow-discovery/references/opener-pattern.md",
     "skills/workflow-discovery/references/shape-and-confirm.md",
@@ -22,7 +19,6 @@
     "skills/workflow-discovery/references/detection-core.md"
   ],
   "answers": [
-    "f — start a new feature",
     "Saved search filters on the orders list. A user picks the filters they use often — status, date range, customer — names the combination, and it appears in a dropdown above the list so they can apply it in one click. Filters are per-user, not shared. Nothing else about the orders list changes. Call it search-filters.",
     "y — that's the right shape, set it up"
   ],

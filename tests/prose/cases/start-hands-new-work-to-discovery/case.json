@@ -1,0 +1,38 @@
+{
+  "origin": "the empty state's new-work rows hand the work to discovery with the row's pre-seed, no work unit and no seeds — and the words typed beside the pick never travel: discovery's opener asks for them",
+  "entry": "workflow-start",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/answering-how-it-works.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/route-to-discovery.md",
+    "skills/workflow-shared/references/handing-off.md"
+  ],
+  "answers": [
+    "f — a feature: saved search filters on the orders list, per-user, picked from a dropdown"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs view",
+      "handoff /workflow-discovery feature none none"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs view",
+      "handoff /workflow-discovery feature none none"
+    ],
+    "calls_exclude": [
+      "saved",
+      "workflow-discovery/scripts/gateway.cjs",
+      "workunit create",
+      "engine.cjs commit"
+    ]
+  }
+}

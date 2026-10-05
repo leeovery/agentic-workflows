@@ -1,9 +1,8 @@
 {
   "origin": "the commitment point had no coverage — a partial pull from a harvested roadmap births an epic already fenced, with the remainder visible and discovery opening as a continuation rather than an interrupted-session resume",
-  "entry": "workflow-start",
+  "entry": "workflow-roadmap",
   "world": "claims",
   "files": [
-    "skills/workflow-start/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,7 +10,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/answering-how-it-works.md",
-    "skills/workflow-start/references/empty-state.md",
     "skills/workflow-roadmap/SKILL.md",
     "skills/workflow-roadmap/references/roadmap-guidelines.md",
     "skills/workflow-discovery/references/discovery-guidelines.md",
@@ -25,7 +23,6 @@
     "skills/workflow-discovery/references/continuity-load.md"
   ],
   "answers": [
-    "r — open the roadmap",
     "p — pull into delivery",
     "1, 2 — ordering and menu management",
     "y — shape it as an epic, and call it mvp"
@@ -34,7 +31,6 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "engine.cjs boot",
       "workflow-roadmap/scripts/gateway.cjs view",
       "workflow-roadmap/scripts/gateway.cjs pull-set",
       "workunit create mvp epic",
