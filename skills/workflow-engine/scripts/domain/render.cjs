@@ -54,13 +54,13 @@ const { revisitablePhases, revisitPhasesSection } = require('./projections/worku
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
-const { waitGate, phasePaused, researchWaitState } = require('./projections/wait.cjs');
-const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
+const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, OPEN_SOURCE_STATUSES, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
@@ -2109,21 +2109,35 @@ function perspectiveOffer(cwd, { dotpath, file }) {
   ));
 }
 
-// in-flight-agents-gate — the wait-or-conclude gate a session takes when
-// background agents are still running at conclusion. Research and discussion
-// both dispatch and both conclude, so the gate serves the pair. Served to the
-// epic and feature sessions alike: the shape is one gate, and the count is
-// the session's own (this session's dispatches, an earlier session's dead
-// rows already closed), so it rides as a scalar flag rather than being
+// in-flight-agents-gate — the wait-or-leave gate a session takes when
+// background agents are still running as it leaves. Research and discussion
+// both dispatch, and both leave by concluding or by pausing, so the gate
+// serves the pair; `--pause` words it for the pause. Served to the epic and
+// feature sessions alike: the shape is one gate, and the count is the
+// session's own (this session's dispatches, an earlier session's dead rows
+// already closed), so it rides as a scalar flag rather than being
 // re-derived. The opening line reports what is still running; the ask
-// beneath it is fixed.
+// beneath it is fixed per exit.
+
+const IN_FLIGHT_EXITS = {
+  conclude: {
+    question: 'Wait, or conclude now?',
+    wait: 'Wait for results before concluding',
+    proceed: 'Conclude now (results will persist in cache for reference)',
+  },
+  pause: {
+    question: 'Wait, or pause now?',
+    wait: 'Wait for results before pausing',
+    proceed: 'Pause now (results will persist in cache for the next session)',
+  },
+};
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, count?: string}} args
+ * @param {{dotpath: string, count?: string, pause?: string}} args
  * @returns {string}
  */
-function inFlightAgentsGate(cwd, { dotpath, count }) {
+function inFlightAgentsGate(cwd, { dotpath, count, pause }) {
   const { phase } = resolveAddress(cwd, dotpath, 'in-flight-agents-gate');
   if (phase !== 'research' && phase !== 'discussion') {
     throw new Error(`render in-flight-agents-gate: address must be <work_unit>.research|discussion.<topic>, got phase "${phase}"`);
@@ -2132,13 +2146,14 @@ function inFlightAgentsGate(cwd, { dotpath, count }) {
   if (!Number.isInteger(n) || n < 1) {
     throw new Error(`render in-flight-agents-gate: --count must be a positive integer, got "${count}"`);
   }
+  const exit = IN_FLIGHT_EXITS[pause ? 'pause' : 'conclude'];
   return section('MENU: in-flight agents gate', MENU_INSTRUCTION, menu(
     n === 1 ? 'There is still 1 background agent working.' : `There are still ${n} background agents working.`,
     [
-      cmdOption('w', 'wait', 'Wait for results before concluding'),
-      cmdOption('p', 'proceed', 'Conclude now (results will persist in cache for reference)'),
+      cmdOption('w', 'wait', exit.wait),
+      cmdOption('p', 'proceed', exit.proceed),
     ],
-    { question: 'Wait, or conclude now?' },
+    { question: exit.question },
   ));
 }
 
@@ -4066,8 +4081,9 @@ function requeueOffer(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// Bridge continuation surfaces — work-unit-level: pipeline completion
-// displays and the continuation gates the bridge presents between phases.
+// Pipeline continuation surfaces — work-unit-level: the completion and
+// pause banners, the gates the bridge presents between phases, and the epic
+// menu's completion offer.
 // Address-backed (work_type from the manifest); phases ride as flags.
 // ---------------------------------------------------------------------------
 
@@ -4116,11 +4132,12 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 }
 
 /**
- * The bridge's paused banner — `phase-completed`'s sibling for a phase
- * leaving on a wait. Derived, never told: the phase's in-progress items
- * holding waits, each named with what it awaits. A peer can land the wait
- * between the gate and the bridge, so no holder left renders the bare line
- * rather than refusing.
+ * The epic menu's paused banner — `phase-completed`'s sibling for a phase
+ * leaving on a pause. Derived, never told: the phase's in-progress items
+ * still awaiting something, each named with what it awaits — a conversation
+ * or a plan its waits, a specification the sources it routed a gap into. A
+ * peer can land what was awaited between the pause and the banner, so no
+ * holder left renders the bare line rather than refusing.
  * @param {string} cwd
  * @param {{dotpath: string, phase?: string}} args
  * @returns {string}
@@ -4128,13 +4145,17 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
 function phasePausedSurface(cwd, { dotpath, phase }) {
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'phase-paused');
   if (!isFilled(phase)) throw new Error('render phase-paused: --phase is required');
-  if (!WAITING_PHASES.includes(phase)) {
-    throw new Error(`render phase-paused: --phase must be <${WAITING_PHASES.join('|')}> — the phases that pause on a wait; got "${phase}"`);
+  if (!PAUSING_PHASES.includes(phase)) {
+    throw new Error(`render phase-paused: --phase must be <${PAUSING_PHASES.join('|')}> — the phases that pause; got "${phase}"`);
   }
+  /** @type {(topic: string) => string} */
+  const owed = phase === 'specification'
+    ? (topic) => owedSources(awaitedSources(manifest, topic), specSourcePhase(manifest.work_type))
+    : (topic) => owedWaits(waits(manifest, phase, topic), 'the topic');
   const holders = phaseItems(manifest, phase)
     .filter((item) => item.status === 'in-progress')
-    .map((item) => ({ topic: item.name, waits: waits(manifest, phase, item.name) }))
-    .filter((holder) => holder.waits.length > 0);
+    .map((item) => ({ topic: item.name, owed: owed(item.name) }))
+    .filter((holder) => holder.owed !== '');
   return phasePaused(phase, workUnit, holders);
 }
 
@@ -5524,14 +5545,19 @@ function shapeGateSurface(_cwd, _args) {
 }
 
 /**
- * workflow-start's migration summary — the payload is the session's summary
- * and, where the run updated files, its two counts.
+ * workflow-start's migration summary — the payload is the session's summary,
+ * the notices the run handed back for the person, and, where the run updated
+ * files, its two counts.
  * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function migrationsAppliedSurface(cwd, { file }) {
   if (!file) throw new Error('render migrations-applied: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'migrations-applied');
   if (!isFilled(p.summary)) throw new Error('render migrations-applied: "summary" must be a non-empty string');
+  const notices = p.notices ?? [];
+  if (!Array.isArray(notices) || !notices.every(isFilled)) {
+    throw new Error('render migrations-applied: "notices" must be a list of non-empty strings');
+  }
   const given = ['migrations', 'files'].filter((key) => p[key] !== undefined);
   if (given.length === 1) {
     throw new Error('render migrations-applied: "migrations" and "files" come together — both counts, or neither where the run updated no file');
@@ -5539,7 +5565,11 @@ function migrationsAppliedSurface(cwd, { file }) {
   for (const key of given) {
     if (!Number.isInteger(p[key]) || p[key] < 1) throw new Error(`render migrations-applied: "${key}" must be a positive integer`);
   }
-  return migrationsApplied({ summary: p.summary.trim(), counts: given.length ? { migrations: p.migrations, files: p.files } : null });
+  return migrationsApplied({
+    summary: p.summary.trim(),
+    notices: notices.map((notice) => notice.trim()),
+    counts: given.length ? { migrations: p.migrations, files: p.files } : null,
+  });
 }
 
 /** The epic synthesis' topic sort confirm. @param {string} _cwd @param {object} _args @returns {string} */

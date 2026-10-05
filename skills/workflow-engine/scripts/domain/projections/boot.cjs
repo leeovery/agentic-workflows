@@ -19,16 +19,18 @@ const WIZARD_COMMAND = `${ENGINE_COMMAND} knowledge setup`;
 
 /**
  * What the migrations did, above the confirm gate: the summary the session
- * wrote, then the run's counts — left out where the run updated no file and
- * only the verification fixed anything.
- * @param {{summary: string, counts: {migrations: number, files: number}|null}} applied
+ * wrote, each notice a migration handed back for the person, then the run's
+ * counts — left out where the run updated no file and only the verification
+ * fixed anything.
+ * @param {{summary: string, notices: string[], counts: {migrations: number, files: number}|null}} applied
  * @returns {string}
  */
-function migrationsApplied({ summary, counts }) {
+function migrationsApplied({ summary, notices, counts }) {
   return section('DISPLAY: migrations applied', CONTINUE_MARKDOWN_INSTRUCTION, [
     '**Migrations Applied**',
     '',
     summary,
+    ...notices.flatMap((notice) => ['', notice]),
     ...(counts ? ['', `${counts.migrations} migration(s), ${counts.files} file(s) updated.`] : []),
   ].join('\n'));
 }

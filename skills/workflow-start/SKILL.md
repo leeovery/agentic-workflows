@@ -63,15 +63,15 @@ Migrations must never half-run silently. Surface the reported error to the user.
 
 **STOP.** Do not proceed — terminal condition.
 
-#### If `migrations.changed` is `true` or `migrations.verify` is non-empty
+#### If `migrations.changed` is `true` or `migrations.verify` or `migrations.notices` is non-empty
 
-Files were updated, or a migration handed over checks its code could not perform. You MUST complete the steps below before proceeding.
+Files were updated, a migration handed over checks its code could not perform, or one handed back a notice for the person. You MUST complete the steps below before proceeding.
 
 1. **If `migrations.verify` is non-empty:** each entry is a migration that ran this boot. Its `info` says what the migration does in any project; its `verify` says what to check in this one. Perform each entry's checks with judgment against the actual files — the migration's code is exact-match and may have missed what it could not recognise — and fix what you find. Your fixes are migration changes: they join the diff, the summary, and the commit below.
 
 2. Run `git status --short -- .workflows .claude/settings.json .worktreeinclude .gitignore` and `git diff HEAD -- .workflows .claude/settings.json .worktreeinclude .gitignore` to see what changed — the paths the commit below takes. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
 
-   **If nothing changed** (the migrations skipped everything and verification found nothing to fix):
+   **If nothing changed and `migrations.notices` is empty** (the migrations skipped everything and verification found nothing to fix):
 
    > *Output the next fenced block as a text code block (```text fence):*
 
@@ -84,7 +84,7 @@ Files were updated, or a migration handed over checks its code could not perform
    → Proceed to **Step 0.2**.
 
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-4. Write the summary to `.workflows/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "migrations": {N}, "files": {M}}`, `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes — verification fixes only — leave both counts out. Fetch the summary and emit its section verbatim per its marker:
+4. Write the summary to `.workflows/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary and emit its section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render migrations-applied --file .workflows/.cache/migrations-applied.json

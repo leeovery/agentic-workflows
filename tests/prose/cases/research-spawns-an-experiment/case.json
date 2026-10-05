@@ -27,7 +27,8 @@
     "skills/workflow-research-process/references/deep-dive-agent.md",
     "skills/workflow-shared/references/rerouted-concerns.md",
     "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/experiment-spawn.md"
+    "skills/workflow-shared/references/experiment-spawn.md",
+    "skills/workflow-shared/references/in-flight-agents.md"
   ],
   "answers": [
     "c — continue"
@@ -45,7 +46,8 @@
       "spawn E1",
       "E1 problem statement",
       "experiment/synonym-handling --sweep",
-      "render experiment-spawn-gate search-relevance.research.synonym-handling --id E1"
+      "render experiment-spawn-gate search-relevance.research.synonym-handling --id E1",
+      "agent scan search-relevance research synonym-handling"
     ],
     "calls_in_order": [
       "manifest get search-relevance.research.synonym-handling status",
@@ -53,7 +55,8 @@
       "experiment create search-relevance synonym-handling",
       "spawn E1",
       "E1 problem statement",
-      "render experiment-spawn-gate search-relevance.research.synonym-handling"
+      "render experiment-spawn-gate search-relevance.research.synonym-handling",
+      "agent scan search-relevance research synonym-handling"
     ],
     "calls_exclude": [
       "experiment advance",
@@ -65,7 +68,8 @@
       "render research-conclude-gate",
       "topic triage",
       "--kind deep-dive",
-      "--kind review"
+      "--kind review",
+      "render in-flight-agents-gate"
     ]
   }
 }

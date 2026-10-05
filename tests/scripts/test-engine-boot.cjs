@@ -120,6 +120,10 @@ if (mode === 'update') {
   ran = 0;
   process.stdout.write('[SKIP] No changes needed\\n');
 }
+// STUB_MIGRATE_NOTICES is the notices payload line, emitted under its marker.
+if (process.env.STUB_MIGRATE_NOTICES) {
+  process.stdout.write('---MIGRATION_NOTICES---\\n' + process.env.STUB_MIGRATE_NOTICES + '\\n');
+}
 // The run report every completed run ends with — STUB_MIGRATE_REPORT
 // substitutes the payload line, STUB_MIGRATE_NO_REPORT plays a runner from
 // before the marker existed.
@@ -215,7 +219,7 @@ describe('engine boot', () => {
     const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
       ok: true,
-      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [] },
+      migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] },
       knowledge: 'ready',
       indexed: true,
       compacted: true,
@@ -472,6 +476,29 @@ describe('engine boot', () => {
     // The migration landed in the project's .workflows tree.
     assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/marker.md')));
     assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
+  });
+
+  it('carries the run\'s notices for the person, stripped from the report', () => {
+    const notices = [{ id: '067', description: 'a removal', notice: 'Removed a setting — add it back if you want it.' }];
+    const res = runEngine(stubbed, fix.project, ['boot'], {
+      STUB_MIGRATE_MODE: 'update',
+      STUB_MIGRATE_NOTICES: JSON.stringify(notices),
+    });
+
+    assert.deepStrictEqual(res.migrations.notices, notices);
+    assert.deepStrictEqual(res.migrations.verify, []);
+    assert.strictEqual(res.migrations.output, '1 migration(s) applied, 2 file(s) updated.');
+    assert.deepStrictEqual(res.warnings, []);
+  });
+
+  it('notices boot cannot read degrade to a warning and an empty list', () => {
+    for (const payload of ['not json', '{"notice": "not a list"}']) {
+      const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_NOTICES: payload });
+      assert.deepStrictEqual(res.migrations.notices, [], payload);
+      assert.strictEqual(res.warnings.length, 1, payload);
+      assert.match(res.warnings[0], /^migration notices unreadable: /, payload);
+      assert.ok(!res.migrations.output.includes('MIGRATION_NOTICES'), payload);
+    }
   });
 
   it('a migration touching config files commits none of them — the reviewed commit takes them with the rest', () => {
@@ -1683,6 +1710,10 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(typeof first.migrations.output, 'string');
     // No work-unit artifacts in the fixture — no migration hands over checks.
     assert.deepStrictEqual(first.migrations.verify, []);
+    // 034 sets the plan-mode key and 067 takes it out in the same run: the
+    // project never had it, so nothing is said.
+    assert.deepStrictEqual(first.migrations.notices, []);
+    assert.ok(!('showClearContextOnPlanAccept' in JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'))));
     // The trimmed report never leaks the prose stop-gate lines or the machine blocks.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
     assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
@@ -1812,6 +1843,32 @@ describe('engine boot verification addenda (real scripts)', () => {
     // Second boot: recorded — nothing re-fires.
     const second = runEngine(real, project, ['boot']);
     assert.deepStrictEqual(second.migrations.verify, []);
+  });
+});
+
+describe('engine boot migration notices (real scripts)', () => {
+  let root;
+  let project;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-notices-'));
+    project = setupProject(root);
+  });
+  afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+
+  it('tells the person of a plan-mode setting the project had committed, once', () => {
+    writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
+    git(project, ['commit', '-q', '-am', 'plan mode on']);
+
+    const res = runEngine(real, project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    assert.deepStrictEqual(res.migrations.notices.map((n) => n.id), ['067']);
+    assert.match(res.migrations.notices[0].notice, /^Removed `showClearContextOnPlanAccept` from `\.claude\/settings\.json`/);
+    assert.ok(!res.migrations.output.includes('MIGRATION_NOTICES'), 'plumbing stripped from the report');
+    assert.strictEqual(res.migrations.changed, true);
+    assert.ok(!('showClearContextOnPlanAccept' in JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'))));
+    // Second boot: recorded — nothing re-fires.
+    assert.deepStrictEqual(runEngine(real, project, ['boot']).migrations.notices, []);
   });
 });
 

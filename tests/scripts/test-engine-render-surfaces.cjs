@@ -694,7 +694,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     assert.match(out, /Work the research first — concluding it releases its wait; this discussion can conclude once the research lands\. The pause continues the work unit at what it waits on\./);
     assert.match(out, /◆ Pause here\?/);
     assert.match(unwrap(out), /\*\*`y\/yes`\*\*\s+→ Pause this discussion here and continue the work unit at the research/);
-    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause lands in plan mode, never on a menu — no epic vocabulary');
+    assert.ok(!out.includes('menu') && !out.includes('row'), 'a linear pause hands off to what it waits on, never to a menu — no epic vocabulary');
   });
 
   it('a feature\'s spawn gate pauses straight into the laboratory — no menu on a linear unit', () => {
@@ -738,7 +738,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   });
 });
 
-describe('phase-paused — the bridge banner for a conversation leaving on a wait', () => {
+describe('phase-paused — the epic menu\'s banner for a phase leaving on a pause', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
@@ -783,7 +783,7 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
       /^.*\nResearch paused for "Lab" — "Layout" awaits experiment evidence \(E1\)\.\n$/);
   });
 
-  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the bridge', () => {
+  it('nothing left awaited renders the bare line — a peer landed the wait between the gate and the banner', () => {
     writeManifest(dir, 'pay', {
       work_type: 'feature',
       phases: {
@@ -807,11 +807,64 @@ describe('phase-paused — the bridge banner for a conversation leaving on a wai
       `${HEADER}\nPlanning paused for "Pay" — awaiting its specification (back in progress).\n`);
   });
 
-  it('is loud on a missing phase, a phase that holds no wait, a dotted address, and an unknown unit', () => {
+  it('a paused specification names the sources it routed a gap into — reopened, or opened and parked', () => {
+    writeManifest(dir, 'fumi', {
+      phases: {
+        discussion: {
+          items: {
+            'note-window': { status: 'in-progress' },
+            sync: { status: 'triaged' },
+            layout: { status: 'completed' },
+          },
+        },
+        specification: {
+          items: {
+            windows: {
+              status: 'in-progress',
+              sources: {
+                'note-window': { status: 'stale' },
+                sync: { status: 'pending' },
+                layout: { status: 'pending' },
+              },
+            },
+            panes: { status: 'in-progress', sources: { layout: { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'fumi', phase: 'specification' }),
+      `${HEADER}\nSpecification paused for "Fumi" — "Windows" awaits the note-window and sync discussions.\n`,
+      'a source still to extract whose discussion has concluded is the specification\'s own work, never a wait');
+  });
+
+  it('a linear specification names the record it awaits by its phase — a bugfix\'s investigation', () => {
+    writeManifest(dir, 'crash-fix', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { items: { 'crash-fix': { status: 'in-progress' } } },
+        specification: { items: { 'crash-fix': { status: 'in-progress', sources: { 'crash-fix': { status: 'stale' } } } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'crash-fix', phase: 'specification' }),
+      `${HEADER}\nSpecification paused for "Crash Fix" — awaiting the crash-fix investigation.\n`);
+  });
+
+  it('a specification whose routed work has concluded renders the bare line', () => {
+    writeManifest(dir, 'fumi', {
+      phases: {
+        discussion: { items: { 'note-window': { status: 'completed' } } },
+        specification: { items: { windows: { status: 'in-progress', sources: { 'note-window': { status: 'stale' } } } } },
+      },
+    });
+    assert.strictEqual(renderSurface(dir, 'phase-paused', { dotpath: 'fumi', phase: 'specification' }),
+      `${HEADER}\nSpecification paused for "Fumi".\n`);
+  });
+
+  it('is loud on a missing phase, a phase that never pauses, a dotted address, and an unknown unit', () => {
     writeManifest(dir, 'pay', { phases: { discussion: { items: { pay: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay' }), /--phase is required/);
-    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'specification' }),
-      /--phase must be <research\|discussion\|planning> — the phases that pause on a wait; got "specification"/);
+    assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay', phase: 'implementation' }),
+      /--phase must be <research\|discussion\|planning\|specification> — the phases that pause; got "implementation"/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'pay.discussion.pay', phase: 'discussion' }), /must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'phase-paused', { dotpath: 'nope', phase: 'discussion' }), /work unit "nope" not found/);
   });
@@ -4218,7 +4271,7 @@ describe('selection projection', () => {
   });
 });
 
-describe('bridge continuation surfaces', () => {
+describe('pipeline continuation surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -5481,6 +5534,27 @@ describe('baseline surfaces', () => {
     assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a rerouted concern.\n'));
   });
 
+  it('migrations-applied: each notice the run handed back stands beneath the summary, above the counts', () => {
+    const told = writePayload(dir, '.workflows/.cache/migrations-applied.json', {
+      summary: 'Removed a setting the workflows no longer use.',
+      notices: ['Removed `showClearContextOnPlanAccept` — add it back if you want it. ', 'A second thing to know.'],
+      migrations: 1,
+      files: 1,
+    });
+    assert.ok(renderSurface(dir, 'migrations-applied', { file: told }).endsWith([
+      '**Migrations Applied**',
+      '',
+      'Removed a setting the workflows no longer use.',
+      '',
+      'Removed `showClearContextOnPlanAccept` — add it back if you want it.',
+      '',
+      'A second thing to know.',
+      '',
+      '1 migration(s), 1 file(s) updated.',
+      '',
+    ].join('\n')));
+  });
+
   it('migrations-applied: refuses a payload it cannot render truthfully', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', {}), /--file <payload\.json> is required/);
     const blank = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: ' ' });
@@ -5489,6 +5563,10 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: half }), /come together/);
     const zero = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: zero }), /"files" must be a positive integer/);
+    for (const notices of ['one notice', [''], [3]]) {
+      const bad = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', notices });
+      assert.throws(() => renderSurface(dir, 'migrations-applied', { file: bad }), /"notices" must be a list of non-empty strings/);
+    }
   });
 
   it('the boot gates are static menus: the migration confirm and the tmux label opt-in', () => {
@@ -6925,6 +7003,23 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
     const out = renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '2' });
     assert.match(out, /There are still 2 background agents working\./);
     assert.match(out, /\*\*`w\/wait`\*\*/);
+  });
+
+  it('a pause words the ask and both rows for the pause — the statement and the keys are the conclusion\'s', () => {
+    assert.strictEqual(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.discussion.checkout', count: '1', pause: '1' }), [
+      "=== MENU: in-flight agents gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      'There is still 1 background agent working.',
+      '',
+      '**`◆ Wait, or pause now?`**',
+      '',
+      '**`w/wait`**    → Wait for results before pausing',
+      '**`p/proceed`** → Pause now (results will persist in cache for the next',
+      `${NB(12)}session)`,
+      '',
+    ].join('\n'));
+    assert.match(renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '3', pause: '1' }),
+      /There are still 3 background agents working\.\n\n\*\*`◆ Wait, or pause now\?`\*\*/);
   });
 
   it('perspective-offer renders the tension statement then the ask byte-exactly — discussion only', () => {

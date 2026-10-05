@@ -280,7 +280,7 @@ Commands:
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render perspective-offer <wu.discussion.topic> --file <payload.json>
-  render in-flight-agents-gate <wu.research.topic> --count N
+  render in-flight-agents-gate <wu.research|discussion.topic> --count N [--pause]
   render review-findings-gate <wu.discussion.topic>
   render reroute-candidates <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
@@ -322,7 +322,7 @@ Commands:
   render author-task-gate <wu.planning.topic> --m N --total N --title STR
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
-  render phase-paused      <wu> --phase <research|discussion|planning>
+  render phase-paused      <wu> --phase <research|discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)
@@ -1944,7 +1944,7 @@ function runHandoff(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1961,6 +1961,7 @@ function runRender(call, argv) {
       if (flags.has('recommendations')) args.recommendations = '1';
       if (flags.has('dead-end')) args['dead-end'] = '1';
       if (flags.has('menu-only')) args['menu-only'] = '1';
+      if (flags.has('pause')) args.pause = '1';
       respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {
       failJson(call, err);

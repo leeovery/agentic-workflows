@@ -30,9 +30,11 @@
 //     migration does, project-agnostic) and a `run()` return of
 //     `{ verify: string }` (what to check in this project — returned on skip
 //     paths too, where code may have silently missed what it couldn't
-//     recognise). Addenda from migrations executed this run are emitted as one
-//     JSON line under the VERIFY_ADDENDA marker for boot to hand to the
-//     calling flow's judgment pass. Never re-emitted for recorded migrations.
+//     recognise). Optional notice: a `run()` return of `{ notice: string }` —
+//     a sentence the person is told. Addenda and notices from migrations
+//     executed this run are each emitted as one JSON line under their marker
+//     (VERIFY_ADDENDA, MIGRATION_NOTICES) for boot to hand to the calling
+//     flow. Never re-emitted for recorded migrations.
 //
 // The bash binary used for `*.sh` migrations is `bash` on PATH, overridable via
 // WORKFLOWS_MIGRATE_BASH (a test seam for pinning stock /bin/bash 3.2).
@@ -49,14 +51,18 @@ const MIGRATIONS_DIR = path.join(SCRIPT_DIR, 'migrations');
 // "changed" signal boot keys on. Kept byte-identical.
 const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
 
-// Marker preceding the one-line JSON array of verification addenda from
-// migrations executed this run. Boot extracts and strips it. Addenda are
-// journaled to a pending file beside the tracking log as each migration
-// records, and emitted (then cleared) only by a fully successful run — a
-// later migration aborting the run must never cost an earlier migration's
-// checks, whose ID is already recorded and will never re-run.
-const VERIFY_MARKER = '---VERIFY_ADDENDA---';
-const PENDING_VERIFY = 'pending-verify.json';
+// What a migration hands back beside its counts, each kind under its own
+// marker preceding a one-line JSON array — verification addenda for the
+// calling flow's judgment pass, notices for the person. Boot extracts and
+// strips both. Each entry is journaled to its kind's pending file beside the
+// tracking log as its migration records, and emitted (then cleared) only by
+// a fully successful run — a later migration aborting the run must never
+// cost an earlier migration's entry, whose ID is already recorded and will
+// never re-run.
+const HANDBACKS = [
+  { key: 'verify', marker: '---VERIFY_ADDENDA---', journal: 'pending-verify.json' },
+  { key: 'notice', marker: '---MIGRATION_NOTICES---', journal: 'pending-notices.json' },
+];
 
 // Marker preceding the one-line JSON report of what the run recorded:
 // `{"ran": <migrations executed>, "tracking": "<cwd-relative ledger path>"}`.
@@ -68,13 +74,13 @@ const PENDING_VERIFY = 'pending-verify.json';
 // run of its own that recorded nothing. Boot extracts and strips it.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
-/** @param {string} cwd @param {string} trackingRel */
-function pendingVerifyPath(cwd, trackingRel) {
-  return path.join(path.dirname(path.resolve(cwd, trackingRel)), PENDING_VERIFY);
+/** @param {string} cwd @param {string} trackingRel @param {string} journal */
+function journalPath(cwd, trackingRel, journal) {
+  return path.join(path.dirname(path.resolve(cwd, trackingRel)), journal);
 }
 
-/** @param {string} file @returns {{id: string, description: string, info: string|null, verify: string}[]} */
-function readPendingVerify(file) {
+/** @param {string} file @returns {Record<string, string|null>[]} */
+function readJournal(file) {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
     return Array.isArray(parsed) ? parsed : [];
@@ -218,11 +224,16 @@ function runShMigration(cwd, scriptAbs, trackingRel) {
   };
 }
 
+/** A handed-back string, trimmed, or null where there is none. @param {unknown} value */
+function handedBack(value) {
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
 /**
  * Run a `*.cjs` migration in-process against the contract. A throw propagates
  * to the top-level handler, aborting the run without recording.
  * @param {string} scriptAbs
- * @returns {{updated: number, skipped: number}}
+ * @returns {{updated: number, skipped: number, description: string, info: string|null, verify: string|null, notice: string|null}}
  */
 function runCjsMigration(scriptAbs) {
   const mod = require(scriptAbs);
@@ -236,11 +247,15 @@ function runCjsMigration(scriptAbs) {
     reportUpdate: () => { updated += 1; },
     reportSkip: () => { skipped += 1; },
   });
-  const verify = ret && typeof ret === 'object' && typeof ret.verify === 'string' && ret.verify.trim() !== ''
-    ? ret.verify.trim()
-    : null;
-  const info = typeof mod.info === 'string' && mod.info.trim() !== '' ? mod.info.trim() : null;
-  return { updated, skipped, verify, info };
+  const handed = ret && typeof ret === 'object' ? ret : {};
+  return {
+    updated,
+    skipped,
+    description: mod.description || '',
+    info: handedBack(mod.info),
+    verify: handedBack(handed.verify),
+    notice: handedBack(handed.notice),
+  };
 }
 
 /** Abort the run: emit detail on stderr, exit non-zero, record nothing.
@@ -308,13 +323,18 @@ function main() {
     fs.appendFileSync(trackingAbs(), id + '\n');
     migrationsRun += 1;
 
-    // Journal the addendum durably the moment its migration is recorded —
-    // an abort further down the fleet must not lose it.
-    if ('verify' in result && result.verify) {
-      const pendingFile = pendingVerifyPath(cwd, trackingRel);
-      const pending = readPendingVerify(pendingFile);
-      pending.push({ id, description: require(script).description || '', info: result.info, verify: result.verify });
-      fs.writeFileSync(pendingFile, JSON.stringify(pending) + '\n');
+    // Journal what it handed back durably the moment its migration is
+    // recorded — an abort further down the fleet must not lose it.
+    if ('description' in result) {
+      const entries = {
+        verify: result.verify && { id, description: result.description, info: result.info, verify: result.verify },
+        notice: result.notice && { id, description: result.description, notice: result.notice },
+      };
+      for (const { key, journal } of HANDBACKS) {
+        if (!entries[key]) continue;
+        const file = journalPath(cwd, trackingRel, journal);
+        fs.writeFileSync(file, JSON.stringify([...readJournal(file), entries[key]]) + '\n');
+      }
     }
   }
 
@@ -329,14 +349,15 @@ function main() {
     process.stdout.write('[SKIP] No changes needed\n');
   }
 
-  // A fully successful run emits everything journaled — this run's addenda
-  // plus any stranded by an earlier aborted run — and clears the journal.
-  const pendingFile = pendingVerifyPath(cwd, trackingRel);
-  const addenda = readPendingVerify(pendingFile);
-  if (addenda.length > 0) {
-    process.stdout.write(VERIFY_MARKER + '\n');
-    process.stdout.write(JSON.stringify(addenda) + '\n');
-    try { fs.unlinkSync(pendingFile); } catch { /* already gone */ }
+  // A fully successful run emits everything journaled — this run's entries
+  // plus any stranded by an earlier aborted run — and clears each journal.
+  for (const { marker, journal } of HANDBACKS) {
+    const file = journalPath(cwd, trackingRel, journal);
+    const entries = readJournal(file);
+    if (entries.length === 0) continue;
+    process.stdout.write(marker + '\n');
+    process.stdout.write(JSON.stringify(entries) + '\n');
+    try { fs.unlinkSync(file); } catch { /* already gone */ }
   }
 
   process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');

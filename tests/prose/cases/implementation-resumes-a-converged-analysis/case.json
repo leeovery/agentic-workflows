@@ -33,7 +33,8 @@
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-implementation-process/references/conclude-implementation.md",
     "skills/workflow-bridge/SKILL.md",
-    "skills/workflow-bridge/references/feature-continuation.md"
+    "skills/workflow-bridge/references/feature-continuation.md",
+    "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
     "y — skip project skills again",
@@ -57,7 +58,8 @@
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev implementation --next review",
       "manifest set pay.implementation.pay project_skills []",
-      "manifest set pay.implementation.pay linters []"
+      "manifest set pay.implementation.pay linters []",
+      "handoff /workflow-review-entry feature pay"
     ],
     "calls_in_order": [
       "render code-gate pay.implementation.pay",
@@ -71,7 +73,8 @@
       "session label pay",
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
-      "render next-phase-gate pay --prev implementation --next review"
+      "render next-phase-gate pay --prev implementation --next review",
+      "handoff /workflow-review-entry feature pay"
     ],
     "calls_exclude": [
       "task analysis-cycle pay pay",

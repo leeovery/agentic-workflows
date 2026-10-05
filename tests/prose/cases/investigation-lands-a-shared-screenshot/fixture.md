@@ -7,5 +7,5 @@ A screenshot of the failed checkout page sits in the project at
 imported into this work unit — `imports/` does not exist and the manifest
 carries no import entries.
 
-The bridge has just written its plan file and the context was cleared —
-this session opens cold at the entry skill.
+The bridge has just handed the work off, and it arrived in a fresh
+context — this session opens cold at the entry skill.

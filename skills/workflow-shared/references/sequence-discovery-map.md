@@ -1,12 +1,12 @@
 # Sequence Discovery Map
 
-*Shared reference. Loaded by `workflow-continue-epic` and `workflow-bridge`.*
+*Shared reference. Loaded by `workflow-continue-epic`.*
 
 ---
 
 Assign a suggested execution order across the live topics of an epic's discovery map — Claude's read of which topic to tackle first. The order is soft: it sorts the map rows and selects which item is `(recommended)`, but never gates. It is re-derived wholesale — a full renumber of all live topics — whenever a new one lands without an order.
 
-Manifest-driven, so it runs identically from either caller. The caller fires it only when its discovery output reports `needs_sequencing: true`, and re-runs discovery afterward so the render picks up the new order.
+Manifest-driven. The caller fires it only when its discovery output reports `needs_sequencing: true`, and re-runs discovery afterward so the render picks up the new order.
 
 ## Parameters
 

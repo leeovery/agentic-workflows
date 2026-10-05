@@ -38,12 +38,13 @@ The prose should have taken this path:
    alternative — never a script, never a menu; the turn ends there
    awaiting the user, who declines — no lab, no inline count — and says
    they are done
-8. the wrapper routes to its in-flight handling: the fold check finds
-   nothing pending and nothing in flight, no gate, and the close
-   proceeds — the triage queue reads empty, the wait gate answers empty,
-   the document review reconciles the file against a conversation that
+8. the wrapper enters topic completion: the triage queue reads empty,
+   the wait gate answers empty, and the in-flight check finds nothing
+   pending and nothing in flight, no gate, so the close proceeds — the
+   document review reconciles the file against a conversation that
    added nothing, and the compliance check passes
-9. the conclude gate renders with the register above its menu — the
+9. the closing recap renders, then the conclude gate with the register
+   above its menu — the
    learned threads, the open ones (the user's label-freshness question
    and both opened children), the parked one with its reason — and the
    user concludes; no dead-end row is passed
@@ -51,8 +52,8 @@ The prose should have taken this path:
     written into the file's `## Open Threads` — the label-refresh
     question, the tail-group size question, the tail-share measurement,
     the human-raters panel with its parked note — then `topic complete`,
-    the conclusion commit, the sweep, the closing recap, the discussion
-    signpost, and the bridge hand-off, where the walk stops
+    the conclusion commit, the sweep, the discussion signpost, and the
+    bridge hand-off, where the walk stops
 
 Claims — the fold on resume is the behaviour under test:
 

@@ -22,6 +22,8 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 **If `count` is `0`:**
 
+→ Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render conclude-gate {work_unit}.discussion.{topic}
 ```
@@ -59,11 +61,7 @@ Emit the call's MENU section verbatim per its marker.
 
    **Otherwise:** nothing to sweep — continue.
 
-6. Closing recap:
-
-   → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `discussion`, work_unit = `{work_unit}`, topic = `{topic}`.
-
-7. Hand off to the pipeline bridge:
+6. Invoke the pipeline bridge:
 
 > *Output the next fenced block as markdown (not a code block):*
 

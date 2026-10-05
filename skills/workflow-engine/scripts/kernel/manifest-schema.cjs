@@ -185,10 +185,16 @@ function isImportOrigin(origin) {
 // research and discussion identically).
 const EXPERIMENT_SPAWN_PHASES = ['research', 'discussion'];
 
-// Every phase whose item can hold a wait on an upstream that has not landed:
-// the two conversations, plus planning, which stands on its specification.
-// The wait surfaces address these and no others.
+// Every phase whose conclusion the wait gate holds on an upstream that has
+// not landed: the two conversations, plus planning, which stands on its
+// specification. The wait gate addresses these and no others.
 const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES, 'planning'];
+
+// Every phase that leaves on a pause rather than a conclusion: the wait
+// gate's phases, plus specification, which pauses on a gap it routed into
+// its sources. The paused banner and the handoff into the epic menu address
+// these and no others.
+const PAUSING_PHASES = [...WAITING_PHASES, 'specification'];
 
 // Gate modes. `auto` runs to the end of the session — the entry reset
 // returns every gate to `gated`; `bounded` is auto with an end the gate
@@ -256,6 +262,7 @@ module.exports = {
   isImportOrigin,
   EXPERIMENT_SPAWN_PHASES,
   WAITING_PHASES,
+  PAUSING_PHASES,
   VALID_GATE_MODES,
   GATE_FIELDS,
   VALID_WORK_UNIT_STATUSES,

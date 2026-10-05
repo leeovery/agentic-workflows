@@ -1388,7 +1388,7 @@ test('check 4 (banned STOP) — catches each banned variant', () => {
 
 test('check 5 (banned nav) — catches banned verbs, permits Proceed/Return', () => {
   withTemp((dir) => {
-    const cases = ['→ Go to **Step 2**.', '→ Jump to **B. X**.', '→ Skip to **Step 3**.', '→ Continue to **Step 4**.', '→ Enter plan mode.', '→ Proceed directly to **Step 5**.'];
+    const cases = ['→ Go to **Step 2**.', '→ Jump to **B. X**.', '→ Skip to **Step 3**.', '→ Continue to **Step 4**.', '→ Enter **Step 6**.', '→ Proceed directly to **Step 5**.'];
     cases.forEach((c, idx) => {
       const f = write(dir, `skills/x/${idx}.md`, c + '\n');
       assert.strictEqual(checkBannedNav([f]).length, 1, `must catch "${c}"`);

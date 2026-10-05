@@ -1,10 +1,10 @@
 # Topic Discovery Dispatch
 
-*Shared reference. Loaded by `workflow-continue-epic` and `workflow-bridge`.*
+*Shared reference. Loaded by `workflow-continue-epic`.*
 
 ---
 
-Wraps the cache-status check and conditional dispatch around [topic-discovery.md](topic-discovery.md). Both `workflow-continue-epic` (Step 6) and `workflow-bridge` (section B of `epic-continuation.md`) run the same dispatch pattern: read analysis-cache status from a prior discovery output, fire the analysis when its cache is stale, re-run discovery to pick up auto-added items.
+Wraps the cache-status check and conditional dispatch around [topic-discovery.md](topic-discovery.md), for `workflow-continue-epic` (Step 6): read analysis-cache status from a prior discovery output, fire the analysis when its cache is stale, re-run discovery to pick up auto-added items.
 
 ## Parameters
 

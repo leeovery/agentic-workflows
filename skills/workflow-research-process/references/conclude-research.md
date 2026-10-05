@@ -61,11 +61,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
    **Otherwise:** nothing to sweep — continue.
 
-6. Closing recap:
-
-   → Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
-
-7. Closure signpost:
+6. Closure signpost:
 
 **If `closure` is `discussion`:**
 
@@ -83,4 +79,4 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 > Research complete — the topic is closed as a dead end, so no discussion follows. It stays on the map and in the knowledge base as record and seed material, and reopening it from the map makes it actionable again.
 ```
 
-8. Invoke `/workflow-bridge {work_unit} research`.
+7. Invoke `/workflow-bridge {work_unit} research`.

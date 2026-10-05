@@ -24,7 +24,8 @@ The prose should have taken this path:
 10. the agent's report is promoted and its row closed, a verdict payload
     is written to the phase cache, and the engine renders the report
 11. the verdict is clean, so nothing is asked of the user — the walk
-    carries on to the conclude gate and stops there
+    carries on to the conclude gate, the closing recap above it with
+    root cause and fix direction at its heart, and stops there
 
 Further claims:
 

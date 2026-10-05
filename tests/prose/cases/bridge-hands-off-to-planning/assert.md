@@ -20,25 +20,17 @@ The prose should have taken this path:
    proceed or revisit, with no skip-review row — planning is not
    review
 6. the described user declines the look back and continues forward
-7. plan mode: the continuation resolves the plan template — the
-   continue-the-pipeline line, never the revisiting line — and the
-   resolved content lands as the world's plan-handoff artifact per
-   the capture mechanism; the walk stops at the presentation, the
-   flow's terminal handoff
+7. the handoff: the continuation hands the work to the planning entry —
+   the engine's handoff names `workflow-planning-entry` with `feature
+   pay`, the next phase and never a revisited one — and the line naming
+   where the work goes is the turn's last text; the walk stops at the
+   handoff
 
 Further claims:
 
-- the plan-handoff artifact holds the template verbatim with its
-  placeholders resolved: the title Continue Feature: pay, "The
-  previous phase has completed. Continue the pipeline.", a Next Step
-  invoking /workflow-planning-entry feature pay with the arguments
-  line, and the How to proceed block — and nothing else: no session
-  learnings, no enrichment, no User instructions heading (the user
-  attached none)
 - the specification item ends completed with its source incorporated;
   the work unit stays in-progress — never completed, never cancelled
 - no planning item exists and no planning entry was invoked — the
-  handoff is content for the next context, not an action taken in
-  this one
+  planning entry starts in the next context, not in this one
 - the specification file matches the discussion's decisions with the
   wallet deferral out of scope

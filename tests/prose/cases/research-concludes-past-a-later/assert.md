@@ -14,11 +14,9 @@ The prose should have taken this path:
 4. the user says their one thing — the metric they are taking forward,
    asked to be written down — which the session documents in the
    research file and commits with the cadence message; then the user
-   says they are done, and the wrapper routes to its conclusion
-   handling: the fold check finds nothing landed, nothing is in flight,
-   and the walk enters topic completion, whose first act is the queue
-   check — it reads one entry and renders the blocker, returning to the
-   session loop
+   says they are done, and the wrapper enters topic completion, whose
+   first act is the queue check — it reads one entry and renders the
+   blocker, returning to the session loop
 5. back in the loop, the triage check judges the break: the user
    chose `later` one turn ago, and the checklist's deferral would hold —
    except the user is now concluding, which is the break the deferral

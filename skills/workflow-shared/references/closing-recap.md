@@ -8,7 +8,7 @@
 
 - `phase`, `work_unit`, `topic` — the concluding topic
 
-The topic is complete and committed. Before the closure signpost, send the session off with a recap — a short narrative as markdown (not a code block), no structured template, telling the story of the session just finished. One paragraph, scaled to the session's substance: a long multi-review session earns a fuller recap than a quick one.
+The topic is ready to conclude. Above its conclusion gate, where it is read while the gate waits, send the session off with a recap — a short narrative as markdown (not a code block), no structured template, telling the story of the session. One paragraph, scaled to the session's substance: a long multi-review session earns a fuller recap than a quick one.
 
 Three beats:
 

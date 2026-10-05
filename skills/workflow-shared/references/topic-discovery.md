@@ -1,18 +1,18 @@
 # Topic Discovery
 
-*Shared reference. Loaded by [topic-discovery-dispatch.md](topic-discovery-dispatch.md), which `workflow-continue-epic` and `workflow-bridge` run.*
+*Shared reference. Loaded by [topic-discovery-dispatch.md](topic-discovery-dispatch.md), which `workflow-continue-epic` runs.*
 
 ---
 
 Drives cache-based dispatch of `discovery-gap-analysis` against an epic. When the cache is stale the flow is **stage → present → approve → write → stamp**: the analysis stages its genuinely-new candidates to a staging file, the gate ([analysis-approval-gate.md](analysis-approval-gate.md)) presents each for per-item approval, approved items are written to `phases.discovery.items.{topic}` with `source` provenance, and the cache is stamped once the gate completes. The no-gate cases (already-on-map, dismissed) are resolved silently at stage time against the per-work-unit `phases.discovery.dismissed[]` list.
 
-The gate runs before the dashboard — it is the boot-time review surface for both callers. Hosting the orchestration here covers both boot callers (`workflow-continue-epic` Step 6 and `workflow-bridge` section B) via the shared dispatch.
+The gate runs before the dashboard — it is the epic menu's boot-time review surface, run at `workflow-continue-epic` Step 6 through the shared dispatch.
 
 The analysis self-gates on a precondition (at least one completed research OR discussion item). When the precondition fails it returns without staging, gating, or stamping — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 
 Skipping every candidate (decline-all) still stamps the cache, so the analysis won't re-fire until its inputs change.
 
-The caller is responsible for surfacing the result — `workflow-continue-epic` shows a callout above the discovery map; `workflow-bridge` does the same on its epic-continuation display.
+The caller is responsible for surfacing the result — `workflow-continue-epic` shows a callout above the discovery map.
 
 ## Parameters
 
@@ -121,6 +121,5 @@ Every write was already carried by a self-committing delivery — nothing to swe
 The caller reads `new_arrivals` from conversation memory:
 
 - **`workflow-continue-epic`** — passes `new_arrivals` to `epic-display-and-menu.md` for the callout above the Discovery Map: `⚑ N new topics added to the map from gap-analysis`. Callouts are rendered once at this boot-up; subsequent boots without changes don't repeat them.
-- **`workflow-bridge`** — same callout pattern on its epic-continuation menu, populated by the same `new_arrivals` tracker.
 
 → Return to caller.

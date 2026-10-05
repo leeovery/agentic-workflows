@@ -8,7 +8,7 @@ Display the full phase-by-phase breakdown for the selected epic, then present an
 - `work_unit` — the epic's work unit name
 - `new_arrivals` (optional) — tracker from `topic-discovery.md` listing the topic names added during this boot-up (`gap_analysis`). Drives the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 
-This reference collects the user's selection and returns control to the caller. The caller decides what to do with the selection (invoke a skill directly, enter plan mode, etc.).
+This reference collects the user's selection and returns it to the caller, which routes it.
 
 ---
 

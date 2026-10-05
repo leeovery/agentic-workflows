@@ -84,8 +84,9 @@ The prose should have taken this path:
     input tracking entry is left
     `in-progress`, its finding still Pending: the exit does not
     return, and the remaining work re-processes at the next entry
-15. the session invokes the epic's continue skill with the work unit —
-    the walk stops there
+15. the session invokes the pipeline bridge as a pause —
+    `/workflow-bridge search-relevance specification none paused` — and
+    the walk stops there; the bridge is not executed
 
 The end world's claims:
 

@@ -64,7 +64,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-spawn-g
 
 #### If `yes`
 
-The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands. Everything is already committed; hand off to the pipeline bridge as a pause — its handoff is the laboratory's fresh context:
+The session pauses mid-phase — no closing ceremony, no document review, no completion: the conversation concludes once the evidence lands.
+
+→ Load **[in-flight-agents.md](in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `{phase}`, exit = `pause`.
+
+**If `result` is `stay`:**
+
+The conversation continues with `{id}` queued — as after `later`, the session pauses at its natural end.
+
+→ Return to caller for **B. Session Loop**.
+
+**If `result` is `leave`:**
+
+Everything is already committed; invoke the pipeline bridge as a pause:
 
 > *Output the next fenced block as markdown (not a code block):*
 

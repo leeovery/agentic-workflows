@@ -55,14 +55,16 @@ The prose should have taken this path:
     no discarded grouping and no reverted join — the topic was the
     epic's own, so an item is born rather than re-waited — and the
     session adds no line of its own
-12. the session hands off to the pipeline bridge with the **postponed**
+12. the session invokes the pipeline bridge with the **postponed**
     outcome and the next phase as `none`. No phase banner is rendered on
     the way through — neither the completed banner nor the paused one:
     the receipt was the session's
-13. the bridge runs the epic continuation — the scoped discovery, no
-    sequencing owed, no gap analysis owed, the epic not all done — and
-    the dashboard and menu render. The walk stops with the menu waiting
-    on a selection
+13. the bridge reads the work type — epic — and hands off to the epic
+    menu: the engine's handoff names `workflow-continue-epic` with the
+    work unit, `discussion` and the postponed outcome, and the line naming
+    where the work goes is the turn's last text. No dashboard, gap
+    analysis or menu runs in this context — the menu opens in the next
+    one — and the walk stops at the handoff
 
 Further claims:
 

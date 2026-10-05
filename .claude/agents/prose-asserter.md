@@ -136,8 +136,8 @@ tool, which the walker does not have. Where the prose invokes another
 skill and the task sanctions continuing, the walker reads the named
 skill's file and follows it with the stated arguments — the same
 instructions a live invocation loads. That is correct behaviour, not a
-`DEVIATION` and not a missing step; do not fail a handoff for having
-been read rather than invoked.
+`DEVIATION` and not a missing step; do not fail an invocation for
+having been read rather than made.
 
 The third: the harness refuses report-shaped `.md` writes from
 subagents, so a walker producing one writes the `.txt` path and renames
@@ -145,15 +145,18 @@ it — the same mechanism the product's own agents are instructed to use.
 A write-then-rename where a report file was called for is correct
 behaviour: not a deviation, not a missing write.
 
-The fourth: plan mode does not exist in a walk. Where the prose calls
-`EnterPlanMode` and writes plan content, the walker resolves the
-content as the prose directs and writes it to `.plan-handoff.md` at
-the project root — the world's stand-in for the plan file, which lands
-in the delta where its content is judged like any other artifact — and
-where the prose calls `ExitPlanMode` to present the plan, the walk
-stops at that presentation as its terminal handoff. The capture write
-and the stop are correct behaviour: not a deviation, not a missing
-tool call, and not a walk that died early.
+The fourth: no gate mod runs in a walk, and the world stands in for
+one. Every command a walker runs in a world carries the mod's handoff
+announcement, and a handoff call's `HANDOFF` section is cut from what
+comes back, as the mod takes it, so `engine handoff` answers `handoff:
+mod` and the prose ends the turn there: the walk stops at the recorded
+handoff call, its
+`DISPLAY: handoff` line the last thing emitted. That stop is correct
+behaviour: not a deviation, not a walk that died early, and not a
+missing invocation of the next skill — in a live session the mod
+carries the work into a fresh conversation. The other answers —
+`handoff: inline`, and a `HANDOFF` section the mod left in the result —
+never arise in a walk.
 
 The fifth: no agent runs in a walk. Where the prose dispatches one, the
 walker makes the call as the prose composes it, and a harness hook holds

@@ -68,6 +68,13 @@ function trackingLog(project) {
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
+/** The one-line JSON payload under `marker`, or undefined where the run emitted none. */
+function markerPayload(stdout, marker) {
+  const lines = stdout.split('\n');
+  const idx = lines.findIndex((l) => l.trim() === marker);
+  return idx === -1 ? undefined : JSON.parse(lines[idx + 1]);
+}
+
 /** The run report the orchestrator ends a completed run with, or null. */
 function runReport(stdout) {
   const lines = stdout.split('\n');
@@ -284,6 +291,57 @@ describe('migrate.cjs — synthetic fleet', () => {
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(!res.stdout.includes('---VERIFY_ADDENDA---'));
+    assert.ok(!res.stdout.includes('---MIGRATION_NOTICES---'));
+  });
+
+  it('collects notices from executed .cjs migrations apart from their checks — never on re-run', () => {
+    const telling =
+      `'use strict';\nmodule.exports = {\n  id: '002',\n  description: 'synthetic 002',\n` +
+      `  info: 'What this migration does, anywhere.',\n` +
+      `  run({ reportUpdate }) {\n    reportUpdate();\n` +
+      `    return { verify: 'Check the things code cannot see.', notice: '  Tell the person what changed.  ' };\n  },\n};\n`;
+    const { migrate } = synthFleet({
+      '001-a.cjs': cjsMig('001'),
+      '002-b.cjs': telling,
+      '003-c.cjs': `'use strict';\nmodule.exports = { id: '003', description: 'quiet', run({ reportSkip }) { reportSkip(); return { notice: '   ' }; } };\n`,
+    });
+    const project = freshProject();
+
+    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(first.status, 0, first.stderr);
+    assert.deepStrictEqual(markerPayload(first.stdout, '---MIGRATION_NOTICES---'), [{
+      id: '002',
+      description: 'synthetic 002',
+      notice: 'Tell the person what changed.',
+    }], 'trimmed, and a blank notice is no notice');
+    assert.deepStrictEqual(markerPayload(first.stdout, '---VERIFY_ADDENDA---').map((a) => a.verify),
+      ['Check the things code cannot see.'], 'the checks travel on their own');
+    assert.ok(!fs.existsSync(path.join(project, '.workflows/.state/pending-notices.json')), 'journal cleared after emission');
+
+    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(second.status, 0, second.stderr);
+    assert.ok(!second.stdout.includes('---MIGRATION_NOTICES---'), 'recorded migrations never re-emit');
+  });
+
+  it('an aborted run journals earlier notices — the next successful run emits them', () => {
+    const { migrate, root } = synthFleet({
+      '001-a.cjs':
+        `'use strict';\nmodule.exports = { id: '001', description: 'synthetic 001',\n` +
+        `  run({ reportUpdate }) { reportUpdate(); return { notice: 'Something was removed.' }; } };\n`,
+      '002-b.cjs': `'use strict';\nmodule.exports = { id: '002', description: 'boom', run() { throw new Error('boom'); } };\n`,
+    });
+    const project = freshProject();
+
+    const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.notStrictEqual(first.status, 0, 'the fleet aborts on 002');
+    assert.ok(!first.stdout.includes('---MIGRATION_NOTICES---'), 'an aborted run emits nothing');
+
+    fs.writeFileSync(path.join(root, 'scripts/migrations/002-b.cjs'),
+      `'use strict';\nmodule.exports = { id: '002', description: 'fixed', run({ reportSkip }) { reportSkip(); } };\n`);
+    const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+    assert.strictEqual(second.status, 0, second.stderr);
+    assert.deepStrictEqual(markerPayload(second.stdout, '---MIGRATION_NOTICES---').map((n) => n.notice),
+      ['Something was removed.'], "001's notice survived the abort");
   });
 
   it('honours a legacy tracking log written by the old migrate.sh', () => {

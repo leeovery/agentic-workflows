@@ -40,10 +40,12 @@ The prose should have taken this path:
    is blocked pending input. The closing gates are never loaded and no
    completion is attempted — the session never asks the engine to do
    what it would refuse
-8. the user takes the pause; uncommitted session work is committed with
-   the cadence commit, the session says where the ball sits — the
-   closing ceremony waits for the evidence — and hands off to the
-   pipeline bridge as a pause: the invocation carries the work unit,
+8. the user takes the pause; the in-flight check reads the store first
+   and finds nothing of this session's running, so no wait-or-pause
+   gate renders; uncommitted session work is committed with the
+   cadence commit, the session says where the ball sits — the closing
+   ceremony waits for the evidence — and invokes the pipeline bridge
+   as a pause: the invocation carries the work unit,
    the phase discussion, the literal `none` for the next phase, and
    `paused`. Nothing tells the user to run /clear or /workflow-start
 9. the bridge reads the work type — feature, not discovery, not epic —
@@ -51,27 +53,18 @@ The prose should have taken this path:
    experiment: the discussion is in progress behind a live evidence
    wait, and the experiment slot holds the record it waits on
 10. the feature continuation's terminal check falls through and the
-    pause routes straight to plan mode, revisitable phases or not: a
+    pause routes straight to the handoff, revisitable phases or not: a
     paused phase revisits nothing and skips nothing. No next-phase gate
     renders, no completed banner renders
-11. plan mode: the continuation resolves the plan template on the
-    paused arm — the paused-on-a-wait line, never the completed line,
-    never the revisiting line — and the resolved content lands as the
-    world's plan-handoff artifact per the capture mechanism; the walk
-    stops at the presentation, the flow's terminal handoff
+11. the handoff: the engine's handoff names `workflow-experiment-entry`
+    with `feature pay`, and the line naming where the work goes is the
+    turn's last text; the walk stops at the handoff
 
 Further claims:
 
-- the plan-handoff artifact holds the template verbatim with its
-  placeholders resolved: the title Continue Feature: pay, "The
-  previous phase paused on a wait — the pipeline continues at what it
-  waits on.", a Next Step invoking /workflow-experiment-entry feature
-  pay with the arguments line, and the How to proceed block — and
-  nothing else: no session learnings, no enrichment, no User
-  instructions heading (the user attached none)
 - no experiment entry was invoked and no experiment record moved past
-  `conceived` — the handoff is content for the next context, not an
-  action taken in this one
+  `conceived` — the laboratory starts in the next context, not in this
+  one
 
 - the discussion item stays `in-progress` and carries
   `awaiting_experiments: ["E1"]` — written by the create transaction,

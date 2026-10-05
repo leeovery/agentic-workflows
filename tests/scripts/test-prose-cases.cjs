@@ -74,6 +74,17 @@ describe('prose-test corpus', () => {
       'prose-walker holds every Agent|Task|SendMessage call with lib/hold-dispatch.cjs at PreToolUse');
   });
 
+  it('every command the walker runs carries the handoff stand-in, so a walk ends at its handoff', () => {
+    // Without it the engine answers `handoff: inline`, the prose invokes the
+    // next skill in place, and every walk runs on past its end.
+    const walker = fs.readFileSync(path.join(cases.ROOT, '.claude/agents/prose-walker.md'), 'utf8');
+    const front = walker.split(/^---$/m)[1] || '';
+    const pre = front.slice(front.indexOf('  PreToolUse:'), front.indexOf('  PostToolUse:'));
+    assert.match(pre,
+      /- matcher: "Bash"\n\s+hooks:\n\s+- type: command\n\s+command: "node \\"\$CLAUDE_PROJECT_DIR\/tests\/prose\/lib\/announce-handoff\.cjs\\""/,
+      'prose-walker runs every Bash call through lib/announce-handoff.cjs at PreToolUse');
+  });
+
   it('every state recipe loads and exports build()', () => {
     for (const c of all) {
       for (const which of ['fixtureState', 'assertionState']) {

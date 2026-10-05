@@ -42,7 +42,7 @@ The prose should have taken this path:
     this one is staying. One postpone transaction runs, carrying the
     horizon, and the receipt is fetched from the engine and emitted
 11. the session returns to the turn it was interrupted in and takes the
-    synonym research back up. It does not hand off to the bridge, render
+    synonym research back up. It does not invoke the bridge, render
     a phase banner, or leave for the epic menu — its own topic never
     moved. The walk stops there
 

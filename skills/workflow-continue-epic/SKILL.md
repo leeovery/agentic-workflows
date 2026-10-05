@@ -58,6 +58,11 @@ The per-epic state surface (`all_done`, `reconcile_pending`, `analysis_caches`, 
 
 ## Step 2: Check Count and Arguments
 
+This skill receives positional arguments, each optional — one not given is unset, whatever an earlier skill in this conversation held under the same name:
+- `$0` — **work_unit**: the epic to continue. Held downstream as `{work_unit}`.
+- `$1` — **completed_phase**: the phase that just concluded or paused, where the epic arrives from one. Held downstream as `{completed_phase}`.
+- `$2` — **outcome**: given with `$1` — `completed`, `paused`, `cancelled` or `postponed`. Held downstream as `{outcome}`.
+
 #### If `count` is 0
 
 > *Output the next fenced block as a text code block (```text fence):*
@@ -134,9 +139,9 @@ Then read `discovery_map` from the most recent discovery output and filter for r
 
 #### Otherwise
 
-Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`.
+Load **[backfill-checks.md](references/backfill-checks.md)** with work_unit = `{work_unit}`, qualifying_sources = `{qualifying_sources}`, items_to_recover = `{items_to_recover}`, completed_phase = `{completed_phase}`, outcome = `{outcome}`.
 
-backfill-checks is terminal when recovery work landed — it commits and stops, advising the user to `/clear` and re-run `/workflow-start`. It returns only when nothing was written (the batch declined); the skipped items re-offer on the next entry.
+backfill-checks is terminal when recovery work landed — it commits and hands the epic menu off to start afresh, carrying the arguments it arrived with. It returns only when nothing was written (the batch declined); the skipped items re-offer on the next entry.
 
 → On return, proceed to **Step 6**.
 
@@ -217,6 +222,8 @@ Load **[sequence-build-order.md](../workflow-shared/references/sequence-build-or
 ---
 
 ## Step 9: Display State and Menu
+
+Load **[banner-and-completion.md](references/banner-and-completion.md)** and follow its instructions as written, then show the epic.
 
 > *Output the next fenced block as markdown (not a code block):*
 

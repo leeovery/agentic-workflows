@@ -8,13 +8,15 @@
 
 The current topic is converging — tradeoffs are clear, it's approaching decision territory.
 
+## A. Triage Queue
+
 First check the topic's triage queue — a queued concern is work the conclusion cannot pass:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} research {topic}
 ```
 
-**If `count` is non-zero:**
+#### If `count` is non-zero
 
 Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
@@ -24,9 +26,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work
 
 → Return to caller.
 
-**If `count` is `0`:**
+#### If `count` is `0`
 
-Check for landed evidence next — follow **Landed Evidence** in **[session-loop.md](session-loop.md)**: a release between the rhythm's last check and this conclusion is read here, never concluded over (the engine refuses the completion while the flag stands). Its landed branch puts the evidence to the user and returns the conversation to the rhythm, where the next done-signal re-enters here; every other return continues here.
+→ Proceed to **B. Waits**.
+
+## B. Waits
+
+Check for landed evidence first — follow **Landed Evidence** in **[session-loop.md](session-loop.md)**: a release between the rhythm's last check and this conclusion is read here, never concluded over (the engine refuses the completion while the flag stands). Its landed branch puts the evidence to the user and returns the conversation to the rhythm, where the next done-signal re-enters here; every other return continues here.
 
 Check the topic's waits next — a wait still open means the conclusion cannot pass, and the engine would refuse the completion anyway. Fetch the gate (empty when nothing is owed):
 
@@ -34,7 +40,7 @@ Check the topic's waits next — a wait still open means the conclusion cannot p
 node .claude/skills/workflow-engine/scripts/engine.cjs render wait-gate {work_unit}.research.{topic}
 ```
 
-**If sections are returned:**
+#### If sections are returned
 
 Emit them verbatim per their markers — the blocker naming what is owed, its guidance, then the menu.
 
@@ -42,13 +48,35 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 
 **If `yes`:**
 
+→ Proceed to **C. Pausing**.
+
+**If `keep`:**
+
+→ Return to caller.
+
+#### If the output is empty
+
+→ Proceed to **D. In-Flight Dives**.
+
+## C. Pausing
+
+→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, exit = `pause`.
+
+#### If `result` is `stay`
+
+The conversation has the turn; the next done-signal re-enters here, and the wait gate asks again.
+
+→ Return to caller.
+
+#### If `result` is `leave`
+
 Commit any uncommitted session work with the session's cadence commit:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): {what changed}"
 ```
 
-Then hand off to the pipeline bridge as a pause:
+Then invoke the pipeline bridge as a pause:
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -58,15 +86,27 @@ Then hand off to the pipeline bridge as a pause:
 
 Invoke `/workflow-bridge {work_unit} research none paused`.
 
-**If `keep`:**
+## D. In-Flight Dives
+
+→ Load **[in-flight-agents.md](../../workflow-shared/references/in-flight-agents.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, exit = `conclude`.
+
+#### If `result` is `stay`
+
+The conversation has the turn; the next done-signal re-enters here.
 
 → Return to caller.
 
-**If the output is empty:**
+#### If `result` is `leave`
+
+→ Proceed to **E. Conclude Gate**.
+
+## E. Conclude Gate
 
 → Load **[document-review.md](document-review.md)** and follow its instructions as written.
 
 → Load **[compliance-check.md](../../workflow-shared/references/compliance-check.md)** and follow its instructions as written.
+
+→ Load **[closing-recap.md](../../workflow-shared/references/closing-recap.md)** with phase = `research`, work_unit = `{work_unit}`, topic = `{topic}`.
 
 Judge the dead-end question before rendering: pass `--dead-end` **only** when `work_type` is `epic` and the session's own conclusion is that this topic gives the product nothing to carry forward under its own name — the thread didn't pan out, or its useful facts serve only other topics, where provenance and the knowledge base already deliver them. In the common case — the research surfaced material this topic's discussion will ratify — the flag is omitted and the row never appears.
 

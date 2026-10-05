@@ -1,12 +1,12 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Bash(node .claude/skills/workflow-continue-epic/scripts/gateway.cjs), Bash(node .claude/skills/workflow-discovery/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/)
+allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
-Enter plan mode with deterministic continuation instructions.
+Decide where the work goes when a phase concludes or pauses, then hand it off.
 
-This skill is invoked when a phase concludes — or pauses on a wait — to create a plan-mode handoff that survives context compaction. For most phases it derives the next phase from state; for the discovery handoff the destination is supplied, because discovery is the first phase and the next phase isn't in state yet, so there's nothing to derive.
+A phase invokes this skill as it ends. A linear work type's next phase is derived from state, with the one real choice offered where there is one — skip review, revisit an earlier phase; discovery supplies its destination, since the next phase isn't in state yet; an epic returns to its menu. Every route ends in the handoff but the pipeline's end, which completes the work unit.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -16,9 +16,9 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 
 This skill receives positional arguments:
 - `$0` — **work_unit**: the work unit name (directory under `.workflows/`). Held downstream as `{work_unit}`.
-- `$1` — **completed_phase**: the phase handing off — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
-- `$2` — **next_phase** (optional): supplied when the caller already knows the destination — discovery handing a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` means the continuation computes the next phase from discovery output.
-- `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, with `$2` as `none`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way, both with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
+- `$1` — **completed_phase**: the phase the work is leaving — `discovery` or any later phase; the one that concluded, or the one pausing when `$3` is `paused`. Held downstream as `{completed_phase}`.
+- `$2` — **next_phase** (optional): the destination, where the caller already knows it — discovery sending a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` otherwise.
+- `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, or a specification pausing on a gap it routed, with `$2` as `none`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way, both with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
 
 ---
 
@@ -30,18 +30,6 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Read Work Type and Run Discovery`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Reading the work unit's type, then computing the next phase from pipeline state when it isn't already known.
-```
-
 Read work type from the manifest:
 
 ```bash
@@ -50,13 +38,15 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 #### If completed phase is `discovery`
 
-The discovery handoff needs no state computation. Discovery is the first phase, so the next phase isn't in pipeline state yet — the destination is *given*, not derived: an epic returns to its menu, and single-phase types use the `next_phase` the discovery endpoint decided and supplied. Skip the discovery script.
+Discovery is the first phase, so the next phase isn't in pipeline state yet — the destination is *given*, not derived: an epic returns to its menu, and single-phase types take the `next_phase` the discovery endpoint supplied. Skip the discovery script.
 
 → Proceed to **Step 2**.
 
 #### If work type is `epic`
 
-→ Proceed to **Step 2** (epic continuation runs its own enriched discovery).
+An epic returns to its menu, which reads the epic's state itself.
+
+→ Proceed to **Step 2**.
 
 #### Otherwise
 
@@ -72,21 +62,21 @@ The output contains `next_phase`, `completed_phases` (in pipeline order), and `r
 
 ---
 
-## Step 2: Route to Continuation Reference
+## Step 2: Route the Work
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`□ Route to Continuation Reference`**
+**`□ Route the Work`**
 ```
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Handing off to the continuation that builds the plan-mode handoff for whatever phase comes next.
+> Handing the work on — after the choice, where there is one to make.
 ```
 
-Based on the completed phase and work type, load the appropriate continuation reference. The completed-phase check runs first so an epic concluding discovery routes to the deterministic discovery continuation; non-discovery epic completions fall through to the work-type branches below.
+Load the continuation for the completed phase and work type. The completed-phase check runs first, so an epic concluding discovery takes the discovery continuation.
 
 #### If completed phase is `discovery`
 
@@ -111,16 +101,3 @@ Load **[cross-cutting-continuation.md](references/cross-cutting-continuation.md)
 #### If work type is `epic`
 
 Load **[epic-continuation.md](references/epic-continuation.md)** and follow its instructions as written.
-
----
-
-## Notes
-
-**Feature/bugfix** continuation references:
-1. Use discovery output to compute a single `next_phase`
-2. Call `EnterPlanMode` tool, write plan file with instructions to invoke `workflow-{next_phase}-entry` with work_unit + work_type
-3. Call `ExitPlanMode` tool for user approval
-
-The user will then clear context, and the fresh session will invoke the appropriate phase entry skill with the work_unit and work_type provided, causing it to skip discovery and proceed directly to validation/processing.
-
-**Epic** continuation is interactive — epic is phase-centric with multiple actionable items, so there is no single next phase. The reference displays state, presents a menu of choices, waits for user selection, then enters plan mode with that specific choice. The plan mode content is deterministic (same as feature/bugfix) once the user has chosen.

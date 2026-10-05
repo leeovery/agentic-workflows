@@ -40,10 +40,12 @@ The prose should have taken this path:
    and the session stops. The map gate never runs, the closing gates
    are never loaded, and no completion is attempted — the session
    never asks the engine to do what it would refuse
-8. the user takes the pause; the cadence commit runs only over
+8. the user takes the pause; the in-flight check reads the store first
+   and finds nothing of this session's running, so no wait-or-pause
+   gate renders; the cadence commit runs only over
    uncommitted session work — a clean tree makes it a no-op, not a
    miss — the session says where the ball sits — the ceremony runs once
-   the research has landed — and hands off to the pipeline bridge as a
+   the research has landed — and invokes the pipeline bridge as a
    pause: the invocation carries the work unit, the phase discussion,
    the literal `none` for the next phase, and `paused`. Nothing tells
    the user to run /clear or /workflow-start, and no terminal stop

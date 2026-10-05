@@ -7,7 +7,7 @@
 // completion refusal is the backstop; this is its graceful face — the
 // blocker names what is owed, the guidance names the ways out, and the menu
 // offers the pause the spawn gate's `yes` takes. The pause's banner lives
-// here too: the bridge renders it in place of the completed banner when a
+// here too: the epic menu renders it in place of the completed banner when a
 // phase leaves on a wait rather than concluding.
 // ---------------------------------------------------------------------------
 
@@ -62,6 +62,20 @@ function owedWaits(waits, researchSubject) {
 }
 
 /**
+ * What a paused specification awaits, as one clause — the sources it routed
+ * a gap into, by name: `the note-window discussion`, `the a and b
+ * discussions`. Empty where it awaits none.
+ * @param {string[]} names  the derivation's order
+ * @param {string} sourcePhase  the phase the sources sit in
+ * @returns {string}
+ */
+function owedSources(names, sourcePhase) {
+  if (names.length === 0) return '';
+  if (names.length === 1) return `the ${names[0]} ${sourcePhase}`;
+  return `the ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} ${sourcePhase}s`;
+}
+
+/**
  * @param {string} phase  the holding phase — `research`, `discussion`, or `planning`
  * @param {string} topic
  * @param {Wait[]} waits  non-empty — the derivation's order
@@ -113,22 +127,22 @@ function waitGate(phase, topic, waits, epic) {
 }
 
 /**
- * The bridge's banner for a phase leaving on a wait —
+ * The epic menu's banner for a phase leaving on a pause —
  * `phase-completed`'s sibling. One clause per paused item naming
  * what it awaits; a linear unit's one item is the unit itself, so
  * its clause drops the name. No holder left renders the bare line.
- * @param {string} phase  the paused phase — `research`, `discussion`, or `planning`
+ * @param {string} phase  the paused phase
  * @param {string} workUnit
- * @param {{topic: string, waits: Wait[]}[]} holders  the phase's in-progress items holding waits
+ * @param {{topic: string, owed: string}[]} holders  the phase's in-progress items still awaiting something, each with what it awaits
  * @returns {string}
  */
 function phasePaused(phase, workUnit, holders) {
   const head = `${titlecase(phase)} paused for "${titlecase(workUnit)}"`;
-  const clauses = holders.map(({ topic, waits }) => (topic === workUnit
-    ? `awaiting ${owedWaits(waits, 'the topic')}`
-    : `"${titlecase(topic)}" awaits ${owedWaits(waits, 'the topic')}`));
+  const clauses = holders.map(({ topic, owed }) => (topic === workUnit
+    ? `awaiting ${owed}`
+    : `"${titlecase(topic)}" awaits ${owed}`));
   const line = clauses.length > 0 ? `${head} — ${clauses.join('; ')}.` : `${head}.`;
   return section('DISPLAY: phase paused', CONTINUE_INSTRUCTION, line);
 }
 
-module.exports = { waitGate, phasePaused, researchWaitState };
+module.exports = { waitGate, phasePaused, owedWaits, owedSources, researchWaitState };
