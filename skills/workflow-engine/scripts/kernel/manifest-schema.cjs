@@ -135,9 +135,9 @@ function isPlainName(name) {
 /**
  * Why a manifest key or label is illegal, or null when it is fine: dots break
  * the field surface's dot-path addressing, slashes break paths. One sentence,
- * two readers — the roadmap's validators throw it, the postpone's plan carries
- * it as a lock, so a refusal at the gate and a refusal at the write say the
- * same thing.
+ * two readers — `assertLegalName` throws it, the postpone's plan carries it as
+ * a lock, so a refusal at the gate and a refusal at the write say the same
+ * thing.
  * @param {string} kind @param {*} name
  * @returns {string|null}
  */
@@ -145,6 +145,12 @@ function illegalNameReason(kind, name) {
   return typeof name !== 'string' || name === '' || /[./]/.test(name)
     ? `"${name}" is not a legal ${kind} name — dots and slashes break manifest addressing`
     : null;
+}
+
+/** Refuses a name `illegalNameReason` refuses, with its reason. @param {string} kind @param {*} name */
+function assertLegalName(kind, name) {
+  const illegal = illegalNameReason(kind, name);
+  if (illegal !== null) throw new Error(illegal);
 }
 
 /** @param {string} origin */
@@ -219,9 +225,14 @@ const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 // project-level sessions under .workflows/.roadmap/).
 const PROJECT_IDENTITIES = ['baseline', 'roadmap'];
 
+// The literal a skill takes in an argument's place where it has nothing to
+// name there — no work type, no work unit, no inbox seeds.
+const NO_ARGUMENT = 'none';
+
 // Names a work unit can never take: `project` routes dot-path commands to the
-// project manifest, and the project identities are places of their own.
-const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES];
+// project manifest, the project identities are places of their own, and the
+// placeholder must never name a unit.
+const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT];
 
 module.exports = {
   VALID_WORK_TYPES,
@@ -238,6 +249,7 @@ module.exports = {
   KEBAB_SLUG_PATTERN,
   isPlainName,
   illegalNameReason,
+  assertLegalName,
   VALID_THREAD_STATUSES,
   isThreadOrigin,
   IMPORT_PHASES,
@@ -249,5 +261,6 @@ module.exports = {
   VALID_WORK_UNIT_STATUSES,
   TERMINAL_STATUSES,
   PROJECT_IDENTITIES,
+  NO_ARGUMENT,
   RESERVED_WORK_UNIT_NAMES,
 };

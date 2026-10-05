@@ -16,6 +16,7 @@ const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menu, menuFrame, cmdOption, actionsTable, section, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
+const { entrySkill } = require('../handoff.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
 /** @typedef {import('../workunit-detail.cjs').WorkUnitTypeConfig} WorkUnitTypeConfig */
@@ -33,7 +34,7 @@ const { typeConfig } = require('../workunit-detail.cjs');
 
 /** Phase entry route — `$0` = the type's work_type value, `$1` = work_unit. @param {WorkUnitTypeConfig} cfg @param {string} phase @param {string} workUnit */
 function entryRoute(cfg, phase, workUnit) {
-  return `/workflow-${phase}-entry ${cfg.workType} ${workUnit}`;
+  return `/${entrySkill(phase)} ${cfg.workType} ${workUnit}`;
 }
 
 // Completed phases that come before next_phase in the pipeline — the revisit

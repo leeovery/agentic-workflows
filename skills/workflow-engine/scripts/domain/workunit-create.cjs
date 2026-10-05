@@ -30,7 +30,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { parseInboxPath } = require('./inbox.cjs');
+const { parseInboxPaths } = require('./inbox.cjs');
 const {
   normaliseBasename,
   dedupe,
@@ -137,13 +137,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   assertLandableSources(cwd, imports);
 
   // Layout-validated live inbox paths; the folder carries the provenance tag.
-  const seedItems = seeds.map((p) => {
-    const item = parseInboxPath(p, { archived: false });
-    if (!fs.existsSync(path.join(cwd, item.given))) {
-      throw new Error(`inbox file not found: "${item.given}"`);
-    }
-    return item;
-  });
+  const seedItems = parseInboxPaths(cwd, seeds, { archived: false });
 
   // Read (and refuse corrupt JSON) before anything mutates; the registration
   // itself re-reads under the project lock after the work unit lands.

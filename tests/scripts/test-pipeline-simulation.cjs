@@ -68,6 +68,7 @@ const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwa
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
 const { openGate, drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
 
 // Spec-entry detail for one work unit — the spec boundary's derived view.
@@ -231,7 +232,8 @@ function auditState(dir, label) {
   // menus must render whatever state the pipeline is in — and, announced,
   // states each menu it draws, its pick list and its views alike, as the
   // gate beside it. The head insert is never a gate; a continue skill's pick
-  // menu is its select step's.
+  // menu is its select step's. Every route a view builds into a skill is one
+  // the handoff takes as it stands, or a move between menus.
   for (const [name, gw] of Object.entries(GATEWAYS)) {
     const result = gw.discover(dir);
     assert.ok(result && typeof result === 'object', ctx(`${name} gateway returned nothing`));
@@ -241,7 +243,29 @@ function auditState(dir, label) {
       auditGate(announcedRender(() => gw.select(result)), `${label} — ${name} select`);
     }
     for (const view of VIEW_MENUS[name](result)) {
-      auditGate(announcedRender(() => LIB.gateway.menuBlock(view())), `${label} — ${name} view`);
+      auditGate(announcedRender(() => LIB.gateway.menuBlock(view().rendered)), `${label} — ${name} view`);
+      auditRoutes(dir, view().keys, `${label} — ${name} view`);
+    }
+  }
+}
+
+// The skills a menu's route reaches in place: another menu, or help.
+const IN_PLACE_SKILLS = [
+  'workflow-continue-feature', 'workflow-continue-bugfix', 'workflow-continue-quickfix', 'workflow-continue-cross-cutting',
+  'workflow-help',
+];
+
+// A route the engine builds into a work skill hands off, so the handoff
+// table must take it as it stands — a route and the table can never drift.
+/** @param {string} dir @param {{route?: string|null}[]} keys @param {string} label */
+function auditRoutes(dir, keys, label) {
+  for (const { route } of keys) {
+    if (!route) continue;
+    const [skill, ...args] = route.slice(1).split(' ');
+    if (HANDOFF_TARGETS.includes(skill)) {
+      assert.doesNotThrow(() => resolveHandoff(dir, skill, args), `[${label}] the handoff refuses ${route}`);
+    } else {
+      assert.ok(IN_PLACE_SKILLS.includes(skill), `[${label}] ${route} reaches neither a handoff target nor a menu`);
     }
   }
 }
@@ -251,17 +275,21 @@ function auditState(dir, label) {
 // ---------------------------------------------------------------------------
 
 // The menus each gateway's `view` verb draws over the same discovery: the
-// start menu (the empty state's when there is no work), every epic's menu,
-// every linear unit's proceed/revisit menu.
-/** @param {string} type @returns {(result: any) => (() => string)[]} */
+// start menu (the empty state's when there is no work), every epic's menu
+// and its completed topics, every linear unit's proceed/revisit menu.
+/** @typedef {{keys: {route?: string|null}[], rendered: string}} ViewMenu */
+/** @param {string} type @returns {(result: any) => (() => ViewMenu)[]} */
 function linearViewMenus(type) {
   return (result) => LIB.detail.unitsOf(LIB.detail.typeConfig(type), result)
-    .map((/** @type {any} */ unit) => () => LIB.project.workUnitMenu(type, unit).rendered);
+    .map((/** @type {any} */ unit) => () => LIB.project.workUnitMenu(type, unit));
 }
-/** @type {Record<string, (result: any) => (() => string)[]>} */
+/** @type {Record<string, (result: any) => (() => ViewMenu)[]>} */
 const VIEW_MENUS = {
-  start: (result) => [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result)).rendered],
-  epic: (result) => result.epics.map((/** @type {any} */ e) => () => LIB.project.epicMenu(e.name, e.detail).rendered),
+  start: (result) => [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result))],
+  epic: (result) => result.epics.flatMap((/** @type {any} */ e) => [
+    () => LIB.project.epicMenu(e.name, e.detail),
+    () => LIB.project.epicCompletedMenu(e.name, e.detail),
+  ]),
   feature: linearViewMenus('feature'),
   bugfix: linearViewMenus('bugfix'),
   quickfix: linearViewMenus('quick-fix'),

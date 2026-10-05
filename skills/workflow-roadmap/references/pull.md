@@ -84,9 +84,9 @@ Create the unit (self-commits):
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit create {work_unit} {work_type} --description "{description}" --session-log-file .workflows/.cache/{work_unit}/discovery/session-001.md
 ```
 
-#### If the response is `ok: false` naming a work unit that already exists
+#### If the response is `ok: false` refusing the name — it already exists, is reserved, or names a phase
 
-The derived name is taken and nothing was created. Derive a different kebab-case name from the `description` — more specific than the one refused, never a numeric suffix — and hold it as `work_unit`. The staging path carries the name, so the backfill re-stages under it.
+The derived name is one the engine cannot take, and nothing was created. Derive a different kebab-case name from the `description` — more specific than the one refused, never a numeric suffix — and hold it as `work_unit`. The staging path carries the name, so the backfill re-stages under it.
 
 → Return to **D. Author the Backfill**.
 

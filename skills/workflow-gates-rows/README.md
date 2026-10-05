@@ -2,12 +2,14 @@
 
 A Claude Code mod that draws the transcript row of an answer the
 `workflow-gates` mod sent as the question and the answer —
-`Approve this task? → yes · Commit and continue to next task` — in place of
-Claude Code's framing of a plugin's prompt. It is a plugin of its own because
-Claude Code skips a plugin's own render hooks on the row of a prompt that
-plugin submitted. It pairs a row with the record the mod leaves in the
-conversation's own folder as `sent.json` as it sends; a row it cannot pair
-shows the answer alone. It changes only the drawing: the model reads Claude
+`Approve this task? → yes · Commit and continue to next task` — and the row of
+a handoff's continuation as the line naming where the work went —
+`→ Discussion · note-window` — in place of Claude Code's framing of a plugin's
+prompt. It is a plugin of its own because Claude Code skips a plugin's own
+render hooks on the row of a prompt that plugin submitted. It pairs a row with
+the record the mod leaves in the conversation's own folder as `sent.json` as
+it sends, drawing the record's line verbatim where it carries one, the
+handoff's; a row it cannot pair shows the answer alone. It changes only the drawing: the model reads Claude
 Code's framing, and ctrl+o shows the message in full.
 
 Each line it draws is kept in that folder,

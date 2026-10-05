@@ -42,7 +42,7 @@ const {
 const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
-const { TERMINAL_STATUSES, illegalNameReason } = require('../kernel/manifest-schema.cjs');
+const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 
 // Item provenance vocabulary (design decision 19): how the item landed.
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
@@ -54,15 +54,6 @@ function validateOrigin(origin) {
   if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+)$/.test(origin)) {
     throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{slug}, postpone:{work_unit}`);
   }
-}
-
-// The same structural rule work-unit and topic names live under, applied to
-// items and horizons alike (both are manifest keys/labels). Name-shape
-// conventions beyond that (kebab-case) are the calling flow's job.
-/** @param {string} kind @param {*} name */
-function validateName(kind, name) {
-  const illegal = illegalNameReason(kind, name);
-  if (illegal) throw new Error(illegal);
 }
 
 // Source pointers are provenance indexes into session logs — relative paths
@@ -394,7 +385,7 @@ function commitRoadmap(cwd, result, message, { workUnit, warnings = [] } = {}) {
  */
 function ensureHorizon(roadmap, horizon, position) {
   if (roadmap.horizons.includes(horizon)) return false;
-  validateName('horizon', horizon);
+  assertLegalName('horizon', horizon);
   if (position !== undefined) {
     validatePosition(position, roadmap.horizons.length + 1);
     roadmap.horizons.splice(position - 1, 0, horizon);
@@ -414,9 +405,9 @@ function ensureHorizon(roadmap, horizon, position) {
  * @returns {RoadmapOpResult}
  */
 function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sources = [] } = {}) {
-  validateName('item', name);
+  assertLegalName('item', name);
   if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
-  validateName('horizon', horizon);
+  assertLegalName('horizon', horizon);
   validateSummary(summary);
   validateOrigin(origin);
   validateSources(sources);
@@ -457,9 +448,9 @@ function addRoadmapItemsBatch(cwd, entries) {
     const at = `entry ${i + 1}`;
     if (!e || typeof e !== 'object' || Array.isArray(e)) throw new Error(`add-batch: ${at} must be an object`);
     try {
-      validateName('item', e.name);
+      assertLegalName('item', e.name);
       if (typeof e.horizon !== 'string' || e.horizon === '') throw new Error('"horizon" is required');
-      validateName('horizon', e.horizon);
+      assertLegalName('horizon', e.horizon);
       validateSummary(e.summary);
       if (e.origin !== undefined) validateOrigin(e.origin);
       if (e.sources !== undefined) validateSources(e.sources);
@@ -528,7 +519,7 @@ function editRoadmapItem(cwd, name, { summary } = {}) {
  * @returns {RoadmapOpResult}
  */
 function renameRoadmapItem(cwd, oldName, newName) {
-  validateName('item', newName);
+  assertLegalName('item', newName);
   if (newName === oldName) throw new Error(`new name must differ from "${oldName}"`);
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
@@ -621,7 +612,7 @@ function removeRoadmapItem(cwd, name) {
  * @returns {RoadmapOpResult}
  */
 function addHorizon(cwd, name, { position } = {}) {
-  validateName('horizon', name);
+  assertLegalName('horizon', name);
   const result = transactProject(cwd, (manifest) => {
     const roadmap = ensureRoadmap(manifest);
     if (roadmap.horizons.includes(name)) {
@@ -641,7 +632,7 @@ function addHorizon(cwd, name, { position } = {}) {
  * @returns {RoadmapOpResult}
  */
 function renameHorizon(cwd, oldName, newName) {
-  validateName('horizon', newName);
+  assertLegalName('horizon', newName);
   if (newName === oldName) throw new Error(`new name must differ from "${oldName}"`);
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
@@ -722,7 +713,7 @@ function mergeHorizons(cwd, from, into) {
  */
 function splitHorizon(cwd, name, { newName, items, position } = {}) {
   if (typeof newName !== 'string' || newName === '') throw new Error('--new is required');
-  validateName('horizon', newName);
+  assertLegalName('horizon', newName);
   if (newName === name) throw new Error('split: the new horizon must differ from the source');
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('--items is required — the members moving to the new horizon');
@@ -1040,7 +1031,7 @@ function revertJoins(cwd, workUnit, { topic } = {}) {
  * @returns {PostponeLanding}
  */
 function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) {
-  validateName('horizon', horizon);
+  assertLegalName('horizon', horizon);
   validateSummary(summary);
   validateSources(sources);
   return transactProject(cwd, (manifest) => {
@@ -1051,7 +1042,7 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
       // Read again under the project lock: the plan's clash check ran before
       // the epic write, and a name a peer took since must refuse, never overwrite.
       if (target.item !== undefined) throw new Error(postponeClashPhrase(topic, target.item));
-      validateName('item', target.name);
+      assertLegalName('item', target.name);
     }
     const bornHorizon = ensureHorizon(roadmap, horizon);
     if (!target.joined) {
