@@ -41,5 +41,7 @@ EXPECTED WORLD — from the fixture:
 - git history holds the completion commit
   (`workflow(search-relevance): complete epic pipeline`) and nothing else
   new
-- per-turn cache heartbeats under `.workflows/.cache/` are expected,
-  not writes
+- completing the epic purges its cache: everything under
+  `.workflows/.cache/search-relevance/` — the fixture's gap-analysis
+  file and any per-turn heartbeat — is gone, the unit's scratch going
+  when the unit closes
