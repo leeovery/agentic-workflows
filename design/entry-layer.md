@@ -51,6 +51,20 @@ handoff's one table of targets.
   (agntc, mint, pigeon, portal, tick) has declared one. Fix it on both
   routes, or retire consult references and let the knowledge base carry
   sibling decisions.
+- **The framework load.** Every flow skill opens by loading `framework.md`,
+  whose rule says to re-read its files every time, whatever is in context —
+  a rule written for one long conversation, where compaction could drop the
+  rules while their conclusions survived. With every move into work now a
+  handoff into a fresh conversation, the first skill there loads the
+  framework into an empty context, and the gate mod re-reads skill and
+  framework after compaction in a work conversation (#1461); the remaining
+  loads are in place — a phase's entry, then its process skill, then the
+  bridge, three in one conversation where only the first does anything, and
+  the epic menu opened in place from the start menu, whose re-read walks
+  skipped in three runs of four. Load the framework once per fresh
+  conversation, at the head of the skill a handoff lands on: whether an
+  in-place skill (the bridge, a menu opened from the start menu) loads it
+  at all, and whether the "never skip" rule survives.
 
 ## Candidate shape — from the audits, not yet decided
 
@@ -95,3 +109,5 @@ working material until the design settles and removed before it merges:
 
 - 2026-10-03 — opened from the mod handoff programme's audits; E1 and E2
   carried in; builds after that stack lands.
+- 2026-10-06 — the framework load raised from the mod handoff's walks
+  (the epic menu's in-place re-read skipped in three of four walks).
