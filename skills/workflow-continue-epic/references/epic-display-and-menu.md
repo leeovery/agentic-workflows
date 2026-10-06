@@ -105,6 +105,10 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 → On return, proceed to **C. Route Selection**.
 
+#### If `action` is `back`
+
+→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
+
 #### Otherwise
 
 A `(code session: …)` marker needs no gate here — implementation and review gate the whole checkout's code slot where each starts; the marked row routes like any other.

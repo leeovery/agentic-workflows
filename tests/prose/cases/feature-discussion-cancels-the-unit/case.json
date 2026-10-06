@@ -53,7 +53,7 @@
       "topic reopen",
       "discovery-map",
       "workflow-bridge/scripts/gateway.cjs",
-      "workflow-continue-feature/scripts/gateway.cjs",
+      "workflow-continue-linear/scripts/gateway.cjs",
       "render phase-completed",
       "render phase-paused",
       "agent dispatch",

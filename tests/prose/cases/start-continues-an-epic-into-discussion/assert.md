@@ -4,9 +4,9 @@ The prose should have taken this path:
    ready — and the discovery dump shows one active epic, routing to
    the active-work display; the first scripted answer selects the epic
    and its stored route invokes the epic continuation in place
-2. continue-epic opens with its phase title and reads its own discovery
-   dump; the work unit arrived as an argument, so no selection menu
-   renders and validation runs the scoped snapshot directly
+2. continue-epic opens with its phase title and reads the scoped
+   snapshot of the epic it was handed — no index of every epic, no
+   pick-an-epic menu
 3. the backfill checks find nothing — no qualifying legacy sources,
    no map rows missing a summary or description — and the backfill
    reference is never loaded

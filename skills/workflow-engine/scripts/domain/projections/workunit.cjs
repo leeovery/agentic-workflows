@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: work-unit projections — the status display, proceed/revisit
 // menu, and DATA body over one WorkUnitEntry (see ../workunit-detail.cjs). One
-// projection family serves all four single-topic navigation skills; per-type
-// variation (pipeline, work_type route argument) comes from WORK_UNIT_TYPES.
+// projection family serves the linear continue menu across the four
+// single-topic types; per-type variation (pipeline, work_type route argument)
+// comes from WORK_UNIT_TYPES.
 //
 // Deterministic: same entry, same string. The menu carries machine action keys
 // so skills route on keys, never on labels. Layout goes through the kernel
@@ -121,9 +122,9 @@ function workUnitStatus(type, unit) {
  * (skills route on these): the `continue` entry always (a `finalise` entry on
  * a finalising unit — the skill runs `workunit complete`, no route), plus
  * `revisit` and one `revisit_phase` entry per earlier completed phase when any
- * exist. `rendered` is the dotted-gate markdown block — empty when there is
- * nothing to revisit and nothing to finalise (the calling skill routes
- * straight through, no stop).
+ * exist, and `back` to the start menu wherever the menu renders. `rendered` is
+ * the dotted-gate markdown block — empty when there is nothing to revisit and
+ * nothing to finalise (the calling skill routes straight through, no stop).
  * @param {string} type  a WORK_UNIT_TYPES key
  * @param {WorkUnitEntry} unit
  * @returns {{keys: WorkUnitMenuKey[], rendered: string}}
@@ -131,9 +132,10 @@ function workUnitStatus(type, unit) {
 function workUnitMenu(type, unit) {
   const cfg = typeConfig(type);
   const revisitable = earlierCompleted(cfg, unit);
+  const gated = unit.finalising || revisitable.length > 0;
 
   /** @type {WorkUnitMenuKey[]} */
-  const keys = [unit.finalising
+  const options = [unit.finalising
     ? {
       key: 'y', word: 'yes', action: 'finalise', topic: unit.name, route: null,
       label: 'Mark the work unit completed',
@@ -143,28 +145,30 @@ function workUnitMenu(type, unit) {
       route: phaseRoute(type, unit.next_phase, unit.name),
       label: `Proceed to ${unit.next_phase}`,
     }];
-
   if (revisitable.length > 0) {
-    keys.push({ key: 'r', word: 'revisit', action: 'revisit', topic: unit.name, route: null, label: 'Revisit an earlier phase' });
-    revisitable.forEach((phase, i) => {
-      keys.push({
-        key: String(i + 1), action: 'revisit_phase', topic: unit.name, phase,
-        route: phaseRoute(type, phase, unit.name),
-        label: `${titlecase(phase)} — completed`,
-      });
-    });
+    options.push({ key: 'r', word: 'revisit', action: 'revisit', topic: unit.name, route: null, label: 'Revisit an earlier phase' });
+  }
+  if (gated) {
+    options.push({ key: 'b', word: 'back', action: 'back', topic: unit.name, route: null, label: 'Return to the start menu' });
   }
 
-  let rendered = '';
-  if (unit.finalising || revisitable.length > 0) {
-    const options = [cmdOption('y', 'yes', keys[0].label)];
-    if (revisitable.length > 0) options.push(cmdOption('r', 'revisit', 'Revisit an earlier phase'));
-    rendered = menu(
+  /** @type {WorkUnitMenuKey[]} */
+  const keys = [
+    ...options,
+    ...revisitable.map((phase, i) => ({
+      key: String(i + 1), action: 'revisit_phase', topic: unit.name, phase,
+      route: phaseRoute(type, phase, unit.name),
+      label: `${titlecase(phase)} — completed`,
+    })),
+  ];
+
+  const rendered = gated
+    ? menu(
       `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.triage_phases || []).length > 0 ? ' · triage waiting' : ''}.`,
-      options,
+      options.map((k) => cmdOption(k.key, k.word, k.label)),
       { question: 'Proceed?' },
-    );
-  }
+    )
+    : '';
 
   return { keys, rendered };
 }

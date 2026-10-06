@@ -388,7 +388,7 @@ describe('gate payload — a gateway menu', () => {
       completed_phases: ['discovery', 'discussion'],
       next_phase: 'specification',
     });
-    const gate = gateOf(runGateway(dir, 'workflow-continue-feature', ['view', 'auth'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'workflow-continue-linear', ['view', 'auth'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'Proceed?');
     assert.strictEqual(gate.statement, 'Continuing "Auth" — ready for specification.');
@@ -474,13 +474,13 @@ describe('gate payload — every gateway verb', () => {
       completed: [gated('completed')],
       fallback: [ungated('checkout')],
     },
-    'workflow-continue-feature': { index: [ungated()], select: [gated('select')], view: [gated('view', 'checkout'), ungated('view', 'nowhere')], fallback: [refused('checkout')] },
-    'workflow-continue-bugfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'crash-fix'), ungated('view', 'nowhere')], fallback: [refused('crash-fix')] },
-    'workflow-continue-quickfix': { index: [ungated()], select: [gated('select')], view: [gated('view', 'typo'), ungated('view', 'nowhere')], fallback: [refused('typo')] },
-    'workflow-continue-cross-cutting': { index: [ungated()], select: [gated('select')], view: [gated('view', 'logging'), ungated('view', 'nowhere')], fallback: [refused('logging')] },
+    'workflow-continue-linear': {
+      index: [refused()],
+      view: [gated('view', 'checkout'), gated('view', 'crash-fix'), gated('view', 'typo'), gated('view', 'logging'), ungated('view', 'nowhere')],
+      fallback: [refused('checkout')],
+    },
     'workflow-continue-epic': {
-      index: [ungated()],
-      select: [gated('select')],
+      index: [refused()],
       view: [gated('view', 'v1'), ungated('view', 'nowhere')],
       'completed-menu': [gated('completed-menu', 'v1')],
       'cancel-menu': [gated('cancel-menu', 'v1')],

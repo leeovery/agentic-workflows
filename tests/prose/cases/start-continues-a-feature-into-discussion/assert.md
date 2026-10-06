@@ -7,8 +7,9 @@ The prose should have taken this path:
    listing directories — and the overview and menu are emitted, the walk
    stopping for the user's selection
 3. the selection matches its actions entry by key and invokes the stored
-   route into the feature continuation in place, which re-reads state
-   through its own gateway and validates the name against it
+   route into the linear continue menu in place, which reads the
+   feature's state through its own gateway's view — no index of every
+   feature, no pick-a-unit menu
 4. the feature's pipeline state renders; with nothing to revisit, no
    proceed-or-revisit menu is put to the user — the continue action's
    stored route is taken directly

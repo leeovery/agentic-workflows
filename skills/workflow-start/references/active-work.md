@@ -35,7 +35,7 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 #### If `action` is `continue_work_unit`
 
-Invoke the entry's stored `route` (e.g. `/workflow-continue-feature {work_unit}`).
+Invoke the entry's stored `route` (e.g. `/workflow-continue-linear {work_unit}`).
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
 

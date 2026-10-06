@@ -5,11 +5,9 @@
 // building lives in the engine's domain ring; this script selects which
 // engine answers the skill's flow needs and sections the output.
 //
-//   gateway.cjs               → thin index dump, all active epics (head insert)
-//   gateway.cjs select        → the index dump, then the pick list and its menu (Step 3)
-//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 5–9)
+//   gateway.cjs {work_unit}   → scoped state dump, one epic (Steps 1–6)
 //   gateway.cjs view {work_unit} [new_arrivals_json]
-//                               → DATA + DISPLAY + MENU snapshot (Step 9)
+//                               → DATA + DISPLAY + MENU snapshot (Step 6)
 //   gateway.cjs completed-menu {work_unit}     → Resume Completed sub-view (D)
 //   gateway.cjs cancel-menu {work_unit}        → Cancel Topic sub-view (E)
 //   gateway.cjs reactivate-menu {work_unit}    → Reactivate Topic sub-view (F)
@@ -19,108 +17,29 @@
 //   gateway.cjs spec-scenario {work_unit}      → the specification menu's routing read, DATA only
 //   gateway.cjs spec-view {work_unit}          → its snapshot: DATA + TITLE + DISPLAY (+ MENU)
 //   gateway.cjs spec-completed-menu {work_unit} → its Completed Specifications sub-view
+//   gateway.cjs in-session-gate {work_unit} {key} → the in-session confirm over one held entry
 //
-// Those calls are the whole legal surface: a verb without its work unit, an
-// unknown verb, or excess arguments is a usage error (stderr, exit 1) — never
-// a silent first-epic render.
+// Those calls are the whole legal surface: the bare call, a verb without its
+// work unit, an unknown verb, or excess arguments is a usage error (stderr,
+// exit 1) — never a silent first-epic render.
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
-const { loadActiveManifests, loadAllManifests } = engine.reads;
-const { phaseItems, lastCompletedPhase } = engine.derivations;
+const { loadActiveManifests } = engine.reads;
+const { phaseItems } = engine.derivations;
 
-const EPIC_DETAIL_PHASES = engine.detail.EPIC_DETAIL_PHASES;
-
+/**
+ * The active epics, each with its detail — the one named `workUnit` where the
+ * caller names one.
+ * @param {string} cwd @param {string} [workUnit]
+ * @returns {{epics: {name: string, detail: any}[]}}
+ */
 function discover(cwd, workUnit) {
-  const allManifests = loadActiveManifests(cwd);
-  const manifests = workUnit
-    ? allManifests.filter(m => m.name === workUnit)
-    : allManifests;
-  const epics = [];
-
-  for (const m of manifests) {
-    if (m.work_type !== 'epic') continue;
-
-    const activePhases = [];
-    for (const phase of EPIC_DETAIL_PHASES) {
-      const items = phaseItems(m, phase);
-      if (items.length > 0) {
-        activePhases.push(phase);
-      }
-    }
-
-    // The detail build checksums every completed research + discussion file.
-    // Only the scoped / view / sub-view flows read `detail`; the index dump
-    // reads just name + active_phases. Defer the build to first access — a
-    // non-enumerable, memoised getter — so the index dump never pays for it,
-    // while scoped callers get the identical object on demand.
-    const epic = { name: m.name, active_phases: activePhases };
-    let detail;
-    let detailBuilt = false;
-    Object.defineProperty(epic, 'detail', {
-      enumerable: false,
-      get() {
-        if (!detailBuilt) { detail = engine.detail.epicDetail(cwd, m); detailBuilt = true; }
-        return detail;
-      },
-    });
-    epics.push(epic);
-  }
-
-  // Load completed/cancelled epics (only in list mode, not detail mode)
-  const completed = [];
-  const cancelled = [];
-  if (!workUnit) {
-    const allManifests = loadAllManifests(cwd);
-    for (const m of allManifests) {
-      if (m.work_type !== 'epic') continue;
-      if (m.status === 'completed') {
-        completed.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, EPIC_DETAIL_PHASES) });
-      } else if (m.status === 'cancelled') {
-        cancelled.push({ name: m.name, status: m.status, last_phase: lastCompletedPhase(m, EPIC_DETAIL_PHASES) });
-      }
-    }
-  }
-
-  return {
-    epics,
-    count: epics.length,
-    completed,
-    cancelled,
-    completed_count: completed.length,
-    cancelled_count: cancelled.length,
-    summary: epics.length === 0
-      ? 'no active epics'
-      : `${epics.length} active epic(s)`,
-  };
-}
-
-// The thin head-insert dump: active epic names with their active phases, plus
-// the closed sets the select and view-completed flows read. Per-epic state is
-// the scoped dump's concern; display and routing are the `view` verb's.
-function format(result) {
-  const lines = [];
-  lines.push(`=== EPICS (${result.count}) ===`);
-  for (const e of result.epics) {
-    lines.push(`  ${e.name}: ${e.active_phases.join(', ') || '(no phases)'}`);
-  }
-  lines.push(`=== COMPLETED (${result.completed_count}) ===`);
-  for (const u of result.completed) {
-    lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
-  }
-  lines.push(`=== CANCELLED (${result.cancelled_count}) ===`);
-  for (const u of result.cancelled) {
-    lines.push(`  ${u.name} (last phase: ${u.last_phase || 'none'})`);
-  }
-  return lines.join('\n') + '\n';
-}
-
-// The select step's snapshot: the index dump its validation reads, then the
-// pick list and the menu that takes the pick.
-function select(result) {
-  return format(result)
-    + engine.project.selectionSections('epic', result.epics, { completed: result.completed_count, cancelled: result.cancelled_count });
+  const epics = loadActiveManifests(cwd)
+    .filter((m) => m.work_type === 'epic' && (workUnit === undefined || m.name === workUnit))
+    .map((m) => ({ name: m.name, detail: engine.detail.epicDetail(cwd, m) }));
+  return { epics };
 }
 
 /** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
@@ -170,7 +89,7 @@ function reconcilePending(d) {
   return out;
 }
 
-// The scoped state dump for one epic — the reasoning surface Steps 5–9
+// The scoped state dump for one epic — the reasoning surface Steps 1–6
 // read: the all-done flag, analysis-cache statuses, the sequencing flag, and
 // the discovery-map rows (tier, lifecycle, routing, field presence, current
 // summary text).
@@ -207,7 +126,7 @@ function formatScoped(workUnit, result) {
   return lines.join('\n') + '\n';
 }
 
-// One snapshot for Step 9: reasoning DATA (flags + the ACTIONS table), the
+// One snapshot for Step 6: reasoning DATA (flags + the ACTIONS table), the
 // rendered dashboard + key (DISPLAY), and the menu (MENU).
 function view(workUnit, newArrivalsJson) {
   const result = discover(process.cwd(), workUnit);
@@ -435,7 +354,7 @@ function specCompletedMenu(cwd, workUnit) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu|spec-scenario|spec-view|spec-completed-menu) {work_unit}';
+const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu|spec-scenario|spec-view|spec-completed-menu) {work_unit} | gateway.cjs in-session-gate {work_unit} {key}';
 
 /** Reject the call: the reason to stderr, exit 1. @param {string} message @returns {string} */
 function reject(message) {
@@ -470,12 +389,7 @@ function subViewHandler(verb, projection) {
 
 if (require.main === module) {
   engine.gateway.runGateway({
-    index: (...rest) => (rest.length > 0
-      ? usageError('index takes no arguments')
-      : format(discover(process.cwd()))),
-    select: (...rest) => (rest.length > 0
-      ? usageError('select takes no arguments')
-      : select(discover(process.cwd()))),
+    index: () => usageError('a work unit is required'),
     view: (workUnit, newArrivalsJson, ...rest) => (!workUnit || rest.length > 0
       ? usageError('view takes a work unit and an optional new-arrivals JSON')
       : view(workUnit, newArrivalsJson)),
@@ -497,4 +411,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, format, select, formatScoped, specScenario };
+module.exports = { discover, formatScoped, specScenario };

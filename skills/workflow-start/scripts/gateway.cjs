@@ -13,7 +13,7 @@
 //   gateway.cjs working-set {path} …  → working-set snapshot (add/drop gates via their own verbs)
 //   gateway.cjs manage                → manage selection snapshot
 //   gateway.cjs manage {work_unit}    → action-menu snapshot (absorb/plan gates via render surfaces)
-//   gateway.cjs completed [{type}]    → completed & cancelled snapshot
+//   gateway.cjs completed             → completed & cancelled snapshot
 // ---------------------------------------------------------------------------
 
 const engine = require('../../workflow-engine/scripts/lib.cjs');
@@ -224,15 +224,10 @@ function manageView(workUnit) {
   ].join('\n');
 }
 
-// The completed & cancelled snapshot, optionally filtered to one work type.
-function completedView(filter) {
-  let v;
-  try {
-    v = engine.project.completedView(discover(process.cwd()), filter);
-  } catch (err) {
-    return engine.gateway.dataBlock({ error: err.message });
-  }
-  return pickSnapshot(v, 'Completed & Cancelled');
+// The completed & cancelled snapshot: the closed units as a numbered pick
+// menu — or, with nothing closed, the display that says so.
+function completedView() {
+  return pickSnapshot(engine.project.completedView(discover(process.cwd())), 'Completed & Cancelled');
 }
 
 if (require.main === module) {

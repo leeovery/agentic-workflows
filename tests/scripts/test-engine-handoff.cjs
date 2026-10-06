@@ -259,7 +259,7 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a skill no move into work lands on refuses, naming the targets', () => {
-    for (const skill of ['workflow-help', 'workflow-start', 'workflow-bridge', 'workflow-continue-feature', 'workflow-legacy-research-split', 'workflow-log-idea', 'workflow-nonsense']) {
+    for (const skill of ['workflow-help', 'workflow-start', 'workflow-bridge', 'workflow-continue-linear', 'workflow-legacy-research-split', 'workflow-log-idea', 'workflow-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: workflow-discovery, `));
     }
   });

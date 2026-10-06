@@ -1,7 +1,7 @@
 The prose should have taken this path:
 
-1. continue-epic opens with its phase title, reads its own discovery
-   dump, and validates the work unit it arrived with; the backfill
+1. continue-epic opens with its phase title and reads the scoped
+   snapshot of the epic it was handed; the backfill
    checks find nothing, the gap-analysis cache reads valid, and the map
    and the build order need no sequencing — no banner, no completion
    offer

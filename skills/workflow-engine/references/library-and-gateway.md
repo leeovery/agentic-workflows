@@ -85,8 +85,7 @@ engine.detail.startDetail(cwd)                    // → StartDetail (all work u
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
-engine.detail.workUnitDetail(cwd, type)           // → WorkUnitDetail (single-topic types: feature | bugfix | quick-fix | cross-cutting)
-engine.detail.workUnitIndex(type, detail)         // → labelled dump for the head-of-skill insert (thin DATA index)
+engine.detail.activeWorkUnit(cwd, wu)             // → { type, unit: WorkUnitEntry } — one single-topic unit in progress (feature | bugfix | quick-fix | cross-cutting), its type read from its manifest; null otherwise
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.detail.specificationDiscovery(cwd, wu)     // → DiscoveryResult (the epic specification menu's read: discussions, grouping specifications, cancelled keys, the grouping analysis's cache); throws for a name with no active epic
 engine.detail.specificationDetail(wu, result)     // → SpecificationDetail (the epic specification menu's scenario + grouping rows over one specificationDiscovery() result)
@@ -117,7 +116,7 @@ engine.project.manageListView(detail)             // → { data, menu, rows } �
 engine.project.manageUnitView(md)                 // → { data, menu } — the action menu
 engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
 engine.project.planTopicsMenu(md)                 // → MENU: plan topics — the render plan-topics surface
-engine.project.completedView(detail, filter)      // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing matches
+engine.project.completedView(detail)              // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing is closed
 engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
@@ -149,4 +148,4 @@ engine.gateway.runGateway({
 });
 ```
 
-The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for. A MENU in a response is a live gate at that call, so a verb returns one only where the prose shows that gate at that call: the head insert runs before any step shows anything and carries none, and a gate a later step shows is that step's own verb (the continue skills' `select`).
+The .md's prescribed call names the verb (`gateway.cjs view {work_unit}`) — the adapter never infers what a call is for. A MENU in a response is a live gate at that call, so a verb returns one only where the prose shows that gate at that call: the head insert runs before any step shows anything and carries none, and a gate a later step shows is that step's own verb (the epic menu's sub-views).

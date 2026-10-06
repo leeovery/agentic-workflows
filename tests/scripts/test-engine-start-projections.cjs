@@ -238,7 +238,7 @@ describe('start projections: menu', () => {
     ].join('\n'));
   });
 
-  it('finalising unit gets a Finalise entry that still routes to its continue skill', () => {
+  it('finalising unit gets a Finalise entry that still routes to the linear continue menu', () => {
     createManifest(dir, 'caching', {
       work_type: 'cross-cutting',
       phases: {
@@ -250,7 +250,7 @@ describe('start projections: menu', () => {
     assert.ok(/\*\*`1`\*\* +→ Finalise "Caching" — \*cross-cutting, pipeline\*\n\u00a0+\*complete\*/.test(menu.rendered));
     const entry = menu.keys.find((k) => k.key === '1');
     assert.strictEqual(entry.action, 'continue_work_unit');
-    assert.strictEqual(entry.route, '/workflow-continue-cross-cutting caching');
+    assert.strictEqual(entry.route, '/workflow-continue-linear caching');
   });
 
   it('shows v with cancelled-only work units', () => {
@@ -266,11 +266,11 @@ describe('start projections: menu', () => {
     assert.deepStrictEqual(
       keys.map((k) => [k.key, k.action, k.work_unit || null, k.route, k.pre_seed || null]),
       [
-        ['1', 'continue_work_unit', 'auth-flow', '/workflow-continue-feature auth-flow', null],
-        ['2', 'continue_work_unit', 'dark-mode', '/workflow-continue-feature dark-mode', null],
-        ['3', 'continue_work_unit', 'login-crash', '/workflow-continue-bugfix login-crash', null],
-        ['4', 'continue_work_unit', 'rename-api', '/workflow-continue-quickfix rename-api', null],
-        ['5', 'continue_work_unit', 'caching', '/workflow-continue-cross-cutting caching', null],
+        ['1', 'continue_work_unit', 'auth-flow', '/workflow-continue-linear auth-flow', null],
+        ['2', 'continue_work_unit', 'dark-mode', '/workflow-continue-linear dark-mode', null],
+        ['3', 'continue_work_unit', 'login-crash', '/workflow-continue-linear login-crash', null],
+        ['4', 'continue_work_unit', 'rename-api', '/workflow-continue-linear rename-api', null],
+        ['5', 'continue_work_unit', 'caching', '/workflow-continue-linear caching', null],
         ['6', 'continue_work_unit', 'quiz-competition-v1', '/workflow-continue-epic quiz-competition-v1', null],
         ['s', 'start_new', null, null, 'none'],
         ['f', 'start_new', null, null, 'feature'],
@@ -1020,10 +1020,9 @@ describe('start projections: completed & cancelled', () => {
     return startDetail(d);
   }
 
-  it('the menu is the list — completed then cancelled, numbered continuously, each closing phase its tail; no filter line', () => {
+  it('the menu is the list — completed then cancelled, numbered continuously, each closing phase its tail', () => {
     const v = completedView(closedFixture(dir));
     assert.strictEqual(v.data, [
-      'filter: (none)',
       'completed_count: 2',
       'cancelled_count: 1',
       'UNITS (n  status  work_type  work_unit  last_phase):',
@@ -1043,29 +1042,12 @@ describe('start projections: completed & cancelled', () => {
     ].join('\n'));
   });
 
-  it('filters to one work type with the Showing line above the question', () => {
-    const v = completedView(closedFixture(dir), 'feature');
-    assert.strictEqual(v.menu, [
-      DOTS,
-      'Showing: Features',
-      '',
-      '**`◆ Which work unit?`**',
-      '',
-      '**`1`**      → Done Feat — *completed after review*',
-      '**`b/back`** → Return',
-    ].join('\n'));
-    assert.ok(v.data.includes('filter: feature'));
-  });
-
-  it('a filter with no matches renders the empty display and no menu', () => {
-    const v = completedView(closedFixture(dir), 'quick-fix');
+  it('with nothing closed renders the empty display and no menu', () => {
+    createManifest(dir, 'auth-flow', {});
+    const v = completedView(startDetail(dir));
     assert.strictEqual(v.display, 'No completed or cancelled work units found.\n');
     assert.strictEqual(v.menu, undefined);
     assert.deepStrictEqual(v.rows, []);
-  });
-
-  it('is loud on an unknown filter', () => {
-    assert.throws(() => completedView(closedFixture(dir), 'gizmo'), /unknown work-type filter/);
   });
 
   it('the action menu renders over the selected unit, and refuses one the list never holds', () => {

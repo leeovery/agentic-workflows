@@ -22,7 +22,6 @@ const NB = (n) => '\u00a0'.repeat(n);
 // labels with no markup spanning the break \u2014 layout itself is covered by
 // the byte-exact pins.
 const unwrap = (s) => s.replace(/\n\u00a0+/g, ' ');
-const { selectionSections } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
 
 function setup() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'render-surfaces-'));
@@ -4220,57 +4219,6 @@ describe('render task-list --variant existing', () => {
   });
 });
 
-describe('selection projection', () => {
-  it('renders the bugfix pick list byte-exactly', () => {
-    const out = selectionSections('bugfix',
-      [{ name: 'crash', phase_label: 'specification (in-progress)' }, { name: 'leak', phase_label: 'investigation (in-progress)' }],
-      { completed: 1, cancelled: 1 });
-    assert.strictEqual(out, [
-      '=== DISPLAY: selection (emit verbatim as a text code block (```text fence)) ===',
-      '2 bugfix(es) in progress',
-      '  ├─ 1. Crash',
-      '  │   Specification (In-Progress)',
-      '  └─ 2. Leak',
-      '      Investigation (In-Progress)',
-      '',
-      '1 completed, 1 cancelled.',
-      '',
-      '=== MENU: selection (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
-      '· · · · · · · · · · · ·',
-      '**`◆ Which bugfix would you like to continue?`**',
-      '',
-      '**`1`**        → Continue "Crash" — *specification (in-progress)*',
-      '**`2`**        → Continue "Leak" — *investigation (in-progress)*',
-      '**`v/view`**   → View completed & cancelled bugfixes',
-      '**`m/manage`** → Manage a bugfix\'s lifecycle',
-      '',
-    ].join('\n'));
-  });
-
-  it('a unit with concerns queued carries the triage waiting cue on its row and its option', () => {
-    const out = selectionSections('feature',
-      [{ name: 'auth-flow', phase_label: 'discussion (in-progress)', triage_phases: ['discussion'] }, { name: 'dark-mode', phase_label: 'ready for specification' }],
-      { completed: 0, cancelled: 0 });
-    assert.ok(out.includes('  ├─ 1. Auth Flow\n  │   Discussion (In-Progress) · triage waiting\n'), out);
-    assert.ok(out.includes('  └─ 2. Dark Mode\n      Ready For Specification\n'), out);
-    assert.ok(unwrap(out).includes('→ Continue "Auth Flow" — *discussion (in-progress)* · triage waiting\n'), out);
-    assert.ok(unwrap(out).includes('→ Continue "Dark Mode" — *ready for specification*\n'), out);
-  });
-
-  it('epic variant bodies the active phases and drops the phase label from options', () => {
-    const out = selectionSections('epic', [{ name: 'payments', active_phases: ['discussion', 'specification'] }], { completed: 0, cancelled: 0 });
-    assert.ok(out.includes('  └─ 1. Payments\n      Discussion, Specification'));
-    assert.ok(/\*\*`1`\*\* +→ Continue "Payments"/.test(out));
-    assert.ok(!out.includes('Continue "Payments" —'));
-    assert.ok(!out.includes('View completed'), 'no closed units, no view option');
-  });
-
-  it('empty units render nothing; unknown type throws', () => {
-    assert.strictEqual(selectionSections('feature', [], { completed: 3, cancelled: 0 }), '');
-    assert.throws(() => selectionSections('nope', [{ name: 'x' }], { completed: 0, cancelled: 0 }), /unknown type "nope"/);
-  });
-});
-
 describe('pipeline continuation surfaces', () => {
   let dir;
   beforeEach(() => {
@@ -5008,15 +4956,15 @@ describe('render phase-completed --paths', () => {
 
 describe('selection not-found display', () => {
   const { selectionNotFound } = require('../../skills/workflow-engine/scripts/domain/projections/selection.cjs');
-  it('renders the per-type terminal byte-exactly', () => {
-    assert.strictEqual(selectionNotFound('cross-cutting', 'ghost'), [
+  it('renders the terminal byte-exactly, in the noun the menu continues', () => {
+    assert.strictEqual(selectionNotFound('work unit', 'ghost'), [
       '=== DISPLAY: not found (emit verbatim as a text code block (```text fence), then STOP — terminal condition) ===',
-      'No active cross-cutting concern named "ghost" found.',
+      'No active work unit named "ghost" found.',
       '',
-      'Run /workflow-start to see available concerns or begin a new one.',
+      'Run /workflow-start to see available work units or begin a new one.',
       '',
     ].join('\n'));
-    assert.ok(selectionNotFound('quick-fix', 'x').includes('available quick-fixes'));
+    assert.ok(selectionNotFound('epic', 'x').includes('No active epic named "x" found.\n\nRun /workflow-start to see available epics'));
   });
 });
 

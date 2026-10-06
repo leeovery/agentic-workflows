@@ -8,18 +8,18 @@ Display completed and cancelled work units.
 
 ## A. Display List
 
-Render the completed & cancelled snapshot — append the work-type filter when the caller set one:
+Render the completed & cancelled snapshot:
 
 ```bash
-node .claude/skills/workflow-start/scripts/gateway.cjs completed [{work_type_filter}]
+node .claude/skills/workflow-start/scripts/gateway.cjs completed
 ```
 
 The output is one snapshot in demarcated sections:
 
-- **DATA** — reasoning surface: the filter, counts, and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled units. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: the counts and the `UNITS` table — one line per work unit, `n  status  work_type  work_unit  last_phase`, numbering continuous across the completed and cancelled units. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker.
-- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim per its marker. Absent when nothing matches.
-- **DISPLAY** — only when nothing matches: the empty line. Emit verbatim per its marker.
+- **MENU** — the completed and cancelled units as a numbered pick list. Emit verbatim per its marker. Absent when nothing is closed.
+- **DISPLAY** — only when nothing is closed: the empty line. Emit verbatim per its marker.
 
 Emit the TITLE section verbatim per its marker.
 

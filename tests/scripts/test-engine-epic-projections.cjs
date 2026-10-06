@@ -545,6 +545,7 @@ describe('epic projections: menu', () => {
       '**`u/unblock`**   → Unblock a plan — mark a dependency as satisfied',
       `${NB(14)}externally`,
       '**`o/order`**     → Re-sequence the build order',
+      '**`b/back`**      → Return to the start menu',
     ].join('\n'));
   });
 
@@ -564,6 +565,7 @@ describe('epic projections: menu', () => {
         ['p', 'postpone_topic', null, null],
         ['u', 'unblock_plan', null, null],
         ['o', 'resequence_build_order', null, null],
+        ['b', 'back', null, null],
       ]
     );
     assert.strictEqual(keys[0].recommended, true);
@@ -739,7 +741,7 @@ describe('epic projections: menu', () => {
   it('brand-new epic menu leads with recommended discovery', () => {
     const d = detailFor(dir, 'fresh', { work_type: 'epic' });
     const { keys, rendered } = epicMenu('fresh', d);
-    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'r']);
+    assert.deepStrictEqual(keys.map((k) => k.key), ['i', 'd', 'r', 'b']);
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
@@ -747,6 +749,7 @@ describe('epic projections: menu', () => {
       '**`i/discovery`** → Run discovery — shape the topic map (recommended)',
       '**`d/discuss`**   → Start new discussion',
       '**`r/research`**  → Start new research',
+      '**`b/back`**      → Return to the start menu',
     ].join('\n'));
   });
 });
@@ -1878,6 +1881,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic',
       '**`p/postpone`**  → Postpone a topic to the roadmap',
+      '**`b/back`**      → Return to the start menu',
     ].join('\n'));
     // With a map the discussion phase renders no item rows — the map row
     // carries the wait, so the key owes no blocked cue.
@@ -2189,6 +2193,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       '**`i/discovery`** → Continue discovery',
       '**`a/cancel`**    → Cancel a topic',
       '**`p/postpone`**  → Postpone a topic to the roadmap',
+      '**`b/back`**      → Return to the start menu',
     ].join('\n'));
     // The map row cues the same hold the struck row shows.
     assert.strictEqual(cueOf(d, [peerIn('discussion', 'billing', 240)]),

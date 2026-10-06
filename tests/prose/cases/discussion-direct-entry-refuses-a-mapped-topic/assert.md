@@ -1,9 +1,8 @@
 The prose should have taken this path:
 
-1. continue-epic opens with its phase title and reads its own discovery
-   dump; the work unit arrived as an argument, so no selection menu
-   renders and validation runs the scoped snapshot directly; the
-   backfill checks, topic discovery and both sequencing steps find
+1. continue-epic opens with its phase title and reads the scoped
+   snapshot of the epic it was handed — no index of every epic, no
+   pick-an-epic menu; the backfill checks, topic discovery and both sequencing steps find
    nothing to do, and no banner or completion offer renders
 2. the epic dashboard renders with the three-topic map, and the first
    scripted answer picks the `d` command option — start a discussion on

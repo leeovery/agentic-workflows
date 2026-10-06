@@ -13,9 +13,9 @@
 //     discovery items status-less, no phase-named shadow roots),
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
-//   - every navigation gateway (start, continue-*, bridge) discovers AND
-//     formats the state without throwing, and draws its views — the epic's
-//     specification menu among them,
+//   - every navigation gateway (start, the continue menus, bridge) reads
+//     and renders the state without throwing — the epic's specification
+//     menu among its views,
 //   - every menu a gateway draws, and every menu a render draws, states
 //     itself whole in its gate payload once the gate surface is announced.
 // This is the detector for the silent class of bug: state that writes fine,
@@ -52,17 +52,11 @@ function pipelineOf(workType) {
   return schema.WORK_TYPE_PIPELINES[workType] || schema.VALID_PHASES.filter((p) => p !== 'discovery');
 }
 
-const GATEWAYS = {
-  start: require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs')),
-  epic: require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs')),
-  feature: require(path.join(ROOT, 'skills/workflow-continue-feature/scripts/gateway.cjs')),
-  bugfix: require(path.join(ROOT, 'skills/workflow-continue-bugfix/scripts/gateway.cjs')),
-  quickfix: require(path.join(ROOT, 'skills/workflow-continue-quickfix/scripts/gateway.cjs')),
-  crosscutting: require(path.join(ROOT, 'skills/workflow-continue-cross-cutting/scripts/gateway.cjs')),
-};
+const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
+const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
+const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-linear/scripts/gateway.cjs'));
 const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
-const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDiscovery, specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
@@ -222,27 +216,23 @@ function auditState(dir, label) {
       }
     }
 
-    // The bridge can always read the unit.
+    // The bridge can always read the unit, and the linear continue menu
+    // renders it — its view, or the not-found display for an epic or a
+    // closed unit.
     const bridged = BRIDGE.discover(dir, wu);
     assert.ok(!bridged.error, ctx(`${wu}: bridge gateway errored: ${bridged.error}`));
     BRIDGE.format(bridged);
+    LINEAR_GATEWAY.view(dir, wu);
   }
 
-  // Every navigation surface discovers and formats without throwing — the
-  // menus must render whatever state the pipeline is in — and, announced,
-  // states each menu it draws, its pick list and its views alike, as the
-  // gate beside it. The head insert is never a gate; a continue skill's pick
-  // menu is its select step's. Every route a view builds into a skill is one
-  // the handoff takes as it stands, or a move between menus.
-  for (const [name, gw] of Object.entries(GATEWAYS)) {
-    const result = gw.discover(dir);
-    assert.ok(result && typeof result === 'object', ctx(`${name} gateway returned nothing`));
-    assert.doesNotMatch(gw.format(result), /^=== MENU/m, ctx(`${name} head insert carries a gate`));
-    if (gw.select) {
-      gw.select(result);
-      auditGate(announcedRender(() => gw.select(result)), `${label} — ${name} select`);
-    }
-    for (const view of VIEW_MENUS[name](result, dir)) {
+  // Every navigation surface renders without throwing — the menus must
+  // render whatever state the pipeline is in — and, announced, states each
+  // menu it draws as the gate beside it. The start's head insert is never a
+  // gate. Every route a view builds into a skill is one the handoff takes as
+  // it stands, or a move between menus.
+  assert.doesNotMatch(START_GATEWAY.format(START_GATEWAY.discover(dir)), /^=== MENU/m, ctx('the start head insert carries a gate'));
+  for (const [name, views] of Object.entries(VIEW_MENUS)) {
+    for (const view of views(dir)) {
       auditGate(announcedRender(() => LIB.gateway.menuBlock(view().rendered)), `${label} — ${name} view`);
       auditRoutes(dir, view().keys, `${label} — ${name} view`);
     }
@@ -250,10 +240,7 @@ function auditState(dir, label) {
 }
 
 // The skills a menu's route reaches in place: another menu, or help.
-const IN_PLACE_SKILLS = [
-  'workflow-continue-feature', 'workflow-continue-bugfix', 'workflow-continue-quickfix', 'workflow-continue-cross-cutting',
-  'workflow-help',
-];
+const IN_PLACE_SKILLS = ['workflow-continue-linear', 'workflow-help'];
 
 // A route the engine builds into a work skill hands off as it stands, so the
 // handoff table must take it whole and carry it unchanged — a route and the
@@ -282,16 +269,11 @@ function auditRoutes(dir, keys, label) {
 // The gate payload
 // ---------------------------------------------------------------------------
 
-// The menus each gateway's views draw over the same discovery: the start
+// The menus each gateway's `view` verb draws over the project: the start
 // menu (the empty state's when there is no work), every epic's menu, its
 // completed topics and its specification menu, every linear unit's
 // proceed/revisit menu.
 /** @typedef {{keys: {route?: string|null}[], rendered: string}} ViewMenu */
-/** @param {string} type @returns {(result: any) => (() => ViewMenu)[]} */
-function linearViewMenus(type) {
-  return (result) => LIB.detail.unitsOf(LIB.detail.typeConfig(type), result)
-    .map((/** @type {any} */ unit) => () => LIB.project.workUnitMenu(type, unit));
-}
 
 // The specification menu's views over one epic — its `spec-scenario`,
 // `spec-view` and `spec-completed-menu` verbs: the routing read and the
@@ -308,18 +290,19 @@ function specificationViewMenus(dir, workUnit) {
   ];
 }
 
-/** @type {Record<string, (result: any, dir: string) => (() => ViewMenu)[]>} */
+/** @type {Record<string, (dir: string) => (() => ViewMenu)[]>} */
 const VIEW_MENUS = {
-  start: (result) => [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result))],
-  epic: (result, dir) => result.epics.flatMap((/** @type {any} */ e) => [
+  start: (dir) => {
+    const result = START_GATEWAY.discover(dir);
+    return [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result))];
+  },
+  epic: (dir) => EPIC_GATEWAY.discover(dir).epics.flatMap((e) => [
     () => LIB.project.epicMenu(e.name, e.detail),
     () => LIB.project.epicCompletedMenu(e.name, e.detail),
     ...specificationViewMenus(dir, e.name),
   ]),
-  feature: linearViewMenus('feature'),
-  bugfix: linearViewMenus('bugfix'),
-  quickfix: linearViewMenus('quick-fix'),
-  crosscutting: linearViewMenus('cross-cutting'),
+  linear: (dir) => listWorkUnits(dir).map((wu) => LIB.detail.activeWorkUnit(dir, wu)).filter(Boolean)
+    .map((/** @type {any} */ { type, unit }) => () => LIB.project.workUnitMenu(type, unit)),
 };
 
 /** One gateway render with the gate surface announced, collected from its start. @param {() => string} render */
@@ -667,17 +650,34 @@ function epicKey(sim, wu, action) {
   return key;
 }
 
-/** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} type @param {string} wu @param {string} action */
-function linearPick(sim, type, wu, action) {
-  const gateway = GATEWAYS[type.replace('-', '')];
-  const unit = LIB.detail.unitsOf(LIB.detail.typeConfig(type), gateway.discover(sim.dir)).find((u) => u.name === wu);
-  return pickRoute(sim, LIB.project.workUnitMenu(type, unit).keys, action);
+/** A linear unit's continue menu, its type read from its manifest. @param {Sim} sim @param {string} wu */
+function linearMenu(sim, wu) {
+  const found = LIB.detail.activeWorkUnit(sim.dir, wu);
+  assert.ok(found, `${wu} is a linear unit in progress`);
+  return LIB.project.workUnitMenu(found.type, found.unit);
+}
+
+/** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} wu @param {string} action */
+function linearPick(sim, wu, action) {
+  return pickRoute(sim, linearMenu(sim, wu).keys, action);
 }
 
 /** The start menu, or the empty state's, as the project stands. @param {Sim} sim */
 function startKeys(sim) {
-  const result = GATEWAYS.start.discover(sim.dir);
+  const result = START_GATEWAY.discover(sim.dir);
   return (result.state.has_any_work ? startMenu(result) : LIB.project.emptyMenu(result)).keys;
+}
+
+// A menu's `b/back` (start-menu.md): an internal move, no route — the label
+// goes back first, then the start menu is re-rendered over the state the
+// menu was entered from. Answers the start menu's keys.
+/** @param {Sim} sim @param {{action: string, route?: string|null}[]} keys */
+function backToStart(sim, keys) {
+  const back = keys.find((k) => k.action === 'back');
+  assert.ok(back, 'the menu offers its way back to the start menu');
+  assert.strictEqual(back.route, null, 'back is a move between menus, never a handoff');
+  assert.strictEqual(sim.run(['session', 'repair']).repaired, false, 'session repair is a no-op in the sim');
+  return startKeys(sim);
 }
 
 // route-to-discovery: new work goes to discovery with its work type's
@@ -1104,7 +1104,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
       /^=== DISPLAY: phase paused .*\nDiscussion paused for "Ledger" — awaiting research on the topic \(parked — not yet started\)\.\n$/);
     // The feature's continue menu proceeds to the research, handing off to it.
-    assert.strictEqual(linearPick(sim, 'feature', wu, 'continue').line, '→ Research · ledger');
+    assert.strictEqual(linearPick(sim, wu, 'continue').line, '→ Research · ledger');
     sim.run(['topic', 'start', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
@@ -1425,7 +1425,7 @@ describe('pipeline simulation', () => {
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
     // A discussion reroutes a concern to a topic it opens (create-discovery-
     // topic B): the row lands with no summary or description for the next
-    // epic entry to draft. The conclusion's arrival meets it at Step 5, the
+    // epic entry to draft. The conclusion's arrival meets it at Step 2, the
     // backfill commits, and backfill-checks C hands the menu off with the
     // arguments it arrived with — the fresh menu recovers nothing and leads
     // with the banner.
@@ -1493,8 +1493,11 @@ describe('pipeline simulation', () => {
     sim.render(['conclude-gate', `${wu}.investigation.${wu}`], { expect: 'content' });
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
     // A session that stops here resumes from the bugfix's continue menu, which
-    // hands off where the bridge does.
-    assert.strictEqual(linearPick(sim, 'bugfix', wu, 'continue').line, `→ Specification · ${wu}`);
+    // hands off where the bridge does — or goes back to the start menu, where
+    // the bugfix is still the row it was picked from.
+    assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
+    assert.ok(backToStart(sim, linearMenu(sim, wu).keys)
+      .some((k) => k.action === 'continue_work_unit' && k.route === `/workflow-continue-linear ${wu}`));
 
     // The bugfix spec source name is pinned to the topic.
     walkDeliveryPhases(sim, wu, wu, { sources: [wu] });
@@ -1538,9 +1541,9 @@ describe('pipeline simulation', () => {
     assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
     // The reopened investigation's rows say what waits — the start menu
     // entry and the bugfix pipeline row — and the drain retires the cue.
-    const startRow = () => startMenu(GATEWAYS.start.discover(sim.dir)).keys
+    const startRow = () => startMenu(START_GATEWAY.discover(sim.dir)).keys
       .map((k) => drawLabel(k.label)).find((label) => label.startsWith('Continue "Crash Fix"'));
-    const bugfixUnit = () => GATEWAYS.bugfix.discover(sim.dir).bugfixes.find((u) => u.name === wu);
+    const bugfixUnit = () => LIB.detail.activeWorkUnit(sim.dir, wu).unit;
     assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · triage waiting');
     assert.deepStrictEqual(bugfixUnit().triage_phases, ['investigation']);
     assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · triage waiting\]/);
@@ -1598,7 +1601,7 @@ describe('pipeline simulation', () => {
     sim.render(['phase-completed', wu, '--phase', 'scoping', '--paths'], { expect: 'content' });
     // A session that stops here resumes from the quick-fix's continue menu,
     // which hands off where the bridge does.
-    assert.strictEqual(linearPick(sim, 'quick-fix', wu, 'continue').line, `→ Implementation · ${wu}`);
+    assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Implementation · ${wu}`);
 
     // Implementation (verification workflow) + review — task init creates.
     bridgeTo(sim, wu, 'implementation');
@@ -1682,7 +1685,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'next-phase-gate', wu, '--prev', 'discussion', '--next', 'review'], /unknown --next "review" for a cross-cutting/);
     // A session that stops here resumes from the cross-cutting continue menu,
     // which hands off where the bridge does.
-    assert.strictEqual(linearPick(sim, 'cross-cutting', wu, 'continue').line, `→ Specification · ${wu}`);
+    assert.strictEqual(linearPick(sim, wu, 'continue').line, `→ Specification · ${wu}`);
     bridgeTo(sim, wu, 'specification');
   });
 
@@ -1824,6 +1827,9 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     assert.match(arriveAtEpicMenu(sim, wu, 'research'), /Research completed for "Overhaul"\./);
+    // The menu's way back: the start menu, the epic still its row.
+    assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys)
+      .some((k) => k.action === 'continue_work_unit' && k.route === `/workflow-continue-epic ${wu}`));
     const ops = sim.write(`.workflows/.cache/${wu}/discovery/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.research.alpha`, fields: { reconcile_needed: true } }]);
     sim.run(['manifest', 'apply', wu, '--file', ops]);
@@ -3767,7 +3773,7 @@ describe('pipeline simulation', () => {
     // re-rendered over the state the roadmap was entered from.
     assert.strictEqual(sim.run(['session', 'repair']).repaired, false,
       'session repair is a no-op in the sim');
-    assert.match(GATEWAYS.start.format(GATEWAYS.start.discover(sim.dir)), /has_any_work: true/);
+    assert.match(START_GATEWAY.format(START_GATEWAY.discover(sim.dir)), /has_any_work: true/);
 
     // Shipping the unit flips the derived state to shipped — nothing stored.
     sim.run(['workunit', 'complete', 'mvp', '-m', 'workflow(mvp): pipeline complete']);

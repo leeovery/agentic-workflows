@@ -1,10 +1,9 @@
 The prose should have taken this path:
 
-1. the title renders, the index dump runs, and the count is one; the
-   work unit arrived as an argument, so no epic is picked, and the
-   paused phase `specification` and the outcome `paused` are held
-2. validation finds the epic in the index and runs the scoped dump for
-   it, which does not read all done
+1. the title renders, and the work unit, the paused phase
+   `specification` and the outcome `paused` it arrived with are held
+2. the scoped dump runs for that epic — no index of every epic, no
+   pick — and does not read all done
 3. the session is labelled with the work unit alone; the legacy
    research-split detector finds nothing to split and every map row has
    its summary and description, so nothing is backfilled

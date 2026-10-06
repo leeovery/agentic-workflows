@@ -789,6 +789,7 @@ function commandOptions(workUnit, detail, hasMap) {
   if (anyLiveSpec) {
     opts.push({ key: 'o', word: 'order', action: 'resequence_build_order', topic: null, route: null, label: 'Re-sequence the build order' });
   }
+  opts.push({ key: 'b', word: 'back', action: 'back', topic: null, route: null, label: 'Return to the start menu' });
   return opts;
 }
 

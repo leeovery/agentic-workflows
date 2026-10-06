@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { workUnitDetail, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
+const { activeWorkUnit, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
 const { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
 
 // Golden tests: byte-exact expected strings for the work-unit status display
@@ -17,8 +17,9 @@ const { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPh
 // produce).
 
 function unitOf(dir, type, name) {
-  const detail = workUnitDetail(dir, type);
-  return detail[typeConfig(type).resultKey].find((u) => u.name === name);
+  const found = activeWorkUnit(dir, name);
+  assert.strictEqual(found.type, type);
+  return found.unit;
 }
 
 describe('workunit projections: status display', () => {
@@ -324,12 +325,14 @@ describe('workunit projections: menu', () => {
       '',
       '**`y/yes`**     → Proceed to specification',
       '**`r/revisit`** → Revisit an earlier phase',
+      '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
       [
         ['y', 'continue', 'auth-flow', null, '/workflow-specification-process feature auth-flow'],
         ['r', 'revisit', 'auth-flow', null, null],
+        ['b', 'back', 'auth-flow', null, null],
         ['1', 'revisit_phase', 'auth-flow', 'discussion', '/workflow-discussion-process feature auth-flow'],
       ]
     );
@@ -359,12 +362,14 @@ describe('workunit projections: menu', () => {
       '',
       '**`y/yes`**     → Proceed to specification',
       '**`r/revisit`** → Revisit an earlier phase',
+      '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
         ['y', 'continue', null, '/workflow-specification-process bugfix login-crash'],
         ['r', 'revisit', null, null],
+        ['b', 'back', null, null],
         ['1', 'revisit_phase', 'investigation', '/workflow-investigation-process bugfix login-crash'],
       ]
     );
@@ -387,12 +392,14 @@ describe('workunit projections: menu', () => {
       '',
       '**`y/yes`**     → Proceed to implementation',
       '**`r/revisit`** → Revisit an earlier phase',
+      '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
         ['y', 'continue', null, '/workflow-implementation-process quick-fix hotfix-logs'],
         ['r', 'revisit', null, null],
+        ['b', 'back', null, null],
         ['1', 'revisit_phase', 'scoping', '/workflow-scoping-process quick-fix hotfix-logs'],
       ]
     );
@@ -430,12 +437,14 @@ describe('workunit projections: menu', () => {
       '',
       '**`y/yes`**     → Mark the work unit completed',
       '**`r/revisit`** → Revisit an earlier phase',
+      '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
         ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
+        ['b', 'back', null, null],
         ['1', 'revisit_phase', 'discussion', '/workflow-discussion-process feature auth-flow'],
         ['2', 'revisit_phase', 'specification', '/workflow-specification-process feature auth-flow'],
         ['3', 'revisit_phase', 'planning', '/workflow-planning-process feature auth-flow'],
@@ -483,12 +492,14 @@ describe('workunit projections: menu', () => {
       '',
       '**`y/yes`**     → Proceed to specification',
       '**`r/revisit`** → Revisit an earlier phase',
+      '**`b/back`**    → Return to the start menu',
     ].join('\n'));
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
         ['y', 'continue', null, '/workflow-specification-process cross-cutting caching'],
         ['r', 'revisit', null, null],
+        ['b', 'back', null, null],
         ['1', 'revisit_phase', 'research', '/workflow-research-process cross-cutting caching'],
         ['2', 'revisit_phase', 'discussion', '/workflow-discussion-process cross-cutting caching'],
       ]
@@ -526,6 +537,7 @@ describe('workunit projections: data body', () => {
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  continue  auth-flow  → /workflow-specification-process feature auth-flow',
       '  r  revisit  revisit  auth-flow  → (internal)',
+      '  b  back  back  auth-flow  → (internal)',
       '  1  —  revisit_phase  auth-flow  → /workflow-discussion-process feature auth-flow',
     ].join('\n'));
   });
@@ -573,6 +585,7 @@ describe('workunit projections: data body', () => {
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  finalise  hotfix-logs  → (internal)',
       '  r  revisit  revisit  hotfix-logs  → (internal)',
+      '  b  back  back  hotfix-logs  → (internal)',
       '  1  —  revisit_phase  hotfix-logs  → /workflow-scoping-process quick-fix hotfix-logs',
       '  2  —  revisit_phase  hotfix-logs  → /workflow-implementation-process quick-fix hotfix-logs',
       '  3  —  revisit_phase  hotfix-logs  → /workflow-review-process quick-fix hotfix-logs',
