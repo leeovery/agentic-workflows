@@ -465,7 +465,7 @@ function epicDetail(cwd, manifest) {
         // (proposed included) — a discussion in any such item is "grouped",
         // which is what unaccounted_discussions measures; a cancelled or
         // superseded specification groups nothing, the same reading the
-        // spec-entry gateway makes.
+        // specification menu's discovery makes.
         if (specGroupsSources(item)) {
           for (const src of sourcesArr) {
             groupedDiscussions.add(src.topic || src.name);

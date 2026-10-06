@@ -403,7 +403,7 @@ describe('gate payload — a gateway menu', () => {
       },
     });
     createFile(dir, '.workflows/v2/specification/auth-spec/specification.md', '# A');
-    const gate = gateOf(runGateway(dir, 'workflow-specification-entry', ['view', 'v2'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['spec-view', 'v2'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'What would you like to do?');
     assert.strictEqual(gate.statement, '');
@@ -431,7 +431,7 @@ describe('gate payload — a gateway menu', () => {
     });
     createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# Done');
     createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
-    const gate = gateOf(runGateway(dir, 'workflow-specification-entry', ['view', 'v1'], ANNOUNCED));
+    const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['spec-view', 'v1'], ANNOUNCED));
     const detailOf = (/** @type {string} */ head) => gate.options.find((/** @type {{head: string}} */ o) => o.head === head).detail;
 
     assert.strictEqual(gate.statement, '');
@@ -488,14 +488,11 @@ describe('gate payload — every gateway verb', () => {
       'postpone-menu': [gated('postpone-menu', 'v1')],
       'pull-forward-menu': [gated('pull-forward-menu', 'v1')],
       'unblock-menu': [gated('unblock-menu', 'v1')],
+      'spec-scenario': [ungated('spec-scenario', 'v2'), refused('spec-scenario', 'nowhere')],
+      'spec-view': [gated('spec-view', 'v2'), refused('spec-view', 'nowhere')],
+      'spec-completed-menu': [gated('spec-completed-menu', 'v2')],
       'in-session-gate': [gated('in-session-gate', 'v1', '2')],
       fallback: [ungated('v1')],
-    },
-    'workflow-specification-entry': {
-      index: [refused()],
-      view: [gated('view', 'v2')],
-      'completed-menu': [gated('completed-menu', 'v2')],
-      fallback: [ungated('v2')],
     },
     'workflow-discovery': { index: [refused()], 'map-view': [ungated('map-view', 'v1')], fallback: [ungated('v1')] },
     'workflow-bridge': { index: [refused()], fallback: [ungated('checkout')] },

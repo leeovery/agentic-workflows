@@ -1,32 +1,10 @@
 # Analysis Flow
 
-*Reference for **[workflow-specification-entry](../SKILL.md)***
+*Reference for **[specification-display-and-menu](specification-display-and-menu.md)***
 
 ---
 
-## A. Held Source Check
-
-The analysis reads the completed discussions and rewrites `.state/` staging that is work-unit-wide — a peer session holding a source topic open, however long it has idled, is still working material it would read, and the pass would overwrite whatever an earlier one staged. Check first:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs presence scan {work_unit}
-```
-
-#### If the response has `held_sources` greater than `0`
-
-Hold off — the analysis reads the settled record, so it waits for those sessions and runs at the next entry. Emit the response's `DISPLAY: presence deferral` section now, verbatim per its marker.
-
-The stop is the whole answer wherever this fires.
-
-**STOP.** Do not proceed — terminal condition.
-
-#### Otherwise
-
-→ Proceed to **B. Gather Analysis Context**.
-
----
-
-## B. Gather Analysis Context
+## A. Gather Analysis Context
 
 A prior pass's cache is about to be superseded by this one. Clear it — only when the file exists:
 
@@ -50,11 +28,11 @@ Your context (or 'none'):
 
 **STOP.** Wait for user response.
 
-→ Proceed to **C. Analyze Discussions**.
+→ Proceed to **B. Analyze Discussions**.
 
 ---
 
-## C. Analyze Discussions
+## B. Analyze Discussions
 
 **This step is critical. You MUST read every completed discussion document thoroughly.**
 
@@ -78,17 +56,17 @@ Group discussions into specifications where each grouping represents a **coheren
 
 **Preserve Anchored Names**
 
-**Anchors** are existing specification items whose status is `in-progress`, `completed`, `superseded`, or `promoted`. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated. A **cancelled** specification is neither: it anchors nothing and its sources are free to be regrouped, but its key stays reserved — it comes back only through the epic menu's reactivate. The cancelled set is the DATA section's `cancelled_specifications:` lines — one per cancelled specification, naming the sources it grouped — the one source **D** reads too.
+**Anchors** are existing specification items whose status is `in-progress`, `completed`, `superseded`, or `promoted`. They are specs the user has already started or finished; reconcile preserves them. Proposed items are not anchors — they are freely regenerated. A **cancelled** specification is neither: it anchors nothing and its sources are free to be regrouped, but its key stays reserved — it comes back only through the epic menu's reactivate. The cancelled set is the DATA section's `cancelled_specifications:` lines — one per cancelled specification, naming the sources it grouped — the one source **C** reads too.
 
 When forming groupings:
 - If a grouping contains a majority of the same discussions as an anchor's sources, you MUST reuse that anchor's topic name
-- If a grouping contains a majority of the same discussions as a cancelled specification's sources, name it afresh — never the cancelled key — and record the resemblance for **E**: `resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back`
+- If a grouping contains a majority of the same discussions as a cancelled specification's sources, name it afresh — never the cancelled key — and record the resemblance for **D**: `resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back`
 - Only create new names for genuinely new groupings with no overlap
 - If an anchor's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
 
 **Note Cross-Source Tensions**
 
-The full read also surfaces tensions construction will meet when it extracts. Record each as one `**Tension**` line in the cache (**E**):
+The full read also surfaces tensions construction will meet when it extracts. Record each as one `**Tension**` line in the cache (**D**):
 
 - **Between sources** — two documents' decided ground disagrees, or a term rests on something another document has since moved. Record it on the grouping whose sources carry it: the documents, the collision.
 - **From a sibling** — a discussion belonging wholly in one grouping changed something a **sibling** grouping (or an anchored existing spec) depends on, e.g. a decision redesigned in discussion A that supersedes what another grouping's spec documents. Record it on the **receiving** grouping, never as a source: the sibling discussion, what it changed. While grouping, check each discussion for one — a `## Spec hand-offs` section or "reconciliation owed by {spec}" note it carries, a change you observe where it carries neither, a dated revision entry in a Decision timeline whose trigger names a sibling grouping's ground.
@@ -107,11 +85,11 @@ Phrase the query as a natural-language description of the grouping's concern, no
 
 Treat hits as **candidate** tension lines — a hit from a discussion outside this grouping that changed something the grouping depends on is worth recording on it. **Advisory only**: never auto-add, never gate. You decide which candidates to record.
 
-→ Proceed to **D. Reconcile Proposed Groupings**.
+→ Proceed to **C. Reconcile Proposed Groupings**.
 
 ---
 
-## D. Reconcile Proposed Groupings
+## C. Reconcile Proposed Groupings
 
 Persist the analysis by reconciling the manifest's specification items against the freshly-formed groupings. The manifest is the source of truth: each purely-proposed grouping becomes a `proposed` specification item carrying its members as `pending` sources and **no file on disk**. Every mutation uses `set`/`delete` — never `init-phase`. Anchors are preserved; proposed items are freely regenerated.
 
@@ -121,7 +99,7 @@ Work through these steps in order:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get '{work_unit}.specification.*' status
    ```
-   Partition them into **anchors** (`in-progress`, `completed`, `superseded`, `promoted`) and **existing-proposed** (`proposed`). The **cancelled** set is the DATA section's `cancelled_specifications:` list — the one **C** read — set aside: never augmented, never deleted, never written to (the engine refuses a `status` write onto a cancelled item and a `delete` of it), its key never reused. Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
+   Partition them into **anchors** (`in-progress`, `completed`, `superseded`, `promoted`) and **existing-proposed** (`proposed`). The **cancelled** set is the DATA section's `cancelled_specifications:` list — the one **B** read — set aside: never augmented, never deleted, never written to (the engine refuses a `status` write onto a cancelled item and a `delete` of it), its key never reused. Read sources per item as needed (`get {work_unit}.specification.{name} sources`).
 
 2. **Map groupings to anchors.** For each freshly-formed grouping that substantially overlaps an anchor's sources (a majority of members shared), rename it in memory to the anchor's topic key. This splits the groupings into **maps-to-anchor** and **purely-proposed**.
 
@@ -135,7 +113,7 @@ Work through these steps in order:
 5. **Delete stale proposed.** For each existing-proposed item whose name is not in the target set, collect a `delete` op removing the whole item:
    - `{work_unit}.specification` → delete `items.{name}`
 
-6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it — rename the colliding target; an anchor is never overwritten by a proposed item. A target name equal to a cancelled specification's key is renamed too — the key is reserved for that specification's reactivation, and the resemblance line from **C** is what the user sees.
+6. **Collision guard.** If a target proposed name equals an existing anchor key, do NOT write `proposed` over it — rename the colliding target; an anchor is never overwritten by a proposed item. A target name equal to a cancelled specification's key is renamed too — the key is reserved for that specification's reactivation, and the resemblance line from **B** is what the user sees.
 
 7. **Upsert proposed.** For each surviving target name, collect `set` ops — `status: proposed` plus one `sources.{discussion}.status: pending` per grouping member — and, for an existing-proposed item being regenerated, a `delete` op per source no longer in the grouping (pruning is allowed only on proposed items, never anchors). A **rename** of a proposed grouping is just delete-old (step 5) plus upsert-new — lossless, since a proposed item holds no file or extraction.
 
@@ -155,11 +133,11 @@ Work through these steps in order:
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest apply {work_unit} --file .workflows/.cache/{work_unit}/specification/reconcile-ops.json
    ```
 
-→ Proceed to **E. Write the Cache**.
+→ Proceed to **D. Write the Cache**.
 
 ---
 
-## E. Write the Cache
+## D. Write the Cache
 
 Write the cache **after** all manifest mutations. The checksum is written last — a mid-reconcile crash then leaves a stale checksum, forcing a clean re-reconcile on the next run.
 
@@ -211,22 +189,6 @@ Commit the whole reconcile as one commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
 ```
 
-When a grouping resembles a cancelled specification (**C**), tell the user in one line: it resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back.
+When a grouping resembles a cancelled specification (**B**), tell the user in one line: it resembles the cancelled specification {name} — reactivate it from the epic menu if you want it back.
 
-The reconcile moved the scenario — read it afresh:
-
-```bash
-node .claude/skills/workflow-specification-entry/scripts/gateway.cjs {work_unit}
-```
-
-Route on its `scenario`.
-
-#### If `scenario` is `groupings`
-
-→ Load **[display-groupings.md](display-groupings.md)** and follow its instructions as written.
-
-#### If `scenario` is `specs-menu`
-
-Every grouping mapped to an existing specification — no proposed items remain.
-
-→ Load **[display-specs-menu.md](display-specs-menu.md)** and follow its instructions as written.
+→ Return to caller.

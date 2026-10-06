@@ -24,9 +24,6 @@ const DATA_MARKER = '=== DATA (reason from this — never display or parse the s
 const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
 const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ===';
 
-// The phases an epic enters with no topic — the entry picks one.
-const EPIC_TOPICLESS = ['specification'];
-
 // Every phase an epic's conclusion can name: its discovery, then its pipeline.
 const EPIC_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 
@@ -139,13 +136,6 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
-  it('an epic\'s specification takes the epic alone — the entry picks the topic', () => {
-    for (const phase of EPIC_TOPICLESS) {
-      const name = phase.charAt(0).toUpperCase() + phase.slice(1);
-      assert.strictEqual(payloadOf(carried(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'])).line, `→ ${name} · fumi`);
-    }
-  });
-
   it('discovery into an existing epic takes the work type epic or none, and no seeds', () => {
     assert.strictEqual(inline(dir, ['workflow-discovery', 'none', 'fumi']),
       inlineAnswer('workflow-discovery', 'none fumi', '→ Discovery · fumi'));
@@ -159,7 +149,7 @@ describe('engine handoff — the composed answer for every target', () => {
       for (const phase of WORK_TYPE_PIPELINES[type]) {
         const skill = `workflow-${phase}-entry`;
         const name = phase.charAt(0).toUpperCase() + phase.slice(1);
-        if (type !== 'epic' || EPIC_TOPICLESS.includes(phase)) {
+        if (type !== 'epic') {
           assert.strictEqual(inline(dir, [skill, type, unit]),
             inlineAnswer(skill, `${type} ${unit}`, `→ ${name} · ${unit}`), `${skill} ${type}`);
         }
@@ -315,10 +305,9 @@ describe('engine handoff — refusals', () => {
     }
   });
 
-  it('every other epic phase refuses the epic alone — research and discussion included, whose topic the epic menu names', () => {
-    for (const phase of WORK_TYPE_PIPELINES.epic.filter((p) => !EPIC_TOPICLESS.includes(p))) {
-      refused(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'],
-        new RegExp(`^an epic enters ${phase} at a topic — only specification takes the epic alone$`));
+  it('every epic phase refuses the epic alone — the epic menu names the topic before it hands off', () => {
+    for (const phase of WORK_TYPE_PIPELINES.epic) {
+      refused(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'], new RegExp(`^an epic enters ${phase} at a topic$`));
     }
   });
 

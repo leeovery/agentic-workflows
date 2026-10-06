@@ -106,13 +106,18 @@ Dispatch the `workflow-specification-review-claims` agent via the Task tool:
   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
   ```
-  Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). Resolve each source name to its artifact — sources can be incorporated specifications or research files, not only discussions. First match wins:
+  Sources returns an object keyed by source name (e.g., `{"auth-design": {"status": "incorporated"}}`). Each source resolves to `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise to `.workflows/{work_unit}/discussion/{source-name}.md`.
 
-  1. `{source-name}` is not `{topic}` and a specification item named `{source-name}` exists in the manifest (an incorporated source spec) → `.workflows/{work_unit}/specification/{source-name}/specification.md`
-  2. `.workflows/{work_unit}/research/{source-name}.md` exists → that research file
-  3. Work type is `bugfix` → `.workflows/{work_unit}/investigation/{source-name}.md`
-  4. Otherwise → `.workflows/{work_unit}/discussion/{source-name}.md`
+  Where the work type is `cross-cutting`, add its research when it is completed:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
+  ```
+  `completed` → `.workflows/{work_unit}/research/{topic}.md`.
 
+  Then add each specification this one incorporates — each entry's `path`:
+  ```bash
+  node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
+  ```
   Pass all resolved paths to the agent.
 - **Import paths**: the reference material the work unit holds — read the entries:
   ```bash
@@ -148,7 +153,7 @@ Dispatch the `workflow-specification-review-input` agent via the Task tool:
 - **Agent file**: `.claude/agents/workflow-specification-review-input.md`
 - **Work unit**: the current work unit
 - **Specification path**: the specification file path
-- **Source material paths**: the paths resolved in **C** — re-resolve via the ladder there when they are no longer in context
+- **Source material paths**: the paths resolved in **C** — resolve them again as **C** does when they are no longer in context
 - **Topic name**: the current topic
 - **Cycle number**: the current cycle number
 - **Review tracking format path**: `.claude/skills/workflow-specification-process/references/review-tracking-format.md`

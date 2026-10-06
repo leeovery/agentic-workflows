@@ -350,8 +350,8 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
     ['workflow-continue-bugfix', ['view', 'live-bugfix'], 'live'],
     ['workflow-continue-quickfix', ['view', 'live-quickfix'], 'live'],
     ['workflow-continue-cross-cutting', ['view', 'live-policy'], 'live'],
-    ['workflow-specification-entry', ['view', 'live-epic'], 'live'],
-    ['workflow-specification-entry', ['completed-menu', 'live-epic'], 'live'],
+    ['workflow-continue-epic', ['spec-view', 'live-epic'], 'live'],
+    ['workflow-continue-epic', ['spec-completed-menu', 'live-epic'], 'live'],
     ['workflow-roadmap', ['view'], 'live'],
   ];
 

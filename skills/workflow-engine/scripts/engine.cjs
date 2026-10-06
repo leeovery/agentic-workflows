@@ -36,6 +36,8 @@ const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperi
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
 const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
+const { incorporations } = require('./domain/specification.cjs');
+const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
 const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs');
@@ -183,6 +185,7 @@ Commands:
   topic start <work-unit> <phase> <topic>
   topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
   topic queue <work-unit> <phase> <topic>
+  topic incorporations <work-unit> <topic>
   topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
   topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
@@ -313,7 +316,7 @@ Commands:
   render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
   render analysis-proceed-gate <wu>
-  render spec-confirm-gate <wu.specification.topic> --variant create|continue|refine|unify
+  render spec-confirm-gate <wu.specification.topic> [--single]  (bare: empty unless the start incorporates a specification or unifies the groupings)
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
@@ -1040,6 +1043,15 @@ function runTopic(call, argv) {
       respond(call, status);
       return;
     }
+    if (command === 'incorporations') {
+      const [workUnit, topic] = rest;
+      if (!workUnit || !topic || rest.length !== 2) {
+        throw new Error('Usage: engine topic incorporations <work-unit> <topic>');
+      }
+      const manifest = loadWorkUnitManifest(call.cwd, workUnit);
+      respond(call, { work_unit: workUnit, topic, incorporations: incorporations(manifest, workUnit, topic) });
+      return;
+    }
     if (command === 'absorb') {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let file;
@@ -1108,7 +1120,7 @@ function runTopic(call, argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|postpone|queue|absorb|requeue> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|postpone|queue|incorporations|absorb|requeue> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
@@ -1940,7 +1952,7 @@ function runHandoff(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1958,6 +1970,7 @@ function runRender(call, argv) {
       if (flags.has('dead-end')) args['dead-end'] = '1';
       if (flags.has('menu-only')) args['menu-only'] = '1';
       if (flags.has('pause')) args.pause = '1';
+      if (flags.has('single')) args.single = '1';
       respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {
       failJson(call, err);

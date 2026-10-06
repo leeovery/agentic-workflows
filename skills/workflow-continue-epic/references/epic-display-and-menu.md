@@ -99,6 +99,12 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 → On return, proceed to **C. Route Selection**.
 
+#### If `action` is `analyze_discussions`
+
+→ Load **[specification-display-and-menu.md](specification-display-and-menu.md)** and follow its instructions as written.
+
+→ On return, proceed to **C. Route Selection**.
+
 #### Otherwise
 
 A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
@@ -119,15 +125,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs in-session-gate {
 
 **If user chose `yes`:**
 
-Continue with the **Hard gate check** below.
-
-**Hard gate check** — specification reads the settled record; this refusal comes before the soft gate. Read `phase_counts` from DATA. (Blocked items carry no menu row — a blocked spec, a discussion held for its outstanding research, a plan held for its unsettled specification, a dep-blocked plan — so none reaches here, except a spec, discussion, or plan another session holds open: its struck row arrives through the in-session gate above, and its entry skill's own gate meets it next. The display tree shows the `blocked` cue or the research awaited, and the ⚑ list carries the dep-blocked plan's detail.)
-
-**If `action` is `analyze_discussions` and `phase_counts` shows discussion items in-progress and no specification items exist:**
-
-Tell the user in one line: {N} discussion(s) are still in-progress — the grouping analysis reads the settled record; conclude them and return. (With specification items already on the board, the route passes — the specification menu shows what is workable and withholds the analysis itself.)
-
-→ Return to **A. State Display and Menu**.
+Continue with the **Soft gate check** below.
 
 **Soft gate check** — before routing, the engine checks whether the selection conflicts with a phase-completion recommendation or the build order. Advisory, not blocking. Fetch the gate for the selected entry — `--topic` carries the entry's topic and is omitted for the topic-less command options:
 
@@ -159,7 +157,35 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the exact skill invocation the selection hands off along as `route` — for a new topic, `/workflow-{phase}-entry epic {work_unit} {topic}`, with the phase it was started for and the name it was given; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). The other entries with route `(internal)` resolve their flows in **B. Handle Selection** and never reach this section.
+Store the exact skill invocation the selection hands off along as `route` — for a new topic, `/workflow-{phase}-entry epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/workflow-specification-entry epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). The other entries with route `(internal)` resolve their flows in **B. Handle Selection** and never reach this section.
+
+#### If `route` enters the specification
+
+Fetch the confirm for `{topic}` — empty unless the start incorporates a started specification or unifies the groupings, what the pick did not show:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic}
+```
+
+**If the output is empty:**
+
+→ Return to caller.
+
+**If a `MENU: spec confirm gate` section is returned:**
+
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
+
+**STOP.** Wait for user response.
+
+**If user chose `no`:**
+
+→ Return to **A. State Display and Menu**.
+
+**If user chose `yes`:**
+
+→ Return to caller.
+
+#### Otherwise
 
 → Return to caller.
 

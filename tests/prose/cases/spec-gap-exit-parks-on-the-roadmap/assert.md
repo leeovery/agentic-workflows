@@ -101,7 +101,8 @@ The prose should have taken this path:
     and the walk **STOPS** a final time
 17. on the user's yes the topic completes through the engine, the date
     is stamped, and the conclusion commits with the knowledge index
-    riding it. No source specification exists to supersede
+    riding it. The incorporations read comes back empty, so nothing is
+    superseded
 18. the walk stops at the pipeline continuation without invoking the
     bridge
 

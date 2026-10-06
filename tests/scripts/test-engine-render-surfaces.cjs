@@ -7797,14 +7797,15 @@ describe('render spec-confirm-gate', () => {
   const completed = { status: 'completed' };
   const unit = (specification, discussion = { 'auth-flow': completed, billing: completed, refunds: completed }) =>
     writeManifest(dir, 'pay', { phases: { discussion: { items: discussion }, specification: { items: specification } } });
-  const render = (topic, variant) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, variant });
+  const render = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}` });
+  const single = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, single: '1' });
 
-  it('create over a proposed grouping: the covered source marked, the supersession', () => {
+  it('a start that incorporates a started specification: the covered source marked, the supersession', () => {
     unit({
       payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
       'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } },
     });
-    assert.strictEqual(render('payments', 'create'), [
+    assert.strictEqual(render('payments'), [
       DISPLAY_HEAD,
       'Creating specification: Payments',
       '',
@@ -7822,131 +7823,39 @@ describe('render spec-confirm-gate', () => {
     ].join('\n'));
   });
 
-  it('create with nothing covered: the sources and the output alone', () => {
-    unit({ payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
-    assert.strictEqual(render('payments', 'create'), [
-      DISPLAY_HEAD,
-      'Creating specification: Payments',
-      '',
-      'Sources:',
-      '  • auth-flow',
-      '  • billing',
-      '',
-      'Output: .workflows/pay/specification/payments/specification.md',
-      '',
-      MENU_HEAD,
-      ...ASK,
-    ].join('\n'));
-  });
-
-  it('create with no item is the single-discussion path — it confirms the lone completed discussion', () => {
-    unit({}, { 'auth-flow': completed, billing: { status: 'in-progress' }, refunds: { status: 'cancelled' } });
-    assert.strictEqual(render('pay', 'create').split('\n').slice(0, 7).join('\n'), [
-      DISPLAY_HEAD,
-      'Creating specification: Pay',
-      '',
-      'Sources:',
-      '  • auth-flow',
-      '',
-      'Output: .workflows/pay/specification/pay/specification.md',
-    ].join('\n'));
-    unit({});
-    assert.throws(() => render('pay', 'create'),
-      /no specification "pay" — a create with no proposed grouping confirms the lone completed discussion, and "pay" has 3/);
-  });
-
-  it('continue over an in-progress spec: each extraction state its own block', () => {
+  it('a plain start answers empty — the pick showed everything it does', () => {
     unit({
-      core: {
-        status: 'in-progress',
-        sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'pending' }, refunds: { status: 'stale' } },
-      },
+      payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
+      gone: { status: 'superseded', superseded_by: 'payments', sources: { billing: { status: 'incorporated' } } },
     });
-    assert.strictEqual(render('core', 'continue'), [
-      DISPLAY_HEAD,
-      'Continuing specification: Core',
-      '',
-      'Existing: .workflows/pay/specification/core/specification.md [in-progress]',
-      '',
-      'Sources to extract:',
-      '  • billing [pending]',
-      '',
-      'Sources re-decided since extraction (reconcile):',
-      '  • refunds [stale]',
-      '',
-      'Previously extracted (for reference):',
-      '  • auth-flow',
-      '',
-      MENU_HEAD,
-      ...ASK,
-    ].join('\n'));
+    assert.strictEqual(render('payments'), '');
   });
 
-  it('continue leaves out a block with nothing in it', () => {
-    unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
-    const out = render('core', 'continue');
-    assert.match(out, /Sources to extract:\n {2}• auth-flow \[pending\]\n {2}• billing \[pending\]\n\n=== MENU/);
-    assert.doesNotMatch(out, /re-decided|Previously extracted/);
-  });
-
-  it('continue over an in-progress spec with every source extracted lists them all as extracted', () => {
-    unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'incorporated' } } } });
-    assert.strictEqual(render('core', 'continue').split('\n').slice(0, 8).join('\n'), [
-      DISPLAY_HEAD,
-      'Continuing specification: Core',
-      '',
-      'Existing: .workflows/pay/specification/core/specification.md [in-progress]',
-      '',
-      'All sources extracted:',
-      '  • auth-flow',
-      '  • billing',
-    ].join('\n'));
-  });
-
-  it('continue over a completed spec names its pending sources as new', () => {
-    unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' }, refunds: { status: 'pending' } } } });
-    const out = render('core', 'continue');
-    assert.match(out, /Existing: \.workflows\/pay\/specification\/core\/specification\.md \[completed\]/);
-    assert.match(out, /New sources to extract:\n {2}• refunds \[pending\]\n\nPreviously extracted \(for reference\):\n {2}• auth-flow/);
-  });
-
-  it('a started spec leaves out a source whose discussion item is gone, as its overview row does; a proposed grouping keeps it', () => {
+  it('a continue or a refine answers empty — even one whose start incorporated a specification still live', () => {
     unit({
-      core: { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' }, ghost: { status: 'pending' } } },
-      payments: { status: 'proposed', sources: { phantom: { status: 'pending' } } },
+      core: { status: 'in-progress', incorporates: ['old'], sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'pending' } } },
+      old: { status: 'completed', sources: { billing: { status: 'incorporated' } } },
+      done: { status: 'completed', sources: { refunds: { status: 'incorporated' } } },
+      moved: { status: 'completed', sources: { refunds: { status: 'stale' } } },
     });
-    const started = render('core', 'continue');
-    assert.match(started, /All sources extracted:\n {2}• auth-flow\n\n=== MENU/);
-    assert.doesNotMatch(started, /ghost/);
-    assert.match(render('payments', 'create'), /Sources:\n {2}• phantom\n/);
+    for (const topic of ['core', 'old', 'done', 'moved']) assert.strictEqual(render(topic), '', topic);
   });
 
-  it('refine: every source extracted, and the menu opens on where a change of decision belongs', () => {
-    unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } } });
-    assert.strictEqual(render('core', 'refine'), [
-      DISPLAY_HEAD,
-      'Refining specification: Core',
-      '',
-      'Existing: .workflows/pay/specification/core/specification.md [completed]',
-      '',
-      'All sources extracted:',
-      '  • auth-flow',
-      '',
-      MENU_HEAD,
-      DOTS,
-      'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.',
-      '',
-      ...ASK.slice(1),
-    ].join('\n'));
+  it('a proposed grouping keeps every source it names, a gone discussion included', () => {
+    unit({
+      payments: { status: 'proposed', sources: { phantom: { status: 'pending' }, billing: { status: 'pending' } } },
+      billing: { status: 'in-progress', sources: { billing: { status: 'pending' } } },
+    });
+    assert.match(render('payments'), /Sources:\n {2}• phantom\n {2}• billing \(has individual spec — will be incorporated\)\n/);
   });
 
-  it('unify lists every started specification it incorporates, and none when nothing has started', () => {
+  it('the unify always confirms, listing every started specification it incorporates — or none', () => {
     unit({
       unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
       'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } },
       billing: { status: 'in-progress', sources: { billing: { status: 'pending' } } },
     });
-    assert.strictEqual(render('unified', 'unify'), [
+    assert.strictEqual(render('unified'), [
       DISPLAY_HEAD,
       'Creating specification: Unified',
       '',
@@ -7966,33 +7875,125 @@ describe('render spec-confirm-gate', () => {
       ...ASK,
     ].join('\n'));
     unit({ unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } } });
-    assert.doesNotMatch(render('unified', 'unify'), /Existing specifications to incorporate/);
+    const alone = render('unified');
+    assert.match(alone, /Creating specification: Unified\n\nSources:\n {2}• auth-flow\n\nOutput: /);
+    assert.doesNotMatch(alone, /Existing specifications to incorporate/);
   });
 
-  it('refuses a variant the item does not bear — the verb is the entry menu\'s own', () => {
-    unit({
-      payments: { status: 'proposed', sources: { billing: { status: 'pending' } } },
-      core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' } } },
-      done: { status: 'completed', sources: { refunds: { status: 'stale' } } },
-      old: { status: 'superseded', superseded_by: 'core', sources: { refunds: { status: 'incorporated' } } },
+  it('a started `unified` is a continue like any other — empty', () => {
+    unit({ unified: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' } } } });
+    assert.strictEqual(render('unified'), '');
+  });
+
+  describe('--single: the single-discussion path picks nothing, so the confirm is always drawn', () => {
+    it('with no item yet, a create of the lone completed discussion', () => {
+      unit({}, { 'auth-flow': completed, billing: { status: 'in-progress' }, refunds: { status: 'cancelled' } });
+      assert.strictEqual(single('pay'), [
+        DISPLAY_HEAD,
+        'Creating specification: Pay',
+        '',
+        'Sources:',
+        '  • auth-flow',
+        '',
+        'Output: .workflows/pay/specification/pay/specification.md',
+        '',
+        MENU_HEAD,
+        ...ASK,
+      ].join('\n'));
+      unit({});
+      assert.throws(() => single('pay'),
+        /no specification "pay" — the single-discussion confirm reads the lone completed discussion, and "pay" has 3/);
     });
-    assert.throws(() => render('payments', 'continue'), /"payments" reads Creating — the continue confirm does not serve it/);
-    assert.throws(() => render('core', 'create'), /"core" reads Continuing — the create confirm does not serve it/);
-    assert.throws(() => render('done', 'refine'), /"done" reads Continuing — the refine confirm does not serve it/);
-    assert.throws(() => render('old', 'continue'), /"old" is superseded — there is nothing to confirm/);
-    assert.throws(() => render('payments', 'unify'), /the unify confirm reads the "unified" item its reconcile wrote — "payments" is not it/);
-    unit({});
-    assert.throws(() => render('unified', 'unify'), /"unified" has no item/);
+
+    it('a plain start the bare call answers empty for', () => {
+      unit({ payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } } });
+      assert.strictEqual(render('payments'), '');
+      assert.match(single('payments'), /^=== DISPLAY: spec confirmation .*\nCreating specification: Payments\n\nSources:\n {2}• auth-flow\n\nOutput: /);
+    });
+
+    it('a continue: each extraction state its own block', () => {
+      unit({
+        core: {
+          status: 'in-progress',
+          sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'pending' }, refunds: { status: 'stale' } },
+        },
+      });
+      assert.strictEqual(single('core'), [
+        DISPLAY_HEAD,
+        'Continuing specification: Core',
+        '',
+        'Existing: .workflows/pay/specification/core/specification.md [in-progress]',
+        '',
+        'Sources to extract:',
+        '  • billing [pending]',
+        '',
+        'Sources re-decided since extraction (reconcile):',
+        '  • refunds [stale]',
+        '',
+        'Previously extracted (for reference):',
+        '  • auth-flow',
+        '',
+        MENU_HEAD,
+        ...ASK,
+      ].join('\n'));
+    });
+
+    it('a continue leaves out a block with nothing in it, and lists every source when all are extracted', () => {
+      unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
+      const pending = single('core');
+      assert.match(pending, /Sources to extract:\n {2}• auth-flow \[pending\]\n {2}• billing \[pending\]\n\n=== MENU/);
+      assert.doesNotMatch(pending, /re-decided|Previously extracted/);
+      unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' }, ghost: { status: 'pending' } } } });
+      const extracted = single('core');
+      assert.match(extracted, /Existing: \.workflows\/pay\/specification\/core\/specification\.md \[in-progress\]\n\nAll sources extracted:\n {2}• auth-flow\n\n=== MENU/);
+      assert.doesNotMatch(extracted, /ghost/, 'a started specification leaves out a source whose discussion item is gone');
+    });
+
+    it('a completed specification with sources left to extract is a continue that names them as new', () => {
+      unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' }, refunds: { status: 'pending' } } } });
+      const out = single('core');
+      assert.match(out, /Continuing specification: Core\n\nExisting: \.workflows\/pay\/specification\/core\/specification\.md \[completed\]/);
+      assert.match(out, /New sources to extract:\n {2}• refunds \[pending\]\n\nPreviously extracted \(for reference\):\n {2}• auth-flow/);
+    });
+
+    it('a refine: every source extracted, and the menu opens on where a change of decision belongs', () => {
+      unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } } });
+      assert.strictEqual(single('core'), [
+        DISPLAY_HEAD,
+        'Refining specification: Core',
+        '',
+        'Existing: .workflows/pay/specification/core/specification.md [completed]',
+        '',
+        'All sources extracted:',
+        '  • auth-flow',
+        '',
+        MENU_HEAD,
+        DOTS,
+        'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.',
+        '',
+        ...ASK.slice(1),
+      ].join('\n'));
+    });
+
+    it('refuses a closed specification as the bare call does', () => {
+      unit({ old: { status: 'superseded', superseded_by: 'core', sources: { refunds: { status: 'incorporated' } } } });
+      assert.throws(() => single('old'), /"old" is superseded — there is nothing to confirm/);
+    });
   });
 
-  it('refuses an unknown variant and an address that is not a specification topic', () => {
-    unit({});
-    assert.throws(() => render('pay', 'redo'), /--variant must be one of create, continue, refine, unify, got "redo"/);
-    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'pay.planning.core', variant: 'create' }),
+  it('refuses an item it cannot confirm, and an address that is not a specification topic', () => {
+    unit({
+      old: { status: 'superseded', superseded_by: 'core', sources: { refunds: { status: 'incorporated' } } },
+      parked: { status: 'cancelled', sources: { refunds: { status: 'incorporated' } } },
+    });
+    assert.throws(() => render('old'), /"old" is superseded — there is nothing to confirm/);
+    assert.throws(() => render('parked'), /"parked" is cancelled — there is nothing to confirm/);
+    assert.throws(() => render('ghost'), /no specification "ghost" — the confirm reads the item the pick names/);
+    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'pay.planning.core' }),
       /address must be <work_unit>\.specification\.<topic>, got phase "planning"/);
-    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'pay', variant: 'create' }),
+    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'pay' }),
       /address must be <work_unit>\.<phase>\.<topic>/);
-    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'ghost.specification.core', variant: 'create' }),
+    assert.throws(() => renderSurface(dir, 'spec-confirm-gate', { dotpath: 'ghost.specification.core' }),
       /work unit "ghost" not found/);
   });
 });

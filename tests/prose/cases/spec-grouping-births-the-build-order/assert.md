@@ -1,18 +1,26 @@
 The prose should have taken this path:
 
-1. the scoped path (epic, no topic) routes through prerequisites into
-   the grouping analysis — both discussions are concluded, so the
-   analyze route passes its gates
-2. the analysis checks presence before reading anything — no source
-   session is held, so nothing defers and no deferral is emitted
-3. the analysis forms groupings from the two concluded discussions
+1. continue-epic opens with its phase title, reads its own discovery
+   dump, and validates the work unit it arrived with; the backfill
+   checks find nothing, the gap-analysis cache reads valid, and the map
+   is already sequenced — no banner, no completion offer
+2. the epic dashboard renders and the scripted answer picks the `s`
+   command option; the menu resolves the pick itself — no soft gate,
+   nothing handed off
+3. the specification menu reads its scenario — both discussions
+   concluded, no specification or grouping — so the analyze prompt
+   renders and, on yes, the analysis checks presence before reading
+   anything; no source session is held, so nothing defers and no
+   deferral is emitted
+4. the analysis forms groupings from the two concluded discussions
    (their exact shape and names are the model's judgment) and persists
    the whole reconcile through one `manifest apply`
-4. the same reconcile assigns the build order: every specification
+5. the same reconcile assigns the build order: every specification
    item it creates carries an `order` field
-5. the flow reads the routing state afresh — the reconcile moved it —
-   and, the scenario now groupings, presents the groupings menu from the
-   display's own snapshot; the walk stops there
+6. the menu reads its scenario afresh — the reconcile moved it — and,
+   the scenario now groupings, presents the groupings menu from its own
+   snapshot, a back row to the epic menu beneath the rows; the walk
+   stops there
 
 Further claims about the end state:
 
@@ -26,3 +34,4 @@ Further claims about the end state:
   has no specification item and no influence on the numbering
 - `phases.specification.build_order_stale` is absent — birth does not
   flag staleness
+- nothing is handed off: no specification starts

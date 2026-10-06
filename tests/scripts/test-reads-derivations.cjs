@@ -1098,13 +1098,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'cancelled' }], (n) => n),
         { holds: 'its source "a" is cancelled', recovery: 'reactivate the topic first' });
       assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'b', reason: 'held', by: 'x' }], (n) => n.toUpperCase(), { now: true }),
-        { holds: 'the specification "X" now sources "B"', recovery: 'regroup at the specification entry' });
+        { holds: 'the specification "X" now sources "B"', recovery: 'regroup the discussions from the menu (s/spec)' });
       assert.deepStrictEqual(reactivateLockPhrases([
         { topic: 'a', reason: 'cancelled' }, { topic: 'b', reason: 'cancelled' },
         { topic: 'c', reason: 'held', by: 'x' }, { topic: 'd', reason: 'held', by: 'y' },
       ], (n) => n), {
         holds: 'its sources "a", "b" are cancelled and the specifications "x", "y" source "c", "d"',
-        recovery: 'reactivate the topics first and regroup at the specification entry',
+        recovery: 'reactivate the topics first and regroup the discussions from the menu (s/spec)',
       });
     });
   });

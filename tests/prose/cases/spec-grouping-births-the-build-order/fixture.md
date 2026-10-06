@@ -11,3 +11,5 @@ flag.
 The discovery map is fully sequenced (orders 1–3 from the harvest) —
 those numbers rank exploration, and the grouping analysis must not
 inherit them.
+
+The session opens on the epic's menu, the way the start menu opens it.

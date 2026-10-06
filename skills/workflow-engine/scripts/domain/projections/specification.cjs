@@ -1,13 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: specification-entry projections — the scenario overview
-// (DISPLAY), the grouping/spec menus (MENU), and the concluded-specs
+// Domain ring: the epic specification menu's projections — the scenario
+// overview (DISPLAY), the grouping/spec menus (MENU), and the concluded-specs
 // sub-view, over one SpecificationDetail (see ../specification.cjs); and the
-// confirmation above the handoff gate, over one SpecConfirmation.
+// confirmation above a specification's entry, over one SpecConfirmation.
 //
 // Deterministic: same detail, same string. The menu carries machine action
-// keys so the entry skill routes on keys, never on labels. Tree layout goes
+// keys so the epic menu routes on keys, never on labels. Tree layout goes
 // through the kernel renderer — branch glyphs are positional (├─ for
 // non-final siblings, └─ for the last), never repeated └─.
 // ---------------------------------------------------------------------------
@@ -27,7 +27,6 @@ const { menuFrame, cmdOption, bulletRow, optionDetail } = require('./surfaces.cj
  * @property {string} [word]          long form of a command option (`completed`, `back`)
  * @property {string} action          machine action key — the skill routes on this, never the label
  * @property {string|null} topic      the spec/grouping name, or null for meta and command options
- * @property {string|null} verb       Creating | Continuing | Refining — the confirmation verb
  * @property {import('./surfaces.cjs').OptionLabel} label
  * @property {string[]} [desc]        meta-option description lines (already backtick-wrapped)
  */
@@ -177,17 +176,17 @@ function singleDisplay(detail) {
   if (!single) throw new Error('specificationDisplay: single scenario without single context');
   /** @type {SpecRow} */
   const row = single.spec || {
-    name: detail.work_unit, status: 'proposed',
+    name: single.proceed_name, status: 'proposed',
     sources: [{ name: single.discussion, tag: 'ready' }],
-    extracted: 0, total: 1, pending: 1, stale: 0, verb: 'Creating',
+    extracted: 0, total: 1, pending: 1, stale: 0,
     open_sources: [], blocked: false,
   };
-  const shown = { ...row, name: single.variant === 'grouped' ? row.name : detail.work_unit };
   return compose([
     SINGLE_INTRO[single.variant],
-    itemBlock(1, shown),
+    itemBlock(1, row),
     notReadyBlock(detail.in_progress_discussions),
-    keyBlock(displayedTerms([shown])),
+    keyBlock(displayedTerms([row])),
+    `Automatically proceeding with "${titlecase(single.proceed_name)}".`,
   ]);
 }
 
@@ -296,7 +295,7 @@ const ANALYZE_DESC = 'All discussions are analyzed for natural groupings.'
 /**
  * The scenario's selection menu. `keys` carries the machine action keys (the
  * skill routes on these); `rendered` is the dotted-gate markdown block — both
- * empty when the scenario has no menu (blocked, single, analyze, rerun).
+ * empty when the scenario has no menu (blocked, single, analyze).
  * @param {SpecificationDetail} detail
  * @returns {{keys: SpecMenuKey[], rendered: string}}
  */
@@ -314,7 +313,7 @@ function specificationMenu(detail) {
   const numbered = [];
   if (detail.scenario === 'specs-menu' && !recordOpen) {
     numbered.push({
-      key: '', action: 'analyze', topic: null, verb: null,
+      key: '', action: 'analyze', topic: null,
       label: { head: 'Analyze for groupings', recommended: true }, desc: descLines(ANALYZE_DESC),
     });
   }
@@ -322,7 +321,7 @@ function specificationMenu(detail) {
     if (row.blocked) {
       const verb = row.status === 'proposed' ? 'Start' : 'Continue';
       numbered.push({
-        key: '', action: 'blocked_spec', topic: row.name, verb: null,
+        key: '', action: 'blocked_spec', topic: row.name,
         label: `${verb} "${titlecase(row.name)}" — blocked by ${row.open_sources.map(titlecase).join(', ')} (reopened)`,
       });
       continue;
@@ -331,20 +330,19 @@ function specificationMenu(detail) {
       key: '',
       action: row.status === 'proposed' ? 'start_spec' : 'continue_spec',
       topic: row.name,
-      verb: row.verb,
       label: rowLabel(row, detail.scenario),
     });
   }
   if (detail.scenario === 'groupings' && !recordOpen) {
     if (detail.actionable.length >= 2) {
       numbered.push({
-        key: '', action: 'unify', topic: null, verb: 'Creating',
+        key: '', action: 'unify', topic: null,
         label: 'Unify all into single specification',
         desc: descLines(UNIFY_BASE + (detail.has_materialized ? UNIFY_SUPERSEDE : '')),
       });
     }
     numbered.push({
-      key: '', action: 'reanalyze', topic: null, verb: null,
+      key: '', action: 'reanalyze', topic: null,
       label: 'Re-analyze groupings',
       desc: descLines(REANALYZE_HEAD + (detail.has_materialized ? REANALYZE_ANCHORS : '') + REANALYZE_TAIL),
     });
@@ -355,10 +353,11 @@ function specificationMenu(detail) {
   const options = [];
   if (detail.concluded.length > 0) {
     options.push({
-      key: 'c', word: 'completed', action: 'completed_menu', topic: null, verb: null,
+      key: 'c', word: 'completed', action: 'completed_menu', topic: null,
       label: { head: 'Manage completed specifications', tail: `${detail.concluded.length} completed` },
     });
   }
+  options.push({ key: 'b', word: 'back', action: 'back', topic: null, label: 'Return to the epic menu' });
 
   const lines = ['What would you like to do?', ''];
   for (const e of numbered) {
@@ -385,10 +384,10 @@ function specificationCompletedMenu(detail) {
   }
   /** @type {SpecMenuKey[]} */
   const keys = detail.concluded.map((row, i) => ({
-    key: String(i + 1), action: 'refine_spec', topic: row.name, verb: 'Refining',
+    key: String(i + 1), action: 'refine_spec', topic: row.name,
     label: { head: `Refine "${titlecase(row.name)}"`, tail: 'completed' },
   }));
-  keys.push({ key: 'b', word: 'back', action: 'back', topic: null, verb: null, label: 'Return to the specifications menu' });
+  keys.push({ key: 'b', word: 'back', action: 'back', topic: null, label: 'Return to the specifications menu' });
 
   const lines = ['Which completed specification would you like to refine?', ''];
   for (const k of keys) {
@@ -410,14 +409,15 @@ function specificationCompletedMenu(detail) {
 
 /**
  * @typedef {object} SpecConfirmation
- * @property {'create'|'continue'|'refine'|'unify'} variant  the route the entry took
- * @property {string} verb                Creating | Continuing | Refining
+ * @property {'create'|'continue'|'refine'|'unify'} variant  the entry the confirm reads
  * @property {string} work_unit
  * @property {string} name
  * @property {string} status              the item's status — proposed before its first session
- * @property {{name: string, status: string, individual: boolean}[]} sources  status: pending | stale | incorporated; individual: a started specification already covers it
- * @property {string[]} supersedes        the started specifications the handoff supersedes
+ * @property {{name: string, status: string, individual: boolean}[]} sources  status: pending | stale | incorporated; individual: another started specification already covers it
+ * @property {string[]} supersedes        the started specifications the start incorporates
  */
+
+const CONFIRM_VERBS = { create: 'Creating', unify: 'Creating', continue: 'Continuing', refine: 'Refining' };
 
 /** A heading over its rows, or '' when there are none. @param {string} heading @param {string[]} rows */
 function listBlock(heading, rows) {
@@ -430,16 +430,16 @@ function bulletRows(texts) {
 }
 
 /**
- * What the handoff is about to do, drawn above its consent gate: the verb
- * and name, the sources by extraction state, and the paths it writes and
- * supersedes.
+ * What a specification's entry is about to do, drawn above its consent gate:
+ * the verb and name, the sources — by extraction state where the
+ * specification exists — and the paths it writes and supersedes.
  * @param {SpecConfirmation} c
  * @returns {string}
  */
 function specificationConfirmation(c) {
   const specPath = (name) => `.workflows/${c.work_unit}/specification/${name}/specification.md`;
   const named = (status) => c.sources.filter((s) => s.status === status).map((s) => s.name);
-  const head = `${c.verb} specification: ${titlecase(c.name)}`;
+  const head = `${CONFIRM_VERBS[c.variant]} specification: ${titlecase(c.name)}`;
   const output = `Output: ${specPath(c.name)}`;
 
   if (c.variant === 'unify') {

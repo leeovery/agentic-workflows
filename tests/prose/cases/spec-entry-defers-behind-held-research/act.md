@@ -1,3 +1,5 @@
-Execute skills/workflow-specification-entry/SKILL.md with arguments
-$0=epic, $1=search-relevance (no topic). Follow the scoped path and stop
-where it stops. Do not invoke any processing skill.
+Execute skills/workflow-continue-epic/SKILL.md with the argument
+$0=search-relevance — the epic opened from the start menu, nothing just
+concluded. Answer as the scripted user. Stop the moment the prose waits
+for an answer the script no longer holds, reaches a terminal condition,
+or moves the work to another skill — whichever comes first.

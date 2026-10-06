@@ -7,9 +7,9 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
+const { specDiscover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
-const GATEWAY = path.join(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
+const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
 // An epic with a cancelled specification over two sources, a legacy
 // array-form cancelled one, and a bare cancelled one — none of them groups.
@@ -29,79 +29,50 @@ function cancelledSpecsManifest() {
   };
 }
 
-describe('workflow-specification-entry discovery', () => {
+describe('workflow-continue-epic specification discovery', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('returns empty when no discussions exist', () => {
-    const r = discover(dir);
+  it('refuses a name with no active epic behind it — unknown, closed, or another work type', () => {
+    createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed' });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    for (const name of ['ghost', 'shipped', 'auth']) {
+      assert.throws(() => specDiscover(dir, name), new RegExp(`no active epic "${name}"`));
+    }
+  });
+
+  it('reads an epic with nothing discussed as empty', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.current_state.has_discussions, false);
     assert.strictEqual(r.current_state.has_specs, false);
     assert.strictEqual(r.discussions.length, 0);
     assert.strictEqual(r.specifications.length, 0);
   });
 
+  it('reads only the named epic', () => {
+    createManifest(dir, 'v1', { work_type: 'epic', phases: { discussion: { items: { a: { status: 'completed' } } } } });
+    createManifest(dir, 'v2', { work_type: 'epic', phases: { discussion: { items: { b: { status: 'completed' }, c: { status: 'completed' } } } } });
+    assert.deepStrictEqual(specDiscover(dir, 'v1').discussions.map((d) => d.name), ['a']);
+  });
+
   it('finds discussions with spec status', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
-        specification: {
-          items: {
-            auth: {
-              status: 'in-progress',
-              sources: { auth: { status: 'extracted' } },
-            },
-          },
-        },
+        specification: { items: { auth: { status: 'in-progress', sources: { auth: { status: 'extracted' } } } } },
       },
     });
-    const r = discover(dir);
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.discussions.length, 1);
     assert.strictEqual(r.discussions[0].has_individual_spec, true);
     assert.strictEqual(r.discussions[0].spec_status, 'in-progress');
     assert.strictEqual(r.current_state.completed_count, 1);
   });
 
-  it('finds specifications with sources', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: {
-          items: {
-            auth: {
-              status: 'completed',
-              type: 'feature',
-              sources: { 'auth': { status: 'incorporated' } },
-            },
-          },
-        },
-      },
-    });
-    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
-    const r = discover(dir);
-    assert.strictEqual(r.specifications.length, 1);
-    assert.strictEqual(r.specifications[0].status, 'completed');
-    assert.strictEqual(r.specifications[0].sources.length, 1);
-    assert.strictEqual(r.specifications[0].sources[0].name, 'auth');
-    assert.strictEqual(r.specifications[0].sources[0].discussion_status, 'completed');
-  });
-
-  it('skips superseded specifications', () => {
-    createManifest(dir, 'old', {
-      work_type: 'feature',
-      phases: {
-        specification: { items: { old: { status: 'superseded', superseded_by: 'new-spec' } } },
-      },
-    });
-    createFile(dir, '.workflows/old/specification/old/specification.md', '# Old');
-    const r = discover(dir);
-    assert.strictEqual(r.specifications.length, 0);
-  });
-
-  it('detects epic discussion items with spec cross-reference', () => {
+  it('detects discussion items with spec cross-reference', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -122,7 +93,7 @@ describe('workflow-specification-entry discovery', () => {
         },
       },
     });
-    const r = discover(dir);
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.discussions.length, 2);
     const auth = r.discussions.find(d => d.name === 'auth-design');
     assert.strictEqual(auth.has_individual_spec, true);
@@ -130,7 +101,7 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(data.has_individual_spec, false);
   });
 
-  it('finds epic specification items with sources', () => {
+  it('finds specification items with sources', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -157,12 +128,10 @@ describe('workflow-specification-entry discovery', () => {
     });
     createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
     createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data Spec');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.specifications.length, 2);
     const authSpec = r.specifications.find(s => s.name === 'auth-spec');
-    assert.strictEqual(authSpec.work_unit, 'v1');
     assert.strictEqual(authSpec.status, 'completed');
-    assert.strictEqual(authSpec.work_type, 'epic');
     assert.strictEqual(authSpec.sources.length, 1);
     assert.strictEqual(authSpec.sources[0].name, 'auth-design');
     assert.strictEqual(authSpec.sources[0].discussion_status, 'completed');
@@ -170,7 +139,20 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(dataSpec.status, 'in-progress');
   });
 
-  it('skips superseded epic specification items', () => {
+  it('a started specification counts once its file is on disk', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'completed' } } },
+        specification: { items: { 'a-spec': { status: 'in-progress', sources: { a: { status: 'pending' } } } } },
+      },
+    });
+    assert.strictEqual(specDiscover(dir, 'v1').specifications.length, 0);
+    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    assert.strictEqual(specDiscover(dir, 'v1').current_state.spec_count, 1);
+  });
+
+  it('skips superseded specification items', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -184,25 +166,17 @@ describe('workflow-specification-entry discovery', () => {
     });
     createFile(dir, '.workflows/v1/specification/old-spec/specification.md', '# Old');
     createFile(dir, '.workflows/v1/specification/new-spec/specification.md', '# New');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.specifications.length, 1);
     assert.strictEqual(r.specifications[0].name, 'new-spec');
   });
 
   it('computes discussion counts correctly', () => {
-    createManifest(dir, 'a', {
-      work_type: 'feature',
-      phases: { discussion: { items: { a: { status: 'completed' } } } },
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'in-progress' }, c: { status: 'completed' } } } },
     });
-    createManifest(dir, 'b', {
-      work_type: 'feature',
-      phases: { discussion: { items: { b: { status: 'in-progress' } } } },
-    });
-    createManifest(dir, 'c', {
-      work_type: 'feature',
-      phases: { discussion: { items: { c: { status: 'completed' } } } },
-    });
-    const r = discover(dir);
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.current_state.discussion_count, 3);
     assert.strictEqual(r.current_state.completed_count, 2);
     assert.strictEqual(r.current_state.in_progress_count, 1);
@@ -214,13 +188,13 @@ describe('workflow-specification-entry discovery', () => {
       phases: { discussion: { items: { parked: { status: 'triaged' } } } },
     });
     createFile(dir, '.workflows/overhaul/discussion/parked.md', '# Discussion: Parked\n\n## Triage\n\n### Concern\nBody.\n');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'overhaul');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');
     assert.deepStrictEqual(r.discussions, []);
   });
 
-  it('a lone postponed discussion is no discussion at all — the entry reads blocked-no-discussions', () => {
+  it('a lone postponed discussion is no discussion at all — the menu reads blocked-no-discussions', () => {
     createManifest(dir, 'mvp', {
       work_type: 'epic',
       phases: {
@@ -229,11 +203,11 @@ describe('workflow-specification-entry discovery', () => {
       },
     });
     createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'mvp');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a topic that left for the roadmap must not read as one still in progress');
     assert.deepStrictEqual(r.discussions, []);
-    const view = spawnSync('node', [GATEWAY, 'view', 'mvp'], { cwd: dir, encoding: 'utf8' });
+    const view = spawnSync('node', [GATEWAY, 'spec-view', 'mvp'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(view.status, 0, view.stderr);
     assert.ok(view.stdout.includes('scenario: blocked-no-discussions'), view.stdout);
   });
@@ -254,68 +228,57 @@ describe('workflow-specification-entry discovery', () => {
     });
     createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
     createFile(dir, '.workflows/mvp/discussion/billing.md', '# Discussion: Billing\n');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'mvp');
     assert.strictEqual(r.current_state.discussion_count, 1);
     assert.strictEqual(r.current_state.completed_count, 1);
     assert.deepStrictEqual(r.discussions.map((d) => d.name), ['billing']);
   });
 
-  it('detects valid cache from manifest checksum', () => {
+  it('reads the grouping analysis cache against the discussion files: none, valid, stale', () => {
     const crypto = require('crypto');
-    const checksum = crypto.createHash('md5').update('# Auth').digest('hex');
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth');
+    assert.strictEqual(specDiscover(dir, 'v1').cache, 'none');
 
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
       phases: {
         discussion: {
-          analysis_cache: { checksum, generated: '2026-01-01' },
+          analysis_cache: { checksum: crypto.createHash('md5').update('# Auth').digest('hex'), generated: '2026-01-01' },
           items: { auth: { status: 'completed' } },
         },
       },
     });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
+    assert.strictEqual(specDiscover(dir, 'v1').cache, 'valid');
 
-    const r = discover(dir);
-    assert.strictEqual(r.cache.entries.length, 1);
-    assert.strictEqual(r.cache.entries[0].status, 'valid');
-    assert.strictEqual(r.cache.entries[0].anchored_names, undefined);
+    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth updated');
+    assert.strictEqual(specDiscover(dir, 'v1').cache, 'stale');
   });
 
-  it('returns empty cache entries when none exists', () => {
-    const r = discover(dir);
-    assert.strictEqual(r.cache.entries.length, 0);
-  });
-
-  it('computes discussions checksum', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth discussion');
-    const r = discover(dir);
-    assert.ok(r.current_state.discussions_checksum);
-  });
-
-  it('returns null checksum when no discussion files', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: { discussion: { items: { auth: { status: 'completed' } } } },
-    });
-    const r = discover(dir);
-    assert.strictEqual(r.current_state.discussions_checksum, null);
-  });
-
-  it('tracks superseded_by field on specs', () => {
-    createManifest(dir, 'old', {
-      work_type: 'feature',
+  it('a cache over no discussion files reads stale', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
       phases: {
-        specification: { items: { old: { status: 'superseded', superseded_by: 'new-spec' } } },
+        discussion: {
+          analysis_cache: { checksum: 'any', generated: '2026-01-01' },
+          items: { auth: { status: 'completed' } },
+        },
       },
     });
-    createFile(dir, '.workflows/old/specification/old/specification.md', '# Old');
-    // Superseded specs are excluded, so we won't find it
-    const r = discover(dir);
-    assert.strictEqual(r.specifications.length, 0);
+    assert.strictEqual(specDiscover(dir, 'v1').cache, 'stale');
+  });
+
+  it('computes the discussions checksum, and null with no discussion files', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    assert.strictEqual(specDiscover(dir, 'v1').current_state.discussions_checksum, null);
+    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth discussion');
+    assert.ok(specDiscover(dir, 'v1').current_state.discussions_checksum);
   });
 
   it('a cancelled or superseded specification is no individual spec — its source is free to be regrouped', () => {
@@ -332,45 +295,46 @@ describe('workflow-specification-entry discovery', () => {
         },
       },
     });
-    const r = discover(dir);
+    const r = specDiscover(dir, 'pay');
     assert.strictEqual(r.discussions.find((d) => d.name === 'auth').has_individual_spec, false);
     assert.strictEqual(r.discussions.find((d) => d.name === 'billing').spec_status, 'in-progress', 'the superseding spec, not the superseded one');
   });
 
   it('a cancelled specification lands in cancelled_specifications with its sources — never in specifications, never an individual spec', () => {
     createManifest(dir, 'pay', cancelledSpecsManifest());
-    const r = discover(dir);
+    const r = specDiscover(dir, 'pay');
     assert.deepStrictEqual(r.cancelled_specifications, [
-      { name: 'unified', work_unit: 'pay', sources: ['auth', 'billing'] },
-      { name: 'legacy', work_unit: 'pay', sources: ['billing'] },
-      { name: 'bare', work_unit: 'pay', sources: [] },
+      { name: 'unified', sources: ['auth', 'billing'] },
+      { name: 'legacy', sources: ['billing'] },
+      { name: 'bare', sources: [] },
     ]);
     assert.deepStrictEqual(r.specifications, []);
     assert.deepStrictEqual(r.discussions.map((d) => d.has_individual_spec), [false, false]);
   });
 
-  it('a promoted or status-less specification is no individual spec — only a started one is incorporated by a unify — yet both still group their sources', () => {
+  it('a promoted or status-less specification is no individual spec — only a started one is incorporated — yet both still group their sources', () => {
     createManifest(dir, 'pay', {
       work_type: 'epic',
       phases: {
         discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
         specification: { items: {
-          auth: { status: 'promoted', sources: { auth: { status: 'incorporated' } } },
+          auth: { status: 'promoted', promoted_to: 'auth-cc', sources: { auth: { status: 'incorporated' } } },
           billing: { sources: { billing: { status: 'pending' } } },
         } },
       },
     });
-    createFile(dir, '.workflows/pay/specification/auth/specification.md', '# Auth');
     createFile(dir, '.workflows/pay/specification/billing/specification.md', '# Billing');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'pay');
     assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec]), [['auth', false], ['billing', false]]);
-    assert.deepStrictEqual(r.specifications.map((s) => s.name).sort(), ['auth', 'billing']);
+    assert.deepStrictEqual(r.specifications.map((s) => s.name).sort(), ['auth', 'billing'],
+      'the promotion took the file to the cross-cutting unit — the item still groups its source');
+    assert.strictEqual(r.current_state.spec_count, 1, 'a promoted specification counts nowhere');
     assert.deepStrictEqual(r.cancelled_specifications, []);
   });
 
   it('the view DATA lists every cancelled specification with its sources, or (none)', () => {
     createManifest(dir, 'pay', cancelledSpecsManifest());
-    const cancelled = spawnSync('node', [GATEWAY, 'view', 'pay'], { cwd: dir, encoding: 'utf8' });
+    const cancelled = spawnSync('node', [GATEWAY, 'spec-view', 'pay'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(cancelled.status, 0, cancelled.stderr);
     assert.ok(cancelled.stdout.includes([
       'specifications:',
@@ -382,37 +346,36 @@ describe('workflow-specification-entry discovery', () => {
       'unassigned_discussions: auth, billing',
     ].join('\n')), cancelled.stdout);
     createManifest(dir, 'clean', { work_type: 'epic', phases: { discussion: { items: { clean: { status: 'completed' } } } } });
-    const none = spawnSync('node', [GATEWAY, 'view', 'clean'], { cwd: dir, encoding: 'utf8' });
+    const none = spawnSync('node', [GATEWAY, 'spec-view', 'clean'], { cwd: dir, encoding: 'utf8' });
     assert.strictEqual(none.status, 0, none.stderr);
     assert.ok(none.stdout.includes('cancelled_specifications:\n  (none)\nunassigned_discussions: clean'), none.stdout);
   });
 
-  it('feature without spec shows has_individual_spec false', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
+  it('a discussion with no specification has no individual spec', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
-    const r = discover(dir);
-    assert.strictEqual(r.discussions[0].has_individual_spec, false);
+    assert.strictEqual(specDiscover(dir, 'v1').discussions[0].has_individual_spec, false);
   });
 
   it('spec with no sources has no sources field', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
         specification: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
-    const r = discover(dir);
+    createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+    const r = specDiscover(dir, 'v1');
     assert.strictEqual(r.specifications.length, 1);
     assert.strictEqual(r.specifications[0].sources, undefined);
   });
 
   it('defaults source status to pending when object-shaped without status; a row that is not an object is no source, as the completion gate reads it', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
       phases: {
         discussion: { items: { auth: { status: 'completed' } } },
         specification: {
@@ -425,9 +388,8 @@ describe('workflow-specification-entry discovery', () => {
         },
       },
     });
-    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
-    const r = discover(dir);
-    const spec = r.specifications[0];
+    createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+    const spec = specDiscover(dir, 'v1').specifications[0];
     assert.deepStrictEqual(spec.sources, [{ name: 'auth', status: 'pending', discussion_status: 'completed' }]);
     assert.strictEqual(spec.has_pending_sources, true);
   });
@@ -445,7 +407,7 @@ describe('workflow-specification-entry discovery', () => {
       },
     });
     createFile(dir, '.workflows/pay/specification/core/specification.md', '# Spec');
-    const r = discover(dir);
+    const r = specDiscover(dir, 'pay');
     assert.deepStrictEqual(r.specifications[0].sources, [
       { name: 'auth', status: 'incorporated', discussion_status: 'completed' },
       { name: 'billing', status: 'pending', discussion_status: 'completed' },
@@ -453,39 +415,9 @@ describe('workflow-specification-entry discovery', () => {
     assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec, d.spec_status]),
       [['auth', true, 'in-progress'], ['billing', true, 'in-progress']]);
   });
-
-  it('stale cache when discussions changed', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: {
-          analysis_cache: { checksum: 'stale-hash', generated: '2026-01-01' },
-          items: { auth: { status: 'completed' } },
-        },
-      },
-    });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth updated');
-    const r = discover(dir);
-    assert.strictEqual(r.cache.entries[0].status, 'stale');
-  });
-
-  it('bugfix work unit with investigation as source', () => {
-    createManifest(dir, 'login-crash', {
-      work_type: 'bugfix',
-      phases: {
-        investigation: { items: { 'login-crash': { status: 'completed' } } },
-        specification: { items: { 'login-crash': { status: 'in-progress' } } },
-      },
-    });
-    createFile(dir, '.workflows/login-crash/specification/login-crash/specification.md', '# Spec');
-    const r = discover(dir);
-    assert.strictEqual(r.specifications.length, 1);
-    assert.strictEqual(r.specifications[0].work_type, 'bugfix');
-    assert.strictEqual(r.specifications[0].name, 'login-crash');
-  });
 });
 
-describe('workflow-specification-entry ordering and counts', () => {
+describe('workflow-continue-epic specification ordering and counts', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -539,22 +471,19 @@ describe('workflow-specification-entry ordering and counts', () => {
 
     it('has_pending_sources false when all sources incorporated', () => {
       reorderFixture();
-      const r = discover(dir);
-      const spec = r.specifications.find(s => s.name === 'concluded-spec');
+      const spec = specDiscover(dir, 'v1').specifications.find(s => s.name === 'concluded-spec');
       assert.strictEqual(spec.has_pending_sources, false);
     });
 
     it('has_pending_sources true when a source is pending', () => {
       reorderFixture();
-      const r = discover(dir);
-      const spec = r.specifications.find(s => s.name === 'pending-spec');
+      const spec = specDiscover(dir, 'v1').specifications.find(s => s.name === 'pending-spec');
       assert.strictEqual(spec.has_pending_sources, true);
     });
 
     it('has_pending_sources true for a proposed grouping', () => {
       reorderFixture();
-      const r = discover(dir);
-      const spec = r.specifications.find(s => s.name === 'proposed-grp');
+      const spec = specDiscover(dir, 'v1').specifications.find(s => s.name === 'proposed-grp');
       assert.strictEqual(spec.has_pending_sources, true);
     });
 
@@ -574,29 +503,26 @@ describe('workflow-specification-entry ordering and counts', () => {
         },
       });
       createFile(dir, '.workflows/v1/specification/staled-spec/specification.md', '# Staled');
-      const r = discover(dir);
-      const spec = r.specifications.find(s => s.name === 'staled-spec');
+      const spec = specDiscover(dir, 'v1').specifications.find(s => s.name === 'staled-spec');
       assert.strictEqual(spec.has_pending_sources, true);
       assert.strictEqual(spec.sources[0].status, 'stale');
     });
 
     it('has_pending_sources false for a spec with no sources', () => {
-      createManifest(dir, 'auth', {
-        work_type: 'feature',
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
         phases: {
           discussion: { items: { auth: { status: 'completed' } } },
           specification: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
-      const r = discover(dir);
-      assert.strictEqual(r.specifications[0].has_pending_sources, false);
+      createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+      assert.strictEqual(specDiscover(dir, 'v1').specifications[0].has_pending_sources, false);
     });
 
     it('sorts specifications actionable-first (proposed, in-progress, completed+pending, concluded)', () => {
       reorderFixture();
-      const r = discover(dir);
-      const order = r.specifications.map(s => s.name);
+      const order = specDiscover(dir, 'v1').specifications.map(s => s.name);
       assert.deepStrictEqual(order, ['proposed-grp', 'wip-spec', 'pending-spec', 'concluded-spec']);
     });
 
@@ -617,8 +543,7 @@ describe('workflow-specification-entry ordering and counts', () => {
       createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
       createFile(dir, '.workflows/v1/specification/auth/specification.md', '# A');
       createFile(dir, '.workflows/v1/specification/stray/specification.md', '# S');
-      const r = discover(dir);
-      assert.deepStrictEqual(r.specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
+      assert.deepStrictEqual(specDiscover(dir, 'v1').specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
     });
 
     it('two unordered specs in one tier keep insertion order via an explicit tie', () => {
@@ -636,14 +561,12 @@ describe('workflow-specification-entry ordering and counts', () => {
       });
       createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
       createFile(dir, '.workflows/v1/specification/alpha/specification.md', '# A');
-      const r = discover(dir);
-      assert.deepStrictEqual(r.specifications.map(s => s.name), ['zeta', 'alpha']);
+      assert.deepStrictEqual(specDiscover(dir, 'v1').specifications.map(s => s.name), ['zeta', 'alpha']);
     });
 
     it('concluded_count counts only completed specs with no pending sources', () => {
       reorderFixture();
-      const r = discover(dir);
-      assert.strictEqual(r.current_state.concluded_count, 1);
+      assert.strictEqual(specDiscover(dir, 'v1').current_state.concluded_count, 1);
     });
 
     it('concluded_count is zero when no spec is concluded', () => {
@@ -660,8 +583,7 @@ describe('workflow-specification-entry ordering and counts', () => {
         },
       });
       createFile(dir, '.workflows/v1/specification/wip/specification.md', '# Wip');
-      const r = discover(dir);
-      assert.strictEqual(r.current_state.concluded_count, 0);
+      assert.strictEqual(specDiscover(dir, 'v1').current_state.concluded_count, 0);
     });
   });
 
@@ -682,7 +604,7 @@ describe('workflow-specification-entry ordering and counts', () => {
         },
       });
       // No spec file on disk for the proposed item — must still be counted.
-      const r = discover(dir);
+      const r = specDiscover(dir, 'v1');
       assert.strictEqual(r.current_state.proposed_count, 1);
       assert.strictEqual(r.current_state.has_proposed, true);
       assert.strictEqual(r.current_state.spec_count, 0);
@@ -694,7 +616,7 @@ describe('workflow-specification-entry ordering and counts', () => {
       assert.strictEqual(spec.sources[0].status, 'pending');
     });
 
-    it('proposed source does not set has_individual_spec', () => {
+    it('a proposed source does not set has_individual_spec, a single completed discussion included', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -706,29 +628,14 @@ describe('workflow-specification-entry ordering and counts', () => {
           },
         },
       });
-      const r = discover(dir);
-      const disc = r.discussions.find(d => d.name === 'auth-design');
-      assert.strictEqual(disc.has_individual_spec, false);
-    });
-
-    it('single completed discussion in a proposed item still has no individual spec', () => {
-      createManifest(dir, 'solo', {
-        work_type: 'feature',
-        phases: {
-          discussion: { items: { solo: { status: 'completed' } } },
-          specification: {
-            items: { solo: { status: 'proposed', sources: { solo: { status: 'pending' } } } },
-          },
-        },
-      });
-      const r = discover(dir);
+      const r = specDiscover(dir, 'v1');
       assert.strictEqual(r.current_state.completed_count, 1);
       assert.strictEqual(r.discussions[0].has_individual_spec, false);
       assert.strictEqual(r.current_state.proposed_count, 1);
       assert.strictEqual(r.current_state.spec_count, 0);
     });
 
-    it('mixed proposed and materialized specs count separately (R11 routing inputs)', () => {
+    it('mixed proposed and materialized specs count separately', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -742,7 +649,7 @@ describe('workflow-specification-entry ordering and counts', () => {
         },
       });
       createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
-      const r = discover(dir);
+      const r = specDiscover(dir, 'v1');
       assert.strictEqual(r.current_state.spec_count, 1);
       assert.strictEqual(r.current_state.proposed_count, 1);
       assert.strictEqual(r.specifications.length, 2);
@@ -755,7 +662,7 @@ describe('workflow-specification-entry ordering and counts', () => {
           specification: { items: { grp: { status: 'proposed', sources: { d: { status: 'pending' } } } } },
         },
       });
-      const r = discover(dir);
+      const r = specDiscover(dir, 'v1');
       assert.strictEqual(r.specifications.length, 1);
       assert.strictEqual(r.specifications[0].status, 'proposed');
       assert.strictEqual(r.current_state.spec_count, 0);

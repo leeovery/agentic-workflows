@@ -1,18 +1,23 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: specification-entry queries — the specification record read
-// from a manifest, scenario derivation, the grouping rows the projections
-// render, and what a handoff's confirmation is about to do.
+// Domain ring: specification queries — the specification record read from a
+// manifest, the epic specification menu's scenario, the grouping rows the
+// projections render, and what a specification's start incorporates.
 //
-// The entry adapter's discover() result is built from discoverySpec(); from
-// that result this module derives what the flow needs next: which scenario
-// the state is in, the actionable and concluded grouping rows with display
-// statuses and verbs, and the single-discussion auto-proceed context. Pure
-// derivation — no IO.
+// The epic menu's specification read (workflow-continue-epic's gateway) is
+// built from discoverySpec(); from it this module derives what the menu needs
+// next: which scenario the state is in, the actionable and concluded grouping
+// rows with display statuses, and the single-discussion auto-proceed
+// context. Pure derivation — no IO.
 // ---------------------------------------------------------------------------
 
-const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./derivations.cjs');
+const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs, specIncorporations } = require('./derivations.cjs');
+
+// The item the groupings menu's unify writes: every completed discussion as
+// its source.
+const UNIFIED_SPEC = 'unified';
 
 /**
  * @typedef {object} DiscoverySource
@@ -24,7 +29,7 @@ const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./de
 /**
  * @typedef {object} DiscoverySpec
  * @property {string} name
- * @property {string} status              proposed | in-progress | completed
+ * @property {string} status              proposed | in-progress | completed | promoted
  * @property {boolean} has_pending_sources
  * @property {DiscoverySource[]} [sources]
  */
@@ -33,7 +38,7 @@ const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./de
  * @typedef {object} DiscoveryResult
  * @property {{name: string, status: string, has_individual_spec: boolean, spec_status?: string}[]} discussions
  * @property {DiscoverySpec[]} specifications
- * @property {{entries: {status: string}[]}} cache
+ * @property {'none'|'valid'|'stale'} cache  the grouping analysis's cache against the discussion files — none when no analysis was written
  * @property {{discussion_count: number, completed_count: number, in_progress_count: number,
  *   spec_count: number, proposed_count: number, concluded_count: number,
  *   has_discussions: boolean, has_completed: boolean,
@@ -49,7 +54,6 @@ const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./de
  * @property {number} total               Y — sources counted
  * @property {number} pending             sources still pending
  * @property {number} stale               sources extracted but revised since — needing reconciliation
- * @property {string} verb                Creating | Continuing | Refining
  * @property {string[]} open_sources      sources whose discussion has not concluded — back in-progress, or opened by the gap exit and parked
  * @property {boolean} blocked            any open source — the spec is not enterable until it concludes
  */
@@ -57,17 +61,23 @@ const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./de
 /**
  * @typedef {object} SingleContext
  * @property {'no-spec'|'has-spec'|'grouped'} variant
- * @property {string} verb          Creating | Continuing | Refining
- * @property {string} proceed_name  the name the auto-proceed and confirmation use
+ * @property {string} proceed_name  the specification the auto-proceed hands off — the covering one, or the work unit's name for a new one
  * @property {string} discussion    the lone completed discussion
  * @property {SpecRow|null} spec    the covering spec's row (null for no-spec)
  */
 
 /**
  * @typedef {object} SpecConfirmationRows
- * @property {string} verb        the entry row's verb: Creating | Continuing | Refining
- * @property {{name: string, status: string, individual: boolean}[]} sources  the row's sources; individual: a started specification already covers it
- * @property {string[]} supersedes  the started specifications the handoff supersedes
+ * @property {'create'|'continue'|'refine'|'unify'} variant  unify for the groupings menu's unify, create for any other proposed grouping, refine for a completed specification with nothing left to extract, continue otherwise
+ * @property {{name: string, status: string, individual: boolean}[]} sources  the specification's sources — status: pending | stale | incorporated; individual: another started specification already covers it
+ * @property {string[]} supersedes  the started specifications it incorporates, which its completion supersedes
+ */
+
+/**
+ * @typedef {object} Incorporation
+ * @property {string} topic     the incorporated specification
+ * @property {string} path      its document, project-relative
+ * @property {string[]} covers  the discussions it sources among the incorporating specification's sources
  */
 
 /**
@@ -79,9 +89,9 @@ const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./de
  * @property {string[]} completed_discussions
  * @property {string[]} in_progress_discussions
  * @property {string[]} unassigned          completed discussions in no spec's sources
- * @property {SpecRow[]} actionable         discovery order (proposed → in-progress → completed-with-pending)
+ * @property {SpecRow[]} actionable         discovery order (proposed → in-progress → completed-with-pending); a promoted spec is never a row
  * @property {SpecRow[]} concluded          completed with no pending sources
- * @property {boolean} has_materialized     any non-proposed spec exists
+ * @property {boolean} has_materialized     any live non-proposed spec exists
  * @property {boolean} record_open          any discussion in-progress — the analysis actions are withheld
  * @property {SingleContext|null} single    set for the single scenario only
  */
@@ -97,15 +107,8 @@ function sourceTag(src) {
   return reopened ? 'extracted, reopened' : 'extracted';
 }
 
-/** @param {SpecRow} row */
-function rowVerb(row) {
-  if (row.status === 'proposed') return 'Creating';
-  if (row.status === 'completed' && row.pending === 0 && row.stale === 0) return 'Refining';
-  return 'Continuing';
-}
-
 /**
- * One specification item as the entry reads it. A status-less item reads
+ * One specification item as the menu reads it. A status-less item reads
  * in-progress; a status-less source row reads pending, so an unmarked source
  * never reads as extracted; a source whose discussion item is gone reads
  * `unknown`. Stale counts as pending work: an extraction the source moved out
@@ -149,7 +152,7 @@ function specRow(spec) {
   const proposed = spec.status === 'proposed';
   const kept = liveSources(spec);
   const open = kept.filter((s) => OPEN_SOURCE_STATUSES.includes(s.discussion_status)).map((s) => s.name);
-  const row = {
+  return {
     name: spec.name,
     status: spec.status,
     sources: kept.map((s) => ({
@@ -160,77 +163,87 @@ function specRow(spec) {
     total: kept.length,
     pending: kept.filter((s) => s.status === 'pending').length,
     stale: kept.filter((s) => s.status === 'stale').length,
-    verb: '',
     open_sources: open,
     blocked: open.length > 0,
   };
-  row.verb = rowVerb(row);
-  return row;
 }
 
 /**
- * The single-discussion auto-proceed context. Coverage counts materialized
- * specs only — a proposed grouping has no file, so it never covers.
+ * The single-discussion auto-proceed context. Coverage counts live
+ * materialized specs only — a proposed grouping has no file, and a promoted
+ * one continues in its cross-cutting unit.
  * @param {string} workUnit
  * @param {string} discussion
  * @param {DiscoveryResult} result
  * @returns {SingleContext}
  */
 function singleContext(workUnit, discussion, result) {
-  const covering = result.specifications.find((s) => s.status !== 'proposed'
+  const covering = result.specifications.find((s) => s.status !== 'proposed' && !TERMINAL_STATUSES.includes(s.status)
     && ((s.sources || []).some((src) => src.name === discussion) || s.name === discussion));
   if (!covering) {
-    return { variant: 'no-spec', verb: 'Creating', proceed_name: workUnit, discussion, spec: null };
+    return { variant: 'no-spec', proceed_name: workUnit, discussion, spec: null };
   }
   const row = specRow(covering);
-  const grouped = row.total > 1;
-  return {
-    variant: grouped ? 'grouped' : 'has-spec',
-    verb: row.verb,
-    proceed_name: grouped ? row.name : workUnit,
-    discussion,
-    spec: row,
-  };
+  return { variant: row.total > 1 ? 'grouped' : 'has-spec', proceed_name: row.name, discussion, spec: row };
 }
 
 /**
- * What a handoff over one specification is about to do: the verb its entry
- * row reads, and its sources with their extraction state. A fresh
- * specification marks each source a started specification already covers
- * and supersedes those specifications; a started one has already taken its
- * sources.
+ * What a specification's entry does and takes in: which start it is, its
+ * sources, each marked where another started specification already covers
+ * it, and the started specifications it incorporates (specIncorporations).
  * @param {object} manifest
  * @param {DiscoverySpec} spec
  * @returns {SpecConfirmationRows}
  */
 function specConfirmation(manifest, spec) {
-  const fresh = spec.status === 'proposed';
-  const rows = liveSources(spec).map((source) => ({ source, covering: fresh ? lockingSpecs(manifest, source.name) : [] }));
+  const row = specRow(spec);
+  /** @type {SpecConfirmationRows['variant']} */
+  let variant = 'continue';
+  if (spec.status === 'proposed') variant = spec.name === UNIFIED_SPEC ? 'unify' : 'create';
+  else if (row.status === 'completed' && row.pending === 0 && row.stale === 0) variant = 'refine';
   return {
-    verb: specRow(spec).verb,
-    sources: rows.map(({ source, covering }) => ({ name: source.name, status: source.status, individual: covering.length > 0 })),
-    supersedes: [...new Set(rows.flatMap((r) => r.covering))],
+    variant,
+    sources: liveSources(spec).map((source) => ({
+      name: source.name,
+      status: source.status,
+      individual: lockingSpecs(manifest, source.name).some((name) => name !== spec.name),
+    })),
+    supersedes: specIncorporations(manifest, spec.name),
   };
 }
 
-/** @param {DiscoveryResult} result @returns {'none'|'valid'|'stale'} */
-function cacheStatus(result) {
-  const entry = result.cache.entries[0];
-  if (!entry) return 'none';
-  return entry.status === 'valid' ? 'valid' : 'stale';
+/**
+ * The specifications a specification incorporates, as its session reads
+ * them: each one's document, and the discussions it covers among this
+ * specification's sources.
+ * @param {object} manifest
+ * @param {string} workUnit
+ * @param {string} topic
+ * @returns {Incorporation[]}
+ */
+function incorporations(manifest, workUnit, topic) {
+  const item = itemOf(manifest, 'specification', topic);
+  if (!item) throw new Error(`no specification "${topic}" in "${workUnit}"`);
+  const own = new Set(sourceRows(item.sources).map(([name]) => name));
+  return specIncorporations(manifest, topic).map((name) => ({
+    topic: name,
+    path: `.workflows/${workUnit}/specification/${name}/specification.md`,
+    covers: sourceRows(/** @type {Record<string, any>} */ (itemOf(manifest, 'specification', name)).sources)
+      .map(([source]) => source)
+      .filter((source) => own.has(source)),
+  }));
 }
 
 /**
- * Derive the entry flow's scenario and rows from one scoped discover() result.
- * Scenario precedence mirrors the entry flow: prerequisites, then the
- * single-discussion fast path, then groupings / analysis / specs-menu.
+ * Derive the menu's scenario and rows from one discover() result. Scenario
+ * precedence: the blocked states, then the single-discussion fast path,
+ * then groupings / analysis / specs-menu.
  * @param {string} workUnit
  * @param {DiscoveryResult} result
  * @returns {SpecificationDetail}
  */
 function specificationDetail(workUnit, result) {
   const cs = result.current_state;
-  const cache = cacheStatus(result);
 
   const completed = result.discussions.filter((d) => d.status === 'completed').map((d) => d.name);
   const inProgress = result.discussions.filter((d) => d.status === 'in-progress').map((d) => d.name);
@@ -241,7 +254,7 @@ function specificationDetail(workUnit, result) {
   }
   const unassigned = completed.filter((d) => !sourced.has(d));
 
-  const rows = result.specifications.map((s) => specRow(s));
+  const rows = result.specifications.filter((s) => !TERMINAL_STATUSES.includes(s.status)).map((s) => specRow(s));
   const concluded = rows.filter((r) => r.status === 'completed' && r.pending === 0 && r.stale === 0);
   const actionable = rows.filter((r) => !concluded.includes(r));
 
@@ -272,7 +285,7 @@ function specificationDetail(workUnit, result) {
     } else if ((scenario === 'specs-menu' || scenario === 'groupings')
       && actionable.length > 0 && actionable.every((r) => r.blocked) && concluded.length === 0) {
       // Every row refused and nothing else selectable — the menu would be a
-      // corridor of refusals; the terminal block owns this state.
+      // corridor of refusals; the block owns this state.
       scenario = 'blocked-discussions-open';
     }
   }
@@ -280,17 +293,17 @@ function specificationDetail(workUnit, result) {
   return {
     work_unit: workUnit,
     scenario,
-    cache_status: cache,
+    cache_status: result.cache,
     counts: cs,
     completed_discussions: completed,
     in_progress_discussions: inProgress,
     unassigned,
     actionable,
     concluded,
-    has_materialized: result.specifications.some((s) => s.status !== 'proposed'),
+    has_materialized: rows.some((r) => r.status !== 'proposed'),
     record_open: inProgress.length > 0,
     single,
   };
 }
 
-module.exports = { specificationDetail, sourceTag, discoverySpec, specConfirmation };
+module.exports = { specificationDetail, sourceTag, discoverySpec, specConfirmation, incorporations };

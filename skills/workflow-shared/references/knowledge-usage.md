@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning entry's `cross-cutting-context.md` for **C** and **D**; by `rerouted-concerns.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by specification entry's `analysis-flow.md`.*
+*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning entry's `cross-cutting-context.md` for **C** and **D**; by `rerouted-concerns.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by the epic menu's `analysis-flow.md`.*
 
 ---
 

@@ -317,6 +317,29 @@ function lockingSpecs(manifest, topic) {
 }
 
 /**
+ * The started specifications a specification incorporates — their content
+ * is extracted beside its discussions, and its completion supersedes them.
+ * A proposed grouping reads what its start would take in: the started
+ * specifications sourcing any of its discussions. `topic start` records that
+ * list as `incorporates`, and a started specification reads it back, those
+ * still started; recorded rather than re-derived, because two started
+ * specifications sharing a discussion would otherwise each read the other.
+ * A closed specification incorporates nothing.
+ * @param {object} manifest @param {string} topic
+ * @returns {string[]}
+ */
+function specIncorporations(manifest, topic) {
+  const item = itemOf(manifest, 'specification', topic);
+  if (!item) return [];
+  if (specIsStarted(item)) {
+    return (Array.isArray(item.incorporates) ? item.incorporates : [])
+      .filter((name) => specIsStarted(itemOf(manifest, 'specification', name) || {}));
+  }
+  if (item.status !== 'proposed') return [];
+  return [...new Set(sourceRows(item.sources).flatMap(([source]) => lockingSpecs(manifest, source)))];
+}
+
+/**
  * @typedef {object} CancelPlan
  * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the cancel stashes
  * @property {string[]} records   every open experiment record, top-level and sub, in register order
@@ -641,7 +664,7 @@ function reactivateLockPhrases(locks, nameOf, { now = false } = {}) {
     const topics = unique(held.map((l) => l.topic));
     const verb = `${now ? 'now ' : ''}source${specs.length === 1 ? 's' : ''}`;
     holds.push(`the specification${specs.length === 1 ? '' : 's'} ${specs.join(', ')} ${verb} ${topics.join(', ')}`);
-    recovery.push('regroup at the specification entry');
+    recovery.push('regroup the discussions from the menu (s/spec)');
   }
   return { holds: holds.join(' and '), recovery: recovery.join(' and ') };
 }
@@ -1370,6 +1393,7 @@ module.exports = {
   inputMoved,
   movedFrom,
   lockingSpecs,
+  specIncorporations,
   cancelPlan,
   postponePlan,
   openExperiments,

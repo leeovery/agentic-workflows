@@ -61,7 +61,6 @@ const GATEWAYS = {
 };
 const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
-const SPEC_GATEWAY = require(path.join(ROOT, 'skills/workflow-specification-entry/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
@@ -71,9 +70,9 @@ const { openGate, drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/
 const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
 
-// Spec-entry detail for one work unit — the spec boundary's derived view.
+// The epic specification menu's detail — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
-  return specificationDetail(workUnit, SPEC_GATEWAY.discover(dir, workUnit));
+  return specificationDetail(workUnit, EPIC_GATEWAY.specDiscover(dir, workUnit));
 }
 
 function git(dir, args) {
@@ -638,6 +637,13 @@ function pickRoute(sim, keys, action, topic) {
 /** The epic menu's pick into work. @param {Sim} sim @param {string} wu @param {string} action @param {string} [topic] */
 function epicPick(sim, wu, action, topic) {
   return pickRoute(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys, action, topic);
+}
+
+/** The epic menu's entry for a command option. @param {Sim} sim @param {string} wu @param {string} action */
+function epicKey(sim, wu, action) {
+  const key = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys.find((k) => k.action === action);
+  assert.ok(key, `the epic menu offers ${action}`);
+  return key;
 }
 
 /** A linear unit's continue menu, picked into work. @param {Sim} sim @param {string} type @param {string} wu @param {string} action */
@@ -2231,30 +2237,37 @@ describe('pipeline simulation', () => {
       /"delta" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen/);
 
     // Grouping: alpha and beta unify into one spec; sources gate, then the
-    // per-topic spec items are superseded by the unified one. The analysis
-    // asks first (display-analyze A), and the map's provenance recovery has
-    // its own two stops (summary-backfill B and D). The menu's specification
-    // row hands off to the entry with no topic.
-    assert.strictEqual(epicPick(sim, wu, 'analyze_discussions').args, `epic ${wu}`);
+    // per-topic spec items are superseded by the unified one. The menu's
+    // specification row carries no route and never meets the soft gate —
+    // the menu runs the grouping itself, and the handoff refuses an epic's
+    // specification without its topic. It reads the scenario, asks before
+    // the analysis, and the map's provenance recovery has its own two stops
+    // (summary-backfill B and D).
+    assert.strictEqual(epicKey(sim, wu, 'analyze_discussions').route, null);
+    sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'analyze_discussions'], /unknown --action "analyze_discussions"/);
+    sim.refuses(['handoff', '/workflow-specification-entry', 'epic', wu], /^an epic enters specification at a topic$/);
+    assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: analyze$/m);
     sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
     sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
-    // The analysis reconciles its grouping into a proposed item, and the
-    // entry confirms the pick before the handoff starts it.
+    // The analysis reconciles its grouping into a proposed item.
     const grouping = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { status: 'proposed', 'sources.alpha.status': 'pending' } }]);
     sim.run(['manifest', 'apply', wu, '--file', grouping]);
     // The reconcile moved the scenario, so the analysis exit routes on a
-    // fresh read: a proposed item standing lands on the groupings.
-    assert.match(SPEC_GATEWAY.scoped(sim.dir, wu), /^scenario: groupings$/m);
-    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.alpha`, '--variant', 'create'],
-      { expect: 'content' }), /Creating specification: Alpha\n\nSources:\n {2}• alpha\n\nOutput: /);
+    // fresh read: a proposed item standing lands on the groupings. A plain
+    // start's confirm answers empty, and the pick hands off with its topic.
+    assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: groupings$/m);
+    sim.render(['spec-confirm-gate', `${wu}.specification.alpha`], { expect: 'empty' });
+    handoff(sim, `/workflow-specification-entry epic ${wu} alpha`);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'alpha']).incorporations, []);
     sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
     sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
     sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'alpha']).incorporations, []);
     arriveAtEpicMenu(sim, wu, 'specification');
     // Unify reconciles before its confirm: the proposed `unified` item with
     // every completed discussion pending, and its birth order, ride one
@@ -2273,9 +2286,15 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.order, 1);
     assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, undefined,
       'the reconcile is the sequencing — its apply clears the flag');
-    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'unify'], { expect: 'content' }),
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`], { expect: 'content' }),
       /Existing specifications to incorporate:\n {2}• \.workflows\/[^/]+\/specification\/alpha\/specification\.md →\n {4}will be superseded\n/);
+    handoff(sim, `/workflow-specification-entry epic ${wu} unified`);
+    // The start records what it incorporates, and the session reads it back
+    // at its setup — the same answer the confirm drew.
     sim.run(['topic', 'start', wu, 'specification', 'unified']);
+    assert.deepStrictEqual(sim.manifest(wu).phases.specification.items.unified.incorporates, ['alpha']);
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'unified']).incorporations,
+      [{ topic: 'alpha', path: `.workflows/${wu}/specification/alpha/specification.md`, covers: ['alpha'] }]);
     const regroupOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { order: 1 } },
        { op: 'set', path: `${wu}.specification.unified`, fields: { order: 2 } }]);
@@ -2283,14 +2302,20 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.order, 1, 'regroup renumbers wholesale');
     // A regroup whose every grouping maps to a started specification leaves
     // nothing proposed: the analysis exit's fresh read lands on the specs menu.
-    assert.match(SPEC_GATEWAY.scoped(sim.dir, wu), /^scenario: specs-menu$/m);
-    sim.run(['topic', 'supersede', wu, 'specification', 'alpha', '--by', 'unified']);
-    assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.superseded_by, 'unified');
+    assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: specs-menu$/m);
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
       'sources.alpha.status=incorporated', 'sources.beta.status=incorporated']);
     sim.write(`.workflows/${wu}/specification/unified/specification.md`, '# Spec — Unified\n');
     sim.run(['commit', wu, '-m', `spec(${wu}): unified`, '--topic', 'specification/unified']);
     sim.run(['topic', 'complete', wu, 'specification', 'unified']);
+    // Completion supersedes each specification the start incorporated, read
+    // afresh — and a superseded one drops out of the read.
+    for (const { topic } of sim.run(['topic', 'incorporations', wu, 'unified']).incorporations) {
+      sim.run(['topic', 'supersede', wu, 'specification', topic, '--by', 'unified']);
+    }
+    assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.superseded_by, 'unified');
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'unified']).incorporations, []);
+    sim.run(['commit', wu, '-m', `spec(${wu}): mark incorporated specifications as superseded`, '--topic', 'specification/unified']);
 
     // A completed epic specification flags the build order stale; the
     // sequence verb writes the whole live set (superseded alpha is terminal —
@@ -2366,31 +2391,28 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
     sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'empty' });
     assert.strictEqual(specDetail(sim.dir, wu).actionable.find((r) => r.name === 'unified').blocked, false);
-    // While stale, the spec boundary keeps the spec actionable — Continuing,
-    // never Refining/concluded — and the stale row rides the detail.
+    // While stale, the spec boundary keeps the spec actionable — never
+    // concluded — and the stale row rides the detail.
     const staleView = specDetail(sim.dir, wu);
-    // The entry routes on its scoped read, which carries no gate: the specs
+    // The menu routes on its scenario read, which carries no gate: the specs
     // menu is fetched by the display that shows it.
     assert.strictEqual(staleView.scenario, 'specs-menu');
-    const routingRead = SPEC_GATEWAY.scoped(sim.dir, wu);
+    const routingRead = EPIC_GATEWAY.specScenario(sim.dir, wu);
     assert.match(routingRead, /^scenario: specs-menu$/m);
     assert.doesNotMatch(routingRead, /^=== (MENU|DISPLAY|TITLE)/m);
     const unifiedRow = staleView.actionable.find((r) => r.name === 'unified');
     assert.ok(unifiedRow, 'staled spec stays actionable');
-    assert.strictEqual(unifiedRow.verb, 'Continuing');
     assert.strictEqual(unifiedRow.stale, 1);
-    // The continue confirms the reconcile it is about to run, and refuses
-    // the refine the stale row rules out.
-    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'continue'], { expect: 'content' }),
-      /Sources re-decided since extraction \(reconcile\):\n {2}• beta \[stale\]\n\nPreviously extracted \(for reference\):\n {2}• alpha\n/);
-    sim.refuses(['render', 'spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'refine'],
-      /"unified" reads Continuing — the refine confirm does not serve it/);
+    // A continue hands off on the pick: its start already took in what it
+    // incorporates, so the confirm answers empty.
+    sim.render(['spec-confirm-gate', `${wu}.specification.unified`], { expect: 'empty' });
     // Reconciliation: the advisory clears the flag at spec entry; the
     // diff-guided re-extraction re-incorporates the row, and the spec reads
-    // as a refine again.
+    // as concluded again — a refine, whose confirm answers empty too.
     sim.run(['manifest', 'delete', `${wu}.specification.unified`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.beta.status', 'incorporated']);
-    sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--variant', 'refine'], { expect: 'content' });
+    assert.ok(specDetail(sim.dir, wu).concluded.some((r) => r.name === 'unified'));
+    sim.render(['spec-confirm-gate', `${wu}.specification.unified`], { expect: 'empty' });
 
     // A BARE triage landing on the spec'd completed discussion takes the
     // same hop — no completed→in-progress transition skips it.
@@ -2876,8 +2898,8 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'reactivate', wu, 'discovery', 'roles']);
     sim.run(['manifest', 'apply', wu, '--file', groupingOps('roles-v2', 'in-progress')]);
     sim.refuses(['topic', 'reactivate', wu, 'specification', 'roles'],
-      /^reactivating "roles" is refused while the specification "roles-v2" sources "roles" — regroup at the specification entry$/);
-    assert.strictEqual(specLock(), 'locked — the specification "Roles V2" now sources "Roles"; regroup at the specification entry');
+      /^reactivating "roles" is refused while the specification "roles-v2" sources "roles" — regroup the discussions from the menu \(s\/spec\)$/);
+    assert.strictEqual(specLock(), 'locked — the specification "Roles V2" now sources "Roles"; regroup the discussions from the menu (s/spec)');
     sim.run(['topic', 'cancel', wu, 'specification', 'roles-v2']);
     sim.run(['manifest', 'apply', wu, '--file', groupingOps('roles-v3', 'proposed')]);
     assert.strictEqual(specLock(), undefined, 'a cancelled sibling and a proposed grouping hold nothing');
@@ -2889,7 +2911,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['topic-receipt', `${wu}.specification.roles`, '--verb', 'reactivate'], { expect: 'content' }),
       /Reactivated "Roles"\. Restored specification \[completed\] · planning \[completed\]\./);
     assert.deepStrictEqual(cancelledUnits(), ['specification/roles-v2']);
-    assert.strictEqual(detail().cancelled[0].locked, 'locked — the specification "Roles" now sources "Roles"; regroup at the specification entry');
+    assert.strictEqual(detail().cancelled[0].locked, 'locked — the specification "Roles" now sources "Roles"; regroup the discussions from the menu (s/spec)');
 
     // A closed map row takes no concern — dead-ended or cancelled — the
     // backstop for a peer closing the target under a landing; the cancel
@@ -2942,7 +2964,7 @@ describe('pipeline simulation', () => {
       [{ op: 'set', path: `${wu}.specification.whole`, fields: {
         status: 'proposed', 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending', 'sources.gamma.status': 'pending',
       } }])]);
-    const checksum = /^discussions_checksum: (\S+)$/m.exec(SPEC_GATEWAY.scoped(sim.dir, wu))[1];
+    const checksum = /^discussions_checksum: (\S+)$/m.exec(EPIC_GATEWAY.specScenario(sim.dir, wu))[1];
     sim.run(['manifest', 'set', `${wu}.discussion`, 'analysis_cache.checksum', checksum]);
     sim.run(['manifest', 'set', `${wu}.discussion`, 'analysis_cache.generated', '2026-10-06']);
     assert.strictEqual(specDetail(sim.dir, wu).scenario, 'groupings');
@@ -2950,11 +2972,117 @@ describe('pipeline simulation', () => {
     // The cancel leaves gamma's file on disk, so the cache stays valid while
     // the grouping it backed is gone — the analysis reruns behind its gate.
     assert.deepStrictEqual(sim.run(['topic', 'cancel', wu, 'discovery', 'gamma']).discarded, ['whole']);
-    const routing = SPEC_GATEWAY.scoped(sim.dir, wu);
+    const routing = EPIC_GATEWAY.specScenario(sim.dir, wu);
     assert.match(routing, /^scenario: analyze$/m);
     assert.match(routing, /^cache_status: valid$/m);
-    assert.strictEqual(epicPick(sim, wu, 'analyze_discussions').args, `epic ${wu}`);
+    assert.strictEqual(epicKey(sim, wu, 'analyze_discussions').route, null);
     sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
+  });
+
+  it('the epic menu\'s start of a grouping over a started specification\'s discussion incorporates it, and its completion supersedes it', () => {
+    const wu = 'merge';
+    mappedEpic(sim, wu, ['ranking', 'synonyms', 'stray']);
+    for (const name of ['ranking', 'synonyms', 'stray']) {
+      sim.run(['topic', 'start', wu, 'discussion', name]);
+      sim.write(`.workflows/${wu}/discussion/${name}.md`, `# Discussion — ${name}\n`);
+      sim.run(['topic', 'complete', wu, 'discussion', name]);
+    }
+    // The `ranking` specification started from its own grouping and
+    // concluded; a later analysis keeps a grouping apart that takes in
+    // ranking's discussion beside synonyms — fewer than a majority of it is
+    // ranking's.
+    sim.run(['manifest', 'set', `${wu}.specification.ranking`, 'status=proposed', 'sources.ranking.status=pending', 'sources.stray.status=pending']);
+    sim.run(['topic', 'start', wu, 'specification', 'ranking']);
+    sim.run(['manifest', 'set', `${wu}.specification.ranking`, 'sources.ranking.status=incorporated', 'sources.stray.status=incorporated']);
+    sim.write(`.workflows/${wu}/specification/ranking/specification.md`, '# Spec — Ranking\n');
+    sim.run(['topic', 'complete', wu, 'specification', 'ranking']);
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+      [{ op: 'set', path: `${wu}.specification.search`, fields: {
+        status: 'proposed', 'sources.ranking.status': 'pending', 'sources.synonyms.status': 'pending',
+      } }])]);
+    sim.run(['build-order', 'sequence', wu, 'ranking=1', 'search=2']);
+
+    // The epic menu's own start row reaches the same confirm the grouping
+    // menu's pick does: the start incorporates ranking, so it renders.
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.search`], { expect: 'content' }),
+      /Sources:\n {2}• ranking \(has individual spec — will be incorporated\)\n {2}• synonyms\n[\s\S]*After completion:\n {2}\.workflows\/merge\/specification\/ranking\/specification\.md → marked as superseded/);
+    epicPick(sim, wu, 'start_specification', 'search');
+
+    // The start records what it takes in; the session reads it at setup, and
+    // a resume reads it the same — ranking, never the other way round.
+    sim.run(['topic', 'start', wu, 'specification', 'search']);
+    const RANKING = { topic: 'ranking', path: `.workflows/${wu}/specification/ranking/specification.md`, covers: ['ranking'] };
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'search']).incorporations, [RANKING]);
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'ranking']).incorporations, []);
+    // Mid-window both read started and share a discussion; a continue of
+    // either hands off on its pick.
+    sim.render(['spec-confirm-gate', `${wu}.specification.search`], { expect: 'empty' });
+    sim.render(['spec-confirm-gate', `${wu}.specification.ranking`], { expect: 'empty' });
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'search']).incorporations, [RANKING]);
+
+    sim.run(['manifest', 'set', `${wu}.specification.search`, 'sources.ranking.status=incorporated', 'sources.synonyms.status=incorporated']);
+    sim.write(`.workflows/${wu}/specification/search/specification.md`, '# Spec — Search\n');
+    sim.run(['commit', wu, '-m', `spec(${wu}): search`, '--topic', 'specification/search']);
+    sim.run(['topic', 'complete', wu, 'specification', 'search']);
+    for (const { topic } of sim.run(['topic', 'incorporations', wu, 'search']).incorporations) {
+      sim.run(['topic', 'supersede', wu, 'specification', topic, '--by', 'search']);
+    }
+    sim.run(['commit', wu, '-m', `spec(${wu}): mark incorporated specifications as superseded`, '--topic', 'specification/search']);
+    const items = sim.manifest(wu).phases.specification.items;
+    assert.strictEqual(items.ranking.status, 'superseded');
+    assert.strictEqual(items.ranking.superseded_by, 'search');
+    assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'search']).incorporations, []);
+    // Ranking's other discussion, which the incorporating grouping never
+    // took as a source, is unaccounted again — the next analysis groups it.
+    assert.deepStrictEqual(specDetail(sim.dir, wu).unassigned, ['stray']);
+  });
+
+  it('the epic menu\'s single-discussion path confirms before it hands off — a create, a refine, and a continue alike', () => {
+    const wu = 'solo';
+    mappedEpic(sim, wu, ['checkout']);
+    sim.run(['topic', 'start', wu, 'discussion', 'checkout']);
+    sim.write(`.workflows/${wu}/discussion/checkout.md`, '# Discussion — checkout\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
+    assert.strictEqual(epicKey(sim, wu, 'analyze_discussions').route, null);
+    const single = (expect) => sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`, '--single'], { expect });
+
+    // No specification covers the lone discussion: the path proceeds with
+    // the work unit's name, and nothing is picked, so the create confirms
+    // before anything lands — a decline leaves the manifest as it was.
+    const scenario = EPIC_GATEWAY.specScenario(sim.dir, wu);
+    assert.match(scenario, /^scenario: single$/m);
+    assert.match(scenario, /^single_variant: no-spec$/m);
+    assert.match(scenario, /^single_discussion: checkout$/m);
+    assert.match(scenario, new RegExp(`^proceed_name: ${wu}$`, 'm'));
+    assert.match(single('content'), /Creating specification: Solo\n\nSources:\n {2}• checkout\n\nOutput: \.workflows\/solo\/specification\/solo\/specification\.md\n[\s\S]*MENU: spec confirm gate/);
+    assert.strictEqual(sim.manifest(wu).phases.specification, undefined, 'the confirm writes nothing — a decline leaves no grouping');
+    sim.refuses(['render', 'spec-confirm-gate', `${wu}.specification.${wu}`], /no specification "solo" — the confirm reads the item the pick names/);
+
+    // The yes lands the grouping, so the route selection's own confirm finds
+    // a plain start and answers empty: one confirm, then the handoff.
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, 'status=proposed', 'sources.checkout.status=pending']);
+    sim.run(['commit', wu, '--state', '-m', `spec(${wu}): propose ${wu}`]);
+    sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+    handoff(sim, `/workflow-specification-entry epic ${wu} ${wu}`);
+    sim.run(['topic', 'start', wu, 'specification', wu]);
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, 'sources.checkout.status', 'incorporated']);
+    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec — Solo\n');
+    sim.run(['topic', 'complete', wu, 'specification', wu]);
+
+    // The covering specification concluded: the path proceeds with it as a
+    // refine, which still confirms — the menu opening on where a change of
+    // decision belongs.
+    assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^single_variant: has-spec$/m);
+    assert.match(single('content'), /Refining specification: Solo\n\nExisting: \.workflows\/solo\/specification\/solo\/specification\.md \[completed\]\n\nAll sources extracted:\n {2}• checkout\n[\s\S]*A refinement is for factual corrections and sharpening\./);
+    sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+
+    // A re-decided discussion stales its row: the path proceeds as a
+    // continue, confirming the reconcile it carries.
+    sim.run(['topic', 'reopen', wu, 'discussion', 'checkout']);
+    sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
+    assert.match(single('content'), /Continuing specification: Solo\n\nExisting: \.workflows\/solo\/specification\/solo\/specification\.md \[completed\]\n\nSources re-decided since extraction \(reconcile\):\n {2}• checkout \[stale\]\n/);
+    sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+    handoff(sim, `/workflow-specification-entry epic ${wu} ${wu}`);
   });
 
   it('epic topic postpone: the topic leaves for the roadmap, the roadmap owns it, and the pull brings it back', () => {

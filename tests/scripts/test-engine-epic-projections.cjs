@@ -555,7 +555,7 @@ describe('epic projections: menu', () => {
       [
         ['1', 'start_specification', 'billing-grouping', '/workflow-specification-entry epic quiz-competition-v1 billing-grouping'],
         ['2', 'continue_specification', 'auth-spec', '/workflow-specification-entry epic quiz-competition-v1 auth-spec'],
-        ['s', 'analyze_discussions', null, '/workflow-specification-entry epic quiz-competition-v1'],
+        ['s', 'analyze_discussions', null, null],
         ['d', 'new_discussion', null, null],
         ['r', 'new_research', null, null],
         ['i', 'continue_discovery', null, '/workflow-discovery epic quiz-competition-v1'],
@@ -1567,7 +1567,7 @@ describe('epic projections: selection sub-views', () => {
       '',
       'Specifications',
       '  ├─ Unified [cancelled] — specification [was completed] · locked — its source "Synonyms" is cancelled; reactivate the topic first',
-      '  ├─ Taken [cancelled] — specification [was in-progress] · locked — the specification "Notes" now sources "Notes"; regroup at the specification entry',
+      '  ├─ Taken [cancelled] — specification [was in-progress] · locked — the specification "Notes" now sources "Notes"; regroup the discussions from the menu (s/spec)',
       '  └─ 2. Free [cancelled] — specification [was completed] · planning [was in-progress] · in session (last active 7s ago)',
       '',
     ].join('\n'));

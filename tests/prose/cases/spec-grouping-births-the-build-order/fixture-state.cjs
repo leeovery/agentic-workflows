@@ -1,7 +1,7 @@
 'use strict';
 
 // Two concluded discussions, a stamped gap analysis, and no
-// specification items anywhere: the next specification entry runs the
+// specification items anywhere: the epic menu's specification row runs the
 // grouping analysis for the first time, and the build order should be
 // born inside its reconcile.
 

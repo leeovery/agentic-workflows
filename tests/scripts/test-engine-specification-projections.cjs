@@ -5,29 +5,32 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
-const { specificationDetail, discoverySpec, specConfirmation } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+const { specDiscover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const { specificationDetail, discoverySpec, specConfirmation, incorporations } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+const { specIncorporations } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
+const { startTopic, supersedeTopic } = require('../../skills/workflow-engine/scripts/domain/transitions.cjs');
 const {
   specificationDisplay, specificationMenu, specificationCompletedMenu,
 } = require('../../skills/workflow-engine/scripts/domain/projections/specification.cjs');
 const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
-const ADAPTER = path.resolve(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
+const ADAPTER = path.resolve(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
 // Menu label continuations indent with non-breaking spaces (the worklist
 // rule) — goldens spell them explicitly.
 const NB = (n) => '\u00a0'.repeat(n);
 
-// Golden tests: byte-exact expected strings for the specification-entry
-// scenario displays and menus. Fixtures go through real manifests in temp
-// dirs and the adapter's own discover(), so the goldens cover the full
-// derivation path (discovery result → detail → projection).
+// Golden tests: byte-exact expected strings for the epic specification
+// menu's scenario displays and menus. Fixtures go through real manifests in
+// temp dirs and the gateway's own specDiscover(), so the goldens cover the
+// full derivation path (discovery result → detail → projection).
 
 function detailOf(dir, workUnit) {
-  return specificationDetail(workUnit, discover(dir, workUnit));
+  return specificationDetail(workUnit, specDiscover(dir, workUnit));
 }
 
 // Two actionable groupings (one proposed, one in-progress with a pending
@@ -98,7 +101,6 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(d.scenario, 'single');
     // A proposed grouping has no file — it never covers the discussion.
     assert.strictEqual(d.single.variant, 'no-spec');
-    assert.strictEqual(d.single.verb, 'Creating');
     assert.strictEqual(d.single.proceed_name, 'v1');
   });
 
@@ -221,6 +223,53 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(detailOf(dir, 'v1').scenario, 'specs-menu');
   });
 
+  it('a promoted specification is never a row — it groups its sources from its cross-cutting unit, and counts and covers nothing', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: {
+          'auth-design': { status: 'completed' }, 'data-model': { status: 'completed' }, logging: { status: 'completed' },
+        } },
+        specification: { items: {
+          logging: { status: 'promoted', promoted_to: 'logging-cc', sources: { logging: { status: 'incorporated' } } },
+          'auth-flow': { status: 'in-progress', sources: { 'auth-design': { status: 'pending' } } },
+          'data-spec': { status: 'completed', sources: { 'data-model': { status: 'incorporated' } } },
+        } },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# Auth');
+    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
+    const promoted = () => {
+      const detail = detailOf(dir, 'v1');
+      assert.strictEqual(detail.scenario, 'specs-menu');
+      assert.deepStrictEqual(detail.actionable.map((r) => r.name), ['auth-flow']);
+      assert.deepStrictEqual(detail.concluded.map((r) => r.name), ['data-spec']);
+      assert.deepStrictEqual(detail.unassigned, [], 'the promoted specification still groups its discussion');
+      assert.strictEqual(detail.counts.spec_count, 2);
+      assert.ok(!specificationMenu(detail).keys.some((k) => k.topic === 'logging'), 'no row continues it');
+      assert.match(specificationDisplay(detail), /3 completed discussions found\. 2 specifications exist\./);
+    };
+    promoted();
+    // Keyed on its status, never on where its file went.
+    createFile(dir, '.workflows/v1/specification/logging/specification.md', '# Logging');
+    promoted();
+
+    // A lone discussion a promoted specification covers proceeds as no
+    // specification of its own — the path never hands off to the promoted one.
+    createManifest(dir, 'v2', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { logging: { status: 'completed' } } },
+        specification: { items: {
+          logging: { status: 'promoted', promoted_to: 'logging-cc', sources: { logging: { status: 'incorporated' } } },
+        } },
+      },
+    });
+    const single = detailOf(dir, 'v2').single;
+    assert.strictEqual(single.variant, 'no-spec');
+    assert.strictEqual(single.proceed_name, 'v2');
+  });
+
   it('sources with a deleted discussion item are skipped from rows', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -244,7 +293,7 @@ describe('specification detail: scenario derivation', () => {
   });
 });
 
-describe('specification record: one reading for the entry menu and its confirm', () => {
+describe('specification record: one reading for the menu and its confirm', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -268,7 +317,7 @@ describe('specification record: one reading for the entry menu and its confirm',
     assert.deepStrictEqual(discoverySpec(m, 's', { status: 'proposed' }), { name: 's', status: 'proposed', has_pending_sources: false });
   });
 
-  it('the confirm reads every menu row\'s verb and sources as the row does', () => {
+  it('the confirm reads every menu row\'s sources as the row does', () => {
     const m = createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -285,17 +334,12 @@ describe('specification record: one reading for the entry menu and its confirm',
     });
     for (const spec of ['open', 'moved', 'done']) createFile(dir, `.workflows/v1/specification/${spec}/specification.md`, '# Spec');
     const detail = detailOf(dir, 'v1');
-    const rows = [...detail.actionable, ...detail.concluded];
-    assert.deepStrictEqual(rows.map((r) => [r.name, r.verb]),
-      [['grouping', 'Creating'], ['open', 'Continuing'], ['moved', 'Continuing'], ['done', 'Refining']]);
-    for (const row of rows) {
-      const c = confirmationOf(m, row.name);
-      assert.strictEqual(c.verb, row.verb, row.name);
-      assert.deepStrictEqual(c.sources.map((s) => s.name), row.sources.map((s) => s.name), row.name);
+    for (const row of [...detail.actionable, ...detail.concluded]) {
+      assert.deepStrictEqual(confirmationOf(m, row.name).sources.map((s) => s.name), row.sources.map((s) => s.name), row.name);
     }
   });
 
-  it('a fresh grouping marks each source a started specification covers and supersedes it once; a started one covers nothing', () => {
+  it('a fresh grouping marks each source another started specification covers and supersedes it once; a started one covers nothing of its own', () => {
     const m = {
       phases: {
         discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'completed' } } },
@@ -310,7 +354,7 @@ describe('specification record: one reading for the entry menu and its confirm',
       },
     };
     assert.deepStrictEqual(confirmationOf(m, 'fresh'), {
-      verb: 'Creating',
+      variant: 'create',
       sources: [
         { name: 'a', status: 'pending', individual: true },
         { name: 'b', status: 'pending', individual: true },
@@ -319,10 +363,94 @@ describe('specification record: one reading for the entry menu and its confirm',
       supersedes: ['core'],
     });
     assert.deepStrictEqual(confirmationOf(m, 'core'), {
-      verb: 'Continuing',
+      variant: 'continue',
       sources: [{ name: 'a', status: 'incorporated', individual: false }, { name: 'b', status: 'pending', individual: false }],
       supersedes: [],
     });
+  });
+
+  it('the confirm reads which entry it is: the unify, a create, a refine with nothing left to extract, a continue otherwise', () => {
+    const m = {
+      phases: {
+        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
+        specification: {
+          items: {
+            unified: { status: 'proposed', sources: { a: { status: 'pending' }, b: { status: 'pending' } } },
+            fresh: { status: 'proposed', sources: { a: { status: 'pending' } } },
+            done: { status: 'completed', sources: { a: { status: 'incorporated' }, ghost: { status: 'pending' } } },
+            moved: { status: 'completed', sources: { b: { status: 'stale' } } },
+            open: { status: 'in-progress', sources: { b: { status: 'incorporated' } } },
+          },
+        },
+      },
+    };
+    assert.deepStrictEqual(['unified', 'fresh', 'done', 'moved', 'open'].map((name) => confirmationOf(m, name).variant),
+      ['unify', 'create', 'refine', 'continue', 'continue']);
+  });
+});
+
+describe('specification incorporations: decided at the start, read the same after it', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  // A started `ranking` specification over its own discussion, and a fresh
+  // grouping `search` that takes that discussion in beside another.
+  function incorporationFixture() {
+    return createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { ranking: { status: 'completed' }, synonyms: { status: 'completed' }, stray: { status: 'completed' } } },
+        specification: {
+          items: {
+            ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' }, stray: { status: 'incorporated' } } },
+            search: { status: 'proposed', sources: { ranking: { status: 'pending' }, synonyms: { status: 'pending' } } },
+          },
+        },
+      },
+    });
+  }
+  const manifestOf = () => JSON.parse(fs.readFileSync(path.join(dir, '.workflows/v1/manifest.json'), 'utf8'));
+
+  it('a fresh grouping over a started specification\'s discussion incorporates it', () => {
+    incorporationFixture();
+    assert.deepStrictEqual(specIncorporations(manifestOf(), 'search'), ['ranking']);
+    assert.deepStrictEqual(specIncorporations(manifestOf(), 'ranking'), [], 'the started specification took nothing in at its own start');
+  });
+
+  it('the start records the list — the same specification once started reads it back, itself excluded, and the one it takes in never reads it the other way', () => {
+    incorporationFixture();
+    startTopic(dir, 'v1', 'specification', 'search');
+    const m = manifestOf();
+    assert.deepStrictEqual(m.phases.specification.items.search.incorporates, ['ranking']);
+    assert.deepStrictEqual(specIncorporations(m, 'search'), ['ranking']);
+    assert.deepStrictEqual(specIncorporations(m, 'ranking'), [],
+      'both are started and share a discussion, yet the older one never takes the newer in');
+  });
+
+  it('a superseded specification is no longer listed', () => {
+    incorporationFixture();
+    startTopic(dir, 'v1', 'specification', 'search');
+    supersedeTopic(dir, 'v1', 'specification', 'ranking', { by: 'search' });
+    assert.deepStrictEqual(specIncorporations(manifestOf(), 'search'), []);
+  });
+
+  it('a start over nothing started records nothing; a restart keeps what the first start recorded', () => {
+    incorporationFixture();
+    startTopic(dir, 'v1', 'specification', 'ranking-two');
+    assert.strictEqual(manifestOf().phases.specification.items['ranking-two'].incorporates, undefined);
+    startTopic(dir, 'v1', 'specification', 'search');
+    startTopic(dir, 'v1', 'specification', 'search');
+    assert.deepStrictEqual(manifestOf().phases.specification.items.search.incorporates, ['ranking']);
+  });
+
+  it('the session reads each incorporated specification\'s document and the discussions it covers among its own sources', () => {
+    incorporationFixture();
+    assert.deepStrictEqual(incorporations(manifestOf(), 'v1', 'search'), [
+      { topic: 'ranking', path: '.workflows/v1/specification/ranking/specification.md', covers: ['ranking'] },
+    ]);
+    assert.deepStrictEqual(incorporations(manifestOf(), 'v1', 'ranking'), []);
+    assert.throws(() => incorporations(manifestOf(), 'v1', 'ghost'), /no specification "ghost" in "v1"/);
   });
 });
 
@@ -476,7 +604,7 @@ describe('specification projections: display goldens', () => {
     assert.ok(!out.includes('1 specifications'), out);
   });
 
-  it('single no-spec: ready row, no spec line, ready-only key', () => {
+  it('single no-spec: ready row, no spec line, ready-only key, and the work unit\'s name to proceed with', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { solo: { status: 'completed' } } } },
@@ -496,10 +624,12 @@ describe('specification projections: display goldens', () => {
       '  Discussion status:',
       '    ready — completed and available to be specified',
       '',
+      'Automatically proceeding with "V1".',
+      '',
     ].join('\n'));
   });
 
-  it('single has-spec: extraction count and Continuing verb', () => {
+  it('single has-spec: extraction count, and the covering specification — whatever its name — to proceed with', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -512,12 +642,11 @@ describe('specification projections: display goldens', () => {
     createFile(dir, '.workflows/v1/specification/solo/specification.md', '# Solo');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.single.variant, 'has-spec');
-    assert.strictEqual(d.single.verb, 'Continuing');
-    assert.strictEqual(d.single.proceed_name, 'v1');
+    assert.strictEqual(d.single.proceed_name, 'solo');
     assert.strictEqual(specificationDisplay(d), [
       'Single completed discussion found with existing specification.',
       '',
-      '1. V1',
+      '1. Solo',
       '   ├─ Spec: in-progress (1 of 1 sources extracted)',
       '   └─ Discussions:',
       '      └─ solo    [extracted]',
@@ -530,10 +659,12 @@ describe('specification projections: display goldens', () => {
       '  Spec status:',
       '    in-progress — specification work is ongoing',
       '',
+      'Automatically proceeding with "Solo".',
+      '',
     ].join('\n'));
   });
 
-  it('single grouped: spec name as title, all sources shown, Refining when concluded', () => {
+  it('single grouped: spec name as title, all sources shown', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -553,7 +684,6 @@ describe('specification projections: display goldens', () => {
     createFile(dir, '.workflows/v1/specification/combined-spec/specification.md', '# C');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.single.variant, 'grouped');
-    assert.strictEqual(d.single.verb, 'Refining');
     assert.strictEqual(d.single.proceed_name, 'combined-spec');
     assert.strictEqual(specificationDisplay(d), [
       'Single completed discussion found with existing multi-source specification.',
@@ -571,6 +701,8 @@ describe('specification projections: display goldens', () => {
       '',
       '  Spec status:',
       '    completed — specification is done',
+      '',
+      'Automatically proceeding with "Combined Spec".',
       '',
     ].join('\n'));
   });
@@ -707,15 +839,17 @@ describe('specification projections: menu goldens', () => {
       '   *specification names are preserved. You can provide guidance*',
       '   *in the next step.*',
       '**`c/completed`** → Manage completed specifications — *1 completed*',
+      '**`b/back`**      → Return to the epic menu',
     ].join('\n'));
     assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      menu.keys.map((k) => [k.key, k.action, k.topic]),
       [
-        ['1', 'start_spec', 'auth-flow', 'Creating'],
-        ['2', 'continue_spec', 'data-spec', 'Continuing'],
-        ['3', 'unify', null, 'Creating'],
-        ['4', 'reanalyze', null, null],
-        ['c', 'completed_menu', null, null],
+        ['1', 'start_spec', 'auth-flow'],
+        ['2', 'continue_spec', 'data-spec'],
+        ['3', 'unify', null],
+        ['4', 'reanalyze', null],
+        ['c', 'completed_menu', null],
+        ['b', 'back', null],
       ]
     );
   });
@@ -740,10 +874,11 @@ describe('specification projections: menu goldens', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`** → Start "Only Grp" — *2 ready discussion(s)*',
-      '**`2`** → Re-analyze groupings',
+      '**`1`**      → Start "Only Grp" — *2 ready discussion(s)*',
+      '**`2`**      → Re-analyze groupings',
       '   *Current groupings are discarded and rebuilt. You can provide*',
       '   *guidance in the next step.*',
+      '**`b/back`** → Return to the epic menu',
     ].join('\n'));
   });
 
@@ -781,14 +916,16 @@ describe('specification projections: menu goldens', () => {
       '**`2`**           → Continue "Auth Spec" — *in-progress*',
       '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract*',
       '**`c/completed`** → Manage completed specifications — *1 completed*',
+      '**`b/back`**      → Return to the epic menu',
     ].join('\n'));
     assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      menu.keys.map((k) => [k.key, k.action, k.topic]),
       [
-        ['1', 'analyze', null, null],
-        ['2', 'continue_spec', 'auth-spec', 'Continuing'],
-        ['3', 'continue_spec', 'data-spec', 'Continuing'],
-        ['c', 'completed_menu', null, null],
+        ['1', 'analyze', null],
+        ['2', 'continue_spec', 'auth-spec'],
+        ['3', 'continue_spec', 'data-spec'],
+        ['c', 'completed_menu', null],
+        ['b', 'back', null],
       ]
     );
   });
@@ -815,7 +952,6 @@ describe('specification projections: menu goldens', () => {
     const row = detail.actionable.find((r) => r.name === 'moved-spec');
     assert.ok(row, 'the staled spec is actionable, not concluded');
     assert.strictEqual(detail.concluded.length, 0);
-    assert.strictEqual(row.verb, 'Continuing');
     assert.strictEqual(row.stale, 1);
     assert.deepStrictEqual(row.sources.map((s) => s.tag).sort(), ['pending', 'stale']);
     // A stale row whose discussion is back in flight shows both facts;
@@ -851,14 +987,16 @@ describe('specification projections: menu goldens', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`** → Continue "A Spec" — blocked by A (reopened)',
-      '**`2`** → Continue "B Spec" — *in-progress*',
+      '**`1`**      → Continue "A Spec" — blocked by A (reopened)',
+      '**`2`**      → Continue "B Spec" — *in-progress*',
+      '**`b/back`** → Return to the epic menu',
     ].join('\n'));
     assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      menu.keys.map((k) => [k.key, k.action, k.topic]),
       [
-        ['1', 'blocked_spec', 'a-spec', null],
-        ['2', 'continue_spec', 'b-spec', 'Continuing'],
+        ['1', 'blocked_spec', 'a-spec'],
+        ['2', 'continue_spec', 'b-spec'],
+        ['b', 'back', null],
       ]
     );
   });
@@ -884,14 +1022,16 @@ describe('specification projections: menu goldens', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`** → Start "A Grp" — blocked by A, D (reopened)',
-      '**`2`** → Start "B Grp" — *2 ready discussion(s)*',
+      '**`1`**      → Start "A Grp" — blocked by A, D (reopened)',
+      '**`2`**      → Start "B Grp" — *2 ready discussion(s)*',
+      '**`b/back`** → Return to the epic menu',
     ].join('\n'));
     assert.deepStrictEqual(
-      menu.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      menu.keys.map((k) => [k.key, k.action, k.topic]),
       [
-        ['1', 'blocked_spec', 'a-grp', null],
-        ['2', 'start_spec', 'b-grp', 'Creating'],
+        ['1', 'blocked_spec', 'a-grp'],
+        ['2', 'start_spec', 'b-grp'],
+        ['b', 'back', null],
       ]
     );
     // The display carries the bare reopened tag on the blocked grouping's
@@ -934,11 +1074,11 @@ describe('specification projections: menu goldens', () => {
       '**`b/back`** → Return to the specifications menu',
     ].join('\n'));
     assert.deepStrictEqual(
-      sub.keys.map((k) => [k.key, k.action, k.topic, k.verb]),
+      sub.keys.map((k) => [k.key, k.action, k.topic]),
       [
-        ['1', 'refine_spec', 'auth-flow', 'Refining'],
-        ['2', 'refine_spec', 'data-model', 'Refining'],
-        ['b', 'back', null, null],
+        ['1', 'refine_spec', 'auth-flow'],
+        ['2', 'refine_spec', 'data-model'],
+        ['b', 'back', null],
       ]
     );
   });
@@ -963,7 +1103,7 @@ describe('specification projections: menu goldens', () => {
   });
 });
 
-describe('specification adapter: gateway verbs', () => {
+describe('specification menu: the epic gateway\'s spec verbs', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -975,30 +1115,32 @@ describe('specification adapter: gateway verbs', () => {
     return res.stdout;
   }
 
-  it('view emits DATA + DISPLAY + MENU with scenario, the specification detail, and ACTIONS', () => {
+  it('spec-view emits DATA + DISPLAY + MENU with scenario, the specification detail, and ACTIONS', () => {
     groupingsFixture(dir);
-    const out = run(['view', 'v1']);
+    const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(out.includes('=== MENU (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
     assert.ok(out.includes('  auth-flow: proposed, has_pending_sources=true\n    source: auth-design (pending, discussion: completed)\n'));
-    assert.ok(out.includes('ACTIONS (key  word  action  topic  verb):'));
-    assert.ok(out.includes('  1  —  start_spec  auth-flow  Creating'));
+    assert.ok(out.includes('ACTIONS (key  word  action  topic):'));
+    assert.ok(out.includes('  1  —  start_spec  auth-flow\n'));
+    assert.ok(out.includes('  b  back  back  —\n'));
     assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\)\*\n/.test(out));
+    assert.ok(/\*\*`b\/back`\*\* +→ Return to the epic menu/.test(out));
   });
 
-  it('view for a blocked work unit emits DATA + DISPLAY and no MENU', () => {
+  it('spec-view for a blocked work unit emits DATA + DISPLAY and no MENU', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
-    const out = run(['view', 'v1']);
+    const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('scenario: blocked-no-discussions'));
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!out.includes('=== MENU'));
     assert.ok(!out.includes('ACTIONS'));
   });
 
-  it('view for analyze over a valid cache emits DATA + DISPLAY and no MENU — the proceed gate is its own surface', () => {
+  it('spec-view for analyze over a valid cache emits DATA + DISPLAY and no MENU — the proceed gate is its own surface', () => {
     const crypto = require('crypto');
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -1011,28 +1153,26 @@ describe('specification adapter: gateway verbs', () => {
     });
     createFile(dir, '.workflows/v1/discussion/a.md', '# A');
     createFile(dir, '.workflows/v1/discussion/b.md', '# B');
-    const out = run(['view', 'v1']);
+    const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('scenario: analyze'));
     assert.ok(out.includes('cache_status: valid'));
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!out.includes('=== MENU'));
   });
 
-  it('view for the single scenario carries the verb flags and no MENU', () => {
+  it('spec-view for the single scenario carries the discussion and the name it proceeds with, and no MENU', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { solo: { status: 'completed' } } } },
     });
-    const out = run(['view', 'v1']);
+    const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('scenario: single'));
-    assert.ok(out.includes('single_variant: no-spec'));
-    assert.ok(out.includes('verb: Creating'));
-    assert.ok(out.includes('proceed_name: v1'));
-    assert.ok(out.includes('=== DISPLAY'));
+    assert.ok(out.includes('single_variant: no-spec\nsingle_discussion: solo\nproceed_name: v1\n'));
+    assert.ok(out.includes('Automatically proceeding with "V1".'));
     assert.ok(!out.includes('=== MENU'));
   });
 
-  it('completed-menu emits the sub-view sections', () => {
+  it('spec-completed-menu emits the sub-view sections', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -1043,26 +1183,26 @@ describe('specification adapter: gateway verbs', () => {
       },
     });
     createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# X');
-    const out = run(['completed-menu', 'v1']);
-    assert.ok(out.includes('  1  —  refine_spec  done-spec  Refining'));
+    const out = run(['spec-completed-menu', 'v1']);
+    assert.ok(out.includes('  1  —  refine_spec  done-spec\n'));
     assert.ok(out.includes('# **`■ Completed Specifications`**'));
     assert.ok(/\*\*`1`\*\* +→ Refine "Done Spec" — \*completed\*/.test(out));
     assert.ok(/\*\*`b\/back`\*\* +→ Return to the specifications menu/.test(out));
   });
 
-  it('view for blocked-discussions-open emits DATA + DISPLAY and no MENU or ACTIONS', () => {
+  it('spec-view for blocked-discussions-open emits DATA + DISPLAY and no MENU or ACTIONS', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' }, c: { status: 'in-progress' } } } },
     });
-    const out = run(['view', 'v1']);
+    const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('scenario: blocked-discussions-open'));
     assert.ok(out.includes('Discussions are still open.'));
     assert.ok(!out.includes('=== MENU'));
     assert.ok(!out.includes('ACTIONS'));
   });
 
-  it('view with a blocked row emits the blocked_spec ACTIONS entry and blocked_by in DATA', () => {
+  it('spec-view with a blocked row emits the blocked_spec ACTIONS entry and blocked_by in DATA', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
@@ -1077,43 +1217,39 @@ describe('specification adapter: gateway verbs', () => {
     });
     createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
     createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
-    const out = run(['view', 'v1']);
-    assert.ok(out.includes('  1  —  blocked_spec  a-spec  —'));
+    const out = run(['spec-view', 'v1']);
+    assert.ok(out.includes('  1  —  blocked_spec  a-spec\n'));
     assert.ok(out.includes('a-spec: in-progress, has_pending_sources=true, blocked_by=a'));
     assert.ok(out.includes('=== MENU'));
   });
 
-  it('the positional form is the routing read: the view DATA without its ACTIONS, and no gate', () => {
+  it('spec-scenario is the routing read: the view DATA without its ACTIONS, and no gate', () => {
     groupingsFixture(dir);
-    const out = run(['v1']);
-    const view = run(['view', 'v1']);
+    const out = run(['spec-scenario', 'v1']);
+    const view = run(['spec-view', 'v1']);
     assert.strictEqual(out, view.slice(0, view.indexOf('ACTIONS (')));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.strictEqual(out.split('\n').filter((l) => l.startsWith('=== ')).length, 1, 'one DATA section, nothing to emit');
   });
 
-  it('the routing read refuses a missing work unit, excess arguments, and a name with no active work unit behind it', () => {
+  it('every spec verb refuses a missing work unit, excess arguments, and a name with no active epic behind it', () => {
     groupingsFixture(dir);
     createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed' });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'completed' } } } } });
     const refuse = (args) => spawnSync('node', [ADAPTER, ...args], { cwd: dir, encoding: 'utf8' });
-    const usage = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} | gateway.cjs completed-menu {work_unit}';
-
-    const bare = refuse([]);
-    assert.strictEqual(bare.status, 1);
-    assert.strictEqual(bare.stdout, '');
-    assert.strictEqual(bare.stderr, `gateway: work unit name required\n${usage}\n`);
-
-    const extra = refuse(['v1', 'extra']);
-    assert.strictEqual(extra.status, 1);
-    assert.strictEqual(extra.stdout, '');
-    assert.strictEqual(extra.stderr, `gateway: unknown verb "v1"\n${usage}\n`);
-
-    for (const name of ['ghost', 'shipped']) {
-      const unknown = refuse([name]);
-      assert.strictEqual(unknown.status, 1, name);
-      assert.strictEqual(unknown.stdout, '', `${name}: no scenario is reported for a unit that is not there`);
-      assert.strictEqual(unknown.stderr, `gateway: no active work unit "${name}"\n`);
+    for (const verb of ['spec-scenario', 'spec-view', 'spec-completed-menu']) {
+      for (const args of [[verb], [verb, 'v1', 'extra']]) {
+        const res = refuse(args);
+        assert.strictEqual(res.status, 1, args.join(' '));
+        assert.strictEqual(res.stdout, '');
+        assert.ok(res.stderr.startsWith(`gateway: ${verb} takes exactly one work unit\nUsage: `), res.stderr);
+      }
+      for (const name of ['ghost', 'shipped', 'auth']) {
+        const res = refuse([verb, name]);
+        assert.strictEqual(res.status, 1, `${verb} ${name}`);
+        assert.strictEqual(res.stdout, '', `${name}: no scenario is reported for a unit that is no active epic`);
+        assert.strictEqual(res.stderr, `gateway: no active epic "${name}"\n`);
+      }
     }
   });
 });
-
