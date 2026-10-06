@@ -1374,7 +1374,7 @@ describe('pipeline simulation', () => {
       sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
     sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/backfill-ops.json`,
       [{ op: 'set', path: `${wu}.discovery.beta`, fields: { summary: 'Beta', description: 'What beta settles.' } }])]);
-    sim.run(['commit', wu, '-m', `discovery(${wu}): backfill 2 discovery provenance field(s) from source files`, '--discovery']);
+    sim.run(['commit', wu, '-m', `discovery(${wu}): backfill 2 discovery summary field(s)`, '--discovery']);
 
     assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Reroutes"\./);
     assert.deepStrictEqual(toRecover(), [], 'the fresh menu finds nothing to recover');
