@@ -245,6 +245,6 @@ Load **[epic-display-and-menu.md](references/epic-display-and-menu.md)** with ne
 
 ## Step 10: Route Selection
 
-The user's selection carries the `route` epic-display-and-menu.md stored for it, e.g. `/workflow-discussion-entry epic {work_unit} {topic}`. Selections whose flows resolve inside that reference never reach this step.
+The user's selection carries the `route` epic-display-and-menu.md stored for it, e.g. `/workflow-discussion-process epic {work_unit} {topic}`. Selections whose flows resolve inside that reference never reach this step.
 
 Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.

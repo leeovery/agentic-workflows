@@ -12,5 +12,5 @@ and nothing downstream of the discussion. The work unit is in progress
 and it is the only one on the project.
 
 The context was cleared at the sitting's end — this session opens cold
-at the entry skill with nothing but its two arguments and what is on
+at the discussion skill with nothing but its two arguments and what is on
 disk.

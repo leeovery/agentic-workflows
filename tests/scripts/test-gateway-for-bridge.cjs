@@ -278,6 +278,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: (none)',
       'reconcile_pending: (none)',
       'revisitable_phases: (none)',
+      'next_route: /workflow-discussion-process feature auth',
+      'revisit_routes: (none)',
       '',
     ].join('\n'));
   });
@@ -299,6 +301,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: research, discussion, specification',
       'reconcile_pending: (none)',
       'revisitable_phases: research, discussion, specification',
+      'next_route: /workflow-planning-entry feature auth',
+      'revisit_routes: /workflow-research-process feature auth, /workflow-discussion-process feature auth, /workflow-specification-entry feature auth',
       '',
     ].join('\n'));
   });
@@ -319,6 +323,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: scoping, implementation, review',
       'reconcile_pending: (none)',
       'revisitable_phases: (none)',
+      'next_route: (none)',
+      'revisit_routes: (none)',
       '',
     ].join('\n'));
   });
@@ -340,6 +346,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: scoping, specification, planning, implementation',
       'reconcile_pending: (none)',
       'revisitable_phases: scoping, implementation',
+      'next_route: /workflow-review-entry quick-fix rename-api',
+      'revisit_routes: /workflow-scoping-process quick-fix rename-api, /workflow-implementation-entry quick-fix rename-api',
       '',
     ].join('\n'));
     // The menu itself is the revisit-phases render surface, filtered the same way.
@@ -387,14 +395,28 @@ describe('workflow-bridge format', () => {
     assert.match(out, /^reconcile_pending: specification\/staled \(true\)$/m);
   });
 
-  it('epic dump carries no revisitable line and no section', () => {
+  it('epic dump carries no revisitable line, no routes and no section', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { 'auth-design': { status: 'completed' } } } },
     });
     const out = format(discover(dir, 'v1'));
     assert.ok(!out.includes('revisitable_phases'));
+    assert.ok(!out.includes('_route'));
     assert.ok(!out.includes('MENU: revisit phases'));
+  });
+
+  it('a bugfix\'s routes name the skill each phase is entered through', () => {
+    createManifest(dir, 'stall', {
+      work_type: 'bugfix',
+      phases: {
+        investigation: { items: { stall: { status: 'completed' } } },
+        specification: { items: { stall: { status: 'completed' } } },
+      },
+    });
+    const out = format(discover(dir, 'stall'));
+    assert.match(out, /^next_route: \/workflow-planning-entry bugfix stall$/m);
+    assert.match(out, /^revisit_routes: \/workflow-investigation-process bugfix stall, \/workflow-specification-entry bugfix stall$/m);
   });
 
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {

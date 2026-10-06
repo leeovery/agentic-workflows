@@ -1,11 +1,13 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status for behavioural-ranking, finds
-   it in progress, emits the resuming phase note, checks the reconcile
-   flag (absent — silent), and hands off with source: existing
-   discussion
-2. the process renders resume detection and the user continues
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), finds behavioural-ranking already on the
+   discovery map — nothing is created — then reads its discussion
+   status once, finds it in progress, emits the resuming phase note,
+   and checks the reconcile flag (absent — silent)
+2. beneath the note, with the file found, the resume surface carries on
+   — the current map shown, then the continue-or-restart gate, with no
+   second heading of its own — and the user continues
 3. initialisation is skipped: the walk reaches the guidelines,
    addresses the knowledge base once as a contextual query, and enters
    the session step

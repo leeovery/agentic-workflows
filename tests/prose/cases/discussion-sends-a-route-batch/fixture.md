@@ -16,4 +16,4 @@ with both options already on the table.
 The store row is acknowledged and announced. Nothing has been surfaced.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but its arguments and what is on disk.
+the discussion skill with nothing but its arguments and what is on disk.

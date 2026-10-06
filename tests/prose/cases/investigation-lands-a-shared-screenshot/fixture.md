@@ -8,4 +8,4 @@ imported into this work unit — `imports/` does not exist and the manifest
 carries no import entries.
 
 The bridge has just handed the work off, and it arrived in a fresh
-context — this session opens cold at the entry skill.
+context — this session opens cold at the investigation skill.

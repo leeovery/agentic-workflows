@@ -13,7 +13,7 @@ rerouted it here. Triage reopened synonym-handling and installed the
 concern as one queue file whose title names no subtopic on the map;
 the delivery's own commit closed that session.
 
-This session opens cold at the discussion entry skill. There is nothing
+This session opens cold at the discussion skill. There is nothing
 to re-decide — the correction's whole outcome is accepting that cited
 material is out of date — so the fold must amend the two sites in
 place, dated and naming the retiring decision, with no dedicated

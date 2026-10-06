@@ -1,14 +1,14 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments and, before reading
-   any phase status, fetches the engine's entry gate for the discussion
-   phase of that topic
+1. the discussion skill takes the topic from its arguments and, at its
+   entry gate — before ensuring the map row or reading any phase status
+   — fetches the engine's gate for the discussion phase of that topic
 2. the engine answers the blocker pair — the discussion awaits research
    on Behavioural Ranking, parked and not yet started; the epic menu's
-   research row is the way in — and the entry emits both sections
+   research row is the way in — and the skill emits both sections
    verbatim, the red blocker line then its guidance, and stops as a
    terminal condition: no phase-status read, no reconcile check, no
-   phase note, no reopen, no context gathering, no handoff
+   phase note, no reopen, no map shown, no initialisation
 
 Further claims:
 
@@ -17,5 +17,5 @@ Further claims:
   `triaged`, its queue still holds `001-signal-density.md` with its
   content intact, and no research file exists; the map's two subtopics
   stay `decided`; nothing is committed
-- the discussion processing skill is never invoked, and the user is
-  asked nothing
+- the session never reaches its resume detection or the discussion
+  session, and the user is asked nothing

@@ -1,15 +1,16 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status — in-progress,
-   reopened by the triage delivery — emits the resuming phase note,
-   checks the reconcile flag (absent — silent), reads the map item's
-   source and gathers nothing, and hands off with source: existing
-   discussion
-2. the process reads the status, finds the file, renders resume
-   detection — the map with expansion-source decided, plus the
-   one-concern triage warning — and the user continues;
-   initialisation is skipped
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not); ensuring the discovery item finds it already
+   on the map — nothing is created; it then reads the discussion status
+   once — in-progress, reopened by the triage delivery — emits the
+   resuming phase note, and checks the reconcile flag (absent —
+   silent) — the user is asked nothing about the carrier
+2. beneath the note, with the file found, the resume surface carries on
+   — the map with expansion-source decided, then the
+   continue-or-restart gate, the one-concern triage warning directly
+   above its menu, with no second heading of its own — and the user
+   continues; initialisation is skipped
 3. the guidelines load; the knowledge base is addressed once as a
    contextual query; the session loop's first triage check finds a
    resumed sitting with a non-empty queue and renders the one-entry

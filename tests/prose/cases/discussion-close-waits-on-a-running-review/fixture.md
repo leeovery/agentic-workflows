@@ -12,4 +12,4 @@ the movement backoff holds the automatic trigger quiet. No review is in
 flight when the session opens.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

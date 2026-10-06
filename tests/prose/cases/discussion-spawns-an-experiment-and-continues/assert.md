@@ -1,13 +1,13 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments, asks the engine
+1. the skill resolves the topic from its arguments, asks the engine
    whether research is outstanding on the topic (it is not), reads the
-   discussion status, finds it in progress, emits the resuming phase
-   note, checks the reconcile flag (absent — silent), finds the carrier
-   in the discovery session log, and hands off without asking the user
-   anything
-2. the process renders resume detection — the map with webhook-timing
-   open — and the user continues; initialisation is skipped and the
+   discussion status once, finds it in progress, emits the resuming
+   phase note, and checks the reconcile flag (absent — silent) — the
+   user is asked nothing about the carrier
+2. beneath the note, with the file found, the resume surface carries on
+   — the map with webhook-timing open, then the continue-or-restart
+   gate — and the user continues; initialisation is skipped and the
    session resumes on the existing document and map
 3. the conversation goes at webhook timing and surfaces the unmeasured
    vendor claim; the session recognises the laboratory's bar — the
@@ -51,20 +51,25 @@ The prose should have taken this path:
 9. the bridge reads the work type — feature, not discovery, not epic —
    and runs its discovery gateway, whose output derives next_phase as
    experiment: the discussion is in progress behind a live evidence
-   wait, and the experiment slot holds the record it waits on
+   wait, and the experiment slot holds the record it waits on. The
+   same output names `next_route`, the route the experiment is entered
+   by
 10. the feature continuation's terminal check falls through and the
-    pause routes straight to the handoff, revisitable phases or not: a
-    paused phase revisits nothing and skips nothing. No next-phase gate
-    renders, no completed banner renders
-11. the handoff: the engine's handoff names `workflow-experiment-entry`
-    with `feature pay`, and the line naming where the work goes is the
+    pause takes the gateway's `next_route` as its route, straight to
+    the handoff, revisitable phases or not: a paused phase revisits
+    nothing and skips nothing. No next-phase gate renders, no completed
+    banner renders
+11. the handoff: the route handed to the engine is `next_route` exactly
+    as the gateway named it — `/workflow-experiment-process feature
+    pay` — and the engine's handoff names `workflow-experiment-process`
+    with `feature pay`; the line naming where the work goes is the
     turn's last text; the walk stops at the handoff
 
 Further claims:
 
-- no experiment entry was invoked and no experiment record moved past
-  `conceived` — the laboratory starts in the next context, not in this
-  one
+- the experiment skill was never invoked and no experiment record
+  moved past `conceived` — the laboratory starts in the next context,
+  not in this one
 
 - the discussion item stays `in-progress` and carries
   `awaiting_experiments: ["E1"]` — written by the create transaction,

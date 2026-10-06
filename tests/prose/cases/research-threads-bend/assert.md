@@ -1,16 +1,16 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from the work unit — a feature's topic
+1. the skill resolves the topic from the work unit — a feature's topic
    is its name, so no topic question is put to the user — and the
    discovery-item check no-ops without an engine call: only an epic has
-   a map; the research status reads in progress, the resuming phase
-   note is emitted, the reconcile flag is absent, and the resume routes
-   straight to the handoff — context gathering is the fresh path's, and
-   a resumed topic already has its carrier — no interview; the handoff
-   is the continue shape
-2. the process reads the status again, finds the file, renders the
-   thread register once above resume detection — three threads, all
-   open, so the header carries no breakdown — and the user continues;
+   a map; the research status is read once and reads in progress, the
+   resuming phase note is emitted, and the reconcile flag is absent —
+   silent; context gathering is a first start's, and a resumed topic
+   already has its carrier — no interview
+2. beneath the note, with the file found, the resume surface carries on
+   — the thread register rendered once (three threads, all open, so the
+   header carries no breakdown), then the continue-or-restart gate, with
+   no second heading of its own — and the user continues;
    initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, reads the work type,

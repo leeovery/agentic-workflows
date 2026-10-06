@@ -21,4 +21,4 @@ even an option.
 The other two topics have not started, the triage queue is empty, no
 experiment exists for the topic, and no other session is mid-flight.
 The context was cleared at the pause — this session opens cold at the
-research entry with its three arguments and what is on disk.
+research skill with its three arguments and what is on disk.

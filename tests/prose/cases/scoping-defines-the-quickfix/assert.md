@@ -1,10 +1,11 @@
 The prose should have taken this path:
 
-1. the entry finds no scoping recorded and hands off with session
-   identity only — the carrier is the processing skill's to read;
-   the entry itself creates and asks nothing
-2. no specification exists, so the pass starts fresh with no resume
-   choice put to the user
+1. the skill refreshes the session label and checks for a
+   specification on disk: none exists, so the pass starts fresh — no
+   scoping or plan status is read, no phase note renders, and no resume
+   choice is put to the user
+2. nothing is asked or created before context gathering — the carrier
+   is the skill's own to read there
 3. context gathering reads the seed and description first, and its
    questions go to what the carrier does not answer — where the address
    appears — not to the what and why it already holds. Two exchanges at

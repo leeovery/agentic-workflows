@@ -16,4 +16,4 @@ No deep dive has ever run on the topic and its thread register is
 empty, its triage queue is empty, the other topics have not started,
 and no other session is mid-flight. The
 context was cleared at the pause — this session opens cold at the
-research entry with its three arguments and what is on disk.
+research skill with its three arguments and what is on disk.

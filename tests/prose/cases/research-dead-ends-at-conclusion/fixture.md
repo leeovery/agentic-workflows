@@ -17,5 +17,5 @@ this topic and its thread register is empty, its triage queue is empty,
 and no session is mid-flight.
 
 The context was cleared at the phase boundary — this session opens cold
-at the entry skill with nothing but its three arguments and what is on
+at the research skill with nothing but its three arguments and what is on
 disk.

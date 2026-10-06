@@ -15,5 +15,5 @@ dispatched, the triage queue is empty, no discussion exists under the
 name, and nothing else on the epic has started.
 
 The context was cleared at the sitting's end — this session opens cold
-at the entry skill with nothing but its three arguments and what is on
+at the research skill with nothing but its three arguments and what is on
 disk.

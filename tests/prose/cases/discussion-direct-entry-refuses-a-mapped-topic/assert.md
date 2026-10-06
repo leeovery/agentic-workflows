@@ -22,7 +22,7 @@ The prose should have taken this path:
 Further claims:
 
 - no summary is derived, no discovery item is ensured, and no handoff
-  is made: the discussion entry is never invoked
+  is made: the discussion skill is never invoked
 - the walk is a read: no discussion item, no research item, and no map
   item is created; the map's three topics and their order fields are
   untouched; nothing is committed

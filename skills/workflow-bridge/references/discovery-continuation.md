@@ -16,4 +16,4 @@ The epic returns to its menu, where the person picks the next move from the map.
 
 The work goes to the first phase the discovery endpoint supplied as `next_phase` — `research`, `discussion`, `investigation` or `scoping`.
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-{next_phase}-entry {work_type} {work_unit}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-{next_phase}-process {work_type} {work_unit}`.

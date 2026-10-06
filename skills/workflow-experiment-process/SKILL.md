@@ -14,11 +14,12 @@ Walk one experiment record from its conceived question to its one-line verdict �
 
 ### What This Skill Needs
 
-- **Topic** (required) - The topic whose series holds the record
-- **Work unit** (required) - From the handoff
-- **Work type** (required) - `epic`, `feature`, or `cross-cutting`
-- **Experiment** (required) - The record id (`E{n}`)
-- **Record** (required) - The record's directory from the handoff, held as `{dir}`
+Positional arguments:
+- `$0` — **work_type**: `epic`, `feature`, or `cross-cutting`.
+- `$1` — **work_unit**: the work unit name.
+- `$2` — **topic**: the topic whose series holds the record. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
+
+The record — its id held as `{id}`, its directory as `{dir}` — resolves from the series at Step 0.
 
 ---
 
@@ -49,19 +50,51 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 0: Session Setup
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} experiment {topic}
-```
-
-Read the series and take the handoff's record from it:
+Read the series, storing the `experiments` subtree — empty when the topic holds no series:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
 ```
 
-Store the record's `status` as `{record_status}` — the manifest is authoritative, whatever the handoff implied.
+#### If the output is empty
+
+> *Output the next fenced block as a properties code block (```properties fence):*
+
+```properties
+⚑ No experiment series exists for this topic
+```
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Experiments are spawned from a research or discussion session. Raise the question in the conversation that needs it measured.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+#### Otherwise
+
+Load **[select-record.md](references/select-record.md)** and follow its instructions as written.
+
+**If the resolve returned no record** (`b/back` from the picker):
+
+> *Output the next fenced block as markdown (not a code block):*
+
+```
+> Nothing entered — the series stands as it is, and the menu is the way back.
+```
+
+**STOP.** Do not proceed — terminal condition.
+
+**Otherwise:**
+
+Derive `{dir}` = `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`.
+
+Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} experiment {topic}
+```
 
 → Proceed to **Step 1**.
 

@@ -1,7 +1,11 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from the work unit, the research reads in
-   progress, and the resume gate is answered `continue` — no context
+1. the skill resolves the topic from the work unit — the discovery-item
+   check returns at once, a feature has no map — reads the research
+   status once, finds it in progress, emits the resuming phase note, and
+   checks the reconcile flag (absent — silent); beneath the note, with
+   the file found, the thread register renders, then the
+   continue-or-restart gate, which is answered `continue` — no context
    gathering, no interview
 2. the session loop opens on a clean topic: the triage queue is empty,
    there is no reconcile flag, and no dive has ever been dispatched

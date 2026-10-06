@@ -11,5 +11,5 @@ A day of sandbox search-session activity sits in the repo at
 which recover with a clicked reformulation in the same session.
 
 No other session is mid-flight. The context was cleared at the pause —
-this session opens cold at the experiment entry with its four
+this session opens cold at the experiment skill with its three
 arguments and what is on disk.

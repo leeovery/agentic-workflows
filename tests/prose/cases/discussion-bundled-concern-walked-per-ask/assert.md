@@ -1,12 +1,16 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status and finds it `triaged` — a
-   first start: the entry proceeds through its new-entry path gathering
-   nothing
-2. initialisation reads the topic's brief, creates the discussion file
-   from the template, registers the topic (`topic start` flips
-   `triaged` to `in-progress`), and commits action-scoped
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), finds the topic's row already on the discovery
+   map (nothing created), then reads the discussion status once and
+   finds it `triaged` — a first start: no phase note, no reconcile
+   check, no resume choice
+2. initialisation reads the topic's brief, then the research check
+   reads the topic's research status (none) and its map source —
+   map-shaped rather than direct-start, so the brief is the carrier and
+   no interview runs; it creates the discussion file from the template,
+   registers the topic (`topic start` flips `triaged` to
+   `in-progress`), and commits action-scoped
 3. the session loop's first triage check finds a fresh sitting: it
    announces the queue in a single count-only line — no agenda, no
    menu — and the session opens from the topic's own material

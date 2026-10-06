@@ -1,14 +1,14 @@
 The prose should have taken this path:
 
-1. the entry parses its three arguments, reads the experiment item's
-   status, finds the series live, reads the series, and — two live
-   records — renders the register and the picker directly beneath it:
-   the first time the user is asked, because nothing upstream chose a
-   record. The user answers E1; the resolved record announces through
-   the engine note (`Starting E1`) — the back option is never taken
-2. the handoff carries E1's directory; the process refreshes the
-   session label, re-reads the series, and takes `conceived` as
-   authoritative
+1. the session setup takes its three arguments and reads the series
+   once — its records, with no separate status read — finds it live,
+   and — two live records — renders the register and the picker
+   directly beneath it: the first time the user is asked, because
+   nothing upstream chose a record. The user answers E1; the resolved
+   record announces through the engine note (`Starting E1`) — the back
+   option is never taken
+2. with E1 resolved, the session label refreshes and E1's directory is
+   derived from its id and slug; `conceived` comes from that one read
 3. E1's initialisation reads the problem statement, then — conceived —
    the spawning research document in full, the seed check (an epic:
    nothing to read), and the topic's discovery brief, tracked as
@@ -23,9 +23,10 @@ The prose should have taken this path:
    register re-renders
 5. the return leg reads the series, finds E2 live, and renders the
    next-or-menu gate; the user chooses `yes`, the same resolution the
-   entry runs re-runs — exactly one live record now, so E2 resolves
-   with nothing asked (`Starting E2`; the picker does not render a
-   second time) — and flow re-enters the process at initialisation
+   session setup ran re-runs — exactly one live record now, so E2
+   resolves with nothing asked (`Starting E2`; the picker does not
+   render a second time) — and flow re-enters the skill at
+   initialisation
 6. E2's initialisation reads its own problem statement and the
    research document from disk again — fresh ground for a fresh
    record; E2's design is authored only after the gate (never

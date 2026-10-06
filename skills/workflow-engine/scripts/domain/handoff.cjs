@@ -26,12 +26,14 @@ const HANDOFF_INSTRUCTION = 'json for the gate mod — never display';
 
 const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 
-// Every phase some work type's pipeline holds has an entry skill of its name.
+// Every phase some work type's pipeline holds is entered by a handoff.
 const ENTRY_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
+
+const ENTRY_SKILL_PHASES = new Set(['specification', 'planning', 'implementation', 'review']);
 
 /** The skill a phase is entered through. @param {string} phase */
 function entrySkill(phase) {
-  return `workflow-${phase}-entry`;
+  return `workflow-${phase}-${ENTRY_SKILL_PHASES.has(phase) ? 'entry' : 'process'}`;
 }
 
 /**
@@ -92,9 +94,9 @@ function at(place, name = null) {
 }
 
 /**
- * A phase entry skill: the work type it serves, a work unit of that type, and
- * the topic — a legal name, which need not exist. An epic always names its
- * topic; a single-topic unit's topic is the unit itself.
+ * The skill a phase is entered through: the work type it serves, a work unit
+ * of that type, and the topic — a legal name, which need not exist. An epic
+ * always names its topic; a single-topic unit's topic is the unit itself.
  * @param {string} phase @returns {Target}
  */
 function entryTarget(phase) {

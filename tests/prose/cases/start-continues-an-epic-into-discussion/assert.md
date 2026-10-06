@@ -24,7 +24,7 @@ The prose should have taken this path:
    selects the behavioural-ranking discussion entry; no soft gate fires
    (a discussion entry carries none)
 7. the handoff: the stored route passes to the engine's handoff as it
-   stands, `/workflow-discussion-entry` with epic, the work unit, and
+   stands, `/workflow-discussion-process` with epic, the work unit, and
    the topic;
    the line naming where the work goes is the turn's last text, and
    the walk stops at the handoff
@@ -36,7 +36,7 @@ Further claims:
   briefs (measurement-first reasoning is available but not required)
 - the handoff carries the skill and its three arguments and nothing
   else
-- the discussion entry starts in the next context, not this one: no
+- the discussion starts in the next context, not this one: no
   brief read, no discussion status read, no topic start, no
   discussion file
 - no topic was cancelled, reactivated, or completed; no new map topics

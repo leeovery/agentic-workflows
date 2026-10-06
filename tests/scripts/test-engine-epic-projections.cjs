@@ -710,7 +710,7 @@ describe('epic projections: menu', () => {
     const entry = keys.find((k) => k.topic === 'parked');
     assert.strictEqual(entry.action, 'start_research');
     assert.strictEqual(drawLabel(entry.label), 'Start research for "Parked" — *triage waiting*');
-    assert.strictEqual(entry.route, '/workflow-research-entry epic v1 parked');
+    assert.strictEqual(entry.route, '/workflow-research-process epic v1 parked');
     assert.ok(!rendered.includes('Continue "Parked"'), 'a stub must never be offered as a resume');
   });
 
@@ -986,9 +986,9 @@ describe('epic projections: selection sub-views', () => {
     assert.deepStrictEqual(
       view.keys.map((k) => [k.key, k.action, k.topic, k.phase, k.route]),
       [
-        ['1', 'resume', 'kitchen-hardware', 'research', '/workflow-research-entry epic quiz-competition-v1 kitchen-hardware'],
-        ['2', 'resume', 'auth-flow', 'discussion', '/workflow-discussion-entry epic quiz-competition-v1 auth-flow'],
-        ['3', 'resume', 'session-storage', 'discussion', '/workflow-discussion-entry epic quiz-competition-v1 session-storage'],
+        ['1', 'resume', 'kitchen-hardware', 'research', '/workflow-research-process epic quiz-competition-v1 kitchen-hardware'],
+        ['2', 'resume', 'auth-flow', 'discussion', '/workflow-discussion-process epic quiz-competition-v1 auth-flow'],
+        ['3', 'resume', 'session-storage', 'discussion', '/workflow-discussion-process epic quiz-competition-v1 session-storage'],
         ['4', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-entry epic quiz-competition-v1 roles-and-permissions'],
         ['b', 'back', null, null, null],
       ]
@@ -1676,8 +1676,8 @@ describe('epic projections: selection sub-views', () => {
       '=== DATA (reason from this — never display or parse the sections below) ===',
       'work_unit: quiz-competition-v1',
       'ACTIONS (key  word  action  topic  phase  → route):',
-      '  1  —  resume  kitchen-hardware  research  → /workflow-research-entry epic quiz-competition-v1 kitchen-hardware',
-      '  2  —  resume  auth-flow  discussion  → /workflow-discussion-entry epic quiz-competition-v1 auth-flow',
+      '  1  —  resume  kitchen-hardware  research  → /workflow-research-process epic quiz-competition-v1 kitchen-hardware',
+      '  2  —  resume  auth-flow  discussion  → /workflow-discussion-process epic quiz-competition-v1 auth-flow',
       '  b  back  back  —  —  → (internal)',
       '',
       '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
@@ -1742,7 +1742,7 @@ describe('epic projections: the topic-grain experiment entry', () => {
     assert.strictEqual(first.key, '1');
     assert.strictEqual(first.action, 'continue_experiment');
     assert.strictEqual(first.topic, 'timing');
-    assert.strictEqual(first.route, '/workflow-experiment-entry epic lab timing');
+    assert.strictEqual(first.route, '/workflow-experiment-process epic lab timing');
     // 1 queued: the concluded E2 and the sub-experiment E1.1 stay out of the
     // count — terminal rows have retired and a split is worked through its
     // parent.
@@ -1866,7 +1866,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     const d = billing({ status: 'in-progress' }, { status: 'in-progress' });
     const { keys, rendered } = epicMenu('v1', d);
     assert.deepStrictEqual(numbered(d), [['1', 'continue_research', 'billing']]);
-    assert.strictEqual(keys[0].route, '/workflow-research-entry epic v1 billing');
+    assert.strictEqual(keys[0].route, '/workflow-research-process epic v1 billing');
     assert.strictEqual(keys[0].recommended, true, 'the research row is first when its topic is first');
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',
@@ -2174,7 +2174,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
       ],
     );
     assert.deepStrictEqual(keys[1].blocked_by, ['research'], 'the struck row carries what holds its entry shut');
-    assert.strictEqual(keys[1].route, '/workflow-discussion-entry epic v1 billing');
+    assert.strictEqual(keys[1].route, '/workflow-discussion-process epic v1 billing');
     assert.strictEqual(keys[1].session_age, 240);
     assert.strictEqual(rendered, [
       '· · · · · · · · · · · ·',

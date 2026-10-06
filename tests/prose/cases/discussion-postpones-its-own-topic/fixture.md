@@ -18,5 +18,5 @@ holding `saved-searches` and `v2` holding `merchandising-rules`, both
 waiting and joined to no work unit.
 
 The context was cleared at the sitting's end — this session opens cold
-at the entry skill with nothing but its three arguments and what is on
+at the discussion skill with nothing but its three arguments and what is on
 disk.

@@ -13,7 +13,7 @@ kebab-identical to the decided subtopic it challenges. The delivery's
 self-commit closed that session.
 
 Hours have passed. The context was cleared — this session opens cold at
-the discussion entry skill with nothing but the three arguments and
+the discussion skill with nothing but the three arguments and
 what is on disk. The drain must fold the concern into the existing
 subtopic (the map add will refuse), re-arm the map, and the re-decision
 the session lands must go down as a dated timeline entry on the

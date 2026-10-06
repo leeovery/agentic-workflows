@@ -1,18 +1,16 @@
 {
   "origin": "the laboratory's own walk had no prose coverage — the topic-grain epic entry resolving its one live record, the fresh-context initialisation that reads the problem and the spawning document from disk, the design authored before anything is measured, the approve verb recording the user's freeze, the run measuring as designed, and the conclusion executing the pre-registered rule, releasing the wait, and flagging the spawning item",
-  "entry": "workflow-experiment-entry",
+  "entry": "workflow-experiment-process",
   "world": "claims",
   "files": [
-    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-experiment-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-experiment-entry/references/select-record.md",
-    "skills/workflow-experiment-entry/references/invoke-skill.md",
-    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/select-record.md",
     "skills/workflow-experiment-process/references/experiment-guidelines.md",
     "skills/workflow-experiment-process/references/initialize-experiment.md",
     "skills/workflow-shared/references/seed-context.md",
@@ -33,7 +31,6 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "manifest get search-relevance.experiment.synonym-handling status",
       "manifest get search-relevance.experiment.synonym-handling experiments",
       "session label search-relevance experiment synonym-handling",
       "render phase-note search-relevance.experiment.synonym-handling --verb Starting",
@@ -45,6 +42,8 @@
     ],
     "calls_in_order": [
       "manifest get search-relevance.experiment.synonym-handling experiments",
+      "render phase-note search-relevance.experiment.synonym-handling --verb Starting",
+      "session label search-relevance experiment synonym-handling",
       "write:.workflows/search-relevance/experiment/synonym-handling/E1-reformulation-recovery/design.md",
       "experiment advance search-relevance synonym-handling E1",
       "render experiment-approval-gate search-relevance.experiment.synonym-handling",

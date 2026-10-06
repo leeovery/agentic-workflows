@@ -1,9 +1,11 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), validates the in-progress discussion and routes to
-   resume; the process finds the discussion file and puts the resume
-   choice to the user, who continues
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), reads the discussion status once, finds it in
+   progress, emits the resuming phase note, and checks the reconcile
+   flag (absent — silent); beneath the note, with the discussion file
+   found, the current map is shown and the continue-or-restart choice
+   is put to the user, who continues
 2. the resumed session re-reads its ground — the map shows both
    subtopics decided — and the user wraps up rather than reopening
    anything; no new subtopic is added

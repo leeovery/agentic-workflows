@@ -1,21 +1,17 @@
 {
   "origin": "the settled-calls queue's durability claim — calls made mid-thread survive a dead session in the cache file, not in conversation memory — shipped with no case: nothing walked a resume onto a non-empty queue, the flush at the first natural break, or the landing that documents each call with its derivation marker and deletes the drained file",
-  "entry": "workflow-discussion-entry",
+  "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
-    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-discussion-entry/references/validate-research.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
-    "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-discussion-entry/references/invoke-skill.md",
-    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-discussion-process/references/discussion-guidelines.md",
     "skills/workflow-shared/references/devils-advocate.md",
@@ -32,8 +28,7 @@
     "skills/workflow-shared/references/composing-a-raise.md",
     "skills/workflow-shared/references/making-it-land.md",
     "skills/workflow-shared/references/natural-breaks.md",
-    "skills/workflow-discussion-process/references/template.md",
-    "skills/workflow-discussion-entry/references/gather-context.md"
+    "skills/workflow-discussion-process/references/template.md"
   ],
   "answers": [
     "c — continue",

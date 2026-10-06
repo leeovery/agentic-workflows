@@ -1,21 +1,17 @@
 {
   "origin": "the surfacing protocol spent a full raise — scene, position, proposal, stop — on every finding regardless of how settled it was, and a live epic burned 17 review rounds across three topics without closing one; nothing walked a review whose findings all carry the apply lane, where the whole set lands as one screen and one yes",
-  "entry": "workflow-discussion-entry",
+  "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
-    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-discussion-entry/references/validate-research.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
-    "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-discussion-entry/references/invoke-skill.md",
-    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-discussion-process/references/initialize-discussion.md",
     "skills/workflow-shared/references/read-prior-record.md",
@@ -34,8 +30,7 @@
     "skills/workflow-shared/references/composing-a-raise.md",
     "skills/workflow-shared/references/making-it-land.md",
     "skills/workflow-shared/references/natural-breaks.md",
-    "skills/workflow-discussion-process/references/template.md",
-    "skills/workflow-discussion-entry/references/gather-context.md"
+    "skills/workflow-discussion-process/references/template.md"
   ],
   "answers": [
     "c — continue",

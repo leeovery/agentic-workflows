@@ -1,13 +1,15 @@
 The prose should have taken this path:
 
-1. the entry ensures the discovery item (already on the map — nothing
-   written), reads the research status, finds it in progress, validates
-   the phase, and hands off — context gathering is the fresh path's, and
-   a resumed topic already has its carrier, so no source is read and
-   nothing is gathered
-2. the process renders the thread register, then resume detection — the
-   triage queue read (empty, so no triage warning), then the
-   continue-or-restart gate — and the user continues
+1. the skill ensures the discovery item (already on the map — nothing
+   written), reads the research status once, finds it in progress,
+   emits the resuming phase note, and checks the reconcile flag (absent
+   — silent) — context gathering is a first start's, and a resumed
+   topic already has its carrier, so no source is read and nothing is
+   gathered
+2. beneath the note, with the file found, the resume surface carries on
+   — the thread register rendered, the triage queue read (empty, so no
+   triage warning), then the continue-or-restart gate, with no second
+   heading of its own — and the user continues
 3. initialisation is skipped; the walk passes through file strategy and
    the research guidelines, addresses the knowledge base once as a
    contextual query — the store holds the epic's discovery session log,

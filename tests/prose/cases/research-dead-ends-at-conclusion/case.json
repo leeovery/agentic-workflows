@@ -1,9 +1,9 @@
 {
   "origin": "topic-spawning (design/topic-spawning.md §6) replaced the fan-out offer with one conversational dead-end entry point at the research conclude gate — the session judges it, the flag carries the judgment, and the closing signpost branches on the closure. Nothing covered it: not the judged flag, not the map marking ordered before completion, not the branch-aware signpost. The gate whose author could not answer it is the incident this whole design starts from",
-  "entry": "workflow-research-entry",
+  "entry": "workflow-research-process",
   "world": "claims",
   "files": [
-    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -12,9 +12,6 @@
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-research-entry/references/validate-phase.md",
-    "skills/workflow-research-entry/references/invoke-skill.md",
-    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-research-process/references/file-strategy.md",
     "skills/workflow-research-process/references/research-guidelines.md",

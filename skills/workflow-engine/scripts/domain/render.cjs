@@ -4465,12 +4465,12 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
 }
 
 // ---------------------------------------------------------------------------
-// phase-note — the entry skills' one-line status notes (Resuming / Starting /
-// Reopening …). Address-backed; the verb is the caller's word, the noun
-// defaults to the phase segment (planning overrides with "plan"). Only ever
-// rendered by an entry skill for its own phase, so it beats the addressed
-// topic — the code-gate precedent: claiming the slot is the same act as
-// announcing the entry.
+// phase-note — the one-line status notes a phase's start renders (Resuming /
+// Starting / Reopening …). Address-backed; the verb is the caller's word, the
+// noun defaults to the phase segment (planning overrides with "plan"). Only
+// ever rendered where a phase starts, for its own topic, so it beats the
+// addressed topic — the code-gate precedent: claiming the slot is the same
+// act as announcing the start.
 // ---------------------------------------------------------------------------
 
 /**
@@ -4490,10 +4490,10 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 }
 
 // ---------------------------------------------------------------------------
-// entry-gate — the entry skills' prerequisite check. The engine derives the
-// verdict from manifest state (the reads and the branch leave the prose):
-// an empty response means clear — proceed; a blocked response carries the
-// terminal blocker display.
+// entry-gate — the prerequisite check where a phase starts. The engine
+// derives the verdict from manifest state (the reads and the branch leave the
+// prose): an empty response means clear — proceed; a blocked response carries
+// the terminal blocker display.
 // ---------------------------------------------------------------------------
 
 // Blocked states render red: a `properties` fence colours the first token

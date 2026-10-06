@@ -13,7 +13,7 @@ The prose should have taken this path:
    proceed-or-revisit menu is put to the user — the continue action's
    stored route is taken directly
 5. the handoff: the stored route passes to the engine's handoff as it
-   stands, `/workflow-discussion-entry feature pay`; the line naming where
+   stands, `/workflow-discussion-process feature pay`; the line naming where
    the work goes is the turn's last text, and the walk stops at the
    handoff
 
@@ -22,7 +22,7 @@ Further claims:
 - the user answers exactly once: the dashboard selection. No topic
   question, no context gathering
 - the handoff carries the skill and its two arguments and nothing else
-- the discussion entry starts in the next context, not this one: no
+- the discussion starts in the next context, not this one: no
   research gate, no discussion status read, no topic start, nothing
   committed
 - no agents are dispatched

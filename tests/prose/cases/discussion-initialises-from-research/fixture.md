@@ -7,5 +7,5 @@ with the concerns it expects the discussion to take up. No discussion
 exists for any topic.
 
 The context was cleared at the phase boundary — this session opens cold
-at the entry skill with nothing but the three arguments and what is on
+at the discussion skill with nothing but the three arguments and what is on
 disk.

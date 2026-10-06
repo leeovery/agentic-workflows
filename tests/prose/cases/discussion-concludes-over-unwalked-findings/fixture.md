@@ -11,4 +11,4 @@ one review this walk dispatches — the closing pass — comes back with
 two gaps on decided ground, neither of which the user will walk.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

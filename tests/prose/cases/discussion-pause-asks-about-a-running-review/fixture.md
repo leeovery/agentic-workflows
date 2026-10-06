@@ -12,4 +12,4 @@ empty — and nothing is queued for it: no rerouted concern, no settled
 call.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

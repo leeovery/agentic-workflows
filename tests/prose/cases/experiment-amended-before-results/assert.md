@@ -1,13 +1,14 @@
 The prose should have taken this path:
 
-1. the entry parses its three arguments, reads the experiment item's
-   status, finds the series live, reads the series, and — exactly one
-   live record — resolves E1 with nothing asked; the picker is never
-   rendered, and the resolved record's announce is the engine note
-   (`Resuming E1`), the one line the entry emits before the handoff
-2. the handoff carries the record's directory; the process refreshes
-   the session label, re-reads the series, and takes `running` from
-   the manifest as authoritative
+1. the session setup takes its three arguments and reads the series
+   once — its records, with no separate status read — finds it live,
+   and — exactly one live record — resolves E1 with nothing asked; the
+   picker is never rendered, and the resolved record's announce is the
+   engine note (`Resuming E1`)
+2. with the record resolved, the session label refreshes and the
+   record's directory is derived from its id and slug; `running` comes
+   from that one read — the series is not read again before
+   initialisation
 3. initialisation reads the record's own documents from disk — the
    problem statement and the frozen design; the record is past the
    freeze, so the spawning research document is not re-read and no

@@ -4,5 +4,5 @@ its session log; scoping has not begun, and no specification or plan
 exists anywhere.
 
 The context was cleared at the phase boundary — this session opens cold
-at the entry skill with nothing but the two arguments and what is on
+at the scoping skill with nothing but the two arguments and what is on
 disk.

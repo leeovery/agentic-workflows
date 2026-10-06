@@ -563,9 +563,9 @@ function arrive(sim, name) {
   assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${name})`);
 }
 
-// A process skill is only ever entered from a place that labelled itself
-// first — the bridge, or the work unit's continue menu — so every phase
-// entry carries the arrival label, then the process skill's own.
+// A phase is only ever entered from a place that labelled itself first — the
+// bridge, or the work unit's continue menu — so every phase start carries the
+// arrival label, then the phase skill's own.
 function label(sim, wu, phase, topic) {
   arrive(sim, wu);
   const res = sim.run(['session', 'label', wu, phase, topic]);
@@ -606,11 +606,13 @@ function handoff(sim, route) {
 }
 
 // The bridge's hop between a linear unit's phases: its gateway derives the
-// next phase, and the continuation hands off to that phase's entry.
+// next phase and the route it is entered by, and the continuation hands that
+// route off.
 /** @param {Sim} sim @param {string} wu @param {string} phase */
 function bridgeTo(sim, wu, phase) {
-  assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, phase, `the bridge derives ${phase}`);
-  handoff(sim, `/workflow-${phase}-entry ${sim.manifest(wu).work_type} ${wu}`);
+  const dump = BRIDGE.format(BRIDGE.discover(sim.dir, wu));
+  assert.match(dump, new RegExp(`^next_phase: ${phase}$`, 'm'), `the bridge derives ${phase}`);
+  handoff(sim, /** @type {string} */ (dump.match(/^next_route: (.*)$/m)?.[1]));
 }
 
 // An epic phase's conclusion, pause or in-session exit hands off to the epic
@@ -986,10 +988,10 @@ describe('pipeline simulation', () => {
     // empty and the continuation goes straight to the handoff.
     sim.render(['next-phase-gate', wu, '--prev', 'experiment', '--next', 'discussion'], { expect: 'empty' });
     // Discovery's conclusion hands the work to the first phase it settled.
-    handoff(sim, `/workflow-discussion-entry feature ${wu}`);
+    handoff(sim, `/workflow-discussion-process feature ${wu}`);
 
     // First phase: discussion (topic = work unit for single-topic types).
-    // The entry fetches the research gate before any status read.
+    // The discussion fetches the research gate before any status read.
     label(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -1289,7 +1291,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(doors.map((k) => [k.key, k.route]), [['d', null], ['r', null]]);
     for (const [phase, action] of [['discussion', 'new_discussion'], ['research', 'new_research']]) {
       sim.refuses(['render', 'epic-soft-gate', wu, '--action', action], new RegExp(`unknown --action "${action}"`));
-      sim.refuses(['handoff', `/workflow-${phase}-entry`, 'epic', wu], new RegExp(`^an epic enters ${phase} at a topic`));
+      sim.refuses(['handoff', `/workflow-${phase}-process`, 'epic', wu], new RegExp(`^an epic enters ${phase} at a topic`));
     }
 
     // A name already on the map is refused before anything lands.
@@ -1298,14 +1300,14 @@ describe('pipeline simulation', () => {
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), before, 'a refused name writes nothing');
 
     // A new name passes, lands on the map started fresh, and hands off with the
-    // topic — the route its own start row builds. The entry's ensure finds the
+    // topic — the route its own start row builds. The phase's ensure finds the
     // row, and its source sends the topic to the interview.
     for (const [phase, topic] of [['discussion', 'omega'], ['research', 'zeta']]) {
       sim.render(['direct-entry-gate', `${wu}.${phase}.${topic}`], { expect: 'empty' });
       assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`]), '');
       sim.run(['discovery-map', 'add', wu, topic, phase, '--source', 'direct-start',
         '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--force-dismissed']);
-      const route = `/workflow-${phase}-entry epic ${wu} ${topic}`;
+      const route = `/workflow-${phase}-process epic ${wu} ${topic}`;
       assert.strictEqual(handoff(sim, route).args, `epic ${wu} ${topic}`);
       assert.strictEqual(epicPick(sim, wu, `start_${phase}`, topic).text, `Invoke \`${route}\`.`);
       assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`, 'source']), 'direct-start');
@@ -1450,7 +1452,7 @@ describe('pipeline simulation', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'bugfix', '--description', 'Fix the crash', '--session-log-file', log]);
 
-    handoff(sim, `/workflow-investigation-entry bugfix ${wu}`);
+    handoff(sim, `/workflow-investigation-process bugfix ${wu}`);
     label(sim, wu, 'investigation', wu);
     sim.run(['topic', 'start', wu, 'investigation', wu]);
     sim.write(`.workflows/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
@@ -1548,7 +1550,7 @@ describe('pipeline simulation', () => {
 
     // Scoping (write-tasks): the spec commits BEFORE the baseline is captured,
     // so spec_commit always names a commit containing the specification.
-    handoff(sim, `/workflow-scoping-entry quick-fix ${wu}`);
+    handoff(sim, `/workflow-scoping-process quick-fix ${wu}`);
     label(sim, wu, 'scoping', wu);
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
     sim.run(['topic', 'start', wu, 'specification', wu]);
@@ -1629,7 +1631,7 @@ describe('pipeline simulation', () => {
       { read: 'The shape is clear and the questions are trade-offs — I\'d start with discussion.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
-    handoff(sim, `/workflow-discussion-entry feature ${wu}`);
+    handoff(sim, `/workflow-discussion-process feature ${wu}`);
 
     // The promoted feature runs its first phase normally.
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -1647,7 +1649,7 @@ describe('pipeline simulation', () => {
       { read: 'Discussion is the usual spine here — research is optional.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`r\/research`\*\* +→ Explore feasibility and options first, no/);
-    handoff(sim, `/workflow-discussion-entry cross-cutting ${wu}`);
+    handoff(sim, `/workflow-discussion-process cross-cutting ${wu}`);
     label(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
@@ -3461,14 +3463,16 @@ describe('pipeline simulation', () => {
 
     // Going backwards from the bridge's revisit arm: the gate offers the
     // completed discussion, the revisit menu numbers it, and the pick hands
-    // off to its entry — where resuming is not starting: start refuses,
-    // reopen works.
+    // off the route the gateway names for it — where resuming is not
+    // starting: start refuses, reopen works.
     arrive(sim, wu);
-    assert.match(BRIDGE.format(BRIDGE.discover(sim.dir, wu)), /^revisitable_phases: discussion$/m);
+    const dump = BRIDGE.format(BRIDGE.discover(sim.dir, wu));
+    assert.match(dump, /^revisitable_phases: discussion$/m);
     assert.match(sim.render(['next-phase-gate', wu, '--prev', 'discussion', '--next', 'specification'], { expect: 'content' }),
       /\*\*`r\/revisit`\*\* → Revisit an earlier phase/);
     assert.match(sim.render(['revisit-phases', wu], { expect: 'content' }), /\*\*`1`\*\* +→ Discussion — \*completed\*/);
-    handoff(sim, `/workflow-discussion-entry feature ${wu}`);
+    assert.match(dump, new RegExp(`^revisit_routes: /workflow-discussion-process feature ${wu}$`, 'm'));
+    handoff(sim, `/workflow-discussion-process feature ${wu}`);
     sim.refuses(['topic', 'start', wu, 'discussion', wu], /reopen/);
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
     sim.render(['phase-note', `${wu}.discussion.${wu}`, '--verb', 'Reopening'], { expect: 'content' });
@@ -5263,7 +5267,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic]),
       [['1', 'timing'], ['2', 'layout']]);
     assert.strictEqual(expEntries.some((k) => k.recommended), true, 'a live experiment leads the recommendations');
-    assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-entry epic ${wu} timing$`));
+    assert.match(expEntries[0].route, new RegExp(`^/workflow-experiment-process epic ${wu} timing$`));
     assert.match(drawLabel(expEntries[0].label), /1 experiment queued/);
     sim.render(['epic-soft-gate', wu, '--action', 'continue_experiment', '--topic', 'timing'], { expect: 'empty' });
 

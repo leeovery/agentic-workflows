@@ -13,5 +13,5 @@ which recover with a clicked reformulation in the same session, every
 recovery landing thirty seconds after the failed query.
 
 No other session is mid-flight. The context was cleared at the pause —
-this session opens cold at the experiment entry with its four
+this session opens cold at the experiment skill with its three
 arguments and what is on disk.

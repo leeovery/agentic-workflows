@@ -351,8 +351,8 @@ function nextConcernNumber(dirAbs) {
  * a flag must land where an entry flow can clear it, and the series item
  * has none.
  * A `completed` item takes the flag (value = the upstream phase name,
- * consumed and cleared by the reconcile advisory — at the entry skill, or
- * inside a research/discussion session at its next check; an existing flag
+ * consumed and cleared by the reconcile advisory — where the phase starts,
+ * or inside a research/discussion session at its next check; an existing flag
  * is never clobbered) — and on the hop out of research so does an
  * in-progress discussion: research feeds discussion, and a discussion in
  * flight is the one that could otherwise conclude over research still to
@@ -884,7 +884,7 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
 // (`research`, set by the hop out of research), or an evidence wait
 // released (`experiment`, set by the release). The brief flag (`true`) and
 // the roadmap flag stay entry-time advisories, and every other phase's flag
-// is the entry skill's alone.
+// is the phase start's alone.
 /** @type {Record<string, string>} */
 const LANDED_UPSTREAM = {
   research: 'the topic\'s research landed beneath this conversation',

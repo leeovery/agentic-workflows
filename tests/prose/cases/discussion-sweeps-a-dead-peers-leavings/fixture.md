@@ -13,5 +13,5 @@ now by a session that is still going: same half-written state, and the
 topic carries that session's heartbeat.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the three arguments and what is on
+the discussion skill with nothing but the three arguments and what is on
 disk.

@@ -1,6 +1,6 @@
-# Gather Context: Fresh Topic
+# Gather Context
 
-*Reference for **[workflow-discussion-entry](../SKILL.md)***
+*Reference for **[initialize-discussion](initialize-discussion.md)***
 
 ---
 

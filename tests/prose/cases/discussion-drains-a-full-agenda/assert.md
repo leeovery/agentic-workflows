@@ -1,12 +1,14 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status and finds it `triaged` — a
-   first start, not a resume: parked concerns wait in the queue, and
-   the entry proceeds through its new-entry path gathering nothing
-2. the process's own status read routes the same way — no file exists,
-   no map to render, no resume gate — and initialisation reads the
-   topic's brief without re-asking settled ground, creates the
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), finds the topic already on the discovery map
+   (nothing created), then reads the discussion status once and finds
+   it `triaged` — a first start, not a resume: parked concerns wait in
+   the queue — no phase note, no reconcile check, no map, no resume
+   gate
+2. initialisation reads the topic's brief without re-asking settled
+   ground, finds no research under the topic and a map-shaped source —
+   the brief is the carrier, so no interview runs — creates the
    discussion file from the template, registers the topic (`topic
    start` flips `triaged` to `in-progress`), and commits action-scoped
 3. the session loop's first triage check finds a fresh sitting: it

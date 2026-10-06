@@ -1,9 +1,9 @@
 {
   "origin": "research mid-flight had no way to stop: conclude covers research that ran its course (the dead end included), park covers a thread, and cancel lived on the epic menu alone — so a user who calls the whole topic off two turns into a session left the agent with nowhere to go. This walk pins the in-session cancel from a research session and separates it from the dead end it is nearest to: the unit resolved from the session's own phase, the engine's gate, one transaction addressed to the stage, and the bridge carrying the cancelled outcome to the epic menu",
-  "entry": "workflow-research-entry",
+  "entry": "workflow-research-process",
   "world": "claims",
   "files": [
-    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -12,9 +12,6 @@
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-research-entry/references/validate-phase.md",
-    "skills/workflow-research-entry/references/invoke-skill.md",
-    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-research-process/references/file-strategy.md",
     "skills/workflow-research-process/references/research-guidelines.md",

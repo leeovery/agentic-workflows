@@ -32,7 +32,7 @@ const { entrySkill } = require('../handoff.cjs');
  * @property {string} label
  */
 
-/** Phase entry route — `$0` = the type's work_type value, `$1` = work_unit. @param {WorkUnitTypeConfig} cfg @param {string} phase @param {string} workUnit */
+/** The route a phase is entered by — `$0` = the type's work_type value, `$1` = work_unit. @param {WorkUnitTypeConfig} cfg @param {string} phase @param {string} workUnit */
 function entryRoute(cfg, phase, workUnit) {
   return `/${entrySkill(phase)} ${cfg.workType} ${workUnit}`;
 }
@@ -204,6 +204,17 @@ function revisitablePhases(type, unit) {
 }
 
 /**
+ * The route a phase of a single-topic unit is entered by — the route the
+ * menu's continue and revisit rows carry.
+ * @param {string} type  a WORK_UNIT_TYPES key
+ * @param {string} phase @param {string} workUnit
+ * @returns {string}
+ */
+function phaseRoute(type, phase, workUnit) {
+  return entryRoute(typeConfig(type), phase, workUnit);
+}
+
+/**
  * The revisit-phase menu, served by `render revisit-phases` at the gate that
  * displays it — one numbered option per phase, numbering matching the
  * `revisit_phase` keys. Empty string when there is nothing to revisit.
@@ -227,4 +238,4 @@ function revisitPhasesSection(phases) {
 /** The view's chrome heading. @param {WorkUnitEntry} unit */
 function workUnitTitle(unit) { return titlecase(unit.name); }
 
-module.exports = { workUnitStatus, workUnitTitle, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection };
+module.exports = { workUnitStatus, workUnitTitle, workUnitMenu, workUnitData, revisitablePhases, phaseRoute, revisitPhasesSection };

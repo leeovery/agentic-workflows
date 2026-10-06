@@ -1,12 +1,15 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments, reads the research
-   status, finds it in progress, emits the resuming phase note, checks
-   the reconcile flag (absent — silent), and hands off to the processing
-   skill without asking the user anything
-2. the process reads the status again, finds the file, renders the
-   thread register once above resume detection, and the user continues;
-   initialisation is skipped
+1. the skill takes the topic from its arguments, ensures the discovery
+   item (already on the map — nothing written), reads the research
+   status once, finds it in progress, emits the resuming phase note, and
+   checks the reconcile flag (absent — silent) without asking the user
+   anything
+2. beneath the note, with the file found, the resume surface carries on
+   — the thread register rendered once, the triage queue read (one
+   concern, so the triage warning sits directly above the menu), then
+   the continue-or-restart gate, with no second heading of its own — and
+   the user continues; initialisation is skipped
 3. the walk routes into the epic research session; the loop's first
    check finds the queue holding one concern and the sitting resumed —
    the artifact predates this session — so the offer renders before any

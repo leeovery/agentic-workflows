@@ -1,6 +1,6 @@
 # Gather Context
 
-*Reference for **[workflow-research-entry](../SKILL.md)***
+*Reference for **[initialize-research](initialize-research.md)***
 
 ---
 

@@ -38,13 +38,13 @@
 //
 // `entry` names where the walk starts, and it may only be somewhere a
 // real session starts: `workflow-start` (the user's way in), a skill a
-// handoff lands the work on in a fresh context — a `workflow-*-entry`
-// skill, `workflow-continue-epic`, `workflow-discovery`,
-// `workflow-roadmap` or `workflow-baseline` — or `workflow-help` (the
-// start menu's `h/help` row, terminal for workflow-start). Nothing else
-// is a legitimate opening — the other navigation skills and every
-// processing skill are always invoked mid-session, and a reference is
-// never entered directly.
+// handoff lands the work on in a fresh context — every target the
+// engine's handoff table holds: a phase's skill, the epic menu,
+// discovery, the roadmap, the baseline — or `workflow-help` (the start
+// menu's `h/help` row, terminal for workflow-start). Nothing else is a
+// legitimate opening — the other navigation skills, the bridge, and a
+// processing skill behind an entry skill are always invoked mid-session,
+// and a reference is never entered directly.
 //
 // This matters because a walk carries only the context it accumulates.
 // Start one in the middle and the world may be right while the reading
@@ -65,6 +65,7 @@
 const fs = require('fs');
 const path = require('path');
 const invariants = require('./invariants.cjs');
+const { HANDOFF_TARGETS } = require('../../../skills/workflow-engine/scripts/domain/handoff.cjs');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
@@ -182,28 +183,19 @@ function headingExists(absPath, anchor) {
 }
 
 /**
- * Where a walk may begin. A session starts at workflow-start, where a
- * handoff lands the work — an entry skill, the epic menu, discovery, the
- * roadmap or the baseline — or at help, the start menu's own row; never
- * anywhere else.
+ * Where a walk may begin. A session starts at workflow-start, wherever a
+ * handoff lands the work — the engine's handoff table holds each such
+ * skill — or at help, the start menu's own row; never anywhere else.
  */
+const SESSION_STARTS = new Set(['workflow-start', 'workflow-help', ...HANDOFF_TARGETS]);
+
 function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
-  const allowed = entry === 'workflow-start'
-    || entry === 'workflow-discovery'
-    || entry === 'workflow-roadmap'
-    || entry === 'workflow-baseline'
-    || entry === 'workflow-help'
-    || entry === 'workflow-continue-epic'
-    || /^workflow-[a-z-]+-entry$/.test(entry);
-  if (!allowed) {
-    return [`entry "${entry}" is not somewhere a session starts — use workflow-start, `
-      + 'a workflow-*-entry skill, workflow-continue-epic, workflow-discovery, workflow-roadmap, '
-      + 'workflow-baseline, or workflow-help. The other navigation skills and every processing skill '
-      + 'are only ever reached mid-session, and a reference never directly'];
-  }
-  if (!fs.existsSync(path.join(ROOT, 'skills', entry, 'SKILL.md'))) {
-    return [`entry "${entry}" is not a skill in skills/`];
+  if (!SESSION_STARTS.has(entry)) {
+    return [`entry "${entry}" is not somewhere a session starts — use workflow-start, workflow-help, `
+      + `or a skill a handoff lands on (${HANDOFF_TARGETS.join(', ')}). The other navigation skills, `
+      + 'the bridge, and a processing skill behind an entry skill are only ever reached mid-session, '
+      + 'and a reference never directly'];
   }
   return [];
 }

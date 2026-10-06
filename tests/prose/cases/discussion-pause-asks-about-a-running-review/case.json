@@ -1,6 +1,6 @@
 {
   "origin": "a pause handed the session off with a background agent still running — the wait gate's yes, the experiment spawn's now, and research's pause ran no in-flight check, so an agent this session dispatched lost the conversation that sent it the moment the handoff cleared it. This walk pins the pause's check: a review the user asked for is still in flight when they wrap up, the wait gate's yes reads the store, and the in-flight gate asks in the pause's words before anything hands off",
-  "entry": "workflow-discussion-entry",
+  "entry": "workflow-discussion-process",
   "world": "claims",
   "answers": [
     "c — continue"
@@ -49,19 +49,15 @@
     ]
   },
   "files": [
-    "skills/workflow-discussion-entry/SKILL.md",
+    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-discussion-entry/references/validate-research.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
-    "skills/workflow-discussion-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-discussion-entry/references/invoke-skill.md",
-    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-discussion-process/references/discussion-guidelines.md",
     "skills/workflow-shared/references/devils-advocate.md",

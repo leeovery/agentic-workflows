@@ -15,4 +15,4 @@ The store row is acknowledged and announced. Nothing has been surfaced
 — the user has not yet seen a single finding.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

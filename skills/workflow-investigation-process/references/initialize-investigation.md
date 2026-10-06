@@ -6,7 +6,7 @@
 
 ## A. Read the Phase Inputs
 
-The durable inputs live in the manifest and at fixed paths — read them here; the handoff never carries them.
+The durable inputs live in the manifest and at fixed paths — read them here.
 
 The carrier discovery left has two halves — read both. First the manifest `description`:
 

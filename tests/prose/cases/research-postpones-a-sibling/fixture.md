@@ -19,5 +19,5 @@ nothing has ever been parked onto one and no work unit was ever pulled
 from one.
 
 The context was cleared at the sitting's end — this session opens cold
-at the entry skill with nothing but its three arguments and what is on
+at the research skill with nothing but its three arguments and what is on
 disk.

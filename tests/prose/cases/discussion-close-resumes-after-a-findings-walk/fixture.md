@@ -12,4 +12,4 @@ two gaps on decided ground, both of which the user walks and settles
 as amendments to the decisions they extend.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

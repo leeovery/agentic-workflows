@@ -1,9 +1,11 @@
 The prose should have taken this path:
 
-1. the investigation is already registered as in progress, so the entry
-   skill resumes rather than gathering bug context — no interview
-2. the processing skill finds the investigation file and puts the resume
-   choice to the user, who continues
+1. the skill reads the investigation status once and finds it already
+   registered as in progress, so it resumes rather than gathering bug
+   context — the resuming phase note, no interview
+2. beneath the note, with the investigation file found, the resume
+   choice is put to the user with no second heading of its own, and the
+   user continues
 3. symptom gathering is skipped — an earlier session already interviewed
    the user — and the plan step reads the ledger, finds the plan agreed,
    and re-renders the position rather than running recon again

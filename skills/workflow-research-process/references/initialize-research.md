@@ -6,13 +6,13 @@
 
 ## A. Read the Phase Inputs
 
-The durable inputs live in the manifest and at fixed paths — read them here; the handoff never carries them.
+The durable inputs live in the manifest and at fixed paths — read them here.
 
-#### If the handoff carries `Source: existing research`
+#### If `phase_status` is `in-progress` or `completed`
 
 A restart — skip the reads; the session gathers context naturally.
 
-→ Proceed to **B. Create and Register**.
+→ Proceed to **C. Create and Register**.
 
 #### Otherwise
 
@@ -32,20 +32,40 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 Then the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`.
 
-→ Proceed to **B. Create and Register**.
+→ Proceed to **C. Create and Register**.
 
 **Otherwise:**
 
-The brief just read is the carrier — nothing more to read here.
+The brief just read is the carrier — unless the topic was started fresh from the epic menu.
 
-→ Proceed to **B. Create and Register**.
+→ Proceed to **B. Gather Context**.
 
-## B. Create and Register
+## B. Gather Context
+
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from the epic menu:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source
+```
+
+#### If the output is exactly `direct-start`
+
+The topic was started fresh, not shaped on the map — there is no curated carrier, so interview.
+
+→ Load **[gather-context.md](gather-context.md)** and follow its instructions as written.
+
+→ On return, proceed to **C. Create and Register**.
+
+#### Otherwise
+
+→ Proceed to **C. Create and Register**.
+
+## C. Create and Register
 
 The inputs just read are inherited ground, not a list of questions to re-ask. Exploring adjacent territory is this phase's job; putting a decision discovery already reached back to the user as an open question is not. Where exploration turns up something that genuinely undercuts one, raise it in the conversation, or carry it as a thread (origin `conversation`), rather than reopening the decision.
 
-1. Load **[template.md](template.md)** — use it to create the research file at the Output path from the handoff (e.g., `.workflows/{work_unit}/research/{resolved_filename}`). When the file already exists, keep its content and write the template's working sections around it.
-2. Populate the Starting Point section from whatever seeded this phase: the handoff's `Context:` fields when the interview ran, otherwise the inputs read at **A** and anything the user said in the conversation that launched this session. A prior record's queued concern enters only as **B** of **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** places it, its case left in that record. When restarting (**A** was skipped), leave the section empty.
+1. Load **[template.md](template.md)** — use it to create the research file at `.workflows/{work_unit}/research/{topic}.md`. When the file already exists, keep its content and write the template's working sections around it.
+2. Populate the Starting Point section from whatever seeded this phase: the interview's answers when it ran, otherwise the inputs read at **A** and anything the user said in the conversation that launched this session. A prior record's queued concern enters only as **B** of **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** places it, its case left in that record. When restarting (**A** was skipped), leave the section empty.
 3. Register in manifest:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} research {topic}

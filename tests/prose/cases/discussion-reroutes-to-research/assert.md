@@ -1,13 +1,14 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status, finds it in progress (the
-   reopen left it so), emits the resuming phase note, checks the
-   reconcile flag (absent — silent), reads the map item's source and
-   gathers nothing — asking the user nothing — and hands off with
-   source: existing discussion
-2. the process reads the status again, finds the file, renders resume
-   detection — the current map shown with result-caching open — and
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not); ensuring the discovery item finds it already
+   on the map — nothing is created; it then reads the discussion status
+   once, finds it in progress (the reopen left it so), emits the
+   resuming phase note, and checks the reconcile flag (absent —
+   silent) — asking the user nothing
+2. beneath the note, with the file found, the resume surface carries on
+   — the current map shown with result-caching open, then the
+   continue-or-restart gate, with no second heading of its own — and
    the user continues
 3. initialisation is skipped; the guidelines load; the knowledge base
    is addressed once as a contextual query (empty or keyword-only
