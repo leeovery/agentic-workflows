@@ -119,21 +119,9 @@ Decide whether a context interview is needed. The durable inputs — the carrier
 
 #### If `work_type` is not `epic`
 
-Single-phase work (feature, cross-cutting) shaped in discovery leaves its carrier in the discovery session log. Single-phase work has exactly one, at a fixed path — it has no resumable loop to create others. Read `.workflows/{work_unit}/discovery/sessions/session-001.md` with the Read tool and check its **Exploration** section. A legacy work unit may have no log, or a placeholder log whose **Exploration** is absent or `(none)`.
-
-**If the log's `Exploration` section has content (not absent or `(none)`):**
-
-A usable carrier exists — nothing to gather.
+Single-phase work (feature, cross-cutting) carries its context in the discovery session log — nothing to gather.
 
 → Proceed to **Step 5**.
-
-**Otherwise:**
-
-No usable carrier — the log is missing or has no **Exploration**. Gather context.
-
-Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 5**.
 
 #### If `work_type` is `epic`
 

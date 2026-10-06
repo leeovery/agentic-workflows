@@ -527,23 +527,10 @@ describe('engine workunit create — validation', () => {
     assert.match(engineFails(fix, ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|import\|complete\|cancel\|reactivate\|pivot\|absorb\|promote>/);
   });
 
-  it('omitting the session log without --no-session-log refuses — log-less creation must be explicit', () => {
-    const err = engineFails(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec']);
-    assert.match(err.error, /exactly one of --session-log-file <path> or --no-session-log/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy')), 'nothing created on refusal');
-  });
-
-  it('creates without a session log — no sessions dir, no active_session, session_log null', () => {
-    const res = engine(fix, ['workunit', 'create', 'promoted-policy', 'cross-cutting', '--description', 'Promoted spec', '--no-session-log']);
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.session_log, null);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/promoted-policy/discovery')),
-      'no discovery/sessions tree without a log');
-    const manifest = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/promoted-policy/manifest.json'), 'utf8'));
-    assert.strictEqual(manifest.work_type, 'cross-cutting');
-    assert.strictEqual(manifest.phases.discovery, undefined, 'no active_session marker without a log');
-    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
-    assert.deepStrictEqual(project.work_units['promoted-policy'], { work_type: 'cross-cutting' });
+  it('omitting the session log refuses with usage — every creation lands one', () => {
+    const err = engineFails(fix, ['workunit', 'create', 'payments', 'feature', '--description', 'Payments overhaul']);
+    assert.match(err.error, /Usage: engine workunit create .* --session-log-file <path>/);
+    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments')), 'nothing created on refusal');
   });
 });
 

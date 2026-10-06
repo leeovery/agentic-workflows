@@ -14,7 +14,7 @@ Gather targeted context about the mechanical change. Read the work's seed and th
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} description
 ```
 
-Read the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`; discovery's shaped context is the carrier's second half. A logless quick-fix has none.
+Read the discovery session log's **Exploration** — single-phase work has exactly one log, at `.workflows/{work_unit}/discovery/sessions/session-001.md`; discovery's shaped context is the carrier's second half.
 
 #### If the carrier — seed, description, and exploration — already captures what, where, and why
 

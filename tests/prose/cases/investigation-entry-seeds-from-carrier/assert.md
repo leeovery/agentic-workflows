@@ -1,14 +1,13 @@
 The prose should have taken this path:
 
 1. resolves the topic to the work unit, investigation being bugfix work
-2. reads the investigation status, finds nothing, sets the source to new
-   and skips phase validation entirely
-3. finds a discovery session log, so the context-gathering questions
-   are not asked — the carrier is the processing skill's to read at
+2. reads the investigation status and finds nothing, so phase validation
+   takes the new-entry arm: it renders the phase note for the
+   investigation phase through the engine, with the verb Starting — the
+   wording is the engine's, not the skill's — and sets the source to new
+3. asks nothing — the carrier is the processing skill's to read at
    initialisation, not gathered here
-4. renders the phase note for the investigation phase through the engine,
-   with the verb Starting — the wording is the engine's, not the skill's
-5. hands off to the investigation processing skill for crash-fix
+4. hands off to the investigation processing skill for crash-fix
 
 Further claims:
 

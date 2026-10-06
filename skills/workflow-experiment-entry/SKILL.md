@@ -52,11 +52,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 #### If the output is empty (no series)
 
-Load **[validate-series.md](references/validate-series.md)** with series_state = `missing`.
-
-#### If the output is `cancelled`
-
-Load **[validate-series.md](references/validate-series.md)** with series_state = `cancelled`.
+Load **[validate-series.md](references/validate-series.md)** and follow its instructions as written.
 
 #### Otherwise
 

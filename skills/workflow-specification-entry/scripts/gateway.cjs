@@ -5,9 +5,8 @@
 // scenario derivation and rendering live in the engine's domain ring; this
 // script builds the discovery result and sections the output.
 //
-//   gateway.cjs                        → minimal state line, all work units
 //   gateway.cjs {work_unit}            → DATA only, one work unit — the entry's routing read
-//   gateway.cjs view {work_unit}       → DATA (+ TITLE + DISPLAY + MENU) snapshot
+//   gateway.cjs view {work_unit}       → DATA + TITLE + DISPLAY (+ MENU) snapshot
 //   gateway.cjs completed-menu {work_unit} → concluded-specs sub-view
 // ---------------------------------------------------------------------------
 
@@ -173,17 +172,6 @@ function discover(cwd, workUnit) {
   };
 }
 
-// The bare invocation has no prose consumer: it answers with the one
-// decision-ready counts line, in the view DATA's vocabulary.
-function format(result) {
-  const cs = result.current_state;
-  return [
-    '=== STATE ===',
-    `counts: discussions=${cs.discussion_count} completed=${cs.completed_count} in_progress=${cs.in_progress_count} specs=${cs.spec_count} proposed=${cs.proposed_count} concluded=${cs.concluded_count}`,
-    '',
-  ].join('\n');
-}
-
 // ---------------------------------------------------------------------------
 // View verbs — the scenario snapshot and the concluded-specs sub-view.
 // ---------------------------------------------------------------------------
@@ -255,17 +243,16 @@ function scoped(cwd, workUnit) {
   return engine.gateway.dataBlock(viewData(result, detail, []));
 }
 
-// One snapshot: reasoning DATA always; DISPLAY and MENU when the scenario
-// renders them (analysis-rerun routes without either).
+// One snapshot: reasoning DATA, the TITLE, and the scenario's DISPLAY; MENU
+// when the scenario renders one.
 function view(workUnit) {
   const { result, detail } = buildDetail(process.cwd(), workUnit);
   const menu = engine.project.specificationMenu(detail);
-  const display = engine.project.specificationDisplay(detail);
-  const parts = [engine.gateway.dataBlock(viewData(result, detail, menu.keys))];
-  if (display) {
-    parts.push(engine.gateway.titleBlock(engine.project.SPEC_TITLE));
-    parts.push(engine.gateway.displayBlock(display));
-  }
+  const parts = [
+    engine.gateway.dataBlock(viewData(result, detail, menu.keys)),
+    engine.gateway.titleBlock(engine.project.SPEC_TITLE),
+    engine.gateway.displayBlock(engine.project.specificationDisplay(detail)),
+  ];
   if (menu.rendered) parts.push(engine.gateway.menuBlock(menu.rendered));
   return parts.join('\n');
 }
@@ -284,7 +271,7 @@ function completedMenu(workUnit) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} | gateway.cjs completed-menu {work_unit}';
+const USAGE = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} | gateway.cjs completed-menu {work_unit}';
 
 /** Reject the call: the reason to stderr, exit 1. @param {string} message @returns {string} */
 function reject(message) {
@@ -305,11 +292,11 @@ function routingRead(workUnit, ...rest) {
 
 if (require.main === module) {
   engine.gateway.runGateway({
-    index: () => format(discover(process.cwd())),
+    index: () => reject(`work unit name required\n${USAGE}`),
     view,
     'completed-menu': completedMenu,
     fallback: routingRead,
   });
 }
 
-module.exports = { discover, format, scoped };
+module.exports = { discover, scoped };

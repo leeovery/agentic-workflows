@@ -317,18 +317,6 @@ function lockingSpecs(manifest, topic) {
 }
 
 /**
- * A topic's experiment series unless a legacy per-series cancel closed it —
- * a cancelled series is left as found, its rows all terminal by
- * construction.
- * @param {object} manifest @param {string} topic
- * @returns {Record<string, any>|undefined}
- */
-function liveSeries(manifest, topic) {
-  const series = itemOf(manifest, 'experiment', topic);
-  return series && series.status !== 'cancelled' ? series : undefined;
-}
-
-/**
  * @typedef {object} CancelPlan
  * @property {{phase: string, item: Record<string, any>}[]} items  the live phase items the cancel stashes
  * @property {string[]} records   every open experiment record, top-level and sub, in register order
@@ -350,12 +338,12 @@ function cancelPlan(manifest, stage, name) {
 
 /**
  * A topic's non-terminal experiment records, in register order — empty when
- * the series is absent or a legacy per-series cancel closed it.
+ * the topic holds no series.
  * @param {object} manifest @param {string} topic
  * @returns {string[]}
  */
 function openRecords(manifest, topic) {
-  const series = liveSeries(manifest, topic);
+  const series = itemOf(manifest, 'experiment', topic);
   return Object.entries((series && series.experiments) || {})
     .filter(([, r]) => r && typeof r === 'object' && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)))
     .map(([id]) => id)
@@ -1382,7 +1370,6 @@ module.exports = {
   inputMoved,
   movedFrom,
   lockingSpecs,
-  liveSeries,
   cancelPlan,
   postponePlan,
   openExperiments,

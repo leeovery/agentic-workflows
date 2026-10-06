@@ -542,8 +542,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 
 **Internal ID convention**: The internal ID used with the engine and in commit messages MUST use the format `{topic}-{phase_id}-{task_id}`. If only the format adapter's external ID is at hand, pass `--external {external_id}` in place of `{internal_id}` — the engine resolves it through the plan's task map and reports the internal id in its response.
 
-**If the planning item carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'`).
-
 **Commit the task** — each scope through the verb that owns it, state before code, so the code commit's answer names only code:
 
 1. **The plan's task state** — the files the format's **updating.md** touched, the `storage_paths` recorded on the planning item for storage outside the work unit, and the work unit's manifest:

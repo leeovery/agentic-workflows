@@ -78,7 +78,7 @@ Skills organised in tiers:
 Phase entry skills (`workflow-*-entry`) receive positional arguments: `$0` = work_type, `$1` = work_unit, `$2` = topic (optional) — no exceptions. Topic resolution: `topic = $2 || (wt !== 'epic' ? $1 : null)`.
 
 **With topic** (feature/bugfix always; epic when caller provides it):
-- Check manifest phase status → new entry (bootstrap questions) / resume / reopen
+- Check manifest phase status → new entry / resume / reopen — a new entry interviews only where no carrier exists: an epic topic started fresh (`direct-start`), or a discussion in a cross-cutting unit promoted from an epic specification (no discovery log)
 - No discovery needed — topic is already determined
 
 **Without topic** (epic only — scoped path):

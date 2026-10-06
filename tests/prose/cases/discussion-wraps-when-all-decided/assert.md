@@ -2,9 +2,9 @@ The prose should have taken this path:
 
 1. the entry asks the engine whether research is outstanding on the
    topic (it is not), finds no discussion recorded, takes the new-entry arm,
-   no-ops the discovery-item ensure for a feature, checks the session
-   log's Exploration and finds a usable carrier — asking the user
-   nothing — and hands off with session identity only
+   no-ops the discovery-item ensure for a feature, finds the discovery
+   session log on disk — asking the user nothing — and hands off with
+   session identity only
 2. the process reads the status again, finds no discussion file, and
    starts fresh — no resume choice
 3. initialisation reads its inputs — the empty seed, the carrier's

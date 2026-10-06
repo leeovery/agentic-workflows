@@ -99,9 +99,8 @@ The prose should have taken this path:
     the new phase with three rows to the planning file, and records the
     three task_map entries; nothing is pushed for directions — a later
     pass reads them from this staging file as the walk left it
-17. the planning item already carries storage_paths, so it is not
-    recorded again. Two commits land in order: the staging file under
-    the implementation topic, then the tasks with --plan
+17. two commits land in order: the staging file under the
+    implementation topic, then the tasks with --plan
 18. the loop returns to the caller; tasks were created in the plan, so
     the skill routes back to the task loop — and the walk stops there.
     No task is started, no phase completion is recorded, and

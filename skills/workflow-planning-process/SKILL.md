@@ -138,12 +138,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_
 
 #### If `continue`
 
-**If the subtree carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
-```
-
 If spec-change-detection reported changes, carry them into the walkthrough: reconcile the changed spec content into the affected phases and tasks before concluding. The `spec_commit` baseline is re-stamped only at conclusion.
 
 → Proceed to **Step 2**.
@@ -157,22 +151,18 @@ Order matters — the cleanup commits while the planning item still exists, so `
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} format
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} external_id
    ```
-2. **If the subtree read at resume detection carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now, before anything commits — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
-   ```
-3. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
-4. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
-5. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
-6. Commit the cleanup — `--plan` stages the planning topic, both manifests, and the plan's declared storage, so the deleted plan files and the format's own cleanup land together:
+2. Load the format's **[authoring.md](references/output-formats/{format}/authoring.md)**
+3. Follow the authoring file's cleanup instructions to remove authored tasks for this topic — the cleanup targets the entity identified by `external_id`
+4. Delete all planning files: `rm -rf .workflows/{work_unit}/planning/{topic}/`
+5. Commit the cleanup — `--plan` stages the planning topic, both manifests, and the plan's declared storage, so the deleted plan files and the format's own cleanup land together:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): restart planning — clear the authored plan" --plan {topic}
    ```
-7. Delete the planning manifest entry:
+6. Delete the planning manifest entry:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning items.{topic}
    ```
-8. Commit the entry's removal on the topic's own scope:
+7. Commit the entry's removal on the topic's own scope:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): restart planning" --topic planning/{topic}
    ```

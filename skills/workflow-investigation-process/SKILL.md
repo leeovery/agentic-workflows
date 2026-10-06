@@ -20,7 +20,6 @@ The user collaborates throughout — the investigation plan, the findings, and t
 ### What This Skill Needs
 
 - **Topic** (required) - Bug identifier or short description
-- **Bug context** (optional) - Initial symptoms, error messages, reproduction steps
 - **Work type** — Always "bugfix" for investigation
 
 ---

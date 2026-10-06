@@ -149,7 +149,7 @@ Commands:
   manifest list   [--status <s>] [--work-type <t>]
   manifest key-of <dotpath> <field.path> <value>
   manifest resolve <work-unit>.<phase>[.<topic>]
-  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
+  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
   workunit import <work-unit> <path> [<path> …] --from <origin>
   workunit complete <work-unit> -m <message>
@@ -460,14 +460,10 @@ function runWorkunit(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'create') {
-      const { opts, flags, lists, positional } = parseArgs(rest, ['no-session-log'], ['import', 'seed']);
+      const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
       const [workUnit, workType] = positional;
-      if (!workUnit || !workType || !opts.description) {
-        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log [--import <path> …] [--seed <path> …]');
-      }
-      // Log-less creation must be explicit — accidental omission is an error.
-      if (flags.has('no-session-log') ? opts['session-log-file'] !== undefined : opts['session-log-file'] === undefined) {
-        throw new Error('exactly one of --session-log-file <path> or --no-session-log is required');
+      if (!workUnit || !workType || !opts.description || !opts['session-log-file']) {
+        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]');
       }
       respond(call, createWorkUnit(call.cwd, workUnit, workType, {
         description: opts.description,

@@ -41,15 +41,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 
 Store the result as `phase_status`.
 
-**If empty (no investigation entry):**
-
-Set source="new".
-
-→ Proceed to **Step 3** (Gather Bug Context).
-
-**Otherwise (an entry exists):**
-
-→ Proceed to **Step 2** (Validate Phase).
+→ Proceed to **Step 2**.
 
 ---
 
@@ -57,40 +49,10 @@ Set source="new".
 
 Load **[validate-phase.md](references/validate-phase.md)** with phase_status = `{phase_status}`.
 
-#### If source is `continue`
-
-→ Proceed to **Step 4**.
-
-#### Otherwise
-
-→ Proceed to **Step 3**.
+→ On return, proceed to **Step 3**.
 
 ---
 
-## Step 3: Gather Bug Context
-
-Decide whether a context interview is needed — the durable carrier is seeded by the processing skill, never from here.
-
-#### If `.workflows/{work_unit}/discovery/sessions/session-001.md` exists
-
-The bug was shaped in discovery — the durable carrier (manifest `description` + that session log) is read by the processing skill at initialisation. Nothing to gather.
-
-Render and emit the section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
-```
-
-→ Proceed to **Step 4**.
-
-#### Otherwise
-
-Load **[gather-context.md](references/gather-context.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 4**.
-
----
-
-## Step 4: Invoke the Skill
+## Step 3: Invoke the Skill
 
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.

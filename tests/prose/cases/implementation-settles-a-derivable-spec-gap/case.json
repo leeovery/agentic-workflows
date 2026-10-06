@@ -124,7 +124,6 @@
       "--phase-complete",
       "manifest get pay.implementation.pay bank",
       "manifest delete pay.implementation.pay bank",
-      "manifest set pay.planning.pay storage_paths",
       "git add -A",
       "git add --all",
       "comment corrections"

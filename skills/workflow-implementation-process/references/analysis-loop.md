@@ -359,12 +359,6 @@ Mark each remaining `approved` row `skipped` (`node .claude/skills/workflow-engi
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-**If the planning item carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
-```
-
 Commit the staging file with this topic's implementation artifacts, then the tasks — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash

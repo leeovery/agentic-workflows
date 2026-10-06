@@ -5,7 +5,7 @@ The prose should have taken this path:
    nothing is reopened and the handoff carries the work forward with
    nothing asked
 2. the process finds no report file, registers the review through the
-   engine, reads the plans and specification, and looks up the
+   engine, reads the plan and specification, and looks up the
    implementation's project skills
 3. a verifier is dispatched per task — stubbed: each report lands at its
    task's suffix, each complete with no blocking issues and no findings;

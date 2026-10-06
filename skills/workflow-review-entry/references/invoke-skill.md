@@ -19,11 +19,6 @@ Invoke the **workflow-review-process** skill (Skill tool) with the next fenced b
 Review session
 Work unit: {work_unit}
 Topic: {topic}
-Scope: single
-
-Plans to review:
-  - work_unit: {work_unit}
-    topic: {topic}
-    format: {format}
-    specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
+Format: {format}
+Specification: .workflows/{work_unit}/specification/{topic}/specification.md (exists: {true|false})
 ```

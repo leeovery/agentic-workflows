@@ -4,7 +4,7 @@ The prose should have taken this path:
    implementation are completed — and the review status reads empty, so
    nothing is reopened and the handoff carries the work forward with
    nothing asked
-2. the process registers the review, reads the plans and specification,
+2. the process registers the review, reads the plan and specification,
    scopes verification from the per-task implementation commits, and
    dispatches a verifier per task — stubbed clean; both task ids land
    on the reviewed list, and the aggregation finds nothing unsettled

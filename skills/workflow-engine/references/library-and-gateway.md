@@ -122,7 +122,7 @@ engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — 
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
 engine.project.revisitablePhases(type, unit)      // → string[] — completed phases before next_phase, pipeline-filtered
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section ('' when none)
-engine.project.specificationDisplay(detail)       // → scenario overview block ('' when the scenario renders nothing)
+engine.project.specificationDisplay(detail)       // → scenario overview block
 engine.project.specificationMenu(detail)          // → { keys, rendered } — grouping/spec menu; both empty for menu-less scenarios
 engine.project.specificationCompletedMenu(detail) // → { keys, title, display, rendered } — concluded-specs Refine sub-view
 
