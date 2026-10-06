@@ -27,8 +27,8 @@ handoff's one table of targets.
   first run, after migrations, or on a restart.
 - **Some entry content crosses to the process only as handoff text.**
   Planning's additional-context answer and cross-cutting references,
-  specification's incorporations and consult references, interview
-  answers: a fold has to make each a read from disk at the phase's start.
+  specification's incorporations, interview answers: a fold has to make
+  each a read from disk at the phase's start.
 
 ## Rulings
 
@@ -39,18 +39,29 @@ handoff's one table of targets.
   Nine process files record the field mid-session for a plan that
   predates it (the field arrived 2026-07-23); the checks go, with no
   migration.
+- **E3 — consult references are retired** (Lee, 2026-10-06). Only the
+  specification menu's route registered them; the epic menu's start row
+  takes the entry's topic path, whose handoff carries no consult block, so
+  a specification started there could conclude without them. No grouping
+  in five epics (agntc, mint, pigeon, portal, tick) declared one, and the
+  discussion-time sibling check (`knowledge-usage.md` §G), which reroutes a
+  correction into the sibling's own triage queue as it is decided, has
+  caught the same correction at its source since August. Where the
+  grouping analysis finds a discussion owing a sibling grouping a
+  correction, it writes a `**Tension**` line on the receiving grouping
+  naming the sibling discussion and what it changed — session setup reads
+  tension lines from the analysis file whatever route led there, and
+  construction raises each. The consult machinery goes: the analysis's
+  hand-off section and `**Consult**` line, the gateway's hint parser, the
+  consult rows in the specification projections and the confirm gate's
+  payload, the handoff blocks, session setup's registration, construction's
+  narrow read, the completion check, and the `consult_references` manifest
+  field, which a migration deletes wherever a released version wrote it.
+  The sign-off gate goes with them: a tension is raised in construction,
+  never checked again at completion.
 
 ## Raised first when the design opens
 
-- **Consult references.** The epic menu's row that starts one proposed
-  grouping takes the entry's topic path, which never registers the
-  grouping's consult references (`domain/specification.cjs:179-182`,
-  `workflow-specification-process/references/session-setup.md:15-32`), so
-  a specification started there can conclude without them; the
-  specification menu's route registers them. No grouping in five epics
-  (agntc, mint, pigeon, portal, tick) has declared one. Fix it on both
-  routes, or retire consult references and let the knowledge base carry
-  sibling decisions.
 - **The framework load.** Every flow skill opens by loading `framework.md`,
   whose rule says to re-read its files every time, whatever is in context —
   a rule written for one long conversation, where compaction could drop the
@@ -140,3 +151,5 @@ the audits were taken — read them through it:
 - 2026-10-06 — the mod handoff stack landed (v0.8.10); what it moved is
   listed under Material. The design opens on the two questions raised
   first.
+- 2026-10-06 — E3: consult references retired, their detection carried
+  by the grouping's tension lines.
