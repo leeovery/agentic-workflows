@@ -59,23 +59,31 @@ handoff's one table of targets.
   field, which a migration deletes wherever a released version wrote it.
   The sign-off gate goes with them: a tension is raised in construction,
   never checked again at completion.
-
-## Raised first when the design opens
-
-- **The framework load.** Every flow skill opens by loading `framework.md`,
-  whose rule says to re-read its files every time, whatever is in context —
-  a rule written for one long conversation, where compaction could drop the
-  rules while their conclusions survived. With every move into work now a
-  handoff into a fresh conversation, the first skill there loads the
-  framework into an empty context, and the gate mod re-reads skill and
-  framework after compaction in a work conversation (#1461); the remaining
-  loads are in place — a phase's entry, then its process skill, then the
-  bridge, three in one conversation where only the first does anything, and
-  the epic menu opened in place from the start menu, whose re-read walks
-  skipped in three runs of four. Load the framework once per fresh
-  conversation, at the head of the skill a handoff lands on: whether an
-  in-place skill (the bridge, a menu opened from the start menu) loads it
-  at all, and whether the "never skip" rule survives.
+- **E4 — the framework loads once per conversation** (Lee, 2026-10-06).
+  framework.md's rule — read every file every time it is loaded, never
+  skip one — was written for one long conversation, where a compaction
+  summary kept the rules' conclusions and dropped their text. Every move
+  into work now starts a fresh conversation, so only its first load does
+  anything: a phase conversation loaded the framework at its entry, again
+  at its process skill and again at the bridge, and walks skipped the epic
+  menu's in-place re-read after the start menu in three runs of four. The
+  hazard the rule guarded is met where it arises: all twelve long-running
+  skills (the ten phase skills, discovery, the roadmap, the baseline) carry
+  a context-refresh recovery protocol that re-loads the framework by name.
+  - The rule becomes: loaded once per conversation; a skill opened later
+    in the same conversation carries on from it; after a context refresh,
+    the skill's recovery protocol re-loads it.
+  - The head load stays on every skill a conversation can open on —
+    `workflow-start` and every handoff target (the phase skills, the epic
+    menu, discovery, the roadmap, the baseline). Where one of them is
+    opened in place — the epic menu from the start menu, discovery from the
+    roadmap's epic pull, the roadmap from discovery's genesis — the
+    conversation already holds the framework and carries on.
+  - The head load comes off the skills only ever opened in place: the
+    bridge, help, the linear continue skill, the legacy research split.
+  - Accepted: a conversation that compacts inside a menu, which carries no
+    recovery protocol, opens its next skill on the belief the framework is
+    held. Menus are short and clear at the pick.
 
 ## Candidate shape — from the audits, not yet decided
 
@@ -153,3 +161,6 @@ the audits were taken — read them through it:
   first.
 - 2026-10-06 — E3: consult references retired, their detection carried
   by the grouping's tension lines.
+- 2026-10-06 — E4: the framework loads once per conversation, at the head
+  of the skills a conversation opens on. Both questions raised first are
+  settled; the candidate shape is next.
