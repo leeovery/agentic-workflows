@@ -26,13 +26,13 @@ const NB = (n) => '\u00a0'.repeat(n);
 // dirs and the adapter's own discover(), so the goldens cover the full
 // derivation path (discovery result → detail → projection).
 
-function detailOf(dir, workUnit, opts) {
-  return specificationDetail(workUnit, discover(dir, workUnit), opts);
+function detailOf(dir, workUnit) {
+  return specificationDetail(workUnit, discover(dir, workUnit));
 }
 
 // Two actionable groupings (one proposed, one in-progress with a pending
-// source and a pending consult ref), one concluded spec, every discussion
-// settled — the plural fixture the menus and trees must handle.
+// source), one concluded spec, every discussion settled — the plural
+// fixture the menus and trees must handle.
 function groupingsFixture(dir) {
   createManifest(dir, 'v1', {
     work_type: 'epic',
@@ -42,7 +42,6 @@ function groupingsFixture(dir) {
           'auth-design': { status: 'completed' },
           'session-model': { status: 'completed' },
           'data-model': { status: 'completed' },
-          'billing': { status: 'completed' },
         },
       },
       specification: {
@@ -58,7 +57,6 @@ function groupingsFixture(dir) {
           'data-spec': {
             status: 'in-progress',
             sources: { 'data-model': { status: 'pending' }, 'session-model': { status: 'incorporated' } },
-            consult_references: { 'billing': { status: 'pending' } },
           },
         },
       },
@@ -244,21 +242,6 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(row.total, 1);
     assert.strictEqual(row.extracted, 1);
   });
-
-  it('consult hints enrich proposed rows as pending consult entries', () => {
-    createManifest(dir, 'v1', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
-        specification: { items: { 'auth-flow': { status: 'proposed', sources: { a: { status: 'pending' } } } } },
-      },
-    });
-    const d = detailOf(dir, 'v1', {
-      consultHints: { 'auth-flow': [{ name: 'b', hint: 'session slice' }] },
-    });
-    assert.deepStrictEqual(d.actionable[0].consult, [{ name: 'b', status: 'pending', hint: 'session slice' }]);
-    assert.strictEqual(d.actionable[0].consult_pending, 1);
-  });
 });
 
 describe('specification record: one reading for the entry menu and its confirm', () => {
@@ -273,7 +256,6 @@ describe('specification record: one reading for the entry menu and its confirm',
     const m = { phases: { discussion: { items: { a: { status: 'completed' } } } } };
     assert.deepStrictEqual(discoverySpec(m, 's', {
       sources: { a: { status: 'stale' }, ghost: {} },
-      consult_references: { b: {}, c: { status: 'addressed' } },
     }), {
       name: 's',
       status: 'in-progress',
@@ -282,7 +264,6 @@ describe('specification record: one reading for the entry menu and its confirm',
         { name: 'a', status: 'stale', discussion_status: 'completed' },
         { name: 'ghost', status: 'pending', discussion_status: 'unknown' },
       ],
-      consult_references: [{ name: 'b', status: 'pending' }, { name: 'c', status: 'addressed' }],
     });
     assert.deepStrictEqual(discoverySpec(m, 's', { status: 'proposed' }), { name: 's', status: 'proposed', has_pending_sources: false });
   });
@@ -363,11 +344,9 @@ describe('specification projections: display goldens', () => {
       '',
       '2. Data Spec',
       '   ├─ Spec: in-progress (1 of 2 sources extracted)',
-      '   ├─ Discussions:',
-      '   │  ├─ data-model       [pending]',
-      '   │  └─ session-model    [extracted]',
-      '   └─ Consult:',
-      '      └─ billing          [pending]',
+      '   └─ Discussions:',
+      '      ├─ data-model       [pending]',
+      '      └─ session-model    [extracted]',
       '',
       'Key:',
       '',
@@ -375,9 +354,6 @@ describe('specification projections: display goldens', () => {
       '    extracted — content has been incorporated into the specification',
       '    pending   — listed as source but content not yet extracted',
       '    ready     — completed and available to be specified',
-      '',
-      '  Consult status:',
-      '    pending — sibling correction not yet read in and reconciled',
       '',
       '  Spec status:',
       '    in-progress — specification work is ongoing',
@@ -722,7 +698,7 @@ describe('specification projections: menu goldens', () => {
       '',
       '**`1`**           → Start "Auth Flow" — *2 ready discussion(s)*',
       '**`2`**           → Continue "Data Spec" — *1 source(s) pending*',
-      `${NB(14)}*extraction, 1 consult ref(s) pending*`,
+      `${NB(14)}*extraction*`,
       '**`3`**           → Unify all into single specification',
       '   *All discussions are combined into one specification. Existing*',
       '   *specifications are incorporated and superseded.*',
@@ -784,7 +760,6 @@ describe('specification projections: menu goldens', () => {
             'data-spec': {
               status: 'completed',
               sources: { b: { status: 'incorporated' }, c: { status: 'pending' } },
-              consult_references: { a: { status: 'pending' } },
             },
             'done-spec': { status: 'completed', sources: { b: { status: 'incorporated' } } },
           },
@@ -804,8 +779,7 @@ describe('specification projections: menu goldens', () => {
       '   *specification names are preserved. You can provide guidance*',
       '   *in the next step.*',
       '**`2`**           → Continue "Auth Spec" — *in-progress*',
-      '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract,*',
-      `${NB(14)}*1 consult ref(s) pending*`,
+      '**`3`**           → Continue "Data Spec" — *1 new source(s) to extract*',
       '**`c/completed`** → Manage completed specifications — *1 completed*',
     ].join('\n'));
     assert.deepStrictEqual(
@@ -1001,30 +975,18 @@ describe('specification adapter: gateway verbs', () => {
     return res.stdout;
   }
 
-  it('view emits DATA + DISPLAY + MENU with scenario, ACTIONS, and doc-parsed consult hints', () => {
+  it('view emits DATA + DISPLAY + MENU with scenario, the specification detail, and ACTIONS', () => {
     groupingsFixture(dir);
-    createFile(dir, '.workflows/v1/.state/discussion-consolidation-analysis.md', [
-      '# Discussion Consolidation Analysis',
-      '',
-      '## Recommended Groupings',
-      '',
-      '### Auth Flow',
-      '- **auth-design**: core auth',
-      '',
-      '**Coupling**: auth surface',
-      '**Consult**: billing — pricing slice supersedes the auth draft',
-      '',
-    ].join('\n'));
     const out = run(['view', 'v1']);
     assert.ok(out.includes('=== DATA (reason from this — never display or parse the sections below) ==='));
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(out.includes('=== MENU (emit verbatim as markdown (not a code block)) ==='));
     assert.ok(out.includes('scenario: groupings\n'));
     assert.ok(out.includes('discussions_checksum: (none)'));
-    assert.ok(out.includes('    consult: billing (pending — pricing slice supersedes the auth draft)'));
+    assert.ok(out.includes('  auth-flow: proposed, has_pending_sources=true\n    source: auth-design (pending, discussion: completed)\n'));
     assert.ok(out.includes('ACTIONS (key  word  action  topic  verb):'));
     assert.ok(out.includes('  1  —  start_spec  auth-flow  Creating'));
-    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\), 1\*\n\u00a0+\*consult ref\(s\) pending\*/.test(out));
+    assert.ok(/\*\*`1`\*\* +→ Start "Auth Flow" — \*2 ready discussion\(s\)\*\n/.test(out));
   });
 
   it('view for a blocked work unit emits DATA + DISPLAY and no MENU', () => {

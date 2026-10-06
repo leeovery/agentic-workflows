@@ -7797,32 +7797,20 @@ describe('render spec-confirm-gate', () => {
   const completed = { status: 'completed' };
   const unit = (specification, discussion = { 'auth-flow': completed, billing: completed, refunds: completed }) =>
     writeManifest(dir, 'pay', { phases: { discussion: { items: discussion }, specification: { items: specification } } });
-  const render = (topic, variant, consult) => renderSurface(dir, 'spec-confirm-gate', {
-    dotpath: `pay.specification.${topic}`, variant,
-    ...(consult && { file: writePayload(dir, 'consult.json', { consult }) }),
-  });
+  const render = (topic, variant) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, variant });
 
-  it('create over a proposed grouping: the covered source marked, the consult references, the supersession', () => {
+  it('create over a proposed grouping: the covered source marked, the supersession', () => {
     unit({
       payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
       'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } },
     });
-    const out = render('payments', 'create', [
-      { name: 'refunds', hint: 'the refund-window hand-off the billing grouping owes' },
-      { name: 'ledger' },
-    ]);
-    assert.strictEqual(out, [
+    assert.strictEqual(render('payments', 'create'), [
       DISPLAY_HEAD,
       'Creating specification: Payments',
       '',
       'Sources:',
       '  • auth-flow (has individual spec — will be incorporated)',
       '  • billing',
-      '',
-      'Consult references (read narrowly — do not extract):',
-      '  • refunds — the refund-window hand-off the billing grouping',
-      '    owes',
-      '  • ledger',
       '',
       'Output: .workflows/pay/specification/payments/specification.md',
       '',
@@ -7834,7 +7822,7 @@ describe('render spec-confirm-gate', () => {
     ].join('\n'));
   });
 
-  it('create with nothing covered and nothing to consult: the sources and the output alone', () => {
+  it('create with nothing covered: the sources and the output alone', () => {
     unit({ payments: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
     assert.strictEqual(render('payments', 'create'), [
       DISPLAY_HEAD,
@@ -7867,15 +7855,14 @@ describe('render spec-confirm-gate', () => {
       /no specification "pay" — a create with no proposed grouping confirms the lone completed discussion, and "pay" has 3/);
   });
 
-  it('continue over an in-progress spec: each extraction state its own block, the declared consult references beneath', () => {
+  it('continue over an in-progress spec: each extraction state its own block', () => {
     unit({
       core: {
         status: 'in-progress',
         sources: { 'auth-flow': { status: 'incorporated' }, billing: { status: 'pending' }, refunds: { status: 'stale' } },
-        consult_references: { ledger: { status: 'pending' } },
       },
     });
-    assert.strictEqual(render('core', 'continue', [{ name: 'ledger', hint: 'the posting rule' }]), [
+    assert.strictEqual(render('core', 'continue'), [
       DISPLAY_HEAD,
       'Continuing specification: Core',
       '',
@@ -7890,9 +7877,6 @@ describe('render spec-confirm-gate', () => {
       'Previously extracted (for reference):',
       '  • auth-flow',
       '',
-      'Consult references (read narrowly — do not extract):',
-      '  • ledger — the posting rule',
-      '',
       MENU_HEAD,
       ...ASK,
     ].join('\n'));
@@ -7902,7 +7886,7 @@ describe('render spec-confirm-gate', () => {
     unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
     const out = render('core', 'continue');
     assert.match(out, /Sources to extract:\n {2}• auth-flow \[pending\]\n {2}• billing \[pending\]\n\n=== MENU/);
-    assert.doesNotMatch(out, /re-decided|Previously extracted|Consult references/);
+    assert.doesNotMatch(out, /re-decided|Previously extracted/);
   });
 
   it('continue over an in-progress spec with every source extracted lists them all as extracted', () => {
@@ -7983,23 +7967,6 @@ describe('render spec-confirm-gate', () => {
     ].join('\n'));
     unit({ unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } } });
     assert.doesNotMatch(render('unified', 'unify'), /Existing specifications to incorporate/);
-  });
-
-  it('a started spec takes exactly the consult references it declares', () => {
-    unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' } }, consult_references: { ledger: { status: 'addressed' } } } });
-    assert.throws(() => render('core', 'continue'), /declares consult references \[ledger\] — pass them via --file/);
-    assert.throws(() => render('core', 'continue', [{ name: 'refunds', hint: 'x' }]),
-      /declares consult references \[ledger\] and the payload names \[refunds\] — pass exactly the declared ones/);
-    unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'pending' } } } });
-    assert.throws(() => render('core', 'continue', [{ name: 'ledger' }]),
-      /declares no consult references and the payload names \[ledger\] — pass exactly the declared ones/);
-  });
-
-  it('refuses a malformed consult payload', () => {
-    unit({ payments: { status: 'proposed', sources: { billing: { status: 'pending' } } } });
-    assert.throws(() => render('payments', 'create', []), /"consult" must be a non-empty array of \{name, hint\} — leave --file off when none are owed/);
-    assert.throws(() => render('payments', 'create', [{ hint: 'x' }]), /consult\[0\] needs a non-empty "name"/);
-    assert.throws(() => render('payments', 'create', [{ name: 'ledger', hint: 3 }]), /consult\[0\] "hint" must be a string/);
   });
 
   it('refuses a variant the item does not bear — the verb is the entry menu\'s own', () => {

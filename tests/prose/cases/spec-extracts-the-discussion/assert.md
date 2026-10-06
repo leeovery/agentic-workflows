@@ -12,8 +12,7 @@ The prose should have taken this path:
    discussion lands as a pending source, review state and both gate
    modes initialise in one batched write, and the initialisation
    commits
-4. session setup resets the gate modes and finds no consult references
-   to register
+4. session setup resets the gate modes
 5. construction runs one topic at a time: extraction re-scans the
    discussion, each piece is presented in the form it will take in the
    specification and explicitly approved before any write, logged
@@ -30,8 +29,8 @@ The prose should have taken this path:
 8. with all three phases clean the review completes — no findings
    menus, no second cycle — and the review state commits
 9. the compliance self-check re-reads the session's instructions;
-   completion verifies tracking, sources, and consult references, and
-   puts the sign-off to the user
+   completion verifies tracking and sources, and puts the sign-off to
+   the user
 10. on their yes the topic completes through the engine — the artifact
     is indexed as part of that call, never by a direct knowledge-CLI
     call — the date is stamped, the conclusion commits, and the walk

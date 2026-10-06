@@ -14,8 +14,7 @@ The prose should have taken this path:
    verification and initialisation are the fresh path's steps and the
    file's existence means they already ran
 3. session setup resets both gate modes to `gated` and finds no stale
-   rows and no consult references; the principles are loaded and
-   construction opens
+   rows; the principles are loaded and construction opens
 4. the one source still reads `pending` and the specification holds
    only the body template, so extraction runs over the discussion and
    the first piece is presented in the shape it would take in the

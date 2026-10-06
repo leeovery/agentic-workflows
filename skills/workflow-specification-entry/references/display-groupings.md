@@ -28,7 +28,7 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 #### If `action` is `start_spec` or `continue_spec`
 
-The entry's `topic` and `verb`, plus that item's DATA detail (sources, consult references), become the context for confirmation.
+The entry's `topic` and `verb`, plus that item's DATA detail (its sources), become the context for confirmation.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 

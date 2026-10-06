@@ -674,20 +674,6 @@ assert_equals "$output" "incorporated" "Nested dot-path field set and get works"
 
 echo ""
 
-# ----------------------------------------------------------------------------
-
-echo -e "${YELLOW}Test: consult_references round-trips like sources${NC}"
-setup_fixture
-create_wu consult epic "Consult"
-run_cli set consult.specification.release-engine consult_references.cli-presentation.status pending >/dev/null 2>&1
-output=$(run_cli_stdout get consult.specification.release-engine consult_references.cli-presentation.status)
-assert_equals "$output" "pending" "consult reference status set and get works"
-run_cli set consult.specification.release-engine consult_references.cli-presentation.status addressed >/dev/null 2>&1
-output=$(run_cli_stdout get consult.specification.release-engine consult_references.cli-presentation.status)
-assert_equals "$output" "addressed" "consult reference status updates to addressed"
-
-echo ""
-
 # ============================================================================
 # MUTATION JSON RESPONSES + SET BATCHING
 # ============================================================================

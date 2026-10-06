@@ -18,7 +18,7 @@ Match the user's input to its `ACTIONS` entry by `key` or `word`.
 
 #### If `action` is `refine_spec`
 
-The entry's `topic` and `verb`, plus that spec's DATA detail (sources, consult references), become the context for confirmation.
+The entry's `topic` and `verb`, plus that spec's DATA detail (its sources), become the context for confirmation.
 
 → Load **[confirm-and-handoff.md](confirm-and-handoff.md)** and follow its instructions as written.
 

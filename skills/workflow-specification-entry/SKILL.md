@@ -48,7 +48,7 @@ Read the scoped state:
 node .claude/skills/workflow-specification-entry/scripts/gateway.cjs {work_unit}
 ```
 
-The output is one **DATA** section — the reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, and the discussion/specification detail (statuses, sources, consult references with slice hints). Reason from it; never display or restate it. A display reference a scenario routes to fetches its own snapshot where it shows it.
+The output is one **DATA** section — the reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, and the discussion/specification detail (statuses, sources). Reason from it; never display or restate it. A display reference a scenario routes to fetches its own snapshot where it shows it.
 
 **IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
 

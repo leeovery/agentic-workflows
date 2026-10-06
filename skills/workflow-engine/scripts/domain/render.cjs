@@ -3474,9 +3474,7 @@ function analysisProceedGate(cwd, { dotpath }) {
 // above it. The variant is the route the entry took; the surface refuses one
 // the item's state does not bear, reading the verb through the entry menu's
 // own derivation. With no item yet, the create is the single-discussion path
-// and confirms the lone completed discussion. Consult references are
-// markdown-held — the analysis doc's slice hints — so they arrive as a
-// payload; a started specification's must be exactly the ones it declares.
+// and confirms the lone completed discussion.
 
 const SPEC_CONFIRM_VERBS = { create: 'Creating', continue: 'Continuing', refine: 'Refining', unify: 'Creating' };
 const SPEC_CONFIRMABLE = ['proposed', 'in-progress', 'completed'];
@@ -3502,45 +3500,11 @@ function loneDiscussionGrouping(manifest, workUnit, topic) {
 }
 
 /**
- * The consult rows as the payload gives them. `declared` is a started
- * specification's own references — the payload must name exactly those —
- * and null before its first session, when the analysis doc is their only
- * record.
- * @param {string} cwd @param {string|undefined} file @param {string[]|null} declared
- * @returns {{name: string, hint: string}[]}
- */
-function specConfirmConsult(cwd, file, declared) {
-  /** @type {{name: string, hint: string}[]} */
-  let rows = [];
-  if (file) {
-    const p = readJsonPayload(cwd, file, 'spec-confirm-gate');
-    if (!Array.isArray(p.consult) || p.consult.length === 0) {
-      throw new Error('render spec-confirm-gate: "consult" must be a non-empty array of {name, hint} — leave --file off when none are owed');
-    }
-    rows = p.consult.map((r, i) => {
-      if (!r || !isFilled(r.name)) throw new Error(`render spec-confirm-gate: consult[${i}] needs a non-empty "name"`);
-      if (r.hint !== undefined && typeof r.hint !== 'string') throw new Error(`render spec-confirm-gate: consult[${i}] "hint" must be a string`);
-      return { name: r.name, hint: r.hint || '' };
-    });
-  }
-  if (declared) {
-    const given = rows.map((r) => r.name);
-    if (given.length !== declared.length || !declared.every((n) => given.includes(n))) {
-      const has = declared.length > 0 ? `declares consult references [${declared.join(', ')}]` : 'declares no consult references';
-      throw new Error(`render spec-confirm-gate: the specification ${has}${file
-        ? ` and the payload names [${given.join(', ')}] — pass exactly the declared ones`
-        : ' — pass them via --file'}`);
-    }
-  }
-  return rows;
-}
-
-/**
  * @param {string} cwd
- * @param {{dotpath: string, variant?: string, file?: string}} args
+ * @param {{dotpath: string, variant?: string}} args
  * @returns {string}
  */
-function specConfirmGate(cwd, { dotpath, variant, file }) {
+function specConfirmGate(cwd, { dotpath, variant }) {
   if (!isFilled(variant) || !Object.hasOwn(SPEC_CONFIRM_VERBS, variant)) {
     throw new Error(`render spec-confirm-gate: --variant must be one of ${Object.keys(SPEC_CONFIRM_VERBS).join(', ')}, got "${variant}"`);
   }
@@ -3561,12 +3525,11 @@ function specConfirmGate(cwd, { dotpath, variant, file }) {
   if (verb !== SPEC_CONFIRM_VERBS[variant]) {
     throw new Error(`render spec-confirm-gate: "${topic}" reads ${verb} — the ${variant} confirm does not serve it`);
   }
-  const consult = specConfirmConsult(cwd, file, status === 'proposed' ? null : (spec.consult_references || []).map((r) => r.name));
 
   return [
     section('DISPLAY: spec confirmation', emitAs('text', ', directly above the menu'), specificationConfirmation({
       variant: /** @type {'create'|'continue'|'refine'|'unify'} */ (variant),
-      verb, work_unit: workUnit, name: topic, status, sources, supersedes, consult,
+      verb, work_unit: workUnit, name: topic, status, sources, supersedes,
     })),
     section('MENU: spec confirm gate', MENU_INSTRUCTION, menu(variant === 'refine' ? REFINE_NOTE : '', yesNo(), { question: 'Proceed?' })),
   ].join('\n');

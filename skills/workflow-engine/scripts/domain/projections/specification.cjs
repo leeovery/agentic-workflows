@@ -84,9 +84,6 @@ function itemBlock(number, row) {
   if (row.sources.length > 0) {
     nodes.push({ title: 'Discussions:', children: row.sources.map((s) => ({ title: s.name, tag: s.tag })) });
   }
-  if (row.consult.length > 0) {
-    nodes.push({ title: 'Consult:', children: row.consult.map((c) => ({ title: c.name, tag: c.status })) });
-  }
   const tree = renderTree(nodes, { width: TREE_WIDTH })
     .replace(/\n+$/, '')
     .split('\n')
@@ -99,12 +96,11 @@ function itemBlock(number, row) {
  * Key block for the categories/terms the display shows, or '' when none.
  * Vocabulary comes from conventions (SPEC_LEGEND); terms pad to align the
  * em-dashes within each category.
- * @param {{discussion: Set<string>, consult: Set<string>, spec: Set<string>}} terms
+ * @param {{discussion: Set<string>, spec: Set<string>}} terms
  */
 function keyBlock(terms) {
   const categories = /** @type {const} */ ([
     ['discussion', 'Discussion status'],
-    ['consult', 'Consult status'],
     ['spec', 'Spec status'],
   ]);
   const blocks = [];
@@ -122,13 +118,12 @@ function keyBlock(terms) {
 
 /** Collect the legend terms the given rows display. @param {SpecRow[]} rows */
 function displayedTerms(rows) {
-  const terms = { discussion: new Set(), consult: new Set(), spec: new Set() };
+  const terms = { discussion: new Set(), spec: new Set() };
   for (const row of rows) {
     if (row.status !== 'proposed') terms.spec.add(row.status);
     for (const s of row.sources) {
       for (const t of s.tag.split(', ')) terms.discussion.add(t);
     }
-    for (const c of row.consult) terms.consult.add(c.status);
   }
   return terms;
 }
@@ -183,11 +178,11 @@ function singleDisplay(detail) {
   /** @type {SpecRow} */
   const row = single.spec || {
     name: detail.work_unit, status: 'proposed',
-    sources: [{ name: single.discussion, tag: 'ready' }], consult: [],
-    extracted: 0, total: 1, pending: 1, stale: 0, consult_pending: 0, verb: 'Creating',
+    sources: [{ name: single.discussion, tag: 'ready' }],
+    extracted: 0, total: 1, pending: 1, stale: 0, verb: 'Creating',
     open_sources: [], blocked: false,
   };
-  const shown = { ...row, name: single.variant === 'grouped' ? row.name : detail.work_unit, consult: [] };
+  const shown = { ...row, name: single.variant === 'grouped' ? row.name : detail.work_unit };
   return compose([
     SINGLE_INTRO[single.variant],
     itemBlock(1, shown),
@@ -290,7 +285,6 @@ function rowLabel(row, scenario) {
       ? `${row.pending} source(s) pending extraction`
       : 'all sources extracted');
   }
-  if (row.consult_pending > 0) parts.push(`${row.consult_pending} consult ref(s) pending`);
   return { head: `${verb} "${t}"`, tail: parts.join(', ') };
 }
 
@@ -426,7 +420,6 @@ function specificationCompletedMenu(detail) {
  * @property {string} status              the item's status — proposed before its first session
  * @property {{name: string, status: string, individual: boolean}[]} sources  status: pending | stale | incorporated; individual: a started specification already covers it
  * @property {string[]} supersedes        the started specifications the handoff supersedes
- * @property {{name: string, hint: string}[]} consult
  */
 
 /** A heading over its rows, or '' when there are none. @param {string} heading @param {string[]} rows */
@@ -441,8 +434,8 @@ function bulletRows(texts) {
 
 /**
  * What the handoff is about to do, drawn above its consent gate: the verb
- * and name, the sources by extraction state, the consult references, and
- * the paths it writes and supersedes.
+ * and name, the sources by extraction state, and the paths it writes and
+ * supersedes.
  * @param {SpecConfirmation} c
  * @returns {string}
  */
@@ -451,8 +444,6 @@ function specificationConfirmation(c) {
   const named = (status) => c.sources.filter((s) => s.status === status).map((s) => s.name);
   const head = `${c.verb} specification: ${titlecase(c.name)}`;
   const output = `Output: ${specPath(c.name)}`;
-  const consult = listBlock('Consult references (read narrowly — do not extract):',
-    bulletRows(c.consult.map((r) => (r.hint ? `${r.name} — ${r.hint}` : r.name))));
 
   if (c.variant === 'unify') {
     return compose([
@@ -466,7 +457,6 @@ function specificationConfirmation(c) {
     return compose([
       head,
       listBlock('Sources:', bulletRows(c.sources.map((s) => (s.individual ? `${s.name} (has individual spec — will be incorporated)` : s.name)))),
-      consult,
       output,
       listBlock('After completion:', c.supersedes.map((n) => `  ${specPath(n)} → marked as superseded`)),
     ]);
@@ -476,7 +466,7 @@ function specificationConfirmation(c) {
   const pending = named('pending');
   const stale = named('stale');
   if (pending.length === 0 && stale.length === 0) {
-    return compose([head, existing, listBlock('All sources extracted:', bulletRows(c.sources.map((s) => s.name))), consult]);
+    return compose([head, existing, listBlock('All sources extracted:', bulletRows(c.sources.map((s) => s.name)))]);
   }
   return compose([
     head,
@@ -484,7 +474,6 @@ function specificationConfirmation(c) {
     listBlock(c.status === 'completed' ? 'New sources to extract:' : 'Sources to extract:', bulletRows(pending.map((n) => `${n} [pending]`))),
     listBlock('Sources re-decided since extraction (reconcile):', bulletRows(stale.map((n) => `${n} [stale]`))),
     listBlock('Previously extracted (for reference):', bulletRows(named('incorporated'))),
-    consult,
   ]);
 }
 

@@ -3,8 +3,7 @@
 // ---------------------------------------------------------------------------
 // Adapter (read gateway) for workflow-specification-entry. Thin by design:
 // scenario derivation and rendering live in the engine's domain ring; this
-// script builds the discovery result, parses the consult-hint doc (its one
-// piece of file IO the engine stays blind to), and sections the output.
+// script builds the discovery result and sections the output.
 //
 //   gateway.cjs                        → minimal state line, all work units
 //   gateway.cjs {work_unit}            → DATA only, one work unit — the entry's routing read
@@ -12,7 +11,6 @@
 //   gateway.cjs completed-menu {work_unit} → concluded-specs sub-view
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadActiveManifests, listFiles, filesChecksum, fileExists } = engine.reads;
@@ -190,33 +188,10 @@ function format(result) {
 // View verbs — the scenario snapshot and the concluded-specs sub-view.
 // ---------------------------------------------------------------------------
 
-// Consult-slice hints from the work unit's consolidation-analysis doc: each
-// `### {Grouping}` section's `**Consult**: {ref} — {hint}` lines, keyed by
-// the grouping's kebab-case name. The manifest holds the authoritative
-// grouping→source mapping; this doc only enriches consult rows.
-function consultHints(cwd, workUnit) {
-  const file = path.join(cwd, '.workflows', workUnit, '.state', 'discussion-consolidation-analysis.md');
-  let text;
-  try { text = fs.readFileSync(file, 'utf8'); } catch { return {}; }
-  const hints = {};
-  let current = null;
-  for (const line of text.split('\n')) {
-    const heading = line.match(/^###\s+(.+?)\s*$/);
-    if (heading) { current = engine.conventions.kebabcase(heading[1]); continue; }
-    const consult = current && line.match(/^\*\*Consult\*\*:\s*(.+)$/);
-    if (consult) {
-      const [ref, ...rest] = consult[1].split('—');
-      const name = ref.trim();
-      if (name) (hints[current] = hints[current] || []).push({ name, hint: rest.join('—').trim() });
-    }
-  }
-  return hints;
-}
-
 function buildDetail(cwd, workUnit) {
   if (!workUnit) throw new Error('Usage: gateway.cjs [view|completed-menu] {work_unit}');
   const result = discover(cwd, workUnit);
-  return { result, detail: engine.detail.specificationDetail(workUnit, result, { consultHints: consultHints(cwd, workUnit) }) };
+  return { result, detail: engine.detail.specificationDetail(workUnit, result) };
 }
 
 // The DATA body: scenario + flags, the discussion/spec detail the downstream
@@ -241,17 +216,14 @@ function viewData(result, detail, keys) {
   }
   lines.push('specifications:');
   if (result.specifications.length === 0) lines.push('  (none)');
-  const hintRows = new Map();
-  for (const row of [...detail.actionable, ...detail.concluded]) hintRows.set(row.name, row);
+  const rowsByName = new Map();
+  for (const row of [...detail.actionable, ...detail.concluded]) rowsByName.set(row.name, row);
   for (const s of result.specifications) {
-    const row = hintRows.get(s.name);
+    const row = rowsByName.get(s.name);
     const blockedBy = row && row.blocked ? `, blocked_by=${row.open_sources.join(',')}` : '';
     lines.push(`  ${s.name}: ${s.status}, has_pending_sources=${s.has_pending_sources}${blockedBy}`);
     for (const src of s.sources || []) {
       lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
-    }
-    for (const c of (row && row.consult) || []) {
-      lines.push(`    consult: ${c.name} (${c.status}${c.hint ? ` — ${c.hint}` : ''})`);
     }
   }
   lines.push('cancelled_specifications:');

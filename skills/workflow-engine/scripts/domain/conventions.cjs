@@ -221,10 +221,6 @@ const SPEC_LEGEND = {
     ready: 'completed and available to be specified',
     reopened: 'back in-progress — the spec waits on it',
   },
-  consult: {
-    pending: 'sibling correction not yet read in and reconciled',
-    addressed: 'correction applied or cited; reconciliation recorded',
-  },
   spec: {
     'in-progress': 'specification work is ongoing',
     completed: 'specification is done',

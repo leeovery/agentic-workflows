@@ -7,7 +7,7 @@
 Follow stages A through F sequentially for each topic in the specification. Each topic completes a full cycle before the next begins.
 
 ```
-A. Exhaustive extraction from sources (incl. consult references read narrowly)
+A. Exhaustive extraction from sources
 B. Synthesize and present for approval
 C. Discuss and refine (if needed)
 D. Approval gate
@@ -21,15 +21,17 @@ F. Topic complete → loop back to A or exit
 
 Every topic's content must be derivable from its sources. When source material disagrees — with itself, with another source, or with the codebase or toolchain it describes — or is too unclear to extract without assumption, never silently pick a side and never patch the mismatch in the spec alone: load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written, in the moment it surfaces; on return, continue where extraction left off. Tension notes held from session setup are raised the same way, before the first topic that touches them is written.
 
+When working with multiple sources, search each one — information about a single topic may be scattered across documents.
+
 → Load **[exhaustive-extraction.md](exhaustive-extraction.md)** and follow its instructions as written.
 
-When working with multiple sources, search each one — information about a single topic may be scattered across documents.
+→ On return, proceed to **B. Synthesize and Present**.
 
 ### Context Resurfacing
 
 This gate stays gated even when `construction_gate_mode` is `auto` — it changes already-approved content, so it always stops for confirmation.
 
-When extraction reveals information that affects **already-logged topics**, resurface them immediately. Even mid-discussion — interrupt, flag what you found, and discuss whether it changes anything.
+When extraction reveals information that affects **already-logged topics**, resurface them immediately. Even mid-discussion — interrupt, flag what you found, and discuss whether it changes anything. Better to resurface and confirm "already covered" than let something slip past.
 
 If it does: summarize what's changing in the chat — the summary is for discussion only; the specification just gets the clean replacement.
 
@@ -60,26 +62,6 @@ Re-fetch with `--view full` and emit its sections verbatim per their markers —
 Work through the changes per **C. Discuss and Refine**, then re-present the gate with the revised content (rewrite the payload, re-fetch).
 
 → Return to **A. Exhaustive Extraction**.
-
-Better to resurface and confirm "already covered" than let something slip past.
-
-### Read Consult References Narrowly
-
-Consult references are sibling discussions that owe this spec a correction — they are **not** sources. Read only the relevant slice, never the whole document.
-
-List the pending ones (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references` returns names + status). For each still `pending`:
-
-1. Find its slice hint — the `{ref-topic} — {slice hint}` entry in the handoff's `Consult references` block, or, if the handoff is no longer in context (e.g. after a resume), the `**Consult**` line for it in `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md`.
-2. Open the named sibling discussion and read **only** the decisions the slice hint points to — plus its `## Spec hand-offs` section if the discussion happens to have one. Do not extract it wholesale.
-3. Apply the correction to the affected spec content, or cite the sibling decision where the spec defers to it — cite, don't restate. Corrections to already-logged content go through **Context Resurfacing** above. A consult correction that contradicts a source's *decided* ground is never applied silently — load **[resolve-source-incoherence.md](resolve-source-incoherence.md)** with lane = `construction` and follow its instructions as written. If the correction targets a topic not yet constructed, leave the reference `pending` and revisit it on that topic's cycle.
-4. Once applied or cited, record what was reconciled (which slice, what changed) in the spec's **Working Notes** section and mark the reference addressed:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} consult_references.{ref}.status addressed
-   ```
-
-Already-`addressed` references are skipped on later topic cycles.
-
-→ Proceed to **B. Synthesize and Present**.
 
 ---
 

@@ -86,24 +86,18 @@ When forming groupings:
 - Only create new names for genuinely new groupings with no overlap
 - If an anchor's discussions are now scattered across multiple new groupings, note this as a **naming conflict** to present to the user
 
-**Identify Cross-Grouping Hand-offs**
-
-A discussion can belong wholly in one grouping yet still impose corrections on a **sibling** grouping (or on an anchored existing spec) — e.g. a decision redesigned in discussion A that supersedes what another grouping's spec documents. Carry these in as **consult references**, not sources: the receiving spec reads only the named slice for the correction and cites it; it does not extract the discussion wholesale.
-
-While grouping, for each discussion check whether it hands work to another grouping:
-- Harvest any `## Spec hand-offs` section or "reconciliation owed by {spec}" note in the discussion, if present
-- Note cross-grouping corrections you observe even when no such section exists
-- A dated revision entry in a Decision timeline whose trigger names a sibling grouping's ground is a natural consult-reference candidate
-
-Record each as a consult reference on the **receiving** grouping (never as a source), capturing which slice/decisions and why.
-
 **Note Cross-Source Tensions**
 
-The full read also surfaces places where two documents' decided ground disagrees, or a term rests on something another document has since moved — tensions construction will meet when it extracts. Record each on the grouping whose sources carry it as a `**Tension**` line in the cache (**E**): the documents, the collision, one line. Advisory only — never a gate, never resolved here; the specification session holds them from its setup, and its construction raises each.
+The full read also surfaces tensions construction will meet when it extracts. Record each as one `**Tension**` line in the cache (**E**):
+
+- **Between sources** — two documents' decided ground disagrees, or a term rests on something another document has since moved. Record it on the grouping whose sources carry it: the documents, the collision.
+- **From a sibling** — a discussion belonging wholly in one grouping changed something a **sibling** grouping (or an anchored existing spec) depends on, e.g. a decision redesigned in discussion A that supersedes what another grouping's spec documents. Record it on the **receiving** grouping, never as a source: the sibling discussion, what it changed. While grouping, check each discussion for one — a `## Spec hand-offs` section or "reconciliation owed by {spec}" note it carries, a change you observe where it carries neither, a dated revision entry in a Decision timeline whose trigger names a sibling grouping's ground.
+
+Advisory only — never a gate, never resolved here; the specification session holds them from its setup, and its construction raises each.
 
 **Knowledge-Base Advisory Query**
 
-Before finalizing groupings, run one query per grouping to surface sibling discussions that may owe it corrections you missed:
+Before finalizing groupings, run one query per grouping to surface sibling changes the read missed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<natural-language concern for this grouping>" --work-unit {work_unit} --phase discussion --limit 5
@@ -111,7 +105,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs knowledge query "<natural
 
 Phrase the query as a natural-language description of the grouping's concern, not a topic slug (see **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** → **B. How to construct queries**).
 
-Treat hits as **candidate** consult references — a hit from a discussion outside this grouping that names a correction it owes is worth promoting onto the receiving grouping. **Advisory only**: never auto-add, never gate. You decide which candidates to record; the user confirms at the grouping menu.
+Treat hits as **candidate** tension lines — a hit from a discussion outside this grouping that changed something the grouping depends on is worth recording on it. **Advisory only**: never auto-add, never gate. You decide which candidates to record.
 
 → Proceed to **D. Reconcile Proposed Groupings**.
 
@@ -174,7 +168,7 @@ Create the cache directory if needed:
 mkdir -p .workflows/{work_unit}/.state
 ```
 
-Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter) — the manifest holds the authoritative grouping→source mapping, so this file carries only coupling/rationale and consult-slice hints:
+Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (pure markdown, no frontmatter) — the manifest holds the authoritative grouping→source mapping, so this file carries only coupling/rationale and tension lines:
 
 ```markdown
 # Discussion Consolidation Analysis
@@ -186,8 +180,8 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 - **{discussion-b}**: {why it belongs in this group}
 
 **Coupling**: {Brief explanation of what binds these together}
-**Consult**: {ref-topic} — {slice/why the correction is owed}
 **Tension**: {doc-a} / {doc-b} — {the collision, one line}
+**Tension**: {sibling-discussion} — {what it changed, one line}
 
 ### {Another Specification Name}
 - **{discussion-d}**: {why it belongs}
@@ -203,7 +197,7 @@ Write to `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (p
 {Note a grouping that resembles a cancelled specification here, with the route back}
 ```
 
-The `**Consult**` line is per-grouping — one line per consult reference, omitted entirely when a grouping owes none. List sources under each grouping as bullets; consult references stay on their own `**Consult**` line so they are never mistaken for sources. `**Tension**` lines follow the same shape — one per noted tension, omitted when a grouping carries none; the specification session reads them back at setup, and its construction raises each.
+List sources under each grouping as bullets. `**Tension**` lines are per-grouping — one per noted tension, omitted when a grouping carries none — and a sibling discussion one names is never listed as a source; the specification session reads them back at setup, and its construction raises each.
 
 Write the cache metadata to the manifest last:
 ```bash
