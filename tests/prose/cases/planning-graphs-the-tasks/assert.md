@@ -1,14 +1,14 @@
 The prose should have taken this path:
 
-1. the entry's spec gate clears; the planning status reads in-progress
-   and the handoff is the continuing variant — no resuming note is
-   rendered, no late-context question, no cross-cutting sweep
-2. the process finds the planning entry and offers the resume; spec
-   change detection diffs the specification against the plan's recorded
-   baseline commit and reports it unchanged
-3. on continue, the missing-storage-paths backfill does not fire — the
-   field is present — and session setup loads the format references and
-   resets the gate modes
+1. the spec gate clears; the planning status reads in-progress — read
+   once — so the resuming phase note heads the resume surface and the
+   reconcile flag reads absent (silent) — no late-context question, no
+   cross-cutting sweep
+2. beneath the note, spec change detection diffs the specification
+   against the plan's recorded baseline commit and reports it unchanged,
+   and the resume choice follows with no second heading of its own
+3. on continue, session setup loads the format references and resets the
+   gate modes
 4. construction fast-paths over approved work: the existing structure
    is presented through the engine-rendered phase tree and confirmed
    with nothing re-recorded — the approval already stands; with the

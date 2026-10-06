@@ -28,11 +28,10 @@ Write test → implement → pass → commit. Each task produces a single, verif
 
 Cross-cutting specifications (e.g., caching strategy, error handling conventions, rate limiting policy) are not things to build — they are architectural decisions that influence how features are built. They inform technical choices within the plan without adding scope.
 
-If cross-cutting specifications were provided alongside the specification:
+If cross-cutting specifications were provided alongside the specification — the plan's Cross-Cutting References section links them:
 
 1. **Apply their decisions** when designing tasks (e.g., if caching strategy says "cache API responses for 5 minutes", reflect that in relevant task detail)
 2. **Note where patterns apply** — when a task implements a cross-cutting pattern, reference it
-3. **Include a "Cross-Cutting References" section** in the plan linking to these specifications
 
 Cross-cutting references are context, not scope. They shape how tasks are written, not what tasks exist.
 

@@ -39,7 +39,7 @@ Is everything from the specification represented in the plan?
 
 ## Direction 2: Plan → Specification (fidelity)
 
-Is everything in the plan actually from the specification? This is the anti-hallucination check.
+Is everything in the plan actually from the specification? This is the anti-hallucination check. The planning file's `## Plan Context` and `## Cross-Cutting References` sections record the plan's inputs, not its content — never a finding.
 
 1. **For each task, trace its content back to the specification**:
    - The Problem statement → ties to a spec requirement or decision

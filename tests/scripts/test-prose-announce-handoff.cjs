@@ -64,7 +64,7 @@ describe('prose handoff announcement', () => {
   });
 
   it('takes a handoff call as the mod does — its output through the cut', () => {
-    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-review-entry feature pay`;
+    const command = `cd ${world} && node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-review-process feature pay`;
     const out = fire(bash(command)).hookSpecificOutput.updatedInput.command;
     assert.strictEqual(out, announced(command));
     assert.notStrictEqual(out, `${ANNOUNCEMENT}${command}`, 'a handoff call is more than announced');

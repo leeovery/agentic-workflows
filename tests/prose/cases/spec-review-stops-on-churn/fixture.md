@@ -13,4 +13,4 @@ total stands, which of the two refund deadlines the checkout enforces,
 and what a refund does before capture is confirmed.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

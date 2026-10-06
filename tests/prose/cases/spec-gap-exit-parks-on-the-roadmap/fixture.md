@@ -17,5 +17,5 @@ The project has no roadmap: no horizons, no items, no roadmap node on
 the project manifest.
 
 The context was cleared between sittings — this session opens cold at
-the specification entry skill with the topic given, the spec in
+the specification skill with the topic given, the spec in
 progress, and what is on disk.

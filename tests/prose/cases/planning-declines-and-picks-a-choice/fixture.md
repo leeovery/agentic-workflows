@@ -12,4 +12,4 @@ never by polling; neither it, the discussion, nor the plan says what
 the customer sees while capture is pending.
 
 The context was cleared between sittings — this session opens cold at
-the planning entry skill with the plan in progress and what is on disk.
+the planning skill with the plan in progress and what is on disk.

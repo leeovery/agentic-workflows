@@ -1,17 +1,19 @@
 The prose should have taken this path:
 
-1. the entry's specification gate renders empty — nothing blocks; the
-   phase status reads empty, and the late-context menu is put to the
-   user, whose continue sets a fresh start with no extra context
-2. cross-cutting context runs: the manifest list finds no cross-cutting
-   work units, so no knowledge query runs; the walk proceeds silently
-   and hands off a fresh-plan payload naming the specification
-3. the process finds no planning entry — no resume choice
+1. the specification gate renders empty — nothing blocks — and the
+   planning status reads empty: a first start, no phase note, no resume
+   choice
+2. initialisation opens on the late-context menu, put to the user,
+   whose continue carries the specification as it stands with no extra
+   context
+3. cross-cutting context runs: the manifest list finds no cross-cutting
+   work units, so no knowledge query runs and the walk proceeds silently
 4. with no project default recorded, the format menu is put to the
-   user; their choice registers the plan: the planning file created,
-   the item started through the engine, the metadata set in one batched
-   write with the spec commit captured, and local-markdown recorded as
-   the project default before the initialise commit lands
+   user; their choice registers the plan: the planning file created —
+   with no plan-context or cross-cutting section, there being nothing
+   to record — the item started through the engine, the metadata set in
+   one batched write with the spec commit captured, and local-markdown
+   recorded as the project default before the initialise commit lands
 5. session setup loads the format's about and authoring references and
    resets the gate modes; the specification is verified by listing it
 6. phase design is delegated: the dispatch is stubbed, the returned

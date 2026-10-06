@@ -17,4 +17,4 @@ a 24-hour eviction window. The attach task carries a one-line
 description and no acceptance criteria.
 
 The context was cleared mid-phase — this session opens cold at the
-entry skill with nothing but the two arguments and what is on disk.
+planning skill with nothing but the two arguments and what is on disk.

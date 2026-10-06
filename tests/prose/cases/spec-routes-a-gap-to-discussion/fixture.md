@@ -11,7 +11,7 @@ The grouping analysis has concluded: one proposed specification,
 cache carries a tension line naming the collision. Neither discussion
 has been reopened; both read completed.
 
-This session opens cold at the specification entry skill with the
+This session opens cold at the specification skill with the
 topic given. Construction meets the conflict and raises it — but this
 user's answer breaks it open: neither documented side survives,
 because the ground under both was never actually explored. The

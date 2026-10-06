@@ -5,15 +5,14 @@ and neither a Tests nor an Edge Cases field anywhere.
 
 Expected path:
 
-1. the entry clears the spec gate, takes the fresh arm at the
-   late-context menu, runs the cross-cutting sweep against the empty
-   store, and hands off a fresh-plan payload — nothing beyond the
-   scripted gates is asked
-2. the process finds no planning entry; with no project default the
-   format menu is put to the user, and their choice registers the plan
-   — item started through the engine, metadata batched with the spec
-   commit captured, local-markdown recorded as the project default —
-   before the initialise commit
+1. the spec gate clears and the planning status reads empty — a first
+   start, no phase note and no resume choice; initialisation takes the
+   continue at the late-context menu and runs the cross-cutting sweep
+   against the empty store — nothing beyond the scripted gates is asked
+2. with no project default the format menu is put to the user, and their
+   choice registers the plan — item started through the engine, metadata
+   batched with the spec commit captured, local-markdown recorded as the
+   project default — before the initialise commit
 3. session setup loads the format references and resets gates; the
    specification is verified by listing it
 4. phase design and Phase 1 task design are delegated to their stubbed

@@ -12,4 +12,4 @@ there so a hung first attempt never eats the retry's chance — and no
 tighter than the budget forces.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

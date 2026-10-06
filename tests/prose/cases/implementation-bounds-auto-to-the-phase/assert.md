@@ -1,9 +1,10 @@
 The prose should have taken this path:
 
-1. the plan gate renders empty and an implementation item exists, so
-   the entry validates and hands off; resume detection reports the
-   resumed mode and announces resuming from a previous session —
-   never the created arm's start-implementation commit
+1. the code slot reads free and the plan gate renders empty; dependency
+   validation returns immediately, and the implementation status reads
+   in-progress — read once — so tracking resumes with its gates reset,
+   the resuming phase note is emitted, and the reconcile flag reads
+   absent (silent) — never the first start's start-implementation commit
 2. environment setup finds the existing document and asks nothing;
    the plan adapter loads for local-markdown; project skills and
    linter discovery each ask only their skip-again question — the

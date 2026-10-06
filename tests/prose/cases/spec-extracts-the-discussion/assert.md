@@ -1,40 +1,39 @@
 The prose should have taken this path:
 
-1. the entry's source gate renders empty — the discussion is completed,
-   nothing blocks; the phase status reads empty so the verb is a
-   creation, and the handoff names the discussion as source material —
-   the entry asks the user nothing
-2. the process finds no specification file — a fresh start, no resume
-   choice is put to the user
-3. the source is verified by listing it, not reading it; the
-   specification file is created from the format template BEFORE any
-   manifest change, then the item registers through the engine, the
-   discussion lands as a pending source, review state and both gate
-   modes initialise in one batched write, and the initialisation
+1. the source gate renders empty — the discussion is completed,
+   nothing blocks — and the specification status reads empty, so this
+   is a first start: no phase note, no resume choice, and the user is
+   asked nothing
+2. the specification file is created from the format template BEFORE
+   any manifest change, then the item registers through the engine, the
+   discussion lands as its one pending source, review state and both
+   gate modes initialise in one batched write, and the initialisation
    commits
-4. session setup resets the gate modes
-5. construction runs one topic at a time: extraction re-scans the
+3. session setup resets the gate modes and holds the discussion at
+   `.workflows/pay/discussion/pay.md` as the source — a feature reads no
+   research beside it
+4. construction runs one topic at a time: extraction re-scans the
    discussion, each piece is presented in the form it will take in the
    specification and explicitly approved before any write, logged
    verbatim, committed — the whole specification is never generated in
    one pass, and auto mode is never engaged
-6. when the discussion's relevant content is exhausted, its source row
+5. when the discussion's relevant content is exhausted, its source row
    flips to incorporated
-7. review cycle 1 initialises through the engine; the claims
+6. review cycle 1 initialises through the engine; the claims
    verification agent is dispatched first, then input review — against
    the discussion file as its source material, never against the
    specification itself — then gap analysis, each returning clean
    through the harness stub with no tracking file, so each no-findings
    result is announced; no two agents are ever dispatched in parallel
-8. with all three phases clean the review completes — no findings
+7. with all three phases clean the review completes — no findings
    menus, no second cycle — and the review state commits
-9. the compliance self-check re-reads the session's instructions;
+8. the compliance self-check re-reads the session's instructions;
    completion verifies tracking and sources, and puts the sign-off to
    the user
-10. on their yes the topic completes through the engine — the artifact
-    is indexed as part of that call, never by a direct knowledge-CLI
-    call — the date is stamped, the conclusion commits, and the walk
-    stops at the pipeline continuation without invoking the bridge
+9. on their yes the topic completes through the engine — the artifact
+   is indexed as part of that call, never by a direct knowledge-CLI
+   call — the date is stamped, the conclusion commits, and the walk
+   stops at the pipeline continuation without invoking the bridge
 
 Further claims:
 

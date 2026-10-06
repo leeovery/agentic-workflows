@@ -6,11 +6,13 @@ The prose should have taken this path:
    implementation or review, and it renders empty, so nothing is emitted
    and nothing stops
 3. the prerequisite gate renders empty — both the plan and the
-   implementation are complete, so nothing blocks entry
-4. no review item exists, so the fresh path is taken — nothing is
-   reopened and no resume is announced
-5. hands off to the review processing skill for pay
+   implementation are complete, so nothing blocks the start
+4. the review status reads empty, so the fresh path is taken — nothing
+   is reopened, no phase note is rendered, and no resume is offered
+5. the walk stops as initialisation begins, before the review item is
+   registered
 
 Further claims:
 
-- no verifier agents are dispatched by the entry skill
+- no verifier agents are dispatched
+- the world is unchanged: no review item, no report, no commit

@@ -2973,9 +2973,10 @@ function resolvePlanning(cwd, dotpath, surface) {
   return resolved;
 }
 
-// external-dependency-gate — implementation entry's two stops over a plan's
-// external dependencies: what to do about the blocking set, shown beneath the
-// set itself, and which of them the user has satisfied outside the pipeline.
+// external-dependency-gate — implementation's two stops at its start over
+// a plan's external dependencies: what to do about the blocking set, shown
+// beneath the set itself, and which of them the user has satisfied outside
+// the pipeline.
 // Which dependencies block is judgment — it comes from reading each one's
 // plan through its output format — so both variants are told the set by
 // name; each dependency's description and state are manifest state and are
@@ -3173,9 +3174,9 @@ function taskCountGate(cwd, { dotpath }) {
   ], { question: 'How would you like to proceed?' }));
 }
 
-// plan-context-gate — planning entry's one offer before a fresh plan is
-// built: carry the specification as it stands, or say what has changed since
-// it was completed. The offer is the fresh start's alone — a plan already
+// plan-context-gate — planning's one offer before a fresh plan is built:
+// carry the specification as it stands, or say what has changed since it
+// was completed. The offer is the fresh start's alone — a plan already
 // under way reconciles its moved input instead — so the surface refuses an
 // address whose planning item already carries a status.
 
@@ -3196,7 +3197,7 @@ function planContextGate(cwd, { dotpath }) {
   ]));
 }
 
-// cross-cutting-gate — planning entry's stop over cross-cutting
+// cross-cutting-gate — a fresh plan's stop over cross-cutting
 // specifications still being written. Which of them bear on the plan being
 // built is the session's read, so the names arrive as a payload; whether a
 // name is a cross-cutting unit whose specification is still open is state,

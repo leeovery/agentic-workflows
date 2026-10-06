@@ -419,7 +419,8 @@ function checkLinks(files) {
 // Check 8 — H1 category rule (scoped to workflow-* SKILL.md backbones).
 // Processing backbones (workflow-*-process, plus the engine and the
 // project-level skills — baseline, roadmap, help) open with a title H1;
-// entry, navigation, and phase-entry backbones carry none.
+// every other workflow backbone — workflow-start, the navigation skills,
+// discovery, the bridge — carries none.
 // ---------------------------------------------------------------------------
 
 function skillNameOf(file) {
@@ -443,7 +444,7 @@ function checkH1Category(files) {
     if (mustHaveH1 && !isH1) {
       out.push({ file, line: firstContentIndex(lines) + 1, message: `processing backbone (${name}) must open with a title H1` });
     } else if (!mustHaveH1 && isH1) {
-      out.push({ file, line: firstContentIndex(lines) + 1, message: `entry/navigation/phase-entry backbone (${name}) must not carry an H1` });
+      out.push({ file, line: firstContentIndex(lines) + 1, message: `non-processing backbone (${name}) must not carry an H1` });
     }
   }
   return out;
@@ -668,9 +669,8 @@ const RATCHET_PINS = {
   'skills/workflow-discussion-process/references/background-agent-surfacing.md': 2,
   'skills/workflow-discussion-process/references/gather-context.md': 1,
   'skills/workflow-discussion-process/references/perspective-agents.md': 1,
-  'skills/workflow-implementation-entry/references/check-dependencies.md': 2,
-  'skills/workflow-implementation-process/SKILL.md': 1,
   'skills/workflow-implementation-process/references/analysis-loop.md': 1,
+  'skills/workflow-implementation-process/references/check-dependencies.md': 2,
   'skills/workflow-implementation-process/references/task-loop.md': 2,
   'skills/workflow-investigation-process/references/analysis-checkpoints.md': 1,
   'skills/workflow-legacy-research-split/SKILL.md': 3,
@@ -1471,16 +1471,16 @@ test('check 8 (H1 category) — enforces the processing/backbone split', () => {
     const procNoH1 = write(dir, 'skills/workflow-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
 
-    const entryWithH1 = write(dir, 'skills/workflow-foo-entry/SKILL.md', '# Foo Entry\n\nOne-liner.\n');
-    assert.strictEqual(checkH1Category([entryWithH1]).length, 1, 'entry backbone with H1 must be caught');
+    const startWithH1 = write(dir, 'skills/workflow-start/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
+    assert.strictEqual(checkH1Category([startWithH1]).length, 1, 'start backbone with H1 must be caught');
 
     const navWithH1 = write(dir, 'skills/workflow-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([navWithH1]).length, 1, 'navigation backbone with H1 must be caught');
 
     const procGood = write(dir, 'skills/workflow-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
-    const entryGood = write(dir, 'skills/workflow-bar-entry/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
+    const bridgeGood = write(dir, 'skills/workflow-bridge/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     const engineGood = write(dir, 'skills/workflow-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
-    assert.strictEqual(checkH1Category([procGood, entryGood, engineGood]).length, 0, 'correctly-categorised backbones must pass');
+    assert.strictEqual(checkH1Category([procGood, bridgeGood, engineGood]).length, 0, 'correctly-categorised backbones must pass');
   });
 });
 

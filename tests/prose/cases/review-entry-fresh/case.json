@@ -1,30 +1,32 @@
 {
   "origin": "feature mainline — review refuses to start until delivery is complete",
-  "entry": "workflow-review-entry",
+  "entry": "workflow-review-process",
   "files": [
-    "skills/workflow-review-entry/SKILL.md",
+    "skills/workflow-review-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-review-entry/references/validate-phase.md",
-    "skills/workflow-shared/references/code-session-gate.md",
-    "skills/workflow-review-entry/references/invoke-skill.md"
+    "skills/workflow-shared/references/code-session-gate.md"
   ],
   "invariants": {
     "calls_include": [
       "render entry-gate pay.review.pay",
-      "render code-gate pay.review.pay"
+      "render code-gate pay.review.pay",
+      "manifest get pay.review.pay status"
     ],
     "calls_in_order": [
       "render code-gate pay.review.pay",
-      "render entry-gate pay.review.pay"
+      "render entry-gate pay.review.pay",
+      "manifest get pay.review.pay status"
     ],
     "calls_exclude": [
       "topic reopen",
-      "topic start"
+      "topic start",
+      "render phase-note",
+      "render resume-gate"
     ]
   }
 }

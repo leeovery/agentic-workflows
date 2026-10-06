@@ -2134,13 +2134,13 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.match(res.stdout.replace(/\n\u00a0+/g, ' '), /~~[^~]*~~ · code session in ship\/checkout-flow/, res.stdout);
 
     // One gate per attempt: the marker is the menu's awareness signal, and the
-    // stop belongs to the entry skill's code gate — asking here refuses.
+    // stop belongs to the phase's own code gate — asking here refuses.
     assert.ok(!res.stdout.includes('(in session:'), `a code row never wears the doc marker:\n${res.stdout}`);
     const key = res.stdout.split('\n').find((l) => l.includes('start_implementation')).trim().split(/\s+/)[0];
     const gate = run(['in-session-gate', 'v1', key]);
     assert.strictEqual(gate.status, 0, gate.stderr);
     assert.ok(!gate.stdout.includes('MENU: in-session gate'), `no gate section for a code entry:\n${gate.stdout}`);
-    assert.ok(gate.stdout.includes('the code slot is gated at the entry skill'), gate.stdout);
+    assert.ok(gate.stdout.includes('the code slot is gated where the phase starts'), gate.stdout);
   });
 
   it('the caller\'s own hold marks nothing — a session never strikes through itself', () => {

@@ -1,12 +1,12 @@
 The prose should have taken this path:
 
-1. the entry's prerequisite gate renders empty — plan and
-   implementation are completed — and the review status reads empty, so
-   nothing is reopened and the handoff carries the work forward with
-   nothing asked
-2. the process finds no report file, registers the review through the
-   engine, reads the plan and specification, and looks up the
-   implementation's project skills
+1. the code-slot check and then the prerequisite gate both render empty
+   — plan and implementation are completed — and the review status reads
+   empty, so this is a first start: nothing is reopened, no phase note
+   or resume choice appears, and nothing is asked
+2. initialisation registers the review through the engine, reads the
+   plan and specification, and looks up the implementation's project
+   skills
 3. a verifier is dispatched per task — stubbed: each report lands at its
    task's suffix, each complete with no blocking issues and no findings;
    the payment-intent task's report records two of its criteria as

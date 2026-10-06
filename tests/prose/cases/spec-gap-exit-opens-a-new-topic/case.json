@@ -1,9 +1,9 @@
 {
   "origin": "Some gaps have no home yet. A review finds the specification deciding something no source decided, the derivation runs out, and the exchange that follows shows the answer needs a room rather than a reply — and the ground it sits on belongs to no topic on the map. The gap exit's third destination is that case: the gap becomes a topic of its own, created on the map, parked on its discussion queue, and added to this specification's sources as pending, so the specification waits for it and extracts it when it concludes. This walks that destination end to end on an epic — the classify running out, the acknowledgement gate offering the three homes a map affords, the name confirmed, the landing self-committing, and the pause handing the session back to the epic.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

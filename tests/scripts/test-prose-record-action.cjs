@@ -72,11 +72,11 @@ describe('prose recorder — tool events', () => {
       hook_event_name: 'PostToolUse',
       tool_name: 'Bash',
       agent_type: 'prose-walker',
-      tool_input: { command: announced(`cd ${world} && engine.cjs handoff workflow-review-entry feature pay`) },
+      tool_input: { command: announced(`cd ${world} && engine.cjs handoff workflow-review-process feature pay`) },
       tool_response: { stdout: 'handoff: mod', stderr: '' },
     });
     const [row] = logLines();
-    assert.match(row, /^PostToolUse\tBash\tcd \. && engine\.cjs handoff workflow-review-entry feature pay\tok\t/);
+    assert.match(row, /^PostToolUse\tBash\tcd \. && engine\.cjs handoff workflow-review-process feature pay\tok\t/);
   });
 
   it('keeps a long command whole once the world path collapses — the checks match against it', () => {

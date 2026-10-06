@@ -6,16 +6,18 @@ specification's sources so the specification waits for it.
 
 The prose should have taken this path:
 
-1. the entry validates the completed source discussion and the
-   in-progress specification item, and hands off to the processing
-   skill
-2. resume detection offers the choice and the user continues; session
-   setup resets both gate modes to `gated` and finds no stale rows;
-   the source already reads incorporated, so construction is skipped —
-   no construction heading is shown and no content is re-presented —
-   and the specification already carries its Dependencies section, so
-   the document-dependencies step is skipped too: the walk goes
-   straight to review
+1. the skill asks the engine whether its source discussion has concluded
+   (it has), then reads the specification status once, finds it in
+   progress, emits the resuming phase note, and checks the reconcile
+   flag (absent — silent)
+2. beneath the note, with the file found, the continue-or-restart choice
+   follows with no second heading of its own, and the user continues;
+   session setup resets both gate modes to `gated` and finds no stale
+   rows; the source already reads incorporated, so construction is
+   skipped — no construction heading is shown and no content is
+   re-presented — and the specification already carries its Dependencies
+   section, so the document-dependencies step is skipped too: the walk
+   goes straight to review
 3. review cycle 1 initialises — `review_cycle` set to 1 with the
    construction baseline word count in the same write, committed.
    Claims verification runs first and returns clean through its stub

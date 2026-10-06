@@ -19,7 +19,7 @@ const { section, menu, menuFrame, cmdOption, labelParts, callout, MENU_INSTRUCTI
 const { escapeMarkdown } = require('./worklist.cjs');
 const { fmtAge, CODE_PHASES, SOURCE_PHASES } = require('../presence.cjs');
 const { buildOrderLive } = require('../build-order.cjs');
-const { entrySkill } = require('../handoff.cjs');
+const { phaseSkill } = require('../handoff.cjs');
 
 /** @typedef {import('../epic-detail.cjs').EpicDetail} EpicDetail */
 /** @typedef {import('../epic-detail.cjs').MapRow} MapRow */
@@ -48,10 +48,10 @@ const { entrySkill } = require('../handoff.cjs');
  * @property {boolean} [recommended]
  * @property {boolean} [input_moved]   the entry's item (or its source item) carries a live reconcile flag
  * @property {boolean} [in_session]    a held session elsewhere occupies this topic's phase
- * @property {string[]} [blocked_by]   what holds the entry's item shut at its entry skill — carried only by a held row, the one blocked row the menu offers; the in-session gate names it
+ * @property {string[]} [blocked_by]   what holds the entry's item shut where its phase starts — carried only by a held row, the one blocked row the menu offers; the in-session gate names it
  * @property {number} [session_age]    that session's last-active age in seconds
  * @property {{work_unit: string, phase: string, topic: string}} [session_holder] the held code row taking the slot, when it is not this entry's own topic
- * @property {boolean} [code_session]  the hold is the checkout's code slot — gated at the entry skill, never by this menu
+ * @property {boolean} [code_session]  the hold is the checkout's code slot — gated where the phase starts, never by this menu
  */
 
 /** @typedef {import('../presence.cjs').PresenceRow} PresenceRow */
@@ -538,7 +538,7 @@ function epicKey(detail) {
 
 /** @param {string} action @param {string} workUnit @param {string} topic */
 function topicRoute(action, workUnit, topic) {
-  return `/${entrySkill(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)])} epic ${workUnit} ${topic}`;
+  return `/${phaseSkill(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)])} epic ${workUnit} ${topic}`;
 }
 
 // The triage cue rides every row shape: the bare start rows carry it as
@@ -905,9 +905,10 @@ function markHeldEntries(numbered, held, codeHeld = []) {
     if (!row) continue;
     e.in_session = true;
     e.session_age = row.age_seconds;
-    // A code entry's hold is the checkout's one slot, and its gate lives at
-    // the entry skill — the marker says so, so the menu's own in-session gate
-    // never fires for it and the user meets one gate per attempt.
+    // A code entry's hold is the checkout's one slot, and its gate lives
+    // where the phase starts — the marker says so, so the menu's own
+    // in-session gate never fires for it and the user meets one gate per
+    // attempt.
     if (CODE_PHASES.includes(phase)) e.code_session = true;
     if (foreign) {
       e.session_holder = { work_unit: foreign.work_unit, phase: foreign.phase, topic: foreign.topic };
@@ -1028,7 +1029,7 @@ function epicMenu(workUnit, detail, opts = {}) {
 
 // A struck row is the one blocked row the menu offers, so its gate also
 // names what holds the entry shut — a yes here would otherwise meet the
-// entry skill's refusal blind.
+// phase's own refusal blind.
 /** @param {string} phase @param {string} topic @param {string[]|undefined} by */
 function entryHoldClause(phase, topic, by) {
   if (by === undefined) return '';
@@ -1187,7 +1188,7 @@ function pipelineOrdered(items) {
 
 /**
  * Section D — the Completed Topics list and pick menu. Numbered entries route
- * to the topic's phase entry skill.
+ * to the topic's phase skill.
  * @param {string} workUnit
  * @param {EpicDetail} detail
  * @returns {{keys: SubViewKey[], title: string, display: string, rendered: string}}

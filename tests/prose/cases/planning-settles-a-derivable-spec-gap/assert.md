@@ -8,12 +8,14 @@ is the amended task list.
 
 Expected path:
 
-1. the entry's specification gate renders empty — the specification is
-   completed and settled, so nothing blocks; the planning status reads
-   in-progress and the handoff is the continuing variant
-2. the process finds the planning entry and offers the resume; spec
-   change detection diffs the specification against the plan's recorded
-   baseline commit and reports it unchanged; the user continues
+1. the specification gate renders empty — the specification is completed
+   and settled, so nothing blocks; the planning status reads in-progress
+   — read once — so the resuming phase note heads the resume surface and
+   the reconcile flag reads absent (silent)
+2. beneath the note, spec change detection diffs the specification
+   against the plan's recorded baseline commit and reports it unchanged,
+   and the resume choice follows with no second heading of its own; the
+   user continues
 3. session setup loads the format's about and authoring references and
    resets the three gate modes to `gated`; the specification is
    verified by listing it

@@ -6,11 +6,15 @@
 
 When resuming planning, check whether the specification or cross-cutting specifications have changed since planning started.
 
-The manifest stores `spec_commit` — the git commit hash of the spec baseline the plan last reconciled against, stamped at plan initialization and re-stamped when the plan concludes. This allows diffing any input file against that point in time.
+The manifest stores `spec_commit` — the git commit hash of the spec baseline the plan last reconciled against, stamped at plan initialization and re-stamped when the plan concludes. This allows diffing any input file against that point in time:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} spec_commit
+```
 
 ## Detection
 
-Run a git diff against the stored commit for all input files:
+Run a git diff against the stored commit for all input files — the specification and the cross-cutting specification paths the planning file's `## Cross-Cutting References` section lists:
 
 ```bash
 git diff {spec_commit} -- {specification-path} {cross-cutting-spec-paths...}

@@ -11,4 +11,4 @@ exists too. Nothing decisive leans on the exact number: the telemetry
 decision is per-module, whatever the count.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

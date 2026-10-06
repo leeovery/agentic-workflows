@@ -16,7 +16,7 @@ const { DERIVED_PHASES } = require('../../kernel/manifest-schema.cjs');
 const { TREE_WIDTH, titlecase, title, materialBlock } = require('../conventions.cjs');
 const { menu, menuFrame, cmdOption, actionsTable, section, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { typeConfig } = require('../workunit-detail.cjs');
-const { entrySkill } = require('../handoff.cjs');
+const { phaseSkill } = require('../handoff.cjs');
 
 /** @typedef {import('../workunit-detail.cjs').WorkUnitEntry} WorkUnitEntry */
 /** @typedef {import('../workunit-detail.cjs').WorkUnitTypeConfig} WorkUnitTypeConfig */
@@ -32,9 +32,16 @@ const { entrySkill } = require('../handoff.cjs');
  * @property {string} label
  */
 
-/** The route a phase is entered by — `$0` = the type's work_type value, `$1` = work_unit. @param {WorkUnitTypeConfig} cfg @param {string} phase @param {string} workUnit */
-function entryRoute(cfg, phase, workUnit) {
-  return `/${entrySkill(phase)} ${cfg.workType} ${workUnit}`;
+/**
+ * The route a phase of a single-topic unit is entered by — `$0` = the type's
+ * work_type value, `$1` = work_unit — the route the menu's continue and
+ * revisit rows carry.
+ * @param {string} type  a WORK_UNIT_TYPES key
+ * @param {string} phase @param {string} workUnit
+ * @returns {string}
+ */
+function phaseRoute(type, phase, workUnit) {
+  return `/${phaseSkill(phase)} ${typeConfig(type).workType} ${workUnit}`;
 }
 
 // Completed phases that come before next_phase in the pipeline — the revisit
@@ -133,7 +140,7 @@ function workUnitMenu(type, unit) {
     }
     : {
       key: 'y', word: 'yes', action: 'continue', topic: unit.name,
-      route: entryRoute(cfg, unit.next_phase, unit.name),
+      route: phaseRoute(type, unit.next_phase, unit.name),
       label: `Proceed to ${unit.next_phase}`,
     }];
 
@@ -142,7 +149,7 @@ function workUnitMenu(type, unit) {
     revisitable.forEach((phase, i) => {
       keys.push({
         key: String(i + 1), action: 'revisit_phase', topic: unit.name, phase,
-        route: entryRoute(cfg, phase, unit.name),
+        route: phaseRoute(type, phase, unit.name),
         label: `${titlecase(phase)} — completed`,
       });
     });
@@ -201,17 +208,6 @@ function workUnitData(type, unit, menu) {
  */
 function revisitablePhases(type, unit) {
   return earlierCompleted(typeConfig(type), /** @type {WorkUnitEntry} */ (unit));
-}
-
-/**
- * The route a phase of a single-topic unit is entered by — the route the
- * menu's continue and revisit rows carry.
- * @param {string} type  a WORK_UNIT_TYPES key
- * @param {string} phase @param {string} workUnit
- * @returns {string}
- */
-function phaseRoute(type, phase, workUnit) {
-  return entryRoute(typeConfig(type), phase, workUnit);
 }
 
 /**

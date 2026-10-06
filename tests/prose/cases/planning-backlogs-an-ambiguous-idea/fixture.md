@@ -9,4 +9,4 @@ the project manifest. The inbox is empty — no ideas, no bugs, no
 quick-fixes.
 
 The context was cleared mid-phase — this session opens cold at the
-entry skill with nothing but the two arguments and what is on disk.
+planning skill with nothing but the two arguments and what is on disk.

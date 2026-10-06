@@ -9,4 +9,4 @@ amounts — the first is missing sourced ground, the second is ground no
 source addresses at all.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

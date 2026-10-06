@@ -1,6 +1,6 @@
 # Check Dependencies
 
-*Reference for **[validate-dependencies](validate-dependencies.md)***
+*Reference for **[workflow-implementation-process](../SKILL.md)***
 
 ---
 
@@ -28,7 +28,7 @@ Skip, not blocking. A completed implementation satisfies the dependency even if 
 
 **If status is not `completed` or the implementation entry does not exist:**
 
-Read the referenced task's status from the dependency's plan. Read the dep plan's `format` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{dep_topic} format`), load the format's **reading.md** (`../workflow-planning-process/references/output-formats/{format}/reading.md`), and look up the task by `internal_id` — resolving to its external ID via `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{dep_topic} task_map.{internal_id}` when the format needs one.
+Read the referenced task's status from the dependency's plan. Read the dep plan's `format` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{dep_topic} format`), load the format's **reading.md** (`../../workflow-planning-process/references/output-formats/{format}/reading.md`), and look up the task by `internal_id` — resolving to its external ID via `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{dep_topic} task_map.{internal_id}` when the format needs one.
 
 - Task status is the format's completed status → skip, not blocking.
 - Any other status (open, in-progress, skipped/cancelled), or no plan or task found → add to the blocking list. A skipped or cancelled task does not satisfy a dependency while its implementation is still in progress.
@@ -119,17 +119,7 @@ The surface numbers the rows in `blocking_topics` order — set `selected_topic`
 
 ## D. Mark as Satisfied
 
-Update the selected dependency's state via `engine manifest`:
+→ Load **[mark-dependency-satisfied.md](../../workflow-shared/references/mark-dependency-satisfied.md)** with work_unit = `{work_unit}`, topic = `{topic}`, dep = `{selected_topic}`.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{selected_topic}.state satisfied_externally
-```
-
-The record belongs to the plan, and this is navigation reaching into it — `--sweep`, so the entry never stamps its identity on a planning topic no session is in:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic planning/{topic} --sweep -m "impl({work_unit}): mark {selected_topic} dependency as satisfied externally"
-```
-
-→ Return to **A. Evaluate Dependencies**.
+→ On return, return to **A. Evaluate Dependencies**.
 

@@ -2749,7 +2749,7 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']).status, 'completed');
   });
 
-  it('other phases\' flags are the entry skill\'s alone — a flagged specification or plan completes untouched', () => {
+  it('other phases\' flags are their start\'s alone — a flagged specification or plan completes untouched', () => {
     const m = epicManifest();
     m.phases.specification = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'discussion', sources: { 'refund-policy': { status: 'incorporated' } } } } };
     m.phases.planning = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'specification' } } };

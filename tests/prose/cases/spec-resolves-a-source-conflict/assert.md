@@ -1,14 +1,16 @@
 The prose should have taken this path:
 
-1. the entry validates the two completed source discussions and the
-   proposed phase item — the verb is a creation, the handoff names both
-   discussions as sources, and the entry asks the user nothing
-2. the process finds no specification file — a fresh start, no resume
-   choice is put to the user; initialisation registers review state and
-   gate modes, keeps the existing pending source rows (never
-   overwriting them), and commits
-3. session setup resets the gate modes and finds no stale source
-   rows — construction begins directly
+1. the source gate renders empty — the grouping's two source discussions
+   are completed — and the specification status reads `proposed`, so
+   this is a first start: no phase note, no resume choice, and the user
+   is asked nothing
+2. initialisation creates the specification file, starts the proposed
+   item through the engine — it already carries its sources, so no row
+   is added or overwritten — registers review state and gate modes, and
+   commits
+3. session setup resets the gate modes, holds both discussions as the
+   sources, and finds no specification to incorporate and no stale
+   source rows — construction begins directly
 4. construction runs one topic at a time — extraction re-scans the
    sources, each piece is presented in the form it will take in the
    specification and explicitly approved before any write

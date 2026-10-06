@@ -2,7 +2,7 @@
 
 // The fixture state plus what the walk should have done: the completed
 // plan reopened for the session, and the reconcile flag consumed by the
-// advisory. Nothing else moves — the walk stops at the handoff.
+// advisory. Nothing else moves — the walk stops at the resume choice.
 
 const fixture = require('./fixture-state.cjs');
 const m = require('../../mainlines/feature.cjs');

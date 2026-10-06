@@ -138,6 +138,6 @@ Load **[feature-display-and-menu.md](references/feature-display-and-menu.md)** a
 
 ## Step 6: Route Selection
 
-The user's selection carries its `route` — the selected `ACTIONS` entry's route from feature-display-and-menu.md, e.g. `/workflow-specification-entry feature {work_unit}`.
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from feature-display-and-menu.md, e.g. `/workflow-specification-process feature {work_unit}`.
 
 Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.

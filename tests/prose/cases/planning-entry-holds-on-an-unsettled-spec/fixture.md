@@ -9,4 +9,4 @@ Nobody has re-entered the specification, so its own status still reads
 `completed`. The plan still reads in-progress.
 
 The context was cleared mid-phase — this session opens cold at the
-entry skill with nothing but the two arguments and what is on disk.
+planning skill with nothing but the two arguments and what is on disk.

@@ -139,7 +139,7 @@ describe('workunit projections: status display', () => {
     assert.strictEqual(unit.next_phase, 'specification');
     assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
     const menu = workUnitMenu('feature', unit);
-    assert.strictEqual(menu.keys[0].route, '/workflow-specification-entry feature auth-flow');
+    assert.strictEqual(menu.keys[0].route, '/workflow-specification-process feature auth-flow');
     assert.match(workUnitData('feature', unit, menu), /^reconcile_pending: specification \(discussion\)$/m);
   });
 
@@ -328,7 +328,7 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
       [
-        ['y', 'continue', 'auth-flow', null, '/workflow-specification-entry feature auth-flow'],
+        ['y', 'continue', 'auth-flow', null, '/workflow-specification-process feature auth-flow'],
         ['r', 'revisit', 'auth-flow', null, null],
         ['1', 'revisit_phase', 'auth-flow', 'discussion', '/workflow-discussion-process feature auth-flow'],
       ]
@@ -363,7 +363,7 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/workflow-specification-entry bugfix login-crash'],
+        ['y', 'continue', null, '/workflow-specification-process bugfix login-crash'],
         ['r', 'revisit', null, null],
         ['1', 'revisit_phase', 'investigation', '/workflow-investigation-process bugfix login-crash'],
       ]
@@ -391,7 +391,7 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/workflow-implementation-entry quick-fix hotfix-logs'],
+        ['y', 'continue', null, '/workflow-implementation-process quick-fix hotfix-logs'],
         ['r', 'revisit', null, null],
         ['1', 'revisit_phase', 'scoping', '/workflow-scoping-process quick-fix hotfix-logs'],
       ]
@@ -437,10 +437,10 @@ describe('workunit projections: menu', () => {
         ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
         ['1', 'revisit_phase', 'discussion', '/workflow-discussion-process feature auth-flow'],
-        ['2', 'revisit_phase', 'specification', '/workflow-specification-entry feature auth-flow'],
-        ['3', 'revisit_phase', 'planning', '/workflow-planning-entry feature auth-flow'],
-        ['4', 'revisit_phase', 'implementation', '/workflow-implementation-entry feature auth-flow'],
-        ['5', 'revisit_phase', 'review', '/workflow-review-entry feature auth-flow'],
+        ['2', 'revisit_phase', 'specification', '/workflow-specification-process feature auth-flow'],
+        ['3', 'revisit_phase', 'planning', '/workflow-planning-process feature auth-flow'],
+        ['4', 'revisit_phase', 'implementation', '/workflow-implementation-process feature auth-flow'],
+        ['5', 'revisit_phase', 'review', '/workflow-review-process feature auth-flow'],
       ]
     );
   });
@@ -487,7 +487,7 @@ describe('workunit projections: menu', () => {
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.phase || null, k.route]),
       [
-        ['y', 'continue', null, '/workflow-specification-entry cross-cutting caching'],
+        ['y', 'continue', null, '/workflow-specification-process cross-cutting caching'],
         ['r', 'revisit', null, null],
         ['1', 'revisit_phase', 'research', '/workflow-research-process cross-cutting caching'],
         ['2', 'revisit_phase', 'discussion', '/workflow-discussion-process cross-cutting caching'],
@@ -524,7 +524,7 @@ describe('workunit projections: data body', () => {
       'seeds_count: 1',
       'imports_count: 0',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  auth-flow  → /workflow-specification-entry feature auth-flow',
+      '  y  yes  continue  auth-flow  → /workflow-specification-process feature auth-flow',
       '  r  revisit  revisit  auth-flow  → (internal)',
       '  1  —  revisit_phase  auth-flow  → /workflow-discussion-process feature auth-flow',
     ].join('\n'));
@@ -574,8 +574,8 @@ describe('workunit projections: data body', () => {
       '  y  yes  finalise  hotfix-logs  → (internal)',
       '  r  revisit  revisit  hotfix-logs  → (internal)',
       '  1  —  revisit_phase  hotfix-logs  → /workflow-scoping-process quick-fix hotfix-logs',
-      '  2  —  revisit_phase  hotfix-logs  → /workflow-implementation-entry quick-fix hotfix-logs',
-      '  3  —  revisit_phase  hotfix-logs  → /workflow-review-entry quick-fix hotfix-logs',
+      '  2  —  revisit_phase  hotfix-logs  → /workflow-implementation-process quick-fix hotfix-logs',
+      '  3  —  revisit_phase  hotfix-logs  → /workflow-review-process quick-fix hotfix-logs',
     ].join('\n'));
   });
 });

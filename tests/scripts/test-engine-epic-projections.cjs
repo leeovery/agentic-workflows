@@ -553,8 +553,8 @@ describe('epic projections: menu', () => {
     assert.deepStrictEqual(
       keys.map((k) => [k.key, k.action, k.topic, k.route]),
       [
-        ['1', 'start_specification', 'billing-grouping', '/workflow-specification-entry epic quiz-competition-v1 billing-grouping'],
-        ['2', 'continue_specification', 'auth-spec', '/workflow-specification-entry epic quiz-competition-v1 auth-spec'],
+        ['1', 'start_specification', 'billing-grouping', '/workflow-specification-process epic quiz-competition-v1 billing-grouping'],
+        ['2', 'continue_specification', 'auth-spec', '/workflow-specification-process epic quiz-competition-v1 auth-spec'],
         ['s', 'analyze_discussions', null, null],
         ['d', 'new_discussion', null, null],
         ['r', 'new_research', null, null],
@@ -989,7 +989,7 @@ describe('epic projections: selection sub-views', () => {
         ['1', 'resume', 'kitchen-hardware', 'research', '/workflow-research-process epic quiz-competition-v1 kitchen-hardware'],
         ['2', 'resume', 'auth-flow', 'discussion', '/workflow-discussion-process epic quiz-competition-v1 auth-flow'],
         ['3', 'resume', 'session-storage', 'discussion', '/workflow-discussion-process epic quiz-competition-v1 session-storage'],
-        ['4', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-entry epic quiz-competition-v1 roles-and-permissions'],
+        ['4', 'resume', 'roles-and-permissions', 'specification', '/workflow-specification-process epic quiz-competition-v1 roles-and-permissions'],
         ['b', 'back', null, null, null],
       ]
     );

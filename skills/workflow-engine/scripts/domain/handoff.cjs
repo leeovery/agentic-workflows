@@ -27,13 +27,11 @@ const HANDOFF_INSTRUCTION = 'json for the gate mod — never display';
 const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 
 // Every phase some work type's pipeline holds is entered by a handoff.
-const ENTRY_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
+const PIPELINE_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
 
-const ENTRY_SKILL_PHASES = new Set(['specification', 'planning', 'implementation', 'review']);
-
-/** The skill a phase is entered through. @param {string} phase */
-function entrySkill(phase) {
-  return `workflow-${phase}-${ENTRY_SKILL_PHASES.has(phase) ? 'entry' : 'process'}`;
+/** The skill a phase runs in — the one a handoff into the phase lands on. @param {string} phase */
+function phaseSkill(phase) {
+  return `workflow-${phase}-process`;
 }
 
 /**
@@ -94,12 +92,12 @@ function at(place, name = null) {
 }
 
 /**
- * The skill a phase is entered through: the work type it serves, a work unit
- * of that type, and the topic — a legal name, which need not exist. An epic
- * always names its topic; a single-topic unit's topic is the unit itself.
+ * A phase's skill: the work type it serves, a work unit of that type, and the
+ * topic — a legal name, which need not exist. An epic always names its topic;
+ * a single-topic unit's topic is the unit itself.
  * @param {string} phase @returns {Target}
  */
-function entryTarget(phase) {
+function phaseTarget(phase) {
   const served = VALID_WORK_TYPES.filter((type) => WORK_TYPE_PIPELINES[type].includes(phase));
   return {
     usage: `<${served.join('|')}> <work-unit> [<topic>]`,
@@ -157,7 +155,7 @@ const TARGETS = {
     },
     where: ([unit]) => at('Epic', unit),
   },
-  ...Object.fromEntries(ENTRY_PHASES.map((phase) => [entrySkill(phase), entryTarget(phase)])),
+  ...Object.fromEntries(PIPELINE_PHASES.map((phase) => [phaseSkill(phase), phaseTarget(phase)])),
 };
 
 /**
@@ -218,4 +216,4 @@ function handoffSections(handoff) {
   ].join('');
 }
 
-module.exports = { resolveHandoff, handoffSections, entrySkill, HANDOFF_TARGETS: Object.keys(TARGETS) };
+module.exports = { resolveHandoff, handoffSections, phaseSkill, HANDOFF_TARGETS: Object.keys(TARGETS) };

@@ -1,9 +1,9 @@
 {
   "origin": "The gap exit's three homes are not three flavours of the same move. Two of them stop the specification — a source reopened, or a topic opened — and the third does not: a gap that is a capability the product may want later is parked on the roadmap, sourced to the specification that found it, and the session carries straight on. This walks that third destination end to end on an epic: an unsourced decision the derivation cannot reach, a conversational stop, a user who says the ground is a whole piece of work for another release, the acknowledgement gate's roadmap row, the horizon ask, the park, and then the pause section's nothing-was-routed arm handing the walk back to record the finding Declined and finish the review. Nothing reopens, nothing is written into a source, and the specification concludes in the same sitting.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

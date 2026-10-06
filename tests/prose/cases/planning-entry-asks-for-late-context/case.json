@@ -1,18 +1,16 @@
 {
   "origin": "feature mainline — planning offers a last chance to add context",
-  "entry": "workflow-planning-entry",
+  "entry": "workflow-planning-process",
   "files": [
-    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-planning-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-planning-entry/references/validate-spec.md",
-    "skills/workflow-planning-entry/references/validate-phase.md",
-    "skills/workflow-planning-entry/references/cross-cutting-context.md",
-    "skills/workflow-planning-entry/references/invoke-skill.md"
+    "skills/workflow-planning-process/references/initialize-plan.md",
+    "skills/workflow-planning-process/references/cross-cutting-context.md"
   ],
   "answers": [
     "continue — nothing has changed since the specification"
@@ -20,18 +18,24 @@
   "invariants": {
     "calls_include": [
       "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
       "render plan-context-gate pay.planning.pay",
       "manifest list --work-type cross-cutting"
     ],
     "calls_in_order": [
       "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render plan-context-gate pay.planning.pay",
       "manifest list --work-type cross-cutting"
     ],
     "calls_exclude": [
       "engine.cjs knowledge query",
       "engine.cjs knowledge index",
       "engine.cjs knowledge remove",
-      "topic reopen"
+      "topic reopen",
+      "topic start",
+      "render phase-note",
+      "render resume-gate"
     ]
   }
 }

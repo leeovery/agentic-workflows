@@ -506,7 +506,7 @@ A path an agent is handed is written as installed, from the project root — `.c
 
 ### Heading Hierarchy
 
-- **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; entry, navigation, and phase-entry SKILL.md files carry none (frontmatter and the one-liner open the backbone)
+- **H1** (`#`): File title — one per file, at the top. Reference files carry an H1. Processing-skill backbones open with a title H1; the start, navigation, discovery, and bridge SKILL.md files carry none (frontmatter and the one-liner open the backbone)
 - **H2** (`##`): Steps and major sections (`## Step N: {Name}`, `## Notes`, `## Instructions`)
 - **H3** (`###`): In flow files, sub-steps within early setup steps only (`### Step 0.1: Boot`). Non-flow reference files — templates, question banks, agent-prompt content, API documentation — may use H3 freely for content organisation
 - **H4** (`####`): Conditional routing only (`#### If {condition}`, `#### Otherwise`)
@@ -678,7 +678,7 @@ Use bold labels with colons for emphasis levels:
 
 ### Zero Output Rule
 
-Entry-point skills that invoke processing skills use this exact blockquote to prevent narration:
+Skills that hand the work on to another — `workflow-start`, the navigation skills, the bridge, discovery, the roadmap — use this exact blockquote to prevent narration:
 
 ```
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
@@ -704,7 +704,7 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 - Default: `gated` (set in manifest on creation)
 - Opt-in: user chooses `a/auto` (full — the rest of the session) or `b/bounded` (auto to the end of the bound the gate's flow defines) at any per-item gate → manifest updated via `engine manifest` before next commit
 - Bound: `bounded` is one generic value — the schema's `GATE_FIELDS` table (`kernel/manifest-schema.cjs`) places each gate on its phase and names its bound, the field surface refuses `bounded` on any gate without one, and the engine returns the gate to `gated` at the bound's close, never the prose. The implementation task and fix gates are bound to the plan phase: `task complete --phase-complete` resets them, so a bounded auto holds through every task the phase gains before it records. A gate with no bound never offers `b/bounded`
-- Reset: entry-point skills reset gates to `gated` at session start — fresh invocation or resume. Either opt-in is session-scoped, never carried across sessions
+- Reset: each phase skill resets its gates to `gated` at session start — fresh invocation or resume. Either opt-in is session-scoped, never carried across sessions
 - Context refresh: read gate modes from manifest and preserve (a refresh continues the same session — no reset)
 
 **Menu option format**: Add between the primary action and secondary options — the bounded row beside it where the gate has a bound:
@@ -808,15 +808,7 @@ Rules:
 Three mechanisms move a flow forward; never blur them:
 
 - **Loading a reference** reads a file into the running context — progressive disclosure, nothing more. No parameters pass mechanically: state the variables in prose before the Load (`with topic = `{topic}``) and the loaded file references them, already in context.
-- **Invoking a skill** is a Skill tool call at a boundary within the work (entry → process, phase end → bridge), between menus (start → a continue menu, anything → help), or on a move that carries a live conversation on (discovery into the roadmap's genesis or a recognition pull, the roadmap's epic pull into discovery). It adds the skill's instructions to the running context — **nothing is cleared**. Two argument forms, by what the skill declares:
-  - **Positional arguments** (the skill declares `$0`/`$1`/… — the phase and entry skills a handoff lands on, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, resolve it in prose first — absence as the literal `none` where the receiving skill declares that convention — then show one literal command with every argument in place.
-  - **Context block** (an entry invoking its processing skill): an imperative **before** the payload fence, the fence as pure content, nothing after it (a skill-invoking exit is terminal — no STOP, no routing):
-
-    ```
-    Invoke the **workflow-x** skill (Skill tool) with the next fenced block as its arguments. Do not act on the gathered context until its instructions load — the skill defines the process.
-    ```
-
-  Never place the imperative after the fence (it arrives too late — the command-prelude rule), and never inside it (a fence is payload; an instruction buried there gets printed, not executed).
+- **Invoking a skill** is a Skill tool call at a boundary within the work (phase end → bridge), between menus (start → a continue menu, anything → help), or on a move that carries a live conversation on (discovery into the roadmap's genesis or a recognition pull, the roadmap's epic pull into discovery). It adds the skill's instructions to the running context — **nothing is cleared**. Its arguments are positional, as the skill declares them (`$0`/`$1`/… — the phase skills a handoff lands on, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, resolve it in prose first — absence as the literal `none` where the receiving skill declares that convention — then show one literal command with every argument in place. The imperative is never put inside a fence — a fence is payload; an instruction buried there gets printed, not executed.
 - **Handing off** is a move into work: the skill it names starts the work afresh. A menu's pick into work hands off — start into discovery, the roadmap or the baseline, a continue menu into a phase — and so does every conclusion, the bridge deciding where its work goes; a move that carries a live conversation on is invoked instead. `workflow-shared/references/handing-off.md` carries every move, loaded with the move as the skill's slash command and its arguments (`with route = `/workflow-continue-epic {work_unit} {completed_phase} {outcome}``) — a route the engine built passes as it stands. The engine's `handoff` command checks the move; where the gate mod carries it, the conversation is cleared and the skill starts in the next one, and elsewhere it is invoked in place. Nothing passes but the skill and its arguments — what the next skill needs is on disk before the handoff. A site loads the reference and never branches on the answer itself. Within a phase, nothing clears.
 
 ### Reference File Structure
@@ -933,7 +925,6 @@ Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge
 | Name | Purpose |
 |------|---------|
 | `gather-context.md` | User interview / context gathering questions |
-| `invoke-skill.md` | Context block invoking the processing skill |
 | `route-scenario.md` | Scenario routing (for skills with branching) |
 | `validate-{thing}.md` | Pre-flight validation (plan exists, spec completed, etc.) |
 | `display-{variant}.md` | Display outputs (for skills with multiple displays) |

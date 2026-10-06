@@ -780,9 +780,9 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-start'), []);
   });
 
-  it('accepts the skill a phase is entered through, where a handoff lands it in a fresh context', () => {
-    assert.deepEqual(cases.entryErrors('workflow-implementation-entry'), []);
-    assert.deepEqual(cases.entryErrors('workflow-specification-entry'), []);
+  it('accepts a phase\'s skill, where a handoff lands it in a fresh context', () => {
+    assert.deepEqual(cases.entryErrors('workflow-implementation-process'), []);
+    assert.deepEqual(cases.entryErrors('workflow-specification-process'), []);
     assert.deepEqual(cases.entryErrors('workflow-discussion-process'), []);
     assert.deepEqual(cases.entryErrors('workflow-experiment-process'), []);
   });
@@ -806,8 +806,8 @@ describe('entry points — where a walk may begin', () => {
     assert.match(error, /not somewhere a session starts/);
   });
 
-  it('rejects a processing skill behind an entry skill — always invoked by it', () => {
-    assert.match(cases.entryErrors('workflow-planning-process')[0], /not somewhere a session starts/);
+  it('rejects a skill only ever opened in place — the legacy research split, from the epic menu', () => {
+    assert.match(cases.entryErrors('workflow-legacy-research-split')[0], /not somewhere a session starts/);
   });
 
   it('rejects the bridge — always invoked as a phase ends', () => {
@@ -819,7 +819,7 @@ describe('entry points — where a walk may begin', () => {
   });
 
   it('rejects a plausible name the handoff table does not hold', () => {
-    assert.match(cases.entryErrors('workflow-imaginary-entry')[0], /not somewhere a session starts/);
+    assert.match(cases.entryErrors('workflow-imaginary-process')[0], /not somewhere a session starts/);
   });
 
   it('requires one at all', () => {
@@ -836,18 +836,18 @@ describe('undeclared prose — the case list against what the walk opened', () =
 
   it('names prose the walk opened that the case never declared', () => {
     const rows = [
-      rd('./.claude/skills/workflow-specification-entry/SKILL.md'),
-      rd('./.claude/skills/workflow-specification-entry/references/validate-phase.md'),
+      rd('./.claude/skills/workflow-specification-process/SKILL.md'),
+      rd('./.claude/skills/workflow-specification-process/references/session-setup.md'),
     ];
     assert.deepEqual(
-      invariants.undeclaredProse(rows, ['skills/workflow-specification-entry/SKILL.md']),
-      ['skills/workflow-specification-entry/references/validate-phase.md'],
+      invariants.undeclaredProse(rows, ['skills/workflow-specification-process/SKILL.md']),
+      ['skills/workflow-specification-process/references/session-setup.md'],
     );
   });
 
   it('is quiet when the list already covers the walk', () => {
-    const rows = [rd('./.claude/skills/workflow-review-entry/SKILL.md')];
-    assert.deepEqual(invariants.undeclaredProse(rows, ['skills/workflow-review-entry/SKILL.md']), []);
+    const rows = [rd('./.claude/skills/workflow-review-process/SKILL.md')];
+    assert.deepEqual(invariants.undeclaredProse(rows, ['skills/workflow-review-process/SKILL.md']), []);
   });
 
   it('ignores files that are not prose — a walk reads world state too', () => {

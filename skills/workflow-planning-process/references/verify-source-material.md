@@ -8,7 +8,7 @@ Verify that all source material exists and is accessible before entering agent-d
 
 ## Verification
 
-1. The specification is at `.workflows/{work_unit}/specification/{topic}/specification.md`. Cross-cutting spec paths can be determined from context or the manifest.
+1. The specification is at `.workflows/{work_unit}/specification/{topic}/specification.md`. The cross-cutting specification paths are those the planning file's `## Cross-Cutting References` section lists.
 2. For each path, run `ls` to confirm the file exists — do not read the file contents
 3. If any file is missing, **STOP** — inform the user which file is missing and do not proceed
 

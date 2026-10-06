@@ -1,26 +1,24 @@
 The prose should have taken this path:
 
-1. the plan gate renders empty and no implementation item exists, so
-   this is a new entry; dependency validation returns immediately —
-   external dependencies are an epic concern
-2. the entry hands off into the processing skill
-3. resume detection initialises tracking and reports the created mode,
-   which commits the start of implementation through the engine's
-   scoped commit
-4. environment setup finds the existing document stating no setup is
+1. the code slot reads free and the plan gate renders empty; dependency
+   validation returns immediately — external dependencies are an epic
+   concern — and the implementation status reads empty, so this is a
+   first start: tracking is initialised and the start of implementation
+   commits through the engine's scoped commit, with no phase note
+2. environment setup finds the existing document stating no setup is
    required and returns without asking anything
-5. the plan adapter is loaded for the manifest's format
-6. project skills discovery reads no topic value and finds
+3. the plan adapter is loaded for the manifest's format
+4. project skills discovery reads no topic value and finds
    no project default exists, so it proceeds to discovery; the scan
    reports no project skills — the workflow system's own skills are
    never candidates — with no menu and no question, and both the topic
    and project levels record the empty array
-7. linter discovery reads no topic value and no project
+5. linter discovery reads no topic value and no project
    default, so it proceeds to discovery; the analysis finds no
    candidate linters — a project with no source code has nothing to
    lint — so the no-linters notice is emitted with no menu and no
    question, and both levels record the empty array
-8. the walk stops as the skill turns to its next concern — the
+6. the walk stops as the skill turns to its next concern — the
    knowledge guidance is never loaded and the task loop is never
    entered
 
@@ -38,4 +36,4 @@ Further claims:
   written or edited
 - neither discovery wrote a cache payload or fetched a render surface
   — both scans found nothing to present, so the user was asked nothing
-  between the handoff and the stopping point
+  between the start and the stopping point

@@ -16,11 +16,12 @@ Follows specification. Transform the validated specification into actionable pha
 
 ### What This Skill Needs
 
-- **Specification content** (required) - The validated specification from the prior phase
-- **Topic name** (optional) - Will derive from specification if not provided
-- **Output format preference** (optional) - Will ask if not specified
-- **Work type** (required) — `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design.
-- **Cross-cutting references** (optional) - Cross-cutting specifications that inform technical decisions in this plan
+Positional arguments:
+- `$0` — **work_type**: `epic`, `feature`, or `bugfix`. Determines which context-specific guidance is loaded during phase and task design.
+- `$1` — **work_unit**: the work unit name.
+- `$2` — **topic**: the specification to plan. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
+
+The plan is built from the specification at `.workflows/{work_unit}/specification/{topic}/specification.md`. Initialization settles the rest — any context added since the specification completed, the cross-cutting specifications that bear on the plan, and the output format.
 
 ---
 
@@ -95,7 +96,29 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 
 ---
 
-## Step 0: Resume Detection
+## Step 0: Phase Start
+
+### Step 0.1: Entry Gate
+
+Check the specification prerequisite — the engine derives the verdict from manifest state:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.planning.{topic}
+```
+
+#### If the response is empty
+
+The specification is completed and settled — clear to plan.
+
+→ Proceed to **Step 0.2**.
+
+#### If the response carried `DISPLAY: entry blocker`
+
+Emit both sections verbatim per their markers — the red blocker line, then its guidance.
+
+**STOP.** Do not proceed — terminal condition.
+
+### Step 0.2: Resume Detection
 
 Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
 
@@ -103,30 +126,33 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} planning {topic}
 ```
 
-Read the planning entry from the manifest as one subtree — empty means no entry exists:
+Read the phase status, storing it as `phase_status`:
+
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
 ```
 
-#### If output is empty (no planning entry)
+#### If `phase_status` is empty
+
+A first start.
 
 → Proceed to **Step 1**.
 
-#### Otherwise (planning entry exists)
+#### If `phase_status` is `in-progress` or `completed`
 
-> *Output the next fenced block as markdown (not a code block):*
+Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
-```
-**`□ Resume Detection`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> An in-progress plan exists for this topic — choose whether to pick it up or start fresh.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} planning {topic}
 ```
 
-The subtree carries the current `phase` and `task` position (for the resume prompt below) and the `spec_commit` baseline (for spec-change detection).
+Render the phase note — `Reopening` for a plan just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.planning.{topic} --verb {Reopening|Resuming} --noun plan
+```
+
+Load **[reconcile-advisory.md](../workflow-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `planning`.
 
 Load **[spec-change-detection.md](references/spec-change-detection.md)** and follow its instructions as written. Then render the resume menu (the position parenthetical derives from the planning item) and emit its section verbatim per its marker:
 

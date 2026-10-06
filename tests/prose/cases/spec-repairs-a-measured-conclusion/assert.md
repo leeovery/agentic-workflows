@@ -1,12 +1,11 @@
 The prose should have taken this path:
 
-1. the entry's source gate renders empty — the discussion is completed,
-   nothing blocks; the phase status reads empty so the verb is a
-   creation, and the handoff names the discussion as source material —
-   the entry asks the user nothing
-2. the process finds no specification file — a fresh start, no resume
-   choice is put to the user; initialisation registers the item, the
-   pending source row, review state, and both gate modes, and commits
+1. the source gate renders empty — the discussion is completed, nothing
+   blocks — and the specification status reads empty, so this is a first
+   start: no phase note, no resume choice, and the user is asked nothing
+2. initialisation registers the item, the discussion as its one pending
+   source row, review state, and both gate modes, and commits; session
+   setup holds the discussion as the source
 3. construction runs gated, one topic at a time — each piece presented
    in the form it will take in the specification and explicitly
    approved before any write; auto mode is never engaged

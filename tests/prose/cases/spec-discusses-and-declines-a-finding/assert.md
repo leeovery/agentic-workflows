@@ -5,10 +5,13 @@ follow-up cycle.
 
 Expected path:
 
-1. the entry skill validates the source and the phase, finds the
-   specification in progress, and hands off to the processing skill
-2. resume detection offers the choice and the user continues; session
-   setup resets the gate modes to `gated`
+1. the skill asks the engine whether its source material is ready (it
+   is), then reads the specification status once, finds it in progress,
+   emits the resuming phase note, and checks the reconcile flag (absent
+   — silent)
+2. beneath the note, with the file found, the continue-or-restart choice
+   follows with no second heading of its own, and the user continues;
+   session setup resets the gate modes to `gated`
 3. claims verification runs first and returns clean through its stub;
    input review's stub writes the cycle-1 tracking file with two
    findings; the tracking entry is recorded `in-progress` and the

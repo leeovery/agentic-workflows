@@ -1,9 +1,9 @@
 {
   "origin": "With the gate on, the calls a specification review has made are put to the user together: one screen, at most five rows, each the call and what it rests on, answered once for the lot. The screen is the only gate a settled finding has at the specification, and it carries its own way in — a number expands one finding to its report and its wording without resolving anything, and the screen comes back. This walks that screen end to end in manual mode: three calls read, one expanded, all three approved on one answer, two landing in the specification on the record's own authority and one in the discussion that should own it first. The cycle then ends the way a gated cycle ends — asking whether to run another round rather than taking one.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

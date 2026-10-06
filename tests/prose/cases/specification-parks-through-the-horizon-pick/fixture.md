@@ -14,5 +14,5 @@ holding `wallet-payments` and `v2` holding `subscription-billing`, both
 waiting and joined to no work unit.
 
 The context was cleared between sittings — this session opens cold at
-the specification entry skill with nothing but the two arguments and
+the specification skill with nothing but the two arguments and
 what is on disk.

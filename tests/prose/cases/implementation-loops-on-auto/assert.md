@@ -1,14 +1,12 @@
 The prose should have taken this path:
 
-1. the plan gate renders empty and no implementation item exists, so
-   this is a new entry; dependency validation returns immediately;
-   the entry hands off into the processing skill carrying the
-   local-markdown format read from the planning item
-2. resume detection initialises tracking and commits the start of
-   implementation; environment setup finds the existing document and
-   asks nothing; the plan adapter loads; project skills and linter
-   discovery each ask only their skip-again question — the first two
-   scripted answers skip both,
+1. the code slot reads free and the plan gate renders empty; dependency
+   validation returns immediately, and the implementation status reads
+   empty, so this is a first start
+2. tracking is initialised and the start of implementation committed;
+   environment setup finds the existing document and asks nothing; the
+   plan adapter loads; project skills and linter discovery each ask only
+   their skip-again question — the first two scripted answers skip both,
    each recording its empty set on the topic
 3. the loop reads work_type once at entry; task pay-1-1 is selected
    first, normalised, started via the engine, and marked in-progress;

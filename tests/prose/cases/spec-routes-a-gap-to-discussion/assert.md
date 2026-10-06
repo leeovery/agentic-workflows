@@ -1,8 +1,10 @@
 The prose should have taken this path:
 
-1. the entry validates the two completed source discussions and the
-   proposed phase item, asking the user nothing
-2. initialisation registers the spec fresh; session setup finds no
+1. the source gate renders empty — the grouping's two source discussions
+   are completed — and the specification status reads `proposed`, so
+   this is a first start, asking the user nothing
+2. initialisation starts the proposed item fresh, its sources already on
+   it; session setup holds both discussions as the sources and finds no
    stale rows; construction begins
 3. construction may first extract grounds the collision does not
    touch through the ordinary gated cycle (behavioural-ranking's

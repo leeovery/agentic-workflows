@@ -1,20 +1,16 @@
 {
   "origin": "the open-verdict split in correcting-historical-artifacts B had no coverage on its derivable arm — the most consent-sensitive implementation-side path: a spec defect that is genuinely open (no landed change supersedes it, no measurement against the tree yields it) but whose side a defensible derivation from the spec's own recorded precedent picks is settled in place — the four record-settled steps, the corrigendum recording the derivation, no walk proposal for the spec side, no gate, no user turn about it. This walks the analysis loop to that moment: the synthesizer reports an unset companion bound beside one plain proposal, the session derives the bound from the sibling parameter's recorded rationale and settles it silently before the overview renders, and the plain proposal takes the auto opt-in and lands in the plan",
-  "entry": "workflow-implementation-entry",
+  "entry": "workflow-implementation-process",
   "world": "claims",
   "files": [
-    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-implementation-entry/references/validate-phase.md",
-    "skills/workflow-implementation-entry/references/validate-dependencies.md",
     "skills/workflow-shared/references/code-session-gate.md",
-    "skills/workflow-implementation-entry/references/invoke-skill.md",
-    "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-implementation-process/references/environment-setup.md",
     "skills/workflow-implementation-process/references/load-plan-adapter.md",
     "skills/workflow-shared/references/format-version-check.md",
@@ -53,7 +49,6 @@
     "engine_before_write": true,
     "calls_include": [
       "render entry-gate pay.implementation.pay",
-      "manifest exists pay.implementation.pay",
       "task init pay pay",
       "manifest get pay work_type",
       "manifest get pay.implementation.pay staging",
@@ -83,7 +78,6 @@
     ],
     "calls_in_order": [
       "render entry-gate pay.implementation.pay",
-      "manifest exists pay.implementation.pay",
       "task init pay pay",
       "manifest get pay.implementation.pay staging",
       "task analysis-cycle pay pay",

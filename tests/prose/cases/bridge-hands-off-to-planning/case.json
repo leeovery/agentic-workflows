@@ -1,20 +1,15 @@
 {
   "origin": "a specification concludes into planning through the bridge: it derives planning, the next-phase gate is offered and declined, and the continuation hands off to the planning entry — the engine's handoff names the skill and its arguments and nothing else, and the walk ends at the recorded call",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",
@@ -46,7 +41,7 @@
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev specification --next planning",
-      "handoff /workflow-planning-entry feature pay"
+      "handoff /workflow-planning-process feature pay"
     ],
     "calls_in_order": [
       "render entry-gate pay.specification.pay",
@@ -57,7 +52,7 @@
       "session label pay",
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev specification --next planning",
-      "handoff /workflow-planning-entry feature pay"
+      "handoff /workflow-planning-process feature pay"
     ],
     "calls_exclude": [
       "topic reopen",

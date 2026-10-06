@@ -6,13 +6,15 @@ specification the session is writing.
 
 The prose should have taken this path:
 
-1. the entry validates the completed source discussion and the
-   in-progress specification item, and hands off to the processing
-   skill
-2. the specification file exists, so Step 0 offers the resume; the
-   first scripted answer continues, which lands on session setup —
-   verification and initialisation are the fresh path's steps and the
-   file's existence means they already ran
+1. the skill asks the engine whether its source discussion has concluded
+   (it has), then reads the specification status once, finds it in
+   progress, emits the resuming phase note, and checks the reconcile
+   flag (absent — silent)
+2. beneath the note, with the specification file found, the
+   continue-or-restart choice follows with no second heading of its own;
+   the first scripted answer continues, which lands on session setup —
+   initialisation is the fresh path's step and the file's existence
+   means it already ran
 3. session setup resets both gate modes to `gated` and finds no stale
    rows; the principles are loaded and construction opens
 4. the one source still reads `pending` and the specification holds
@@ -21,7 +23,7 @@ The prose should have taken this path:
    specification, followed by the engine-rendered construction gate.
    The walk **STOPS**
 5. the second scripted answer does not answer the gate — it puts a
-   capability aside. The processing skill's standing `## Backlogging`
+   capability aside. The specification skill's standing `## Backlogging`
    section routes to backlogging.md with work_unit `pay`, topic `pay`,
    phase `specification`; the pending gate is left to re-present on
    return

@@ -9,4 +9,4 @@ card-only outright. Neither says what a shopper who arrives at checkout
 with a saved wallet method is actually shown.
 
 The context was cleared mid-phase — this session opens cold at the
-entry skill with nothing but the two arguments and what is on disk.
+planning skill with nothing but the two arguments and what is on disk.

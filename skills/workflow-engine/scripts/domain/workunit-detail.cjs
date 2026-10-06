@@ -27,7 +27,7 @@ const {
 
 /**
  * @typedef {object} WorkUnitTypeConfig
- * @property {string} workType     manifest `work_type` value; also the `$0` work_type argument in phase entry routes
+ * @property {string} workType     manifest `work_type` value; also the `$0` work_type argument in phase routes
  * @property {string} resultKey    detail field holding the active units array (legacy per-type key)
  * @property {string} header       `=== {header} (N) ===` line of the labelled dump
  * @property {string} nounPlural   summary noun, empty case (`no active {nounPlural}`)

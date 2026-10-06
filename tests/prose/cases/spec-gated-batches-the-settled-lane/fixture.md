@@ -16,4 +16,4 @@ path and its delivery schedule, and the 30-day refund window; it says
 nothing about an order the gateway never confirms.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

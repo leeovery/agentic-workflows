@@ -1,9 +1,9 @@
 {
   "origin": "A specification review makes two kinds of call and they land in different documents. Where a source states the answer or the record determines it, the call is the record's and the specification is the only thing that changes. Where the record leaves a fork open and first principles over the decisions it made whittle it to one answer the session stands behind, the call is the session's — a decision the owning source document never took — so it lands there first, carrying what leaned and the alternatives that also fit, and the specification re-aligns to it. This walks both through the settled batch: a first screen while the gate is on, where the user hands the rest over, and a second under auto, where the screen documents what landed and never stops. The second screen holds the two derivations side by side, so the landing has to discriminate rather than blanket-apply.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

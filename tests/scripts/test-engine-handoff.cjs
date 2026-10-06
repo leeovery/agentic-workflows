@@ -29,7 +29,7 @@ const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ==
 // Every phase an epic's conclusion can name: its discovery, then its pipeline.
 const EPIC_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 
-// The skill each phase is entered through.
+// The skill each phase runs in — the one a handoff into the phase lands on.
 /** @type {Record<string, string>} */
 const PHASE_SKILLS = {
   research: 'workflow-research-process',
@@ -37,10 +37,10 @@ const PHASE_SKILLS = {
   discussion: 'workflow-discussion-process',
   investigation: 'workflow-investigation-process',
   scoping: 'workflow-scoping-process',
-  specification: 'workflow-specification-entry',
-  planning: 'workflow-planning-entry',
-  implementation: 'workflow-implementation-entry',
-  review: 'workflow-review-entry',
+  specification: 'workflow-specification-process',
+  planning: 'workflow-planning-process',
+  implementation: 'workflow-implementation-process',
+  review: 'workflow-review-process',
 };
 
 const IDEA = '.workflows/.inbox/ideas/2026-01-01--dark-mode.md';
@@ -259,7 +259,7 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a skill no move into work lands on refuses, naming the targets', () => {
-    for (const skill of ['workflow-help', 'workflow-start', 'workflow-bridge', 'workflow-continue-feature', 'workflow-planning-process', 'workflow-log-idea', 'workflow-nonsense-entry']) {
+    for (const skill of ['workflow-help', 'workflow-start', 'workflow-bridge', 'workflow-continue-feature', 'workflow-legacy-research-split', 'workflow-log-idea', 'workflow-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: workflow-discovery, `));
     }
   });
@@ -341,30 +341,30 @@ describe('engine handoff — refusals', () => {
         refused(dir, [skill, type, `${type}-unit`], new RegExp(`^the work type must be .* — got "${type}"$`));
       }
     }
-    refused(dir, ['workflow-planning-entry', 'saga', 'note-window'], /^the work type must be one of epic\|feature\|bugfix — got "saga"$/);
+    refused(dir, ['workflow-planning-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature\|bugfix — got "saga"$/);
   });
 
   it('a phase\'s skill refuses a work unit the project does not hold, or holds as another type', () => {
-    refused(dir, ['workflow-planning-entry', 'feature', 'ghost'], /^work unit "ghost" not found$/);
-    refused(dir, ['workflow-planning-entry', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
-    refused(dir, ['workflow-planning-entry', 'feature', 'none'], /^work unit "none" not found$/);
+    refused(dir, ['workflow-planning-process', 'feature', 'ghost'], /^work unit "ghost" not found$/);
+    refused(dir, ['workflow-planning-process', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['workflow-planning-process', 'feature', 'none'], /^work unit "none" not found$/);
   });
 
   it('a work unit whose manifest does not parse refuses as corrupt, never as a unit not found', () => {
     createFile(dir, '.workflows/broken/manifest.json', '{not json');
-    refused(dir, ['workflow-planning-entry', 'feature', 'broken'], /^invalid JSON in .*\/\.workflows\/broken\/manifest\.json: /);
+    refused(dir, ['workflow-planning-process', 'feature', 'broken'], /^invalid JSON in .*\/\.workflows\/broken\/manifest\.json: /);
     refused(dir, ['workflow-continue-epic', 'broken'], /^invalid JSON in /);
   });
 
   it('a work unit no longer in progress refuses — a handoff moves into work in progress', () => {
     createManifest(dir, 'shipped', { work_type: 'feature', status: 'completed' });
     createManifest(dir, 'dropped', { work_type: 'epic', status: 'cancelled' });
-    refused(dir, ['workflow-review-entry', 'feature', 'shipped'], /^work unit "shipped" is completed — a handoff moves into work in progress$/);
+    refused(dir, ['workflow-review-process', 'feature', 'shipped'], /^work unit "shipped" is completed — a handoff moves into work in progress$/);
     refused(dir, ['workflow-continue-epic', 'dropped'], /^work unit "dropped" is cancelled — a handoff moves into work in progress$/);
   });
 
   it('a name that would break addressing refuses before anything is read', () => {
-    refused(dir, ['workflow-planning-entry', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
+    refused(dir, ['workflow-planning-process', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
     refused(dir, ['workflow-discussion-process', 'epic', 'fumi', 'pay.ments'], /^"pay\.ments" is not a legal topic name/);
     refused(dir, ['workflow-discussion-process', 'epic', 'fumi', 'pay/ments'], /^"pay\/ments" is not a legal topic name/);
     refused(dir, ['workflow-discussion-process', 'epic', 'fumi', ''], /^"" is not a legal topic name/);

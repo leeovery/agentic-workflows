@@ -11,7 +11,7 @@ The grouping analysis has concluded: one proposed specification,
 cache carries a tension line naming the collision the full read
 surfaced. Neither discussion has been reopened; both read completed.
 
-This session opens cold at the specification entry skill with the
+This session opens cold at the specification skill with the
 topic given. Construction must meet the conflict — via the carried
 tension note or its own extraction — stop for the user even though
 nothing else in the phase requires it, and land the user's settled

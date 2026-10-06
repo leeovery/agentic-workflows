@@ -1,10 +1,11 @@
 The prose should have taken this path:
 
-1. the code slot reads free — the code gate renders empty — the plan
-   gate renders empty and the implementation status reads in-progress,
-   so the entry validates and hands off; resume detection reports the
-   resumed mode and announces resuming from a previous session — never
-   the created arm's start-implementation commit
+1. the code slot reads free — the code gate renders empty — then the
+   plan gate renders empty; dependency validation returns immediately,
+   and the implementation status reads in-progress — read once — so
+   tracking resumes with its gates reset, the resuming phase note is
+   emitted, and the reconcile flag reads absent (silent) — never the
+   first start's start-implementation commit
 2. environment setup finds the existing document and asks nothing; the
    plan adapter loads for local-markdown; project skills and linter
    discovery each ask only their skip-again question — the first two
@@ -60,7 +61,7 @@ The prose should have taken this path:
     menu carries all three rows — `y/yes` to proceed, `d/done` to skip
     the review, `r/revisit` for an earlier phase — and the walk STOPS
     once. The fourth scripted answer proceeds
-12. the handoff: the engine's handoff names `workflow-review-entry`
+12. the handoff: the engine's handoff names `workflow-review-process`
     with `feature pay`, the next phase and never a revisited one, and
     the line naming where the work goes is the turn's last text; the
     walk stops at the handoff. No revisit-phases menu is rendered, the

@@ -1,8 +1,9 @@
 The prose should have taken this path:
 
-1. the entry's prerequisite gate renders empty — the discussion is
-   completed — and the specification status reads empty, so this is a
-   new entry; the handoff carries the work into the processing skill
+1. the specification's own source gate renders empty — the discussion
+   is completed — and the specification status reads empty, so this is
+   a first start: no phase note, no resume choice, and the user is
+   asked nothing
 2. the specification pass runs as it did before: registered through
    the engine, extracted gated piece by piece with the described user
    approving faithful content and declining auto, the three-phase
@@ -20,8 +21,8 @@ The prose should have taken this path:
    proceed or revisit, with no skip-review row — planning is not
    review
 6. the described user declines the look back and continues forward
-7. the handoff: the continuation hands the work to the planning entry —
-   the engine's handoff names `workflow-planning-entry` with `feature
+7. the handoff: the continuation hands the work to planning — the
+   engine's handoff names `workflow-planning-process` with `feature
    pay`, the next phase and never a revisited one — and the line naming
    where the work goes is the turn's last text; the walk stops at the
    handoff
@@ -30,7 +31,7 @@ Further claims:
 
 - the specification item ends completed with its source incorporated;
   the work unit stays in-progress — never completed, never cancelled
-- no planning item exists and no planning entry was invoked — the
-  planning entry starts in the next context, not in this one
+- no planning item exists and the planning skill was never invoked —
+  planning starts in the next context, not in this one
 - the specification file matches the discussion's decisions with the
   wallet deferral out of scope

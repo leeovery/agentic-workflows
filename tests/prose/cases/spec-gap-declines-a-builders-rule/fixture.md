@@ -17,4 +17,4 @@ path and its delivery schedule, and the refund window; the size of a
 refund never comes up there either.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.
