@@ -105,9 +105,38 @@ working material until the design settles and removed before it merges:
   transition and every target's argument contract (the handoff table was
   built from it).
 
+What the mod handoff stack (v0.8.10, `design/mod-handoff.md`) moved since
+the audits were taken — read them through it:
+
+- Every move into work hands off through `workflow-shared/references/handing-off.md`,
+  loaded with one `route` (`/{skill} {args}`); `engine handoff`
+  (`domain/handoff.cjs`) holds the table of targets, its argument checks,
+  and `entrySkill(phase)`, the one home of the `workflow-{phase}-entry`
+  name the epic and work-unit projections build routes from. Retargeting
+  the handoffs to the phase skills is that table, those projections, and
+  the route audit in the pipeline simulation.
+- Plan mode is gone: the bridge's continuations, review's route back to
+  implementation and a specification's gap pause (now through the bridge,
+  `PAUSING_PHASES`) all hand off; the handoff-sites audit's plan-mode rows
+  are history.
+- `workflow-continue-epic` takes `$1` completed_phase and `$2` outcome and
+  leads its menu with `references/banner-and-completion.md` (the paused
+  or completed banner, the completion offer); its backfill hands the menu
+  off to start afresh. Pivot and absorb pass the epic's name, so every
+  continue skill's pick-a-unit step is unreachable.
+- Research and discussion leave through one in-flight check
+  (`workflow-shared/references/in-flight-agents.md`, `--pause` for a
+  pause), and a conclusion's recap sits above its conclusion gate.
+- About 150 of 190 prose cases enter through an entry skill; a handoff
+  ends a walk (`tests/prose/lib/announce-handoff.cjs`), and the entry rule
+  in `tests/prose/lib/cases.cjs` admits the skills a handoff lands on.
+
 ## Log
 
 - 2026-10-03 — opened from the mod handoff programme's audits; E1 and E2
   carried in; builds after that stack lands.
 - 2026-10-06 — the framework load raised from the mod handoff's walks
   (the epic menu's in-place re-read skipped in three of four walks).
+- 2026-10-06 — the mod handoff stack landed (v0.8.10); what it moved is
+  listed under Material. The design opens on the two questions raised
+  first.
