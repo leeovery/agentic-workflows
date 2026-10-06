@@ -1,30 +1,41 @@
 {
-  "origin": "the epic menu's d door took a free-typed name that already sat on the map and started a discussion on it, beneath research that had not run — the map's next action never had a vote at that door; the entry the door hands off to now refuses the name",
-  "entry": "workflow-discussion-entry",
+  "origin": "the epic menu's d door took a free-typed name that already sat on the map and started a discussion on it, beneath research that had not run — the map's next action never had a vote at that door; the door now refuses the name and puts the menu back, where the topic's own row is the way in",
+  "entry": "workflow-continue-epic",
   "files": [
+    "skills/workflow-continue-epic/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-discussion-entry/SKILL.md"
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-continue-epic/references/new-topic.md"
   ],
   "answers": [
-    "synonym-handling"
+    "d — start a discussion on a new topic",
+    "synonym handling"
   ],
   "invariants": {
     "calls_include": [
       "render direct-entry-gate search-relevance.discussion.synonym-handling"
     ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render direct-entry-gate search-relevance.discussion.synonym-handling",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
     "calls_exclude": [
-      "topic start",
+      "manifest get search-relevance.discovery",
       "discovery-map add",
       "discovery-map sequence",
-      "discussion-map add",
+      "topic start",
       "manifest set",
       "engine.cjs commit",
-      "workflow-discussion-process"
+      "engine.cjs handoff"
     ]
   }
 }

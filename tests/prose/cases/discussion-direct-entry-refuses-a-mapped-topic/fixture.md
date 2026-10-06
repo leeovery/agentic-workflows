@@ -8,6 +8,7 @@ each with a summary, a description, a brief under `discovery/briefs/`,
 and an `order` of 1..3. No per-phase work exists anywhere: no research
 has started, no discussion has been opened.
 
-The user picked the epic menu's `d` row — start a discussion on a new
-topic — and the work was handed to the discussion entry: the session
-opens cold there with the epic's name and no topic.
+The map is already sequenced, both analysis caches are absent, nothing
+qualifies for the legacy backfills, and the active-session marker is
+cleared. The session opens on the epic's menu, the way the start menu
+opens it.

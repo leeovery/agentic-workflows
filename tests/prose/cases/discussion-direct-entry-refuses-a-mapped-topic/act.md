@@ -1,4 +1,4 @@
-Execute skills/workflow-discussion-entry/SKILL.md with arguments
-$0=epic and $1=search-relevance — no topic. Answer as the scripted
-user. Stop the moment the prose reaches a terminal condition or moves
-the work to another skill — whichever comes first.
+Execute skills/workflow-continue-epic/SKILL.md with the argument
+$0=search-relevance. Answer as the scripted user. Stop the moment the
+prose waits for an answer the script no longer holds, reaches a terminal
+condition, or moves the work to another skill — whichever comes first.

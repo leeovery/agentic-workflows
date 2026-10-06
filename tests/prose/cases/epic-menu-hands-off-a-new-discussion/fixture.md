@@ -12,5 +12,5 @@ sequencing step. Both analysis caches are absent and nothing qualifies
 for the legacy backfills. The active-session marker is cleared, so no
 resume detection fires.
 
-The user wants a discussion on a topic the map does not hold, and names
-it as they pick the menu's row.
+The session opens on the epic's menu, the way the start menu opens it.
+The user wants a discussion on a topic the map does not hold.
