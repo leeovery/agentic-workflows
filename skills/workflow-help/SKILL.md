@@ -16,12 +16,6 @@ Project-level and outside the pipeline — no work unit, no phases, no session l
 
 ---
 
-## Instructions
-
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
-
----
-
 ## Step 0: Initialisation
 
 Nothing to initialise: migrations and the knowledge base are workflow-start's, and help is no place to work, so it takes no session label. Any argument is ignored — the entry is the home.

@@ -12,12 +12,6 @@ Act as **curator + interviewer**. Walk the user through decomposing broad resear
 
 ---
 
-## Instructions
-
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
-
----
-
 ## Step 1: List Qualifying Sources
 
 > *Output the next fenced block as markdown (not a code block):*

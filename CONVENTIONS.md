@@ -762,13 +762,15 @@ Load directive → reference file
 
 ### The Framework Load
 
-Every flow skill opens its `## Instructions` section with one line and nothing else:
+The framework loads once per conversation, at the head of the skill the conversation opens on — `workflow-start`, or a skill a handoff lands on (`OPENING_SKILLS` in `workflow-engine/scripts/domain/handoff.cjs`). Each of those skills opens its `## Instructions` section with one line and nothing else:
 
 ```markdown
 ## Instructions
 
 Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
 ```
+
+Where one of them is opened later in a conversation — the epic menu from the start menu — it carries on from the load already made. A skill only ever opened in place — the bridge, help, the linear continue skill, the legacy research split — carries no framework load and no `## Instructions` section. Lint check 27 holds both halves.
 
 `framework.md` is pure composition — it loads the conventions that hold for every skill (`instructions.md`, `casing-conventions.md`, `voice.md`, `altitude.md`, `ask-or-decide.md`) and carries no content of its own. Anything universal joins that list rather than being copied into skill heads — except a rule that fires only at a moment, which a line in `instructions.md` loads at that moment (`answering-how-it-works.md`, at a question about how the workflows work). A rule only some phases use loads from those phases' own guidelines (`devils-advocate.md`), never the framework. Never restate a framework rule inline in a skill: a second copy is a second source of truth, and the copies drift.
 

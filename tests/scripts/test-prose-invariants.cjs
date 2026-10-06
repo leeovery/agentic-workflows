@@ -797,8 +797,8 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-baseline'), []);
   });
 
-  it('accepts help, the start menu\'s own row', () => {
-    assert.deepEqual(cases.entryErrors('workflow-help'), []);
+  it('rejects help — only ever opened in place, from the start menu\'s own row', () => {
+    assert.match(cases.entryErrors('workflow-help')[0], /not somewhere a session starts/);
   });
 
   it('rejects any other navigation skill — always invoked by workflow-start, never cold', () => {

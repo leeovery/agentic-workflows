@@ -18,6 +18,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { RENDER_FORMS: FORMS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
+const { OPENING_SKILLS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
@@ -1131,6 +1132,54 @@ function checkInstalledDispatchPaths(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 27 — the framework loads once per conversation, at the head of the
+// skill the conversation opens on (CONVENTIONS' The Framework Load): each of
+// the engine's OPENING_SKILLS — workflow-start, the user's way in, and every
+// skill a handoff lands on — opens its `## Instructions` section on the
+// framework load. Every other workflow backbone carries neither the section
+// nor the load: a skill only ever opened in place runs in a conversation that
+// already holds the framework, and the capture skills are exempt.
+// ---------------------------------------------------------------------------
+
+const FRAMEWORK_LOAD = 'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written';
+const INSTRUCTIONS = /^##\s+Instructions\s*$/;
+const HEAD_LOAD = /^(?:→\s+)?Load \*\*\[framework\.md\]\(/;
+
+// The `## Instructions` heading's line and the first line written beneath it,
+// or null where the backbone has no such section.
+function instructionsOpening(lines, inFence) {
+  const heading = lines.findIndex((l, i) => !inFence[i] && INSTRUCTIONS.test(l));
+  if (heading === -1) return null;
+  let i = heading + 1;
+  while (i < lines.length && lines[i].trim() === '') i++;
+  return { heading, first: lines[i] || '' };
+}
+
+function checkFrameworkLoad(files) {
+  const out = [];
+  for (const file of files) {
+    const name = skillNameOf(file);
+    if (!name || !name.startsWith('workflow-')) continue;
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    if (OPENING_SKILLS.includes(name)) {
+      const opening = instructionsOpening(lines, inFence);
+      if (!opening || !opening.first.startsWith(FRAMEWORK_LOAD)) {
+        const line = (opening ? opening.heading : firstContentIndex(lines)) + 1;
+        out.push({ file, line, message: `${name} is a skill a conversation opens on — its \`## Instructions\` section opens with the framework load` });
+      }
+      continue;
+    }
+    lines.forEach((line, i) => {
+      if (!inFence[i] && (INSTRUCTIONS.test(line) || HEAD_LOAD.test(line))) {
+        out.push({ file, line: i + 1, message: `${name} is not a skill a conversation opens on — it carries no framework load and no \`## Instructions\` section` });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1158,6 +1207,7 @@ const CHECKS = [
   ['24: rendering instructions name one of four forms over a fence carrying its tag', checkRenderForms],
   ['25: a dispatch names its mode, and a waited-on one its closing sentence', checkDispatchLines],
   ['26: a path a dispatch hands an agent is written as installed', checkInstalledDispatchPaths],
+  ['27: the framework loads at the head of the skills a conversation opens on', checkFrameworkLoad],
 ];
 
 // ---------------------------------------------------------------------------
@@ -2257,6 +2307,41 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
     assert.match(v[2].message, /^\*\*Agent file\*\* names `agents\/workflow-x-worker\.md`/);
     assert.match(v[5].message, /names `output-formats\/\{format\}\/reading\.md`/);
     assert.match(v[8].message, /names `skills\/workflow-x\/references\/criteria\.md`/);
+  });
+});
+
+test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside the workflows', () => {
+  withTemp((dir) => {
+    const LOAD = 'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.';
+    const start = write(dir, 'skills/workflow-start/SKILL.md', [
+      '---', 'name: workflow-start', '---', '', 'Entry.', '', '## Instructions', '',
+      'Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written — after the banner.',
+      '', '---', '', '## Step 0: Boot', '', 'Boot.', '',
+    ].join('\n'));
+    const RELOAD = '1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).**';
+    const phase = write(dir, 'skills/workflow-review-process/SKILL.md', [
+      '# Review', '', '## Instructions', '', LOAD, '', '---', '', '## Resuming After Context Refresh', '', RELOAD, '',
+    ].join('\n'));
+    const bridge = write(dir, 'skills/workflow-bridge/SKILL.md', ['Decide where the work goes.', '', '## Step 1: Route', '', RELOAD, ''].join('\n'));
+    const capture = write(dir, 'skills/workflow-log-idea/SKILL.md', 'Capture an idea.\n');
+    const fenced = write(dir, 'skills/workflow-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
+    const tooling = write(dir, '.claude/skills/create-output-format/SKILL.md', `## Instructions\n\n${LOAD}\n`);
+    const ok = checkFrameworkLoad([start, phase, bridge, capture, fenced, tooling]);
+    assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
+
+    const missing = write(dir, 'skills/workflow-discovery/SKILL.md', ['---', 'name: workflow-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
+    const late = write(dir, 'skills/workflow-roadmap/SKILL.md', ['# Roadmap', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
+    const inPlace = write(dir, 'skills/workflow-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
+    const v = checkFrameworkLoad([missing, late, inPlace]);
+    assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
+      ['workflow-discovery', 5],
+      ['workflow-roadmap', 3],
+      ['workflow-continue-linear', 3],
+      ['workflow-continue-linear', 5],
+      ['workflow-continue-linear', 11],
+    ], `each miss is caught once, at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^workflow-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
+    assert.match(v[2].message, /^workflow-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
   });
 });
 

@@ -8,12 +8,6 @@ Continue an in-progress feature, bugfix, quick-fix or cross-cutting concern. Det
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
-## Instructions
-
-Load **[framework.md](../workflow-shared/references/framework.md)** and follow its instructions as written.
-
----
-
 ## Step 1: Display State and Menu
 
 This skill receives one positional argument:

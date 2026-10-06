@@ -18,7 +18,7 @@ const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, PAUSING_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
-const { HANDOFF_TARGETS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS, OPENING_SKILLS } = require('../../skills/workflow-engine/scripts/domain/handoff.cjs');
 
 const ANNOUNCED = { WORKFLOWS_HANDOFF: '1' };
 
@@ -189,6 +189,10 @@ describe('engine handoff — the composed answer for every target', () => {
     assert.deepStrictEqual(Object.keys(PHASE_SKILLS).sort(), [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())].sort());
     assert.deepStrictEqual([...HANDOFF_TARGETS].sort(),
       ['workflow-baseline', 'workflow-continue-epic', 'workflow-discovery', 'workflow-roadmap', ...Object.values(PHASE_SKILLS)].sort());
+  });
+
+  it('a conversation opens on workflow-start or a skill a handoff lands on — and on nothing else', () => {
+    assert.deepStrictEqual([...OPENING_SKILLS].sort(), ['workflow-start', ...HANDOFF_TARGETS].sort());
   });
 
   it('every target is a skill on disk — a handoff never names one that is not there', () => {

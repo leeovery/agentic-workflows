@@ -37,13 +37,14 @@
 // build must be built.
 //
 // `entry` names where the walk starts, and it may only be somewhere a
-// real session starts: `workflow-start` (the user's way in), a skill a
-// handoff lands the work on in a fresh context — every target the
-// engine's handoff table holds: a phase's skill, the epic menu,
-// discovery, the roadmap, the baseline — or `workflow-help` (the start
-// menu's `h/help` row, terminal for workflow-start). Nothing else is a
-// legitimate opening — the other navigation skills and the bridge are
-// always invoked mid-session, and a reference is never entered directly.
+// real session starts — one of the engine's OPENING_SKILLS:
+// `workflow-start` (the user's way in) or a skill a handoff lands the work
+// on in a fresh context — a phase's skill, the epic menu, discovery, the
+// roadmap, the baseline. Nothing else is a legitimate opening — help, the
+// linear continue menu, the bridge and the legacy research split are only
+// ever opened in place, mid-session, and a reference is never entered
+// directly. A case about help enters at workflow-start and picks the start
+// menu's `h/help` row.
 //
 // This matters because a walk carries only the context it accumulates.
 // Start one in the middle and the world may be right while the reading
@@ -64,7 +65,7 @@
 const fs = require('fs');
 const path = require('path');
 const invariants = require('./invariants.cjs');
-const { HANDOFF_TARGETS } = require('../../../skills/workflow-engine/scripts/domain/handoff.cjs');
+const { OPENING_SKILLS } = require('../../../skills/workflow-engine/scripts/domain/handoff.cjs');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
@@ -182,18 +183,15 @@ function headingExists(absPath, anchor) {
 }
 
 /**
- * Where a walk may begin. A session starts at workflow-start, wherever a
- * handoff lands the work — the engine's handoff table holds each such
- * skill — or at help, the start menu's own row; never anywhere else.
+ * Where a walk may begin: a skill a conversation opens on — workflow-start or
+ * wherever a handoff lands the work — never anywhere else.
  */
-const SESSION_STARTS = new Set(['workflow-start', 'workflow-help', ...HANDOFF_TARGETS]);
-
 function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
-  if (!SESSION_STARTS.has(entry)) {
-    return [`entry "${entry}" is not somewhere a session starts — use workflow-start, workflow-help, `
-      + `or a skill a handoff lands on (${HANDOFF_TARGETS.join(', ')}). The other navigation skills `
-      + 'and the bridge are only ever reached mid-session, and a reference never directly'];
+  if (!OPENING_SKILLS.includes(entry)) {
+    return [`entry "${entry}" is not somewhere a session starts — use a skill a conversation opens on `
+      + `(${OPENING_SKILLS.join(', ')}). Help, the linear continue menu, the bridge and the legacy `
+      + 'research split are only ever opened in place, mid-session, and a reference never directly'];
   }
   return [];
 }
