@@ -11,7 +11,7 @@ Write 1-2 task files directly using the chosen output format. No planning agents
 Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md`:
 
 ```markdown
-# Plan: {Topic:(titlecase)}
+# Plan: {topic:(titlecase)}
 
 ## Phase 1: Apply Change
 

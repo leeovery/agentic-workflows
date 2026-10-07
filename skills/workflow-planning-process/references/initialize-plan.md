@@ -86,7 +86,7 @@ Emit the call's MENU section verbatim per its marker.
 
 1. Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{chosen-format}`.
 2. Capture the current git commit hash: `git rev-parse HEAD`
-3. Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md` with the title `# Plan: {Topic Name}`, then a section for each input **A** and **B** gathered — written only where it has content, and read from here for the rest of the plan:
+3. Create the planning file at `.workflows/{work_unit}/planning/{topic}/planning.md` with the title `# Plan: {topic:(titlecase)}`, then a section for each input **A** and **B** gathered — written only where it has content, and read from here for the rest of the plan:
    - `## Plan Context` — the context the user added at **A**, in their words.
    - `## Cross-Cutting References` — one bullet per specification **B** held: its work unit in bold, its specification path, and its summary.
 4. Start the planning item — the engine creates it with `status: in-progress`:
