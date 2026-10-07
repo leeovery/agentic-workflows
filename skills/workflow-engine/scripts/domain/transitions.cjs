@@ -348,7 +348,7 @@ function nextConcernNumber(dirAbs) {
  * source's); every other phase flags the same-named item in the work type's
  * next pipeline phase, as does an investigation no spec's sources name (the
  * legacy bugfix shape). The experiment slot is walked past unconditionally —
- * a flag must land where an entry flow can clear it, and the series item
+ * a flag must land where a phase's start can clear it, and the series item
  * has none.
  * A `completed` item takes the flag (value = the upstream phase name,
  * consumed and cleared by the reconcile advisory — where the phase starts,
@@ -407,8 +407,8 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
   const at = pipeline.indexOf(phase);
   // One hop to the next pipeline phase — walking past a derived slot
-  // unconditionally: a reconcile flag must land where an entry flow can
-  // clear it, and a derived item has no entry of its own (its only flag
+  // unconditionally: a reconcile flag must land where a phase's start can
+  // clear it, and a derived item has no start of its own (its only flag
   // edges are the wait release, which flags the holder, and a parent
   // conclusion, which runs this walk from the slot). So a research reopen
   // flags the discussion whatever the series between them holds, and the

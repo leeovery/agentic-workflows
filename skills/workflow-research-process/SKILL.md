@@ -129,15 +129,13 @@ Set `resumed` from where the reference returns: `true` for **Step 2**, the earli
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
 
-#### If `phase_status` is `postponed`
+#### If `phase_status` is `postponed` or `cancelled`
 
-The topic waits on the roadmap — it returns through the epic menu's `f/forward` row, never through this skill. Tell the user in one line.
+Render the terminal blocker — the engine derives which from the item's status — and emit both sections verbatim per their markers:
 
-**STOP.** Do not proceed — terminal condition.
-
-#### If `phase_status` is `cancelled`
-
-The topic is cancelled — it returns through the epic menu's reactivate option, never through this skill. Tell the user in one line.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.research.{topic} --own
+```
 
 **STOP.** Do not proceed — terminal condition.
 

@@ -1,6 +1,6 @@
 # Handing Off
 
-*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu, the continue menus, the bridge's continuations, review's route back to implementation, and the epic menu's backfill.*
+*Shared reference. Loaded wherever the work moves into a skill that starts it — the start menu, the continue menus, the bridge's continuations, review's route back to implementation, the laboratory's back from its record picker, and the epic menu's backfill.*
 
 ---
 

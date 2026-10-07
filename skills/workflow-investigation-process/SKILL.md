@@ -17,6 +17,8 @@ Investigation combines:
 
 The user collaborates throughout — the investigation plan, the findings, and the fix direction are each agreed, not announced. The output becomes source material for a specification focused on the fix approach.
 
+**Stay in your lane**: Investigate the bug — gather symptoms, trace code, find root cause. Don't jump to fixing or implementing. This is the time for deep analysis.
+
 ### What This Skill Needs
 
 Positional arguments:

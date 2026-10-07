@@ -10,7 +10,7 @@ This is **not** a speculative dump. It is a focused check using the best context
 
 ## A. Construct the query
 
-Build a short natural-language description of what this phase is about using whatever context you have at hand: the topic description, the handoff context, bootstrap answers already captured, the problem statement, and — for investigation — the initial symptoms.
+Build a short natural-language description of what this phase is about using whatever context you have at hand: the topic description, the interview's answers when it ran, the problem statement, and — for investigation — the initial symptoms.
 
 Follow the construction rules in **[knowledge-usage.md](knowledge-usage.md)** — **B. How to construct queries** (natural language, not slugs; batch for multiple angles). If you have several distinct framings, batch them in one call.
 

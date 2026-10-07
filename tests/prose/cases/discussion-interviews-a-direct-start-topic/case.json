@@ -1,0 +1,58 @@
+{
+  "origin": "the epic menu's d door starts a topic with no brief and no carrier — its name and a line drawn from it are all the map holds — so the discussion's own start must run the interview before it registers anything; no case walked that interview once the phase began starting in its own skill",
+  "entry": "workflow-discussion-process",
+  "world": "claims",
+  "files": [
+    "skills/workflow-discussion-process/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-shared/references/ensure-discovery-item.md",
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/read-prior-record.md",
+    "skills/workflow-discussion-process/references/gather-context.md",
+    "skills/workflow-discussion-process/references/template.md"
+  ],
+  "conduct": "The user leads search for the catalogue and named this topic a moment ago because of what they see in the query logs. Shoppers type three kinds of thing into the one search box: a brand name on its own — about a third of all queries — which today lands on a keyword results page instead of the brand's page; a product with a constraint, like 'red dress under 50', where the colour and the price are matched as plain keywords and the constraint is ignored; and how-to questions like 'how to wash wool', which return products when the care guides would answer them. They want search to tell these apart before it answers. Their constraints: catalogue search runs on Elasticsearch, two engineers own search part-time, and there is no model-serving infrastructure — anything that needs a hosted model is out for this release. They answer each question in a sentence or two, in their own words, and they do not know which files parse queries — they say so rather than guess.",
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate search-relevance.discussion.query-intent",
+      "manifest get search-relevance.discussion.query-intent status",
+      "manifest get search-relevance.discovery.query-intent brief_path",
+      "manifest get search-relevance.discovery.query-intent description",
+      "manifest set search-relevance.discovery.query-intent brief_incorporated true",
+      "manifest get search-relevance.research.query-intent status",
+      "manifest get search-relevance.discovery.query-intent source",
+      "topic start search-relevance discussion query-intent",
+      "discussion-map add search-relevance query-intent",
+      "discussion(search-relevance): initialize query-intent discussion"
+    ],
+    "calls_in_order": [
+      "render entry-gate search-relevance.discussion.query-intent",
+      "manifest get search-relevance.discussion.query-intent status",
+      "manifest get search-relevance.discovery.query-intent brief_path",
+      "manifest set search-relevance.discovery.query-intent brief_incorporated true",
+      "manifest get search-relevance.discovery.query-intent source",
+      "topic start search-relevance discussion query-intent",
+      "write:.workflows/search-relevance/discussion/query-intent.md",
+      "discussion-map add search-relevance query-intent",
+      "discussion(search-relevance): initialize query-intent discussion"
+    ],
+    "calls_exclude": [
+      "discovery-map add",
+      "render phase-note",
+      "render resume-gate",
+      "topic reopen",
+      "topic complete",
+      "engine.cjs knowledge query",
+      "engine.cjs knowledge index",
+      "workunit create"
+    ]
+  }
+}

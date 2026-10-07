@@ -2820,6 +2820,11 @@ describe('pipeline simulation', () => {
     assert.strictEqual(m.phases.discovery.items.auth.cancelled, true);
     assert.ok(!epicMenu(wu, detail()).keys.some((k) => k.action === 'continue_experiment'), 'no live record, no laboratory row');
     assert.deepStrictEqual(cancelledUnits(), ['discovery/auth']);
+    // Either conversation's start refuses the cancelled topic in the red register, naming the reactivate.
+    for (const phase of ['research', 'discussion']) {
+      assert.match(sim.render(['entry-gate', `${wu}.${phase}.auth`, '--own'], { expect: 'content' }),
+        /⚑ "Auth" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
+    }
 
     // The reactivate restores both conversations with the release flag live,
     // and the parked research holds the discussion's conclusion as before —
@@ -2828,6 +2833,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(back.restored, [{ phase: 'research', status: 'triaged' }, { phase: 'discussion', status: 'in-progress' }]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
       /Reactivated "Auth"\. Restored research \[triaged\] · discussion \[in-progress\]\./);
+    for (const phase of ['research', 'discussion']) sim.render(['entry-gate', `${wu}.${phase}.auth`, '--own'], { expect: 'empty' });
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'experiment', 'the flag is live again');
     sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
     sim.refuses(['topic', 'complete', wu, 'discussion', 'auth'], /awaits research on the topic — conclude the research to release the wait/);
@@ -3180,6 +3186,8 @@ describe('pipeline simulation', () => {
     ]);
     assert.strictEqual(d.discovery_map.find((r) => r.name === 'researched').lifecycle, 'postponed');
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.researched`, 'status']), 'postponed');
+    assert.match(sim.render(['entry-gate', `${wu}.research.researched`, '--own'], { expect: 'content' }),
+      /⚑ "Researched" is postponed to the roadmap[\s\S]*> Pull it forward from the epic menu \(`f\/forward`\)\./);
     assert.strictEqual(derivations.phaseStatus(sim.manifest(wu), 'research'), null, 'the only research item is postponed — the phase aggregates to nothing');
     assert.strictEqual(d.needs_sequencing, false, 'a postponed row carries no order and asks for none');
     assert.strictEqual(d.convergence_state, 'settled', 'a topic that has left holds convergence open no more than a cancelled one');
@@ -3218,6 +3226,7 @@ describe('pipeline simulation', () => {
       /Pulled "Researched" forward\. Restored research \[completed\]\./);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.researched.order, 2, 'the map order returns');
     assert.strictEqual(sim.manifest(wu).phases.research.items.researched.status, 'completed');
+    sim.render(['entry-gate', `${wu}.research.researched`, '--own'], { expect: 'empty' });
     assert.strictEqual('postponed_from' in sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched'), false);
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'in-flight');
 
@@ -3235,6 +3244,9 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(detail().postponed.filter((t) => t.waiting), []);
     assert.deepStrictEqual(pullable(), []);
     assert.ok(!menuActions().includes('pull_forward_topic'));
+    const stranded = sim.render(['entry-gate', `${wu}.discussion.decided`, '--own'], { expect: 'content' });
+    assert.match(stranded, /> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\./);
+    assert.ok(!stranded.includes('f/forward'));
 
     // A pulled-from-roadmap topic postponed again re-waits its own item.
     sim.run(['topic', 'postpone', next, 'decided', '--horizon', 'someday']);
@@ -5354,6 +5366,11 @@ describe('pipeline simulation', () => {
     const third = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'stacking-order', '--from', 'discussion',
       '--problem', sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
     assert.strictEqual(third.id, 'E3');
+    // Entered over two live records, the laboratory puts the pick to the
+    // user, and a back out of it hands the work to the epic menu with no
+    // banner — nothing ended.
+    assert.match(sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' }), /b\/back/);
+    handoff(sim, `/workflow-continue-epic ${wu}`);
     const dropped = sim.run(['experiment', 'abandon', wu, 'timing', 'E2', '--reason', 'settled by E1 after all']);
     assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: ['E3'] }]);
     assert.strictEqual(dropped.item_status, 'in-progress', 'a live sibling keeps the item open');
