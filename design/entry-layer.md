@@ -271,45 +271,6 @@ Measured, main → the stack (bytes read): a typical start 42,195 →
 32,015; a discussion's opening 42,987 → 34,254; the linear continue menu
 7,837 → 5,003; skills 38 → 26.
 
-## Material
-
-Two audits, taken at `0b05093e7` (v0.8.9, before the mod handoff stack),
-working material for the build and removed before the design merges:
-
-- `design/entry-layer/audit-entry-layer.md` — each entry skill step by
-  step with who reaches each branch, the continue skills diffed, start's
-  sub-steps sized, the legacy residue, the suggested shape.
-- `design/entry-layer/audit-handoff-sites.md` — every skill-to-skill
-  transition and every target's argument contract (the handoff table was
-  built from it).
-
-What the mod handoff stack (v0.8.10, `design/mod-handoff.md`) moved since
-the audits were taken — read them through it:
-
-- Every move into work hands off through `workflow-shared/references/handing-off.md`,
-  loaded with one `route` (`/{skill} {args}`); `engine handoff`
-  (`domain/handoff.cjs`) holds the table of targets, its argument checks,
-  and `entrySkill(phase)`, the one home of the `workflow-{phase}-entry`
-  name the epic and work-unit projections build routes from.
-- Plan mode is gone: the bridge's continuations, review's route back to
-  implementation and a specification's gap pause (now through the bridge,
-  `PAUSING_PHASES`) all hand off; the handoff-sites audit's plan-mode rows
-  are history, as are the bridge's own epic boot sequence and the
-  backfill's `/clear` wording.
-- `workflow-continue-epic` takes `$1` completed_phase and `$2` outcome and
-  leads its menu with `references/banner-and-completion.md` (the paused
-  or completed banner, the completion offer); its backfill hands the menu
-  off to start afresh. Pivot and absorb pass the epic's name.
-- Research and discussion leave through one in-flight check
-  (`workflow-shared/references/in-flight-agents.md`, `--pause` for a
-  pause), and a conclusion's recap sits above its conclusion gate.
-- About 150 of 190 prose cases enter through an entry skill; a handoff
-  ends a walk (`tests/prose/lib/announce-handoff.cjs`), and the entry rule
-  in `tests/prose/lib/cases.cjs` admits the skills a handoff lands on.
-
-Re-verified against v0.8.11 (2026-10-06): every other audit finding holds,
-`analysis-rerun` excepted (S7).
-
 ## Log
 
 - 2026-10-03 — opened from the mod handoff programme's audits; E1 and E2
