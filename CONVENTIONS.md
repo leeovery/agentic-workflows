@@ -925,10 +925,8 @@ Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge
 | Name | Purpose |
 |------|---------|
 | `gather-context.md` | User interview / context gathering questions |
-| `route-scenario.md` | Scenario routing (for skills with branching) |
-| `validate-{thing}.md` | Pre-flight validation (plan exists, spec completed, etc.) |
+| `validate-{thing}.md` | Pre-flight validation (the selected work unit exists, etc.) |
 | `display-{variant}.md` | Display outputs (for skills with multiple displays) |
 | `analysis-flow.md` | Multi-step analysis logic |
-| `confirm-and-handoff.md` | Confirmation prompt + skill invocation combined |
 
 Not every skill needs all of these.

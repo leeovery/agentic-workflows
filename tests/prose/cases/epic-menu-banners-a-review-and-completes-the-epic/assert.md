@@ -27,7 +27,7 @@ Further claims:
 - the epic's dashboard and menu never render — the `view` snapshot is
   never fetched — and no route is taken: completing the epic ends the
   flow
-- no handoff is made and no phase entry is invoked
+- no handoff is made and no phase skill is invoked
 - the banner is the completed banner, rendered once, before the gate;
   the gate is fetched once
 - nothing is written by hand: the completion is the engine's own

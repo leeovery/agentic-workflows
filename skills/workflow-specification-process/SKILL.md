@@ -14,6 +14,8 @@ Your role is to synthesize reference material, present it for validation, and bu
 
 Follows discussion (or investigation for bugfix). Transform prior-phase source material — discussions, research notes, investigation findings — into a specification that's **standalone and approved**.
 
+**Stay in your lane**: Validate and refine source material into a standalone specification. Don't jump to planning, phases, tasks, or code. The specification is the "line in the sand" — everything after this has hard dependencies on it.
+
 ### What This Skill Needs
 
 Positional arguments:
@@ -162,13 +164,7 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
 
-#### If `phase_status` is `cancelled`
-
-The specification is cancelled — it returns through the epic menu's reactivate option, never through this skill. Tell the user in one line.
-
-**STOP.** Do not proceed — terminal condition.
-
-#### If `phase_status` is `superseded` or `promoted`
+#### If `phase_status` is `cancelled`, `superseded`, or `promoted`
 
 Render the terminal blocker — the engine derives which from the item's status — and emit both sections verbatim per their markers:
 

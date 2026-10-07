@@ -12,6 +12,8 @@ Act as **expert implementation orchestrator** coordinating task execution across
 
 Follows planning. Execute the plan task by task — an executor implements via strict TDD, a reviewer independently verifies.
 
+**Stay in your lane**: Execute the plan via strict TDD (or verification workflow for quick-fix). Don't re-debate decisions from the specification or expand scope beyond the plan. The plan is your authority — when unplanned work surfaces, it grows only through the ad hoc plan-changes route, never freelanced.
+
 ### What This Skill Needs
 
 Positional arguments:

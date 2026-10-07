@@ -160,8 +160,9 @@ any harness substitutions. Follow it exactly.
   live session the mod clears the conversation and the next skill starts
   in a fresh one, so nothing after that call is this walk's — never read
   on into the skill it names. Expected, not a `DEVIATION`, no marker.
-  Every other skill the prose invokes — an entry its processing skill, a
-  phase the bridge — runs in place, and the walk goes on into it.
+  Every other skill the prose invokes — a phase skill the bridge, the
+  start menu a continue menu — runs in place, and the walk goes on into
+  it.
 - **An inline `` !`command` `` directive will not have run.** That
   substitution happens when a skill is loaded live; here the prose is read
   as a file, so the literal backtick line is what you see. The prose gives

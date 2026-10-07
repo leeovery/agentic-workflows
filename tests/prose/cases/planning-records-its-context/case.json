@@ -1,0 +1,66 @@
+{
+  "origin": "planning's start was walked only carrying nothing forward — the context offer answered continue, no cross-cutting unit in the project — so nothing walked a fresh plan with something to record: the person's late context and a completed cross-cutting specification bearing on the plan, held through the format choice and written into the planning file as it opens",
+  "entry": "workflow-planning-process",
+  "world": "claims",
+  "files": [
+    "skills/workflow-planning-process/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-planning-process/references/initialize-plan.md",
+    "skills/workflow-planning-process/references/cross-cutting-context.md",
+    "skills/workflow-shared/references/knowledge-usage.md",
+    "skills/workflow-shared/references/format-version-check.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/about.md",
+    "skills/workflow-planning-process/references/output-formats/local-markdown/authoring.md"
+  ],
+  "answers": [
+    "The payments team wants the capture webhooks working first — they'll exercise them against the gateway sandbox for a week before the checkout side goes live, so order the work webhook-first.",
+    "y — local markdown again"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render plan-context-gate pay.planning.pay",
+      "manifest list --work-type cross-cutting",
+      "engine.cjs knowledge query",
+      "--work-type cross-cutting --phase specification",
+      "render cross-cutting-references --file",
+      "manifest get project.defaults.plan_format",
+      "render plan-format-gate",
+      "topic start pay planning pay",
+      "format=local-markdown",
+      "manifest set project.defaults.plan_format local-markdown",
+      "planning(pay): initialize plan"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
+      "render plan-context-gate pay.planning.pay",
+      "manifest list --work-type cross-cutting",
+      "engine.cjs knowledge query",
+      "render cross-cutting-references --file",
+      "manifest get project.defaults.plan_format",
+      "render plan-format-gate",
+      "write:.workflows/pay/planning/pay/planning.md",
+      "topic start pay planning pay",
+      "planning(pay): initialize plan"
+    ],
+    "calls_exclude": [
+      "render cross-cutting-gate",
+      "--variant select",
+      "engine.cjs knowledge index",
+      "engine.cjs knowledge remove",
+      "topic reopen",
+      "render phase-note",
+      "render resume-gate",
+      "manifest get pay.planning.pay format",
+      "task init"
+    ]
+  }
+}

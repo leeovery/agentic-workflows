@@ -769,10 +769,10 @@ function checkTemplatedRatchet(files, pins = RATCHET_PINS) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 14 — No buried invocation imperatives. A skill-invocation instruction
-// lives BEFORE its payload fence (Loading/Invoking/Bridge conventions); a
-// line inside a fence starting "Invoke the workflow-" is payload text the
-// model prints instead of executing — the Portal stall class.
+// Check 14 — No buried invocation imperatives. A skill invocation is an
+// imperative outside any fence (Loading, Invoking, and Handing Off); a line
+// inside a fence starting "Invoke `/workflow-" is payload text the model
+// prints instead of executing — the Portal stall class.
 // ---------------------------------------------------------------------------
 
 function checkBuriedInvoke(files) {
@@ -782,8 +782,8 @@ function checkBuriedInvoke(files) {
     const { blocks } = parseFences(lines);
     for (const b of blocks) {
       for (const { n, text } of b.lines) {
-        if (/^\s*Invoke the workflow-/.test(text)) {
-          out.push({ file, line: n + 1, message: 'invocation imperative inside a fence — payload is never instruction; put the imperative before the fence' });
+        if (/^\s*Invoke `\/workflow-/.test(text)) {
+          out.push({ file, line: n + 1, message: 'invocation imperative inside a fence — payload is never instruction; put the imperative outside the fence' });
         }
       }
     }
@@ -1672,13 +1672,13 @@ test('check 13 (templated-fence ratchet) — catches drift both ways, skips stat
   });
 });
 
-test('check 14 (buried invoke) — catches in-fence imperatives, permits pre-fence ones', () => {
+test('check 14 (buried invoke) — catches an in-fence imperative, permits one outside a fence', () => {
   withTemp((dir) => {
-    const bad = write(dir, 'skills/x/a.md', '```\nPipeline bridge for: pay\n\nInvoke the workflow-bridge skill.\n```\n');
+    const bad = write(dir, 'skills/x/a.md', '```\nInvoke `/workflow-bridge pay specification`.\n```\n');
     const v = checkBuriedInvoke([bad]);
     assert.strictEqual(v.length, 1, 'in-fence imperative must be caught');
-    const good = write(dir, 'skills/x/b.md', 'Invoke the **workflow-bridge** skill (Skill tool) with the next fenced block as its arguments.\n\n```\nPipeline bridge for: pay\n```\n');
-    assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'pre-fence imperative is the canonical form');
+    const good = write(dir, 'skills/x/b.md', 'Invoke `/workflow-bridge pay specification`.\n');
+    assert.strictEqual(checkBuriedInvoke([good]).length, 0, 'the imperative outside a fence is the invocation form');
   });
 });
 

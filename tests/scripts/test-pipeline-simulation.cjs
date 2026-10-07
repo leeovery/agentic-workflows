@@ -735,14 +735,27 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
 }
 
 function walkDeliveryPhases(sim, wu, topic, { sources }) {
-  // Specification. The source gate holds engine-side: completion refuses
-  // while any row is still pending, then clears once every row incorporates.
+  // Specification. Its start fetches the source gate before any status read;
+  // one already under way resumes, and over no file it initialises as a
+  // first start does. Session setup and the completion each read what the
+  // specification incorporates — nothing, for a single topic. The source
+  // gate holds engine-side: completion refuses while any row is still
+  // pending, then clears once every row incorporates.
   bridgeTo(sim, wu, 'specification');
+  sim.render(['entry-gate', `${wu}.specification.${topic}`], { expect: 'empty' });
   label(sim, wu, 'specification', topic);
+  const status = sim.read(['manifest', 'get', `${wu}.specification.${topic}`, 'status']);
+  if (status === 'in-progress') {
+    sim.render(['phase-note', `${wu}.specification.${topic}`, '--verb', 'Resuming'], { expect: 'content' });
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.specification.${topic}`, 'reconcile_needed']), '', 'no input moved beneath it');
+  } else {
+    assert.strictEqual(status, '', 'no specification item — a first start');
+  }
   sim.run(['topic', 'start', wu, 'specification', topic]);
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'pending']);
   }
+  assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, topic]).incorporations, []);
   sim.refuses(['topic', 'complete', wu, 'specification', topic], /unresolved source rows/);
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
@@ -750,6 +763,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
   sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
+  assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, topic]).incorporations, []);
 
   // Planning. A fresh plan opens on the context offer (initialize-plan A),
   // which the plan's own birth closes — a plan under way reconciles instead.
@@ -2896,6 +2910,9 @@ describe('pipeline simulation', () => {
     assert.ok(detail().unaccounted_discussions.includes('roles'), 'the freed source reads unaccounted again');
     assert.strictEqual(detail().build_order_needs_sequencing, true);
     assert.match(sim.render(['topic-receipt', `${wu}.specification.roles`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Roles"\./);
+    // Its start refuses it in the red register, naming the reactivate.
+    assert.match(sim.render(['entry-gate', `${wu}.specification.roles`, '--own'], { expect: 'content' }),
+      /⚑ "Roles" is cancelled[\s\S]*> Reactivate it from the epic menu \(`e\/reactivate`\)\./);
 
     // The cancelled key stays reserved: a grouping lands under a new name
     // and takes the freed source; under the cancelled name it is refused
@@ -2943,6 +2960,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.specification.items.roles.order, 1);
     assert.match(sim.render(['topic-receipt', `${wu}.specification.roles`, '--verb', 'reactivate'], { expect: 'content' }),
       /Reactivated "Roles"\. Restored specification \[completed\] · planning \[completed\]\./);
+    sim.render(['entry-gate', `${wu}.specification.roles`, '--own'], { expect: 'empty' });
     assert.deepStrictEqual(cancelledUnits(), ['specification/roles-v2']);
     assert.strictEqual(detail().cancelled[0].locked, 'locked — the specification "Roles" now sources "Roles"; regroup the discussions from the menu (s/spec)');
 
@@ -3132,7 +3150,7 @@ describe('pipeline simulation', () => {
     // one confirm stands alone, and the epic menu's own start row for the
     // grouping hands off on its pick.
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-    handoff(sim, `/workflow-specification-entry epic ${wu} ${wu}`);
+    handoff(sim, `/workflow-specification-process epic ${wu} ${wu}`);
     epicPick(sim, wu, 'start_specification', wu);
   });
 
@@ -3499,6 +3517,9 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
 
     // Reopen after downstream exists: the spec keeps its state, derivations hold.
+    sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+    label(sim, wu, 'specification', wu);
+    assert.strictEqual(sim.read(['manifest', 'get', `${wu}.specification.${wu}`, 'status']), '', 'no specification item — a first start');
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
@@ -5425,7 +5446,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'reactivate', wu, 'experiment', 'layout'], /^reactivate is topic-level per stage — discovery/);
 
     // Reopen: the staleness hop walks past the experiment slot — the series
-    // item is derived bookkeeping no entry flow reconciles, so the flag lands
+    // item is derived bookkeeping no phase's start reconciles, so the flag lands
     // on the first real phase (layout has no discussion, so nowhere) and the
     // settled series is left untouched.
     const reopened = sim.run(['topic', 'reopen', wu, 'research', 'layout']);

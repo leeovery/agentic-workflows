@@ -25,7 +25,7 @@ Further claims:
 
 - the banner is the paused banner, rendered once, before the epic's
   display — it names what the specification awaits, never a completion
-- no handoff is made and no phase entry is invoked
+- no handoff is made and no phase skill is invoked
 - nothing is written: no manifest field changes, no commit
 
 EXPECTED WORLD — unchanged from the fixture.

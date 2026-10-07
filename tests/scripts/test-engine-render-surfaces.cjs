@@ -4935,9 +4935,11 @@ describe('render entry-gate --own', () => {
     }, null, 2));
   }
 
-  it('a cancelled research or discussion item renders the cancelled terminal byte-exactly, naming the reactivate', () => {
-    topicWith('cancelled');
-    for (const phase of ['research', 'discussion']) {
+  it('a cancelled research, discussion or specification item renders the cancelled terminal byte-exactly, naming the reactivate', () => {
+    const phases = ['research', 'discussion', 'specification'];
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: Object.fromEntries(
+      phases.map((phase) => [phase, { items: { auth: { status: 'cancelled' } } }])) });
+    for (const phase of phases) {
       assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }), [
         '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
         '⚑ "Auth" is cancelled',

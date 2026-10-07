@@ -27,7 +27,7 @@
       "render spec-confirm-gate search-relevance.specification.search-relevance --single",
       "manifest set search-relevance.specification.search-relevance",
       "commit search-relevance --state",
-      "handoff /workflow-specification-entry epic search-relevance search-relevance"
+      "handoff /workflow-specification-process epic search-relevance search-relevance"
     ],
     "calls_in_order": [
       "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
@@ -36,7 +36,7 @@
       "manifest set search-relevance.specification.search-relevance",
       "commit search-relevance --state",
       "render spec-confirm-gate search-relevance.specification.search-relevance",
-      "handoff /workflow-specification-entry epic search-relevance search-relevance"
+      "handoff /workflow-specification-process epic search-relevance search-relevance"
     ],
     "calls_exclude": [
       "--unify",

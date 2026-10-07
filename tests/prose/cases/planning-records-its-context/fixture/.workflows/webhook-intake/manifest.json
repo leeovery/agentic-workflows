@@ -1,0 +1,28 @@
+{
+  "name": "webhook-intake",
+  "work_type": "cross-cutting",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "One standard for every inbound provider webhook",
+  "phases": {
+    "discussion": {
+      "items": {
+        "webhook-intake": {
+          "status": "completed"
+        }
+      }
+    },
+    "specification": {
+      "items": {
+        "webhook-intake": {
+          "status": "completed",
+          "sources": {
+            "webhook-intake": {
+              "status": "incorporated"
+            }
+          }
+        }
+      }
+    }
+  }
+}

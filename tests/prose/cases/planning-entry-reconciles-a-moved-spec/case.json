@@ -1,5 +1,5 @@
 {
-  "origin": "staleness hops — the first case to exercise a reopen positively: a spec reopened beneath a completed plan flags it, and planning-entry's reconcile advisory surfaces the moved input and clears the flag on the way into the session",
+  "origin": "staleness hops — the first case to exercise a reopen positively: a spec reopened beneath a completed plan flags it, and the plan's start surfaces the moved input through the reconcile advisory and clears the flag on the way into the session",
   "entry": "workflow-planning-process",
   "files": [
     "skills/workflow-planning-process/SKILL.md",

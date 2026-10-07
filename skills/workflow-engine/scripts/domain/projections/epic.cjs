@@ -837,7 +837,7 @@ function pickRecommendation(detail, numbered, options, hasMap) {
     // Then the first build-phase next_phase_ready entry in pipeline order.
     // An input-moved entry is never the recommendation: recommending a start
     // that propagates known-stale input contradicts its own cue — the
-    // reconcile (via the flagged item's entry flow) comes first. Nor is an
+    // reconcile (where the flagged item's phase starts) comes first. Nor is an
     // entry a held session occupies — recommending the row the menu has
     // struck through would be the display arguing with itself.
     const build = numbered.find((e) => e.action.startsWith('start_') && !e.input_moved && !e.in_session

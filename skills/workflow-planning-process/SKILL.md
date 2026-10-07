@@ -14,6 +14,8 @@ Your role spans product (WHAT we're building and WHY) and technical (HOW to stru
 
 Follows specification. Transform the validated specification into actionable phases, tasks, and acceptance criteria.
 
+**Stay in your lane**: Create the plan - phases, tasks, and acceptance criteria. Don't jump to implementation or write code. The specification is your sole input; transform it into actionable work items.
+
 ### What This Skill Needs
 
 Positional arguments:

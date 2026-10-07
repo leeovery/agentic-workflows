@@ -23,13 +23,13 @@
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render epic-soft-gate search-relevance --action start_specification --topic search-signals",
       "render spec-confirm-gate search-relevance.specification.search-signals",
-      "handoff /workflow-specification-entry epic search-relevance search-signals"
+      "handoff /workflow-specification-process epic search-relevance search-signals"
     ],
     "calls_in_order": [
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render epic-soft-gate search-relevance --action start_specification --topic search-signals",
       "render spec-confirm-gate search-relevance.specification.search-signals",
-      "handoff /workflow-specification-entry epic search-relevance search-signals"
+      "handoff /workflow-specification-process epic search-relevance search-signals"
     ],
     "calls_exclude": [
       "--unify",

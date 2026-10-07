@@ -41,8 +41,9 @@ pin them. A world a recipe *can* build must be built.
 change for different reasons: the fixture when the precondition changes,
 the assertion when the prose's *behaviour* changes. The assertion state
 composes the fixture state plus whatever the walk should have done. A
-case with no `assertion-state.cjs` expects its world back untouched —
-which is most entry-skill cases, and a strong claim in itself.
+case with no `assertion-state.cjs` expects its world back untouched — a
+start that refuses, a menu that only hands off — and that is a strong
+claim in itself.
 
 Shared pipeline stages live in `mainlines/{work-type}.cjs`, so a
 fixture-state is usually three lines of composition. Worlds are per-case

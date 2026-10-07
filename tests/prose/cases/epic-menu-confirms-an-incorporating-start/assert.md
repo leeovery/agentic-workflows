@@ -23,7 +23,7 @@ The prose should have taken this path:
    Behavioural Ranking specification's document is marked superseded;
    the flow stops for the answer
 6. the second scripted answer, yes, hands off: the route passes to the
-   engine's handoff as `/workflow-specification-entry` with epic, the
+   engine's handoff as `/workflow-specification-process` with epic, the
    work unit and the topic `expansion`; the line naming where the work
    goes is the turn's last text, and the walk stops at the handoff
 

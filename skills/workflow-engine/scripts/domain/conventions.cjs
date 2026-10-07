@@ -137,7 +137,7 @@ function discoveryGlyph(tier) {
 // beneath a started or reopened item, and drain when its session next sits.
 // `reconcilePending` (computeTopicLifecycle's
 // reconcile_pending) appends an `input moved` cue the same way — a phase item
-// beneath the row carries a live reconcile flag its entry flow will clear.
+// beneath the row carries a live reconcile flag its phase's start will clear.
 // `waits` (the map row's live waits, every kind) appends `awaiting research`
 // and `awaiting E1` directly after the lifecycle — a conversation beneath the
 // row is blocked pending research still to land or experiment evidence,

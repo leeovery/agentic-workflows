@@ -1,0 +1,13 @@
+{
+  "work_units": {
+    "pay": {
+      "work_type": "feature"
+    },
+    "webhook-intake": {
+      "work_type": "cross-cutting"
+    }
+  },
+  "defaults": {
+    "plan_format": "local-markdown"
+  }
+}

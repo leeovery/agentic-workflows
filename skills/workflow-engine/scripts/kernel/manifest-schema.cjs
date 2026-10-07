@@ -32,7 +32,7 @@ const WORK_TYPE_PIPELINES = {
 };
 
 // Derived-bookkeeping phases: the item is computed over its own records — no
-// hand lifecycle, no entry-flow reconcile, no resume or reactivate; the
+// hand lifecycle, no start-time reconcile, no resume or reactivate; the
 // phase's own verbs maintain the item.
 const DERIVED_PHASES = ['experiment'];
 
@@ -196,7 +196,7 @@ const WAITING_PHASES = [...EXPERIMENT_SPAWN_PHASES, 'planning'];
 // these and no others.
 const PAUSING_PHASES = [...WAITING_PHASES, 'specification'];
 
-// Gate modes. `auto` runs to the end of the session — the entry reset
+// Gate modes. `auto` runs to the end of the session — a phase's start
 // returns every gate to `gated`; `bounded` is auto with an end the gate
 // declares in GATE_FIELDS, and the domain ring owning that bound returns the
 // gate to `gated` at the bound's close.
