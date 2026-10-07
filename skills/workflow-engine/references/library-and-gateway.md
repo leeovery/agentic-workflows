@@ -33,7 +33,6 @@ engine.conventions.tag('decided')                 // → "[decided]"
 engine.conventions.derivedFrom('from exploration')// → "↳ From exploration"
 engine.conventions.discoveryGlyph('researching')  // → "◐"
 engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
-engine.conventions.kebabcase('Auth Flow')         // → "auth-flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
 // domain: generic reads (reads.cjs — no phase semantics)
