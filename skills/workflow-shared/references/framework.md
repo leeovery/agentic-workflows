@@ -4,7 +4,15 @@
 
 ---
 
-The framework is loaded once per conversation, by the skill the conversation opens on, and each load reads every file below. A skill opened later in the same conversation carries on from that load; after a context refresh, the skill's recovery protocol re-loads it.
+The framework is loaded once per conversation, by the skill the conversation opens on, and each load reads every file below; after a context refresh, the skill's recovery protocol re-loads it.
+
+**If this conversation has already loaded the framework, with no context refresh since:**
+
+The skill opened later carries on from that load.
+
+→ Return to caller.
+
+**Otherwise:**
 
 → Load **[instructions.md](instructions.md)** and follow its instructions as written.
 
