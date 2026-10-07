@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { discover, format } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
+const { discover } = require('../../skills/workflow-specification-entry/scripts/gateway.cjs');
 
 const GATEWAY = path.join(__dirname, '../../skills/workflow-specification-entry/scripts/gateway.cjs');
 
@@ -258,7 +258,6 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.current_state.discussion_count, 1);
     assert.strictEqual(r.current_state.completed_count, 1);
     assert.deepStrictEqual(r.discussions.map((d) => d.name), ['billing']);
-    assert.ok(!format(r).includes('away'), format(r));
   });
 
   it('detects valid cache from manifest checksum', () => {
@@ -486,73 +485,10 @@ describe('workflow-specification-entry discovery', () => {
   });
 });
 
-describe('workflow-specification-entry format', () => {
+describe('workflow-specification-entry ordering and counts', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
-
-  it('empty project pins the full dump byte-exactly', () => {
-    const out = format(discover(dir));
-    assert.strictEqual(out, [
-      '=== STATE ===',
-      'counts: discussions=0 completed=0 in_progress=0 specs=0 proposed=0 concluded=0',
-      '',
-    ].join('\n'));
-  });
-
-  it('populated project pins the full dump byte-exactly', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: {
-          items: {
-            auth: {
-              status: 'in-progress',
-              sources: { auth: { status: 'extracted' } },
-            },
-          },
-        },
-      },
-    });
-    createManifest(dir, 'billing', {
-      work_type: 'feature',
-      phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
-    });
-    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Auth');
-    const out = format(discover(dir));
-    assert.strictEqual(out, [
-      '=== STATE ===',
-      'counts: discussions=2 completed=1 in_progress=1 specs=1 proposed=0 concluded=0',
-      '',
-    ].join('\n'));
-  });
-
-  it('carries no discussion, spec, cache, or checksum detail — the view verb owns it', () => {
-    createManifest(dir, 'mint', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { 'cli-presentation': { status: 'completed' } } },
-        specification: {
-          items: {
-            'release-engine': {
-              status: 'in-progress',
-              sources: { 'cli-presentation': { status: 'incorporated' } },
-            },
-          },
-        },
-      },
-    });
-    createFile(dir, '.workflows/mint/specification/release-engine/specification.md', '# Spec');
-    createFile(dir, '.workflows/mint/discussion/cli-presentation.md', '# D');
-    const out = format(discover(dir));
-    assert.ok(!out.includes('=== DISCUSSIONS ==='));
-    assert.ok(!out.includes('=== SPECIFICATIONS ==='));
-    assert.ok(!out.includes('=== CACHE ==='));
-    assert.ok(!out.includes('source:'));
-    assert.ok(!out.includes('checksum'));
-  });
 
   describe('spec menu reorder', () => {
     // Builds an epic with four spec items in shuffled insertion order:
@@ -726,16 +662,6 @@ describe('workflow-specification-entry format', () => {
       createFile(dir, '.workflows/v1/specification/wip/specification.md', '# Wip');
       const r = discover(dir);
       assert.strictEqual(r.current_state.concluded_count, 0);
-    });
-
-    it('format counts line reflects the reorder fixture byte-exactly', () => {
-      reorderFixture();
-      const out = format(discover(dir));
-      assert.strictEqual(out, [
-        '=== STATE ===',
-        'counts: discussions=5 completed=5 in_progress=0 specs=3 proposed=1 concluded=1',
-        '',
-      ].join('\n'));
     });
   });
 

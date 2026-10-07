@@ -234,8 +234,7 @@ function specsMenuDisplay(detail) {
 }
 
 /**
- * The scenario's DISPLAY block, or '' when the scenario renders nothing
- * (analysis-rerun routes straight into the analysis flow).
+ * The scenario's DISPLAY block.
  * @param {SpecificationDetail} detail
  * @returns {string}
  */
@@ -253,8 +252,6 @@ function specificationDisplay(detail) {
       return analyzeDisplay(detail);
     case 'specs-menu':
       return specsMenuDisplay(detail);
-    default:
-      return '';
   }
 }
 

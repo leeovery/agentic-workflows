@@ -673,7 +673,6 @@ const RATCHET_PINS = {
   'skills/workflow-implementation-process/SKILL.md': 1,
   'skills/workflow-implementation-process/references/analysis-loop.md': 1,
   'skills/workflow-implementation-process/references/task-loop.md': 2,
-  'skills/workflow-investigation-entry/references/gather-context.md': 1,
   'skills/workflow-investigation-process/references/analysis-checkpoints.md': 1,
   'skills/workflow-legacy-research-split/SKILL.md': 3,
   'skills/workflow-legacy-research-split/references/dialog.md': 4,

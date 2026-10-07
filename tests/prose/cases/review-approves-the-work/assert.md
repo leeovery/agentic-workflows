@@ -6,8 +6,8 @@ The prose should have taken this path:
    nothing asked
 2. the process finds no report file — a fresh start, no resume choice —
    and registers the review through the engine
-3. the plans and specification are read through the planning subtree
-   and the format's reading adapter; the implementation's project
+3. the plan and specification are read through the planning item and
+   the format's reading adapter; the implementation's project
    skills are looked up
 4. verification scopes its files from the git history of the per-task
    implementation commits, extracts both tasks from the plan, creates

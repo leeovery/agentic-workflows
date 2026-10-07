@@ -51,7 +51,7 @@ const VALID_PHASE_STATUSES = {
   // Derived bookkeeping over the topic's experiment records: the spawn opens
   // the item, the last record's terminal transition closes it — the user
   // never starts or completes it by hand.
-  experiment:     ['in-progress', 'completed', 'cancelled'],
+  experiment:     ['in-progress', 'completed'],
   discussion:     ['triaged', 'in-progress', 'completed', 'cancelled', 'postponed'],
   investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],

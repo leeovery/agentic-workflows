@@ -2894,6 +2894,35 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export', '--cascade'], /Usage: engine topic cancel <work-unit> <discovery\|specification> <topic>/);
   });
 
+  it('a cancel that discards the last grouping over a still-valid analysis cache lands the specification on analyze', () => {
+    const wu = 'regroup';
+    mappedEpic(sim, wu, ['alpha', 'beta', 'gamma']);
+    for (const name of ['alpha', 'beta', 'gamma']) {
+      sim.run(['topic', 'start', wu, 'discussion', name]);
+      sim.write(`.workflows/${wu}/discussion/${name}.md`, `# Discussion — ${name}\n`);
+      sim.run(['topic', 'complete', wu, 'discussion', name]);
+    }
+    // The analysis reconciles one grouping over all three, then stamps the
+    // cache over the discussion files.
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+      [{ op: 'set', path: `${wu}.specification.whole`, fields: {
+        status: 'proposed', 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending', 'sources.gamma.status': 'pending',
+      } }])]);
+    const checksum = /^discussions_checksum: (\S+)$/m.exec(SPEC_GATEWAY.scoped(sim.dir, wu))[1];
+    sim.run(['manifest', 'set', `${wu}.discussion`, 'analysis_cache.checksum', checksum]);
+    sim.run(['manifest', 'set', `${wu}.discussion`, 'analysis_cache.generated', '2026-10-06']);
+    assert.strictEqual(specDetail(sim.dir, wu).scenario, 'groupings');
+
+    // The cancel leaves gamma's file on disk, so the cache stays valid while
+    // the grouping it backed is gone — the analysis reruns behind its gate.
+    assert.deepStrictEqual(sim.run(['topic', 'cancel', wu, 'discovery', 'gamma']).discarded, ['whole']);
+    const routing = SPEC_GATEWAY.scoped(sim.dir, wu);
+    assert.match(routing, /^scenario: analyze$/m);
+    assert.match(routing, /^cache_status: valid$/m);
+    assert.strictEqual(epicPick(sim, wu, 'analyze_discussions').args, `epic ${wu}`);
+    sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
+  });
+
   it('epic topic postpone: the topic leaves for the roadmap, the roadmap owns it, and the pull brings it back', () => {
     const wu = 'later';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Postpone units', '--session-log-file', sessionLog(sim, wu)]);
@@ -3507,7 +3536,8 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
     // The reserved identity holds: no work unit may take the layer's name.
-    sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--no-session-log'], /is reserved/);
+    const draft = sim.write('.workflows/.cache/roadmap-probe/discovery/session-001.md', '# Discovery Session 001\n');
+    sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
   });
 
   it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
@@ -4457,16 +4487,17 @@ describe('pipeline simulation', () => {
     const takenManifest = JSON.stringify(sim.manifest(wu));
     const head = git(sim.dir, ['rev-parse', 'HEAD']).trim();
     const taken = /work unit "guarded" already exists — pick a different name/;
-    sim.refuses(['workunit', 'create', wu, 'feature', '--description', 'Again', '--no-session-log'], taken);
-    sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--no-session-log'], taken);
+    const draft = sim.write('.workflows/.cache/guarded/discovery/session-001.md', '# Discovery Session 001\n');
+    sim.refuses(['workunit', 'create', wu, 'feature', '--description', 'Again', '--session-log-file', draft], taken);
+    sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--session-log-file', draft], taken);
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), takenManifest, 'a refused create rewrote the manifest');
     assert.strictEqual(git(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
 
     // Reserved names never mint a work unit — `project` routes dot-paths to
     // the project manifest, `baseline` is the KB's project-baseline identity.
-    sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
-    sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
-    sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--no-session-log'], /is reserved/);
+    sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
+    sim.refuses(['workunit', 'create', 'baseline', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
+    sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
 
     // The project baseline labels the terminal on arrival, then walks its
     // lifecycle on the project manifest, and each render surface serves its

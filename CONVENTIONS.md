@@ -353,7 +353,7 @@ Engine-side the split is `menu(label, options, { question })` — the statement 
 
 **Option types** — menus contain two kinds of option:
 
-- **Command option** (explicit): A discrete input the user types verbatim. Key and word share one code span: **`y/yes`**, **`s/single`**, **`a/auto`** — the user may type either side. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`s/skip`** and **`t/stop`**). The conditional branch uses the command value (e.g., `#### If \`yes\``); inline references to a key elsewhere in prose use the same merged span (`` `b/back` ``).
+- **Command option** (explicit): A discrete input the user types verbatim. Key and word share one code span: **`y/yes`**, **`r/revisit`**, **`a/auto`** — the user may type either side. The shorthand is the first letter of the word; if two options in the same menu share a first letter, use the second letter for the conflicting option (e.g., **`s/skip`** and **`t/stop`**). The conditional branch uses the command value (e.g., `#### If \`yes\``); inline references to a key elsewhere in prose use the same merged span (`` `b/back` ``).
 - **Prompt option** (implicit): The user responds naturally rather than issuing a command. Formatted with plain bold text (no backticks): **Keep going**, **Comment**, **Ask**. The conditional branch uses the label in lowercase (e.g., `#### If keep going`); where the bare label reads awkwardly as a condition, a descriptive form naming the intent is equally valid (`#### If the user provides feedback` for a **Provide feedback** option). Limit to one prompt option per menu to avoid ambiguity — since routing is intent-based, multiple prompt options would be hard to distinguish. A second prompt option is permitted only when the two intents are disjoint enough that natural responses cannot be confused and the flow genuinely routes on both (the implementation gate menus' **Ask** and **Comment**).
 
 **A reply that picks no option sets the gate aside.** What a reply at a gate is — an answer, a question, a comment — is the framework's rule (`workflow-shared/references/instructions.md`), never restated in a branch. A branch for a question — an **Ask** row, a number that asks, a Comment that asks back — keeps its own mechanics (what the answer draws on, which call puts the gate back) and never re-presents the gate straight after the answer: before the route or fetch that puts the gate back it says `The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back:` (`The exchange sets the gate aside; once it looks settled, ask …` where the branch holds a conversation), or it delegates the answer to `answering-how-it-works.md`, whose put-back carries the same rule. A standing section's return into the flow it interrupted carries the same ask for the gate left pending (`→ On return, resume the interrupted flow — a gate that was pending was set aside; once the exchange looks settled, ask in conversation whether the person is ready to move on, and on yes put it back — …`). A branch that acts on a comment which changes what happens next — moves past the gate, dispatches work on its reading — first confirms that reading with the person (`Confirm your reading of the comment with the person before anything acts on it, then …`); a branch that re-presents the revised content at its own gate is that confirmation already. A gate in `auto` or `bounded` emits no menu and waits on nobody, so neither applies there. Lint check 23 enforces the question half and the return.
@@ -409,11 +409,11 @@ Sister patterns: `**Name them** → Tell me which to re-add`; `**Adjust** → Te
 
 ```
 · · · · · · · · · · · ·
-**`◆ What scope would you like to review?`**
+**`◆ Where should it go?`**
 
-**`s/single`** → Review one plan's implementation
-**`m/multi`**  → Review selected plans
-**`a/all`**    → Review all implemented plans
+**`l/log`**     → Capture it as an idea in the inbox for later
+**`r/roadmap`** → Put it on the product roadmap for a later release
+**`i/ignore`**  → Note it in the Summary and move on
 ```
 
 **Meta options** in selection menus get italic descriptions — the menu metadata register:

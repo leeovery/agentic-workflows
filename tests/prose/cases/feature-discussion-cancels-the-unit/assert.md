@@ -4,8 +4,8 @@ The prose should have taken this path:
    its name), asks the engine whether research is outstanding (none
    exists), reads the discussion status, finds it in progress, emits the
    resuming phase note, checks the reconcile flag (absent — silent),
-   reads the discovery session log and finds a usable carrier, and hands
-   off with source: existing discussion
+   finds the discovery session log on disk, and hands off with source:
+   existing discussion
 2. the process reads the status again, finds the file, renders resume
    detection — the triage queue read (empty, so no triage warning), then
    the continue-or-restart gate — and the user continues

@@ -1788,20 +1788,20 @@ describe('epic projections: the topic-grain experiment entry', () => {
       'the in-progress scan sees the derived item like any other open work');
   });
 
-  it('a cancelled series retires its entry and the recommendation falls through', () => {
+  it('a settled series retires its entry and the recommendation falls through', () => {
     const detail = labDetail({
       discussion: { items: { timing: { status: 'in-progress' } } },
       experiment: {
         items: {
           timing: {
-            status: 'cancelled', previous_status: 'in-progress',
-            experiments: { E1: { slug: 'window-placement', status: 'running' } },
+            status: 'completed',
+            experiments: { E1: { slug: 'window-placement', status: 'abandoned', reason: 'moot' } },
           },
         },
       },
     });
     const { keys } = epicMenu('lab', detail);
-    assert.ok(!keys.some((k) => k.action === 'continue_experiment'), 'cancellation retires the entry');
+    assert.ok(!keys.some((k) => k.action === 'continue_experiment'), 'no live record — the entry retires');
     const rec = keys.find((k) => k.recommended);
     assert.notStrictEqual(rec && rec.action, 'continue_experiment');
   });
@@ -1820,23 +1820,8 @@ describe('epic projections: the topic-grain experiment entry', () => {
     });
     assert.ok(!done.completed.some((i) => i.phase === 'experiment'),
       'a completed series has nothing to resume — a new spawn reopens it');
-
-    // A series cancelled on its own predates the unit cancel — legacy state
-    // the derivation meets as found.
-    const cancelled = labDetail({
-      discussion: { items: { timing: { status: 'in-progress' } } },
-      experiment: {
-        items: {
-          timing: {
-            status: 'cancelled', previous_status: 'in-progress',
-            experiments: { E1: { slug: 'window-placement', status: 'abandoned', reason: 'series cancelled' } },
-          },
-        },
-      },
-    });
-    assert.deepStrictEqual(cancelled.cancelled, [],
-      'a legacy cancelled series is no unit — the topic reads live, its rows stand, and the next spawn revives it');
-    assert.ok(cancelled.cancellable.some((u) => u.stage === 'discovery' && u.name === 'timing'), 'the topic itself stays cancellable');
+    assert.deepStrictEqual(done.cancelled, [], 'a settled series is no unit — the topic reads live');
+    assert.ok(done.cancellable.some((u) => u.stage === 'discovery' && u.name === 'timing'), 'the topic itself stays cancellable');
   });
 
   it('an interrupted discovery session still outranks the laboratory — the map itself is mid-shape', () => {

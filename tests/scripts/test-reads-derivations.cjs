@@ -20,7 +20,7 @@ const {
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
-  specIsStarted, specGroupsSources, lockingSpecs, liveSeries, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  specIsStarted, specGroupsSources, lockingSpecs, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
   postponePlan, postponeTarget, postponeClashPhrase, postponedItem,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
@@ -1003,9 +1003,8 @@ describe('reads + derivations', () => {
 
   describe('the cancel units', () => {
     // A map with a live topic under a proposed grouping, a status-less and a
-    // promoted specification, a topic under a started specification, a
-    // legacy cancelled series, and two cancelled specifications over a
-    // cancelled and a held source.
+    // promoted specification, a topic under a started specification, and two
+    // cancelled specifications over a cancelled and a held source.
     function unitManifest() {
       return {
         name: 'pay',
@@ -1016,7 +1015,6 @@ describe('reads + derivations', () => {
           discussion: { items: { auth: { status: 'in-progress' }, timing: { status: 'completed' }, gone: { status: 'completed' }, held: { status: 'completed' } } },
           experiment: { items: {
             auth: { status: 'in-progress', experiments: { E2: { status: 'running' }, E1: { status: 'concluded' }, 'E2.1': { status: 'conceived' } } },
-            timing: { status: 'cancelled', previous_status: 'in-progress', experiments: { E1: { status: 'running' } } },
           } },
           specification: { items: {
             grp: { status: 'proposed', sources: { auth: { status: 'pending' } } },
@@ -1056,11 +1054,9 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(plan.discards, ['grp']);
     });
 
-    it('cancelPlan leaves a legacy cancelled series as found, and a specification unit takes its items alone', () => {
+    it('cancelPlan over a topic with no series takes no records, and a specification unit takes its items alone', () => {
       const m = unitManifest();
       assert.deepStrictEqual(cancelPlan(m, 'discovery', 'timing').records, []);
-      assert.strictEqual(liveSeries(m, 'timing'), undefined);
-      assert.ok(liveSeries(m, 'auth'));
       const spec = cancelPlan(m, 'specification', 'unified');
       assert.deepStrictEqual(spec.items.map(({ phase }) => phase), ['specification', 'planning']);
       assert.deepStrictEqual([spec.records, spec.discards], [[], []]);

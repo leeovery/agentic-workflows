@@ -34,7 +34,7 @@ const {
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, lockingSpecsPhrase, deliveryStarted,
-  liveSeries, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -1368,7 +1368,7 @@ function cancelDiscoveryUnit(manifest, topic) {
   }
 
   const released_waits = releaseExperimentWaits(manifest, topic);
-  const series = liveSeries(manifest, topic);
+  const series = itemOf(manifest, 'experiment', topic);
   if (series) {
     abandonRecords(series, plan.records, 'topic cancelled');
     settleItemStatus(series);

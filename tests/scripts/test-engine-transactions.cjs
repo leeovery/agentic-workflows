@@ -2267,7 +2267,7 @@ describe('engine commit', () => {
     const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
     m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress' } } } };
     fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /has no storage_paths — a pre-upgrade plan/);
+    assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /has no storage_paths — record the format/);
     m.phases.planning.items.auth.storage_paths = ['../evil'];
     fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /illegal storage_paths entry/);
@@ -2381,14 +2381,14 @@ describe('engine commit --plan — hardening', () => {
     assert.match(engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan']).error, /Usage: engine commit/);
   });
 
-  it('malformed storage_paths gets its own message — never the pre-upgrade hint', () => {
+  it('malformed storage_paths gets its own message — never the missing-field repair', () => {
     planWith([123]);
     const err = engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan', 'auth-flow']);
     assert.match(err.error, /malformed storage_paths/);
-    assert.ok(!err.error.includes('pre-upgrade'), 'present-but-wrong is not pre-upgrade');
+    assert.ok(!err.error.includes('record the format'), 'present-but-wrong is not missing');
   });
 
-  it('the pre-upgrade repair hint names the exact command', () => {
+  it('the missing-field repair names the exact command', () => {
     planWith(undefined);
     const err = engineFails(dir, ['commit', 'auth-flow', '-m', 'x', '--plan', 'auth-flow']);
     assert.match(err.error, /engine manifest set auth-flow\.planning\.auth-flow storage_paths/);

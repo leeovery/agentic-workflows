@@ -4,7 +4,7 @@
 
 ---
 
-Prompted when multiple completed discussions exist and none are in progress, no specifications or proposed groupings exist, and the cache is none or stale.
+Prompted when multiple completed discussions exist and none are in progress, and no specifications or proposed groupings exist.
 
 ## A. Display
 
@@ -18,12 +18,12 @@ Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 
 **Cache-Aware Message**
 
-#### If `cache_status` is `none`
+#### If `cache_status` is `stale`
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> What happens next. Your discussions will be analyzed for natural groupings. Each grouping becomes a proposed specification you can start when ready. Results are cached and reused until discussions change.
+> Analysis outdated. A previous grouping analysis exists but discussions have changed since it was created. Your discussions will be re-analyzed for natural groupings. Results are cached and reused until discussions change.
 ```
 
 ```bash
@@ -36,12 +36,12 @@ Emit the call's MENU section verbatim per its marker.
 
 → Proceed to **B. Handle Response**.
 
-#### If `cache_status` is `stale`
+#### Otherwise
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Analysis outdated. A previous grouping analysis exists but discussions have changed since it was created. Your discussions will be re-analyzed for natural groupings. Results are cached and reused until discussions change.
+> What happens next. Your discussions will be analyzed for natural groupings. Each grouping becomes a proposed specification you can start when ready. Results are cached and reused until discussions change.
 ```
 
 ```bash

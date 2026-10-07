@@ -6,6 +6,18 @@
 
 Branch on the `phase_status` the caller read in Step 1 — no re-read.
 
+#### If status is empty (no investigation entry)
+
+Render and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
+```
+
+Set source="new".
+
+→ Return to caller.
+
 #### If status is `in-progress`
 
 Render and emit the section verbatim per its marker:

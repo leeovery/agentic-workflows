@@ -492,7 +492,7 @@ describe('gate payload — every gateway verb', () => {
       fallback: [ungated('v1')],
     },
     'workflow-specification-entry': {
-      index: [ungated()],
+      index: [refused()],
       view: [gated('view', 'v2')],
       'completed-menu': [gated('completed-menu', 'v2')],
       fallback: [ungated('v2')],

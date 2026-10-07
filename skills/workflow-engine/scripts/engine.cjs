@@ -149,7 +149,7 @@ Commands:
   manifest list   [--status <s>] [--work-type <t>]
   manifest key-of <dotpath> <field.path> <value>
   manifest resolve <work-unit>.<phase>[.<topic>]
-  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log
+  workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
   workunit import <work-unit> <path> [<path> …] --from <origin>
   workunit complete <work-unit> -m <message>
@@ -405,9 +405,9 @@ Commands:
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
 //
 // No field write heartbeats. A three-segment `set` looks self-referential and
-// frequently is not: the storage-path backfills, review's `updated` stamp and
-// the epic menu's unblock all write one phase's item from another phase's
-// session, and a beat there manufactures a hold on a topic nobody is in (P8).
+// frequently is not: review's `updated` stamp and the epic menu's unblock
+// both write one phase's item from another phase's session, and a beat there
+// manufactures a hold on a topic nobody is in (P8).
 // The session's cadence commit is its heartbeat; `apply`, the cross-topic
 // batch door, never beat either.
 // ---------------------------------------------------------------------------
@@ -460,14 +460,10 @@ function runWorkunit(call, argv) {
   const [command, ...rest] = argv;
   try {
     if (command === 'create') {
-      const { opts, flags, lists, positional } = parseArgs(rest, ['no-session-log'], ['import', 'seed']);
+      const { opts, lists, positional } = parseArgs(rest, [], ['import', 'seed']);
       const [workUnit, workType] = positional;
-      if (!workUnit || !workType || !opts.description) {
-        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path>|--no-session-log [--import <path> …] [--seed <path> …]');
-      }
-      // Log-less creation must be explicit — accidental omission is an error.
-      if (flags.has('no-session-log') ? opts['session-log-file'] !== undefined : opts['session-log-file'] === undefined) {
-        throw new Error('exactly one of --session-log-file <path> or --no-session-log is required');
+      if (!workUnit || !workType || !opts.description || !opts['session-log-file']) {
+        throw new Error('Usage: engine workunit create <work-unit> <work-type> --description <text> --session-log-file <path> [--import <path> …] [--seed <path> …]');
       }
       respond(call, createWorkUnit(call.cwd, workUnit, workType, {
         description: opts.description,
@@ -1898,7 +1894,7 @@ function runCommit(call, argv) {
         if (!planItem) throw new Error(`commit --plan: no planning item "${plan}" in "${wu}"`);
         const declared = planItem.storage_paths;
         if (declared === undefined) {
-          throw new Error(`commit --plan: planning item "${plan}" has no storage_paths — a pre-upgrade plan; record the format's declared pathspecs once: engine manifest set ${wu}.planning.${plan} storage_paths '[…]' (the format's authoring.md names them; '[]' when it stores inside the work unit)`);
+          throw new Error(`commit --plan: planning item "${plan}" has no storage_paths — record the format's declared pathspecs once: engine manifest set ${wu}.planning.${plan} storage_paths '[…]' (the format's authoring.md names them; '[]' when it stores inside the work unit)`);
         }
         if (!Array.isArray(declared) || declared.some((p) => typeof p !== 'string')) {
           throw new Error(`commit --plan: planning item "${plan}" has a malformed storage_paths (${JSON.stringify(declared)}) — must be an array of relative pathspec strings`);

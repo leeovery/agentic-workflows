@@ -56,8 +56,7 @@ The prose should have taken this path:
     plan's external_id being unset, sets it to the topic name per the
     format. No graph adapter mechanics run — the staged task carried
     no priority and no depends_on
-14. back in the orchestrator, storage_paths already exists so no
-    backfill write happens; the scoped commit lands as
+14. back in the orchestrator, the scoped commit lands as
     impl(pay): add 1 ad hoc task(s)
 15. the interrupted flow is the task loop, so control returns to the
     caller; the pending task gate was set aside by the raised work, so

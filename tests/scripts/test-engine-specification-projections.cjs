@@ -107,7 +107,7 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(detailOf(dir, 'v1').scenario, 'groupings');
   });
 
-  it('valid cache with no proposed and no specs → analysis-rerun, no display', () => {
+  it('a valid cache with no proposed and no specs → analyze — the analysis reruns behind its proceed gate', () => {
     const crypto = require('crypto');
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -121,9 +121,9 @@ describe('specification detail: scenario derivation', () => {
     createFile(dir, '.workflows/v1/discussion/a.md', '# A');
     createFile(dir, '.workflows/v1/discussion/b.md', '# B');
     const d = detailOf(dir, 'v1');
-    assert.strictEqual(d.scenario, 'analysis-rerun');
+    assert.strictEqual(d.scenario, 'analyze');
     assert.strictEqual(d.cache_status, 'valid');
-    assert.strictEqual(specificationDisplay(d), '');
+    assert.match(specificationDisplay(d), /2 completed discussions found\. No specifications exist yet\./);
     assert.deepStrictEqual(specificationMenu(d), { keys: [], rendered: '' });
   });
 
@@ -137,7 +137,7 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(d.cache_status, 'none');
   });
 
-  it('an open discussion blocks the structure-building scenarios — analyze, analysis-rerun, single no-spec', () => {
+  it('an open discussion blocks the structure-building scenarios — analyze over any cache, single no-spec', () => {
     const crypto = require('crypto');
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -998,7 +998,7 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(!out.includes('ACTIONS'));
   });
 
-  it('view for analysis-rerun emits DATA only', () => {
+  it('view for analyze over a valid cache emits DATA + DISPLAY and no MENU — the proceed gate is its own surface', () => {
     const crypto = require('crypto');
     createManifest(dir, 'v1', {
       work_type: 'epic',
@@ -1012,9 +1012,9 @@ describe('specification adapter: gateway verbs', () => {
     createFile(dir, '.workflows/v1/discussion/a.md', '# A');
     createFile(dir, '.workflows/v1/discussion/b.md', '# B');
     const out = run(['view', 'v1']);
-    assert.ok(out.includes('scenario: analysis-rerun'));
+    assert.ok(out.includes('scenario: analyze'));
     assert.ok(out.includes('cache_status: valid'));
-    assert.ok(!out.includes('=== DISPLAY'));
+    assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ==='));
     assert.ok(!out.includes('=== MENU'));
   });
 
@@ -1083,14 +1083,6 @@ describe('specification adapter: gateway verbs', () => {
     assert.ok(out.includes('=== MENU'));
   });
 
-  it('the no-arg form emits the thin state line, not sectioned output', () => {
-    groupingsFixture(dir);
-    const out = run([]);
-    assert.ok(out.includes('=== STATE ==='));
-    assert.ok(out.includes('counts: discussions='));
-    assert.ok(!out.includes('=== DATA'));
-  });
-
   it('the positional form is the routing read: the view DATA without its ACTIONS, and no gate', () => {
     groupingsFixture(dir);
     const out = run(['v1']);
@@ -1100,15 +1092,21 @@ describe('specification adapter: gateway verbs', () => {
     assert.strictEqual(out.split('\n').filter((l) => l.startsWith('=== ')).length, 1, 'one DATA section, nothing to emit');
   });
 
-  it('the routing read refuses excess arguments and a name with no active work unit behind it', () => {
+  it('the routing read refuses a missing work unit, excess arguments, and a name with no active work unit behind it', () => {
     groupingsFixture(dir);
     createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed' });
     const refuse = (args) => spawnSync('node', [ADAPTER, ...args], { cwd: dir, encoding: 'utf8' });
+    const usage = 'Usage: gateway.cjs {work_unit} | gateway.cjs view {work_unit} | gateway.cjs completed-menu {work_unit}';
+
+    const bare = refuse([]);
+    assert.strictEqual(bare.status, 1);
+    assert.strictEqual(bare.stdout, '');
+    assert.strictEqual(bare.stderr, `gateway: work unit name required\n${usage}\n`);
 
     const extra = refuse(['v1', 'extra']);
     assert.strictEqual(extra.status, 1);
     assert.strictEqual(extra.stdout, '');
-    assert.strictEqual(extra.stderr, 'gateway: unknown verb "v1"\nUsage: gateway.cjs | gateway.cjs {work_unit} | gateway.cjs view {work_unit} | gateway.cjs completed-menu {work_unit}\n');
+    assert.strictEqual(extra.stderr, `gateway: unknown verb "v1"\n${usage}\n`);
 
     for (const name of ['ghost', 'shipped']) {
       const unknown = refuse([name]);

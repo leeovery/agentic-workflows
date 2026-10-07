@@ -73,7 +73,7 @@ const { OPEN_SOURCE_STATUSES, itemOf, sourceRows, lockingSpecs } = require('./de
 /**
  * @typedef {object} SpecificationDetail
  * @property {string} work_unit
- * @property {'blocked-no-discussions'|'blocked-none-completed'|'blocked-discussions-open'|'single'|'groupings'|'analysis-rerun'|'analyze'|'specs-menu'} scenario
+ * @property {'blocked-no-discussions'|'blocked-none-completed'|'blocked-discussions-open'|'single'|'groupings'|'analyze'|'specs-menu'} scenario
  * @property {'none'|'valid'|'stale'} cache_status
  * @property {DiscoveryResult['current_state']} counts
  * @property {string[]} completed_discussions
@@ -255,7 +255,6 @@ function specificationDetail(workUnit, result) {
     scenario = 'single';
     single = singleContext(workUnit, completed[0], result);
   } else if (cs.proposed_count > 0) scenario = 'groupings';
-  else if (cache === 'valid' && cs.spec_count === 0) scenario = 'analysis-rerun';
   else if (cs.spec_count === 0) scenario = 'analyze';
   else scenario = 'specs-menu';
 
@@ -265,7 +264,7 @@ function specificationDetail(workUnit, result) {
   // Existing specs stay reachable through their menus, where a blocked row is
   // unselectable until its sources re-conclude.
   if (inProgress.length > 0) {
-    if (scenario === 'analyze' || scenario === 'analysis-rerun') scenario = 'blocked-discussions-open';
+    if (scenario === 'analyze') scenario = 'blocked-discussions-open';
     else if (scenario === 'single' && single
       && (single.variant === 'no-spec' || (single.spec !== null && single.spec.blocked))) {
       scenario = 'blocked-discussions-open';

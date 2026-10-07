@@ -219,7 +219,9 @@ setup_fixture
 cd "$TEST_DIR"
 git init -q -b main . >/dev/null 2>&1
 git config user.email test@example.com && git config user.name Test && git config commit.gpgsign false
-node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --no-session-log >/dev/null
+mkdir -p "$TEST_DIR/.workflows/.cache/dark-mode/discovery"
+printf '# Discovery Session 001\n\n## Exploration\n\nDark mode.\n' > "$TEST_DIR/.workflows/.cache/dark-mode/discovery/session-001.md"
+node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --session-log-file .workflows/.cache/dark-mode/discovery/session-001.md >/dev/null
 
 assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json created by the engine"
 content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")

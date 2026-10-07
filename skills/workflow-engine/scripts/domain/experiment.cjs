@@ -73,7 +73,7 @@ function assertOneLine(label, value) {
 
 /**
  * The topic's experiment item, writable — a loud error when the topic holds
- * no series or the item is cancelled.
+ * no series.
  * @param {object} manifest @param {string} topic
  * @returns {{status?: string, experiments?: Record<string, ExperimentRecord>}}
  */
@@ -84,9 +84,6 @@ function experimentItem(manifest, topic) {
   const item = items && typeof items === 'object' ? items[topic] : undefined;
   if (!item || typeof item !== 'object') {
     throw new Error(`no experiment series for "${topic}" — the spawn creates it (experiment create)`);
-  }
-  if (item.status === 'cancelled') {
-    throw new Error(`experiment item "${topic}" is cancelled — its records are closed; a new spawn from the conversation (experiment create --from) revives the series`);
   }
   return item;
 }
@@ -258,17 +255,8 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
 
     const ph = ensureContainer(ensureContainer(manifest, 'phases', 'phases'), 'experiment', 'phases.experiment');
     const items = ensureContainer(ph, 'items', 'phases.experiment.items');
-    let item = items[topic];
-    if (!item || typeof item !== 'object') {
-      item = items[topic] = { status: 'in-progress' };
-    } else {
-      // A completed series reopens at the next spawn, and a cancelled one
-      // revives the same way — post-cancel every record is terminal by
-      // construction, so the new record is the only live one. The item is
-      // derived bookkeeping, and a live record makes it live again.
-      item.status = 'in-progress';
-      delete item.previous_status;
-    }
+    const item = ensureContainer(items, topic, `phases.experiment.items.${topic}`);
+    item.status = 'in-progress';
     const experiments = ensureContainer(item, 'experiments', `phases.experiment.items.${topic}.experiments`);
     const n = Object.keys(experiments)
       .map((id) => (/^E([1-9][0-9]*)$/.exec(id) || [])[1])

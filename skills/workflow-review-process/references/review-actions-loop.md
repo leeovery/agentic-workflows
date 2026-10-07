@@ -238,12 +238,6 @@ Filter to the tasks the manifest's `staging.c{N}.tasks` marks `approved`, taking
 
 > **CHECKPOINT**: Do not proceed until the task writer has returned.
 
-**If the planning item carries no `storage_paths` field** (absent, not empty — a plan initialised before the field existed): record it now — read the format's authoring.md → Storage Pathspecs and copy the fenced array:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} storage_paths '{format storage pathspecs}'
-```
-
 Commit the staging file with this topic's implementation artifacts, then the plan tasks and `task_map` updates — `--plan` stages the planning topic, the manifests, and the plan's declared storage:
 
 ```bash
@@ -256,8 +250,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "re
 ---
 
 ## G. Re-open Implementation
-
-For each plan that received new tasks:
 
 1. Update the manifest via CLI:
    - `node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}`

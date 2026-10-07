@@ -77,7 +77,7 @@ function assertLegalWorkUnitName(workUnit) {
  * @property {{path: string}[]} imports  landed import entries (work-unit-relative)
  * @property {{path: string, source: string}[]} seeds  landed seed entries (work-unit-relative)
  * @property {string[]} skipped_imports  source paths rejected by filename normalisation
- * @property {string|null} session_log  the installed log's project-relative path (null when no log was given)
+ * @property {string} session_log  the installed log's project-relative path
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]  set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
@@ -106,8 +106,7 @@ function pushEntry(manifest, field, value) {
  * @param {string} workType
  * @param {object} opts
  * @param {string} opts.description       one-line intent, recorded at creation
- * @param {string} [opts.sessionLogFile]  model-authored log content, installed verbatim;
- *                                        omitted for creations outside discovery (e.g. spec promotion)
+ * @param {string} opts.sessionLogFile    model-authored log content, installed verbatim
  * @param {string[]} [opts.imports]       source paths to copy in
  * @param {string[]} [opts.seeds]         live inbox paths to move in
  * @returns {WorkUnitCreateResult}
@@ -124,14 +123,12 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     throw new Error(`work unit "${workUnit}" already exists — pick a different name`);
   }
 
-  /** @type {string|null} */
-  let sessionLog = null;
-  if (sessionLogFile !== undefined) {
-    try {
-      sessionLog = fs.readFileSync(path.resolve(cwd, sessionLogFile), 'utf8');
-    } catch {
-      throw new Error(`session log file not found: ${sessionLogFile}`);
-    }
+  /** @type {string} */
+  let sessionLog;
+  try {
+    sessionLog = fs.readFileSync(path.resolve(cwd, sessionLogFile), 'utf8');
+  } catch {
+    throw new Error(`session log file not found: ${sessionLogFile}`);
   }
 
   assertLandableSources(cwd, imports);
@@ -188,22 +185,19 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       });
     }
 
-    if (sessionLog !== null) {
-      const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
-      fs.mkdirSync(sessionsDir, { recursive: true });
-      fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
+    const sessionsDir = path.join(wuDir, 'discovery', 'sessions');
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    fs.writeFileSync(path.join(sessionsDir, 'session-001.md'), sessionLog);
 
-      // Epic is the sole work type with a resumable discovery session loop.
-      if (workType === 'epic') {
-        const phases = ensureContainer(manifest, 'phases', 'phases');
-        ensureContainer(phases, 'discovery', 'phases.discovery').active_session = '001';
-      }
+    // Epic is the sole work type with a resumable discovery session loop.
+    if (workType === 'epic') {
+      const phases = ensureContainer(manifest, 'phases', 'phases');
+      ensureContainer(phases, 'discovery', 'phases.discovery').active_session = '001';
     }
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return { importMoves: importPlan, seedMoves: seedPlan, skippedImports: skipped };
   });
-  const sessionLogPath = sessionLog !== null ? `.workflows/${workUnit}/discovery/sessions/session-001.md` : null;
 
   withProjectLock(cwd, () => {
     const projectManifest = readProjectManifest(cwd);
@@ -235,7 +229,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       source: SEED_SOURCES[/** @type {keyof typeof SEED_SOURCES} */ (move.item.folder)],
     })),
     skipped_imports: skippedImports,
-    session_log: sessionLogPath,
+    session_log: `.workflows/${workUnit}/discovery/sessions/session-001.md`,
     committed: outcome.committed,
     warnings,
   };

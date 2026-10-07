@@ -7,9 +7,9 @@ The prose should have taken this path:
    and this is a feature
 3. reads the discussion status, finds nothing, and takes the new-entry
    arm — phase validation is for entries that already exist
-4. checks the session log's exploration, finds a usable carrier, and
-   gathers nothing — the carrier is the processing skill's to read at
-   initialisation, and the user is asked nothing
+4. finds the discovery session log on disk and gathers nothing — the
+   carrier is the processing skill's to read at initialisation, and the
+   user is asked nothing
 5. hands off to the discussion processing skill for pay with session
    identity only — no description, no research, no context fields
 

@@ -4,19 +4,19 @@
 
 ---
 
-This step dispatches `workflow-review-task-verifier` agents in batches to verify tasks across the selected plan(s). Each verifier independently checks one task for implementation, tests, and code quality, writing its full findings to a file and returning a brief status.
+This step dispatches `workflow-review-task-verifier` agents in batches to verify the plan's tasks. Each verifier independently checks one task for implementation, tests, and code quality, writing its full findings to a file and returning a brief status.
 
 ---
 
 ## A. Identify Scope
 
-Build the list of implementation files using git history. For each plan in scope:
+Build the list of implementation files using git history:
 
 ```bash
 git log --oneline --name-only --pretty=format: --grep="impl({work_unit}): T{topic}-" | sort -u | grep -v '^$'
 ```
 
-This captures all files touched by that plan topic's task commits (internal IDs embed the topic, so the `T{topic}-` prefix keeps sibling topics of a multi-topic epic out of scope).
+This captures all files touched by the topic's task commits (internal IDs embed the topic, so the `T{topic}-` prefix keeps sibling topics of a multi-topic epic out of scope).
 
 → Proceed to **B. Extract All Tasks**.
 
@@ -30,7 +30,7 @@ Read the work type:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
 ```
 
-Using the format reading adapter loaded in Step 2, extract every task across all phases from each plan in scope — excluding tasks the backend marks skipped or cancelled (deliberately discarded work is not reviewed; note the excluded ids — they are recorded as covered after the verifiers run, and the report discloses them):
+Using the format reading adapter loaded in Step 2, extract every task across all phases from the plan — excluding tasks the backend marks skipped or cancelled (deliberately discarded work is not reviewed; note the excluded ids — they are recorded as covered after the verifiers run, and the report discloses them):
 - Note each task's description
 - Note each task's acceptance criteria — quick-fix tasks carry a **Verification** section instead of acceptance criteria; note that
 - Note any test name the task carries — the criteria are scenarios, and the tests that prove them are the executor's to name
