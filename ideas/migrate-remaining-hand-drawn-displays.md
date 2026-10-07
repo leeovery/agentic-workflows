@@ -37,7 +37,9 @@ the per-marker wording normalization, the Step 0 renumbering — touched
 most of these files with mechanical edits. Lee exempted mechanical sweeps
 from the touch rule for that stack only, to keep its surface area down,
 and asked for the displays to be tracked and migrated in a separate,
-focused update.
+focused update. The entry-layer stack (2026-10-07) took the same
+exemption: its fold, deletions and rewording touched eleven of these
+files, 22 displays among them, and left their displays to this pass.
 
 ## Shape
 
