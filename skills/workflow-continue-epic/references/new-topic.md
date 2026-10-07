@@ -13,7 +13,7 @@ The `d` and `r` doors start a topic the map does not hold yet: the topic is name
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-What topic would you like to discuss?
+What topic would you like to discuss? Name it, or `back` to return to the menu.
 ```
 
 **STOP.** Wait for user response.
@@ -25,7 +25,7 @@ What topic would you like to discuss?
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-What topic would you like to research?
+What topic would you like to research? Name it, or `back` to return to the menu.
 ```
 
 **STOP.** Wait for user response.
@@ -36,6 +36,12 @@ What topic would you like to research?
 
 ## B. Check the Name
 
+#### If `back`
+
+→ Return to caller for **A. State Display and Menu**.
+
+#### Otherwise
+
 Kebab-case the name the response gives, store as `{topic}`.
 
 A name already on the map is not a new topic — its menu row is the way in. Fetch the gate:
@@ -44,7 +50,7 @@ A name already on the map is not a new topic — its menu row is the way in. Fet
 node .claude/skills/workflow-engine/scripts/engine.cjs render direct-entry-gate {work_unit}.{phase}.{topic}
 ```
 
-#### If the output is empty
+**If the output is empty:**
 
 Silently derive `summary` (one line) and `description` (one or two paragraphs) from the user's response — values for the map row, never rendered; the derivation is part of the turn that took the name, with no stop of its own.
 
@@ -52,7 +58,7 @@ Silently derive `summary` (one line) and `description` (one or two paragraphs) f
 
 → On return, return to caller.
 
-#### Otherwise
+**Otherwise:**
 
 Emit both sections verbatim per their markers.
 

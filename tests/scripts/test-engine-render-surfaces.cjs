@@ -8049,17 +8049,40 @@ describe('render direct-entry-gate', () => {
     for (const phase of ['discussion', 'research']) {
       const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.sigma` });
       assert.match(out, /⚑ "Sigma" is already on the map — it is cancelled and stays on the map as record/, phase);
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Reactivate it from the menu \(e\/reactivate\) — a cancelled topic carries no row\./, phase);
+      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Reactivate it from the menu \(`e\/reactivate`\) — a cancelled topic carries no row\./, phase);
       assert.ok(!out.includes('names the next step'), phase);
     }
   });
 
-  it('a postponed row points at the pull forward — it carries no menu row either', () => {
+  /** The project's roadmap, holding tau's item — `pulled_to` another epic when `taken`. */
+  function writeRoadmap(taken) {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next'], items: {
+        tau: {
+          horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'tau' },
+          ...(taken ? { pulled_to: { work_unit: 'other', topic: 'tau' } } : {}),
+        },
+      } },
+    }, null, 2));
+  }
+
+  it('a postponed row points at the pull forward while its roadmap item waits — it carries no menu row either', () => {
+    writeRoadmap(false);
     for (const phase of ['discussion', 'research']) {
       const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.tau` });
       assert.match(out, /⚑ "Tau" is already on the map — it is postponed and waits on the roadmap/, phase);
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Pull it forward from the menu \(f\/forward\) — a postponed topic carries no row\./, phase);
+      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Pull it forward from the menu \(`f\/forward`\) — a postponed topic carries no row\./, phase);
       assert.ok(!out.includes('names the next step'), phase);
+    }
+  });
+
+  it('a postponed row whose roadmap item another epic took names no way back — the menu has no pull-forward row for it', () => {
+    writeRoadmap(true);
+    for (const phase of ['discussion', 'research']) {
+      const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `pay.${phase}.tau` });
+      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\./, phase);
+      assert.ok(!out.includes('f/forward'), phase);
     }
   });
 
@@ -8089,7 +8112,7 @@ describe('render direct-entry-gate', () => {
     });
     for (const phase of ['discussion', 'research']) {
       assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.dead` }),
-        /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*> Reopen it in discovery \(i\/discovery\) — a dead-ended topic carries no row\./, phase);
+        /⚑ "Dead" is already on the map — it is closed as a dead end and stays on the map as record[\s\S]*> Reopen it in discovery \(`i\/discovery`\) — a dead-ended topic carries no row\./, phase);
       assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `closed.${phase}.gone` }),
         /it is cancelled and stays on the map as record/);
     }
@@ -8110,7 +8133,7 @@ describe('render direct-entry-gate', () => {
     for (const phase of ['discussion', 'research']) {
       const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.done` });
       assert.match(out, /⚑ "Done" is already on the map — discussion has concluded/, phase);
-      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Resume it from the menu \(c\/completed\) — a decided topic carries no row\./, phase);
+      assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Resume it from the menu \(`c\/completed`\) — a decided topic carries no row\./, phase);
       assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.requeued` }),
         /research is parked on it \(triage waiting\)[\s\S]*> Its research row is the way in\./, phase);
     }

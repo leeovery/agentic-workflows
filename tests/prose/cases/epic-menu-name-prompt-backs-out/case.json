@@ -1,0 +1,38 @@
+{
+  "origin": "the epic menu's d door asked for a new topic's name with no way back — a mis-pressed d or a change of mind had nowhere to go but a name; the prompt now offers back, which puts the menu back with nothing written",
+  "entry": "workflow-continue-epic",
+  "files": [
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-continue-epic/references/new-topic.md"
+  ],
+  "answers": [
+    "d — start a discussion on a new topic",
+    "back"
+  ],
+  "invariants": {
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+    ],
+    "calls_exclude": [
+      "render direct-entry-gate",
+      "manifest get search-relevance.discovery",
+      "discovery-map add",
+      "discovery-map sequence",
+      "topic start",
+      "manifest set",
+      "engine.cjs commit",
+      "engine.cjs handoff"
+    ]
+  }
+}
