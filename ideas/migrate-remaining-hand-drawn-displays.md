@@ -15,8 +15,8 @@ that still carries a templated menu or display fence, with its count
 (47 files, 78 fences when this was logged). The ratchet only tightens, so
 it never lists a site that no longer exists. Examples:
 
-- `workflow-start/SKILL.md` — "Migrations Applied … {N} migration(s), {M}
-  file(s) updated." and the two "All documents up to date." blocks.
+- `workflow-start/SKILL.md` and `workflow-start/references/migration-review.md`
+  — the two "All documents up to date." blocks.
 - `workflow-start/references/inbox-working-set.md` — the `@foreach`
   full-content view.
 - `workflow-implementation-process/references/analysis-loop.md` — the
@@ -37,7 +37,9 @@ the per-marker wording normalization, the Step 0 renumbering — touched
 most of these files with mechanical edits. Lee exempted mechanical sweeps
 from the touch rule for that stack only, to keep its surface area down,
 and asked for the displays to be tracked and migrated in a separate,
-focused update.
+focused update. The entry-layer stack (2026-10-07) took the same
+exemption: its fold, deletions and rewording touched eleven of these
+files, 22 displays among them, and left their displays to this pass.
 
 ## Shape
 

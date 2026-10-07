@@ -533,23 +533,23 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 ### Step 0.1: Boot
 
 #### If `migrations.changed` is `true`
-[diff review + summary + confirm gate]
-→ Proceed to **Step 0.2**.
+Load **[migration-review.md](references/migration-review.md)** … [diff review + summary + confirm gate]
+→ On return, proceed to **Step 0.2**.
 
 #### Otherwise
 [up-to-date display]
 → Proceed to **Step 0.2**.
 
 ### Step 0.2: Claude Code Setup
-[a notice when the boot response says the mod is not running in Claude Code's terminal app or the Desktop app's Code tab, carrying on with typed menus; a terminal stop when this Claude Code is too old for it; otherwise silent]
+[a loaded reference when the boot response says the mod is not running or this Claude Code is too old for it; otherwise silent]
 → Proceed to **Step 0.3**.
 
 ### Step 0.3: Walkthrough
-[one-time offer when the boot response says so — records the answer, and a yes loads the walk; otherwise silent]
+[a loaded one-time offer when the boot response says so — records the answer, and a yes loads the walk; otherwise silent]
 → Proceed to **Step 0.4**.
 
 ### Step 0.4: Session Labels
-[one-time prompt when the boot response says so; otherwise silent]
+[a loaded one-time prompt when the boot response says so; otherwise silent]
 → Proceed to **Step 0.5**.
 
 ### Step 0.5: Knowledge Gate
@@ -557,7 +557,7 @@ Decompose these steps into **sub-steps** using H3 decimal numbering:
 → Proceed to **Step 0.6**.
 
 ### Step 0.6: Baseline Judgment
-[one-time judgment when the boot response says so — records the verdict either way; otherwise silent]
+[a loaded one-time judgment when the boot response says so — records the verdict either way; otherwise silent]
 → Proceed to **Step 1**.
 ```
 

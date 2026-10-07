@@ -65,54 +65,9 @@ Migrations must never half-run silently. Surface the reported error to the user.
 
 #### If `migrations.changed` is `true` or `migrations.verify` or `migrations.notices` is non-empty
 
-Files were updated, a migration handed over checks its code could not perform, or one handed back a notice for the person. You MUST complete the steps below before proceeding.
+Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
 
-1. **If `migrations.verify` is non-empty:** each entry is a migration that ran this boot. Its `info` says what the migration does in any project; its `verify` says what to check in this one. Perform each entry's checks with judgment against the actual files — the migration's code is exact-match and may have missed what it could not recognise — and fix what you find. Your fixes are migration changes: they join the diff, the summary, and the commit below.
-
-2. Run `git status --short -- .workflows .claude/settings.json .worktreeinclude .gitignore` and `git diff HEAD -- .workflows .claude/settings.json .worktreeinclude .gitignore` to see what changed — the paths the commit below takes. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
-
-   **If nothing changed and `migrations.notices` is empty** (the migrations skipped everything and verification found nothing to fix):
-
-   > *Output the next fenced block as a text code block (```text fence):*
-
-   ```text
-   All documents up to date.
-   ```
-
-   **Do not stop here.** Nothing needs review.
-
-   → Proceed to **Step 0.2**.
-
-3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a rerouted concern the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
-4. Write the summary to `.workflows/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary and emit its section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render migrations-applied --file .workflows/.cache/migrations-applied.json
-```
-
-5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render migration-gate
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Commit the migration changes:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"
-```
-
-→ Proceed to **Step 0.2**.
-
-**If ask:**
-
-Answer the user's question. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back — fetch the confirm gate again and emit it as above.
-
-**STOP.** Wait for user response.
+→ On return, proceed to **Step 0.2**.
 
 #### Otherwise
 
@@ -128,59 +83,13 @@ All documents up to date.
 
 ### Step 0.2: Claude Code Setup
 
-Branch on the boot response's `gate_surface` — `not-running` means the workflows' mod can run in this Claude Code and this session did not load it, a notice the session carries on past with typed menus; `outdated` means this Claude Code is older than the mod, a stop; `on` and `unavailable` render nothing.
+Branch on the boot response's `gate_surface` — `on` and `unavailable` render nothing.
 
-#### If `gate_surface` is `not-running`
+#### If `gate_surface` is `not-running` or `outdated`
 
-If the boot response carries `warnings`, surface them first.
+Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ Claude Code Setup`**
-```
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-  ⚑ The workflows' Claude Code mod isn't running
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> The mod draws the workflows' menus as buttons, and this session didn't load it: the session started before the mod was installed or updated (an install or update made while a session is open loads in the next one), mods are turned off (`--safe-mode` or `--bare`, `"disableAllHooks": true`, or your organization's policy), or Anthropic has switched installed mods off remotely, which nothing on this machine turns back on.
->
-> This session carries on with typed menus: they print as text, and you type your answer. A new Claude Code session in this project picks the mod up once the cause is cleared; `/plugin` names the mods a session loaded.
-```
-
-**Do not stop here.** The workflows run on their typed menus.
-
-→ Proceed to **Step 0.3**.
-
-#### If `gate_surface` is `outdated`
-
-If the boot response carries `warnings`, surface them first.
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ Claude Code Setup`**
-```
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```properties
-⚑ This Claude Code is too old for the workflows
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> The workflows run on Claude Code 2.1.287 or newer. Update Claude Code — `claude update` in a terminal, or update the Desktop app — then start a new session in this project and run `/workflow-start`.
-```
-
-**STOP.** Do not proceed — terminal condition.
+→ On return, proceed to **Step 0.3**.
 
 #### Otherwise
 
@@ -192,41 +101,9 @@ Branch on the boot response's `walkthrough` — the one-time offer of a short wa
 
 #### If `walkthrough` is `none`
 
-Fetch the offer and emit its sections in the order they arrive, each verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render walkthrough-offer
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Record the answer — written and committed in one call. If it fails (`ok: false`), surface the error and continue — the offer returns at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs walkthrough record walked
-```
-
-Load **[walk.md](../workflow-help/references/walk.md)** with origin = `first-run`.
+Load **[walkthrough-offer.md](references/walkthrough-offer.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 0.4**.
-
-**If `skip`:**
-
-Record the decline — written and committed in one call. If it fails (`ok: false`), surface the error and continue — the offer returns at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs walkthrough record skipped
-```
-
-→ Proceed to **Step 0.4**.
-
-**If ask:**
-
-Answer it per **[answering-how-it-works.md](../workflow-shared/references/answering-how-it-works.md)** — the menu it puts back is the offer's alone, never the whole offer again: the call above with `--menu-only` added.
-
-**STOP.** Wait for user response.
 
 #### Otherwise
 
@@ -238,45 +115,9 @@ Branch on the boot response's `tmux_labels` — `prompt` means the session runs 
 
 #### If `tmux_labels` is `prompt`
 
-> *Output the next fenced block as markdown (not a code block):*
+Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
 
-```
-**`▪ Session Labels`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> You're running inside tmux. The workflows can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at its menu — putting the original name back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.
-```
-
-Fetch the opt-in and emit its `MENU: label gate` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render label-gate
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the hooks or the commit will be re-tried at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label-config true
-```
-
-→ Proceed to **Step 0.5**.
-
-**If `no`:**
-
-Record the choice. If the command fails (`ok: false`), surface its error and continue — the prompt returns at a future start once the project manifest is fixed. If it succeeds carrying `warnings`, surface them and continue — the choice is recorded; the hooks or the commit will be re-tried at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs session label-config false
-```
-
-→ Proceed to **Step 0.5**.
+→ On return, proceed to **Step 0.5**.
 
 #### Otherwise
 
@@ -298,53 +139,11 @@ The response's `system_config` object carries what the gate needs to branch. Loa
 
 Branch on the boot response's `baseline` — the one-time judgment on whether the project carries a codebase that predates the workflows. A recorded status (`native`/`in-progress`/`completed`/`skipped`) never re-judges and never re-offers: manage carries the way into the assessment for every recorded status, and the start menus carry an interview in progress or a declined offer.
 
-While `baseline` is `none`, nothing is recorded yet. Read the response's `baseline_signal` — the repository's own account of what came before the workflows — and decide the one question: was there real development before the workflows arrived, or only setup? `history_before` lists the commits before the arrival as `date  subject` (`commits_before` of `commits_total`, from `root_date` to `workflows_date` — `null` when nothing under `.workflows/` is committed yet: the workflows are arriving now, and the whole history came before them); `tree_at_arrival` and `files_at_arrival` are the project tree they arrived into, less the workflows' own footprint. Read them as you would by hand — the counts are context, never thresholds. Commits that are an initial commit, setup, configuration, a generator's skeleton, and a tree with no application code in it: the project grew up on the workflows, whatever it has become since — **native**. Application code and the history of building it before the arrival: a codebase the workflows were installed into — it **predates** them. A `null` signal is a project with no history to read (no repository, no commits, a shallow clone): look at the project tree yourself, and an empty or scaffold-only tree is native.
+#### If `baseline` is `none`
 
-#### If `baseline` is `none` and the project is native
+Load **[baseline-judgment.md](references/baseline-judgment.md)** and follow its instructions as written.
 
-Record the verdict — written and committed in one call, so the question is settled for good. If it fails (`ok: false`), surface the error and continue — the judgment returns at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs baseline record native
-```
-
-→ Proceed to **Step 1**.
-
-#### If `baseline` is `none` and the codebase predates the workflows
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ Baseline Assessment`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> This project has an existing codebase the workflows know nothing about. A baseline assessment researches it, then interviews you to capture the intent the code can't show — landing docs the knowledge base surfaces in every later phase. Pausable any time; also available later from the workflow-start menus.
-```
-
-Fetch the offer and emit its `MENU: baseline offer` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-offer-gate
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `/workflow-baseline`.
-
-**If `no`:**
-
-Record the decline — written and committed in one call, so the offer never repeats. If it fails (`ok: false`), surface the error and continue — the offer returns at the next start:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs baseline record skipped
-```
-
-→ Proceed to **Step 1**.
+→ On return, proceed to **Step 1**.
 
 #### Otherwise
 
