@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.12] - 2026-10-07
+
+🔧 Changed
+- Phase entry skills are gone — each phase's own skill now checks its prerequisites, resumes or starts, and runs any opening interview itself, so a phase start reads its state once instead of twice.
+- One `workflow-continue-linear` menu replaces the separate feature, bugfix, quick-fix and cross-cutting continue skills — it reads the work type from the unit and drops the unreachable pick-a-unit step.
+- The specification grouping now runs inside the epic menu's `s/spec` row — scenario, analysis, groupings and completed-specs menus, and unify — and hands off straight to the picked specification.
+- A specification works out its own incorporation of earlier specifications, whichever menu starts it — the start records what it takes in and completion supersedes them, with a confirm shown only where the pick didn't make that clear.
+- The `d`/`r` doors on the epic menu now ask for the topic name and land it on the map before handing off; a name already on the map explains the way back and returns to the menu rather than ending the session.
+- Planning asks for added context and cross-cutting references as part of its own start and records both in the plan file, so they survive a resume.
+- The framework loads once per conversation, at the skill the conversation opens on, instead of at every skill.
+- `workflow-start` loads its rarely-used branches (migration review, mod notice, walkthrough offer, session-label prompt, baseline judgment) only when they fire, making a typical start lighter.
+- Discussion no longer asks a focus question on resume, since its answer was never used.
+- The bridge hands linear work off along routes built by the engine, including routes to each moved discussion of a promoted unit.
+
+✨ Added
+- Epic and linear continue menus have a `b/back` row that returns to the start menu.
+- Promoting an epic specification now marks its source discussions as promoted: the epic stops offering them for regrouping and shows the topic as decided, naming the new unit, while the new cross-cutting unit keeps them as the specification's sources.
+- Revisiting a promoted cross-cutting unit reaches each moved discussion by name instead of starting an empty one.
+- `engine topic incorporations` reads which started specifications a specification incorporates.
+- Migrations 068–070 remove consult references, settle cancelled experiment series, and record past promotions.
+
+🗑️ Removed
+- Consult references are retired — a sibling discussion that changed something a grouping depends on is now noted as a tension on that grouping, raised during construction rather than checked at sign-off.
+- The old per-series experiment cancel state, the `analysis-rerun` scenario, review's single/multi/all scope, and the `storage_paths` backfill checks are removed.
+- `engine workunit create --no-session-log` is removed.
+
+🐛 Fixed
+- Cancelling or postponing a topic whose discussion moved with a promoted specification is now refused with an explanation, instead of acting on a topic that continues in another unit.
+- Reopening or writing a status onto a promoted item is refused with a pointer to the cross-cutting unit it moved to.
+
 ## [0.8.11] - 2026-10-06
 
 🐛 Fixed
