@@ -10,9 +10,12 @@ the record's authority.
 
 Expected path:
 
-1. the entry skill validates the source and the phase, finds the
-   specification in progress, and hands off to the processing skill
-2. resume detection offers the choice and the user continues, so
+1. the skill asks the engine whether its source material is ready (it
+   is), then reads the specification status once, finds it in progress,
+   emits the resuming phase note, and checks the reconcile flag (absent
+   — silent)
+2. beneath the note, with the file found, the continue-or-restart choice
+   follows with no second heading of its own, and the user continues, so
    initialisation is skipped: the walk lands in the review. Session
    setup resets both gate modes to `gated`
 3. cycle 1 initialises: `review_cycle` is set to 1 and the

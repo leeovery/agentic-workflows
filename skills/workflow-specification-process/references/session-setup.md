@@ -12,6 +12,24 @@ Reset `finding_gate_mode` and `construction_gate_mode` to `gated` in one batched
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode=gated construction_gate_mode=gated
 ```
 
+## Hold the Sources
+
+Read the sources map:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources
+```
+
+Each row names a source document — `.workflows/{work_unit}/investigation/{source-name}.md` where the work type is `bugfix`, otherwise `.workflows/{work_unit}/discussion/{source-name}.md`. Where the work type is `cross-cutting`, its research is reference material once completed:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
+```
+
+`completed` → `.workflows/{work_unit}/research/{topic}.md`.
+
+Hold these paths in session: construction extracts from the sources and reads the research beside them.
+
 ## Hold the Grouping Analysis's Tensions
 
 Read any `**Tension**` lines for this specification's grouping from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (skip silently when the file or the lines are absent — only an epic's grouping analysis writes them). Hold them in session: construction raises each per its Resolve Source Incoherence discipline.
@@ -28,9 +46,7 @@ Hold the response's `incorporations` in session (an empty list holds nothing): e
 
 ## Reconcile Stale Sources First
 
-Read the sources map (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources`).
-
-#### If any row reads `stale`
+#### If any row of the sources map reads `stale`
 
 > *Output the next fenced block as markdown (not a code block):*
 

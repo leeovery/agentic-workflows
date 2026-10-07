@@ -10,4 +10,4 @@ discussion decides only that capture is confirmed by gateway webhooks.
 No source frames the mechanism, the tolerance, or any alternative.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

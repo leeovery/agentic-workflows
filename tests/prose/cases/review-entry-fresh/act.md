@@ -1,4 +1,4 @@
-Execute skills/workflow-review-entry/SKILL.md with arguments $0=feature,
-$1=pay. Follow it to the point where the handoff to the processing skill
-is constructed; record the handoff block and stop. Do not execute the
-processing skill's instructions, and dispatch no agents.
+Execute skills/workflow-review-process/SKILL.md with arguments
+$0=feature, $1=pay. Follow it until it turns to initialising the review,
+and stop there — before the review item is registered. Dispatch no
+agents.

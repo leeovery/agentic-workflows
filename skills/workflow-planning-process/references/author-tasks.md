@@ -38,7 +38,7 @@ Invoke `workflow-planning-task-author` with these file paths:
 
 1. **read-specification.md**: `.claude/skills/workflow-planning-process/references/read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
-3. **Cross-cutting specs**: cross-cutting spec paths if any
+3. **Cross-cutting specs**: the specification paths the planning file's `## Cross-Cutting References` section lists, if any
 4. **task-design.md**: `.claude/skills/workflow-planning-process/references/task-design.md`
 5. **All approved phases**: the complete phase structure from the planning file body
 6. **Task list for current phase**: the task table for this specific phase from the planning file

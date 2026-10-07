@@ -301,8 +301,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: research, discussion, specification',
       'reconcile_pending: (none)',
       'revisitable_phases: research, discussion, specification',
-      'next_route: /workflow-planning-entry feature auth',
-      'revisit_routes: /workflow-research-process feature auth, /workflow-discussion-process feature auth, /workflow-specification-entry feature auth',
+      'next_route: /workflow-planning-process feature auth',
+      'revisit_routes: /workflow-research-process feature auth, /workflow-discussion-process feature auth, /workflow-specification-process feature auth',
       '',
     ].join('\n'));
   });
@@ -346,8 +346,8 @@ describe('workflow-bridge format', () => {
       'completed_phases: scoping, specification, planning, implementation',
       'reconcile_pending: (none)',
       'revisitable_phases: scoping, implementation',
-      'next_route: /workflow-review-entry quick-fix rename-api',
-      'revisit_routes: /workflow-scoping-process quick-fix rename-api, /workflow-implementation-entry quick-fix rename-api',
+      'next_route: /workflow-review-process quick-fix rename-api',
+      'revisit_routes: /workflow-scoping-process quick-fix rename-api, /workflow-implementation-process quick-fix rename-api',
       '',
     ].join('\n'));
     // The menu itself is the revisit-phases render surface, filtered the same way.
@@ -415,8 +415,8 @@ describe('workflow-bridge format', () => {
       },
     });
     const out = format(discover(dir, 'stall'));
-    assert.match(out, /^next_route: \/workflow-planning-entry bugfix stall$/m);
-    assert.match(out, /^revisit_routes: \/workflow-investigation-process bugfix stall, \/workflow-specification-entry bugfix stall$/m);
+    assert.match(out, /^next_route: \/workflow-planning-process bugfix stall$/m);
+    assert.match(out, /^revisit_routes: \/workflow-investigation-process bugfix stall, \/workflow-specification-process bugfix stall$/m);
   });
 
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {

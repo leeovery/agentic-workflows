@@ -31,7 +31,7 @@ The prose should have taken this path:
    no flag, and it comes back empty — the grouping is a plain start, so
    the single path's own confirm is the selection's only one
 8. the handoff: the route passes to the engine's handoff as
-   `/workflow-specification-entry` with epic, the work unit and the
+   `/workflow-specification-process` with epic, the work unit and the
    topic `search-relevance`; the line naming where the work goes is the
    turn's last text, and the walk stops at the handoff
 

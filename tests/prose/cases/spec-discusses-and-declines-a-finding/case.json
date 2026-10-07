@@ -1,9 +1,9 @@
 {
   "origin": "Manual mode keeps the settled lane on one screen, and the screen carries a way out of it: say discuss and a number and that finding is pulled aside after the rest land, for an exchange that can end in the finding not landing at all. This walks the gated screen end to end — two settled calls on one screen, one documented with the rest and one talked through and declined for cause, with the reason on the row — and then the gated cycle end, where the re-loop gate asks before a follow-up round rather than taking one.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

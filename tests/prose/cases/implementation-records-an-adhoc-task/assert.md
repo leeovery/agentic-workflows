@@ -1,46 +1,44 @@
 The prose should have taken this path:
 
-1. the plan gate renders empty and no implementation item exists, so
-   this is a new entry; dependency validation returns immediately —
-   external dependencies are an epic concern
-2. the entry hands off into the processing skill carrying the
-   local-markdown format read from the planning item
-3. resume detection initialises tracking and reports the created mode,
-   which commits the start of implementation through the engine's
-   scoped commit
-4. environment setup finds the existing document stating no setup is
+1. the code slot reads free and the plan gate renders empty; dependency
+   validation returns immediately — external dependencies are an epic
+   concern — and the implementation status reads empty, so this is a
+   first start: tracking is initialised and the start of implementation
+   commits through the engine's scoped commit — no phase note, never the
+   resuming note
+2. environment setup finds the existing document stating no setup is
    required and returns without asking anything and without writing it
    again
-5. the plan adapter is loaded for the manifest's format; project
+3. the plan adapter is loaded for the manifest's format; project
    skills and linter discovery each ask only their skip-again question
    — the first two scripted answers skip both,
    each recording its empty set on the topic
-6. the loop selects pay-1-1 first (phase order, then task order),
+4. the loop selects pay-1-1 first (phase order, then task order),
    normalises it, notes its position across the three backend tasks,
    starts it via the engine, marks it in-progress, and renders its
    brief before the dispatch
-7. the executor stub fires for pay-1-1 and returns complete; the
+5. the executor stub fires for pay-1-1 and returns complete; the
    reviewer stub fires and approves; the result header renders and the
    task gate menu is fetched and emitted
-8. the third scripted answer does not answer the gate — it raises new
-   work. The processing skill's standing rule routes to
+6. the third scripted answer does not answer the gate — it raises new
+   work. The implementation skill's standing rule routes to
    ad-hoc-plan-changes.md; the pending gate is left to re-present on
    return
-9. framing needs no specification decision — the ask is concrete — so
+7. framing needs no specification decision — the ask is concrete — so
    the landing is picked: the in-flight task (payment intent) does not
    own a reconciliation job, and neither pending task (capture
    webhooks, gateway error logging) owns it either; it is new work,
    routed to drafting. The walk never routes to amend-a-pending-task
-10. drafting reads the format's graph adapter, settles placement from
-    the user's own words (the open phase 1, no priority, no
-    dependencies), and writes the staging file ad-hoc-tasks-1.md with
-    one task carrying placement: phase 1 and no priority or depends_on
-    lines; the gate state is initialised in one batched write
-    (gate_mode gated, task 1 pending)
-11. the proposed task renders through the engine from its cache
-    payload; the fourth scripted answer approves, recorded on the
-    staging row
-12. the task-writer agent is invoked unstubbed — the walk crosses into
+8. drafting reads the format's graph adapter, settles placement from
+   the user's own words (the open phase 1, no priority, no
+   dependencies), and writes the staging file ad-hoc-tasks-1.md with
+   one task carrying placement: phase 1 and no priority or depends_on
+   lines; the gate state is initialised in one batched write
+   (gate_mode gated, task 1 pending)
+9. the proposed task renders through the engine from its cache
+   payload; the fourth scripted answer approves, recorded on the
+   staging row
+10. the task-writer agent is invoked unstubbed — the walk crosses into
     agents/workflow-implementation-task-writer.md and follows it: the
     staging file is read, the plan is read through the reading adapter
     (three existing tasks in phase 1, so the new task is pay-1-4 —
@@ -48,7 +46,7 @@ The prose should have taken this path:
     stops at pay-1-2), the destination phase 1 is open and valid, and
     the task file tasks/pay-1-4.md is created per the authoring
     adapter
-13. the writer records the created task in planning.md — one row
+11. the writer records the created task in planning.md — one row
     appended to Phase 1's existing #### Tasks table — and does not
     write phase-1-tasks.md, whatever its drifted contents suggest
     about where later tasks go (reading it is not a violation; the
@@ -56,13 +54,13 @@ The prose should have taken this path:
     plan's external_id being unset, sets it to the topic name per the
     format. No graph adapter mechanics run — the staged task carried
     no priority and no depends_on
-14. back in the orchestrator, the scoped commit lands as
+12. back in the orchestrator, the scoped commit lands as
     impl(pay): add 1 ad hoc task(s)
-15. the interrupted flow is the task loop, so control returns to the
+13. the interrupted flow is the task loop, so control returns to the
     caller; the pending task gate was set aside by the raised work, so
     the session asks in conversation — no gate, no menu — whether the
     user is ready to move on, and the walk STOPS
-16. the fifth scripted answer says they are ready — never the gate's
+14. the fifth scripted answer says they are ready — never the gate's
     answer — so the gate re-presents, re-fetched from the engine, not
     replayed from memory.
     The walk stops there: the gate unanswered, pay-1-1 never completed,

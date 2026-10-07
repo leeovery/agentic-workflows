@@ -16,5 +16,5 @@ computed from it is wrong the same way.
 
 No specification exists anywhere and no phase beyond discussion has
 run. The context was cleared at the phase boundary — this session
-opens cold at the entry skill with nothing but the two arguments and
+opens cold at the specification skill with nothing but the two arguments and
 what is on disk.

@@ -532,7 +532,7 @@ describe('the staleness hop walks to the nearest downstream consumer', () => {
     assert.strictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.reconcile_needed, 'research');
   });
 
-  it('a settled series between is walked past — the flag lands where an entry flow clears it', () => {
+  it('a settled series between is walked past — the flag lands where a phase\'s start clears it', () => {
     world({
       research: { items: { timing: { status: 'completed' } } },
       experiment: { items: { timing: { status: 'completed', experiments: { E1: { slug: 'x', status: 'concluded', verdict: 'held' } } } } },

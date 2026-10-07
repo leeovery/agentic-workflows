@@ -14,4 +14,4 @@ checkout keeps accepting a failed webhook delivery before it treats the
 payment as unconfirmed.
 
 The context was cleared between sittings — this session opens cold at
-the entry skill with the spec in progress and what is on disk.
+the specification skill with the spec in progress and what is on disk.

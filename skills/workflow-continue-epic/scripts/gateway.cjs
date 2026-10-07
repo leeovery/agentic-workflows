@@ -255,7 +255,7 @@ function view(workUnit, newArrivalsJson) {
       const holder = k.session_holder ? `${k.session_holder.work_unit}/${k.session_holder.topic}, ` : '';
       // A code entry reads as the checkout's slot, not this topic's session:
       // its own marker keeps the menu's in-session gate from firing, because
-      // the entry skill's code gate owns that stop.
+      // the phase's own code gate owns that stop.
       const label = k.code_session ? 'code session' : 'in session';
       cells.push(`(${label}: ${holder}last active ${engine.presence.fmtAge(k.session_age || 0)} ago)`);
     }
@@ -293,7 +293,7 @@ function inSessionGate(workUnit, key) {
     return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is not held by another session — no gate to render` });
   }
   if (entry.code_session) {
-    return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is a code phase — the code slot is gated at the entry skill (render code-gate), never here` });
+    return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is a code phase — the code slot is gated where the phase starts (render code-gate), never here` });
   }
   return engine.project.epicInSessionGate(e.name, entry);
 }

@@ -33,7 +33,7 @@ Invoke `workflow-planning-phase-designer` with these file paths:
 
 1. **read-specification.md**: `.claude/skills/workflow-planning-process/references/read-specification.md`
 2. **Specification**: specification path from the manifest or `.workflows/{work_unit}/specification/{topic}/specification.md`
-3. **Cross-cutting specs**: cross-cutting spec paths if any
+3. **Cross-cutting specs**: the specification paths the planning file's `## Cross-Cutting References` section lists, if any
 4. **phase-design.md**: `.claude/skills/workflow-planning-process/references/phase-design.md`
 5. **Context guidance**: `.claude/skills/workflow-planning-process/references/phase-design/{work_type}.md` (default to `epic` if `work_type` is empty)
 6. **task-design.md**: `.claude/skills/workflow-planning-process/references/task-design.md` *(for granularity awareness only — helps the agent judge whether a phase is too thin or too thick. The agent must NOT produce task tables or task lists.)*
@@ -48,7 +48,7 @@ I'll delegate phase design to a specialist agent. It will read the full specific
 
 This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The phase designer agent has been dispatched for the plan's phases.`
 
-Write the phase structure directly to the planning file body.
+Write the phase structure directly to the planning file body, beneath the sections initialization wrote.
 
 **Settle the spec defects** — classified before the structure gate renders, so what the user approves was designed against a correct specification. The section is the orchestrator's: it never reaches the planning file.
 

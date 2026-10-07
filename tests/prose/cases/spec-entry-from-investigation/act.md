@@ -1,4 +1,4 @@
-Execute skills/workflow-specification-entry/SKILL.md with arguments
-$0=bugfix, $1=crash-fix. Follow it to the point where the handoff to the
-processing skill is constructed; record the handoff block and stop. Do
-not execute the processing skill's instructions.
+Execute skills/workflow-specification-process/SKILL.md with arguments
+$0=bugfix, $1=crash-fix. Follow it through initialisation and session
+setup, and stop once session setup returns — before the specification
+principles load or construction begins.

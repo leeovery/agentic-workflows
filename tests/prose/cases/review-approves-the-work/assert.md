@@ -1,11 +1,10 @@
 The prose should have taken this path:
 
-1. the entry's prerequisite gate renders empty — plan and
-   implementation are completed — and the review status reads empty, so
-   nothing is reopened and the handoff carries the work forward with
-   nothing asked
-2. the process finds no report file — a fresh start, no resume choice —
-   and registers the review through the engine
+1. the code-slot check and then the prerequisite gate both render empty
+   — plan and implementation are completed — and the review status reads
+   empty, so this is a first start: nothing is reopened, no phase note
+   or resume choice appears, and nothing is asked
+2. initialisation registers the review through the engine
 3. the plan and specification are read through the planning item and
    the format's reading adapter; the implementation's project
    skills are looked up

@@ -1,27 +1,47 @@
 {
-  "origin": "bugfix mainline — the same entry skill, sourced from an investigation",
-  "entry": "workflow-specification-entry",
+  "origin": "bugfix mainline — the same specification start, sourced from an investigation",
+  "entry": "workflow-specification-process",
+  "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-entry/references/validate-phase.md"
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md"
   ],
   "invariants": {
     "calls_include": [
-      "render entry-gate crash-fix.specification.crash-fix"
+      "render entry-gate crash-fix.specification.crash-fix",
+      "manifest get crash-fix.specification.crash-fix status",
+      "topic start crash-fix specification crash-fix",
+      "sources.crash-fix.status pending",
+      "spec(crash-fix): initialize specification",
+      "manifest get crash-fix.specification.crash-fix sources",
+      "topic incorporations crash-fix crash-fix"
+    ],
+    "calls_in_order": [
+      "render entry-gate crash-fix.specification.crash-fix",
+      "manifest get crash-fix.specification.crash-fix status",
+      "write:.workflows/crash-fix/specification/crash-fix/specification.md",
+      "topic start crash-fix specification crash-fix",
+      "sources.crash-fix.status pending",
+      "spec(crash-fix): initialize specification",
+      "manifest get crash-fix.specification.crash-fix sources"
     ],
     "calls_exclude": [
       "topic reopen",
       "topic supersede",
-      "manifest set",
-      "manifest apply"
+      "render phase-note",
+      "render resume-gate",
+      "manifest get crash-fix.research.crash-fix status",
+      "manifest apply",
+      "render construction-gate"
     ]
   }
 }

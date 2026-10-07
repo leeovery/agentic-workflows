@@ -1,9 +1,9 @@
 {
   "origin": "A review agent stages a move; the session disposes it. Where a staged choice asks what happens outside the one event the record ties a rule to, the record has in fact already answered — a decided event whose consequence follows with no alternative — so the row is rewritten `settled` with that derivation before anything renders, and it lands from the settled batch with the rest. A choice that clears the bar in the same walk still stops and still lands its pick in the discussion that should own it, so the dispose has to discriminate rather than blanket-settle.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

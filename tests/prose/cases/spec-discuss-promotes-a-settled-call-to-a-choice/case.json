@@ -1,9 +1,9 @@
 {
   "origin": "A specification review's settled batch is a scan, not a vote — but it has one door out that changes what a finding is. Say discuss and a number and the row is pulled aside for an exchange, and where that exchange shows the pick belongs to the reader rather than the record, the row is rewritten from a call this session made into a choice the user makes: Options in place of a Proposal, the search named, and the stop it earns in the walk that follows. This is the only path by which a batched row becomes a stop, and nothing else in the corpus walks it. The case takes it end to end on the gated path — one call landing with the screen, one promoted and then picked against the recommendation, the pick landing in the discussion that should own it before the specification re-aligns to it — and pins that the batch does not render a second time, because the promotion resolved the lane rather than leaving it.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

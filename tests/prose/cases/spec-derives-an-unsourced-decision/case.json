@@ -1,9 +1,9 @@
 {
   "origin": "the decision-bar stack gave the unsourced-decision branch a derivation arm: the record is searched before any stop, and where recorded rationale pins the missing point the derivation lands in the owning document with a one-line notify — no exchange. The stop-arm sibling walks the search running out; this pins it running in: input review flags the unsourced value, the orchestrator routes it, the derivation settles it from the record alone, the discussion gains the decision it never made, and the spec re-aligns",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

@@ -138,6 +138,6 @@ Load **[quickfix-display-and-menu.md](references/quickfix-display-and-menu.md)**
 
 ## Step 6: Route Selection
 
-The user's selection carries its `route` — the selected `ACTIONS` entry's route from quickfix-display-and-menu.md, e.g. `/workflow-implementation-entry quick-fix {work_unit}`.
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from quickfix-display-and-menu.md, e.g. `/workflow-implementation-process quick-fix {work_unit}`.
 
 Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.

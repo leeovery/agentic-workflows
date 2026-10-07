@@ -1,4 +1,3 @@
-Execute skills/workflow-planning-entry/SKILL.md with arguments
-$0=feature, $1=pay. Follow it to the point where the handoff to the
-processing skill is constructed; record the handoff block and stop. Do
-not execute the processing skill's instructions.
+Execute skills/workflow-planning-process/SKILL.md with arguments
+$0=feature, $1=pay. Follow it to the continue-or-restart choice and stop
+there — answer nothing.

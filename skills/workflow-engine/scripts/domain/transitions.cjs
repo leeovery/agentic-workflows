@@ -976,7 +976,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
 
     // A completed specification declares real dependencies — exactly the
     // information that sharpens a build order first assigned at grouping.
-    // Flag rather than resequence: the epic-entry sequencing step does the
+    // Flag rather than resequence: the epic menu's sequencing step does the
     // work, so there is one place that sequences. Cleared by
     // `build-order sequence`.
     if (phase === 'specification' && manifest.work_type === 'epic') {

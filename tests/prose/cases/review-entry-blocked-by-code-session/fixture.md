@@ -7,5 +7,5 @@ and the process behind it is alive. The user has opened a second session
 here to start the review.
 
 The context was cleared at the phase boundary — this session opens cold
-at the entry skill with nothing but the two arguments and what is on
+at the review skill with nothing but the two arguments and what is on
 disk.

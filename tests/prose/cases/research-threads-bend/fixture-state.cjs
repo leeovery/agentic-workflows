@@ -5,7 +5,7 @@
 // established. The feature mainline's create leaves a carrier that routed
 // straight to discussion; this fixture's shaping routed through research
 // instead, so the discovery log's Exploration is rewritten to say why —
-// the same log the entry skill reads to decide whether a carrier exists.
+// the same log the research skill reads to decide whether a carrier exists.
 
 const m = require('../../mainlines/feature.cjs');
 

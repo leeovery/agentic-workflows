@@ -5,10 +5,13 @@ the bar before it renders and moving neither.
 
 Expected path:
 
-1. the entry skill validates the spec and the phase, finds the plan in
-   progress, and hands off to the processing skill
-2. resume detection offers the choice and the user continues; session
-   setup resets the gate modes to `gated`
+1. the specification gate renders empty and the planning status reads
+   in-progress — read once — so the resuming phase note heads the resume
+   surface and the reconcile flag reads absent (silent)
+2. beneath the note, spec change detection reports the specification
+   unchanged and the resume choice follows with no second heading of its
+   own; the user continues; session setup resets the gate modes to
+   `gated`
 3. the loop reads the in-progress tracking file and renders the findings
    summary (two pending rows). **Finding 1 (settled — a repeat delivery
    changes nothing)** is disposed before it renders and stands settled:

@@ -1,6 +1,6 @@
 # Cross-Cutting Context
 
-*Reference for **[workflow-planning-entry](../SKILL.md)***
+*Reference for **[initialize-plan](initialize-plan.md)***
 
 ---
 
@@ -123,8 +123,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render cross-cutting-refe
 
 Emit the call's DISPLAY section verbatim per its marker.
 
-These specifications contain validated architectural decisions that should inform the plan. The planning skill will incorporate them as a "Cross-Cutting References" section in the plan.
-
-Store the confirmed cross-cutting specs (work unit name and source file path — the path alone, without the `Source:` line's range) for handoff to the planning process.
+These specifications contain validated architectural decisions that should inform the plan. Hold each one — its work unit name, its specification path (the path alone, without the `Source:` line's range), and its summary — for the planning file's Cross-Cutting References section.
 
 → Return to caller.

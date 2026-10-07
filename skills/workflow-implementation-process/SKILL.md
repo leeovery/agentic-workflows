@@ -12,12 +12,16 @@ Act as **expert implementation orchestrator** coordinating task execution across
 
 Follows planning. Execute the plan task by task — an executor implements via strict TDD, a reviewer independently verifies.
 
+**Stay in your lane**: Execute the plan via strict TDD (or verification workflow for quick-fix). Don't re-debate decisions from the specification or expand scope beyond the plan. The plan is your authority — when unplanned work surfaces, it grows only through the ad hoc plan-changes route, never freelanced.
+
 ### What This Skill Needs
 
-- **Plan content** (required) - Phases, tasks, and acceptance criteria to execute
-- **Plan format** (required) - How to parse tasks (from manifest)
-- **Specification content** (required) - The record the plan was built from; the executor and reviewer both receive its path and read the sections each task cites
-- **Environment setup** (optional) - First-time setup instructions
+Positional arguments:
+- `$0` — **work_type**: `epic`, `feature`, `bugfix`, or `quick-fix`.
+- `$1` — **work_unit**: the work unit name.
+- `$2` — **topic**: the plan to execute. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
+
+The plan's phases, tasks, and acceptance criteria are read through its output format (the planning item's `format`). The specification it was built from, at `.workflows/{work_unit}/specification/{topic}/specification.md`, is the record behind it — the executor and reviewer both receive its path and read the sections each task cites.
 
 ---
 
@@ -87,7 +91,59 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 
 ---
 
-## Step 0: Resume Detection
+## Step 0: Session Setup
+
+### Step 0.1: Code Slot
+
+Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `implementation`.
+
+→ On return, proceed to **Step 0.2**.
+
+### Step 0.2: Entry Gate
+
+Check the plan prerequisite — the engine derives the verdict from manifest state:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.implementation.{topic}
+```
+
+#### If the response is empty
+
+The plan is completed.
+
+→ Proceed to **Step 0.3**.
+
+#### If the response carried `DISPLAY: entry blocker`
+
+Emit both sections verbatim per their markers — the red blocker line, then its guidance.
+
+**STOP.** Do not proceed — terminal condition.
+
+### Step 0.3: Dependencies
+
+#### If `work_type` is not `epic`
+
+→ Proceed to **Step 0.4**.
+
+#### Otherwise
+
+Check whether the plan declares external dependencies:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest exists {work_unit}.planning.{topic} external_dependencies
+```
+
+**If `false`:**
+
+→ Proceed to **Step 0.4**.
+
+**If `true`:**
+
+Load **[check-dependencies.md](references/check-dependencies.md)** and follow its instructions as written.
+
+→ On return, proceed to **Step 0.4**.
+
+### Step 0.4: Resume Detection
 
 Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
 
@@ -95,12 +151,19 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} implementation {topic}
 ```
 
-Initialize or resume implementation tracking (idempotent — creates the manifest entry with default gates and counters, or resets the gate modes of an existing one and, outside a live fix round, `fix_attempts`; the cycle count and progress are preserved):
+Read the phase status, storing it as `phase_status`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} status
+```
+
+#### If `phase_status` is empty
+
+A first start. Create the implementation tracking — the manifest entry with its default gates and counters:
+
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
 ```
-
-#### If the response's `mode` is `created`
 
 Commit the tracking (the scoped commit covers the manifest):
 
@@ -110,15 +173,29 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 
 → Proceed to **Step 1**.
 
-#### If the response's `mode` is `resumed`
+#### If `phase_status` is `in-progress` or `completed`
 
-> *Output the next fenced block as a text code block (```text fence):*
+Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
-```text
-Found existing implementation for "{topic:(titlecase)}". Resuming from previous session.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} implementation {topic}
 ```
 
-→ Proceed to **Step 1**.
+Resume the tracking — it resets the gate modes to `gated` and, outside a live fix round, `fix_attempts`; the cycle count and progress are preserved:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs task init {work_unit} {topic}
+```
+
+Render the phase note — `Reopening` for an implementation just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.implementation.{topic} --verb {Reopening|Resuming}
+```
+
+Load **[reconcile-advisory.md](../workflow-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `implementation`.
+
+→ On return, proceed to **Step 1**.
 
 ---
 

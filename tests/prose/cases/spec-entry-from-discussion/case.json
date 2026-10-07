@@ -1,27 +1,47 @@
 {
   "origin": "feature mainline — a feature's spec draws on its discussion",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
+  "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md"
+    "skills/workflow-specification-process/references/initialize-specification.md",
+    "skills/workflow-specification-process/references/specification-format.md",
+    "skills/workflow-shared/references/specification-body.md",
+    "skills/workflow-specification-process/references/session-setup.md"
   ],
   "invariants": {
     "calls_include": [
-      "render entry-gate pay.specification.pay"
+      "render entry-gate pay.specification.pay",
+      "manifest get pay.specification.pay status",
+      "topic start pay specification pay",
+      "sources.pay.status pending",
+      "spec(pay): initialize specification",
+      "manifest get pay.specification.pay sources",
+      "topic incorporations pay pay"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.specification.pay",
+      "manifest get pay.specification.pay status",
+      "write:.workflows/pay/specification/pay/specification.md",
+      "topic start pay specification pay",
+      "sources.pay.status pending",
+      "spec(pay): initialize specification",
+      "manifest get pay.specification.pay sources"
     ],
     "calls_exclude": [
       "topic reopen",
       "topic supersede",
-      "manifest set",
-      "manifest apply"
+      "render phase-note",
+      "render resume-gate",
+      "manifest get pay.research.pay status",
+      "manifest apply",
+      "render construction-gate"
     ]
   }
 }

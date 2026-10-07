@@ -1,9 +1,9 @@
 The prose should have taken this path:
 
-1. the plan gate renders empty and no implementation item exists, so
-   this is a new entry; the entry validates and hands off; resume
-   detection reports the created mode and commits the start of
-   implementation through the engine's scoped commit
+1. the code slot reads free and the plan gate renders empty; dependency
+   validation returns immediately, and the implementation status reads
+   empty, so this is a first start: tracking is initialised and the
+   start of implementation commits through the engine's scoped commit
 2. environment setup finds the existing document and asks nothing;
    the plan adapter loads; project skills and linter discovery each
    ask only their skip-again question — the first two scripted

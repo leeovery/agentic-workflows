@@ -1,13 +1,14 @@
 The prose should have taken this path:
 
-1. the entry's prerequisite gate renders empty — plan and
-   implementation are completed — and the review status reads empty, so
-   nothing is reopened and the handoff carries the work forward with
-   nothing asked
-2. the process registers the review, reads the plan and specification,
-   scopes verification from the per-task implementation commits, and
-   dispatches a verifier per task — stubbed clean; both task ids land
-   on the reviewed list, and the aggregation finds nothing unsettled
+1. the code-slot check and then the prerequisite gate both render empty
+   — plan and implementation are completed — and the review status reads
+   empty, so this is a first start: nothing is reopened, no phase note
+   or resume choice appears, and nothing is asked
+2. initialisation registers the review, reads the plan and
+   specification, scopes verification from the per-task implementation
+   commits, and dispatches a verifier per task — stubbed clean; both
+   task ids land on the reviewed list, and the aggregation finds nothing
+   unsettled
 3. the change-set verification derives its sections from the
    specification's numbered headings — the payment-intent section, the
    capture section, and the test surface — gathers the brief (the

@@ -1117,7 +1117,7 @@ function computeTopicLifecycle(manifest, topicName) {
   const ds = discussion ? discussion.status : null;
   const triage_parked = rs === 'triaged' || ds === 'triaged';
   // Terminal items keep their flag inertly (reactivation restores it live);
-  // cueing them would light `input moved` with no entry flow to clear it.
+  // cueing them would light `input moved` where no phase's start can clear it.
   const flagLive = (/** @type {{status?: string, reconcile_needed?: unknown}|undefined} */ it) =>
     it !== undefined && it.reconcile_needed !== undefined
     && !TERMINAL_STATUSES.includes(/** @type {string} */ (it.status));

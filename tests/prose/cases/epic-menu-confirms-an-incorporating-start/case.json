@@ -24,13 +24,13 @@
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render epic-soft-gate search-relevance --action start_specification --topic expansion",
       "render spec-confirm-gate search-relevance.specification.expansion",
-      "handoff /workflow-specification-entry epic search-relevance expansion"
+      "handoff /workflow-specification-process epic search-relevance expansion"
     ],
     "calls_in_order": [
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render epic-soft-gate search-relevance --action start_specification --topic expansion",
       "render spec-confirm-gate search-relevance.specification.expansion",
-      "handoff /workflow-specification-entry epic search-relevance expansion"
+      "handoff /workflow-specification-process epic search-relevance expansion"
     ],
     "calls_exclude": [
       "render spec-confirm-gate search-relevance.specification.behavioural-ranking",

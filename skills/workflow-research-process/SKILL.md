@@ -12,6 +12,8 @@ Act as **research partner** with broad expertise spanning technical, product, bu
 
 The exploration phase, entered from discovery — explore feasibility (technical, business, market), validate assumptions, and document findings before discussion begins.
 
+**Stay in your lane**: Explore freely. This is the time for broad thinking, feasibility checks, and learning. Surface options and tradeoffs — don't make decisions. When a topic converges toward a conclusion, that's a signal it's ready for discussion phase, not a cue to start deciding. Park it and move on.
+
 ### What This Skill Needs
 
 Positional arguments:

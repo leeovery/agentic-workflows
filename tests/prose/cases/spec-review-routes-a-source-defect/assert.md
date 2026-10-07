@@ -1,8 +1,11 @@
 The prose should have taken this path:
 
-1. the entry validates the in-progress specification and routes to
-   resume; the process finds the specification file and puts the
-   resume choice to the user, who continues
+1. the skill asks the engine whether its source material is ready (it
+   is), then reads the specification status once and finds it in
+   progress: the resuming phase note heads the resume surface, the
+   reconcile flag reads absent (silent), and with the file found the
+   continue-or-restart choice follows with no second heading of its own
+   — the user continues
 2. session setup resets the gate modes; the source already reads
    incorporated, so construction is skipped — no construction heading
    is shown, no content is re-presented, no re-extraction runs

@@ -20,7 +20,7 @@ The prose should have taken this path:
    back empty — no specification has started, so the start takes
    nothing in, and the pick showed everything it does
 6. the handoff: the route passes to the engine's handoff as
-   `/workflow-specification-entry` with epic, the work unit and the
+   `/workflow-specification-process` with epic, the work unit and the
    topic `search-signals`; the line naming where the work goes is the
    turn's last text, and the walk stops at the handoff
 

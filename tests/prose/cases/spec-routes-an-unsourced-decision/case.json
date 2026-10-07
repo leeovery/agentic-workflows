@@ -1,9 +1,9 @@
 {
   "origin": "idea 40's second failure class — sixteen decisions made in the spec that no source made — had the route but no walk. This pins the Unsourced-decision lane end to end: input review flags it, the orchestrator routes it, the no-sides exchange settles it, the settlement lands in the discussion as a new subtopic section, and the spec re-aligns to what was actually decided",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

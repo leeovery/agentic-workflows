@@ -1,11 +1,13 @@
 The prose should have taken this path:
 
-1. the entry's prerequisite gate renders empty — the discussion is
-   completed — and the specification status reads empty, so this is a
-   new entry; the handoff carries the work into the processing skill
-2. source material is verified against the completed discussion and
-   the specification is registered through the engine, the source
-   recorded pending, and the initialisation committed
+1. the specification's own source gate renders empty — the discussion
+   is completed — and the specification status reads empty, so this is
+   a first start: no phase note, no resume choice
+2. the specification is registered through the engine, the discussion
+   recorded as its one pending source, and the initialisation
+   committed; session setup holds the discussion as the source and
+   reads the research status for a cross-cutting unit — there is none,
+   so no research is read beside it
 3. construction extracts the discussion's decisions gated piece by
    piece — the described user approves faithful content and declines
    any offer to approve automatically — and the source flips to

@@ -107,7 +107,7 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 #### Otherwise
 
-A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
+A `(code session: …)` marker needs no gate here — implementation and review gate the whole checkout's code slot where each starts; the marked row routes like any other.
 
 **If the selected entry carries an `(in session: …)` marker:**
 
@@ -157,7 +157,7 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for a new topic, `/workflow-{phase}-process epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/workflow-specification-entry epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-process epic {work_unit} {topic}`) and its `topic`. The `new_discussion`, `new_research` and `analyze_discussions` entries carry route `(internal)` and arrive here with the topic their flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
+Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for a new topic, `/workflow-{phase}-process epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/workflow-specification-process epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-process epic {work_unit} {topic}`) and its `topic`. The `new_discussion`, `new_research` and `analyze_discussions` entries carry route `(internal)` and arrive here with the topic their flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
 
 #### If `route` enters the specification
 
@@ -343,19 +343,11 @@ Emit the TITLE section, then the DISPLAY section, then the MENU section, each ve
 
 #### If user chose a numbered dependency
 
-Store the selected entry's `topic` (the plan) and the `(dep: …)` value on its `ACTIONS` row (the dependency to mark — the key it is recorded under; the `{plan}:{task}` reference the menu row shows names the blocking task, never the key). Record the user's call — the dependency is satisfied outside the workflow:
+Store the selected entry's `topic` (the plan) and the `(dep: …)` value on its `ACTIONS` row (the dependency to mark — the key it is recorded under; the `{plan}:{task}` reference the menu row shows names the blocking task, never the key).
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} external_dependencies.{dep}.state satisfied_externally
-```
+→ Load **[mark-dependency-satisfied.md](../../workflow-shared/references/mark-dependency-satisfied.md)** with work_unit = `{work_unit}`, topic = `{topic}`, dep = `{dep}`.
 
-The record belongs to the plan, and the menu is not the session working it — `--sweep`, so the commit stamps no identity there:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic planning/{topic} --sweep -m "impl({work_unit}): mark {dep} dependency as satisfied externally"
-```
-
-→ Return to **A. State Display and Menu**.
+→ On return, return to **A. State Display and Menu**.
 
 ---
 

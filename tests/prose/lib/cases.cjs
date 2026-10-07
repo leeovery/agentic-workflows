@@ -42,9 +42,8 @@
 // engine's handoff table holds: a phase's skill, the epic menu,
 // discovery, the roadmap, the baseline — or `workflow-help` (the start
 // menu's `h/help` row, terminal for workflow-start). Nothing else is a
-// legitimate opening — the other navigation skills, the bridge, and a
-// processing skill behind an entry skill are always invoked mid-session,
-// and a reference is never entered directly.
+// legitimate opening — the other navigation skills and the bridge are
+// always invoked mid-session, and a reference is never entered directly.
 //
 // This matters because a walk carries only the context it accumulates.
 // Start one in the middle and the world may be right while the reading
@@ -193,9 +192,8 @@ function entryErrors(entry) {
   if (!entry) return ['has no entry — name the skill the walk starts at'];
   if (!SESSION_STARTS.has(entry)) {
     return [`entry "${entry}" is not somewhere a session starts — use workflow-start, workflow-help, `
-      + `or a skill a handoff lands on (${HANDOFF_TARGETS.join(', ')}). The other navigation skills, `
-      + 'the bridge, and a processing skill behind an entry skill are only ever reached mid-session, '
-      + 'and a reference never directly'];
+      + `or a skill a handoff lands on (${HANDOFF_TARGETS.join(', ')}). The other navigation skills `
+      + 'and the bridge are only ever reached mid-session, and a reference never directly'];
   }
   return [];
 }

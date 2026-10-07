@@ -13,10 +13,9 @@ The prose should have taken this path:
 
 Further claims:
 
-- nothing downstream of the gate ran at all: the prerequisite gate was
-  never rendered, no review item was touched, and the handoff is never
-  constructed — the plan's format is not read and the review processing
-  skill is never invoked
+- nothing past the gate ran at all: the prerequisite gate was never
+  rendered, the review status was never read, no review item was
+  touched, and the plan — its format included — was never read
 - no verifier agents are dispatched
 - the holding session's heartbeat is left exactly as it was — the gate
   names how to release it, and reading a gate never releases anything

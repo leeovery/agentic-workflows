@@ -1,36 +1,44 @@
 {
-  "origin": "staleness hops — the first case to exercise a reopen positively: a spec reopened beneath a completed plan flags it, and planning-entry's reconcile advisory surfaces the moved input and clears the flag on the way into the session",
-  "entry": "workflow-planning-entry",
+  "origin": "staleness hops — the first case to exercise a reopen positively: a spec reopened beneath a completed plan flags it, and the plan's start surfaces the moved input through the reconcile advisory and clears the flag on the way into the session",
+  "entry": "workflow-planning-process",
   "files": [
-    "skills/workflow-planning-entry/SKILL.md",
+    "skills/workflow-planning-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-planning-entry/references/validate-spec.md",
-    "skills/workflow-planning-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-planning-entry/references/invoke-skill.md"
+    "skills/workflow-planning-process/references/spec-change-detection.md"
   ],
   "invariants": {
     "calls_include": [
       "render entry-gate pay.planning.pay",
+      "manifest get pay.planning.pay status",
       "topic reopen pay planning pay",
       "render phase-note pay.planning.pay",
       "manifest get pay.planning.pay reconcile_needed",
-      "manifest delete pay.planning.pay reconcile_needed"
+      "manifest delete pay.planning.pay reconcile_needed",
+      "manifest get pay.planning.pay spec_commit",
+      "render resume-gate pay.planning.pay --variant plan"
     ],
     "calls_in_order": [
+      "manifest get pay.planning.pay status",
       "topic reopen pay planning pay",
+      "render phase-note pay.planning.pay",
       "manifest get pay.planning.pay reconcile_needed",
-      "manifest delete pay.planning.pay reconcile_needed"
+      "manifest delete pay.planning.pay reconcile_needed",
+      "manifest get pay.planning.pay spec_commit",
+      "render resume-gate pay.planning.pay --variant plan"
     ],
     "calls_exclude": [
       "engine.cjs knowledge query",
       "engine.cjs knowledge index",
-      "engine.cjs knowledge remove"
+      "engine.cjs knowledge remove",
+      "render plan-context-gate",
+      "manifest list --work-type cross-cutting",
+      "engine.cjs commit"
     ]
   }
 }

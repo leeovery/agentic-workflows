@@ -14,4 +14,4 @@ the intent to the order it records the orders store's documented p99 of
 ambient, so no file in the tree carries either value.
 
 The context was cleared mid-phase — this session opens cold at the
-entry skill with nothing but the two arguments and what is on disk.
+planning skill with nothing but the two arguments and what is on disk.

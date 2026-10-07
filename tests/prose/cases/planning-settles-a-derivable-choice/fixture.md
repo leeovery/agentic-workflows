@@ -11,4 +11,4 @@ neither does the discussion nor the plan — the tree holds no gateway
 client to measure one against.
 
 The context was cleared mid-phase — this session opens cold at the
-entry skill with nothing but the two arguments and what is on disk.
+planning skill with nothing but the two arguments and what is on disk.

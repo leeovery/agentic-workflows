@@ -1,9 +1,9 @@
 {
   "origin": "a fresh session resuming an implementation whose analysis had already converged — one cycle recorded, its three findings files committed, every one recording no findings, no synthesis ever run — walked the task loop to nothing and then read the cycle gate's guards, where the committed-findings-with-no-synthesis state matched the synthesis arm and a synthesizer was dispatched over three files that say none. The guard that reads a clean committed cycle as convergence is checked before it and sends the session to Step 8 instead. This pins that entry: the converged cycle met on resume, nothing analysis-shaped run over it, and the conclude through the bridge to review",
-  "entry": "workflow-implementation-entry",
+  "entry": "workflow-implementation-process",
   "world": "claims",
   "files": [
-    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,7 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/code-session-gate.md",
-    "skills/workflow-implementation-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-implementation-entry/references/validate-dependencies.md",
-    "skills/workflow-implementation-entry/references/invoke-skill.md",
-    "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-implementation-process/references/environment-setup.md",
     "skills/workflow-implementation-process/references/load-plan-adapter.md",
     "skills/workflow-shared/references/format-version-check.md",
@@ -46,7 +42,6 @@
       "render code-gate pay.implementation.pay",
       "render entry-gate pay.implementation.pay",
       "manifest get pay.implementation.pay status",
-      "manifest exists pay.implementation.pay",
       "task init pay pay",
       "manifest get pay work_type",
       "manifest get pay.implementation.pay staging",
@@ -58,12 +53,11 @@
       "render next-phase-gate pay --prev implementation --next review",
       "manifest set pay.implementation.pay project_skills []",
       "manifest set pay.implementation.pay linters []",
-      "handoff /workflow-review-entry feature pay"
+      "handoff /workflow-review-process feature pay"
     ],
     "calls_in_order": [
       "render code-gate pay.implementation.pay",
       "render entry-gate pay.implementation.pay",
-      "manifest exists pay.implementation.pay",
       "task init pay pay",
       "manifest get pay.implementation.pay staging",
       "render conclude-gate pay.implementation.pay",
@@ -73,7 +67,7 @@
       "manifest get pay work_type",
       "workflow-bridge/scripts/gateway.cjs pay",
       "render next-phase-gate pay --prev implementation --next review",
-      "handoff /workflow-review-entry feature pay"
+      "handoff /workflow-review-process feature pay"
     ],
     "calls_exclude": [
       "task analysis-cycle pay pay",

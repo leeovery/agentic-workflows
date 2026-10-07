@@ -27,7 +27,7 @@
       "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
       "manifest apply search-relevance",
       "render spec-confirm-gate search-relevance.specification.unified --unify",
-      "handoff /workflow-specification-entry epic search-relevance unified"
+      "handoff /workflow-specification-process epic search-relevance unified"
     ],
     "calls_exclude": [
       "--variant",
@@ -42,7 +42,7 @@
       "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
       "manifest apply search-relevance",
       "render spec-confirm-gate search-relevance.specification.unified --unify",
-      "handoff /workflow-specification-entry epic search-relevance unified"
+      "handoff /workflow-specification-process epic search-relevance unified"
     ]
   },
   "conduct": "The user wants every discussion folded into one specification: at the groupings menu they pick the option that unifies all discussions into a single specification, and to any proceed-style confirmation they answer yes."

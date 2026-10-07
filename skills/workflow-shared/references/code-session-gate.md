@@ -1,6 +1,6 @@
 # Code Session Gate
 
-*Shared reference. Loaded by workflow-implementation-entry and workflow-review-entry.*
+*Shared reference. Loaded by `workflow-implementation-process` and `workflow-review-process` where each starts.*
 
 ---
 

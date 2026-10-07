@@ -1,9 +1,9 @@
 {
   "origin": "Against an Opus 5 gap pass no spec review has converged: the exit condition was all three passes returning clean, which a generator that finds a fresh batch every cycle never reaches, so `auto` ran to the cycle-5 cap with one line of output per cycle and the convergence diagnostic — which already computed the churning trend and the growth figure — rendered only at the cap, after the churn had run its course. The churn exit moves that reading to where it can still change something: from cycle 2 onward a churning verdict ends the review, the diagnostic renders, and one line says so. This walks it with the shape the diagnosis measured — every cycle's findings resolve and a fresh pair replaces them, nothing recurring — and pins that no third cycle starts. The cycle-2 dispatch carrying the cycle-1 tracking file as settled directions is a claim only the walker's account can evidence: the recorder keeps a Task dispatch's name and nothing of its prompt. Re-pinned 2026-09-21: the churn verdict used to hand the call to the user at the re-loop gate, and under `auto` it now concludes without asking — auto means auto — so the gate is excluded here and completion runs straight off the diagnostic.",
-  "entry": "workflow-specification-entry",
+  "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-specification-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,11 +11,6 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/resume-detection.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-process/SKILL.md",
-    "skills/workflow-specification-process/references/verify-source-material.md",
     "skills/workflow-specification-process/references/initialize-specification.md",
     "skills/workflow-specification-process/references/specification-format.md",
     "skills/workflow-shared/references/specification-body.md",

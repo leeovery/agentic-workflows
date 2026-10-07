@@ -138,6 +138,6 @@ Load **[bugfix-display-and-menu.md](references/bugfix-display-and-menu.md)** and
 
 ## Step 6: Route Selection
 
-The user's selection carries its `route` — the selected `ACTIONS` entry's route from bugfix-display-and-menu.md, e.g. `/workflow-specification-entry bugfix {work_unit}`.
+The user's selection carries its `route` — the selected `ACTIONS` entry's route from bugfix-display-and-menu.md, e.g. `/workflow-specification-process bugfix {work_unit}`.
 
 Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with route = `{route}`.

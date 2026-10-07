@@ -1,6 +1,6 @@
 # Reconcile Advisory
 
-*Shared reference. Loaded where a phase starts — by the research and discussion skills and the specification, planning, implementation and review entry skills — and by the research and discussion sessions at their landed-input checks.*
+*Shared reference. Loaded where a phase starts — by the research, discussion, specification, planning, implementation and review skills — and by the research and discussion sessions at their landed-input checks.*
 
 ---
 

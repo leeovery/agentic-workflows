@@ -1,20 +1,16 @@
 {
   "origin": "feature mainline — entry through resume detection to the first task",
-  "entry": "workflow-implementation-entry",
+  "entry": "workflow-implementation-process",
   "files": [
-    "skills/workflow-implementation-entry/SKILL.md",
+    "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-implementation-entry/references/validate-phase.md",
-    "skills/workflow-implementation-entry/references/validate-dependencies.md",
-    "skills/workflow-implementation-process/SKILL.md",
     "skills/workflow-implementation-process/references/environment-setup.md",
-    "skills/workflow-shared/references/code-session-gate.md",
-    "skills/workflow-implementation-entry/references/invoke-skill.md"
+    "skills/workflow-shared/references/code-session-gate.md"
   ],
   "answers": [
     "none — no special setup is needed"
