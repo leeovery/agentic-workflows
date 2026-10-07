@@ -92,6 +92,29 @@ named.
   - Accepted: a conversation that compacts inside a menu, which carries no
     recovery protocol, opens its next skill on the belief the framework is
     held. Menus are short and clear at the pick.
+  - `OPENING_SKILLS` (`domain/handoff.cjs`: `workflow-start` plus every
+    handoff target) is the one list the conventions lint and the
+    prose-test entry rule read; help is no prose-case entry, since a
+    session reaches it only from the start menu.
+- **E5 — promotion keeps both units' records true** (Lee, 2026-10-07).
+  Promoting an epic specification moves its source discussions' files
+  into the new cross-cutting unit, but the epic went on reading them
+  `completed` with nothing behind them — its grouping could propose a
+  specification over one — and the new unit kept them under their epic
+  names, which no route into a single-topic unit reaches, so a revisit
+  started an empty discussion. The epic marks each discussion it moves
+  `promoted` (+ `promoted_to`), a terminal status the grouping, counts,
+  reopen and the field surface treat as finished, the topic reading
+  decided; the new unit takes each moved discussion's whole item and its
+  specification records them as sources; single-topic routing names a
+  phase's own item where it is not the unit's name, so revisit reaches a
+  moved discussion. Migration 070 records past promotions. Research never
+  moves. The fold's dropped missing-source-file check stays dropped —
+  the cause is fixed.
+- **E6 — this stack is exempt from the display touch rule** (Lee,
+  2026-10-07), as the function-hook stack was: the hand-drawn displays in
+  the files it touched stay tracked by the lint's ratchet and
+  `ideas/migrate-remaining-hand-drawn-displays.md`.
 
 ## The shape
 
@@ -99,20 +122,23 @@ Agreed with Lee 2026-10-06.
 
 **S1 — every epic action that has no topic yet moves into the epic menu.**
 A phase skill always receives `{work_type} {work_unit} {topic}`.
-- The `d`/`r` doors: the epic menu asks for the name, runs
-  `render direct-entry-gate`, creates the map row (`source: direct-start`,
+- The `d`/`r` doors: the epic menu asks for the name (`back` returns to
+  the menu), runs `render direct-entry-gate` — whose refusal names the
+  way back for a topic with no row: `e/reactivate`, `f/forward` while a
+  postponed topic's roadmap item still waits, `c/completed`, discovery's
+  reopen for a dead end — creates the map row (`source: direct-start`,
   with its summary and description) and hands off to the phase with the
-  name in hand — today the research and discussion entries do all three
-  after the clear.
+  name in hand (`references/new-topic.md`).
 - The specification grouping: `s/spec` runs in the epic menu's
-  conversation — the scenario read (today
-  `workflow-specification-entry/scripts/gateway.cjs`), the prerequisites,
-  the analysis (presence scan, grouping context, the read, the reconcile,
-  the cache document), the groupings and specifications menus, unify, and
-  the confirm — then hands off with the picked topic. Its references move
-  under `workflow-continue-epic`, the skill that runs them. The analysis
-  reads every completed discussion; the clear at the pick discards that
-  reading, so the specification starts clean.
+  conversation (`references/specification-display-and-menu.md`,
+  `analysis-flow.md`; gateway verbs `spec-scenario`, `spec-view`,
+  `spec-completed-menu`; the discovery itself
+  `domain/specification.cjs` `specificationDiscovery`) — the scenario
+  read, the prerequisites, the analysis (presence scan, grouping context,
+  the read, the reconcile, the cache document), the groupings and
+  specifications menus, unify, and the confirm — then hands off with the
+  picked topic. The analysis reads every completed discussion; the clear
+  at the pick discards that reading, so the specification starts clean.
 - The grouping menus gain `b/back` to the epic menu, and their declines
   re-render it, where today they end on "re-run this command when ready".
   Where the epic menu's hard gate on analysing while a discussion is open
@@ -128,18 +154,25 @@ specification. Today only the specification menu's route incorporates it
 — the handoff names the specification, and completion supersedes it; the
 epic menu's start row builds from the discussions alone and leaves both
 specifications sourcing one discussion.
-- At its start, on every route, the specification derives from the
-  manifest which started specifications source its discussions and
-  incorporates each one's content; completion supersedes each, as now.
-- The confirm (`render spec-confirm-gate`) renders only where the start
-  supersedes a specification or unifies groupings — what the pick did not
-  show — on the epic menu's start row and the groupings menu alike. A
-  plain start, continue or refine hands off on the pick.
+- `topic start` on a proposed grouping records what it incorporates
+  (`incorporates`) — a reading of "started specifications sharing my
+  discussions" is symmetric once both have started, so the direction is
+  recorded at the start. `engine topic incorporations` answers it;
+  session setup, construction, review and completion read it on every
+  route, and completion supersedes each.
+- The confirm (`render spec-confirm-gate`) renders only where the pick did
+  not show what happens: a start that incorporates a specification, a
+  selection that unified groupings (`--unify`), and the single-discussion
+  path, where the menu proceeds on the person's behalf (`--single`) — on
+  the epic menu's start row and the groupings menu alike. A plain start,
+  continue or refine hands off on the pick.
 
 **S3 — what crosses to a phase only as handoff text becomes the phase's
 own.** Nothing passes a handoff but the skill and its arguments.
 - Planning's additional-context gate and its cross-cutting references move
-  into planning's initialisation.
+  into planning's initialisation, which writes both into `planning.md`
+  (`## Plan Context`, `## Cross-Cutting References`) so a resume finds
+  them; the traceability review reads them as inputs, never findings.
 - Interview answers go with the interview into the phase skill.
 - The specification's source lists and incorporations are manifest reads
   (S2).
@@ -157,8 +190,13 @@ duplicate status reads, the specification's `ls` re-check of its sources,
 the dead `Source:` and implementation/review handoff fields and every
 no-topic arm go; the single-caller validate and display references inline;
 the dependency check's mark-satisfied branch and the epic menu's become
-one. The phase skills keep their `-process` names — the position record
-and the compaction answer in the open mod work name them so.
+one (`workflow-shared/references/mark-dependency-satisfied.md`). Each
+phase skill keeps its entry's "stay in your lane" line (scoping's
+described the entry itself, and goes); a postponed or cancelled item's
+stop renders through `render entry-gate … --own`; the experiment picker's
+back hands an epic off to its menu. The phase skills keep their
+`-process` names — the position record and the compaction answer in the
+open mod work name them so.
 
 **S5 — one linear continue skill.** The feature, bugfix, quick-fix and
 cross-cutting continue skills become `workflow-continue-linear`, keyed by
@@ -179,11 +217,11 @@ knowledge gate already uses.
 branches. Measured against the five projects:
 - Experiment series status `cancelled` — written by the per-item
   `topic cancel … experiment` of v0.7.22–v0.7.54, never migrated (none in
-  the five projects). A migration sets each such series `completed`,
-  drops its `previous_status`, and marks the map row `cancelled: true`
-  where the series was the topic's only cancelled item; the branches go
-  from the experiment entry, `experiment.cjs`, `derivations.cjs` and the
-  schema.
+  the five projects). The old cancel abandoned every open record first,
+  so migration 069 sets each such series `completed` and drops its
+  `previous_status`; the map row is left alone — the topic lifecycle never
+  reads experiment items. The branches go from the experiment entry,
+  `experiment.cjs`, `derivations.cjs` and the schema.
 - The `analysis-rerun` scenario is live, not legacy. The analysis cache's
   checksum covers the discussion files, which a topic cancel or postpone
   leaves alone while it discards the proposed groupings over the topic's
@@ -194,39 +232,44 @@ branches. Measured against the five projects:
   `analyze`, which reruns the analysis behind its proceed gate.
 - The interview for a unit with no discovery log — dead for bugfix and
   quick-fix (only units from before v0.4.13 lack a log: 47 in the five
-  projects, none in progress). `workunit promote` still creates
-  cross-cutting units with no log; the build checks whether one can reach
-  a fresh research or discussion, and the interview stays only for that
-  path. `workunit create --no-session-log` has no prose caller and goes
-  where nothing needs it.
-- Review's single/multi/all scope (prose only — never stored), the
-  specification gateway's unused `index` verb, and the `storage_paths`
-  checks (E2).
+  projects, none in progress). A cross-cutting unit made by `workunit
+  promote` has no log and can reach a fresh discussion (reactivate →
+  revisit), so discussion alone keeps the interview, for that unit;
+  research's arm goes. `workunit create --no-session-log` goes.
+- Review's single/multi/all scope (prose only — never stored; its plan
+  reference is `read-plan.md`), the specification gateway's unused
+  `index` verb, and the `storage_paths` checks (E2).
 
-**S8 — the handoff table points at the phase skills.** `entrySkill(phase)`
+**S8 — the handoff table points at the phase skills.** `phaseSkill(phase)`
 names the phase skill and every epic phase takes a topic
-(`EPIC_TOPICLESS_PHASES` goes); the epic and work-unit projections, the
-simulation's route audit, the prose-test entry rule
-(`tests/prose/lib/cases.cjs`), the conventions lint's allowlist and about
-150 of 190 cases' entries follow. CLAUDE.md's Skill Architecture (the
-entry tier, Phase Entry Skill Routing), CONVENTIONS and the docs describe
-the layer as built.
+(`EPIC_TOPICLESS_PHASES` goes); the bridge's single-topic continuations
+hand off the engine's `next_route` / `revisit_routes`; the epic and
+work-unit projections, the simulation's route audit, the prose-test entry
+rule (`tests/prose/lib/cases.cjs`, reading `OPENING_SKILLS`), the
+conventions lint and about 150 of 190 cases' entries follow. CLAUDE.md's
+Skill Architecture, CONVENTIONS and the docs describe the layer as built.
 
 ## The stack
 
-1. **Consult references retired** (E3), with the migration that deletes
-   `consult_references`.
-2. **Legacy residue out** (S7, E2), with the experiment-series migration.
-3. **The epic menu takes the topic-less actions; the specification's
-   incorporation and confirm** (S1, S2).
-4. **The fold** (S3, S4, S8) — one PR per group of phases if the diff
-   calls for it, each retargeting its phases' handoffs and cases.
-5. **One linear continue skill and the back rows** (S5).
-6. **The framework once per conversation** (E4).
-7. **A lighter start** (S6).
+Stack #1472, each PR folding its share of the `/review-work` fixes:
 
-Then `/review-work`, with the opening weight of a phase conversation and of
-a typical start measured against today's.
+1. #1470 — consult references retired (E3; migration 068).
+2. #1471 — legacy residue out (S7, E2; migration 069).
+3. #1473 — the epic menu names a new topic before it hands off (S1).
+4. #1474 — the specification grouping runs in the epic menu, and a
+   specification works out its own incorporation (S1, S2).
+5. #1475 — research, discussion, investigation, scoping and experiment
+   start in their own skill (S3, S4, S8).
+6. #1476 — specification, planning, implementation and review too; no
+   entry skill remains (S3, S4, S8).
+7. #1477 — one linear continue skill, and a way back to start (S5).
+8. #1478 — the framework once per conversation (E4).
+9. #1479 — a start reads only the branches that fire (S6).
+10. #1482 — promotion keeps both units' records true (E5; migration 070).
+
+Measured, main → the stack (bytes read): a typical start 42,195 →
+32,015; a discussion's opening 42,987 → 34,254; the linear continue menu
+7,837 → 5,003; skills 38 → 26.
 
 ## Material
 
@@ -283,3 +326,6 @@ Re-verified against v0.8.11 (2026-10-06): every other audit finding holds,
   projects measured: a second divergence on the epic menu's specification
   row (incorporation), `analysis-rerun` reachable today. The shape agreed
   (S1–S8) and the stack ordered.
+- 2026-10-07 — built as stack #1472; `/review-work` over the whole stack
+  (eight dimensions) folded about thirty fixes into their layers; E5 and
+  E6 ruled, E5 built on top as #1482.
