@@ -3,7 +3,7 @@
 // Both discussions concluded, the expansion specification completed
 // over the pair and then cancelled as one unit from the epic menu. Its
 // key is reserved for a reactivate; its two sources are unaccounted
-// again, so the next specification entry runs the grouping analysis
+// again, so the epic menu's specification row runs the grouping analysis
 // over them — and must name whatever it proposes afresh.
 
 const e = require('../../mainlines/epic.cjs');

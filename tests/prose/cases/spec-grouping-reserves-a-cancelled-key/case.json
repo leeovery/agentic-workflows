@@ -1,29 +1,30 @@
 {
-  "origin": "topic-cancel review — the grouping analysis's resemblance rule read a cancelled-specification list the spec-entry gateway never carried, so a grouping over a cancelled specification's freed sources could never be told apart from a fresh one; nothing walked the analysis naming such a grouping afresh, saying it resembles the cancelled specification, and leaving the reserved key untouched",
-  "entry": "workflow-specification-entry",
+  "origin": "topic-cancel review — the grouping analysis's resemblance rule read a cancelled-specification list the spec-entry gateway never carried, so a grouping over a cancelled specification's freed sources could never be told apart from a fresh one; nothing walked the analysis naming such a grouping afresh, saying it resembles the cancelled specification, and leaving the reserved key untouched. The grouping now runs in the epic menu's conversation, so the walk enters there and picks its specification row",
+  "entry": "workflow-continue-epic",
   "world": "claims",
   "files": [
-    "skills/workflow-specification-entry/SKILL.md",
+    "skills/workflow-continue-epic/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-specification-entry/references/validate-source.md",
-    "skills/workflow-specification-entry/references/validate-phase.md",
-    "skills/workflow-specification-entry/references/invoke-skill.md",
-    "skills/workflow-specification-entry/references/check-prerequisites.md",
-    "skills/workflow-specification-entry/references/route-scenario.md",
-    "skills/workflow-specification-entry/references/analysis-flow.md",
-    "skills/workflow-specification-entry/references/display-groupings.md",
-    "skills/workflow-specification-entry/references/display-analyze.md"
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-continue-epic/references/specification-display-and-menu.md",
+    "skills/workflow-continue-epic/references/analysis-flow.md"
+  ],
+  "answers": [
+    "s — analyze / regroup discussions"
   ],
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "workflow-specification-entry/scripts/gateway.cjs search-relevance",
-      "workflow-specification-entry/scripts/gateway.cjs view search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
       "presence scan search-relevance",
       "manifest apply search-relevance"
     ],
@@ -35,14 +36,15 @@
       "topic start",
       "topic complete",
       "build-order sequence",
-      "discovery-map sequence"
+      "discovery-map sequence",
+      "engine.cjs handoff"
     ],
     "calls_in_order": [
-      "workflow-specification-entry/scripts/gateway.cjs search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
       "presence scan search-relevance",
       "manifest apply search-relevance",
-      "workflow-specification-entry/scripts/gateway.cjs search-relevance",
-      "workflow-specification-entry/scripts/gateway.cjs view search-relevance"
+      "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance"
     ]
   },
   "conduct": "The user wants the grouping analysis run and is hands-off about it: to any proceed-style confirmation they answer yes; to the pre-analysis question asking for context on how the discussions relate they answer that the two are halves of one feature and belong together; once the groupings menu is presented they stop engaging."

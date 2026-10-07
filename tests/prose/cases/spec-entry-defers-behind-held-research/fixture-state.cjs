@@ -1,7 +1,7 @@
 'use strict';
 
-// The state that routes specification entry straight into the grouping
-// analysis — two concluded discussions, a stamped gap analysis, no
+// The state that routes the epic menu's specification row straight into the
+// grouping analysis — two concluded discussions, a stamped gap analysis, no
 // specification items anywhere — with one thing changed: the third
 // topic's research is under way right now, in another session.
 //

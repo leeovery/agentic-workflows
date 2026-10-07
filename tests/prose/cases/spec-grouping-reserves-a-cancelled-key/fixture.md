@@ -11,7 +11,9 @@ map intact. No plan, implementation, or review exists under any name.
 The third map topic, `relevance-measurement`, is still fresh.
 
 A cancelled specification groups nothing, so both discussions are
-unaccounted again and no analysis cache exists: the next specification
-entry runs the grouping analysis. The spec-entry snapshot lists the
-cancelled specification under `cancelled_specifications:` with its two
-sources, and nothing under `specifications:`.
+unaccounted again and no analysis cache exists: the epic menu's
+specification row runs the grouping analysis. Its scenario read lists
+the cancelled specification under `cancelled_specifications:` with its
+two sources, and nothing under `specifications:`.
+
+The session opens on the epic's menu, the way the start menu opens it.

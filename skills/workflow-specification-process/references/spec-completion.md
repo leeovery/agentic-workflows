@@ -141,19 +141,27 @@ When the `complete` response's `warnings` is non-empty, fetch and emit the `DISP
 node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{topic} --verb complete --warn
 ```
 
-→ Proceed to **E. Handle Source Specifications**.
+→ Proceed to **E. Supersede Incorporated Specifications**.
 
 ---
 
-## E. Handle Source Specifications
+## E. Supersede Incorporated Specifications
 
-If any of your sources were **existing specifications** (as opposed to discussions, research, or other reference material), these have now been consolidated into the new specification.
+Read the started specifications this one incorporated — their content is now consolidated into it:
 
-Only supersede sources whose status is **not** `proposed`. A proposed source is an analyzed grouping with no specification file — absorbing it is a delete handled by reconcile, never a supersede.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
+```
 
-1. Supersede each non-proposed source specification — one command sets `status: superseded` and `superseded_by`, and removes the source's chunks from the knowledge base:
+#### If the response's `incorporations` is empty
+
+→ Proceed to **F. Pipeline Continuation**.
+
+#### Otherwise
+
+1. Supersede each incorporated specification (`{incorporated}`, each entry's `topic`) — one command sets `status: superseded` and `superseded_by`, and removes its chunks from the knowledge base:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {source-topic} --by {topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {incorporated} --by {topic}
    ```
 
    If the JSON response's `warnings` is non-empty, display them but do not block — the supersession is already recorded:
@@ -166,10 +174,10 @@ Only supersede sources whose status is **not** `proposed`. A proposed source is 
      The spec is superseded. The next start removes its chunks from the knowledge base.
    ```
 
-2. Inform the user which topics were updated
+2. Inform the user which specifications were superseded
 3. Commit:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark source specifications as superseded" --topic specification/{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): mark incorporated specifications as superseded" --topic specification/{topic}
    ```
 
 → Proceed to **F. Pipeline Continuation**.

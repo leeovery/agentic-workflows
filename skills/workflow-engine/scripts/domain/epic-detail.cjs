@@ -176,6 +176,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 /**
  * @typedef {object} AnalysisCache
  * @property {string} status  `valid` | `stale` | `absent`
+ * @property {boolean} stamped  an analysis has stamped the cache
  * @property {string|null} generated
  * @property {string[]} files
  * @property {string} [reason]
@@ -465,7 +466,7 @@ function epicDetail(cwd, manifest) {
         // (proposed included) — a discussion in any such item is "grouped",
         // which is what unaccounted_discussions measures; a cancelled or
         // superseded specification groups nothing, the same reading the
-        // spec-entry gateway makes.
+        // specification menu's discovery makes.
         if (specGroupsSources(item)) {
           for (const src of sourcesArr) {
             groupedDiscussions.add(src.topic || src.name);

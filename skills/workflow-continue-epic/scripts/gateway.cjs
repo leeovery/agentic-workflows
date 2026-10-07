@@ -16,6 +16,9 @@
 //   gateway.cjs unblock-menu {work_unit}       → Unblock Plan sub-view (G)
 //   gateway.cjs postpone-menu {work_unit}      → Postpone Topic sub-view (H)
 //   gateway.cjs pull-forward-menu {work_unit}  → Pull Forward Topic sub-view (I)
+//   gateway.cjs spec-scenario {work_unit}      → the specification menu's routing read, DATA only
+//   gateway.cjs spec-view {work_unit}          → its snapshot: DATA + TITLE + DISPLAY (+ MENU)
+//   gateway.cjs spec-completed-menu {work_unit} → its Completed Specifications sub-view
 //
 // Those calls are the whole legal surface: a verb without its work unit, an
 // unknown verb, or excess arguments is a usage error (stderr, exit 1) — never
@@ -242,20 +245,6 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
   dataLines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   dataLines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
-  const phaseNames = Object.keys(d.phases);
-  if (phaseNames.length > 0) {
-    dataLines.push('phase_counts:');
-    for (const phase of phaseNames) {
-      const items = d.phases[phase];
-      const inProgress = items.filter(i => i.status === 'in-progress').length;
-      const proposed = items.filter(i => i.status === 'proposed').length;
-      const segments = [`${inProgress} in-progress`];
-      if (proposed > 0) segments.push(`${proposed} proposed`);
-      dataLines.push(`  ${phase}: ${segments.join(', ')} / ${items.length} total`);
-    }
-  } else {
-    dataLines.push('phase_counts: (none)');
-  }
   dataLines.push(`unaccounted_discussions: ${d.unaccounted_discussions.join(', ') || '(none)'}`);
   dataLines.push(`reopened_discussions: ${d.reopened_discussions.join(', ') || '(none)'}`);
   dataLines.push(`spec_blocked: ${d.spec_blocked.map((b) => `${b.name} (${b.by.join(', ')})`).join(', ') || '(none)'}`);
@@ -342,13 +331,134 @@ function subView(workUnit, projection) {
   ].join('\n');
 }
 
-const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}';
+// ---------------------------------------------------------------------------
+// The specification menu (the `s` row): the scenario the epic's completed
+// discussions are in, its snapshot, and the concluded-specs sub-view.
+// Discovery, scenario derivation and rendering live in the engine's domain
+// ring; these verbs section the output.
+// ---------------------------------------------------------------------------
 
-/** Reject the call: usage to stderr, exit 1. @param {string} message @returns {string} */
-function usageError(message) {
-  process.stderr.write(`gateway: ${message}\n${USAGE}\n`);
+/** @typedef {import('../../workflow-engine/scripts/domain/specification.cjs').DiscoveryResult} SpecDiscovery */
+/** @typedef {import('../../workflow-engine/scripts/domain/specification.cjs').SpecificationDetail} SpecDetail */
+
+/** @param {string} cwd @param {string} workUnit @returns {{result: SpecDiscovery, detail: SpecDetail}} */
+function specDetail(cwd, workUnit) {
+  const result = engine.detail.specificationDiscovery(cwd, workUnit);
+  return { result, detail: engine.detail.specificationDetail(workUnit, result) };
+}
+
+// The ACTIONS key table over a spec menu's keys.
+/** @param {{key: string, word?: string, action: string, topic: string|null}[]} keys */
+function specActions(keys) {
+  return engine.project.actionsTable(['action', 'topic'], keys, (k) => [k.action, k.topic || '—']);
+}
+
+// The DATA body: the scenario and its flags, the single-discussion
+// auto-proceed context, the discussion/spec detail the flow reasons from,
+// and the ACTIONS key table when a menu exists.
+/** @param {SpecDiscovery} result @param {SpecDetail} detail @param {{key: string, word?: string, action: string, topic: string|null}[]} keys */
+function specData(result, detail, keys) {
+  const cs = result.current_state;
+  const lines = [
+    `scenario: ${detail.scenario}`,
+    `work_unit: ${detail.work_unit}`,
+    `counts: discussions=${cs.discussion_count} completed=${cs.completed_count} in_progress=${cs.in_progress_count} specs=${cs.spec_count} proposed=${cs.proposed_count} concluded=${cs.concluded_count}`,
+    `cache_status: ${detail.cache_status}`,
+    `discussions_checksum: ${cs.discussions_checksum || '(none)'}`,
+  ];
+  if (detail.single) {
+    lines.push(`single_variant: ${detail.single.variant}`);
+    lines.push(`single_discussion: ${detail.single.discussion}`);
+    lines.push(`proceed_name: ${detail.single.proceed_name}`);
+  }
+  lines.push('discussions:');
+  if (result.discussions.length === 0) lines.push('  (none)');
+  for (const d of result.discussions) {
+    lines.push(`  ${d.name}: ${d.status}${d.has_individual_spec ? `, individual spec: ${d.spec_status}` : ''}`);
+  }
+  lines.push('specifications:');
+  if (result.specifications.length === 0) lines.push('  (none)');
+  const rowsByName = new Map([...detail.actionable, ...detail.concluded].map((row) => [row.name, row]));
+  for (const s of result.specifications) {
+    const row = rowsByName.get(s.name);
+    const blockedBy = row && row.blocked ? `, blocked_by=${row.open_sources.join(',')}` : '';
+    lines.push(`  ${s.name}: ${s.status}, has_pending_sources=${s.has_pending_sources}${blockedBy}`);
+    for (const src of s.sources || []) {
+      lines.push(`    source: ${src.name} (${src.status}, discussion: ${src.discussion_status})`);
+    }
+  }
+  lines.push('cancelled_specifications:');
+  if (result.cancelled_specifications.length === 0) lines.push('  (none)');
+  for (const s of result.cancelled_specifications) {
+    lines.push(`  ${s.name}: sources ${s.sources.join(', ') || '(none)'}`);
+  }
+  lines.push(`unassigned_discussions: ${detail.unassigned.join(', ') || '(none)'}`);
+  lines.push(`in_progress_discussions: ${detail.in_progress_discussions.join(', ') || '(none)'}`);
+  if (keys.length > 0) lines.push(...specActions(keys));
+  return lines.join('\n');
+}
+
+// The routing read: the scenario and the detail the flow reasons from, with
+// no menu — a display the scenario routes to fetches its own snapshot where
+// it shows it.
+/** @param {string} cwd @param {string} workUnit */
+function specScenario(cwd, workUnit) {
+  const { result, detail } = specDetail(cwd, workUnit);
+  return engine.gateway.dataBlock(specData(result, detail, []));
+}
+
+// One snapshot: reasoning DATA, the TITLE, and the scenario's DISPLAY; MENU
+// when the scenario renders one.
+/** @param {string} cwd @param {string} workUnit */
+function specView(cwd, workUnit) {
+  const { result, detail } = specDetail(cwd, workUnit);
+  const menu = engine.project.specificationMenu(detail);
+  return [
+    engine.gateway.dataBlock(specData(result, detail, menu.keys)),
+    engine.gateway.titleBlock(engine.project.SPEC_TITLE),
+    engine.gateway.displayBlock(engine.project.specificationDisplay(detail)),
+    ...(menu.rendered ? [engine.gateway.menuBlock(menu.rendered)] : []),
+  ].join('\n');
+}
+
+// The concluded-specs sub-view: keys table as DATA, the view's heading as
+// TITLE, the spec list as DISPLAY, the Refine pick menu as MENU.
+/** @param {string} cwd @param {string} workUnit */
+function specCompletedMenu(cwd, workUnit) {
+  const { detail } = specDetail(cwd, workUnit);
+  const sub = engine.project.specificationCompletedMenu(detail);
+  return [
+    engine.gateway.dataBlock([`work_unit: ${detail.work_unit}`, ...specActions(sub.keys)].join('\n')),
+    engine.gateway.titleBlock(sub.title),
+    engine.gateway.displayBlock(sub.display),
+    engine.gateway.menuBlock(sub.rendered),
+  ].join('\n');
+}
+
+const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu|spec-scenario|spec-view|spec-completed-menu) {work_unit}';
+
+/** Reject the call: the reason to stderr, exit 1. @param {string} message @returns {string} */
+function reject(message) {
+  process.stderr.write(`gateway: ${message}\n`);
   process.exit(1);
   return ''; // unreachable; keeps the handler's return type uniform
+}
+
+/** Reject the call with the usage: stderr, exit 1. @param {string} message @returns {string} */
+function usageError(message) {
+  return reject(`${message}\n${USAGE}`);
+}
+
+/** @param {string} verb @param {(cwd: string, workUnit: string) => string} build */
+function specHandler(verb, build) {
+  return (/** @type {string} */ workUnit, /** @type {string[]} */ ...rest) => {
+    if (!workUnit || rest.length > 0) return usageError(`${verb} takes exactly one work unit`);
+    try {
+      return build(process.cwd(), workUnit);
+    } catch (err) {
+      return reject(err instanceof Error ? err.message : String(err));
+    }
+  };
 }
 
 /** @param {string} verb @param {SubViewProjection} projection */
@@ -375,6 +485,9 @@ if (require.main === module) {
     'postpone-menu': subViewHandler('postpone-menu', (name, d, opts) => engine.project.epicPostponeMenu(d, opts)),
     'pull-forward-menu': subViewHandler('pull-forward-menu', (name, d) => engine.project.epicPullForwardMenu(d)),
     'unblock-menu': subViewHandler('unblock-menu', (name, d) => engine.project.epicUnblockMenu(d)),
+    'spec-scenario': specHandler('spec-scenario', specScenario),
+    'spec-view': specHandler('spec-view', specView),
+    'spec-completed-menu': specHandler('spec-completed-menu', specCompletedMenu),
     'in-session-gate': (workUnit, key, ...rest) => (!workUnit || !key || rest.length > 0
       ? usageError('in-session-gate takes a work unit and a menu key')
       : inSessionGate(workUnit, key)),
@@ -384,4 +497,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, format, select, formatScoped };
+module.exports = { discover, format, select, formatScoped, specScenario };

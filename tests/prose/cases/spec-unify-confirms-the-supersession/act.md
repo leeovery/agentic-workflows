@@ -1,4 +1,6 @@
-Execute skills/workflow-specification-entry/SKILL.md with arguments
-$0=epic, $1=search-relevance (no topic). Follow it to the point where
-the handoff to the processing skill is constructed; record the handoff
-block and stop. Do not execute the processing skill's instructions.
+Execute skills/workflow-continue-epic/SKILL.md with the argument
+$0=search-relevance — the epic opened from the start menu, nothing just
+concluded. Answer as the scripted user, then as the described user.
+Stop the moment the prose waits for an answer neither covers, reaches a
+terminal condition, or moves the work to another skill — whichever
+comes first.

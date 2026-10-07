@@ -966,6 +966,39 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.status, 'stale');
     });
 
+    it('grouping-analysis: every discussion file is an input, whatever its item reads — a stamp over them is valid', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createFile(dir, '.workflows/alpha/discussion/billing.md', 'content-b');
+      const checksum = filesChecksum([
+        path.join(dir, '.workflows/alpha/discussion/auth.md'),
+        path.join(dir, '.workflows/alpha/discussion/billing.md'),
+      ]);
+      createManifest(dir, 'alpha', {
+        phases: {
+          discussion: {
+            analysis_cache: { checksum, generated: '2026-05-02' },
+            items: { auth: { status: 'completed' }, billing: { status: 'cancelled' } },
+          },
+        },
+      });
+      const r = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.workflows'), 'grouping-analysis');
+      assert.strictEqual(r.status, 'valid');
+      assert.strictEqual(r.generated, '2026-05-02');
+      assert.deepStrictEqual(r.files, [], 'the grouping stamp records no file list');
+    });
+
+    it('stamped tells a cache an analysis never wrote from one the inputs have moved past', () => {
+      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createManifest(dir, 'alpha', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+      const unstamped = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.workflows'), 'grouping-analysis');
+      assert.deepStrictEqual([unstamped.status, unstamped.stamped], ['stale', false]);
+      createManifest(dir, 'alpha', {
+        phases: { discussion: { analysis_cache: { checksum: 'old', generated: '2026-05-02' }, items: { auth: { status: 'completed' } } } },
+      });
+      const moved = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.workflows'), 'grouping-analysis');
+      assert.deepStrictEqual([moved.status, moved.stamped], ['stale', true]);
+    });
+
     it('returns absent for unknown kind', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
@@ -1098,13 +1131,13 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'a', reason: 'cancelled' }], (n) => n),
         { holds: 'its source "a" is cancelled', recovery: 'reactivate the topic first' });
       assert.deepStrictEqual(reactivateLockPhrases([{ topic: 'b', reason: 'held', by: 'x' }], (n) => n.toUpperCase(), { now: true }),
-        { holds: 'the specification "X" now sources "B"', recovery: 'regroup at the specification entry' });
+        { holds: 'the specification "X" now sources "B"', recovery: 'regroup the discussions from the menu (s/spec)' });
       assert.deepStrictEqual(reactivateLockPhrases([
         { topic: 'a', reason: 'cancelled' }, { topic: 'b', reason: 'cancelled' },
         { topic: 'c', reason: 'held', by: 'x' }, { topic: 'd', reason: 'held', by: 'y' },
       ], (n) => n), {
         holds: 'its sources "a", "b" are cancelled and the specifications "x", "y" source "c", "d"',
-        recovery: 'reactivate the topics first and regroup at the specification entry',
+        recovery: 'reactivate the topics first and regroup the discussions from the menu (s/spec)',
       });
     });
   });

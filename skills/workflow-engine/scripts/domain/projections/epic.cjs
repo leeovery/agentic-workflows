@@ -101,7 +101,7 @@ const ACTION_PHASE = {
 // stop a gate firing.
 const SOFT_GATE_ACTIONS = [
   ...Object.keys(ACTION_PHASE),
-  'analyze_discussions', 'continue_discovery',
+  'continue_discovery',
 ];
 
 const START_GATE = {
@@ -726,8 +726,7 @@ function commandOptions(workUnit, detail, hasMap) {
       ? `${detail.unaccounted_discussions.length} discussion(s) not yet grouped`
       : 'review or regroup specifications';
     opts.push({
-      key: 's', word: 'spec', action: 'analyze_discussions', topic: null,
-      route: `/${entrySkill('specification')} epic ${workUnit}`,
+      key: 's', word: 'spec', action: 'analyze_discussions', topic: null, route: null,
       label: { head: 'Analyze / regroup discussions', tail: desc },
     });
   }

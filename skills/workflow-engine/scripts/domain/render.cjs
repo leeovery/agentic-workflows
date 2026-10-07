@@ -3455,9 +3455,9 @@ function correctionGate(cwd, { dotpath }) {
   ));
 }
 
-// analysis-proceed-gate — specification entry's consent before the grouping
-// analysis runs. The cache-aware message above it differs by cache state; the
-// ask does not.
+// analysis-proceed-gate — the epic specification menu's consent before the
+// grouping analysis runs. The cache-aware message above it differs by cache
+// state; the ask does not.
 
 /**
  * @param {string} cwd
@@ -3469,27 +3469,28 @@ function analysisProceedGate(cwd, { dotpath }) {
   return section('MENU: analysis proceed gate', MENU_INSTRUCTION, menu('', yesNo(), { question: 'Proceed with analysis?' }));
 }
 
-// spec-confirm-gate — specification entry's consent before the handoff, the
-// one gate every route reaches, with what the handoff is about to do drawn
-// above it. The variant is the route the entry took; the surface refuses one
-// the item's state does not bear, reading the verb through the entry menu's
-// own derivation. With no item yet, the create is the single-discussion path
-// and confirms the lone completed discussion.
+// spec-confirm-gate — the consent before a specification's entry. After a
+// menu pick it is drawn only where the start does what the pick did not
+// show: incorporate a started specification, which its completion
+// supersedes, or unify every grouping (`--unify`, the selection the
+// groupings menu's unify made) — empty otherwise, as the soft gate answers
+// empty on pass. The single-discussion path (`--single`) picks nothing, so
+// it is always drawn: a create — of the lone completed discussion where no
+// item exists yet — a continue, or a refine.
 
-const SPEC_CONFIRM_VERBS = { create: 'Creating', continue: 'Continuing', refine: 'Refining', unify: 'Creating' };
 const SPEC_CONFIRMABLE = ['proposed', 'in-progress', 'completed'];
 const REFINE_NOTE = 'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.';
 
 /**
- * The single-discussion path's grouping: the lone completed discussion under
- * the name the handoff creates.
+ * The single-discussion path's grouping before its item exists: the lone
+ * completed discussion under the name the path proceeds with.
  * @param {object} manifest @param {string} workUnit @param {string} topic
  * @returns {import('./specification.cjs').DiscoverySpec}
  */
 function loneDiscussionGrouping(manifest, workUnit, topic) {
   const completed = phaseItems(manifest, 'discussion').filter((d) => d.status === 'completed');
   if (completed.length !== 1) {
-    throw new Error(`render spec-confirm-gate: no specification "${topic}" — a create with no proposed grouping confirms the lone completed discussion, and "${workUnit}" has ${completed.length}`);
+    throw new Error(`render spec-confirm-gate: no specification "${topic}" — the single-discussion confirm reads the lone completed discussion, and "${workUnit}" has ${completed.length}`);
   }
   return {
     name: topic,
@@ -3501,35 +3502,27 @@ function loneDiscussionGrouping(manifest, workUnit, topic) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, variant?: string}} args
+ * @param {{dotpath: string, single?: string, unify?: string}} args
  * @returns {string}
  */
-function specConfirmGate(cwd, { dotpath, variant }) {
-  if (!isFilled(variant) || !Object.hasOwn(SPEC_CONFIRM_VERBS, variant)) {
-    throw new Error(`render spec-confirm-gate: --variant must be one of ${Object.keys(SPEC_CONFIRM_VERBS).join(', ')}, got "${variant}"`);
-  }
+function specConfirmGate(cwd, { dotpath, single, unify }) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'spec-confirm-gate');
   if (phase !== 'specification') {
     throw new Error(`render spec-confirm-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
   }
   const item = itemOf(manifest, 'specification', topic);
-  if (variant === 'unify' && (topic !== 'unified' || !item)) {
-    throw new Error(`render spec-confirm-gate: the unify confirm reads the "unified" item its reconcile wrote — "${topic}" ${item ? 'is not it' : 'has no item'}`);
-  }
+  if (!item && !single) throw new Error(`render spec-confirm-gate: no specification "${topic}" — the confirm reads the item the pick names`);
   const spec = item ? discoverySpec(manifest, topic, item) : loneDiscussionGrouping(manifest, workUnit, topic);
-  const { status } = spec;
-  if (!SPEC_CONFIRMABLE.includes(status)) {
-    throw new Error(`render spec-confirm-gate: "${topic}" is ${status} — there is nothing to confirm`);
+  if (!SPEC_CONFIRMABLE.includes(spec.status)) {
+    throw new Error(`render spec-confirm-gate: "${topic}" is ${spec.status} — there is nothing to confirm`);
   }
-  const { verb, sources, supersedes } = specConfirmation(manifest, spec);
-  if (verb !== SPEC_CONFIRM_VERBS[variant]) {
-    throw new Error(`render spec-confirm-gate: "${topic}" reads ${verb} — the ${variant} confirm does not serve it`);
-  }
+  const { variant, sources, supersedes } = specConfirmation(manifest, spec, { unify: Boolean(unify) });
+  const drawn = single || variant === 'unify' || (variant === 'create' && supersedes.length > 0);
+  if (!drawn) return '';
 
   return [
     section('DISPLAY: spec confirmation', emitAs('text', ', directly above the menu'), specificationConfirmation({
-      variant: /** @type {'create'|'continue'|'refine'|'unify'} */ (variant),
-      verb, work_unit: workUnit, name: topic, status, sources, supersedes,
+      variant, work_unit: workUnit, name: topic, status: spec.status, sources, supersedes,
     })),
     section('MENU: spec confirm gate', MENU_INSTRUCTION, menu(variant === 'refine' ? REFINE_NOTE : '', yesNo(), { question: 'Proceed?' })),
   ].join('\n');

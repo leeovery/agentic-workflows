@@ -531,7 +531,7 @@ describe('engine topic reactivate', () => {
     m.phases.specification.items.sketch = { status: 'proposed', sources: { 'session-model': { status: 'pending' } } };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error,
-      'reactivating "session-model" is refused while the specification "other" sources "session-model" — regroup at the specification entry');
+      'reactivating "session-model" is refused while the specification "other" sources "session-model" — regroup the discussions from the menu (s/spec)');
     assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.sketch.status, 'proposed', 'a refusal discards nothing');
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'other']);
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']);
@@ -553,7 +553,7 @@ describe('engine topic reactivate', () => {
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'alpha']);
     assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'pair']).error,
-      'reactivating "pair" is refused while its source "alpha" is cancelled and the specification "other" sources "beta" — reactivate the topic first and regroup at the specification entry');
+      'reactivating "pair" is refused while its source "alpha" is cancelled and the specification "other" sources "beta" — reactivate the topic first and regroup the discussions from the menu (s/spec)');
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'other']);
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'beta']);
     assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'pair']).error,
@@ -678,7 +678,7 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|queue\|absorb\|requeue>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|queue\|incorporations\|absorb\|requeue>/);
   });
 
   it('flips a triaged stub to in-progress — the one exit from triaged', () => {
@@ -1733,6 +1733,56 @@ describe('engine topic supersede', () => {
     assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow']).error, /Usage: engine topic supersede/);
     assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'specification']).error, /Usage: engine topic supersede/);
     assert.match(engineFails(dir, ['topic', 'supersede', 'payments', 'nonsense', 'auth-flow', '--by', 'unified']).error, /unknown or non-lifecycle phase "nonsense"/);
+  });
+});
+
+describe('engine topic incorporations', () => {
+  let dir;
+
+  // A completed `ranking` specification over two discussions, and a proposed
+  // grouping `search` that takes one of them in beside a third.
+  function incorporationManifest() {
+    const m = epicManifest();
+    m.phases.discussion.items = { ranking: { status: 'completed' }, synonyms: { status: 'completed' }, stray: { status: 'completed' } };
+    m.phases.specification = {
+      items: {
+        ranking: { status: 'completed', sources: { ranking: { status: 'incorporated' }, stray: { status: 'incorporated' } } },
+        search: { status: 'proposed', sources: { ranking: { status: 'pending' }, synonyms: { status: 'pending' } } },
+      },
+    };
+    return m;
+  }
+
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(incorporationManifest(), null, 2) + '\n');
+    commitAll(dir, 'init');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  const RANKING = { topic: 'ranking', path: '.workflows/payments/specification/ranking/specification.md', covers: ['ranking'] };
+
+  it('reads what a grouping\'s start takes in, and what the start recorded once it has run — the same on every read after', () => {
+    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']),
+      { ok: true, work_unit: 'payments', topic: 'search', incorporations: [RANKING] });
+    engine(dir, ['topic', 'start', 'payments', 'specification', 'search']);
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.specification.items.search.incorporates, ['ranking']);
+    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']).incorporations, [RANKING]);
+    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'ranking']).incorporations, [],
+      'the specification taken in never reads the newer one back');
+  });
+
+  it('a superseded specification drops out, so the completion supersedes each once', () => {
+    engine(dir, ['topic', 'start', 'payments', 'specification', 'search']);
+    engine(dir, ['topic', 'supersede', 'payments', 'specification', 'ranking', '--by', 'search']);
+    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']).incorporations, []);
+  });
+
+  it('refuses missing args and a specification the work unit does not hold', () => {
+    assert.match(engineFails(dir, ['topic', 'incorporations', 'payments']).error, /^Usage: engine topic incorporations <work-unit> <topic>$/);
+    assert.match(engineFails(dir, ['topic', 'incorporations', 'payments', 'search', 'extra']).error, /^Usage: engine topic incorporations/);
+    assert.match(engineFails(dir, ['topic', 'incorporations', 'payments', 'ghost']).error, /no specification "ghost" in "payments"/);
+    assert.match(engineFails(dir, ['topic', 'incorporations', 'nowhere', 'search']).error, /manifest not found/);
   });
 });
 

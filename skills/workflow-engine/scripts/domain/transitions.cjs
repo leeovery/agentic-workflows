@@ -34,7 +34,7 @@ const {
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, lockingSpecsPhrase, deliveryStarted,
-  cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -230,7 +230,9 @@ function assertMapAllowsStart(manifest, phase, topic, existing) {
  * (init-phase semantics), or set an existing item back to `in-progress`.
  * A completed item must go through reopen — resuming is not starting — and
  * a cancelled item through reactivate. On an epic the discovery map gates
- * the birth (see assertMapAllowsStart). No git commit.
+ * the birth (see assertMapAllowsStart). A proposed grouping's start records
+ * the started specifications it incorporates (specIncorporations). No git
+ * commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
@@ -271,6 +273,8 @@ function startTopic(cwd, workUnit, phase, topic) {
       items[topic] = { status: 'in-progress' };
       created = true;
     } else {
+      const incorporates = existing.status === 'proposed' ? specIncorporations(manifest, topic) : [];
+      if (incorporates.length > 0) existing.incorporates = incorporates;
       existing.status = 'in-progress';
     }
 

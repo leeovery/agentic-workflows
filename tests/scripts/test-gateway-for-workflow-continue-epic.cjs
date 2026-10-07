@@ -4,8 +4,13 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { discover, format, select, formatScoped } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
+const { specificationDiscovery } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+
+const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
 
 describe('workflow-continue-epic discovery', () => {
   let dir;
@@ -1915,10 +1920,7 @@ describe('workflow-continue-epic detail counts (imports/seeds)', () => {
 });
 
 describe('workflow-continue-epic CLI dispatch', () => {
-  const path = require('path');
-  const { spawnSync } = require('child_process');
-  const GATEWAY = path.join(__dirname, '../../skills/workflow-continue-epic/scripts/gateway.cjs');
-  const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu) {work_unit}\n';
+  const USAGE = 'Usage: gateway.cjs | gateway.cjs select | gateway.cjs {work_unit} | gateway.cjs view {work_unit} [new_arrivals_json] | gateway.cjs (completed-menu|cancel-menu|reactivate-menu|postpone-menu|pull-forward-menu|unblock-menu|spec-scenario|spec-view|spec-completed-menu) {work_unit}\n';
 
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -2280,5 +2282,664 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 1);
     assert.strictEqual(res.stdout, '');
     assert.strictEqual(res.stderr, 'gateway: index takes no arguments\n' + USAGE);
+  });
+});
+
+// An epic with a cancelled specification over two sources, a legacy
+// array-form cancelled one, and a bare cancelled one — none of them groups.
+function cancelledSpecsManifest() {
+  return {
+    work_type: 'epic',
+    phases: {
+      discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+      specification: {
+        items: {
+          unified: { status: 'cancelled', previous_status: 'completed', sources: { auth: { status: 'incorporated' }, billing: { status: 'incorporated' } } },
+          legacy: { status: 'cancelled', sources: [{ name: 'billing', status: 'incorporated' }] },
+          bare: { status: 'cancelled' },
+        },
+      },
+    },
+  };
+}
+
+describe('workflow-continue-epic specification discovery', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('refuses a name with no active epic behind it — unknown, closed, or another work type', () => {
+    createManifest(dir, 'shipped', { work_type: 'epic', status: 'completed' });
+    createManifest(dir, 'auth', { work_type: 'feature', phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    for (const name of ['ghost', 'shipped', 'auth']) {
+      assert.throws(() => specificationDiscovery(dir, name), new RegExp(`no active epic "${name}"`));
+    }
+  });
+
+  it('reads an epic with nothing discussed as empty', () => {
+    createManifest(dir, 'v1', { work_type: 'epic' });
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.current_state.has_discussions, false);
+    assert.strictEqual(r.current_state.spec_count, 0);
+    assert.strictEqual(r.discussions.length, 0);
+    assert.strictEqual(r.specifications.length, 0);
+  });
+
+  it('reads only the named epic', () => {
+    createManifest(dir, 'v1', { work_type: 'epic', phases: { discussion: { items: { a: { status: 'completed' } } } } });
+    createManifest(dir, 'v2', { work_type: 'epic', phases: { discussion: { items: { b: { status: 'completed' }, c: { status: 'completed' } } } } });
+    assert.deepStrictEqual(specificationDiscovery(dir, 'v1').discussions.map((d) => d.name), ['a']);
+  });
+
+  it('finds discussions with spec status', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'in-progress', sources: { auth: { status: 'extracted' } } } } },
+      },
+    });
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.discussions.length, 1);
+    assert.strictEqual(r.discussions[0].has_individual_spec, true);
+    assert.strictEqual(r.discussions[0].spec_status, 'in-progress');
+    assert.strictEqual(r.current_state.completed_count, 1);
+  });
+
+  it('detects discussion items with spec cross-reference', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          status: 'in-progress',
+          items: {
+            'auth-design': { status: 'completed' },
+            'data-model': { status: 'in-progress' },
+          },
+        },
+        specification: {
+          items: {
+            'auth-spec': {
+              status: 'in-progress',
+              sources: { 'auth-design': { status: 'extracted' } },
+            },
+          },
+        },
+      },
+    });
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.discussions.length, 2);
+    const auth = r.discussions.find(d => d.name === 'auth-design');
+    assert.strictEqual(auth.has_individual_spec, true);
+    const data = r.discussions.find(d => d.name === 'data-model');
+    assert.strictEqual(data.has_individual_spec, false);
+  });
+
+  it('finds specification items with sources', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          items: {
+            'auth-design': { status: 'completed' },
+            'data-model': { status: 'completed' },
+          },
+        },
+        specification: {
+          items: {
+            'auth-spec': {
+              status: 'completed',
+              type: 'feature',
+              sources: { 'auth-design': { status: 'incorporated' } },
+            },
+            'data-spec': {
+              status: 'in-progress',
+              sources: { 'data-model': { status: 'extracted' } },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
+    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data Spec');
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.specifications.length, 2);
+    const authSpec = r.specifications.find(s => s.name === 'auth-spec');
+    assert.strictEqual(authSpec.status, 'completed');
+    assert.strictEqual(authSpec.sources.length, 1);
+    assert.strictEqual(authSpec.sources[0].name, 'auth-design');
+    assert.strictEqual(authSpec.sources[0].discussion_status, 'completed');
+    const dataSpec = r.specifications.find(s => s.name === 'data-spec');
+    assert.strictEqual(dataSpec.status, 'in-progress');
+  });
+
+  it('a started specification counts once its file is on disk', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { a: { status: 'completed' } } },
+        specification: { items: { 'a-spec': { status: 'in-progress', sources: { a: { status: 'pending' } } } } },
+      },
+    });
+    assert.strictEqual(specificationDiscovery(dir, 'v1').specifications.length, 0);
+    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.spec_count, 1);
+  });
+
+  it('skips superseded specification items', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        specification: {
+          items: {
+            'old-spec': { status: 'superseded', superseded_by: 'new-spec' },
+            'new-spec': { status: 'in-progress' },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/old-spec/specification.md', '# Old');
+    createFile(dir, '.workflows/v1/specification/new-spec/specification.md', '# New');
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.specifications.length, 1);
+    assert.strictEqual(r.specifications[0].name, 'new-spec');
+  });
+
+  it('computes discussion counts correctly', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'in-progress' }, c: { status: 'completed' } } } },
+    });
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.current_state.discussion_count, 3);
+    assert.strictEqual(r.current_state.completed_count, 2);
+    assert.strictEqual(r.current_state.in_progress_count, 1);
+  });
+
+  it('a triaged stub is not a discussion — excluded from counts, list, and has_discussions', () => {
+    createManifest(dir, 'overhaul', {
+      work_type: 'epic',
+      phases: { discussion: { items: { parked: { status: 'triaged' } } } },
+    });
+    createFile(dir, '.workflows/overhaul/discussion/parked.md', '# Discussion: Parked\n\n## Triage\n\n### Concern\nBody.\n');
+    const r = specificationDiscovery(dir, 'overhaul');
+    assert.strictEqual(r.current_state.discussion_count, 0);
+    assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');
+    assert.deepStrictEqual(r.discussions, []);
+  });
+
+  it('a lone postponed discussion is no discussion at all — the menu reads blocked-no-discussions', () => {
+    createManifest(dir, 'mvp', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { away: { routing: 'discussion', source: 'discovery', postponed: true } } },
+        discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
+      },
+    });
+    createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
+    const r = specificationDiscovery(dir, 'mvp');
+    assert.strictEqual(r.current_state.discussion_count, 0);
+    assert.strictEqual(r.current_state.has_discussions, false, 'a topic that left for the roadmap must not read as one still in progress');
+    assert.deepStrictEqual(r.discussions, []);
+    const view = spawnSync('node', [GATEWAY, 'spec-view', 'mvp'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(view.status, 0, view.stderr);
+    assert.ok(view.stdout.includes('scenario: blocked-no-discussions'), view.stdout);
+  });
+
+  it('a postponed discussion drops out of the counts and the list beside a live one', () => {
+    createManifest(dir, 'mvp', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          away: { routing: 'discussion', source: 'discovery', postponed: true },
+          billing: { routing: 'discussion', source: 'discovery' },
+        } },
+        discussion: { items: {
+          away: { status: 'postponed', previous_status: 'completed' },
+          billing: { status: 'completed' },
+        } },
+      },
+    });
+    createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
+    createFile(dir, '.workflows/mvp/discussion/billing.md', '# Discussion: Billing\n');
+    const r = specificationDiscovery(dir, 'mvp');
+    assert.strictEqual(r.current_state.discussion_count, 1);
+    assert.strictEqual(r.current_state.completed_count, 1);
+    assert.deepStrictEqual(r.discussions.map((d) => d.name), ['billing']);
+  });
+
+  it('reads the grouping analysis cache against the discussion files: none, valid, stale', () => {
+    const crypto = require('crypto');
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth');
+    assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'none');
+
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          analysis_cache: { checksum: crypto.createHash('md5').update('# Auth').digest('hex'), generated: '2026-01-01' },
+          items: { auth: { status: 'completed' } },
+        },
+      },
+    });
+    assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'valid');
+
+    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth updated');
+    assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'stale');
+  });
+
+  it('a cache over no discussion files reads stale', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: {
+          analysis_cache: { checksum: 'any', generated: '2026-01-01' },
+          items: { auth: { status: 'completed' } },
+        },
+      },
+    });
+    assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'stale');
+  });
+
+  it('computes the discussions checksum, and null with no discussion files', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.discussions_checksum, null);
+    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth discussion');
+    assert.ok(specificationDiscovery(dir, 'v1').current_state.discussions_checksum);
+  });
+
+  it('a cancelled or superseded specification is no individual spec — its source is free to be regrouped', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: { status: 'cancelled', previous_status: 'completed', sources: { auth: { status: 'incorporated' } } },
+            old: { status: 'superseded', superseded_by: 'unified', sources: { billing: { status: 'incorporated' } } },
+            unified: { status: 'in-progress', sources: { billing: { status: 'incorporated' } } },
+          },
+        },
+      },
+    });
+    const r = specificationDiscovery(dir, 'pay');
+    assert.strictEqual(r.discussions.find((d) => d.name === 'auth').has_individual_spec, false);
+    assert.strictEqual(r.discussions.find((d) => d.name === 'billing').spec_status, 'in-progress', 'the superseding spec, not the superseded one');
+  });
+
+  it('a cancelled specification lands in cancelled_specifications with its sources — never in specifications, never an individual spec', () => {
+    createManifest(dir, 'pay', cancelledSpecsManifest());
+    const r = specificationDiscovery(dir, 'pay');
+    assert.deepStrictEqual(r.cancelled_specifications, [
+      { name: 'unified', sources: ['auth', 'billing'] },
+      { name: 'legacy', sources: ['billing'] },
+      { name: 'bare', sources: [] },
+    ]);
+    assert.deepStrictEqual(r.specifications, []);
+    assert.deepStrictEqual(r.discussions.map((d) => d.has_individual_spec), [false, false]);
+  });
+
+  it('a promoted or status-less specification is no individual spec — only a started one is incorporated — yet both still group their sources', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+        specification: { items: {
+          auth: { status: 'promoted', promoted_to: 'auth-cc', sources: { auth: { status: 'incorporated' } } },
+          billing: { sources: { billing: { status: 'pending' } } },
+        } },
+      },
+    });
+    createFile(dir, '.workflows/pay/specification/billing/specification.md', '# Billing');
+    const r = specificationDiscovery(dir, 'pay');
+    assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec]), [['auth', false], ['billing', false]]);
+    assert.deepStrictEqual(r.specifications.map((s) => s.name).sort(), ['auth', 'billing'],
+      'the promotion took the file to the cross-cutting unit — the item still groups its source');
+    assert.strictEqual(r.current_state.spec_count, 1, 'a promoted specification counts nowhere');
+    assert.deepStrictEqual(r.cancelled_specifications, []);
+  });
+
+  it('the view DATA lists every cancelled specification with its sources, or (none)', () => {
+    createManifest(dir, 'pay', cancelledSpecsManifest());
+    const cancelled = spawnSync('node', [GATEWAY, 'spec-view', 'pay'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(cancelled.status, 0, cancelled.stderr);
+    assert.ok(cancelled.stdout.includes([
+      'specifications:',
+      '  (none)',
+      'cancelled_specifications:',
+      '  unified: sources auth, billing',
+      '  legacy: sources billing',
+      '  bare: sources (none)',
+      'unassigned_discussions: auth, billing',
+    ].join('\n')), cancelled.stdout);
+    createManifest(dir, 'clean', { work_type: 'epic', phases: { discussion: { items: { clean: { status: 'completed' } } } } });
+    const none = spawnSync('node', [GATEWAY, 'spec-view', 'clean'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(none.status, 0, none.stderr);
+    assert.ok(none.stdout.includes('cancelled_specifications:\n  (none)\nunassigned_discussions: clean'), none.stdout);
+  });
+
+  it('a discussion with no specification has no individual spec', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { discussion: { items: { auth: { status: 'completed' } } } },
+    });
+    assert.strictEqual(specificationDiscovery(dir, 'v1').discussions[0].has_individual_spec, false);
+  });
+
+  it('spec with no sources has no sources field', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+    const r = specificationDiscovery(dir, 'v1');
+    assert.strictEqual(r.specifications.length, 1);
+    assert.strictEqual(r.specifications[0].sources, undefined);
+  });
+
+  it('defaults source status to pending when object-shaped without status; a row that is not an object is no source, as the completion gate reads it', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' } } },
+        specification: {
+          items: {
+            auth: {
+              status: 'completed',
+              sources: { auth: {}, design: 'not-an-object' },
+            },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+    const spec = specificationDiscovery(dir, 'v1').specifications[0];
+    assert.deepStrictEqual(spec.sources, [{ name: 'auth', status: 'pending', discussion_status: 'completed' }]);
+    assert.strictEqual(spec.has_pending_sources, true);
+  });
+
+  it('reads legacy array-form sources by name, for the spec and for the discussion it covers', () => {
+    createManifest(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { auth: { status: 'completed' }, billing: { status: 'completed' } } },
+        specification: {
+          items: {
+            core: { status: 'in-progress', sources: [{ name: 'auth', status: 'incorporated' }, { name: 'billing' }] },
+          },
+        },
+      },
+    });
+    createFile(dir, '.workflows/pay/specification/core/specification.md', '# Spec');
+    const r = specificationDiscovery(dir, 'pay');
+    assert.deepStrictEqual(r.specifications[0].sources, [
+      { name: 'auth', status: 'incorporated', discussion_status: 'completed' },
+      { name: 'billing', status: 'pending', discussion_status: 'completed' },
+    ]);
+    assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec, d.spec_status]),
+      [['auth', true, 'in-progress'], ['billing', true, 'in-progress']]);
+  });
+});
+
+describe('workflow-continue-epic specification ordering and counts', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  describe('spec menu reorder', () => {
+    // Builds an epic with four spec items in shuffled insertion order:
+    // concluded, completed-with-pending, proposed, in-progress. Files exist for
+    // every materialized (non-proposed) spec so they pass the fileExists gate.
+    function reorderFixture() {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: {
+            items: {
+              'd-concluded': { status: 'completed' },
+              'd-pending-a': { status: 'completed' },
+              'd-pending-b': { status: 'completed' },
+              'd-proposed': { status: 'completed' },
+              'd-wip': { status: 'completed' },
+            },
+          },
+          specification: {
+            items: {
+              'concluded-spec': {
+                status: 'completed',
+                sources: { 'd-concluded': { status: 'incorporated' } },
+              },
+              'pending-spec': {
+                status: 'completed',
+                sources: {
+                  'd-pending-a': { status: 'incorporated' },
+                  'd-pending-b': { status: 'pending' },
+                },
+              },
+              'proposed-grp': {
+                status: 'proposed',
+                sources: { 'd-proposed': { status: 'pending' } },
+              },
+              'wip-spec': {
+                status: 'in-progress',
+                sources: { 'd-wip': { status: 'extracted' } },
+              },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/concluded-spec/specification.md', '# Concluded');
+      createFile(dir, '.workflows/v1/specification/pending-spec/specification.md', '# Pending');
+      createFile(dir, '.workflows/v1/specification/wip-spec/specification.md', '# Wip');
+    }
+
+    it('has_pending_sources false when all sources incorporated', () => {
+      reorderFixture();
+      const spec = specificationDiscovery(dir, 'v1').specifications.find(s => s.name === 'concluded-spec');
+      assert.strictEqual(spec.has_pending_sources, false);
+    });
+
+    it('has_pending_sources true when a source is pending', () => {
+      reorderFixture();
+      const spec = specificationDiscovery(dir, 'v1').specifications.find(s => s.name === 'pending-spec');
+      assert.strictEqual(spec.has_pending_sources, true);
+    });
+
+    it('has_pending_sources true for a proposed grouping', () => {
+      reorderFixture();
+      const spec = specificationDiscovery(dir, 'v1').specifications.find(s => s.name === 'proposed-grp');
+      assert.strictEqual(spec.has_pending_sources, true);
+    });
+
+    it('has_pending_sources true when a source is stale — reconciliation is open work', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'd-one': { status: 'completed' } } },
+          specification: {
+            items: {
+              'staled-spec': {
+                status: 'completed',
+                sources: { 'd-one': { status: 'stale' } },
+              },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/staled-spec/specification.md', '# Staled');
+      const spec = specificationDiscovery(dir, 'v1').specifications.find(s => s.name === 'staled-spec');
+      assert.strictEqual(spec.has_pending_sources, true);
+      assert.strictEqual(spec.sources[0].status, 'stale');
+    });
+
+    it('has_pending_sources false for a spec with no sources', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { auth: { status: 'completed' } } },
+          specification: { items: { auth: { status: 'in-progress' } } },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+      assert.strictEqual(specificationDiscovery(dir, 'v1').specifications[0].has_pending_sources, false);
+    });
+
+    it('sorts specifications actionable-first (proposed, in-progress, completed+pending, concluded)', () => {
+      reorderFixture();
+      const order = specificationDiscovery(dir, 'v1').specifications.map(s => s.name);
+      assert.deepStrictEqual(order, ['proposed-grp', 'wip-spec', 'pending-spec', 'concluded-spec']);
+    });
+
+    it('the build order breaks ties within a rank tier; unordered specs trail', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { d1: { status: 'completed' }, d2: { status: 'completed' }, d3: { status: 'completed' } } },
+          specification: {
+            items: {
+              zeta: { status: 'in-progress', order: 2, sources: { d1: { status: 'pending' } } },
+              auth: { status: 'in-progress', order: 1, sources: { d2: { status: 'pending' } } },
+              stray: { status: 'in-progress', sources: { d3: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
+      createFile(dir, '.workflows/v1/specification/auth/specification.md', '# A');
+      createFile(dir, '.workflows/v1/specification/stray/specification.md', '# S');
+      assert.deepStrictEqual(specificationDiscovery(dir, 'v1').specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
+    });
+
+    it('two unordered specs in one tier keep insertion order via an explicit tie', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { d1: { status: 'completed' }, d2: { status: 'completed' } } },
+          specification: {
+            items: {
+              zeta: { status: 'in-progress', sources: { d1: { status: 'pending' } } },
+              alpha: { status: 'in-progress', sources: { d2: { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
+      createFile(dir, '.workflows/v1/specification/alpha/specification.md', '# A');
+      assert.deepStrictEqual(specificationDiscovery(dir, 'v1').specifications.map(s => s.name), ['zeta', 'alpha']);
+    });
+
+    it('concluded_count counts only completed specs with no pending sources', () => {
+      reorderFixture();
+      assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.concluded_count, 1);
+    });
+
+    it('concluded_count is zero when no spec is concluded', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'd-prop': { status: 'completed' }, 'd-wip': { status: 'completed' } } },
+          specification: {
+            items: {
+              'prop': { status: 'proposed', sources: { 'd-prop': { status: 'pending' } } },
+              'wip': { status: 'in-progress', sources: { 'd-wip': { status: 'extracted' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/wip/specification.md', '# Wip');
+      assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.concluded_count, 0);
+    });
+  });
+
+  describe('proposed groupings', () => {
+    it('counts a proposed spec item (no file) in proposed_count, not spec_count', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-grouping': {
+                status: 'proposed',
+                sources: { 'auth-design': { status: 'pending' } },
+              },
+            },
+          },
+        },
+      });
+      // No spec file on disk for the proposed item — must still be counted.
+      const r = specificationDiscovery(dir, 'v1');
+      assert.strictEqual(r.current_state.proposed_count, 1);
+      assert.strictEqual(r.current_state.spec_count, 0);
+      const spec = r.specifications.find(s => s.name === 'auth-grouping');
+      assert.ok(spec, 'proposed item present in specifications[]');
+      assert.strictEqual(spec.status, 'proposed');
+      assert.strictEqual(spec.sources.length, 1);
+      assert.strictEqual(spec.sources[0].name, 'auth-design');
+      assert.strictEqual(spec.sources[0].status, 'pending');
+    });
+
+    it('a proposed source does not set has_individual_spec, a single completed discussion included', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth-design': { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-grouping': { status: 'proposed', sources: { 'auth-design': { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      const r = specificationDiscovery(dir, 'v1');
+      assert.strictEqual(r.current_state.completed_count, 1);
+      assert.strictEqual(r.discussions[0].has_individual_spec, false);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+      assert.strictEqual(r.current_state.spec_count, 0);
+    });
+
+    it('mixed proposed and materialized specs count separately', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          discussion: { items: { 'auth-design': { status: 'completed' }, 'data-model': { status: 'completed' } } },
+          specification: {
+            items: {
+              'auth-spec': { status: 'in-progress', sources: { 'auth-design': { status: 'extracted' } } },
+              'data-grouping': { status: 'proposed', sources: { 'data-model': { status: 'pending' } } },
+            },
+          },
+        },
+      });
+      createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
+      const r = specificationDiscovery(dir, 'v1');
+      assert.strictEqual(r.current_state.spec_count, 1);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+      assert.strictEqual(r.specifications.length, 2);
+    });
+
+    it('proposed item is included even without a spec file (file not required)', () => {
+      createManifest(dir, 'v1', {
+        work_type: 'epic',
+        phases: {
+          specification: { items: { grp: { status: 'proposed', sources: { d: { status: 'pending' } } } } },
+        },
+      });
+      const r = specificationDiscovery(dir, 'v1');
+      assert.strictEqual(r.specifications.length, 1);
+      assert.strictEqual(r.specifications[0].status, 'proposed');
+      assert.strictEqual(r.current_state.spec_count, 0);
+      assert.strictEqual(r.current_state.proposed_count, 1);
+    });
   });
 });

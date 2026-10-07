@@ -1,7 +1,7 @@
 ---
 name: workflow-specification-entry
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-specification-entry/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/*/.state), Bash(rm .workflows/*/.state/discussion-consolidation-analysis.md)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
 ---
 
 Act as **precise intake coordinator**. Follow each step literally without interpretation. Do not engage with the subject matter — your role is preparation, not processing.
@@ -36,23 +36,7 @@ Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, top
 
 Store work_unit for the handoff.
 
-#### If `topic` resolved
-
-→ Proceed to **Step 2** (Validate Source Material).
-
-#### If no `topic` (epic — scoped path)
-
-Read the scoped state:
-
-```bash
-node .claude/skills/workflow-specification-entry/scripts/gateway.cjs {work_unit}
-```
-
-The output is one **DATA** section — the reasoning surface: `scenario`, counts, `cache_status`, `discussions_checksum`, and the discussion/specification detail (statuses, sources). Reason from it; never display or restate it. A display reference a scenario routes to fetches its own snapshot where it shows it.
-
-**IMPORTANT**: Use ONLY this script for discovery. Do NOT run additional bash commands (ls, head, cat, etc.) to gather state.
-
-→ Proceed to **Step 5** (Check Prerequisites).
+→ Proceed to **Step 2**.
 
 ---
 
@@ -77,29 +61,3 @@ Load **[validate-phase.md](references/validate-phase.md)** and follow its instru
 Load **[invoke-skill.md](references/invoke-skill.md)** and follow its instructions as written.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
-
----
-
-## Step 5: Check Prerequisites
-
-Load **[check-prerequisites.md](references/check-prerequisites.md)** and follow its instructions as written.
-
-→ On return, proceed to **Step 6**.
-
----
-
-## Step 6: Route Based on State
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Route Based on State`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Evaluating what discussions and specifications exist to determine next steps.
-```
-
-Load **[route-scenario.md](references/route-scenario.md)** and follow its instructions as written.

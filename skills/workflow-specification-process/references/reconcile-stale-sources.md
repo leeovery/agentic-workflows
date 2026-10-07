@@ -4,7 +4,7 @@
 
 ---
 
-Entered when a source row reads `stale` — its source document was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale. `{source phase}` is the source's own phase — `discussion`, or `investigation` for a bugfix — and its artifact path follows the source ladder in **[spec-review.md](spec-review.md)**.
+Entered when a source row reads `stale` — its source document was re-decided after extraction, so the specification holds content from a decision that has since moved. Reconcile the logged content against the revision; never re-extract the source wholesale. `{source phase}` is the source's own phase — `discussion`, or `investigation` for a bugfix — and its document is `.workflows/{work_unit}/{source phase}/{source-name}.md`, as **[spec-review.md](spec-review.md)** → **C. Phase 1 — Claims Verification** resolves a source.
 
 First check the source item's status (`engine manifest get {work_unit}.{source phase}.{source-name} status`).
 

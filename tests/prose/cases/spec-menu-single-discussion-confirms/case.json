@@ -1,0 +1,51 @@
+{
+  "origin": "specification-grouping review — the single-discussion path confirms before its grouping lands, and the route selection's own confirm must then answer empty, one confirm per selection; nothing walked the epic menu's `s` row down the single path through its `--single` confirm, the proposed grouping it records and commits, and the handoff",
+  "entry": "workflow-continue-epic",
+  "files": [
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-continue-epic/references/specification-display-and-menu.md",
+    "skills/workflow-shared/references/handing-off.md"
+  ],
+  "answers": [
+    "s — analyze / regroup discussions",
+    "y — yes"
+  ],
+  "invariants": {
+    "calls_include": [
+      "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
+      "render spec-confirm-gate search-relevance.specification.search-relevance --single",
+      "manifest set search-relevance.specification.search-relevance",
+      "commit search-relevance --state",
+      "handoff /workflow-specification-entry epic search-relevance search-relevance"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
+      "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
+      "render spec-confirm-gate search-relevance.specification.search-relevance --single",
+      "manifest set search-relevance.specification.search-relevance",
+      "commit search-relevance --state",
+      "render spec-confirm-gate search-relevance.specification.search-relevance",
+      "handoff /workflow-specification-entry epic search-relevance search-relevance"
+    ],
+    "calls_exclude": [
+      "--unify",
+      "render epic-soft-gate",
+      "analysis-proceed-gate",
+      "presence scan",
+      "manifest apply",
+      "topic start",
+      "build-order sequence"
+    ]
+  }
+}

@@ -10,5 +10,7 @@ behavioural-ranking first, expansion second. The consolidation-analysis
 doc lists the two groupings, and its cache is stamped. The third map
 topic, `relevance-measurement`, is still fresh.
 
-Two actionable rows, so the next specification entry lands on the
-groupings menu with the unify offered beside them.
+Two actionable rows, so the specification row of the epic menu lands on
+the groupings menu with the unify offered beside them.
+
+The session opens on the epic's menu, the way the start menu opens it.

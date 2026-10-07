@@ -16,6 +16,16 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 
 Read any `**Tension**` lines for this specification's grouping from `.workflows/{work_unit}/.state/discussion-consolidation-analysis.md` (skip silently when the file or the lines are absent — only an epic's grouping analysis writes them). Hold them in session: construction raises each per its Resolve Source Incoherence discipline.
 
+## Hold the Incorporated Specifications
+
+Read the started specifications this one incorporates — each sources one of its discussions, and its completion supersedes each:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {work_unit} {topic}
+```
+
+Hold the response's `incorporations` in session (an empty list holds nothing): each one's `path`, and the discussions among this specification's sources it `covers`. Construction extracts and adapts each one's content alongside those discussions — the result is one specification, not a merge.
+
 ## Reconcile Stale Sources First
 
 Read the sources map (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} sources`).
