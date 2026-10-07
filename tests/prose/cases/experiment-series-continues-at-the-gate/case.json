@@ -1,18 +1,16 @@
 {
   "origin": "the series loop had no prose coverage — a topic holding two live records enters through the picker (the first time the user is asked, because nothing upstream chose a record), walks one to its verdict, offers the next at the gate, auto-resolves the second when the user stays, and exits by the bridge once the series is finished — the b/back escape never taken, the second record's design authored only after the gate",
-  "entry": "workflow-experiment-entry",
+  "entry": "workflow-experiment-process",
   "world": "claims",
   "files": [
-    "skills/workflow-experiment-entry/SKILL.md",
+    "skills/workflow-experiment-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-experiment-entry/references/select-record.md",
-    "skills/workflow-experiment-entry/references/invoke-skill.md",
-    "skills/workflow-experiment-process/SKILL.md",
+    "skills/workflow-experiment-process/references/select-record.md",
     "skills/workflow-experiment-process/references/experiment-guidelines.md",
     "skills/workflow-experiment-process/references/initialize-experiment.md",
     "skills/workflow-shared/references/seed-context.md",
@@ -33,7 +31,6 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "manifest get search-relevance.experiment.synonym-handling status",
       "manifest get search-relevance.experiment.synonym-handling experiments",
       "session label search-relevance experiment synonym-handling",
       "render experiment-pick search-relevance.experiment.synonym-handling",

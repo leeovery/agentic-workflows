@@ -1,16 +1,17 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments and fetches the
+1. the skill takes the topic from its arguments and fetches the
    engine's entry gate before any status read — the research is
-   completed, so it comes back empty and the entry carries on; it reads
-   the discussion status, finds it in progress, emits the resuming
-   phase note, and checks the reconcile flag — absent, so the advisory
-   is silent and reads nothing; the epic context arm finds the
-   map-shaped source, gathers nothing, and hands off with source:
-   existing discussion — none of it a question to the user
-2. the process reads the status again, finds the file, renders resume
-   detection — the map with both subtopics decided — and the user
-   continues; initialisation is skipped
+   completed, so it comes back empty and the skill carries on;
+   ensuring the discovery item finds it already on the map — nothing
+   is created; it reads the discussion status once, finds it in
+   progress, emits the resuming phase note, and checks the reconcile
+   flag — absent, so the advisory is silent and reads nothing — none
+   of it a question to the user
+2. beneath the note, with the file found, the resume surface carries on
+   — the map with both subtopics decided, then the continue-or-restart
+   gate, with no second heading of its own — and the user continues;
+   initialisation is skipped
 3. the guidelines load, the knowledge base is addressed once as a
    contextual query, the session opens, and its loop's first check
    reads the discussion's triage queue and finds it empty
@@ -39,10 +40,10 @@ Further claims:
   before the flag was cleared, and the read followed the research
   status read: the status decides the branch, never a guess at the
   file's existence
-- the reconcile flag read absent at the entry and `research` at the
-  session's own check; the flag is gone at the end, cleared by the
-  advisory inside the session — not by a reopen, and not left for a
-  later session
+- the reconcile flag read absent as the skill started and `research`
+  at the session's own check; the flag is gone at the end, cleared by
+  the advisory inside the session — not by a reopen, and not left for
+  a later session
 - no wait gate was fetched and no discussion completion or reopen was
   attempted: the research landed, so there is nothing to wait on, and
   the walk never reached the conclusion

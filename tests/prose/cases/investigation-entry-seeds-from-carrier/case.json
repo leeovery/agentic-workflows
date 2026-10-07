@@ -1,29 +1,32 @@
 {
   "origin": "bugfix mainline — a bug shaped in discovery is never re-interrogated",
-  "entry": "workflow-investigation-entry",
+  "entry": "workflow-investigation-process",
   "files": [
-    "skills/workflow-investigation-entry/SKILL.md",
+    "skills/workflow-investigation-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-investigation-entry/references/validate-phase.md",
-    "skills/workflow-investigation-entry/references/invoke-skill.md"
+    "skills/workflow-investigation-process/references/initialize-investigation.md",
+    "skills/workflow-shared/references/seed-context.md"
   ],
   "invariants": {
     "calls_include": [
       "manifest get crash-fix.investigation.crash-fix status",
-      "render phase-note"
+      "render phase-note crash-fix.investigation.crash-fix --verb Starting",
+      "manifest get crash-fix description"
     ],
     "calls_in_order": [
       "manifest get crash-fix.investigation.crash-fix status",
-      "render phase-note"
+      "render phase-note crash-fix.investigation.crash-fix --verb Starting",
+      "manifest get crash-fix description"
     ],
     "calls_exclude": [
       "topic start",
-      "topic reopen"
+      "topic reopen",
+      "render resume-gate"
     ]
   }
 }

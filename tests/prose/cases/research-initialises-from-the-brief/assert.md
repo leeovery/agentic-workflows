@@ -1,28 +1,24 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments — no topic question
-   is put to the user
+1. the skill takes the topic from its arguments — no topic question is
+   put to the user
 2. ensuring the discovery item finds it already on the map: nothing is
    created and no dismissal is cleared
-3. the research status reads empty, so the walk takes the new-entry arm
-   — phase validation is for entries that already exist
-4. the epic context arm reads the item's source, finds it map-shaped
-   rather than direct-start, and gathers nothing — the brief is the
-   processing skill's to read at initialisation, and the
-   gather-context interview never runs
-5. the handoff is constructed on the carrier-seeded shape — the work
-   type named, session identity only, no interview-shaped context
-   fields — and the processing skill's instructions are followed
-6. the process re-reads the research status and finds no research file
-   — a fresh start, no resume choice
-7. initialisation reads its inputs: the work's seed no-ops — an epic's
+3. the research status is read once and reads empty, so the walk takes
+   the first-start arm — no phase note, no reconcile check, no resume
+   choice
+4. initialisation reads its inputs: the work's seed no-ops — an epic's
    seed surfaces per topic through the knowledge base, not here — then
    the topic's brief pointer and the brief file are read in full,
-   recording the read on the map item without a commit; the research
-   file is created from the template, its Starting Point populated
-   from the brief; the topic is registered through the engine; the
-   thread register is seeded from the brief's open question — what a
-   good evaluation harness looks like — as a thread of origin `brief`
+   recording the read on the map item without a commit
+5. the gather-context check reads the item's source, finds it
+   map-shaped rather than direct-start, and gathers nothing — the
+   brief is the carrier, and the interview never runs
+6. the research file is created from the template, its Starting Point
+   populated from the brief; the topic is registered through the
+   engine
+7. the thread register is seeded from the brief's open question — what
+   a good evaluation harness looks like — as a thread of origin `brief`
    (the soft decision is inherited ground, never a thread) and rendered
    once; and one commit lands, carrying the file and the manifest
 8. the walk stops there — no knowledge query runs, and the research

@@ -21,5 +21,5 @@ title names no subtopic but whose ask re-decides the decided
 expansion-source's cutover clause; the delivery's own commit closed that session.
 
 Hours have passed. The context was cleared — this session opens cold
-at the discussion entry skill with nothing but the three arguments
+at the discussion skill with nothing but the three arguments
 and what is on disk.

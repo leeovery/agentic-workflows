@@ -60,7 +60,7 @@ const recordOf = (answer = 'yes', question = QUESTION, label = COMMIT) =>
   JSON.stringify({ answer, question, label })
 
 /** What a handoff sends, and the line naming where the work goes. */
-const CONTINUATION = 'Invoke `/workflow-discussion-entry feature note-window`.'
+const CONTINUATION = 'Invoke `/workflow-discussion-process feature note-window`.'
 const WHERE = '→ Discussion · note-window'
 
 /** The record a handoff leaves: its continuation, and its line. */

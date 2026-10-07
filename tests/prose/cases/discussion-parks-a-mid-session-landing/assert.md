@@ -1,15 +1,17 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status, finds it in progress, emits
-   the resuming phase note, checks the reconcile flag (absent —
-   silent), reads the map item's source and gathers nothing, and hands
-   off with source: existing discussion
-2. the process renders resume detection — the map with result-caching
-   and cache-key-shape open — and the user continues; initialisation
-   is skipped; the guidelines load; the knowledge base is addressed
-   once as a contextual query; the session loop's first triage check
-   reads the queue and finds it empty — no agenda, nothing surfaced
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), finds the topic already on the discovery map
+   (nothing created), then reads the discussion status once, finds it
+   in progress, emits the resuming phase note, and checks the reconcile
+   flag (absent — silent) — the user is asked nothing about the carrier
+2. beneath the note, with the file found, the resume surface carries on
+   — the map with result-caching and cache-key-shape open, then the
+   continue-or-restart gate, with no second heading of its own — and
+   the user continues; initialisation is skipped; the guidelines load;
+   the knowledge base is addressed once as a contextual query; the
+   session loop's first triage check reads the queue and finds it
+   empty — no agenda, nothing surfaced
 3. the session works result caching to its decision, the map records
    it decided — `all_decided` still false, the key shape open — and
    the write commits action-scoped. That commit is meaningful, the

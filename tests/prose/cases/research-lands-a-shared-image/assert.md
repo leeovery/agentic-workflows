@@ -1,11 +1,14 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from the work unit — a feature's topic is
+1. the skill resolves the topic from the work unit — a feature's topic is
    its name, so no topic question is put to the user — the research status
-   reads in progress, the reconcile flag is absent, and the resume routes
-   straight to the handoff: no context gathering, no interview
-2. the process reads the status again, finds the file, and the resume gate
-   is answered `continue`; initialisation is skipped
+   is read once and reads in progress, the resuming phase note is emitted,
+   and the reconcile flag is absent — silent: no context gathering, no
+   interview
+2. beneath the note, with the file found, the resume surface carries on —
+   the thread register rendered, then the continue-or-restart gate, with
+   no second heading of its own — and the gate is answered `continue`;
+   initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses the
    knowledge base once as a contextual query, reads the work type, and
    routes into the single-topic session wrapper — the deep-dive,

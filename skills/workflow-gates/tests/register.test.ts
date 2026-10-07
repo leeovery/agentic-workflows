@@ -361,14 +361,14 @@ const CLEARED = {
 const AFTER_CLEAR = 's1'
 
 /** What a handoff sends, and the line naming where the work goes. */
-const CONTINUATION = 'Invoke `/workflow-discussion-entry feature note-window`.'
+const CONTINUATION = 'Invoke `/workflow-discussion-process feature note-window`.'
 const WHERE = '→ Discussion · note-window'
 
 /** What the model reads of a handoff: which way the work goes, and the line. */
 const HANDOFF_SECTIONS = [
   '=== DATA (reason from this — never display or parse the sections below) ===',
   'handoff: mod',
-  'skill: workflow-discussion-entry',
+  'skill: workflow-discussion-process',
   'args: feature note-window',
   '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
   WHERE,
@@ -379,7 +379,7 @@ const HANDED_OFF = [
   ...HANDOFF_SECTIONS,
   '=== HANDOFF (json for the gate mod — never display) ===',
   JSON.stringify({
-    skill: 'workflow-discussion-entry',
+    skill: 'workflow-discussion-process',
     args: 'feature note-window',
     text: CONTINUATION,
     line: WHERE,
@@ -391,7 +391,7 @@ const HANDED_OFF = [
 const HANDOFF_CALL = {
   tool: 'Bash' as const,
   command:
-    'node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-discussion-entry feature note-window',
+    'node .claude/skills/workflow-engine/scripts/engine.cjs handoff workflow-discussion-process feature note-window',
 }
 
 /** The same call made inside a subagent's loop. */

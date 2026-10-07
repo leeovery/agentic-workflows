@@ -1,15 +1,14 @@
 The prose should have taken this path:
 
-1. the entry parses its three arguments, finds the series live, and —
-   exactly one live record — resolves E1 with nothing asked; the
-   record in flight announces through the resuming phase note, the
-   entry's one line before handing off, and the picker is never
-   rendered
-2. the process re-reads the series and takes `running` from the
-   manifest; initialisation reads the problem statement and then the
-   record's own documents — the frozen design and the partial report —
-   never the spawning conversation: the freeze is the boundary and it
-   is behind us
+1. the session setup takes its three arguments, reads the series once,
+   finds it live, and — exactly one live record — resolves E1 with
+   nothing asked; the record in flight announces through the resuming
+   phase note, and the picker is never rendered
+2. the session label refreshes and the record's directory is derived;
+   `running` comes from that one read; initialisation reads the
+   problem statement and then the record's own documents — the frozen
+   design and the partial report — never the spawning conversation:
+   the freeze is the boundary and it is behind us
 3. the run leg re-reads the record, finds it `running` with no live
    sub-experiments, and resumes measurement where the report leaves off
    — no advance runs: the record is already past both mechanical steps

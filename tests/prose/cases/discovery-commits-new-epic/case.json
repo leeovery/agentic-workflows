@@ -36,8 +36,8 @@
       "render name-gate",
       "topic start",
       "discussion-map",
-      "workflow-discussion-entry",
-      "workflow-research-entry"
+      "workflow-discussion-process",
+      "workflow-research-process"
     ]
   }
 }

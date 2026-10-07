@@ -23,7 +23,7 @@
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
       "workflow-continue-feature/scripts/gateway.cjs",
-      "handoff /workflow-discussion-entry feature pay"
+      "handoff /workflow-discussion-process feature pay"
     ],
     "calls_in_order": [
       "engine.cjs boot",
@@ -31,7 +31,7 @@
       "workflow-continue-feature/scripts/gateway.cjs",
       "session label pay",
       "workflow-continue-feature/scripts/gateway.cjs view pay",
-      "handoff /workflow-discussion-entry feature pay"
+      "handoff /workflow-discussion-process feature pay"
     ],
     "calls_exclude": [
       "render entry-gate",

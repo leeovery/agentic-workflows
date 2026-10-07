@@ -1,9 +1,9 @@
 {
   "origin": "the deep dive's fold had no prose coverage — a landed report is folded as material in one transaction of judgment: the section written answers-first, the thread learned, the row closed clean, the opened lines judged into threads — a measurement line among them, the laboratory's cue kept on the register — the fold committed under the dive's id, and the answers spoken to the user in full. The report is written in code on purpose: a question brief's answers are what was asked and must reach the user whole, but at product altitude — what the product does before any symbol — so what the session says and what it leaves in the record are both checkable against the report",
-  "entry": "workflow-research-entry",
+  "entry": "workflow-research-process",
   "world": "claims",
   "files": [
-    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -11,10 +11,7 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
-    "skills/workflow-research-entry/references/validate-phase.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-research-entry/references/invoke-skill.md",
-    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-research-process/references/file-strategy.md",
     "skills/workflow-research-process/references/research-guidelines.md",

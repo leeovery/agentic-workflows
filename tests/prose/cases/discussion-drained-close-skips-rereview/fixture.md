@@ -14,4 +14,4 @@ the discussion file's only commit, and it landed after the review was
 dispatched.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

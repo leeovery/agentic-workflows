@@ -1,4 +1,4 @@
-Execute skills/workflow-discussion-entry/SKILL.md with arguments
-$0=feature, $1=pay. Follow it to the point where the handoff to the
-processing skill is constructed; record the handoff block and stop. Do
-not execute the processing skill's instructions.
+Execute skills/workflow-discussion-process/SKILL.md with arguments
+$0=feature, $1=pay. Follow it into initialisation and stop once it has
+read its inputs and settled whether to interview — before it registers
+the discussion or writes any file.

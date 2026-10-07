@@ -12,4 +12,4 @@ map snapshot its dispatch measured, and the latest snapshot matches the
 current map exactly — nothing has moved since review-003 went out.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

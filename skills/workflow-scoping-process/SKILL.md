@@ -14,9 +14,12 @@ Scope a mechanical change — gather context, write a specification, and produce
 
 ## What This Skill Needs
 
-- **Work unit description** (required) - From the manifest, summarising the mechanical change
-- **Topic name** (required) - Same as work_unit for quick-fix
-- **Output format preference** (optional) - Will ask if not specified
+Positional arguments:
+- `$0` — **work_type**: always `quick-fix`.
+- `$1` — **work_unit**: the work unit name. Its manifest `description` summarises the mechanical change.
+- `$2` — **topic**: the change being scoped. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where it is.
+
+The output format is asked for where none is set.
 
 ---
 
@@ -91,26 +94,26 @@ ls .workflows/{work_unit}/specification/{topic}/specification.md 2>/dev/null && 
 
 #### If specification exists
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Resume Detection`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> An in-progress scoping specification exists — choose whether to pick it up or start fresh.
-```
-
-Read the plan and scoping statuses:
+Read the scoping and plan statuses — the scoping item is registered as scoping concludes, so its status reads empty until then:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.scoping.{topic} status
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} status
 ```
 
-**If plan status is `completed` and scoping status is `in-progress`** (reopened for revisit):
+Where the scoping status is `completed`, reopen it — a revisit resumes a finished scoping:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} scoping {topic}
+```
+
+Render the phase note — `Reopening` for a scoping just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.scoping.{topic} --verb {Reopening|Resuming}
+```
+
+**If plan status is `completed` and the scoping status read `completed` or `in-progress`:**
 
 Render the resume menu and emit its section verbatim per its marker:
 
@@ -120,15 +123,9 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render resume-gate {work_
 
 **STOP.** Wait for user response.
 
-**If plan status is `completed` and scoping status is not `in-progress`:**
+**If plan status is `completed` and the scoping status read empty:**
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Scoping already completed for "{topic:(titlecase)}". Spec and plan are in place.
-```
-
-If the scoping status read was empty (item missing), register and complete it:
+The run stopped between registering the plan and registering the scoping — register and complete it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} scoping {topic}
@@ -172,8 +169,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Revisiting scoping for "{topic:(titlecase)}".
-
 What should change in the spec or plan?
 ```
 

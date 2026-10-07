@@ -1,19 +1,20 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status, finds it in progress, and
-   emits the resuming phase note; the reconcile check finds
-   `experiment` and takes the advisory's experiment branch: the
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), then reads the discussion status once, finds it
+   in progress, and emits the resuming phase note; the reconcile check
+   finds `experiment` and takes the advisory's experiment branch: the
    wait-released callout, the series register rendered verbatim —
    E1's row abandoned with its reason — then the series read off the
    manifest to bind the record's directory, and the abandoned
    record's partial report read from disk. The abandonment is
    presented as what it is: the wait released with nothing measured,
-   the waiting point back open. The flag is cleared before the
-   handoff
-2. the entry finds the carrier in the discovery session log and hands
-   off without interviewing; the process renders resume detection and
-   the user continues; initialisation is skipped
+   the waiting point back open. The flag is cleared before the resume
+   choice
+2. beneath the advisory, with the file found, the resume surface
+   carries on — the current map shown, then the continue-or-restart
+   gate — and the user, asked nothing about the carrier, continues;
+   initialisation is skipped
 3. the session surfaces the put-down record's reason to the user and
    the point reverts to open — no verdict is invented, nothing from
    the partial sample is treated as a result, and the user is not

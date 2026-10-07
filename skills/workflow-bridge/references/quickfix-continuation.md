@@ -28,7 +28,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 #### Otherwise
 
-Set `target_phase` = `next_phase`.
+Set `route` = `next_route`.
 
 → Proceed to **B. Offer Next Phase**.
 
@@ -90,10 +90,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {wo
 
 #### If user chose a phase
 
-Set `target_phase` = the number's phase in `revisitable_phases`.
+Set `route` = the number's entry in `revisit_routes`.
 
 → Proceed to **D. Hand Off**.
 
 ## D. Hand Off
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-{target_phase}-entry quick-fix {work_unit}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `{route}`.

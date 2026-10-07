@@ -14,4 +14,4 @@ incorporated, with no report file on disk — a corpse in the highest
 slot, and the only slot.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

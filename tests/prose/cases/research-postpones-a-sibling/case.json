@@ -1,9 +1,9 @@
 {
   "origin": "the postpone door is entered two ways and the sibling branch is the one with no safety net: the session stays where it is, so nothing about the commit, the agent close, or the bridge applies, and a door that treated every postpone as its own would close a live research session over a topic it was not working. This walks a user who sends a different topic of the epic to the roadmap mid-research, with the horizon named in the same breath — the named-horizon arm, no roadmap read, no commit, no agent close, no hand-off, and the turn resumed",
-  "entry": "workflow-research-entry",
+  "entry": "workflow-research-process",
   "world": "claims",
   "files": [
-    "skills/workflow-research-entry/SKILL.md",
+    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
@@ -12,9 +12,6 @@
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
-    "skills/workflow-research-entry/references/validate-phase.md",
-    "skills/workflow-research-entry/references/invoke-skill.md",
-    "skills/workflow-research-process/SKILL.md",
     "skills/workflow-shared/references/resume-detection.md",
     "skills/workflow-research-process/references/file-strategy.md",
     "skills/workflow-research-process/references/research-guidelines.md",

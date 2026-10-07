@@ -1,26 +1,38 @@
 {
   "origin": "feature mainline — single-phase work seeds from its durable carrier",
-  "entry": "workflow-discussion-entry",
+  "entry": "workflow-discussion-process",
   "files": [
-    "skills/workflow-discussion-entry/SKILL.md",
-    "skills/workflow-discussion-entry/references/gather-context.md",
+    "skills/workflow-discussion-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-discussion-entry/references/validate-research.md",
     "skills/workflow-shared/references/ensure-discovery-item.md",
-    "skills/workflow-discussion-entry/references/invoke-skill.md"
+    "skills/workflow-discussion-process/references/initialize-discussion.md",
+    "skills/workflow-shared/references/seed-context.md",
+    "skills/workflow-shared/references/read-brief-context.md",
+    "skills/workflow-shared/references/read-prior-record.md"
   ],
   "invariants": {
     "calls_include": [
-      "manifest get pay.discussion.pay status"
+      "render entry-gate pay.discussion.pay",
+      "manifest get pay.discussion.pay status",
+      "manifest get pay description",
+      "manifest get pay.research.pay status"
+    ],
+    "calls_in_order": [
+      "render entry-gate pay.discussion.pay",
+      "manifest get pay.discussion.pay status",
+      "manifest get pay description",
+      "manifest get pay.research.pay status"
     ],
     "calls_exclude": [
       "topic start",
       "topic reopen",
+      "render phase-note",
+      "render resume-gate",
       "manifest set"
     ]
   }

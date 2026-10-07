@@ -1,18 +1,15 @@
 {
   "origin": "quick-fix had no coverage anywhere — this walks its whole definition stage: entry, context, spec, format, tasks, conclusion, in the single pass scoping is",
-  "entry": "workflow-scoping-entry",
+  "entry": "workflow-scoping-process",
   "world": "claims",
   "files": [
-    "skills/workflow-scoping-entry/SKILL.md",
+    "skills/workflow-scoping-process/SKILL.md",
     "skills/workflow-shared/references/framework.md",
     "skills/workflow-shared/references/instructions.md",
     "skills/workflow-shared/references/casing-conventions.md",
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-scoping-entry/references/validate-phase.md",
-    "skills/workflow-scoping-entry/references/invoke-skill.md",
-    "skills/workflow-scoping-process/SKILL.md",
     "skills/workflow-scoping-process/references/gather-context.md",
     "skills/workflow-scoping-process/references/complexity-check.md",
     "skills/workflow-scoping-process/references/write-specification.md",
@@ -32,7 +29,7 @@
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
-      "manifest get support-email.scoping.support-email status",
+      "ls .workflows/support-email/specification/support-email/specification.md",
       "manifest get support-email description",
       "topic start support-email specification support-email",
       "topic complete support-email specification support-email",
@@ -43,7 +40,7 @@
       "render phase-completed support-email --phase scoping"
     ],
     "calls_in_order": [
-      "manifest get support-email.scoping.support-email status",
+      "ls .workflows/support-email/specification/support-email/specification.md",
       "topic start support-email specification support-email",
       "topic complete support-email specification support-email",
       "topic start support-email planning support-email",
@@ -52,6 +49,8 @@
       "render phase-completed support-email --phase scoping"
     ],
     "calls_exclude": [
+      "render phase-note",
+      "render resume-gate",
       "task start",
       "task next",
       "topic reopen",

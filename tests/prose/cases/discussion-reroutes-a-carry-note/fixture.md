@@ -16,7 +16,7 @@ triage queue is empty; behavioural-ranking's file and manifest item are
 untouched.
 
 Hours have passed. The context was cleared — this session opens cold at
-the discussion entry skill with nothing but the three arguments and
+the discussion skill with nothing but the three arguments and
 what is on disk. The user only wants to wrap up. Document review is the
 last line that can catch the stranded note before conclusion and route
 it through triage — reopening behavioural-ranking so the correction is

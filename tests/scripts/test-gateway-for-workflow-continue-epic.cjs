@@ -2092,8 +2092,8 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
     const res = run(['view', 'v1']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /workflow-research-entry epic v1 auth  (recommended)'), res.stdout);
-    assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /workflow-discussion-entry epic v1 auth  (in session: last active 4m ago)'), res.stdout);
+    assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /workflow-research-process epic v1 auth  (recommended)'), res.stdout);
+    assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /workflow-discussion-process epic v1 auth  (in session: last active 4m ago)'), res.stdout);
     assert.match(res.stdout.replace(/\n +/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
     const gate = run(['in-session-gate', 'v1', '2']);
     assert.strictEqual(gate.status, 0, gate.stderr);

@@ -17,4 +17,4 @@ The second review fired on the movement that followed, came back clean,
 and was acknowledged as such.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

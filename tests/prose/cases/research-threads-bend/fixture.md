@@ -15,4 +15,4 @@ checkout flow under consideration, and the two questions not yet looked
 at.
 
 The context was cleared at the pause — this session opens cold at the
-research entry with its two arguments and what is on disk.
+research skill with its two arguments and what is on disk.

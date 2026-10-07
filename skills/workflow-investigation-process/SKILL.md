@@ -17,10 +17,14 @@ Investigation combines:
 
 The user collaborates throughout — the investigation plan, the findings, and the fix direction are each agreed, not announced. The output becomes source material for a specification focused on the fix approach.
 
+**Stay in your lane**: Investigate the bug — gather symptoms, trace code, find root cause. Don't jump to fixing or implementing. This is the time for deep analysis.
+
 ### What This Skill Needs
 
-- **Topic** (required) - Bug identifier or short description
-- **Work type** — Always "bugfix" for investigation
+Positional arguments:
+- `$0` — **work_type**: always `bugfix`.
+- `$1` — **work_unit**: the work unit name.
+- `$2` — **topic**: the bug under investigation. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where it is.
 
 ---
 
@@ -99,27 +103,47 @@ Refresh the tmux session label — a no-op unless the user opted in and this ses
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} investigation {topic}
 ```
 
-Check if the investigation file exists at `.workflows/{work_unit}/investigation/{topic}.md`.
+Read the phase status, storing it as `phase_status`:
 
-#### If no file exists
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic} status
+```
+
+#### If `phase_status` is empty or `triaged`
+
+A first start — a `triaged` stub's parked concerns wait in the topic's triage queue, surfaced at symptom gathering. Render and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
+```
 
 Set `resumed` = `false`.
 
 → Proceed to **Step 1**.
 
-#### If file exists
+#### If `phase_status` is `in-progress` or `completed`
 
-> *Output the next fenced block as markdown (not a code block):*
+Where `phase_status` is `completed`, reopen it — resuming is not starting:
 
-```
-**`□ Resume Detection`**
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} investigation {topic}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Render the phase note — `Reopening` for an investigation just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb {Reopening|Resuming}
 ```
-> An in-progress investigation file exists for this topic — choose whether to pick it up or start fresh.
-```
+
+**If no file exists at `.workflows/{work_unit}/investigation/{topic}.md`:**
+
+A restart that never reached initialization — the earlier session's file is already gone.
+
+Set `resumed` = `false`.
+
+→ Proceed to **Step 1**.
+
+**Otherwise:**
 
 Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)** with artifact = `investigation`, file = `.workflows/{work_unit}/investigation/{topic}.md`, continue_step = `Step 2`, restart_targets = `the investigation file and the phase cache directory (rm -rf .workflows/.cache/{work_unit}/investigation/{topic}/ — content and agent state together)`, commit = `investigation({work_unit}): restart investigation`.
 

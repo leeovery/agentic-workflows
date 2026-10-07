@@ -11,5 +11,5 @@ The sample is a day of sandbox search-session activity at
 of which recover with a clicked reformulation in the same session.
 
 No other session is mid-flight. The context was cleared mid-run — this
-session opens cold at the experiment entry with its four arguments and
+session opens cold at the experiment skill with its three arguments and
 what is on disk.

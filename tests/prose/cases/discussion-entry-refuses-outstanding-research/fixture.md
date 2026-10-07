@@ -14,5 +14,5 @@ discussion: its decisions may rest on ground the research re-examines.
 No session has started the research. No review has ever run, the
 discussion's own triage queue is empty, and no other session is
 mid-flight. The context was cleared at the phase boundary — this
-session opens cold at the discussion entry with its three arguments
+session opens cold at the discussion skill with its three arguments
 and what is on disk.

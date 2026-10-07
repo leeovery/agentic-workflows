@@ -348,11 +348,11 @@ function nextConcernNumber(dirAbs) {
  * source's); every other phase flags the same-named item in the work type's
  * next pipeline phase, as does an investigation no spec's sources name (the
  * legacy bugfix shape). The experiment slot is walked past unconditionally —
- * a flag must land where an entry flow can clear it, and the series item
+ * a flag must land where a phase's start can clear it, and the series item
  * has none.
  * A `completed` item takes the flag (value = the upstream phase name,
- * consumed and cleared by the reconcile advisory — at the entry skill, or
- * inside a research/discussion session at its next check; an existing flag
+ * consumed and cleared by the reconcile advisory — where the phase starts,
+ * or inside a research/discussion session at its next check; an existing flag
  * is never clobbered) — and on the hop out of research so does an
  * in-progress discussion: research feeds discussion, and a discussion in
  * flight is the one that could otherwise conclude over research still to
@@ -407,8 +407,8 @@ function flagDownstream(manifest, workType, phase, topic, opts = {}) {
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] || [];
   const at = pipeline.indexOf(phase);
   // One hop to the next pipeline phase — walking past a derived slot
-  // unconditionally: a reconcile flag must land where an entry flow can
-  // clear it, and a derived item has no entry of its own (its only flag
+  // unconditionally: a reconcile flag must land where a phase's start can
+  // clear it, and a derived item has no start of its own (its only flag
   // edges are the wait release, which flags the holder, and a parent
   // conclusion, which runs this walk from the slot). So a research reopen
   // flags the discussion whatever the series between them holds, and the
@@ -884,7 +884,7 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
 // (`research`, set by the hop out of research), or an evidence wait
 // released (`experiment`, set by the release). The brief flag (`true`) and
 // the roadmap flag stay entry-time advisories, and every other phase's flag
-// is the entry skill's alone.
+// is the phase start's alone.
 /** @type {Record<string, string>} */
 const LANDED_UPSTREAM = {
   research: 'the topic\'s research landed beneath this conversation',

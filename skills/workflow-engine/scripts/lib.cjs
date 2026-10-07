@@ -167,6 +167,7 @@ module.exports = {
     workUnitMenu: workunitProjections.workUnitMenu,
     workUnitData: workunitProjections.workUnitData,
     revisitablePhases: workunitProjections.revisitablePhases,
+    phaseRoute: workunitProjections.phaseRoute,
     revisitPhasesSection: workunitProjections.revisitPhasesSection,
     specificationDisplay: specificationProjections.specificationDisplay,
     specificationMenu: specificationProjections.specificationMenu,

@@ -14,5 +14,5 @@ under `behavioural-ranking` is the map row and the one in-progress
 discussion item.
 
 The context was cleared at the sitting's end — this session opens cold
-at the entry skill with nothing but its three arguments and what is on
+at the discussion skill with nothing but its three arguments and what is on
 disk.

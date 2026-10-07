@@ -1,13 +1,14 @@
 The prose should have taken this path:
 
-1. the entry parses its three arguments, reads the experiment item's
-   status, finds the series live, reads the series, and — exactly one
-   live record — resolves E1 with nothing asked; the conceived record
-   announces through the engine note (`Starting E1`), the entry's one
-   line before the handoff, and the picker is never rendered
-2. the handoff carries the record's directory; the process refreshes
-   the session label, re-reads the series, and takes `conceived` from
-   the manifest as authoritative
+1. the session setup takes its three arguments and reads the series
+   once — its records, with no separate status read — finds it live,
+   and — exactly one live record — resolves E1 with nothing asked; the
+   conceived record announces through the engine note (`Starting E1`),
+   and the picker is never rendered
+2. with the record resolved, the session label refreshes and the
+   record's directory is derived from its id and slug; `conceived`
+   comes from that one read — the series is not read again before
+   initialisation
 3. initialisation reads from disk, in full: the problem statement
    first (holding its provenance), then — because the record is
    conceived — the spawning research document, the seed check (an

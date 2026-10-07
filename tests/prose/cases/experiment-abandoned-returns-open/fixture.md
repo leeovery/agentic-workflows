@@ -13,5 +13,5 @@ awaiting note still in the document.
 
 No review has ever run, the triage queue is empty, and no other
 session is mid-flight. The context was cleared at the pause — this
-session opens cold at the discussion entry with its two arguments and
+session opens cold at the discussion skill with its two arguments and
 what is on disk.

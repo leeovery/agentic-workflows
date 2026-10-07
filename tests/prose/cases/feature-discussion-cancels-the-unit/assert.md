@@ -1,14 +1,13 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from the work unit (a feature's topic is
+1. the skill resolves the topic from the work unit (a feature's topic is
    its name), asks the engine whether research is outstanding (none
-   exists), reads the discussion status, finds it in progress, emits the
-   resuming phase note, checks the reconcile flag (absent — silent),
-   finds the discovery session log on disk, and hands off with source:
-   existing discussion
-2. the process reads the status again, finds the file, renders resume
-   detection — the triage queue read (empty, so no triage warning), then
-   the continue-or-restart gate — and the user continues
+   exists), reads the discussion status once, finds it in progress,
+   emits the resuming phase note, and checks the reconcile flag (absent
+   — silent) — the user is asked nothing about the carrier
+2. beneath the note, with the file found, the resume surface carries on
+   — the current map shown, the triage queue read (empty, so no triage
+   warning), then the continue-or-restart gate — and the user continues
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step

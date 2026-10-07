@@ -40,7 +40,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-next-ga
 
 #### If `yes`
 
-Load **[select-record.md](../../workflow-experiment-entry/references/select-record.md)** and follow its instructions as written — the same resolution the entry runs.
+Load **[select-record.md](select-record.md)** and follow its instructions as written — the same resolution the session setup runs.
 
 **If a record resolved** (`{id}`, `{slug}`, `{record_status}` set):
 

@@ -20,4 +20,4 @@ one measurement, and nothing has folded it.
 The triage queue is empty; no experiment exists; the other two topics
 have not started, and no other session is mid-flight. The context was
 cleared at the phase boundary — this session opens cold at the research
-entry with its three arguments and what is on disk.
+skill with its three arguments and what is on disk.

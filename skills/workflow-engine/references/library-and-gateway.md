@@ -122,6 +122,7 @@ engine.project.workUnitStatus(type, unit)         // → status display block (b
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
 engine.project.revisitablePhases(type, unit)      // → string[] — completed phases before next_phase, pipeline-filtered
+engine.project.phaseRoute(type, phase, wu)        // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`) — the bridge gateway's `next_route` and `revisit_routes`
 engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section ('' when none)
 engine.project.specificationDisplay(detail)       // → scenario overview block
 engine.project.specificationMenu(detail)          // → { keys, rendered } — grouping/spec menu; both empty for menu-less scenarios

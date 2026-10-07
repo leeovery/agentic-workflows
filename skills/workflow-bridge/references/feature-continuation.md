@@ -28,13 +28,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render workunit-receipt {
 
 #### If `outcome` is `paused`
 
-A paused phase revisits nothing — the pipeline continues at what it waits on. Set `target_phase` = `next_phase`.
+A paused phase revisits nothing — the pipeline continues at what it waits on. Set `route` = `next_route`.
 
 → Proceed to **D. Hand Off**.
 
 #### Otherwise
 
-Set `target_phase` = `next_phase`.
+Set `route` = `next_route`.
 
 → Proceed to **B. Offer Next Phase**.
 
@@ -96,10 +96,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render revisit-phases {wo
 
 #### If user chose a phase
 
-Set `target_phase` = the number's phase in `revisitable_phases`.
+Set `route` = the number's entry in `revisit_routes`.
 
 → Proceed to **D. Hand Off**.
 
 ## D. Hand Off
 
-→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `/workflow-{target_phase}-entry feature {work_unit}`.
+→ Load **[handing-off.md](../../workflow-shared/references/handing-off.md)** with route = `{route}`.

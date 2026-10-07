@@ -10,4 +10,4 @@ calls in `items` and nothing in `pulled`, nothing yet documented,
 nothing committed. No background agent has ever been dispatched.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

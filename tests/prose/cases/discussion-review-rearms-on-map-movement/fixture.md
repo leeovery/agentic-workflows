@@ -10,4 +10,4 @@ back clean and was drained in an earlier sitting. Its store row carries
 the map snapshot the dispatch measured, and nothing has moved since.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

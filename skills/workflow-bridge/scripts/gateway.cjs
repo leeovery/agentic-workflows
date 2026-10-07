@@ -62,9 +62,9 @@ function discover(cwd, workUnit) {
 }
 
 // The thin scoped dump: the fields the continuation references branch on —
-// the derived next phase, the completed set (in pipeline order), and the
-// revisit candidates (completed phases before next_phase, filtered to the
-// type's pipeline).
+// the derived next phase, the completed set (in pipeline order), the revisit
+// candidates (completed phases before next_phase, filtered to the type's
+// pipeline), and the route each move is entered by.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
 
@@ -79,10 +79,14 @@ function format(result) {
   lines.push(`reconcile_pending: ${(result.reconcile_pending || []).join(', ') || '(none)'}`);
 
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
-    const revisitable = result.next_phase === 'done'
+    const done = result.next_phase === 'done';
+    const revisitable = done
       ? []
       : engine.project.revisitablePhases(result.work_type, { next_phase: result.next_phase, completed_phases: completed });
+    const route = (/** @type {string} */ phase) => engine.project.phaseRoute(result.work_type, phase, result.work_unit);
     lines.push(`revisitable_phases: ${revisitable.join(', ') || '(none)'}`);
+    lines.push(`next_route: ${done ? '(none)' : route(result.next_phase)}`);
+    lines.push(`revisit_routes: ${revisitable.map(route).join(', ') || '(none)'}`);
   }
 
   return lines.join('\n') + '\n';

@@ -14,10 +14,10 @@ The exploration phase, entered from discovery — explore feasibility (technical
 
 ### What This Skill Needs
 
-- **Topic** (required) - What to research/explore
-- **Output path** (required) - Research file path from the handoff
-- **Work type** (required) - `epic`, `feature`, or `cross-cutting`. Determines session behaviour — epic sessions carry topic awareness and reroute a grown thread to its own topic; feature and cross-cutting use the single-topic session
-- **Context** (optional) - Prior research, constraints, starting direction
+Positional arguments:
+- `$0` — **work_type**: `epic`, `feature`, or `cross-cutting`. Determines session behaviour — epic sessions carry topic awareness and reroute a grown thread to its own topic; feature and cross-cutting use the single-topic session.
+- `$1` — **work_unit**: the work unit name.
+- `$2` — **topic**: what to research. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
 
 ---
 
@@ -67,49 +67,55 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 
 ## Step 0: Resume Detection
 
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
+
 Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} research {topic}
 ```
 
-Read the phase status:
+Read the phase status, storing it as `phase_status`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
-Then check if the research file exists at `.workflows/{work_unit}/research/{topic}.md`.
+#### If `phase_status` is empty or `triaged`
 
-#### If status is `triaged`
-
-A first start, not a resume — no session has ever run. Parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
+A first start, not a resume — no session has ever run. A `triaged` stub's parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
 
 Set `resumed` = `false`.
 
 → Proceed to **Step 1**.
 
-#### If no file exists
+#### If `phase_status` is `in-progress` or `completed`
+
+Where `phase_status` is `completed`, reopen it — resuming is not starting:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen {work_unit} research {topic}
+```
+
+Render the phase note — `Reopening` for a topic just reopened, `Resuming` otherwise — and emit the section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.research.{topic} --verb {Reopening|Resuming}
+```
+
+Load **[reconcile-advisory.md](../workflow-shared/references/reconcile-advisory.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, downstream_phase = `research`.
+
+**If no file exists at `.workflows/{work_unit}/research/{topic}.md`:**
+
+A restart that never reached initialization — the earlier session's file is already gone.
 
 Set `resumed` = `false`.
 
 → Proceed to **Step 1**.
 
-#### Otherwise
+**Otherwise:**
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`□ Resume Detection`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> An in-progress research file exists for this topic — choose whether to pick it up or start fresh.
-```
-
-**If the status read returned a value:** show the thread register so the continue-or-restart choice is informed:
+Show the thread register so the continue-or-restart choice is informed:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render research-threads {work_unit}.research.{topic}
@@ -122,6 +128,16 @@ Load **[resume-detection.md](../workflow-shared/references/resume-detection.md)*
 Set `resumed` from where the reference returns: `true` for **Step 2**, the earlier session's file still standing; `false` for **Step 1**, its file deleted and rebuilt.
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
+
+#### If `phase_status` is `postponed` or `cancelled`
+
+Render the terminal blocker — the engine derives which from the item's status — and emit both sections verbatim per their markers:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render entry-gate {work_unit}.research.{topic} --own
+```
+
+**STOP.** Do not proceed — terminal condition.
 
 ---
 

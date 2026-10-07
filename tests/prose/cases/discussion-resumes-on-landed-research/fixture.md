@@ -18,4 +18,4 @@ The flag is still on the discussion; nothing has read the landed
 research into it. No review has ever run, the discussion's own triage
 queue is empty, and no other session is mid-flight. The context was
 cleared at the phase boundary — this session opens cold at the
-discussion entry with its three arguments and what is on disk.
+discussion skill with its three arguments and what is on disk.

@@ -1,14 +1,17 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments, reads the research
-   status, finds it in progress, emits the resuming phase note, checks
-   the reconcile flag (absent — silent), and hands off to the processing
-   skill without asking the user anything; context gathering is the
-   fresh path's — a resumed topic already has its carrier — so no source
-   is read and nothing is gathered
-2. the process reads the status again, finds the file, renders the
-   thread register once (empty here — the call answers nothing, so nothing is shown) above
-   resume detection, and the user continues; initialisation is skipped
+1. the skill takes the topic from its arguments, ensures the discovery
+   item (already on the map — nothing written), reads the research
+   status once, finds it in progress, emits the resuming phase note, and
+   checks the reconcile flag (absent — silent) without asking the user
+   anything; context gathering is a first start's — a resumed topic
+   already has its carrier — so no source is read and nothing is
+   gathered
+2. beneath the note, with the file found, the resume surface carries on
+   — the thread register rendered once (empty here — the call answers
+   nothing, so nothing is shown), then the continue-or-restart gate,
+   with no second heading of its own — and the user continues;
+   initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the
    epic research session; the session loop's triage check reads the

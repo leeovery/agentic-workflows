@@ -18,4 +18,4 @@ a negotiated plan whose ceiling is not the published one.
 The store row is acknowledged and announced. Nothing has been surfaced.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

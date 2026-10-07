@@ -4908,9 +4908,71 @@ describe('render entry-gate --own', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth', own: '1' }), '');
   });
 
-  it('is loud outside specification', () => {
+  it('is loud outside research, discussion and specification', () => {
     writeManifest(dir, 'pay', { work_type: 'feature', phases: {} });
-    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth', own: '1' }), /--own is only supported for specification/);
+    assert.throws(() => renderSurface(dir, 'entry-gate', { dotpath: 'pay.planning.auth', own: '1' }),
+      /--own is only supported for research, discussion and specification, got "planning"/);
+  });
+
+  /** An epic whose auth topic holds a research and a discussion item, both at `status`. */
+  function topicWith(status) {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {
+      research: { items: { auth: { status } } },
+      discussion: { items: { auth: { status } } },
+    } });
+  }
+
+  /** The project's roadmap, holding auth's postponed item — `pulled_to` another epic when `taken`. */
+  function writeRoadmap(taken) {
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+      work_units: {},
+      roadmap: { horizons: ['next'], items: {
+        auth: {
+          horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'auth' },
+          ...(taken ? { pulled_to: { work_unit: 'other', topic: 'auth' } } : {}),
+        },
+      } },
+    }, null, 2));
+  }
+
+  it('a cancelled research or discussion item renders the cancelled terminal byte-exactly, naming the reactivate', () => {
+    topicWith('cancelled');
+    for (const phase of ['research', 'discussion']) {
+      assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }), [
+        '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
+        '⚑ "Auth" is cancelled',
+        '',
+        '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
+        '> Reactivate it from the epic menu (`e/reactivate`).',
+        '',
+      ].join('\n'), phase);
+    }
+  });
+
+  it('a postponed one names the pull forward while its roadmap item waits, and no way back once another epic took it', () => {
+    topicWith('postponed');
+    writeRoadmap(false);
+    for (const phase of ['research', 'discussion']) {
+      assert.match(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }),
+        /⚑ "Auth" is postponed to the roadmap\n\n=== DISPLAY: blocker guidance [^\n]*===\n> Pull it forward from the epic menu \(`f\/forward`\)\.\n$/, phase);
+    }
+    writeRoadmap(true);
+    for (const phase of ['research', 'discussion']) {
+      const out = renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' });
+      assert.match(out, /> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\.\n$/, phase);
+      assert.ok(!out.includes('f/forward'), phase);
+    }
+  });
+
+  it('is clear for a research or discussion item that is live, triaged, or absent', () => {
+    for (const status of ['in-progress', 'completed', 'triaged']) {
+      topicWith(status);
+      for (const phase of ['research', 'discussion']) {
+        assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }), '', `${phase} ${status}`);
+      }
+    }
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: {} });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.research.auth', own: '1' }), '');
   });
 
   it('a promoted item missing its target degrades to an empty quoted name, never "undefined"', () => {

@@ -22,7 +22,7 @@ The prose should have taken this path:
    carrying a one-line summary and a short description drawn from the
    answer, and the dismissal override — never the backfill flag
 7. the handoff: the route passes to the engine's handoff as
-   `/workflow-discussion-entry` with epic, the work unit and the topic
+   `/workflow-discussion-process` with epic, the work unit and the topic
    `query-intent`; the line naming where the work goes is the turn's
    last text, and the walk stops at the handoff
 
@@ -33,7 +33,7 @@ Further claims:
 - nothing is committed, and nothing but the map row is written: no
   discussion or research item, the other three topics and their order
   fields untouched
-- the discussion entry is not entered in this context — it starts in
+- the discussion skill is not entered in this context — it starts in
   the next one
 
 EXPECTED WORLD — the delta against the fixture is the work unit's

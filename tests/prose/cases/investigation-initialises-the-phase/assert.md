@@ -1,10 +1,10 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic to the work unit, finds no investigation
-   recorded, and hands off — the entry itself creates nothing
-2. the processing skill checks for an existing investigation file before
-   anything else; there is none, so this is a fresh start and no resume
-   choice is put to the user
+1. the skill resolves the topic to the work unit and reads the
+   investigation status once — it finds no investigation recorded, and
+   creates nothing before initialisation
+2. this is a first start: the starting phase note is emitted, no resume
+   choice is put to the user, and initialisation follows
 3. initialisation reads the work's seed before writing, so the phase
    opens from the origin rather than from an empty page
 4. the investigation file is created from the template, and the symptoms

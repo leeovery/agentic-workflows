@@ -24,4 +24,4 @@ challenges. The specification paused in progress with its extraction
 flagged stale.
 
 Hours have passed. The context was cleared — this session opens cold at
-the entry skill with nothing but the two arguments and what is on disk.
+the discussion skill with nothing but the two arguments and what is on disk.

@@ -22,5 +22,5 @@ with it: the brief, the concluded discussion and the queued concern are
 all still where `search-relevance` wrote them.
 
 The context was cleared at the phase boundary — this session opens cold
-at the entry skill with nothing but the three arguments and what is on
+at the discussion skill with nothing but the three arguments and what is on
 disk.

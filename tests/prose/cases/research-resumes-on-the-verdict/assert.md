@@ -1,30 +1,34 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic, reads the research status, finds it in
-   progress, emits the resuming phase note, and the reconcile check
-   finds `experiment` — the advisory's experiment branch runs before
-   the handoff: the wait-released callout, the series register rendered
-   verbatim (E1 concluded with its verdict on the row), then the series
-   read off the manifest — the record's directory bound as `{id}-{slug}`
-   from that read, never parsed out of the rendered register — and the
-   report read in full from disk
+1. the skill takes the topic from its arguments, ensures the discovery
+   item (already on the map — nothing written), reads the research
+   status once, finds it in progress, emits the resuming phase note, and
+   the reconcile check finds `experiment` — the advisory's experiment
+   branch runs beneath the note: the wait-released callout, the series
+   register rendered verbatim (E1 concluded with its verdict on the
+   row), then the series read off the manifest — the record's directory
+   bound as `{id}-{slug}` from that read, never parsed out of the
+   rendered register — and the report read in full from disk
 2. the verdict is presented as evidence the conversation weighs — the
    pre-registered rule's mechanical outcome, the conversation's to
-   override — and the flag is cleared before the handoff; the epic
-   context arm finds the map-shaped source and gathers nothing
-3. the process renders the thread register once (empty here — the call answers nothing, so nothing is shown) above resume detection and the user continues;
-   initialisation is skipped; the walk passes through file strategy,
-   the guidelines, one contextual query, and into the epic research
-   session
+   override — and the flag is cleared before the resume gate renders;
+   context gathering is a first start's — a resumed topic already has
+   its carrier — so no source is read and nothing is gathered
+3. with the file found, the resume surface carries on — the thread
+   register rendered once (empty here — the call answers nothing, so
+   nothing is shown), then the continue-or-restart gate, with no second
+   heading of its own — and the user continues; initialisation is
+   skipped; the walk passes through file strategy, the guidelines, one
+   contextual query, and into the epic research session
 4. the evidence lands in the file: the measured share, what it rests
    on, and behaviour-driven expansion as the leading candidate — held
    as material for the discussion, never decided here — and the waiting
    note is answered beneath it — a dated entry carrying the number,
    the waiting line kept as the record of the wait
 5. the user wraps; the triage queue reads empty, the landed-evidence
-   read finds no flag (the entry's advisory already cleared it), and
-   the wait-gate fetch comes back empty — the release already
-   happened, so no gate is emitted and nothing blocks
+   read finds no flag (the advisory at the skill's start already
+   cleared it), and the wait-gate fetch comes back empty — the release
+   already happened, so no gate is emitted and nothing blocks
 6. the closing checks run: document review reconciles the file against
    the session; the compliance check passes. No review is dispatched —
    research has none

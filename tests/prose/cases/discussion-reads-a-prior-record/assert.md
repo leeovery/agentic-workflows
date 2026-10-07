@@ -1,21 +1,17 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments — no topic question is
+1. the skill takes the topic from its arguments — no topic question is
    put to the user — and asks the engine whether research is outstanding
-   on the topic (it is not); the discussion status reads empty, so the
-   walk takes the new-entry arm and ensuring the discovery item finds it
-   already on the map
-2. the epic context arm reads the item's source, finds it map-shaped
-   rather than direct-start, and gathers nothing — no interview runs,
-   and the entry reads no record of its own
-3. the handoff carries session identity only, and the processing skill's
-   instructions are followed: the status is read again, no discussion
-   file exists, so the session starts fresh with no resume choice put to
-   the user
-4. initialisation reads its inputs. The seed no-ops for an epic; the
-   brief pointer is empty on a topic the roadmap put here, so the item's
-   description stands in and the read is recorded on the map item
-5. then the prior record: the map row's pointer is read, and because it
+   on the topic (it is not); ensuring the discovery item finds it
+   already on the map — nothing is created
+2. the discussion status is read once and reads empty, so the walk
+   takes the first-start arm — no phase note, no reconcile check, no
+   resume choice put to the user — and initialisation runs
+3. initialisation reads its inputs. The seed no-ops for an epic; the
+   brief pointer is empty on a topic the roadmap put here, and so is the
+   item's description, so its summary stands in and the read is recorded
+   on the map item
+4. then the prior record: the map row's pointer is read, and because it
    names a topic in another epic, that epic's record is read in full —
    the brief it was harvested with, its concluded discussion, and the
    concern still queued against it. No research file exists there, so
@@ -23,8 +19,11 @@ The prose should have taken this path:
    every one of them is a read: nothing is written, moved, drained or
    absorbed anywhere under that epic, and its queue is never listed
    through the engine
-6. the research check finds no research item on this topic, so no
-   research is read
+5. the research check finds no research item on this topic, then reads
+   the item's source — map-shaped rather than direct-start, and naming
+   no contributing topic — so no research is read
+6. the topic was not started fresh, so it has its carrier and no
+   interview runs — the user is asked nothing
 7. the discussion is registered through the engine before its file
    exists, the file is created from the template, and its Context carries
    the substance of what was read rather than a pointer to it — what the

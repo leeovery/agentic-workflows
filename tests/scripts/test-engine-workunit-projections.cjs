@@ -98,7 +98,7 @@ describe('workunit projections: status display', () => {
     });
     const { keys } = workUnitMenu('feature', unitOf(dir, 'feature', 'pay'));
     assert.strictEqual(keys[0].action, 'continue');
-    assert.strictEqual(keys[0].route, '/workflow-experiment-entry feature pay');
+    assert.strictEqual(keys[0].route, '/workflow-experiment-process feature pay');
     assert.strictEqual(keys[0].label, 'Proceed to experiment');
   });
 
@@ -330,7 +330,7 @@ describe('workunit projections: menu', () => {
       [
         ['y', 'continue', 'auth-flow', null, '/workflow-specification-entry feature auth-flow'],
         ['r', 'revisit', 'auth-flow', null, null],
-        ['1', 'revisit_phase', 'auth-flow', 'discussion', '/workflow-discussion-entry feature auth-flow'],
+        ['1', 'revisit_phase', 'auth-flow', 'discussion', '/workflow-discussion-process feature auth-flow'],
       ]
     );
   });
@@ -341,7 +341,7 @@ describe('workunit projections: menu', () => {
     assert.strictEqual(menu.rendered, '');
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/workflow-discussion-entry feature dark-mode']]
+      [['y', 'continue', '/workflow-discussion-process feature dark-mode']]
     );
   });
 
@@ -365,7 +365,7 @@ describe('workunit projections: menu', () => {
       [
         ['y', 'continue', null, '/workflow-specification-entry bugfix login-crash'],
         ['r', 'revisit', null, null],
-        ['1', 'revisit_phase', 'investigation', '/workflow-investigation-entry bugfix login-crash'],
+        ['1', 'revisit_phase', 'investigation', '/workflow-investigation-process bugfix login-crash'],
       ]
     );
   });
@@ -393,7 +393,7 @@ describe('workunit projections: menu', () => {
       [
         ['y', 'continue', null, '/workflow-implementation-entry quick-fix hotfix-logs'],
         ['r', 'revisit', null, null],
-        ['1', 'revisit_phase', 'scoping', '/workflow-scoping-entry quick-fix hotfix-logs'],
+        ['1', 'revisit_phase', 'scoping', '/workflow-scoping-process quick-fix hotfix-logs'],
       ]
     );
   });
@@ -407,7 +407,7 @@ describe('workunit projections: menu', () => {
     assert.strictEqual(menu.rendered, '');
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/workflow-scoping-entry quick-fix rename-api']]
+      [['y', 'continue', '/workflow-scoping-process quick-fix rename-api']]
     );
   });
 
@@ -436,7 +436,7 @@ describe('workunit projections: menu', () => {
       [
         ['y', 'finalise', null, null],
         ['r', 'revisit', null, null],
-        ['1', 'revisit_phase', 'discussion', '/workflow-discussion-entry feature auth-flow'],
+        ['1', 'revisit_phase', 'discussion', '/workflow-discussion-process feature auth-flow'],
         ['2', 'revisit_phase', 'specification', '/workflow-specification-entry feature auth-flow'],
         ['3', 'revisit_phase', 'planning', '/workflow-planning-entry feature auth-flow'],
         ['4', 'revisit_phase', 'implementation', '/workflow-implementation-entry feature auth-flow'],
@@ -461,7 +461,7 @@ describe('workunit projections: menu', () => {
     assert.ok(!menu.keys.some((k) => k.action === 'finalise'), 'no finalise entry mid-revisit');
     assert.deepStrictEqual(
       menu.keys.map((k) => [k.key, k.action, k.route]),
-      [['y', 'continue', '/workflow-discussion-entry feature auth-flow']]
+      [['y', 'continue', '/workflow-discussion-process feature auth-flow']]
     );
     assert.strictEqual(menu.rendered, '');
   });
@@ -489,8 +489,8 @@ describe('workunit projections: menu', () => {
       [
         ['y', 'continue', null, '/workflow-specification-entry cross-cutting caching'],
         ['r', 'revisit', null, null],
-        ['1', 'revisit_phase', 'research', '/workflow-research-entry cross-cutting caching'],
-        ['2', 'revisit_phase', 'discussion', '/workflow-discussion-entry cross-cutting caching'],
+        ['1', 'revisit_phase', 'research', '/workflow-research-process cross-cutting caching'],
+        ['2', 'revisit_phase', 'discussion', '/workflow-discussion-process cross-cutting caching'],
       ]
     );
   });
@@ -526,7 +526,7 @@ describe('workunit projections: data body', () => {
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  continue  auth-flow  → /workflow-specification-entry feature auth-flow',
       '  r  revisit  revisit  auth-flow  → (internal)',
-      '  1  —  revisit_phase  auth-flow  → /workflow-discussion-entry feature auth-flow',
+      '  1  —  revisit_phase  auth-flow  → /workflow-discussion-process feature auth-flow',
     ].join('\n'));
   });
 
@@ -545,7 +545,7 @@ describe('workunit projections: data body', () => {
       'triage_waiting: (none)',
       'revisit_available: false',
       'ACTIONS (key  word  action  topic  → route):',
-      '  y  yes  continue  login-crash  → /workflow-investigation-entry bugfix login-crash',
+      '  y  yes  continue  login-crash  → /workflow-investigation-process bugfix login-crash',
     ].join('\n'));
   });
 
@@ -573,7 +573,7 @@ describe('workunit projections: data body', () => {
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  finalise  hotfix-logs  → (internal)',
       '  r  revisit  revisit  hotfix-logs  → (internal)',
-      '  1  —  revisit_phase  hotfix-logs  → /workflow-scoping-entry quick-fix hotfix-logs',
+      '  1  —  revisit_phase  hotfix-logs  → /workflow-scoping-process quick-fix hotfix-logs',
       '  2  —  revisit_phase  hotfix-logs  → /workflow-implementation-entry quick-fix hotfix-logs',
       '  3  —  revisit_phase  hotfix-logs  → /workflow-review-entry quick-fix hotfix-logs',
     ].join('\n'));

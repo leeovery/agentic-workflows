@@ -4465,12 +4465,12 @@ function epicSoftGate(cwd, { dotpath, action, topic }) {
 }
 
 // ---------------------------------------------------------------------------
-// phase-note — the entry skills' one-line status notes (Resuming / Starting /
-// Reopening …). Address-backed; the verb is the caller's word, the noun
-// defaults to the phase segment (planning overrides with "plan"). Only ever
-// rendered by an entry skill for its own phase, so it beats the addressed
-// topic — the code-gate precedent: claiming the slot is the same act as
-// announcing the entry.
+// phase-note — the one-line status notes a phase's start renders (Resuming /
+// Starting / Reopening …). Address-backed; the verb is the caller's word, the
+// noun defaults to the phase segment (planning overrides with "plan"). Only
+// ever rendered where a phase starts, for its own topic, so it beats the
+// addressed topic — the code-gate precedent: claiming the slot is the same
+// act as announcing the start.
 // ---------------------------------------------------------------------------
 
 /**
@@ -4490,10 +4490,10 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 }
 
 // ---------------------------------------------------------------------------
-// entry-gate — the entry skills' prerequisite check. The engine derives the
-// verdict from manifest state (the reads and the branch leave the prose):
-// an empty response means clear — proceed; a blocked response carries the
-// terminal blocker display.
+// entry-gate — the prerequisite check where a phase starts. The engine
+// derives the verdict from manifest state (the reads and the branch leave the
+// prose): an empty response means clear — proceed; a blocked response carries
+// the terminal blocker display.
 // ---------------------------------------------------------------------------
 
 // Blocked states render red: a `properties` fence colours the first token
@@ -4540,7 +4540,17 @@ const DIRECT_ENTRY_WAY_BACK = {
   decided: 'Resume it from the menu (`c/completed`) — a decided topic carries no row.',
   handled: 'Reopen it in discovery (`i/discovery`) — a dead-ended topic carries no row.',
 };
-const DIRECT_ENTRY_POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic stays postponed here, with no way back.';
+const POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic stays postponed here, with no way back.';
+
+/**
+ * Whether a postponed topic's roadmap item still waits — the pull forward's
+ * return leg open, which another epic's pull closes.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ */
+function postponedStillWaits(cwd, workUnit, topic) {
+  const item = postponedItem(loadProjectManifest(cwd), workUnit, topic);
+  return Boolean(item && item.waiting);
+}
 
 /**
  * @param {string} cwd
@@ -4548,7 +4558,7 @@ const DIRECT_ENTRY_POSTPONED_TAKEN = 'Its roadmap item has gone to another epic 
  * @returns {string} the refusal's sections, or '' when the name is free to start
  */
 function directEntryGate(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'direct-entry-gate');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'direct-entry-gate');
   if (phase !== 'research' && phase !== 'discussion') {
     throw new Error(`render direct-entry-gate: phase must be research or discussion, got "${phase}"`);
   }
@@ -4558,11 +4568,10 @@ function directEntryGate(cwd, { dotpath }) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
   const research = CLOSED_LIFECYCLES.includes(lifecycle) ? null : outstandingResearch(manifest, topic);
   const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
-  const roadmapItem = lifecycle === 'postponed' ? postponedItem(loadProjectManifest(cwd), manifest.name, topic) : null;
   const guidance = research
     ? 'Its research row is the way in.'
-    : lifecycle === 'postponed' && !(roadmapItem && roadmapItem.waiting)
-      ? DIRECT_ENTRY_POSTPONED_TAKEN
+    : lifecycle === 'postponed' && !postponedStillWaits(cwd, workUnit, topic)
+      ? POSTPONED_TAKEN
       : (DIRECT_ENTRY_WAY_BACK[lifecycle] ?? 'Its row on the menu names the next step.');
   return [
     section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${titlecase(topic)}" is already on the map — ${stands}`),
@@ -4576,14 +4585,27 @@ function directEntryGate(cwd, { dotpath }) {
  * @returns {string} blocker sections, or '' when the entry is clear
  */
 function entryGate(cwd, { dotpath, own }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'entry-gate');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'entry-gate');
   const t = titlecase(topic);
 
   if (own) {
-    // --own checks the topic's OWN terminal statuses at phase entry, not its
-    // prerequisites — the entry flow's routing handles the live statuses.
+    // --own checks the topic's OWN terminal statuses where its phase starts,
+    // not its prerequisites — the start's own routing handles the live ones.
+    if (phase === 'research' || phase === 'discussion') {
+      const status = (itemOf(manifest, phase, topic) || {}).status;
+      if (status === 'cancelled') {
+        return blocker(`"${t}" is cancelled`, 'Reactivate it from the epic menu (`e/reactivate`).');
+      }
+      if (status === 'postponed') {
+        return blocker(
+          `"${t}" is postponed to the roadmap`,
+          postponedStillWaits(cwd, workUnit, topic) ? 'Pull it forward from the epic menu (`f/forward`).' : POSTPONED_TAKEN,
+        );
+      }
+      return '';
+    }
     if (phase !== 'specification') {
-      throw new Error(`render entry-gate: --own is only supported for specification, got "${phase}"`);
+      throw new Error(`render entry-gate: --own is only supported for research, discussion and specification, got "${phase}"`);
     }
     const spec = itemOf(manifest, 'specification', topic) || {};
     if (spec.status === 'superseded') {

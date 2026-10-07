@@ -29,14 +29,14 @@
       "manifest get search-relevance.discovery.query-intent",
       "discovery-map add search-relevance query-intent discussion --source direct-start",
       "--force-dismissed",
-      "handoff /workflow-discussion-entry epic search-relevance query-intent"
+      "handoff /workflow-discussion-process epic search-relevance query-intent"
     ],
     "calls_in_order": [
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
       "render direct-entry-gate search-relevance.discussion.query-intent",
       "manifest get search-relevance.discovery.query-intent",
       "discovery-map add search-relevance query-intent discussion",
-      "handoff /workflow-discussion-entry epic search-relevance query-intent"
+      "handoff /workflow-discussion-process epic search-relevance query-intent"
     ],
     "calls_exclude": [
       "render epic-soft-gate",

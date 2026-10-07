@@ -1,15 +1,17 @@
 The prose should have taken this path:
 
-1. the entry asks the engine whether research is outstanding on the
-   topic (it is not), then reads the discussion status, finds it in progress, emits
-   the resuming phase note, checks the reconcile flag (absent —
-   silent), reads the map item's source and gathers nothing, and hands
-   off with source: existing discussion
-2. the process renders resume detection — the map with result-caching
-   open, the triage queue read (one entry), the triage warning directly
-   above the continue-or-restart gate — and the user continues;
-   initialisation is skipped; the guidelines load; the knowledge base
-   is addressed once as a contextual query
+1. the skill asks the engine whether research is outstanding on the
+   topic (it is not), finds synonym-handling already on the discovery
+   map — nothing is created — then reads the discussion status once,
+   finds it in progress, emits the resuming phase note, and checks the
+   reconcile flag (absent — silent); nothing is gathered — the user is
+   asked nothing about the carrier
+2. beneath the note, with the file found, the resume surface carries on
+   — the map with result-caching open, the triage queue read (one
+   entry), the triage warning directly above the continue-or-restart
+   gate — and the user continues; initialisation is skipped; the
+   guidelines load; the knowledge base is addressed once as a
+   contextual query
 3. the session loop's first triage check finds a resumed sitting with
    a queued concern: the one-entry agenda and the offer menu render
    before any session output — no opening question, no thread of the

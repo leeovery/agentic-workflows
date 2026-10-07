@@ -24,5 +24,5 @@ zero-rating alternative, the spec session's own lean with its
 derivation, and the one ask it leaves crash-fix.
 
 Hours have passed. The context was cleared — this session opens cold
-at the investigation entry skill with nothing but the two arguments
+at the investigation skill with nothing but the two arguments
 and what is on disk.

@@ -1,25 +1,22 @@
 The prose should have taken this path:
 
-1. the entry resolves the topic from its arguments — no topic question
-   is put to the user — and asks the engine whether research is
+1. the skill takes the topic from its arguments — no topic question is
+   put to the user — and asks the engine whether research is
    outstanding on the topic (it is not)
-2. the discussion status reads empty, so the walk takes the new-entry
-   arm; ensuring the discovery item finds it already on the map and
-   creates nothing
-3. the epic context arm reads the item's source, finds it map-shaped
-   rather than direct-start, and gathers nothing — no interview runs,
-   and the entry reads neither the brief nor the research
-4. the handoff carries session identity only — no description, no
-   research listing, no context fields — and the processing skill's
-   instructions are followed
-5. the process reads the discussion status again, finds no discussion
-   file, and starts fresh — no resume choice is put to the user
-6. initialisation reads its inputs: the seed no-ops for an epic, the
-   topic's brief pointer and brief file are read in full with the read
-   recorded on the map item (no commit), and the research status read
-   finds it completed — the research file is read in full, with a short
-   research-available note shown
-7. the discussion is registered through the engine before the file
+2. ensuring the discovery item finds it already on the map and creates
+   nothing
+3. the discussion status is read once and reads empty, so the walk
+   takes the first-start arm — no phase note, no reconcile check, no
+   resume choice
+4. initialisation reads its inputs: the seed no-ops for an epic, and
+   the topic's brief pointer and brief file are read in full with the
+   read recorded on the map item (no commit)
+5. the research check reads the topic's research status and finds it
+   completed, then reads the item's source — map-shaped, naming no
+   contributing topic — and the research file is read in full, with a
+   short research-available note shown; with completed research read,
+   no interview runs
+6. the discussion is registered through the engine before the file
    exists, the file is created from the template with a Context drawn
    from the research and brief, initial subtopics derived from the
    research's concerns land on the map as pending, and one

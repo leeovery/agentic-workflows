@@ -1,13 +1,13 @@
 The prose should have taken this path:
 
-1. the entry reads the investigation status — in-progress, reopened by
-   the triage delivery — emits the resuming phase note, runs no
-   interview and no reopen, and hands off with source: existing
-   investigation
-2. the process finds the investigation file, reads the queue (one
-   entry) and renders resume detection — the gate with the one-concern
-   triage warning directly above its menu — and the user continues;
-   initialisation is skipped
+1. the skill reads the investigation status once — in-progress,
+   reopened by the triage delivery — emits the resuming phase note, and
+   runs no interview and no reopen
+2. beneath the note, with the investigation file found, the skill reads
+   the queue (one entry) and renders the continue-or-restart gate — no
+   second heading of its own — with the one-concern triage warning
+   directly above its menu, and the user continues; initialisation is
+   skipped
 3. the knowledge guidance loads without a query; symptom gathering is
    skipped — an earlier session interviewed the user and this one has
    nothing new to fold in — and the triage check, on its first

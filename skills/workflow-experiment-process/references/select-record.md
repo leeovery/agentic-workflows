@@ -1,10 +1,10 @@
 # Select the Record
 
-*Reference for **[workflow-experiment-entry](../SKILL.md)***
+*Reference for **[workflow-experiment-process](../SKILL.md)***
 
 ---
 
-Resolve which experiment this session works — the entry is per-topic, and the record resolves here. Loaded by the entry backbone and by the return leg's next pick ([next-experiment.md](../../workflow-experiment-process/references/next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record — or a `b/back` from the picker resolves no record, and the caller routes the back-out.
+Resolve which experiment this session works — the session is per-topic, and the record resolves here. Loaded by the backbone's session setup and by the return leg's next pick ([next-experiment.md](next-experiment.md)). On return, `{id}`, `{slug}`, and `{record_status}` name a live record — or a `b/back` from the picker resolves no record, and the caller routes the back-out.
 
 The caller holds the series — the `experiments` subtree. Count its **live top-level records**: ids without a dot whose status is neither `concluded` nor `abandoned`.
 
@@ -84,7 +84,7 @@ Store the record's id as `{id}`, its `status` as `{record_status}`, and its `slu
 
 ## C. Announce the Record
 
-Branch on `{record_status}` — no re-read. The note is the entry's one announce, and rendering it claims the topic's slot.
+Branch on `{record_status}` — no re-read. The note is the record's one announce, and rendering it claims the topic's slot.
 
 #### If status is `conceived`
 

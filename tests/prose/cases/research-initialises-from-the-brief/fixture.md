@@ -5,5 +5,5 @@ to research — each carrying a discovery brief. The discovery session is
 closed and no per-topic phase has started anywhere.
 
 The context was cleared at the phase boundary — this session opens cold
-at the entry skill with nothing but the three arguments and what is on
+at the research skill with nothing but the three arguments and what is on
 disk.

@@ -780,9 +780,11 @@ describe('entry points — where a walk may begin', () => {
     assert.deepEqual(cases.entryErrors('workflow-start'), []);
   });
 
-  it('accepts an entry skill, where a handoff lands a phase in a fresh context', () => {
+  it('accepts the skill a phase is entered through, where a handoff lands it in a fresh context', () => {
     assert.deepEqual(cases.entryErrors('workflow-implementation-entry'), []);
     assert.deepEqual(cases.entryErrors('workflow-specification-entry'), []);
+    assert.deepEqual(cases.entryErrors('workflow-discussion-process'), []);
+    assert.deepEqual(cases.entryErrors('workflow-experiment-process'), []);
   });
 
   it('accepts the epic menu, where a handoff lands an epic phase\'s conclusion', () => {
@@ -804,16 +806,20 @@ describe('entry points — where a walk may begin', () => {
     assert.match(error, /not somewhere a session starts/);
   });
 
-  it('rejects a processing skill — always invoked by its entry skill', () => {
-    assert.match(cases.entryErrors('workflow-discussion-process')[0], /not somewhere a session starts/);
+  it('rejects a processing skill behind an entry skill — always invoked by it', () => {
+    assert.match(cases.entryErrors('workflow-planning-process')[0], /not somewhere a session starts/);
+  });
+
+  it('rejects the bridge — always invoked as a phase ends', () => {
+    assert.match(cases.entryErrors('workflow-bridge')[0], /not somewhere a session starts/);
   });
 
   it('rejects a reference, which is never entered directly', () => {
     assert.match(cases.entryErrors('root-cause-validation.md')[0], /not somewhere a session starts/);
   });
 
-  it('rejects a plausible name that is not a skill on disk', () => {
-    assert.match(cases.entryErrors('workflow-imaginary-entry')[0], /not a skill in skills\//);
+  it('rejects a plausible name the handoff table does not hold', () => {
+    assert.match(cases.entryErrors('workflow-imaginary-entry')[0], /not somewhere a session starts/);
   });
 
   it('requires one at all', () => {
