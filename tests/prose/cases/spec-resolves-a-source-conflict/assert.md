@@ -7,8 +7,8 @@ The prose should have taken this path:
    choice is put to the user; initialisation registers review state and
    gate modes, keeps the existing pending source rows (never
    overwriting them), and commits
-3. session setup resets the gate modes, finds no consult references,
-   and finds no stale source rows — construction begins directly
+3. session setup resets the gate modes and finds no stale source
+   rows — construction begins directly
 4. construction runs one topic at a time — extraction re-scans the
    sources, each piece is presented in the form it will take in the
    specification and explicitly approved before any write

@@ -411,35 +411,6 @@ describe('workflow-specification-entry discovery', () => {
     assert.strictEqual(r.specifications[0].sources, undefined);
   });
 
-  it('emits consult references with name and status', () => {
-    createManifest(dir, 'mint', {
-      work_type: 'epic',
-      phases: {
-        discussion: { items: { 'release-engine': { status: 'completed' } } },
-        specification: {
-          items: {
-            'release-engine': {
-              status: 'in-progress',
-              sources: { 'release-engine': { status: 'incorporated' } },
-              consult_references: {
-                'cli-presentation': { status: 'pending' },
-                'commit-command': { status: 'addressed' },
-              },
-            },
-          },
-        },
-      },
-    });
-    createFile(dir, '.workflows/mint/specification/release-engine/specification.md', '# Spec');
-    const r = discover(dir);
-    const spec = r.specifications.find(s => s.name === 'release-engine');
-    assert.strictEqual(spec.consult_references.length, 2);
-    const cli = spec.consult_references.find(c => c.name === 'cli-presentation');
-    assert.strictEqual(cli.status, 'pending');
-    const commit = spec.consult_references.find(c => c.name === 'commit-command');
-    assert.strictEqual(commit.status, 'addressed');
-  });
-
   it('defaults source status to pending when object-shaped without status; a row that is not an object is no source, as the completion gate reads it', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',
@@ -482,38 +453,6 @@ describe('workflow-specification-entry discovery', () => {
     ]);
     assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec, d.spec_status]),
       [['auth', true, 'in-progress'], ['billing', true, 'in-progress']]);
-  });
-
-  it('defaults consult reference status to pending when object-shaped without status', () => {
-    createManifest(dir, 'mint', {
-      work_type: 'epic',
-      phases: {
-        specification: {
-          items: {
-            'release-engine': {
-              status: 'in-progress',
-              consult_references: { 'cli-presentation': {} },
-            },
-          },
-        },
-      },
-    });
-    createFile(dir, '.workflows/mint/specification/release-engine/specification.md', '# Spec');
-    const r = discover(dir);
-    assert.strictEqual(r.specifications[0].consult_references[0].status, 'pending');
-  });
-
-  it('spec with no consult references has no consult_references field', () => {
-    createManifest(dir, 'auth', {
-      work_type: 'feature',
-      phases: {
-        discussion: { items: { auth: { status: 'completed' } } },
-        specification: { items: { auth: { status: 'in-progress' } } },
-      },
-    });
-    createFile(dir, '.workflows/auth/specification/auth/specification.md', '# Spec');
-    const r = discover(dir);
-    assert.strictEqual(r.specifications[0].consult_references, undefined);
   });
 
   it('stale cache when discussions changed', () => {
@@ -600,7 +539,6 @@ describe('workflow-specification-entry format', () => {
             'release-engine': {
               status: 'in-progress',
               sources: { 'cli-presentation': { status: 'incorporated' } },
-              consult_references: { 'cli-presentation': { status: 'pending' } },
             },
           },
         },
@@ -613,7 +551,6 @@ describe('workflow-specification-entry format', () => {
     assert.ok(!out.includes('=== SPECIFICATIONS ==='));
     assert.ok(!out.includes('=== CACHE ==='));
     assert.ok(!out.includes('source:'));
-    assert.ok(!out.includes('consult:'));
     assert.ok(!out.includes('checksum'));
   });
 

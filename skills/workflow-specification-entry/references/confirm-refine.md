@@ -4,10 +4,8 @@
 
 ---
 
-When the DATA lists `consult:` lines under the selected spec, write them to `.workflows/.cache/{work_unit}/specification/{topic}/consult.json` with the Write tool — `{"consult": [{"name": "…", "hint": "…"}]}`, one entry per line, `hint` the slice hint the line carries (left out when it carries none) — and pass the bracketed `--file`; otherwise leave it off.
-
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} --variant refine [--file .workflows/.cache/{work_unit}/specification/{topic}/consult.json]
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} --variant refine
 ```
 
 Emit the call's DISPLAY and MENU sections verbatim per their markers.

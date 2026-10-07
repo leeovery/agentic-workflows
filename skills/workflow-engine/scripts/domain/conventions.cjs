@@ -54,13 +54,6 @@ function titlecase(s) {
   return String(s).split(/[-_\s]+/).filter(Boolean).map(capitalise).join(' ');
 }
 
-// Slug form (the `(kebabcase)` casing hint): lower-case, non-alphanumeric runs
-// collapse to single hyphens. `Auth Flow` → `auth-flow`.
-/** @param {string} s */
-function kebabcase(s) {
-  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
 // `[term]` — the item status / lifecycle suffix.
 /** @param {string} term */
 function tag(term) {
@@ -221,10 +214,6 @@ const SPEC_LEGEND = {
     ready: 'completed and available to be specified',
     reopened: 'back in-progress — the spec waits on it',
   },
-  consult: {
-    pending: 'sibling correction not yet read in and reconciled',
-    addressed: 'correction applied or cited; reconciliation recorded',
-  },
   spec: {
     'in-progress': 'specification work is ongoing',
     completed: 'specification is done',
@@ -233,7 +222,7 @@ const SPEC_LEGEND = {
 
 module.exports = {
   titlecaseLabel,
-  TREE_WIDTH, treeHeader, capitalise, titlecase, kebabcase, tag, derivedFrom, stateNote, title, materialBlock,
+  TREE_WIDTH, treeHeader, capitalise, titlecase, tag, derivedFrom, stateNote, title, materialBlock,
   discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
   discussionGlyph, DISCUSSION_GLYPH, researchGlyph, RESEARCH_GLYPH, WORKLIST_GLYPH, SPEC_LEGEND,
 };

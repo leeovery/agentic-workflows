@@ -33,7 +33,6 @@ engine.conventions.tag('decided')                 // → "[decided]"
 engine.conventions.derivedFrom('from exploration')// → "↳ From exploration"
 engine.conventions.discoveryGlyph('researching')  // → "◐"
 engine.conventions.titlecase('auth-flow')         // → "Auth Flow"
-engine.conventions.kebabcase('Auth Flow')         // → "auth-flow"
 engine.conventions.TREE_WIDTH                     // 65 — tree content width incl. gutter
 
 // domain: generic reads (reads.cjs — no phase semantics)
@@ -89,7 +88,7 @@ engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle
 engine.detail.workUnitDetail(cwd, type)           // → WorkUnitDetail (single-topic types: feature | bugfix | quick-fix | cross-cutting)
 engine.detail.workUnitIndex(type, detail)         // → labelled dump for the head-of-skill insert (thin DATA index)
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
-engine.detail.specificationDetail(wu, result, { consultHints }) // → SpecificationDetail (entry scenario + grouping rows over one discover() result)
+engine.detail.specificationDetail(wu, result)     // → SpecificationDetail (entry scenario + grouping rows over one discover() result)
 engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)

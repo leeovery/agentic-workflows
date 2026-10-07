@@ -3,7 +3,7 @@ The prose should have taken this path:
 1. the entry validates the two completed source discussions and the
    proposed phase item, asking the user nothing
 2. initialisation registers the spec fresh; session setup finds no
-   stale rows or consult references; construction begins
+   stale rows; construction begins
 3. construction may first extract grounds the collision does not
    touch through the ordinary gated cycle (behavioural-ranking's
    settled ingestion decision included, its row legitimately

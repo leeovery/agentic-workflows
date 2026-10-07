@@ -3,10 +3,9 @@ The prose should have taken this path:
 1. the entry validates the in-progress specification and routes to
    resume; the process finds the specification file and puts the
    resume choice to the user, who continues
-2. session setup resets the gate modes and finds no consult
-   references; the source already reads incorporated, so construction
-   is skipped — no construction heading is shown and no content is
-   re-presented
+2. session setup resets the gate modes; the source already reads
+   incorporated, so construction is skipped — no construction heading
+   is shown and no content is re-presented
 3. review cycle 1 initialises; claims verification runs first and
    returns clean through its stub with no tracking file; input review
    runs next and returns findings through its stub, having written the

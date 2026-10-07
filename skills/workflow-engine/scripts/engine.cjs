@@ -313,7 +313,7 @@ Commands:
   render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
   render analysis-proceed-gate <wu>
-  render spec-confirm-gate <wu.specification.topic> --variant create|continue|refine|unify [--file <payload.json>]
+  render spec-confirm-gate <wu.specification.topic> --variant create|continue|refine|unify
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]

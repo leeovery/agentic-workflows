@@ -2208,18 +2208,15 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
     // The analysis reconciles its grouping into a proposed item, and the
-    // entry confirms the pick before the handoff starts it — the consult
-    // references, held in the analysis doc, ride as the payload.
+    // entry confirms the pick before the handoff starts it.
     const grouping = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { status: 'proposed', 'sources.alpha.status': 'pending' } }]);
     sim.run(['manifest', 'apply', wu, '--file', grouping]);
     // The reconcile moved the scenario, so the analysis exit routes on a
     // fresh read: a proposed item standing lands on the groupings.
     assert.match(SPEC_GATEWAY.scoped(sim.dir, wu), /^scenario: groupings$/m);
-    const consult = sim.write(`.workflows/.cache/${wu}/specification/alpha/consult.json`,
-      { consult: [{ name: 'beta', hint: 'the hand-off alpha owes' }] });
-    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.alpha`, '--variant', 'create', '--file', consult],
-      { expect: 'content' }), /Creating specification: Alpha\n\nSources:\n {2}• alpha\n\nConsult references \(read narrowly — do not extract\):\n {2}• beta — the hand-off alpha owes\n/);
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.alpha`, '--variant', 'create'],
+      { expect: 'content' }), /Creating specification: Alpha\n\nSources:\n {2}• alpha\n\nOutput: /);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
     sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');

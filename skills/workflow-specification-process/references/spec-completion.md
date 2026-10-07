@@ -86,16 +86,6 @@ If any show `status: stale`, the source discussion was re-decided after extracti
 
 > **CHECKPOINT**: Do not proceed to sign-off while any source is `pending` or `stale`. Pending material has not been extracted; stale material was extracted from a decision that has since moved — and stays stale while its discussion is mid-revision.
 
-Also confirm every consult reference is addressed:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} consult_references
-```
-
-If any show `status: pending`, work them now per **[spec-construction.md](spec-construction.md)** → Read Consult References Narrowly — read the sibling slice, apply or cite the correction, record it in Working Notes, then mark `addressed`.
-
-> **CHECKPOINT**: Do not proceed to sign-off while any consult reference is `pending`. The owed correction has not been reconciled.
-
 → Proceed to **C. Sign-Off**.
 
 ---
@@ -134,7 +124,6 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.
 Specification is complete when:
 - All topics have validated content
 - All sources are marked as `incorporated` — neither `pending` nor `stale`
-- All consult references are marked as `addressed`
 - At least one review cycle completed with no findings, OR the review loop closed — the user proceeding past the re-loop prompt under `gated`, the churn or cap exit under `auto`
 - Every manifest `tracking` entry `complete`
 - User confirms the specification is complete

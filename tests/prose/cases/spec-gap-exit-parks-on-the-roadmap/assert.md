@@ -10,12 +10,11 @@ The prose should have taken this path:
    in-progress specification item, and hands off to the processing
    skill
 2. resume detection offers the choice and the user continues; session
-   setup resets both gate modes to `gated` and finds no stale rows
-   and no consult references; the source already reads incorporated,
-   so construction is skipped — no construction heading is shown and
-   no content is re-presented — and the epic's document-dependencies
-   step still runs before review, the specification carrying no
-   Dependencies section yet
+   setup resets both gate modes to `gated` and finds no stale rows;
+   the source already reads incorporated, so construction is skipped —
+   no construction heading is shown and no content is re-presented —
+   and the epic's document-dependencies step still runs before review,
+   the specification carrying no Dependencies section yet
 3. review cycle 1 initialises — `review_cycle` set to 1 with the
    construction baseline word count in the same write, committed.
    Claims verification runs first and returns clean through its stub
