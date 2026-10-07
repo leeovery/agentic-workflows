@@ -25,11 +25,10 @@
 // a silent first-epic render.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
-const { loadActiveManifests, loadAllManifests, listFiles, filesChecksum, fileExists } = engine.reads;
-const { phaseItems, phaseData, lastCompletedPhase, sourceRows, specGroupsSources, lockingSpecs } = engine.derivations;
+const { loadActiveManifests, loadAllManifests } = engine.reads;
+const { phaseItems, lastCompletedPhase } = engine.derivations;
 
 const EPIC_DETAIL_PHASES = engine.detail.EPIC_DETAIL_PHASES;
 
@@ -246,20 +245,6 @@ function view(workUnit, newArrivalsJson) {
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
   dataLines.push(`build_order_needs_sequencing: ${d.build_order_needs_sequencing}`);
   dataLines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
-  const phaseNames = Object.keys(d.phases);
-  if (phaseNames.length > 0) {
-    dataLines.push('phase_counts:');
-    for (const phase of phaseNames) {
-      const items = d.phases[phase];
-      const inProgress = items.filter(i => i.status === 'in-progress').length;
-      const proposed = items.filter(i => i.status === 'proposed').length;
-      const segments = [`${inProgress} in-progress`];
-      if (proposed > 0) segments.push(`${proposed} proposed`);
-      dataLines.push(`  ${phase}: ${segments.join(', ')} / ${items.length} total`);
-    }
-  } else {
-    dataLines.push('phase_counts: (none)');
-  }
   dataLines.push(`unaccounted_discussions: ${d.unaccounted_discussions.join(', ') || '(none)'}`);
   dataLines.push(`reopened_discussions: ${d.reopened_discussions.join(', ') || '(none)'}`);
   dataLines.push(`spec_blocked: ${d.spec_blocked.map((b) => `${b.name} (${b.by.join(', ')})`).join(', ') || '(none)'}`);
@@ -349,116 +334,16 @@ function subView(workUnit, projection) {
 // ---------------------------------------------------------------------------
 // The specification menu (the `s` row): the scenario the epic's completed
 // discussions are in, its snapshot, and the concluded-specs sub-view.
-// Scenario derivation and rendering live in the engine's domain ring; these
-// verbs build the discovery result and section the output.
+// Discovery, scenario derivation and rendering live in the engine's domain
+// ring; these verbs section the output.
 // ---------------------------------------------------------------------------
 
 /** @typedef {import('../../workflow-engine/scripts/domain/specification.cjs').DiscoveryResult} SpecDiscovery */
 /** @typedef {import('../../workflow-engine/scripts/domain/specification.cjs').SpecificationDetail} SpecDetail */
 
-// Discussion statuses the menu never counts: cancelled is closed, postponed
-// has left for the roadmap, and triaged is a stub of parked rerouted
-// concerns that was never discussed.
-const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'triaged'];
-
-// Actionable-first ordering rank for the spec menu. Lower sorts earlier:
-// proposed → in-progress → completed-with-pending → concluded → promoted.
-/** @param {{status: string, has_pending_sources: boolean}} spec */
-function specSortRank(spec) {
-  if (spec.status === 'proposed') return 0;
-  if (spec.status === 'in-progress') return 1;
-  if (spec.status === 'completed') return spec.has_pending_sources ? 2 : 3;
-  return 4;
-}
-
-/**
- * The specification menu's discovery over one active epic: its discussions,
- * its specification items, the grouping analysis cache read against the
- * discussion files, and their checksum. Refuses a name with no active epic
- * behind it.
- * @param {string} cwd @param {string} workUnit
- * @returns {SpecDiscovery}
- */
-function specDiscover(cwd, workUnit) {
-  const m = loadActiveManifests(cwd).find((x) => x.name === workUnit && x.work_type === 'epic');
-  if (!m) throw new Error(`no active epic "${workUnit}"`);
-  const unitDir = path.join(cwd, '.workflows', m.name);
-  const specItems = phaseItems(m, 'specification');
-
-  const discussions = [];
-  for (const item of phaseItems(m, 'discussion')) {
-    if (UNCOUNTED_DISCUSSIONS.includes(item.status)) continue;
-    // The discussion's individual spec — the first started specification
-    // sourcing it; a proposed grouping is never one.
-    const [covering] = lockingSpecs(m, item.name);
-    const individual = covering && specItems.find((s) => s.name === covering);
-    discussions.push({
-      name: item.name, status: item.status || 'unknown', has_individual_spec: Boolean(individual),
-      ...(individual && { spec_status: individual.status }),
-    });
-  }
-
-  // Proposed groupings live only in the manifest and count as proposed; a
-  // started specification counts once its file is on disk. A promoted one
-  // continues in its cross-cutting unit, its file with it — it still groups
-  // its sources and counts nowhere. A cancelled one groups nothing — its key
-  // stays reserved, its sources name what it grouped.
-  const specifications = [];
-  const cancelledSpecifications = [];
-  let specCount = 0;
-  let proposedCount = 0;
-  for (const item of specItems) {
-    if (item.status === 'cancelled') {
-      cancelledSpecifications.push({ name: item.name, sources: sourceRows(item.sources).map(([name]) => name) });
-    }
-    if (!specGroupsSources(item)) continue;
-    const spec = engine.detail.discoverySpec(m, item.name, item);
-    if (spec.status === 'proposed') proposedCount++;
-    else if (spec.status !== 'promoted') {
-      if (!fileExists(path.join(unitDir, 'specification', item.name, 'specification.md'))) continue;
-      specCount++;
-    }
-    if (Number.isInteger(item.order)) spec.order = item.order;
-    specifications.push(spec);
-  }
-
-  // Actionable specs first, concluded specs last. The build order breaks
-  // ties within each tier; unordered specs keep insertion order behind the
-  // ordered ones, so the menu reads work-first, then build-first.
-  const orderOf = (spec) => (Number.isInteger(spec.order) ? spec.order : Infinity);
-  specifications.sort((a, b) => (specSortRank(a) - specSortRank(b))
-    || (orderOf(a) === orderOf(b) ? 0 : orderOf(a) - orderOf(b)));
-
-  const discDir = path.join(unitDir, 'discussion');
-  const discFiles = listFiles(discDir, '.md').map((f) => path.join(discDir, f));
-  const checksum = discFiles.length > 0 ? filesChecksum(discFiles) : null;
-  const cache = phaseData(m, 'discussion').analysis_cache;
-  const completedCount = discussions.filter((d) => d.status === 'completed').length;
-
-  return {
-    discussions,
-    specifications,
-    cancelled_specifications: cancelledSpecifications,
-    cache: !cache || !cache.checksum ? 'none' : (checksum !== null && cache.checksum === checksum ? 'valid' : 'stale'),
-    current_state: {
-      discussions_checksum: checksum,
-      discussion_count: discussions.length,
-      completed_count: completedCount,
-      in_progress_count: discussions.filter((d) => d.status === 'in-progress').length,
-      spec_count: specCount,
-      proposed_count: proposedCount,
-      concluded_count: specifications.filter((s) => s.status === 'completed' && !s.has_pending_sources).length,
-      has_discussions: discussions.length > 0,
-      has_completed: completedCount > 0,
-      has_specs: specCount > 0,
-      has_proposed: proposedCount > 0,
-    },
-  };
-}
-
 /** @param {string} cwd @param {string} workUnit @returns {{result: SpecDiscovery, detail: SpecDetail}} */
 function specDetail(cwd, workUnit) {
-  const result = specDiscover(cwd, workUnit);
+  const result = engine.detail.specificationDiscovery(cwd, workUnit);
   return { result, detail: engine.detail.specificationDetail(workUnit, result) };
 }
 
@@ -612,4 +497,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { discover, format, select, formatScoped, specDiscover, specScenario, specView, specCompletedMenu };
+module.exports = { discover, format, select, formatScoped, specScenario };

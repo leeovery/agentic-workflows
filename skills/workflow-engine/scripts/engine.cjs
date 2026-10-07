@@ -316,7 +316,7 @@ Commands:
   render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
   render analysis-proceed-gate <wu>
-  render spec-confirm-gate <wu.specification.topic> [--single]  (bare: empty unless the start incorporates a specification or unifies the groupings)
+  render spec-confirm-gate <wu.specification.topic> [--single|--unify]  (bare: empty unless the start incorporates a specification)
   render proposed-task    <wu.phase.topic> --file <payload.json> --gate gated|auto [--comment-hint STR]
   render incoherence-gate <wu.phase.topic> --file <payload.json> --variant conflict|gap-route|held-doc
   render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
@@ -1952,7 +1952,7 @@ function runHandoff(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -1971,6 +1971,7 @@ function runRender(call, argv) {
       if (flags.has('menu-only')) args['menu-only'] = '1';
       if (flags.has('pause')) args.pause = '1';
       if (flags.has('single')) args.single = '1';
+      if (flags.has('unify')) args.unify = '1';
       respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {
       failJson(call, err);

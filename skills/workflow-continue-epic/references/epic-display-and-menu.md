@@ -28,7 +28,7 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs view {work_unit} 
 
 The output is one snapshot in four demarcated sections:
 
-- **DATA** — reasoning surface: state flags, `phase_counts` (in-progress / proposed / total per phase), and the `ACTIONS` table — one line per menu key, `key  word  action  topic  → route`, with `(recommended)` / `(in session: …)` / `(code session: …)` markers. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: state flags and the `ACTIONS` table — one line per menu key, `key  word  action  topic  → route`, with `(recommended)` / `(in session: …)` / `(code session: …)` markers. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
 - **DISPLAY** — the dashboard and key. Emit verbatim per its marker. Never redraw, reflow, or trim it.
 - **MENU** — the selection menu. Emit verbatim per its marker.
@@ -157,14 +157,14 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the exact skill invocation the selection hands off along as `route` — for a new topic, `/workflow-{phase}-entry epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/workflow-specification-entry epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). The other entries with route `(internal)` resolve their flows in **B. Handle Selection** and never reach this section.
+Store the exact skill invocation the selection hands off along as `route`, and the topic it carries as `{topic}` — for a new topic, `/workflow-{phase}-entry epic {work_unit} {topic}`, with the phase it was started for and the name it was given; for the specification the specification menu returned, `/workflow-specification-entry epic {work_unit} {topic}`; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`) and its `topic`. The `new_discussion`, `new_research` and `analyze_discussions` entries carry route `(internal)` and arrive here with the topic their flow named; every other `(internal)` entry is resolved from **B. Handle Selection** and never reaches this section.
 
 #### If `route` enters the specification
 
-Fetch the confirm for `{topic}` — empty unless the start incorporates a started specification or unifies the groupings, what the pick did not show:
+Fetch the confirm for `{topic}`, adding `--unify` when this selection is the specification menu's unify — empty unless the start incorporates a started specification or unifies the groupings, what the pick did not show:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-confirm-gate {work_unit}.specification.{topic} [--unify]
 ```
 
 **If the output is empty:**

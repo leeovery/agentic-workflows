@@ -3472,10 +3472,11 @@ function analysisProceedGate(cwd, { dotpath }) {
 // spec-confirm-gate — the consent before a specification's entry. After a
 // menu pick it is drawn only where the start does what the pick did not
 // show: incorporate a started specification, which its completion
-// supersedes, or unify every grouping — empty otherwise, as the soft gate
-// answers empty on pass. The single-discussion path (`--single`) picks
-// nothing, so it is always drawn: a create — of the lone completed
-// discussion where no item exists yet — a continue, or a refine.
+// supersedes, or unify every grouping (`--unify`, the selection the
+// groupings menu's unify made) — empty otherwise, as the soft gate answers
+// empty on pass. The single-discussion path (`--single`) picks nothing, so
+// it is always drawn: a create — of the lone completed discussion where no
+// item exists yet — a continue, or a refine.
 
 const SPEC_CONFIRMABLE = ['proposed', 'in-progress', 'completed'];
 const REFINE_NOTE = 'A refinement is for factual corrections and sharpening. A change of decision belongs in the source discussion — reopen that discussion instead; the moment it reopens, this specification is flagged to reconcile against the re-decision.';
@@ -3501,10 +3502,10 @@ function loneDiscussionGrouping(manifest, workUnit, topic) {
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, single?: string}} args
+ * @param {{dotpath: string, single?: string, unify?: string}} args
  * @returns {string}
  */
-function specConfirmGate(cwd, { dotpath, single }) {
+function specConfirmGate(cwd, { dotpath, single, unify }) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'spec-confirm-gate');
   if (phase !== 'specification') {
     throw new Error(`render spec-confirm-gate: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
@@ -3515,7 +3516,7 @@ function specConfirmGate(cwd, { dotpath, single }) {
   if (!SPEC_CONFIRMABLE.includes(spec.status)) {
     throw new Error(`render spec-confirm-gate: "${topic}" is ${spec.status} — there is nothing to confirm`);
   }
-  const { variant, sources, supersedes } = specConfirmation(manifest, spec);
+  const { variant, sources, supersedes } = specConfirmation(manifest, spec, { unify: Boolean(unify) });
   const drawn = single || variant === 'unify' || (variant === 'create' && supersedes.length > 0);
   if (!drawn) return '';
 

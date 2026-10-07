@@ -9,8 +9,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
-const { specDiscover } = require('../../skills/workflow-continue-epic/scripts/gateway.cjs');
-const { specificationDetail, discoverySpec, specConfirmation, incorporations } = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
+const {
+  specificationDiscovery, specificationDetail, discoverySpec, specConfirmation, incorporations,
+} = require('../../skills/workflow-engine/scripts/domain/specification.cjs');
 const { specIncorporations } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 const { startTopic, supersedeTopic } = require('../../skills/workflow-engine/scripts/domain/transitions.cjs');
 const {
@@ -26,11 +27,11 @@ const NB = (n) => '\u00a0'.repeat(n);
 
 // Golden tests: byte-exact expected strings for the epic specification
 // menu's scenario displays and menus. Fixtures go through real manifests in
-// temp dirs and the gateway's own specDiscover(), so the goldens cover the
-// full derivation path (discovery result → detail → projection).
+// temp dirs and the domain's own specificationDiscovery(), so the goldens
+// cover the full derivation path (discovery result → detail → projection).
 
 function detailOf(dir, workUnit) {
-  return specificationDetail(workUnit, specDiscover(dir, workUnit));
+  return specificationDetail(workUnit, specificationDiscovery(dir, workUnit));
 }
 
 // Two actionable groupings (one proposed, one in-progress with a pending
@@ -125,7 +126,7 @@ describe('specification detail: scenario derivation', () => {
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.scenario, 'analyze');
     assert.strictEqual(d.cache_status, 'valid');
-    assert.match(specificationDisplay(d), /2 completed discussions found\. No specifications exist yet\./);
+    assert.match(specificationDisplay(d), /^2 completed discussions found\.\nNo specification is proposed, in progress, or completed\.\n/);
     assert.deepStrictEqual(specificationMenu(d), { keys: [], rendered: '' });
   });
 
@@ -298,8 +299,8 @@ describe('specification record: one reading for the menu and its confirm', () =>
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const confirmationOf = (manifest, name) =>
-    specConfirmation(manifest, discoverySpec(manifest, name, manifest.phases.specification.items[name]));
+  const confirmationOf = (manifest, name, selection) =>
+    specConfirmation(manifest, discoverySpec(manifest, name, manifest.phases.specification.items[name]), selection);
 
   it('discoverySpec reads the defaults: an in-progress item, pending rows, an unknown discussion, stale as pending work', () => {
     const m = { phases: { discussion: { items: { a: { status: 'completed' } } } } };
@@ -369,7 +370,7 @@ describe('specification record: one reading for the menu and its confirm', () =>
     });
   });
 
-  it('the confirm reads which entry it is: the unify, a create, a refine with nothing left to extract, a continue otherwise', () => {
+  it('the confirm reads which entry it is: a create, a refine with nothing left to extract, a continue otherwise', () => {
     const m = {
       phases: {
         discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
@@ -385,7 +386,17 @@ describe('specification record: one reading for the menu and its confirm', () =>
       },
     };
     assert.deepStrictEqual(['unified', 'fresh', 'done', 'moved', 'open'].map((name) => confirmationOf(m, name).variant),
-      ['unify', 'create', 'refine', 'continue', 'continue']);
+      ['create', 'create', 'refine', 'continue', 'continue']);
+  });
+
+  it('the unify is the selection\'s: the proposed grouping the unify wrote reads unify', () => {
+    const m = {
+      phases: {
+        discussion: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
+        specification: { items: { whole: { status: 'proposed', sources: { a: { status: 'pending' }, b: { status: 'pending' } } } } },
+      },
+    };
+    assert.strictEqual(confirmationOf(m, 'whole', { unify: true }).variant, 'unify');
   });
 });
 
@@ -751,7 +762,8 @@ describe('specification projections: display goldens', () => {
       },
     });
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
-      '2 completed discussions found. No specifications exist yet.',
+      '2 completed discussions found.',
+      'No specification is proposed, in progress, or completed.',
       '',
       'Completed discussions:',
       '  • a',

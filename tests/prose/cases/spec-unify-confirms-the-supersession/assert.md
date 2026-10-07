@@ -27,10 +27,10 @@ The prose should have taken this path:
 7. the analysis doc is rewritten to a single Unified grouping over both
    discussions, its date restamped, and the reconcile commits
 8. back at the epic menu's route selection, the route enters the
-   specification, so the confirm is fetched for `unified` with no
-   variant — it renders, because a unify always confirms, naming
-   `behavioural-ranking`'s specification as incorporated and to be
-   superseded — and the user answers yes
+   specification, so the confirm is fetched for `unified` with
+   `--unify` — the selection is the unify, which always confirms — and
+   it renders, naming `behavioural-ranking`'s specification as
+   incorporated and to be superseded; the user answers yes
 9. the handoff: the route passes to the engine's handoff as
    `/workflow-specification-entry` with epic, the work unit and the
    topic `unified`; the line naming where the work goes is the turn's

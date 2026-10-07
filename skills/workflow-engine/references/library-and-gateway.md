@@ -50,7 +50,7 @@ engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] fro
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
 engine.derivations.lastCompletedPhase(manifest, pipeline) // → last phase (pipeline order) with a completed item, or null
-engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, generated, files[, reason] }
+engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, stamped, generated, files[, reason] }
 engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
 engine.derivations.computeSourceProvenance(source) // → "from …" label, or null
@@ -88,7 +88,8 @@ engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle
 engine.detail.workUnitDetail(cwd, type)           // → WorkUnitDetail (single-topic types: feature | bugfix | quick-fix | cross-cutting)
 engine.detail.workUnitIndex(type, detail)         // → labelled dump for the head-of-skill insert (thin DATA index)
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
-engine.detail.specificationDetail(wu, result)     // → SpecificationDetail (the epic specification menu's scenario + grouping rows over one specDiscover() result)
+engine.detail.specificationDiscovery(cwd, wu)     // → DiscoveryResult (the epic specification menu's read: discussions, grouping specifications, cancelled keys, the grouping analysis's cache); throws for a name with no active epic
+engine.detail.specificationDetail(wu, result)     // → SpecificationDetail (the epic specification menu's scenario + grouping rows over one specificationDiscovery() result)
 engine.project.actionsTable(columns, keys, cells) // → the DATA `ACTIONS` table's lines — each key's `key` and `word` (`—` for none), then `cells(key)` under `columns`
 engine.project.epicDashboard(wu, detail, { newArrivals }) // → dashboard display block
 engine.project.epicKey(detail)                    // → Key block ('' when nothing on screen earns a legend)

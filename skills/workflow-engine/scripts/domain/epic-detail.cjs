@@ -176,6 +176,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
 /**
  * @typedef {object} AnalysisCache
  * @property {string} status  `valid` | `stale` | `absent`
+ * @property {boolean} stamped  an analysis has stamped the cache
  * @property {string|null} generated
  * @property {string[]} files
  * @property {string} [reason]

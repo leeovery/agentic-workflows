@@ -31,10 +31,10 @@ What that costs:
   (`engine.run`), so the pipeline simulation audits every render surface
   after every step; the gateways' views are reachable in tests only by
   spawning (one pass per verb, not per step).
-- **Derivations in two places** — spec entry's gateway derived its
-  source rows itself and the spec confirm gate had to re-derive them.
-- **Positional quirks** — a work unit named like a gateway verb
-  (`select`, `view`) collides with it.
+- **Positional quirks** — a gateway that reads a work unit positionally
+  collides with its own verbs: the epic gateway's scoped dump is
+  `gateway.cjs {work_unit}`, so an epic named `select` gets the pick list
+  and one named `view` a usage error.
 
 ## Shape
 

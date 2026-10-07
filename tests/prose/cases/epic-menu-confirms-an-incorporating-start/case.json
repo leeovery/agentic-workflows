@@ -1,0 +1,48 @@
+{
+  "origin": "specification-grouping review — the epic menu's route selection kept a row's route but not its topic, so the confirm its specification rows fetch read whatever topic an earlier flow had left; nothing walked the epic menu's start row for a grouping that takes in a started specification's discussion, whose confirm names the supersession before the handoff",
+  "entry": "workflow-continue-epic",
+  "files": [
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/handing-off.md"
+  ],
+  "answers": [
+    "1 — start specification for Expansion",
+    "y — yes"
+  ],
+  "invariants": {
+    "calls_include": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render epic-soft-gate search-relevance --action start_specification --topic expansion",
+      "render spec-confirm-gate search-relevance.specification.expansion",
+      "handoff /workflow-specification-entry epic search-relevance expansion"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render epic-soft-gate search-relevance --action start_specification --topic expansion",
+      "render spec-confirm-gate search-relevance.specification.expansion",
+      "handoff /workflow-specification-entry epic search-relevance expansion"
+    ],
+    "calls_exclude": [
+      "render spec-confirm-gate search-relevance.specification.behavioural-ranking",
+      "--unify",
+      "--single",
+      "spec-scenario",
+      "spec-view",
+      "topic start",
+      "topic incorporations",
+      "manifest set",
+      "manifest apply",
+      "engine.cjs commit"
+    ]
+  }
+}

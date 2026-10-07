@@ -26,7 +26,7 @@
       "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
       "manifest apply search-relevance",
-      "render spec-confirm-gate search-relevance.specification.unified",
+      "render spec-confirm-gate search-relevance.specification.unified --unify",
       "handoff /workflow-specification-entry epic search-relevance unified"
     ],
     "calls_exclude": [
@@ -41,7 +41,7 @@
       "workflow-continue-epic/scripts/gateway.cjs spec-scenario search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs spec-view search-relevance",
       "manifest apply search-relevance",
-      "render spec-confirm-gate search-relevance.specification.unified",
+      "render spec-confirm-gate search-relevance.specification.unified --unify",
       "handoff /workflow-specification-entry epic search-relevance unified"
     ]
   },

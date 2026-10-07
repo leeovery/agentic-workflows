@@ -204,7 +204,8 @@ function groupingsDisplay(detail) {
 /** @param {SpecificationDetail} detail */
 function analyzeDisplay(detail) {
   return compose([
-    `${counted(detail.counts.completed_count, 'completed discussion')} found. No specifications exist yet.`,
+    `${counted(detail.counts.completed_count, 'completed discussion')} found.\n`
+      + wrap('No specification is proposed, in progress, or completed.', TREE_WIDTH).join('\n'),
     'Completed discussions:\n' + bullets(detail.completed_discussions),
   ]);
 }

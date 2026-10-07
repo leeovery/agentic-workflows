@@ -14,7 +14,8 @@
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation gateway (start, continue-*, bridge) discovers AND
-//     formats the state without throwing,
+//     formats the state without throwing, and draws its views — the epic's
+//     specification menu among them,
 //   - every menu a gateway draws, and every menu a render draws, states
 //     itself whole in its gate payload once the gate surface is announced.
 // This is the detector for the silent class of bug: state that writes fine,
@@ -62,7 +63,7 @@ const GATEWAYS = {
 const BRIDGE = require(path.join(ROOT, 'skills/workflow-bridge/scripts/gateway.cjs'));
 const LIB = require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
-const { specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
+const { specificationDiscovery, specificationDetail } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/specification.cjs'));
 const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
@@ -72,7 +73,7 @@ const { announced, auditGate } = require('./gate-audit.cjs');
 
 // The epic specification menu's detail — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
-  return specificationDetail(workUnit, EPIC_GATEWAY.specDiscover(dir, workUnit));
+  return specificationDetail(workUnit, specificationDiscovery(dir, workUnit));
 }
 
 function git(dir, args) {
@@ -241,7 +242,7 @@ function auditState(dir, label) {
       gw.select(result);
       auditGate(announcedRender(() => gw.select(result)), `${label} — ${name} select`);
     }
-    for (const view of VIEW_MENUS[name](result)) {
+    for (const view of VIEW_MENUS[name](result, dir)) {
       auditGate(announcedRender(() => LIB.gateway.menuBlock(view().rendered)), `${label} — ${name} view`);
       auditRoutes(dir, view().keys, `${label} — ${name} view`);
     }
@@ -281,21 +282,39 @@ function auditRoutes(dir, keys, label) {
 // The gate payload
 // ---------------------------------------------------------------------------
 
-// The menus each gateway's `view` verb draws over the same discovery: the
-// start menu (the empty state's when there is no work), every epic's menu
-// and its completed topics, every linear unit's proceed/revisit menu.
+// The menus each gateway's views draw over the same discovery: the start
+// menu (the empty state's when there is no work), every epic's menu, its
+// completed topics and its specification menu, every linear unit's
+// proceed/revisit menu.
 /** @typedef {{keys: {route?: string|null}[], rendered: string}} ViewMenu */
 /** @param {string} type @returns {(result: any) => (() => ViewMenu)[]} */
 function linearViewMenus(type) {
   return (result) => LIB.detail.unitsOf(LIB.detail.typeConfig(type), result)
     .map((/** @type {any} */ unit) => () => LIB.project.workUnitMenu(type, unit));
 }
-/** @type {Record<string, (result: any) => (() => ViewMenu)[]>} */
+
+// The specification menu's views over one epic — its `spec-scenario`,
+// `spec-view` and `spec-completed-menu` verbs: the routing read and the
+// scenario's display render whatever the state, beside the scenario's menu
+// and, once anything has concluded, the concluded-specs sub-view.
+/** @param {string} dir @param {string} workUnit @returns {(() => ViewMenu)[]} */
+function specificationViewMenus(dir, workUnit) {
+  EPIC_GATEWAY.specScenario(dir, workUnit);
+  const detail = specDetail(dir, workUnit);
+  LIB.project.specificationDisplay(detail);
+  return [
+    () => LIB.project.specificationMenu(detail),
+    ...(detail.concluded.length > 0 ? [() => LIB.project.specificationCompletedMenu(detail)] : []),
+  ];
+}
+
+/** @type {Record<string, (result: any, dir: string) => (() => ViewMenu)[]>} */
 const VIEW_MENUS = {
   start: (result) => [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result))],
-  epic: (result) => result.epics.flatMap((/** @type {any} */ e) => [
+  epic: (result, dir) => result.epics.flatMap((/** @type {any} */ e) => [
     () => LIB.project.epicMenu(e.name, e.detail),
     () => LIB.project.epicCompletedMenu(e.name, e.detail),
+    ...specificationViewMenus(dir, e.name),
   ]),
   feature: linearViewMenus('feature'),
   bugfix: linearViewMenus('bugfix'),
@@ -2286,7 +2305,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.order, 1);
     assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, undefined,
       'the reconcile is the sequencing — its apply clears the flag');
-    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`], { expect: 'content' }),
+    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--unify'], { expect: 'content' }),
       /Existing specifications to incorporate:\n {2}• \.workflows\/[^/]+\/specification\/alpha\/specification\.md →\n {4}will be superseded\n/);
     handoff(sim, `/workflow-specification-entry epic ${wu} unified`);
     // The start records what it incorporates, and the session reads it back
@@ -3083,6 +3102,24 @@ describe('pipeline simulation', () => {
     assert.match(single('content'), /Continuing specification: Solo\n\nExisting: \.workflows\/solo\/specification\/solo\/specification\.md \[completed\]\n\nSources re-decided since extraction \(reconcile\):\n {2}• checkout \[stale\]\n/);
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
     handoff(sim, `/workflow-specification-entry epic ${wu} ${wu}`);
+  });
+
+  it('an epic named `unified` confirms its single-discussion path once, and its grouping of that name starts plainly from the epic menu', () => {
+    const wu = 'unified';
+    mappedEpic(sim, wu, ['checkout']);
+    sim.run(['topic', 'start', wu, 'discussion', 'checkout']);
+    sim.write(`.workflows/${wu}/discussion/checkout.md`, '# Discussion — checkout\n');
+    sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
+    assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^proceed_name: unified$/m);
+    sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`, '--single'], { expect: 'content' });
+    sim.run(['manifest', 'set', `${wu}.specification.${wu}`, 'status=proposed', 'sources.checkout.status=pending']);
+    sim.run(['commit', wu, '--state', '-m', `spec(${wu}): propose ${wu}`]);
+    // The route selection's confirm finds a plain start: the single path's
+    // one confirm stands alone, and the epic menu's own start row for the
+    // grouping hands off on its pick.
+    sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
+    handoff(sim, `/workflow-specification-entry epic ${wu} ${wu}`);
+    epicPick(sim, wu, 'start_specification', wu);
   });
 
   it('epic topic postpone: the topic leaves for the roadmap, the roadmap owns it, and the pull brings it back', () => {

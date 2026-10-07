@@ -7799,6 +7799,7 @@ describe('render spec-confirm-gate', () => {
     writeManifest(dir, 'pay', { phases: { discussion: { items: discussion }, specification: { items: specification } } });
   const render = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}` });
   const single = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, single: '1' });
+  const unify = (topic) => renderSurface(dir, 'spec-confirm-gate', { dotpath: `pay.specification.${topic}`, unify: '1' });
 
   it('a start that incorporates a started specification: the covered source marked, the supersession', () => {
     unit({
@@ -7849,13 +7850,13 @@ describe('render spec-confirm-gate', () => {
     assert.match(render('payments'), /Sources:\n {2}• phantom\n {2}• billing \(has individual spec — will be incorporated\)\n/);
   });
 
-  it('the unify always confirms, listing every started specification it incorporates — or none', () => {
+  it('--unify: the unify always confirms, listing every started specification it incorporates — or none', () => {
     unit({
       unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } },
       'auth-flow': { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' } } },
       billing: { status: 'in-progress', sources: { billing: { status: 'pending' } } },
     });
-    assert.strictEqual(render('unified'), [
+    assert.strictEqual(unify('unified'), [
       DISPLAY_HEAD,
       'Creating specification: Unified',
       '',
@@ -7875,9 +7876,14 @@ describe('render spec-confirm-gate', () => {
       ...ASK,
     ].join('\n'));
     unit({ unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' } } } });
-    const alone = render('unified');
+    const alone = unify('unified');
     assert.match(alone, /Creating specification: Unified\n\nSources:\n {2}• auth-flow\n\nOutput: /);
     assert.doesNotMatch(alone, /Existing specifications to incorporate/);
+  });
+
+  it('a grouping named `unified` started plainly is a plain start — empty', () => {
+    unit({ unified: { status: 'proposed', sources: { 'auth-flow': { status: 'pending' }, billing: { status: 'pending' } } } });
+    assert.strictEqual(render('unified'), '');
   });
 
   it('a started `unified` is a continue like any other — empty', () => {

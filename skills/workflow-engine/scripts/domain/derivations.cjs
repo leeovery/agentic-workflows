@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { fileExists, filesChecksum, countFiles } = require('./reads.cjs');
+const { fileExists, filesChecksum, countFiles, listFiles } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
@@ -992,10 +992,12 @@ function lastCompletedPhase(manifest, pipeline) {
 }
 
 /**
- * The sorted set of existing completed input files for one analysis kind —
- * completed research plus completed discussion files for `gap-analysis`. The
- * one collection both cache sides use: the read (computeAnalysisCacheStatus)
- * and the write (engine cache stamp) checksum the same list, so they can never
+ * The sorted set of existing input files for one analysis kind — completed
+ * research plus completed discussion files for `gap-analysis`, every
+ * discussion file for `grouping-analysis`. The one collection both cache
+ * sides checksum — the read (computeAnalysisCacheStatus) and the write
+ * (`engine cache stamp`; for `grouping-analysis`, the checksum the
+ * specification menu hands its analysis to stamp) — so they can never
  * drift. Returns absolute paths, sorted.
  */
 function collectAnalysisInputs(manifest, workflowsDir, kind) {
@@ -1009,13 +1011,17 @@ function collectAnalysisInputs(manifest, workflowsDir, kind) {
   if (kind === 'gap-analysis') {
     return [...completedFiles('research'), ...completedFiles('discussion')].sort();
   }
+  if (kind === 'grouping-analysis') {
+    return listFiles(path.join(wuDir, 'discussion'), '.md').map((f) => path.join(wuDir, 'discussion', f));
+  }
   return [];
 }
 
 // Per-kind config for computeAnalysisCacheStatus: where the cache object
-// lives, which field on it lists the cached file names, and the two kind-
-// specific reason strings. The body is otherwise one path for every kind —
-// the same read the write side checksums (collectAnalysisInputs).
+// lives, the field on it listing the cached file names where the stamp
+// records them, and the two kind-specific reason strings. The body is
+// otherwise one path for every kind — the same read the write side
+// checksums (collectAnalysisInputs).
 const ANALYSIS_KINDS = {
   'gap-analysis': {
     cacheOf: (manifest) => ((manifest.phases || {}).discovery || {}).gap_analysis_cache,
@@ -1023,32 +1029,39 @@ const ANALYSIS_KINDS = {
     reasonNoInputs: 'no completed research or discussion files',
     reasonStale: 'completed research/discussion has changed since gap analysis was generated',
   },
+  'grouping-analysis': {
+    cacheOf: (manifest) => ((manifest.phases || {}).discussion || {}).analysis_cache,
+    filesField: null,
+    reasonNoInputs: 'no discussion files',
+    reasonStale: 'discussions have changed since the grouping analysis was generated',
+  },
 };
 
 function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
-  if (!manifest || !manifest.name) return { status: 'absent', generated: null, files: [] };
+  if (!manifest || !manifest.name) return { status: 'absent', stamped: false, generated: null, files: [] };
 
   const cfg = ANALYSIS_KINDS[kind];
-  if (!cfg) return { status: 'absent', generated: null, files: [] };
+  if (!cfg) return { status: 'absent', stamped: false, generated: null, files: [] };
 
   const cache = cfg.cacheOf(manifest);
   const inputPaths = collectAnalysisInputs(manifest, workflowsDir, kind);
-  const cachedFiles = () => (cache && Array.isArray(cache[cfg.filesField])) ? cache[cfg.filesField] : [];
+  const cachedFiles = () => (cache && cfg.filesField && Array.isArray(cache[cfg.filesField])) ? cache[cfg.filesField] : [];
 
   if (!cache || !cache.checksum) {
     return inputPaths.length > 0
-      ? { status: 'stale', generated: null, files: [], reason: 'no cache exists' }
-      : { status: 'absent', generated: null, files: [] };
+      ? { status: 'stale', stamped: false, generated: null, files: [], reason: 'no cache exists' }
+      : { status: 'absent', stamped: false, generated: null, files: [] };
   }
 
   if (inputPaths.length === 0) {
-    return { status: 'absent', generated: cache.generated || null, files: cachedFiles(), reason: cfg.reasonNoInputs };
+    return { status: 'absent', stamped: true, generated: cache.generated || null, files: cachedFiles(), reason: cfg.reasonNoInputs };
   }
 
   const currentChecksum = filesChecksum(inputPaths);
   const status = cache.checksum === currentChecksum ? 'valid' : 'stale';
   return {
     status,
+    stamped: true,
     generated: cache.generated || null,
     files: cachedFiles(),
     reason: status === 'valid' ? 'checksums match' : cfg.reasonStale,

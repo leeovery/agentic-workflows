@@ -94,7 +94,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --stat
 
 ## C. Analyze Prompt
 
-Several completed discussions, none in progress, and no specification or proposed grouping yet. Render the snapshot:
+Several completed discussions, none in progress, and neither a proposed grouping nor a started specification. Render the snapshot:
 
 ```bash
 node .claude/skills/workflow-continue-epic/scripts/gateway.cjs spec-view {work_unit}
@@ -102,30 +102,10 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs spec-view {work_u
 
 Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 
-#### If `cache_status` is `stale`
-
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Analysis outdated. A previous grouping analysis exists but discussions have changed since it was created. Your discussions will be re-analyzed for natural groupings. Results are cached and reused until discussions change.
-```
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render analysis-proceed-gate {work_unit}
-```
-
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
-→ Proceed to **D. Handle the Prompt**.
-
-#### Otherwise
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> What happens next. Your discussions will be analyzed for natural groupings. Each grouping becomes a proposed specification you can start when ready. Results are cached and reused until discussions change.
+> @if(cache_status is stale) Analysis outdated — discussions have changed since the last grouping analysis. @endif Your discussions will be analyzed for natural groupings, each one a proposed specification you can start when ready. Results are cached and reused until discussions change.
 ```
 
 ```bash
@@ -240,7 +220,7 @@ Commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --state -m "spec({work_unit}): reconcile proposed groupings"
 ```
 
-Store `unified` as `{topic}`.
+Store `unified` as `{topic}`, and that this selection is the unify — the caller's confirm reads it.
 
 → Return to caller.
 

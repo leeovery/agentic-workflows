@@ -1,0 +1,45 @@
+{
+  "origin": "specification-grouping review — the confirm before a specification's entry decided a unify by the grouping's name, and the epic menu's route selection kept a row's route but not its topic; nothing walked the epic menu's own start row for a plain proposed grouping, whose confirm answers empty so the pick hands off as it stands",
+  "entry": "workflow-continue-epic",
+  "files": [
+    "skills/workflow-continue-epic/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-continue-epic/references/validate-selection.md",
+    "skills/workflow-shared/references/topic-discovery-dispatch.md",
+    "skills/workflow-continue-epic/references/banner-and-completion.md",
+    "skills/workflow-continue-epic/references/epic-display-and-menu.md",
+    "skills/workflow-shared/references/handing-off.md"
+  ],
+  "answers": [
+    "2 — start specification for Search Signals"
+  ],
+  "invariants": {
+    "calls_include": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render epic-soft-gate search-relevance --action start_specification --topic search-signals",
+      "render spec-confirm-gate search-relevance.specification.search-signals",
+      "handoff /workflow-specification-entry epic search-relevance search-signals"
+    ],
+    "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
+      "render epic-soft-gate search-relevance --action start_specification --topic search-signals",
+      "render spec-confirm-gate search-relevance.specification.search-signals",
+      "handoff /workflow-specification-entry epic search-relevance search-signals"
+    ],
+    "calls_exclude": [
+      "--unify",
+      "--single",
+      "spec-scenario",
+      "spec-view",
+      "topic start",
+      "manifest set",
+      "manifest apply",
+      "engine.cjs commit"
+    ]
+  }
+}
