@@ -1,6 +1,6 @@
 # Skill Authoring Conventions
 
-This file defines the mandatory display, structural, prose, state-ownership, and file-layout conventions for all skill files in this project (entry-point and processing). Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
+This file defines the mandatory display, structural, prose, state-ownership, and file-layout conventions for all skill files in this project. Read it before authoring or editing any skill file. CLAUDE.md references this file rather than inlining the rules to keep the per-session context small.
 
 ## Prose Economy (MANDATORY)
 
@@ -469,7 +469,7 @@ Workflow state is engine-owned, always. Durable state (gate decisions, approvals
 
 ## Structural Conventions (MANDATORY)
 
-These are hard rules, not suggestions. All skill files (entry-point and processing) MUST follow these conventions exactly.
+These are hard rules, not suggestions. All skill files MUST follow these conventions exactly.
 
 ### Stop Gates
 
@@ -734,7 +734,7 @@ What's on your mind?
 
 ## Skill File Structure (MANDATORY)
 
-All skills (entry-point and processing) use a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives.
+Every skill uses a backbone + reference file pattern. The backbone (SKILL.md) is always loaded and reads like a table of contents. Reference files contain step detail, loaded on demand via Load directives.
 
 ### Backbone Structure
 
@@ -744,7 +744,7 @@ One-liner purpose statement
 Workflow context table
 "Stay in your lane" instruction
 ---
-## Instructions — Load directive → framework.md
+## Instructions — Load directive → framework.md (a skill a conversation opens on — see The Framework Load)
 ---
 Step 0: Run Migrations (always inline)
 ---
