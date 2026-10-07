@@ -35,41 +35,7 @@ Resolve topic: topic = `$2`, or if not provided and work_type is not `epic`, top
 
 Store work_unit for the handoff.
 
-Resolve filename:
-
-#### If `topic` resolved
-
-`resolved_filename = {topic}.md`
-
-→ Proceed to **Step 2**.
-
-#### If no `topic`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-What topic would you like to research?
-```
-
-**STOP.** Wait for user response.
-
-Kebab-case the response, store as `{topic}`. `resolved_filename = {topic}.md`.
-
-A name already on the map is not a new topic — the menu row is the way in. Fetch the gate:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render direct-entry-gate {work_unit}.research.{topic}
-```
-
-**If a `DISPLAY: entry blocker` section is returned:**
-
-Emit both sections verbatim per their markers.
-
-**STOP.** Do not proceed — terminal condition.
-
-**If the output is empty:**
-
-Silently derive `direct_entry_summary` (one-line) and `direct_entry_description` (one or two paragraphs) from the user's response. Do not render anything — these are local variables passed to `ensure-discovery-item` in Step 2. The derivation is part of the same Claude turn that kebab-cases the response; no separate STOP gate.
+Resolve filename: `resolved_filename = {topic}.md`.
 
 → Proceed to **Step 2**.
 
@@ -77,7 +43,7 @@ Silently derive `direct_entry_summary` (one-line) and `direct_entry_description`
 
 ## Step 2: Check Phase Entry
 
-Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`. On the direct-entry path (no topic supplied as `$2`), also pass summary = `{direct_entry_summary}`, description = `{direct_entry_description}`. When the topic was provided by the caller, omit both — the caller didn't derive them.
+Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `research`.
 
 Read the research phase status:
 
@@ -125,7 +91,7 @@ Single-phase work (feature, cross-cutting) carries its context in the discovery 
 
 #### If `work_type` is `epic`
 
-The map item's `source` says whether the topic was shaped on the discovery map or started fresh from this entry. Read it, storing the result as `map_source`:
+The map item's `source` says whether the topic was shaped on the discovery map or started fresh from the epic menu. Read it, storing the result as `map_source`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.discovery.{topic} source

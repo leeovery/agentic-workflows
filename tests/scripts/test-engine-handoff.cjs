@@ -24,8 +24,8 @@ const DATA_MARKER = '=== DATA (reason from this — never display or parse the s
 const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
 const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ===';
 
-// The phases an epic enters with no topic — the entry picks or starts one.
-const EPIC_TOPICLESS = ['research', 'discussion', 'specification'];
+// The phases an epic enters with no topic — the entry picks one.
+const EPIC_TOPICLESS = ['specification'];
 
 // Every phase an epic's conclusion can name: its discovery, then its pipeline.
 const EPIC_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
@@ -139,7 +139,7 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
-  it('an epic\'s research, discussion and specification take the epic alone — the entry picks or starts the topic', () => {
+  it('an epic\'s specification takes the epic alone — the entry picks the topic', () => {
     for (const phase of EPIC_TOPICLESS) {
       const name = phase.charAt(0).toUpperCase() + phase.slice(1);
       assert.strictEqual(payloadOf(carried(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'])).line, `→ ${name} · fumi`);
@@ -315,10 +315,10 @@ describe('engine handoff — refusals', () => {
     }
   });
 
-  it('an epic\'s planning, implementation, review and experiment refuse the epic alone — they enter at a topic', () => {
+  it('every other epic phase refuses the epic alone — research and discussion included, whose topic the epic menu names', () => {
     for (const phase of WORK_TYPE_PIPELINES.epic.filter((p) => !EPIC_TOPICLESS.includes(p))) {
       refused(dir, [`workflow-${phase}-entry`, 'epic', 'fumi'],
-        new RegExp(`^an epic enters ${phase} at a topic — only research\\|discussion\\|specification take the epic alone$`));
+        new RegExp(`^an epic enters ${phase} at a topic — only specification takes the epic alone$`));
     }
   });
 

@@ -1,5 +1,5 @@
 {
-  "origin": "the epic menu's d door took a free-typed name that already sat on the map and started a discussion on it, beneath research that had not run — the map's next action never had a vote at that door; the door now refuses the name and puts the menu back, where the topic's own row is the way in",
+  "origin": "the epic menu's d door asked for a new topic's name with no way back — a mis-pressed d or a change of mind had nowhere to go but a name; the prompt now offers back, which puts the menu back with nothing written",
   "entry": "workflow-continue-epic",
   "files": [
     "skills/workflow-continue-epic/SKILL.md",
@@ -17,18 +17,15 @@
   ],
   "answers": [
     "d — start a discussion on a new topic",
-    "synonym handling"
+    "back"
   ],
   "invariants": {
-    "calls_include": [
-      "render direct-entry-gate search-relevance.discussion.synonym-handling"
-    ],
     "calls_in_order": [
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
-      "render direct-entry-gate search-relevance.discussion.synonym-handling",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
     ],
     "calls_exclude": [
+      "render direct-entry-gate",
       "manifest get search-relevance.discovery",
       "discovery-map add",
       "discovery-map sequence",

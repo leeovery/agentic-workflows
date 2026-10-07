@@ -4531,14 +4531,28 @@ function blocker(fact, guidance) {
 // A name already on the map is not a new topic: the menu row is the way in,
 // so the door refuses, naming where the topic stands — outstanding research
 // first, at either door, since its row is the topic's own; a closed topic
-// names its closure, which is what explains its empty menu. Empty when the
+// names its closure, which is what explains its empty menu. A cancelled,
+// postponed, decided or dead-ended topic carries no row of its own, so it
+// names the row that brings it back — a postponed one only while its roadmap
+// item still waits, since another epic's pull leaves it no way back. Red like
+// blocker(), but never terminal:
+// the menu the door was picked from renders again beneath it. Empty when the
 // name is new, or the work unit carries no map.
 // ---------------------------------------------------------------------------
+
+/** @type {Record<string, string>} */
+const DIRECT_ENTRY_WAY_BACK = {
+  cancelled: 'Reactivate it from the menu (`e/reactivate`) — a cancelled topic carries no row.',
+  postponed: 'Pull it forward from the menu (`f/forward`) — a postponed topic carries no row.',
+  decided: 'Resume it from the menu (`c/completed`) — a decided topic carries no row.',
+  handled: 'Reopen it in discovery (`i/discovery`) — a dead-ended topic carries no row.',
+};
+const DIRECT_ENTRY_POSTPONED_TAKEN = 'Its roadmap item has gone to another epic — the topic stays postponed here, with no way back.';
 
 /**
  * @param {string} cwd
  * @param {{dotpath: string}} args
- * @returns {string} blocker sections, or '' when the name is free to start
+ * @returns {string} the refusal's sections, or '' when the name is free to start
  */
 function directEntryGate(cwd, { dotpath }) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'direct-entry-gate');
@@ -4551,12 +4565,16 @@ function directEntryGate(cwd, { dotpath }) {
   const { lifecycle, research_state } = computeTopicLifecycle(manifest, topic);
   const research = CLOSED_LIFECYCLES.includes(lifecycle) ? null : outstandingResearch(manifest, topic);
   const stands = research ? outstandingResearchPhrase(research) : lifecyclePhrase(lifecycle, research_state, item.routing);
-  const guidance = lifecycle === 'cancelled'
-    ? 'Reactivate it from the epic menu (e/reactivate) — a cancelled topic carries no menu row.'
-    : lifecycle === 'postponed'
-      ? 'Pull it forward from the epic menu (f/forward) — a postponed topic carries no menu row.'
-      : `Return to the epic menu — ${research ? 'its research row is the way in' : 'its row for the topic names the next step'}.`;
-  return blocker(`"${titlecase(topic)}" is already on the map — ${stands}`, guidance);
+  const roadmapItem = lifecycle === 'postponed' ? postponedItem(loadProjectManifest(cwd), manifest.name, topic) : null;
+  const guidance = research
+    ? 'Its research row is the way in.'
+    : lifecycle === 'postponed' && !(roadmapItem && roadmapItem.waiting)
+      ? DIRECT_ENTRY_POSTPONED_TAKEN
+      : (DIRECT_ENTRY_WAY_BACK[lifecycle] ?? 'Its row on the menu names the next step.');
+  return [
+    section('DISPLAY: direct entry gate', emitAs('properties'), `⚑ "${titlecase(topic)}" is already on the map — ${stands}`),
+    section('DISPLAY: direct entry guidance', CONTINUE_MARKDOWN_INSTRUCTION, `> ${guidance}`),
+  ].join('\n');
 }
 
 /**

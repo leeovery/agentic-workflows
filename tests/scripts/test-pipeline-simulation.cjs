@@ -1163,7 +1163,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'],
       /discussion can't start on "alpha" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
     assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
-      /research is parked on it \(triage waiting\)[\s\S]*its research row is the way in/);
+      /research is parked on it \(triage waiting\)[\s\S]*Its research row is the way in/);
     assert.match(sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
       /Entry blocked — this discussion awaits research on "Alpha" \(parked — not yet started\)[\s\S]*Return to the epic menu — its research row is the way in\./);
     sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /rerouted concerns are parked in its research triage/);
@@ -1248,6 +1248,45 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
     assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', 'alpha']).status, 'in-progress');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
+  });
+
+  it('epic: the d and r doors name the new topic and land its map row before the handoff carries it — a name on the map puts the menu back', () => {
+    const wu = 'lumen';
+    mappedEpic(sim, wu, ['alpha']);
+    handoff(sim, `/workflow-continue-epic ${wu}`);
+    arrive(sim, wu);
+
+    // The doors are the menu's own flows: rows with no route, never handed to
+    // the soft gate, and the handoff refuses an epic's research or discussion
+    // without a topic.
+    const doors = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+      .filter((k) => k.action === 'new_discussion' || k.action === 'new_research');
+    assert.deepStrictEqual(doors.map((k) => [k.key, k.route]), [['d', null], ['r', null]]);
+    for (const [phase, action] of [['discussion', 'new_discussion'], ['research', 'new_research']]) {
+      sim.refuses(['render', 'epic-soft-gate', wu, '--action', action], new RegExp(`unknown --action "${action}"`));
+      sim.refuses(['handoff', `/workflow-${phase}-entry`, 'epic', wu], new RegExp(`^an epic enters ${phase} at a topic`));
+    }
+
+    // A name already on the map is refused before anything lands.
+    const before = JSON.stringify(sim.manifest(wu));
+    assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }), /Its row on the menu names the next step\./);
+    assert.strictEqual(JSON.stringify(sim.manifest(wu)), before, 'a refused name writes nothing');
+
+    // A new name passes, lands on the map started fresh, and hands off with the
+    // topic — the route its own start row builds. The entry's ensure finds the
+    // row, and its source sends the topic to the interview.
+    for (const [phase, topic] of [['discussion', 'omega'], ['research', 'zeta']]) {
+      sim.render(['direct-entry-gate', `${wu}.${phase}.${topic}`], { expect: 'empty' });
+      assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`]), '');
+      sim.run(['discovery-map', 'add', wu, topic, phase, '--source', 'direct-start',
+        '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--force-dismissed']);
+      const route = `/workflow-${phase}-entry epic ${wu} ${topic}`;
+      assert.strictEqual(handoff(sim, route).args, `epic ${wu} ${topic}`);
+      assert.strictEqual(epicPick(sim, wu, `start_${phase}`, topic).text, `Invoke \`${route}\`.`);
+      assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`, 'source']), 'direct-start');
+      label(sim, wu, phase, topic);
+      sim.run(['topic', 'start', wu, phase, topic]);
+    }
   });
 
   it('feature: review skipped at the next-phase gate', () => {
@@ -1687,10 +1726,6 @@ describe('pipeline simulation', () => {
     // work unit alone on arrival.
     handoff(sim, `/workflow-continue-epic ${wu}`);
     arrive(sim, wu);
-    // Its d and r doors hand off with the epic alone: the entry asks for the
-    // topic.
-    assert.strictEqual(epicPick(sim, wu, 'new_discussion').args, `epic ${wu}`);
-    assert.strictEqual(epicPick(sim, wu, 'new_research').args, `epic ${wu}`);
 
     // Alpha: research then discussion; regenerated-brief reconcile flag rides.
     // Each menu pick into a topic's phase hands off to that phase's entry.
@@ -1739,9 +1774,8 @@ describe('pipeline simulation', () => {
     assert.match(gate, /↳ Needs a machine cycle/);
     assert.match(gate, /d\/dead-end/);
     // Research in flight is no concern of a discussion entry — the soft gate
-    // is empty for every discussion action while alpha's research runs.
+    // is empty for a discussion start while alpha's research runs.
     sim.render(['epic-soft-gate', wu, '--action', 'start_discussion', '--topic', 'beta'], { expect: 'empty' });
-    sim.render(['epic-soft-gate', wu, '--action', 'new_discussion'], { expect: 'empty' });
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);

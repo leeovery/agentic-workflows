@@ -1,4 +1,4 @@
-# Fixture — discussion-direct-entry-refuses-a-mapped-topic
+# Fixture — epic-menu-name-prompt-backs-out
 
 The `search-relevance` epic stands harvested and sequenced: one closed
 discovery session whose log records the shaping, and a discovery map

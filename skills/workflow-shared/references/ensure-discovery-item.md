@@ -1,6 +1,6 @@
 # Ensure Discovery Item
 
-*Shared reference. Loaded by `workflow-research-entry`, `workflow-discussion-entry`, and any flow that needs to auto-create a direct-entry discovery item.*
+*Shared reference. Loaded by the epic menu's `d`/`r` doors (`workflow-continue-epic`), `workflow-research-entry`, and `workflow-discussion-entry`.*
 
 ---
 
@@ -63,6 +63,6 @@ Assemble the call as follows:
 
 Single-quote any value containing characters zsh would interpret — backticks, `$`, `[]`, `{}`, `~`.
 
-No commit here — the manifest writes are folded into the next commit produced by the calling phase's process.
+No commit here — the manifest writes are folded into the next commit the topic's phase produces.
 
 → Return to caller.

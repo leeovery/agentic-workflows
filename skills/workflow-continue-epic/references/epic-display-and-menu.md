@@ -87,6 +87,18 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 
 → Proceed to **I. Pull Forward Topic**.
 
+#### If `action` is `new_discussion`
+
+→ Load **[new-topic.md](new-topic.md)** with phase = `discussion`.
+
+→ On return, proceed to **C. Route Selection**.
+
+#### If `action` is `new_research`
+
+→ Load **[new-topic.md](new-topic.md)** with phase = `research`.
+
+→ On return, proceed to **C. Route Selection**.
+
 #### Otherwise
 
 A `(code session: …)` marker needs no gate here — implementation and review are gated at their entry skill, which reads the whole checkout's code slot; the marked row routes like any other.
@@ -147,7 +159,7 @@ Emit the section verbatim per its marker.
 
 ## C. Route Selection
 
-Store the selected entry's `action`, `topic`, and `route`. The route is the exact skill invocation for this selection (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). Entries with route `(internal)` never reach this section — their flows resolve in **B. Handle Selection**.
+Store the exact skill invocation the selection hands off along as `route` — for a new topic, `/workflow-{phase}-entry epic {work_unit} {topic}`, with the phase it was started for and the name it was given; otherwise the selected entry's own `route` (e.g. `/workflow-discussion-entry epic {work_unit} {topic}`). The other entries with route `(internal)` resolve their flows in **B. Handle Selection** and never reach this section.
 
 → Return to caller.
 

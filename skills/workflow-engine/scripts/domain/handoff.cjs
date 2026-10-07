@@ -29,8 +29,8 @@ const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 // Every phase some work type's pipeline holds has an entry skill of its name.
 const ENTRY_PHASES = [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())];
 
-// The phases an epic enters with no topic: the entry picks or starts one.
-const EPIC_TOPICLESS_PHASES = ['research', 'discussion', 'specification'];
+// The phases an epic enters with no topic: the entry picks one.
+const EPIC_TOPICLESS_PHASES = ['specification'];
 
 /** The skill a phase is entered through. @param {string} phase */
 function entrySkill(phase) {
@@ -97,7 +97,7 @@ function at(place, name = null) {
 /**
  * A phase entry skill: the work type it serves, a work unit of that type, and
  * the topic where the caller names one — a legal name, which need not exist.
- * An epic names its topic, but where the entry picks or starts one.
+ * An epic names its topic, but where the entry picks one.
  * @param {string} phase @returns {Target}
  */
 function entryTarget(phase) {
@@ -108,7 +108,7 @@ function entryTarget(phase) {
     check: (cwd, [type, unit, topic]) => {
       assertOneOf('the work type', type, served);
       if (type === 'epic' && topic === undefined && !EPIC_TOPICLESS_PHASES.includes(phase)) {
-        throw new Error(`an epic enters ${phase} at a topic — only ${EPIC_TOPICLESS_PHASES.join('|')} take the epic alone`);
+        throw new Error(`an epic enters ${phase} at a topic — only ${EPIC_TOPICLESS_PHASES.join('|')} takes the epic alone`);
       }
       assertWorkUnit(cwd, unit, type);
       if (topic !== undefined) assertLegalName('topic', topic);
