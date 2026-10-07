@@ -158,6 +158,11 @@ const TARGETS = {
   ...Object.fromEntries(PIPELINE_PHASES.map((phase) => [phaseSkill(phase), phaseTarget(phase)])),
 };
 
+const HANDOFF_TARGETS = Object.keys(TARGETS);
+
+// A conversation opens on workflow-start, the user's way in, or wherever a handoff lands the work.
+const OPENING_SKILLS = ['workflow-start', ...HANDOFF_TARGETS];
+
 /**
  * The handoff into `skill` with `args`, checked against the table and
  * composed — the skill named bare or as its slash command, as a menu's
@@ -170,7 +175,7 @@ const TARGETS = {
 function resolveHandoff(cwd, named, args) {
   const skill = named.startsWith('/') ? named.slice(1) : named;
   if (!Object.hasOwn(TARGETS, skill)) {
-    throw new Error(`"${skill}" is not a handoff target — a handoff moves into work: ${Object.keys(TARGETS).join(', ')}`);
+    throw new Error(`"${skill}" is not a handoff target — a handoff moves into work: ${HANDOFF_TARGETS.join(', ')}`);
   }
   const target = TARGETS[skill];
   if (!target.counts.includes(args.length)) {
@@ -216,4 +221,4 @@ function handoffSections(handoff) {
   ].join('');
 }
 
-module.exports = { resolveHandoff, handoffSections, phaseSkill, HANDOFF_TARGETS: Object.keys(TARGETS) };
+module.exports = { resolveHandoff, handoffSections, phaseSkill, HANDOFF_TARGETS, OPENING_SKILLS };

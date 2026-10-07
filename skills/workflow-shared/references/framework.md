@@ -1,10 +1,10 @@
 # Framework
 
-*Shared reference for all workflow skills. Loaded at the head of every skill, and re-loaded on context refresh.*
+*Shared reference for all workflow skills. Loaded at the head of the skill a conversation opens on, and re-loaded on context refresh.*
 
 ---
 
-Read each file below every time this reference is loaded. Never skip one on the belief it is already in context — these are short, re-reading costs almost nothing, and a summary that kept their conclusions and dropped their text reads exactly like having them. Attempt each read; where the tool answers that a file is unchanged since your last read, that earlier read is current and still in context — follow it from there. The refusal is confirmation, not a skipped read.
+The framework is loaded once per conversation, by the skill the conversation opens on, and each load reads every file below. A skill opened later in the same conversation carries on from that load; after a context refresh, the skill's recovery protocol re-loads it.
 
 → Load **[instructions.md](instructions.md)** and follow its instructions as written.
 
