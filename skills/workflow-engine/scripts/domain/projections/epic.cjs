@@ -117,7 +117,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.waits);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */

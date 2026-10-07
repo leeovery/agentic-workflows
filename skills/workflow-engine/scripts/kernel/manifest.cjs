@@ -117,6 +117,16 @@ function withProjectLock(cwd, fn) {
 // the io module's single implementation, re-exported for the domain ring.
 const { ensureContainer } = io;
 
+/**
+ * A manifest value copied whole, detached from the manifest it came from —
+ * how a phase item travels into another manifest: every field is the topic's
+ * own state, and a field list is how state gets dropped.
+ * @template T @param {T} value @returns {T}
+ */
+function copyWhole(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 module.exports = {
   loadWorkUnitManifest,
   saveWorkUnitManifest,
@@ -126,4 +136,5 @@ module.exports = {
   writeProjectManifestAtomic,
   withProjectLock,
   ensureContainer,
+  copyWhole,
 };

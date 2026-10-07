@@ -103,6 +103,36 @@ describe('epic projections: dashboard (map branch)', () => {
     '',
   ].join('\n');
 
+  it('a topic whose discussion left with its specification reads decided, naming the unit it moved to', () => {
+    const detail = detailFor(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: {
+          fees: { routing: 'discussion', source: 'discovery', order: 1, summary: 'Fee rules' },
+          refunds: { routing: 'discussion', source: 'discovery', order: 2, summary: 'Refund rules' },
+        } },
+        discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
+        specification: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc', sources: { fees: { status: 'incorporated' } } } } },
+      },
+    });
+    const out = epicDashboard('pay', detail);
+    assert.match(out, /RESEARCH & DISCUSSION \(2 topics · all decided\)/, out);
+    assert.match(out, /✓ Fees\n  │     Fee rules\n  │     ↳ Decided · promoted to fees-cc\n/, out);
+    assert.match(out, /✓ Refunds\n        Refund rules\n        ↳ Decided\n/, out);
+
+    // Past specification, moved elsewhere: its cancel and postpone rows stand
+    // locked, naming the unit — never "nothing has started".
+    assert.deepStrictEqual(detail.cancellable.find((u) => u.name === 'fees'), {
+      name: 'fees', stage: 'discovery', state: 'decided · promoted to fees-cc',
+      locked: 'locked by specification "Fees" (promoted to "fees-cc") — promotion is terminal',
+    });
+    assert.match(detail.postponable.find((u) => u.name === 'fees').locked, /the specification "fees" \(promoted to "fees-cc"\) sources its discussion/);
+    const cancelView = epicCancelMenu(detail);
+    assert.ok(!cancelView.keys.some((k) => k.topic === 'fees'), 'a locked row takes no key');
+    assert.match(cancelView.display.replace(/\s+/g, ' '), /Fees \[decided · promoted to fees-cc\] · locked by specification "Fees" \(promoted to "fees-cc"\) — promotion is terminal/, cancelView.display);
+    assert.ok(!epicPostponeMenu(detail).keys.some((k) => k.topic === 'fees'));
+  });
+
   it('a postponed topic drops out of the tree and its counts, named with its horizon on one line beneath', () => {
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
       work_units: {},
@@ -397,6 +427,21 @@ describe('epic projections: dashboard (no-map and brand-new branches)', () => {
       '  └─ Blocked by auth',
       '',
     ].join('\n')));
+  });
+
+  it('a promoted discussion shows promoted, as its promoted specification does — and is no topic to resume', () => {
+    const d = detailFor(dir, 'pay', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
+        specification: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc', sources: { fees: { status: 'incorporated' } } } } },
+      },
+    });
+    const out = epicDashboard('pay', d);
+    assert.match(out, /DISCUSSION \(1 completed, 1 promoted\)\n  ├─ Fees +\[promoted\]\n  └─ Refunds +\[completed\]/, out);
+    assert.match(out, /SPECIFICATION \(1 promoted\)\n  └─ Fees +\[promoted\]/, out);
+    assert.deepStrictEqual(d.completed.map((c) => `${c.phase}/${c.name}`), ['discussion/refunds']);
+    assert.deepStrictEqual(d.unaccounted_discussions, ['refunds']);
   });
 
   it('renders the brand-new-epic branch with the discovery callout', () => {

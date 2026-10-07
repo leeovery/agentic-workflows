@@ -38,7 +38,7 @@ Four routes reach it, all the same act: the postpone row on the epic's dashboard
 
 ## Promoting a spec to a standing document
 
-Occasionally a specification you were writing for one topic turns out to describe a project-wide pattern rather than a single unit of work — a convention the rest of the codebase should follow. Such a spec can be **promoted** into its own cross-cutting concern, where it becomes a standing document of record instead of a step toward one build. This is the same recognition [cross-cutting work](work-types.md) is built around, applied after the fact when a piece of work reveals itself to be broader than it looked.
+Occasionally a specification you were writing for one topic turns out to describe a project-wide pattern rather than a single unit of work — a convention the rest of the codebase should follow. Such a spec can be **promoted** into its own cross-cutting concern, where it becomes a standing document of record instead of a step toward one build. This is the same recognition [cross-cutting work](work-types.md) is built around, applied after the fact when a piece of work reveals itself to be broader than it looked. The discussions the spec was built from go with it. The epic records them as having left — its specification grouping no longer counts them, and its map shows each topic decided, naming the concern it moved to — and the concern keeps them as the spec's sources: reactivate it and each discussion is there to revisit by name, picking up where it left off, and reopening one marks the spec to reconcile, as it would inside the epic.
 
 ## Revisiting finished work
 

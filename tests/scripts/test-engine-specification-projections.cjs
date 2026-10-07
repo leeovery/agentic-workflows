@@ -271,6 +271,39 @@ describe('specification detail: scenario derivation', () => {
     assert.strictEqual(single.proceed_name, 'v2');
   });
 
+  it('a promoted discussion left with its specification — never counted, never grouped, never the lone discussion', () => {
+    createManifest(dir, 'v3', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: {
+          logging: { status: 'promoted', promoted_to: 'logging-cc' },
+          tracing: { status: 'promoted', promoted_to: 'logging-cc' },
+          billing: { status: 'completed' },
+        } },
+        specification: { items: {
+          logging: { status: 'promoted', promoted_to: 'logging-cc', sources: { logging: { status: 'incorporated' }, tracing: { status: 'incorporated' } } },
+        } },
+      },
+    });
+    const detail = detailOf(dir, 'v3');
+    assert.strictEqual(detail.counts.discussion_count, 1);
+    assert.deepStrictEqual(detail.completed_discussions, ['billing']);
+    assert.strictEqual(detail.scenario, 'single');
+    assert.deepStrictEqual(detail.single, { variant: 'no-spec', proceed_name: 'v3', discussion: 'billing', spec: null });
+
+    // An epic whose every discussion left has none to specify.
+    createManifest(dir, 'v4', {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { logging: { status: 'promoted', promoted_to: 'logging-cc' } } },
+        specification: { items: {
+          logging: { status: 'promoted', promoted_to: 'logging-cc', sources: { logging: { status: 'incorporated' } } },
+        } },
+      },
+    });
+    assert.strictEqual(detailOf(dir, 'v4').scenario, 'blocked-no-discussions');
+  });
+
   it('sources with a deleted discussion item are skipped from rows', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',

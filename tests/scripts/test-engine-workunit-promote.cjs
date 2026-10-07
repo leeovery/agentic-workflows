@@ -30,8 +30,12 @@ function epicManifest(overrides = {}) {
     phases: {
       discussion: {
         items: {
-          'cache-invalidation': { status: 'completed' },
-          'ttl-policy': { status: 'completed' },
+          'cache-invalidation': {
+            status: 'completed',
+            subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
+            dismissed_grounds: ['a CDN purge is out of scope'],
+          },
+          'ttl-policy': { status: 'completed', reconcile_needed: 'research' },
           'fee-model': { status: 'completed' },
         },
       },
@@ -192,8 +196,11 @@ describe('engine workunit promote — happy path', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/specification/old-spec/specification.md'), 'utf8'), '# Old Spec\n');
 
     // The cc manifest is the canonical document, already completed, with
-    // origin provenance; moved discussions register completed; topic = work
-    // unit name for the spec item.
+    // origin provenance; each moved discussion's item travels whole under its
+    // own name — its Discussion Map and dismissed grounds with it, never its
+    // reconcile flag, whose upstream stays in the epic — reading completed,
+    // and stays the spec item's source at its row's status; topic = work unit
+    // name for the spec item.
     assert.deepStrictEqual(readManifest(fix, 'caching'), {
       name: 'caching',
       work_type: 'cross-cutting',
@@ -206,17 +213,28 @@ describe('engine workunit promote — happy path', () => {
       phases: {
         discussion: {
           items: {
-            'cache-invalidation': { status: 'completed' },
+            'cache-invalidation': {
+              status: 'completed',
+              subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
+              dismissed_grounds: ['a CDN purge is out of scope'],
+            },
             'ttl-policy': { status: 'completed' },
           },
         },
-        specification: { items: { caching: { status: 'completed', date: today() } } },
+        specification: { items: { caching: {
+          status: 'completed',
+          date: today(),
+          sources: {
+            'cache-invalidation': { status: 'incorporated' },
+            'ttl-policy': { status: 'incorporated' },
+          },
+        } } },
       },
     });
 
     // Epic manifest: the spec item carries promoted + promoted_to with its
-    // other fields preserved; discussion items are untouched (the files
-    // moved — git history is provenance).
+    // other fields preserved, and so does each moved discussion's item — kept
+    // whole beside the unit's copy; the unmoved discussion is untouched.
     const m = readManifest(fix, 'payments');
     assert.deepStrictEqual(m.phases.specification.items['caching-strategy'], {
       status: 'promoted',
@@ -229,7 +247,16 @@ describe('engine workunit promote — happy path', () => {
       promoted_to: 'caching',
     });
     assert.deepStrictEqual(m.phases.specification.items['old-spec'], { status: 'superseded', superseded_by: 'caching-strategy' });
-    assert.deepStrictEqual(Object.keys(m.phases.discussion.items).sort(), ['cache-invalidation', 'fee-model', 'ttl-policy']);
+    assert.deepStrictEqual(m.phases.discussion.items, {
+      'cache-invalidation': {
+        status: 'promoted',
+        subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
+        dismissed_grounds: ['a CDN purge is out of scope'],
+        promoted_to: 'caching',
+      },
+      'ttl-policy': { status: 'promoted', reconcile_needed: 'research', promoted_to: 'caching' },
+      'fee-model': { status: 'completed' },
+    });
 
     // Both registrations present.
     const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
@@ -290,6 +317,16 @@ describe('engine workunit promote — happy path', () => {
     const res = engine(fix, PROMOTE);
     assert.deepStrictEqual(res.discussions, [{ name: 'cache-invalidation', path: 'discussion/cache-invalidation.md' }]);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
+    // Only what moved is recorded as moved: the cc spec's sources are the
+    // moved discussion alone, and the epic's other discussions read as before.
+    assert.deepStrictEqual(readManifest(fix, 'caching').phases.specification.items.caching.sources,
+      { 'cache-invalidation': { status: 'incorporated' } });
+    assert.deepStrictEqual(Object.fromEntries(Object.entries(readManifest(fix, 'payments').phases.discussion.items)
+      .map(([name, item]) => [name, item.status])), {
+      'cache-invalidation': 'promoted',
+      'ttl-policy': 'completed',
+      'fee-model': 'completed',
+    });
   });
 
   it('KB failures are warnings, never blocks — the promotion still lands and commits', () => {

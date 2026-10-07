@@ -20,7 +20,7 @@ const {
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
-  specIsStarted, specGroupsSources, lockingSpecs, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
   postponePlan, postponeTarget, postponeClashPhrase, postponedItem,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
@@ -248,6 +248,13 @@ describe('reads + derivations', () => {
       assert.strictEqual(phaseStatus({
         phases: { discussion: { items: { a: { status: 'completed' }, b: { status: 'in-progress' } } } },
       }, 'discussion'), 'in-progress');
+    });
+
+    it('a promoted discussion drops out of the aggregate — it continues in its cross-cutting unit', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { discussion: { items: { a: { status: 'promoted', promoted_to: 'cc' }, b: { status: 'in-progress' } } } },
+      }, 'discussion'), 'in-progress');
+      assert.strictEqual(phaseStatus({ phases: { discussion: { items: { a: { status: 'promoted', promoted_to: 'cc' } } } } }, 'discussion'), null);
     });
 
     it('aggregates multiple items — no statuses returns null', () => {
@@ -1080,6 +1087,17 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(lockingSpecs(m, 'timing'), ['unified']);
     });
 
+    it('unitLocks: a started specification and a promoted one each lock the topic — the promoted one naming its unit', () => {
+      const m = unitManifest();
+      m.phases.specification.items.done.promoted_to = 'auth-cc';
+      assert.deepStrictEqual(unitLocks(m, 'auth'), [{ name: 'done', promoted_to: 'auth-cc' }], 'promoted, never proposed or status-less');
+      assert.deepStrictEqual(unitLocks(m, 'timing'), [{ name: 'unified', promoted_to: null }]);
+      assert.deepStrictEqual(lockingSpecs(m, 'auth'), [], 'a promoted specification is never an individual one');
+      assert.strictEqual(unitLockNames(unitLocks(m, 'auth'), (n) => n.toUpperCase()), '"DONE" (promoted to "auth-cc")');
+      const [lock] = postponePlan(m, 'auth', null).locks.filter((l) => /past specification/.test(l.reason));
+      assert.strictEqual(lock.reason, 'postponing "auth" is refused while the specification "done" (promoted to "auth-cc") sources its discussion — a topic past specification is past "not yet"');
+    });
+
     it('cancelPlan over a discovery unit: the live items, every open record in register order, the proposed groupings', () => {
       const plan = cancelPlan(unitManifest(), 'discovery', 'auth');
       assert.deepStrictEqual(plan.items.map(({ phase, item }) => [phase, item.status]), [['research', 'completed'], ['discussion', 'in-progress']]);
@@ -1312,6 +1330,14 @@ describe('reads + derivations', () => {
       const m = loadWithPhases('auth', { discussion: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');
       assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null, discussion_state: 'completed', triage_parked: false, reconcile_pending: false });
+    });
+
+    it('returns decided when the discussion was promoted with its specification — concluded and moved on', () => {
+      const m = loadWithPhases('auth', { research: 'completed', discussion: 'promoted' });
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: 'completed', discussion_state: 'promoted', triage_parked: false, reconcile_pending: false });
+      assert.strictEqual(computeNextAction('discussion', 'decided', 'completed'), null, 'nothing left to start on it');
+      const reopened = loadWithPhases('auth', { research: 'in-progress', discussion: 'promoted' });
+      assert.strictEqual(computeTopicLifecycle(reopened, 'auth').lifecycle, 'researching', 'research reopened beneath it reads as beneath a concluded one');
     });
 
     it('the map marker reads cancelled first — over live items, and over a dead-ended row', () => {
@@ -1793,6 +1819,18 @@ describe('reads + derivations', () => {
         { kind: 'research', status: 'in-progress' },
         { kind: 'experiment', id: 'E1' },
       ], 'spawn-phase order, each holder\'s waits in the derivation\'s order');
+    });
+
+    it('the map row names the unit a promoted discussion moved to, and no unit otherwise', () => {
+      const m = {
+        name: 'pay', work_type: 'epic',
+        phases: {
+          discovery: { items: { fees: { routing: 'discussion' }, refunds: { routing: 'discussion' } } },
+          discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
+        },
+      };
+      const rows = buildDiscoveryMap(m, path.join(__dirname, '.no-such-workflows')).map;
+      assert.deepStrictEqual(rows.map((r) => [r.name, r.lifecycle, r.promoted_to]), [['fees', 'decided', 'fees-cc'], ['refunds', 'decided', null]]);
     });
   });
 

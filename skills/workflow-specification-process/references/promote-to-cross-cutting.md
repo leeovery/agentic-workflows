@@ -28,7 +28,7 @@ Choose a descriptive alternative name that captures the cross-cutting concern (e
 
 ## B. Promote
 
-One engine transaction owns the promotion: it creates the cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry; already completed, since the pipeline is terminal after spec and the spec is complete; origin provenance recorded), moves the specification to `specification/{cc_work_unit}/`, moves each spec source whose discussion file exists into the new unit's `discussion/`, copies the imports the moved documents link and the moved sources attached into the new unit's `imports/`, marks the epic's spec item `promoted` with `promoted_to`, re-homes the knowledge-base chunks, and commits both work units plus the project manifest:
+One engine transaction owns the promotion: it creates the cross-cutting work unit (no session log — this creation is a promotion, not a discovery entry; already completed, since the pipeline is terminal after spec and the spec is complete; origin provenance recorded), moves the specification to `specification/{cc_work_unit}/`, moves each spec source whose discussion file exists into the new unit's `discussion/` with its manifest item, as a source of its specification, copies the imports the moved documents link and the moved sources attached into the new unit's `imports/`, marks the epic's spec item and each moved discussion `promoted` with `promoted_to`, re-homes the knowledge-base chunks, and commits both work units plus the project manifest:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs workunit promote {work_unit} {topic} --to {cc_work_unit} --description "{one-line summary from spec}"

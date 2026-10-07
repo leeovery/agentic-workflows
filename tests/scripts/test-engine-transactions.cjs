@@ -285,7 +285,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.match(started, /◆ Cancel it\?/);
     assert.match(started, /\*\*`y\/yes`\*\* → Confirm cancellation/);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.session-model']).error,
-      /"session-model" is locked by the specification sourcing its discussion \(session-model\) — the menu never offers it/);
+      /"session-model" is locked by the specification sourcing its discussion \("session-model"\) — the menu never offers it/);
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.data-export']).error, /already cancelled — the menu never offers it/);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.research.auth-flow']).error,
@@ -1459,6 +1459,17 @@ describe('engine topic reopen', () => {
     const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'auth-flow']);
     assert.match(err.error, /is not completed \(status: in-progress\) — only a completed item can be reopened/);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+  });
+
+  it('refuses a promoted discussion — it left with its specification, and reopens in its cross-cutting unit', () => {
+    const m = epicManifest();
+    m.phases.discussion.items['session-model'] = { status: 'promoted', promoted_to: 'sessions' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const refusal = /discussion item "session-model" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, refusal);
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']).error, refusal);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
   });
 

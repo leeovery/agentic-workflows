@@ -159,7 +159,18 @@ describe('cancel-gate', () => {
       },
     });
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }),
-      /"auth" is locked by the specification sourcing its discussion \(unified\) — the menu never offers it/);
+      /"auth" is locked by the specification sourcing its discussion \("unified"\) — the menu never offers it/);
+    writeManifest(dir, 'moved', {
+      phases: {
+        discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' } } },
+        specification: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc', sources: { fees: { status: 'incorporated' } } } } },
+      },
+    });
+    assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'moved.discovery.fees' }),
+      /"fees" is locked by the specification sourcing its discussion \("fees" \(promoted to "fees-cc"\)\) — the menu never offers it/,
+      'a promoted topic locks as a started one does — never "nothing has started"');
+    assert.throws(() => renderSurface(dir, 'postpone-gate', { dotpath: 'moved.discovery.fees', horizon: 'v2' }),
+      /postponing "fees" is refused while the specification "fees" \(promoted to "fees-cc"\) sources its discussion — a topic past specification is past "not yet"/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.gone' }),
       /"gone" is already cancelled — the menu never offers it/);
     assert.throws(() => renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.away' }),
@@ -4730,9 +4741,16 @@ describe('render entry-gate', () => {
     manifestWith({}, 'feature');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ No discussion found for "Pay"/);
     manifestWith({ discussion: { items: { auth: { status: 'in-progress' } } } }, 'feature');
-    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ The discussion for "Pay" is not yet completed/);
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ The discussion for "Auth" is not yet completed/);
     manifestWith({ discussion: { items: { auth: { status: 'completed' } } } }, 'feature');
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
+
+    // A promoted cross-cutting unit's specification stands on its moved
+    // discussions, each under its own name — never one named after the unit.
+    manifestWith({ discussion: { items: { 'fee-rules': { status: 'completed' }, 'fee-display': { status: 'in-progress' } } } }, 'cross-cutting');
+    assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.pay' }), /⚑ The discussion for "Fee Display" is not yet completed/);
+    manifestWith({ discussion: { items: { 'fee-rules': { status: 'completed' }, 'fee-display': { status: 'completed' } } } }, 'cross-cutting');
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.pay' }), '');
 
     manifestWith({}, 'bugfix');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ No investigation found/);
@@ -4903,6 +4921,18 @@ describe('render entry-gate --own', () => {
       assert.match(out, /> Its roadmap item has gone to another epic — the topic stays postponed here, with no way back\.\n$/, phase);
       assert.ok(!out.includes('f/forward'), phase);
     }
+  });
+
+  it('a promoted discussion renders the promoted terminal byte-exactly, naming the unit it moved to', () => {
+    writeManifest(dir, 'pay', { work_type: 'epic', phases: { discussion: { items: { auth: { status: 'promoted', promoted_to: 'auth-platform' } } } } });
+    assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth', own: '1' }), [
+      '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ "Auth" was promoted to the cross-cutting work unit "auth-platform"',
+      '',
+      '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
+      '> Continue it from that work unit.',
+      '',
+    ].join('\n'));
   });
 
   it('is clear for a research or discussion item that is live, triaged, or absent', () => {

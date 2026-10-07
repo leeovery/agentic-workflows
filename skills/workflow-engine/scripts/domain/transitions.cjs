@@ -33,7 +33,7 @@ const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
-  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, lockingSpecsPhrase, deliveryStarted,
+  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
@@ -125,7 +125,7 @@ function postponedRefusal(phase, topic) {
 /**
  * The phase item for `topic`, or a loud error.
  * @param {object} manifest @param {string} phase @param {string} topic
- * @returns {{status?: string, previous_status?: string, superseded_by?: string, order?: number, previous_order?: number, reconcile_needed?: string|boolean, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
+ * @returns {{status?: string, previous_status?: string, superseded_by?: string, promoted_to?: string, order?: number, previous_order?: number, reconcile_needed?: string|boolean, sources?: Record<string, {status?: string}>|Array<{name?: string, status?: string}>}}
  */
 function phaseItem(manifest, phase, topic) {
   assertLegalWrite(phase, 'cancelled');
@@ -259,8 +259,7 @@ function startTopic(cwd, workUnit, phase, topic) {
       const by = 'superseded_by' in existing ? ` (by "${existing.superseded_by}")` : '';
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
     } else if (existing && existing.status === 'promoted') {
-      const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
-      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+      throw new Error(promotedRefusal(phase, topic, existing));
     }
     if (!existing || existing.status === 'triaged') {
       assertResearchLanded(manifest, phase, topic, 'start');
@@ -492,8 +491,7 @@ function parkConcernItem(items, phase, topic) {
     throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
   }
   if (before === 'promoted') {
-    const to = 'promoted_to' in existing ? ` (to "${existing.promoted_to}")` : '';
-    throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+    throw new Error(promotedRefusal(phase, topic, existing));
   }
   if (before === 'completed') {
     existing.status = 'in-progress';
@@ -948,8 +946,7 @@ function completeTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is superseded${by} — supersession is terminal; work on the absorbing topic instead`);
     }
     if (item.status === 'promoted') {
-      const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
-      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+      throw new Error(promotedRefusal(phase, topic, item));
     }
     if (phase === 'specification') {
       const blocking = openSources(item).map((r) => r.name);
@@ -1027,6 +1024,9 @@ function reopenTopic(cwd, workUnit, phase, topic) {
     }
     if (item.status === 'postponed') {
       throw new Error(postponedRefusal(phase, topic));
+    }
+    if (item.status === 'promoted') {
+      throw new Error(promotedRefusal(phase, topic, item));
     }
     if (item.status !== 'completed') {
       throw new Error(`${phase} item "${topic}" is not completed (status: ${item.status ?? 'none'}) — only a completed item can be reopened`);
@@ -1143,8 +1143,7 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
       throw new Error(postponedRefusal(phase, topic));
     }
     if (item.status === 'promoted') {
-      const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
-      throw new Error(`${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`);
+      throw new Error(promotedRefusal(phase, topic, item));
     }
     // A superseded holder is terminal — its evidence waits would strand with
     // live records and no consumer.
@@ -1360,9 +1359,11 @@ function cancelDiscoveryUnit(manifest, topic) {
   if (lifecycle === 'postponed') {
     throw new Error(`"${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
-  const locking = lockingSpecs(manifest, topic);
+  const locking = unitLocks(manifest, topic);
   if (locking.length > 0) {
-    const recovery = locking.length === 1 ? 'cancel the specification first' : 'cancel them first';
+    const recovery = locking.some((lock) => lock.promoted_to !== null)
+      ? 'promotion is terminal, so the topic continues in its cross-cutting unit'
+      : `cancel ${locking.length === 1 ? 'the specification' : 'them'} first`;
     throw new Error(`cancelling "${topic}" is refused while ${lockingSpecsPhrase(locking)} — ${recovery}`);
   }
   const plan = cancelPlan(manifest, 'discovery', topic);

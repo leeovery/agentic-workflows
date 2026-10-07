@@ -50,17 +50,17 @@ const {
   roadmapParksGate,
   roadmapShapeGate,
 } = require('./projections/roadmap.cjs');
-const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
+const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
 const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
-const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
+const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
@@ -4139,7 +4139,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
     }
   }
   const skipReview = next === 'review';
-  const revisitable = revisitablePhases(type, { next_phase: next, completed_phases: completedPhases(cfg, manifest) });
+  const revisitable = phaseTargets(manifest, next).revisit;
   if (!skipReview && revisitable.length === 0) return '';
 
   // A derived phase's line matches phase-completed's: the session is
@@ -4198,9 +4198,9 @@ function discoveryCancelStatement(manifest, topic) {
   if (lifecycle === 'postponed') {
     throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
-  const locking = lockingSpecs(manifest, topic);
+  const locking = unitLocks(manifest, topic);
   if (locking.length > 0) {
-    throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${locking.join(', ')}) — the menu never offers it`);
+    throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${unitLockNames(locking)}) — the menu never offers it`);
   }
   const name = titlecase(topic);
   const plan = cancelPlan(manifest, 'discovery', topic);
@@ -4599,6 +4599,12 @@ function entryGate(cwd, { dotpath, own }) {
     if (item.status === 'cancelled') {
       return blocker(`"${t}" is cancelled`, 'Reactivate it from the epic menu (`e/reactivate`).');
     }
+    if (item.status === 'promoted') {
+      return blocker(
+        `"${t}" was promoted to the cross-cutting work unit "${String(item.promoted_to || '')}"`,
+        'Continue it from that work unit.',
+      );
+    }
     if (phase !== 'specification') {
       if (item.status !== 'postponed') return '';
       return blocker(
@@ -4610,12 +4616,6 @@ function entryGate(cwd, { dotpath, own }) {
       return blocker(
         `The specification for "${t}" was consolidated into "${titlecase(String(item.superseded_by || ''))}"`,
         'Work on that specification instead.',
-      );
-    }
-    if (item.status === 'promoted') {
-      return blocker(
-        `"${t}" was promoted to the cross-cutting work unit "${String(item.promoted_to || '')}"`,
-        'Continue it from that work unit.',
       );
     }
     return '';
@@ -4773,19 +4773,24 @@ function entryGate(cwd, { dotpath, own }) {
       }
       return '';
     }
-    // feature / cross-cutting: the topic's own discussion.
-    const disc = itemOf(manifest, 'discussion', topic);
-    if (!disc) {
-      return blocker(
-        `No discussion found for "${wu}"`,
-        'A completed discussion is required before specification can begin.',
-      );
-    }
-    if (disc.status !== 'completed') {
-      return blocker(
-        `The discussion for "${wu}" is not yet completed`,
-        'The discussion must be completed before specification can begin.',
-      );
+    // feature / cross-cutting: the topic's own discussion — or, where the
+    // discussions carry names of their own (a promoted unit's moved ones),
+    // each of them.
+    const own = ownNamedItems(manifest, 'discussion');
+    for (const name of own.length > 0 ? own.map((i) => i.name) : [topic]) {
+      const disc = itemOf(manifest, 'discussion', name);
+      if (!disc) {
+        return blocker(
+          `No discussion found for "${wu}"`,
+          'A completed discussion is required before specification can begin.',
+        );
+      }
+      if (disc.status !== 'completed') {
+        return blocker(
+          `The discussion for "${titlecase(name)}" is not yet completed`,
+          'The discussion must be completed before specification can begin.',
+        );
+      }
     }
     return '';
   }
@@ -5407,13 +5412,12 @@ function revisitPhasesSurface(cwd, args) {
   if (!WORK_UNIT_TYPES[type]) {
     throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the revisit menu serves the linear work types`);
   }
-  const cfg = workUnitTypeConfig(type);
   const { next_phase } = computeNextPhase(manifest);
-  const phases = revisitablePhases(type, { next_phase, completed_phases: completedPhases(cfg, manifest) });
-  if (phases.length === 0) {
+  const targets = phaseTargets(manifest, next_phase).revisit;
+  if (targets.length === 0) {
     throw new Error(`render revisit-phases: "${workUnit}" has no completed earlier phase to revisit`);
   }
-  return revisitPhasesSection(phases);
+  return revisitPhasesSection(targets);
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */

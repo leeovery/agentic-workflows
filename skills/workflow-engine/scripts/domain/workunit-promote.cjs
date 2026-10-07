@@ -27,6 +27,7 @@ const {
   writeProjectManifestAtomic,
   withProjectLock,
   ensureContainer,
+  copyWhole,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -34,7 +35,7 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
 const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
 const { todayStamp } = require('./dates.cjs');
-const { roadmapItems } = require('./derivations.cjs');
+const { roadmapItems, sourceRows } = require('./derivations.cjs');
 const { carrySources } = require('./roadmap.cjs');
 
 /**
@@ -123,10 +124,12 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
  * terminal after spec, and the spec is complete) with origin provenance
  * (`source_work_unit`/`source_topic`), move the spec directory to
  * `specification/{to}/`, move each spec source that is a discussion file into
- * the cc unit's `discussion/` (registered `completed` — sources of a
- * completed spec were incorporated), copy in every import the moved
- * documents link or a moved source attached (entries unchanged, the epic
- * keeping its own), mark the epic's spec item
+ * the cc unit's `discussion/` (its item carried whole under its own name —
+ * the Discussion Map and every other field — reading `completed`, and a
+ * source of the cc spec item at its row's status — sources of a completed
+ * spec were incorporated), copy in every import the moved documents link or a
+ * moved source attached (entries unchanged, the epic keeping its own), mark
+ * the epic's spec item and each moved discussion's item
  * `status: promoted` + `promoted_to`, carry every roadmap source at the moved
  * material to its cc path, sync the knowledge base (moved artifacts indexed
  * at their cc identities, the epic's old chunks removed — warn-don't-block),
@@ -142,7 +145,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
   // -- validate everything before any mutation --------------------------------
   assertLegalWorkUnitName(to);
 
-  const { discussionMoves, importCarry, missingImports } = withWorkUnitLock(cwd, workUnit, () => {
+  const { discussionMoves, discussionItems, sources, importCarry, missingImports } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.work_type !== 'epic') {
       throw new Error(`work unit "${workUnit}" is not an epic (work_type: ${manifest.work_type ?? 'none'}) — only epic specifications promote to cross-cutting`);
@@ -223,10 +226,24 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     copyImports(cwd, path.join(cwd, '.workflows', to, 'imports'),
       carried.map((c) => ({ src: `.workflows/${workUnit}/${c.entry.path}`, dest: c.basename })));
 
+    // Each moved discussion's item travels whole into the unit, under the
+    // unit's own status — but for a reconcile flag, whose upstream stays in
+    // the epic; the epic keeps its item, marked as having left.
+    /** @type {Record<string, Record<string, any>>} */
+    const discussionItems = {};
+    for (const name of plan) {
+      const discussion = phases.discussion?.items?.[name];
+      discussionItems[name] = { ...copyWhole(discussion ?? {}), status: 'completed' };
+      delete discussionItems[name].reconcile_needed;
+      if (discussion) Object.assign(discussion, { status: 'promoted', promoted_to: to });
+    }
     item.status = 'promoted';
     item.promoted_to = to;
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { discussionMoves: plan, importCarry: carried, missingImports: missing };
+    const sources = Object.fromEntries(sourceRows(item.sources)
+      .filter(([name]) => plan.includes(name))
+      .map(([name, row]) => [name, { status: row.status }]));
+    return { discussionMoves: plan, discussionItems, sources, importCarry: carried, missingImports: missing };
   });
 
   // The cc manifest — the canonical work-unit document, already completed
@@ -249,14 +266,12 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       ...(importCarry.length > 0 ? { imports: importCarry.map((c) => c.entry) } : {}),
       phases: {},
     };
-    if (discussionMoves.length > 0) {
-      ccManifest.phases.discussion = { items: {} };
-      for (const name of discussionMoves) {
-        ccManifest.phases.discussion.items[name] = { status: 'completed' };
-      }
-    }
-    // Topic = work unit name for a cross-cutting unit.
-    ccManifest.phases.specification = { items: { [to]: { status: 'completed', date: stamped } } };
+    if (discussionMoves.length > 0) ccManifest.phases.discussion = { items: discussionItems };
+    // Topic = work unit name for a cross-cutting unit. The moved discussions
+    // stay its sources, so a reopen of one flags it.
+    ccManifest.phases.specification = { items: { [to]: {
+      status: 'completed', date: stamped, ...(discussionMoves.length > 0 ? { sources } : {}),
+    } } };
     saveWorkUnitManifest(cwd, to, ccManifest);
   });
 

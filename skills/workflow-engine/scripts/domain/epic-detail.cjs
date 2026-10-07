@@ -25,7 +25,8 @@ const {
   liveUnitItems,
   specIsStarted,
   specGroupsSources,
-  lockingSpecs,
+  unitLocks,
+  unitLockNames,
   CLOSED_LIFECYCLES,
   postponePlan,
   postponedItem,
@@ -154,6 +155,7 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} current_phase
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
+ * @property {string|null} promoted_to  the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} triage_parked  rerouted concerns wait on the topic — a `triaged` stub in either phase, or queue files on disk beneath a started or reopened item
  * @property {{research: number, discussion: number}} triage_queued  the topic's queue depth per phase, counted from disk
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
@@ -256,12 +258,13 @@ function unitRestores(manifest, stage, name) {
 
 /** The menu's lock reason for a Discovery unit, or undefined when it is free. @param {object} manifest @param {string} topic */
 function discoveryLockReason(manifest, topic) {
-  const specs = lockingSpecs(manifest, topic);
-  if (specs.length === 0) return undefined;
-  const named = specs.map((n) => `"${titlecase(n)}"`).join(', ');
-  return specs.length === 1
-    ? `locked by specification ${named} — cancel it first`
-    : `locked by specifications ${named} — cancel them first`;
+  const locks = unitLocks(manifest, topic);
+  if (locks.length === 0) return undefined;
+  const one = locks.length === 1;
+  const recovery = locks.some((lock) => lock.promoted_to !== null)
+    ? 'promotion is terminal'
+    : `cancel ${one ? 'it' : 'them'} first`;
+  return `locked by specification${one ? '' : 's'} ${unitLockNames(locks, titlecase)} — ${recovery}`;
 }
 
 /** The menu's lock reason for a cancelled specification, or undefined when it can return. @param {object} manifest @param {string} spec */
@@ -295,7 +298,7 @@ function discoveryUnits(manifest, discoveryMap) {
 
 /** The state tag a topic's cancel row carries — the map's own lifecycle label. @param {object} manifest @param {string} name @param {MapRow|undefined} row */
 function topicState(manifest, name, row) {
-  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.triage_parked, row.reconcile_pending, row.waits);
+  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.triage_parked, row.reconcile_pending, row.waits, row.promoted_to);
   const { lifecycle, research_state, triage_parked, reconcile_pending } = computeTopicLifecycle(manifest, name);
   return discoveryLifecycleLabel(lifecycle, null, research_state, triage_parked, reconcile_pending);
 }
