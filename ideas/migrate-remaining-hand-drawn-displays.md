@@ -15,8 +15,8 @@ that still carries a templated menu or display fence, with its count
 (47 files, 78 fences when this was logged). The ratchet only tightens, so
 it never lists a site that no longer exists. Examples:
 
-- `workflow-start/SKILL.md` — "Migrations Applied … {N} migration(s), {M}
-  file(s) updated." and the two "All documents up to date." blocks.
+- `workflow-start/SKILL.md` and `workflow-start/references/migration-review.md`
+  — the two "All documents up to date." blocks.
 - `workflow-start/references/inbox-working-set.md` — the `@foreach`
   full-content view.
 - `workflow-implementation-process/references/analysis-loop.md` — the
