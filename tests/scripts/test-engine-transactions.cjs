@@ -1462,6 +1462,17 @@ describe('engine topic reopen', () => {
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
   });
 
+  it('refuses a promoted discussion — it left with its specification, and reopens in its cross-cutting unit', () => {
+    const m = epicManifest();
+    m.phases.discussion.items['session-model'] = { status: 'promoted', promoted_to: 'sessions' };
+    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const refusal = /discussion item "session-model" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
+    assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, refusal);
+    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']).error, refusal);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+  });
+
   it('a discussion refuses to reopen while its research is outstanding — research feeds discussion', () => {
     const withResearch = (status) => {
       const m = epicManifest();

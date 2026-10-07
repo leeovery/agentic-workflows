@@ -30,6 +30,7 @@ const {
   writeProjectManifestAtomic,
   withProjectLock,
   ensureContainer,
+  copyWhole,
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
@@ -295,7 +296,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       // The item travels whole: every field on it — the thread register, the
       // dismissed grounds, a live reconcile flag, an evidence wait — is the
       // topic's own state, and a field list is how state gets dropped.
-      researchPlan.push({ from: feature, target: topic, status, item: JSON.parse(JSON.stringify(researchItem)) });
+      researchPlan.push({ from: feature, target: topic, status, item: copyWhole(researchItem) });
     }
 
     const importPlan = planTrackedMoves(cwd, feature, into, 'imports', Array.isArray(featureManifest.imports) ? featureManifest.imports : []);
@@ -374,13 +375,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // calls on this material), an evidence wait (its series moves in the same
     // transaction, topic-keyed beside it). Every field is the topic's own
     // state, and a field list is how state gets dropped.
-    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = JSON.parse(JSON.stringify(discussionItem));
+    ensureContainer(discussion, 'items', 'phases.discussion.items')[topic] = copyWhole(discussionItem);
     if (experimentItem) {
       const experiment = ensureContainer(epicPhases, 'experiment', 'phases.experiment');
       // The item travels whole — derived status and every series record
       // (slug, status, verdict, reason) — the register is the record.
-      ensureContainer(experiment, 'items', 'phases.experiment.items')[topic] =
-        JSON.parse(JSON.stringify(experimentItem));
+      ensureContainer(experiment, 'items', 'phases.experiment.items')[topic] = copyWhole(experimentItem);
     }
     if (researchPlan.length > 0) {
       const research = ensureContainer(epicPhases, 'research', 'phases.research');

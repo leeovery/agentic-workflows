@@ -83,6 +83,7 @@ engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
 engine.detail.activeWorkUnit(cwd, wu)             // → { type, unit: WorkUnitEntry } — one single-topic unit in progress (feature | bugfix | quick-fix | cross-cutting), its type read from its manifest; null otherwise
+engine.detail.phaseTargets(manifest, nextPhase)   // → { next, revisit } — the {phase, topic} each single-topic route enters: the next phase and the revisit candidates (completed phases before nextPhase, pipeline-filtered); topic names the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise
 engine.detail.WORK_UNIT_TYPES                     // { [type]: config } — single-topic pipeline configs
 engine.detail.specificationDiscovery(cwd, wu)     // → DiscoveryResult (the epic specification menu's read: discussions, grouping specifications, cancelled keys, the grouping analysis's cache); throws for a name with no active epic
 engine.detail.specificationDetail(wu, result)     // → SpecificationDetail (the epic specification menu's scenario + grouping rows over one specificationDiscovery() result)
@@ -117,9 +118,8 @@ engine.project.completedView(detail)              // → { data, menu, rows } �
 engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit
 engine.project.workUnitData(type, unit, menu)     // → DATA body (flow flags + ACTIONS key table)
-engine.project.revisitablePhases(type, unit)      // → string[] — completed phases before next_phase, pipeline-filtered
-engine.project.phaseRoute(type, phase, wu)        // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`) — the bridge gateway's `next_route` and `revisit_routes`
-engine.project.revisitPhasesSection(phases)       // → labelled `MENU: revisit phases` section ('' when none)
+engine.project.phaseRoute(type, phase, wu, topic) // → the route a single-topic unit's phase is entered by (`/{skill} {work_type} {wu}`, `{topic}` appended where a target names one) — the bridge gateway's `next_route` and `revisit_routes`
+engine.project.revisitPhasesSection(targets)      // → labelled `MENU: revisit phases` section over phaseTargets' revisit candidates ('' when none)
 engine.project.specificationDisplay(detail)       // → scenario overview block
 engine.project.specificationMenu(detail)          // → { keys, rendered } — grouping/spec menu; both empty for menu-less scenarios
 engine.project.specificationCompletedMenu(detail) // → { keys, title, display, rendered } — concluded-specs Refine sub-view

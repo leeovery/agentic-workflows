@@ -494,6 +494,23 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
   });
 
+  it('a promoted item takes no status write and no delete either — the refusal names the unit it moved to', () => {
+    const m = readWorkUnit(dir, 'payments');
+    m.phases.discussion = { items: { fees: { status: 'promoted', promoted_to: 'billing-cc' } } };
+    m.phases.specification.items.billing = { status: 'promoted', promoted_to: 'billing-cc', sources: { fees: { status: 'incorporated' } } };
+    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
+    const before = fs.readFileSync(manifestPath, 'utf8');
+    const discussion = /discussion item "fees" is promoted to "billing-cc" — continue it from that cross-cutting work unit/;
+    assert.match(runFails(dir, ['set', 'payments.discussion.fees', 'status', 'completed']).error, discussion);
+    assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.fees']).error, discussion);
+    assert.match(runFails(dir, ['delete', 'payments.discussion.fees', 'promoted_to']).error, discussion);
+    // A grouping landing on a promoted specification's key never overwrites it.
+    assert.match(runFails(dir, ['set', 'payments.specification.billing', 'status', 'proposed']).error,
+      /specification item "billing" is promoted to "billing-cc"/);
+    assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
+  });
+
   it('a failing delete aborts the whole batch — earlier sets do not persist', () => {
     const file = payload([
       { op: 'set', path: 'payments.planning.portal', fields: { 'external_dependencies.billing.state': 'resolved' } },

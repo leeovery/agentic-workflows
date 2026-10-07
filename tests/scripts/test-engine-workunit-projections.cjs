@@ -9,7 +9,7 @@ const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { activeWorkUnit, typeConfig } = require('../../skills/workflow-engine/scripts/domain/workunit-detail.cjs');
-const { workUnitStatus, workUnitMenu, workUnitData, revisitablePhases, revisitPhasesSection } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
+const { workUnitStatus, workUnitMenu, workUnitData, revisitPhasesSection } = require('../../skills/workflow-engine/scripts/domain/projections/workunit.cjs');
 
 // Golden tests: byte-exact expected strings for the work-unit status display
 // and proceed/revisit menu, across all four single-topic types. Fixtures go
@@ -507,6 +507,94 @@ describe('workunit projections: menu', () => {
   });
 });
 
+describe('workunit projections: a promoted unit routes to its moved discussions by name', () => {
+  let dir;
+  beforeEach(() => { dir = setupFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** A reactivated cross-cutting unit promoted with two discussions, neither named after it. @param {Record<string, any>} [overrides] */
+  function promoted(overrides = {}) {
+    createManifest(dir, 'fees', {
+      work_type: 'cross-cutting',
+      source_work_unit: 'billing',
+      source_topic: 'fees',
+      phases: {
+        discussion: { items: { 'fee-rules': { status: 'completed' }, 'fee-display': { status: 'completed' }, ...overrides.discussion } },
+        specification: { items: { fees: {
+          status: 'completed',
+          sources: { 'fee-rules': { status: 'incorporated' }, 'fee-display': { status: 'incorporated' } },
+          ...overrides.specification,
+        } } },
+      },
+    });
+    return unitOf(dir, 'cross-cutting', 'fees');
+  }
+
+  it('offers one revisit entry per moved discussion, each route naming it, the specification by the unit alone', () => {
+    const menu = workUnitMenu('cross-cutting', promoted());
+    assert.deepStrictEqual(
+      menu.keys.map((k) => [k.key, k.action, k.topic, k.phase || null, k.route]),
+      [
+        ['y', 'finalise', 'fees', null, null],
+        ['r', 'revisit', 'fees', null, null],
+        ['b', 'back', 'fees', null, null],
+        ['1', 'revisit_phase', 'fee-rules', 'discussion', '/workflow-discussion-process cross-cutting fees fee-rules'],
+        ['2', 'revisit_phase', 'fee-display', 'discussion', '/workflow-discussion-process cross-cutting fees fee-display'],
+        ['3', 'revisit_phase', 'fees', 'specification', '/workflow-specification-process cross-cutting fees'],
+      ]
+    );
+  });
+
+  it('names each moved discussion on its revisit row', () => {
+    assert.strictEqual(revisitPhasesSection(promoted().revisit), [
+      "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      '· · · · · · · · · · · ·',
+      '**`◆ Which phase would you like to revisit?`**',
+      '',
+      '**`1`**      → Discussion "Fee Rules" — *completed*',
+      '**`2`**      → Discussion "Fee Display" — *completed*',
+      '**`3`**      → Specification — *completed*',
+      '**`b/back`** → Return to the previous menu',
+      '',
+    ].join('\n'));
+  });
+
+  it('continues into the moved discussion in flight, by name', () => {
+    const unit = promoted({ discussion: { 'fee-rules': { status: 'in-progress' } } });
+    assert.strictEqual(unit.next_phase, 'discussion');
+    assert.strictEqual(unit.next_topic, 'fee-rules');
+    assert.strictEqual(workUnitMenu('cross-cutting', unit).keys[0].route, '/workflow-discussion-process cross-cutting fees fee-rules');
+  });
+
+  it('continues into the specification\'s reconcile once the discussion concludes again — by the unit alone', () => {
+    const unit = promoted({ specification: { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } });
+    assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');
+    assert.strictEqual(unit.next_topic, null);
+    const menu = workUnitMenu('cross-cutting', unit);
+    assert.strictEqual(menu.keys[0].route, '/workflow-specification-process cross-cutting fees');
+    assert.deepStrictEqual(menu.keys.filter((k) => k.action === 'revisit_phase').map((k) => k.route), [
+      '/workflow-discussion-process cross-cutting fees fee-rules',
+      '/workflow-discussion-process cross-cutting fees fee-display',
+    ]);
+  });
+
+  it('routes a promoted unit whose one discussion carries its name exactly as any unit', () => {
+    createManifest(dir, 'naming', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { naming: { status: 'completed' } } },
+        specification: { items: { naming: { status: 'completed', sources: { naming: { status: 'incorporated' } } } } },
+      },
+    });
+    const unit = unitOf(dir, 'cross-cutting', 'naming');
+    assert.deepStrictEqual(unit.revisit, [{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]);
+    assert.deepStrictEqual(workUnitMenu('cross-cutting', unit).keys.filter((k) => k.route).map((k) => k.route), [
+      '/workflow-discussion-process cross-cutting naming',
+      '/workflow-specification-process cross-cutting naming',
+    ]);
+  });
+});
+
 describe('workunit projections: data body', () => {
   let dir;
   beforeEach(() => { dir = setupFixture(); });
@@ -613,11 +701,11 @@ describe('workunit projections: revisit phases section', () => {
       },
     });
     const unit = unitOf(dir, 'feature', 'auth-flow');
-    assert.deepStrictEqual(revisitablePhases('feature', unit), ['discussion', 'specification']);
+    assert.deepStrictEqual(unit.revisit, [{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]);
   });
 
   it('pins the labelled section byte-for-byte', () => {
-    assert.strictEqual(revisitPhasesSection(['discussion', 'specification']), [
+    assert.strictEqual(revisitPhasesSection([{ phase: 'discussion', topic: null }, { phase: 'specification', topic: null }]), [
       "=== MENU: revisit phases (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which phase would you like to revisit?`**',
@@ -632,7 +720,7 @@ describe('workunit projections: revisit phases section', () => {
   it('renders nothing when there is nothing to revisit', () => {
     assert.strictEqual(revisitPhasesSection([]), '');
     createManifest(dir, 'fresh', {});
-    assert.deepStrictEqual(revisitablePhases('feature', unitOf(dir, 'feature', 'fresh')), []);
+    assert.deepStrictEqual(unitOf(dir, 'feature', 'fresh').revisit, []);
   });
 
   it('filters quick-fix candidates to the quick-fix pipeline', () => {
@@ -646,6 +734,6 @@ describe('workunit projections: revisit phases section', () => {
       },
     });
     const unit = unitOf(dir, 'quick-fix', 'hotfix');
-    assert.deepStrictEqual(revisitablePhases('quick-fix', unit), ['scoping', 'implementation']);
+    assert.deepStrictEqual(unit.revisit, [{ phase: 'scoping', topic: null }, { phase: 'implementation', topic: null }]);
   });
 });

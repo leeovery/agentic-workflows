@@ -51,6 +51,12 @@ function discover(cwd, workUnit) {
     }
   }
 
+  // Where a linear type's routes enter: the next phase and the revisit
+  // candidates — none past the pipeline's end, which completes the unit.
+  const targets = engine.detail.WORK_UNIT_TYPES[workType] && next_phase !== 'done'
+    ? engine.detail.phaseTargets(manifest, next_phase)
+    : null;
+
   return {
     work_unit: workUnit,
     work_type: workType,
@@ -58,13 +64,15 @@ function discover(cwd, workUnit) {
     phases,
     next_phase,
     reconcile_pending,
+    targets,
   };
 }
 
 // The thin scoped dump: the fields the continuation references branch on —
 // the derived next phase, the completed set (in pipeline order), the revisit
 // candidates (completed phases before next_phase, filtered to the type's
-// pipeline), and the route each move is entered by.
+// pipeline — `phase/item` where the route names an item of the phase), and
+// the route each move is entered by.
 function format(result) {
   if (result.error) return `Error: ${result.error}\n`;
 
@@ -79,14 +87,11 @@ function format(result) {
   lines.push(`reconcile_pending: ${(result.reconcile_pending || []).join(', ') || '(none)'}`);
 
   if (engine.detail.WORK_UNIT_TYPES[result.work_type]) {
-    const done = result.next_phase === 'done';
-    const revisitable = done
-      ? []
-      : engine.project.revisitablePhases(result.work_type, { next_phase: result.next_phase, completed_phases: completed });
-    const route = (/** @type {string} */ phase) => engine.project.phaseRoute(result.work_type, phase, result.work_unit);
-    lines.push(`revisitable_phases: ${revisitable.join(', ') || '(none)'}`);
-    lines.push(`next_route: ${done ? '(none)' : route(result.next_phase)}`);
-    lines.push(`revisit_routes: ${revisitable.map(route).join(', ') || '(none)'}`);
+    const { next, revisit } = result.targets || { next: null, revisit: [] };
+    const route = (/** @type {{phase: string, topic: string|null}} */ target) => engine.project.phaseRoute(result.work_type, target.phase, result.work_unit, target.topic);
+    lines.push(`revisitable_phases: ${revisit.map((t) => (t.topic === null ? t.phase : `${t.phase}/${t.topic}`)).join(', ') || '(none)'}`);
+    lines.push(`next_route: ${next ? route(next) : '(none)'}`);
+    lines.push(`revisit_routes: ${revisit.map(route).join(', ') || '(none)'}`);
   }
 
   return lines.join('\n') + '\n';

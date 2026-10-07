@@ -483,23 +483,24 @@ function assertExperimentTargets(manifest, segments, value) {
   }
 }
 
-// The holds a unit verb puts a phase item into: the field surface must never
-// be the permissive path around them, so a write onto one is refused with
-// the way out the hold's own verb names.
-const HELD_STATUSES = ['cancelled', 'postponed'];
+// The states a unit verb leaves a phase item in — the cancel's and the
+// postpone's holds, and the promotion that moved it to a cross-cutting unit:
+// the field surface must never be the permissive path around them, so a
+// write onto one is refused with the way out its verb names.
+const HELD_STATUSES = ['cancelled', 'postponed', 'promoted'];
 
 /**
  * The held phase item a dot-path lands on or inside —
  * `phases.<phase>.items.<topic>[.<field>…]` — or null.
  * @param {any} manifest @param {string[]} segments
- * @returns {{phase: string, topic: string, status: string}|null}
+ * @returns {{phase: string, topic: string, status: string, promoted_to?: unknown}|null}
  */
 function heldItemAt(manifest, segments) {
   if (segments.length < 4 || segments[0] !== 'phases' || segments[2] !== 'items') return null;
   const [, phase, , topic] = segments;
   const item = getByPath(manifest, segments.slice(0, 4));
   return item && typeof item === 'object' && HELD_STATUSES.includes(item.status)
-    ? { phase, topic, status: item.status }
+    ? { phase, topic, status: item.status, promoted_to: item.promoted_to }
     : null;
 }
 
@@ -508,12 +509,16 @@ function heldItemAt(manifest, segments) {
  * reactivate for a cancelled item, addressed by the unit that frees it —
  * `discovery` for a research or discussion item, `specification` for a
  * specification or plan; a phase outside the two stages names the verb
- * alone — and the roadmap for a postponed one, whose way back is the pull.
- * @param {string} workUnit @param {{phase: string, topic: string, status: string}} target
+ * alone — the roadmap for a postponed one, whose way back is the pull, and
+ * the cross-cutting unit a promoted one moved to.
+ * @param {string} workUnit @param {{phase: string, topic: string, status: string, promoted_to?: unknown}} target
  */
-function refuseHeld(workUnit, { phase, topic, status }) {
+function refuseHeld(workUnit, { phase, topic, status, promoted_to }) {
   if (status === 'postponed') {
     fail(`${phase} item "${topic}" is postponed — pull it forward from the roadmap instead`);
+  }
+  if (status === 'promoted') {
+    fail(`${phase} item "${topic}" is promoted to "${promoted_to}" — continue it from that cross-cutting work unit`);
   }
   const stage = Object.keys(UNIT_PHASES).find((s) => UNIT_PHASES[/** @type {keyof typeof UNIT_PHASES} */ (s)].includes(phase));
   const verb = stage ? `engine topic reactivate ${workUnit} ${stage} ${topic}` : 'engine topic reactivate';
@@ -521,8 +526,8 @@ function refuseHeld(workUnit, { phase, topic, status }) {
 }
 
 /**
- * A held phase item — cancelled or postponed — takes no status write: every
- * transition already refuses one, and the field surface must not be the
+ * A held phase item — cancelled, postponed or promoted — takes no status
+ * write: every transition already refuses one, and the field surface must not be the
  * permissive path around them. A grouping analysis re-run over a held
  * specification's freed sources can pick the held item's key, and a
  * `status: proposed` landing there would merge onto its stash. Read inside

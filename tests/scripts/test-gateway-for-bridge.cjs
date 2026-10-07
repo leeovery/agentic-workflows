@@ -419,6 +419,49 @@ describe('workflow-bridge format', () => {
     assert.match(out, /^revisit_routes: \/workflow-investigation-process bugfix stall, \/workflow-specification-process bugfix stall$/m);
   });
 
+  it('a promoted unit routes to its moved discussions by name — the discussion in flight, then the specification\'s reconcile', () => {
+    /** @param {Record<string, any>} discussions @param {Record<string, any>} spec */
+    const promoted = (discussions, spec) => createManifest(dir, 'fees', {
+      work_type: 'cross-cutting',
+      phases: {
+        discussion: { items: { 'fee-rules': { status: 'completed' }, 'fee-display': { status: 'completed' }, ...discussions } },
+        specification: { items: { fees: {
+          status: 'completed',
+          sources: { 'fee-rules': { status: 'incorporated' }, 'fee-display': { status: 'incorporated' } },
+          ...spec,
+        } } },
+      },
+    });
+
+    promoted({ 'fee-rules': { status: 'in-progress' } }, { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } });
+    assert.strictEqual(format(discover(dir, 'fees')), [
+      '=== fees (cross-cutting) ===',
+      'next_phase: discussion',
+      'completed_phases: specification',
+      'reconcile_pending: specification/fees (discussion)',
+      'revisitable_phases: (none)',
+      'next_route: /workflow-discussion-process cross-cutting fees fee-rules',
+      'revisit_routes: (none)',
+      '',
+    ].join('\n'));
+
+    promoted({}, { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } });
+    assert.strictEqual(format(discover(dir, 'fees')), [
+      '=== fees (cross-cutting) ===',
+      'next_phase: specification',
+      'completed_phases: discussion, specification',
+      'reconcile_pending: specification/fees (discussion)',
+      'revisitable_phases: discussion/fee-rules, discussion/fee-display',
+      'next_route: /workflow-specification-process cross-cutting fees',
+      'revisit_routes: /workflow-discussion-process cross-cutting fees fee-rules, /workflow-discussion-process cross-cutting fees fee-display',
+      '',
+    ].join('\n'));
+    // The menu its numbers count, row for row.
+    const menu = renderSurface(dir, 'revisit-phases', { dotpath: 'fees' });
+    assert.match(menu, /\*\*`1`\*\* +→ Discussion "Fee Rules" — \*completed\*\n\*\*`2`\*\* +→ Discussion "Fee Display" — \*completed\*\n/, menu);
+    assert.match(renderSurface(dir, 'next-phase-gate', { dotpath: 'fees', prev: 'discussion', next: 'specification' }), /`r\/revisit`/);
+  });
+
   it('carries no per-phase status or file-existence lines — completed_phases is the surface', () => {
     createManifest(dir, 'auth', {
       work_type: 'feature',

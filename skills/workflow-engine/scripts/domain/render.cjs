@@ -50,13 +50,13 @@ const {
   roadmapParksGate,
   roadmapShapeGate,
 } = require('./projections/roadmap.cjs');
-const { revisitablePhases, revisitPhasesSection } = require('./projections/workunit.cjs');
+const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
 const { registerState } = require('./research-threads.cjs');
 const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
-const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, completedPhases } = require('./workunit-detail.cjs');
+const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
@@ -4139,7 +4139,7 @@ function nextPhaseGate(cwd, { dotpath, prev, next }) {
     }
   }
   const skipReview = next === 'review';
-  const revisitable = revisitablePhases(type, { next_phase: next, completed_phases: completedPhases(cfg, manifest) });
+  const revisitable = phaseTargets(manifest, next).revisit;
   if (!skipReview && revisitable.length === 0) return '';
 
   // A derived phase's line matches phase-completed's: the session is
@@ -5407,13 +5407,12 @@ function revisitPhasesSurface(cwd, args) {
   if (!WORK_UNIT_TYPES[type]) {
     throw new Error(`render revisit-phases: "${workUnit}" is ${type ? `typed "${type}"` : 'untyped'} — the revisit menu serves the linear work types`);
   }
-  const cfg = workUnitTypeConfig(type);
   const { next_phase } = computeNextPhase(manifest);
-  const phases = revisitablePhases(type, { next_phase, completed_phases: completedPhases(cfg, manifest) });
-  if (phases.length === 0) {
+  const targets = phaseTargets(manifest, next_phase).revisit;
+  if (targets.length === 0) {
     throw new Error(`render revisit-phases: "${workUnit}" has no completed earlier phase to revisit`);
   }
-  return revisitPhasesSection(phases);
+  return revisitPhasesSection(targets);
 }
 
 /** @param {string} cwd @param {{dotpath: string}} args @returns {string} */

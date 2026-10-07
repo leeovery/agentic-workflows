@@ -1138,13 +1138,16 @@ function computeTopicLifecycle(manifest, topicName) {
     return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
 
-  if (rs === 'in-progress' && ds === 'completed') {
+  // A promoted discussion concluded and moved on with its specification to a
+  // cross-cutting unit — decided, as a concluded one is.
+  const decided = ds === 'completed' || ds === 'promoted';
+  if (rs === 'in-progress' && decided) {
     // Reopened research beneath a decided discussion — a triage landing
     // judged research-side. The topic is back in research; the discussion's
     // reconcile flag carries the downstream consequence.
     return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
-  if (ds === 'completed') {
+  if (decided) {
     return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, discussion_state: ds, triage_parked, reconcile_pending };
   }
   if (ds === 'in-progress') {
@@ -1328,6 +1331,7 @@ function triagePhases(workflowsDir, manifest, topic) {
  * @property {string|null} current_phase
  * @property {string|null} research_state
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
+ * @property {string|null} promoted_to       the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} triage_parked       rerouted concerns wait on the topic — a `triaged` stub in either phase, or queue files on disk beneath a started or reopened item
  * @property {{research: number, discussion: number}} triage_queued  the topic's queue depth per phase, counted from disk
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
@@ -1358,6 +1362,7 @@ function buildDiscoveryMap(manifest, workflowsDir) {
     const triage_queued = triageQueued(workflowsDir, manifest, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
+    const discussion = discussion_state === 'promoted' ? itemOf(manifest, 'discussion', item.name) : undefined;
     return {
       name: item.name,
       summary: summaryText,
@@ -1373,6 +1378,7 @@ function buildDiscoveryMap(manifest, workflowsDir) {
       current_phase,
       research_state,
       discussion_state,
+      promoted_to: discussion && typeof discussion.promoted_to === 'string' ? discussion.promoted_to : null,
       triage_parked: stubParked || triage_queued.research > 0 || triage_queued.discussion > 0,
       triage_queued,
       reconcile_pending,

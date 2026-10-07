@@ -52,7 +52,9 @@ const VALID_PHASE_STATUSES = {
   // the item, the last record's terminal transition closes it — the user
   // never starts or completes it by hand.
   experiment:     ['in-progress', 'completed'],
-  discussion:     ['triaged', 'in-progress', 'completed', 'cancelled', 'postponed'],
+  // `promoted`: the discussion left the epic with the specification it
+  // sources, into that specification's cross-cutting unit (`promoted_to`).
+  discussion:     ['triaged', 'in-progress', 'completed', 'cancelled', 'postponed', 'promoted'],
   investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
   specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],

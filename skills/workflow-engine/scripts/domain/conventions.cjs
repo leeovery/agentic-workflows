@@ -133,9 +133,11 @@ function discoveryGlyph(tier) {
 // `waits` (the map row's live waits, every kind) appends `awaiting research`
 // and `awaiting E1` directly after the lifecycle — a conversation beneath the
 // row is blocked pending research still to land or experiment evidence,
-// released when the research lands or the experiment ends.
-/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] @param {boolean} [reconcilePending] @param {import('./derivations.cjs').Wait[]} [waits] */
-function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked, reconcilePending, waits) {
+// released when the research lands or the experiment ends. `promotedTo` (the
+// map row's promoted_to) names the cross-cutting unit a decided topic's
+// discussion moved to with its specification.
+/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] @param {boolean} [reconcilePending] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
+function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked, reconcilePending, waits, promotedTo) {
   let label;
   switch (lifecycle) {
     case 'ready_for_discussion':
@@ -145,7 +147,7 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
       break;
     case 'researching': label = 'researching'; break;
     case 'discussing': label = 'discussing'; break;
-    case 'decided': label = 'decided'; break;
+    case 'decided': label = promotedTo ? `decided · promoted to ${promotedTo}` : 'decided'; break;
     case 'handled': label = 'dead end'; break;
     case 'cancelled': label = 'cancelled'; break;
     case 'postponed': label = 'postponed'; break;

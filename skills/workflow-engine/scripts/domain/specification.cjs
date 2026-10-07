@@ -24,9 +24,10 @@ const {
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 
 // Discussion statuses the menu never counts: cancelled is closed, postponed
-// has left for the roadmap, and triaged is a stub of parked rerouted
-// concerns that was never discussed.
-const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'triaged'];
+// has left for the roadmap, promoted has left with its specification for a
+// cross-cutting unit, and triaged is a stub of parked rerouted concerns that
+// was never discussed.
+const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'triaged'];
 
 /**
  * @typedef {object} DiscoverySource

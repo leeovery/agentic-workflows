@@ -250,6 +250,13 @@ describe('reads + derivations', () => {
       }, 'discussion'), 'in-progress');
     });
 
+    it('a promoted discussion drops out of the aggregate — it continues in its cross-cutting unit', () => {
+      assert.strictEqual(phaseStatus({
+        phases: { discussion: { items: { a: { status: 'promoted', promoted_to: 'cc' }, b: { status: 'in-progress' } } } },
+      }, 'discussion'), 'in-progress');
+      assert.strictEqual(phaseStatus({ phases: { discussion: { items: { a: { status: 'promoted', promoted_to: 'cc' } } } } }, 'discussion'), null);
+    });
+
     it('aggregates multiple items — no statuses returns null', () => {
       assert.strictEqual(phaseStatus({
         phases: { discussion: { items: { a: {}, b: {} } } },
@@ -1314,6 +1321,14 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null, discussion_state: 'completed', triage_parked: false, reconcile_pending: false });
     });
 
+    it('returns decided when the discussion was promoted with its specification — concluded and moved on', () => {
+      const m = loadWithPhases('auth', { research: 'completed', discussion: 'promoted' });
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: 'completed', discussion_state: 'promoted', triage_parked: false, reconcile_pending: false });
+      assert.strictEqual(computeNextAction('discussion', 'decided', 'completed'), null, 'nothing left to start on it');
+      const reopened = loadWithPhases('auth', { research: 'in-progress', discussion: 'promoted' });
+      assert.strictEqual(computeTopicLifecycle(reopened, 'auth').lifecycle, 'researching', 'research reopened beneath it reads as beneath a concluded one');
+    });
+
     it('the map marker reads cancelled first — over live items, and over a dead-ended row', () => {
       createManifest(dir, 'alpha', { phases: {
         discovery: { items: { auth: { routing: 'research', source: 'discovery', cancelled: true }, dead: { routing: 'research', source: 'discovery', handled: true, cancelled: true }, fresh: { routing: 'research', source: 'discovery' } } },
@@ -1793,6 +1808,18 @@ describe('reads + derivations', () => {
         { kind: 'research', status: 'in-progress' },
         { kind: 'experiment', id: 'E1' },
       ], 'spawn-phase order, each holder\'s waits in the derivation\'s order');
+    });
+
+    it('the map row names the unit a promoted discussion moved to, and no unit otherwise', () => {
+      const m = {
+        name: 'pay', work_type: 'epic',
+        phases: {
+          discovery: { items: { fees: { routing: 'discussion' }, refunds: { routing: 'discussion' } } },
+          discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
+        },
+      };
+      const rows = buildDiscoveryMap(m, path.join(__dirname, '.no-such-workflows')).map;
+      assert.deepStrictEqual(rows.map((r) => [r.name, r.lifecycle, r.promoted_to]), [['fees', 'decided', 'fees-cc'], ['refunds', 'decided', null]]);
     });
   });
 

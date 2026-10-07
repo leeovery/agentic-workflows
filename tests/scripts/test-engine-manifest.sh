@@ -562,6 +562,21 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
+echo -e "${YELLOW}Test: set and delete refuse a promoted item — it continues in its cross-cutting unit${NC}"
+setup_fixture
+create_wu promoted-item epic "Promoted"
+run_cli set promoted-item.discussion.fees status=promoted promoted_to=fees-cc >/dev/null 2>&1
+assert_exit_code 1 "status write refused" set promoted-item.discussion.fees status completed
+output=$(run_cli set promoted-item.discussion.fees status completed || true)
+assert_contains "$output" 'is promoted to ..fees-cc.. — continue it from that cross-cutting work unit' "refusal names the unit"
+assert_exit_code 1 "item delete refused" delete promoted-item.discussion items.fees
+output=$(run_cli_stdout get promoted-item.discussion.fees status)
+assert_equals "$output" "promoted" "the item stays promoted"
+
+echo ""
+
+# ----------------------------------------------------------------------------
+
 echo -e "${YELLOW}Test: set validates correct phase statuses${NC}"
 setup_fixture
 create_wu valid-status feature "Valid"
