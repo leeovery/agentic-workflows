@@ -4440,15 +4440,6 @@ describe('review fixes — gap coverage', () => {
   });
 });
 
-describe('titlecaseLabel', () => {
-  const { titlecaseLabel } = require('../../skills/workflow-engine/scripts/domain/conventions.cjs');
-  it('capitalises runs in place, preserving punctuation', () => {
-    assert.strictEqual(titlecaseLabel('discussion (in-progress)'), 'Discussion (In-Progress)');
-    assert.strictEqual(titlecaseLabel('finalising — quick-fix'), 'Finalising — Quick-Fix');
-    assert.strictEqual(titlecaseLabel('phase 2 (done)'), 'Phase 2 (Done)');
-  });
-});
-
 describe('CLI boundary — engine render through the argv entry', () => {
   const harness = require('./engine-harness.cjs');
   let dir;

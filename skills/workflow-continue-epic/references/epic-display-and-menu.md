@@ -4,7 +4,7 @@
 
 ---
 
-Display the full phase-by-phase breakdown for the selected epic, then present an interactive menu of actionable items. The caller is responsible for providing:
+Display the full phase-by-phase breakdown for the epic, then present an interactive menu of actionable items. The caller is responsible for providing:
 - `work_unit` — the epic's work unit name
 - `new_arrivals` (optional) — tracker from `topic-discovery.md` listing the topic names added during this boot-up (`gap_analysis`). Drives the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 

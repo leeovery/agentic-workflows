@@ -66,14 +66,12 @@ module.exports = {
     loadManifest: reads.loadManifest,
     filesChecksum: reads.filesChecksum,
     loadActiveManifests: reads.loadActiveManifests,
-    loadAllManifests: reads.loadAllManifests,
   },
   derivations: {
     phaseData: derivations.phaseData,
     phaseItems: derivations.phaseItems,
     phaseStatus: derivations.phaseStatus,
     computeNextPhase: derivations.computeNextPhase,
-    lastCompletedPhase: derivations.lastCompletedPhase,
     computeAnalysisCacheStatus: derivations.computeAnalysisCacheStatus,
     computeTopicLifecycle: derivations.computeTopicLifecycle,
     computeMapSummary: derivations.computeMapSummary,
@@ -111,7 +109,6 @@ module.exports = {
   },
   detail: {
     epicDetail: epic.epicDetail,
-    EPIC_DETAIL_PHASES: epic.EPIC_DETAIL_PHASES,
     startDetail: start.startDetail,
     combinedInbox: inboxSet.combinedInbox,
     workingSetDetail: inboxSet.workingSetDetail,

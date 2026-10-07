@@ -31,7 +31,7 @@ const NB = (n) => '\u00a0'.repeat(n);
 /** Build a detail from a manifest in a temp fixture dir. */
 function detailFor(dir, name, manifest) {
   createManifest(dir, name, manifest);
-  return discover(dir, name).epics[0].detail;
+  return discover(dir, name);
 }
 
 describe('epic projections: dashboard (map branch)', () => {

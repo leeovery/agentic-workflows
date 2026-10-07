@@ -42,14 +42,12 @@ engine.reads.fileExists(p)                        // → boolean
 engine.reads.loadManifest(cwd, wu)                // → parsed manifest, or null (quiet on missing)
 engine.reads.filesChecksum(paths)                 // → md5 hex over the files' bytes, or null
 engine.reads.loadActiveManifests(cwd)             // → in-progress work-unit manifests
-engine.reads.loadAllManifests(cwd)                // → every readable work-unit manifest
 
 // domain: shared derivations (derivations.cjs — phase joins, lifecycle, cache status)
 engine.derivations.phaseData(manifest, phase)     // → phases.{phase} ({} when absent)
 engine.derivations.phaseItems(manifest, phase)    // → [{name, …fields}] from phases.{phase}.items
 engine.derivations.phaseStatus(manifest, phase)   // → aggregated item status, or null
 engine.derivations.computeNextPhase(manifest)     // → { next_phase, phase_label }
-engine.derivations.lastCompletedPhase(manifest, pipeline) // → last phase (pipeline order) with a completed item, or null
 engine.derivations.computeAnalysisCacheStatus(manifest, workflowsDir, kind) // → { status, stamped, generated, files[, reason] }
 engine.derivations.computeTopicLifecycle(manifest, topic) // → { lifecycle, tier, current_phase, research_state }
 engine.derivations.computeMapSummary(items)       // → tier counts over map rows
@@ -80,7 +78,6 @@ engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / 
 
 // domain: detail builders + projections
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
-engine.detail.EPIC_DETAIL_PHASES                  // string[] — every phase the epic detail surfaces (discovery first, then the pipeline)
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
 engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)

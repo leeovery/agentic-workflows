@@ -17,26 +17,27 @@ describe('workflow-continue-epic discovery', () => {
   beforeEach(() => { dir = setupFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('returns empty when no epics exist', () => {
-    assert.deepStrictEqual(discover(dir).epics, []);
+  it('returns null when no epics exist', () => {
+    assert.strictEqual(discover(dir, 'v1'), null);
   });
 
-  it('lists active epics only — a completed or cancelled epic is never discovered', () => {
+  it('discovers an active epic only — a completed or cancelled epic is never discovered', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
     });
     createManifest(dir, 'old', { work_type: 'epic', status: 'completed', phases: { review: { items: { auth: { status: 'completed' } } } } });
     createManifest(dir, 'stopped', { work_type: 'epic', status: 'cancelled' });
-    assert.deepStrictEqual(discover(dir).epics.map((e) => e.name), ['v1']);
-    assert.deepStrictEqual(discover(dir, 'old').epics, []);
-    assert.deepStrictEqual(discover(dir, 'stopped').epics, []);
+    assert.notStrictEqual(discover(dir, 'v1'), null);
+    assert.strictEqual(discover(dir, 'old'), null);
+    assert.strictEqual(discover(dir, 'stopped'), null);
   });
 
   it('excludes non-epic work types', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
     createManifest(dir, 'auth', { work_type: 'feature' });
-    assert.deepStrictEqual(discover(dir).epics.map((e) => e.name), ['v1']);
+    assert.notStrictEqual(discover(dir, 'v1'), null);
+    assert.strictEqual(discover(dir, 'auth'), null);
   });
 
   describe('epic detail', () => {
@@ -52,8 +53,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.phases.discussion.length, 2);
     });
 
@@ -65,8 +65,7 @@ describe('workflow-continue-epic discovery', () => {
           specification: { items: { billing: { status: 'in-progress' } } },
         },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.in_progress.length, 2);
       assert.strictEqual(d.in_progress[0].name, 'auth');
       assert.strictEqual(d.in_progress[0].phase, 'discussion');
@@ -79,8 +78,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.completed.length, 1);
       assert.strictEqual(d.completed[0].name, 'auth');
     });
@@ -105,8 +103,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['payments']);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.unaccounted_discussions, ['payments']);
     });
 
     it('detects reopened discussions', () => {
@@ -128,8 +126,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.reopened_discussions, ['auth']);
     });
 
     it('computes next-phase-ready: spec completed no plan', () => {
@@ -139,8 +137,7 @@ describe('workflow-continue-epic discovery', () => {
           specification: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.next_phase_ready.length, 1);
       assert.strictEqual(d.next_phase_ready[0].action, 'start_planning');
     });
@@ -152,8 +149,8 @@ describe('workflow-continue-epic discovery', () => {
           planning: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.next_phase_ready[0].action, 'start_implementation');
+      const d = discover(dir, 'v1');
+      assert.strictEqual(d.next_phase_ready[0].action, 'start_implementation');
     });
 
     it('computes next-phase-ready: impl completed no review', () => {
@@ -163,8 +160,8 @@ describe('workflow-continue-epic discovery', () => {
           implementation: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.next_phase_ready[0].action, 'start_review');
+      const d = discover(dir, 'v1');
+      assert.strictEqual(d.next_phase_ready[0].action, 'start_review');
     });
 
     it('does not show next-phase-ready when next phase already exists', () => {
@@ -175,8 +172,8 @@ describe('workflow-continue-epic discovery', () => {
           planning: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.next_phase_ready.length, 0);
+      const d = discover(dir, 'v1');
+      assert.strictEqual(d.next_phase_ready.length, 0);
     });
 
     it('sets gating flags correctly', () => {
@@ -190,8 +187,7 @@ describe('workflow-continue-epic discovery', () => {
           implementation: { items: { auth: { status: 'completed' } } },
         },
       });
-      const r = discover(dir);
-      const g = r.epics[0].detail.gating;
+      const g = discover(dir, 'v1').gating;
       assert.strictEqual(g.can_start_specification, true);
       assert.strictEqual(g.can_start_planning, true);
       assert.strictEqual(g.can_start_implementation, true);
@@ -206,8 +202,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      const r = discover(dir);
-      const g = r.epics[0].detail.gating;
+      const g = discover(dir, 'v1').gating;
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
     });
@@ -229,16 +224,14 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const spec = r.epics[0].detail.phases.specification[0];
+      const spec = discover(dir, 'v1').phases.specification[0];
       assert.strictEqual(spec.sources.length, 2);
       assert.strictEqual(spec.sources[0].topic, 'providers');
     });
 
     it('handles empty epic (no phases)', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.deepStrictEqual(d.phases, {});
       assert.strictEqual(d.in_progress.length, 0);
       assert.strictEqual(d.completed.length, 0);
@@ -246,8 +239,7 @@ describe('workflow-continue-epic discovery', () => {
 
     it('exposes analysis_caches shape on epic detail', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.ok(d.analysis_caches);
       assert.ok(d.analysis_caches.gap_analysis);
       assert.strictEqual(d.analysis_caches.gap_analysis.status, 'absent');
@@ -279,8 +271,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const map = r.epics[0].detail.discovery_map;
+      const map = discover(dir, 'v1').discovery_map;
       const byName = Object.fromEntries(map.map(t => [t.name, t]));
 
       assert.strictEqual(byName['pristine'].source, 'discovery');
@@ -344,7 +335,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      const plan = discover(dir, 'v1').phases.planning[0];
       assert.strictEqual(plan.deps_satisfied, false);
       assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'dependency unresolved' }]);
     });
@@ -369,7 +360,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning.find(p => p.name === 'billing');
+      const plan = discover(dir, 'v1').phases.planning.find(p => p.name === 'billing');
       assert.strictEqual(plan.deps_satisfied, true);
       assert.strictEqual(plan.deps_blocking, undefined);
     });
@@ -393,7 +384,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      const plan = discover(dir, 'v1').phases.planning[0];
       assert.strictEqual(plan.deps_satisfied, false);
       assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', internal_id: 'auth-1-3', reason: 'task not yet completed' }]);
     });
@@ -417,7 +408,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      const plan = discover(dir, 'v1').phases.planning[0];
       assert.strictEqual(plan.deps_satisfied, true);
     });
 
@@ -435,7 +426,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      const plan = discover(dir, 'v1').phases.planning[0];
       assert.strictEqual(plan.deps_satisfied, false);
     });
 
@@ -453,7 +444,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      const plan = discover(dir, 'v1').phases.planning[0];
       assert.strictEqual(plan.deps_satisfied, true);
     });
 
@@ -471,7 +462,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const plan = discover(dir).epics[0].detail.phases.planning[0];
+      const plan = discover(dir, 'v1').phases.planning[0];
       assert.strictEqual(plan.deps_satisfied, false);
       assert.deepStrictEqual(plan.deps_blocking, [{ topic: 'auth', reason: 'resolved dependency missing task reference' }]);
     });
@@ -488,7 +479,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       const auth = d.next_phase_ready.find(n => n.name === 'auth');
       const billing = d.next_phase_ready.find(n => n.name === 'billing');
       assert.strictEqual(auth.blocked, true);
@@ -504,7 +495,7 @@ describe('workflow-continue-epic discovery', () => {
           planning: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.deepStrictEqual(d.phases.planning[0].blocked_by, ['specification']);
       assert.strictEqual(d.gating.can_start_planning, false);
     });
@@ -517,7 +508,7 @@ describe('workflow-continue-epic discovery', () => {
           planning: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.phases.planning[0].blocked_by, undefined);
       assert.strictEqual(d.gating.can_start_planning, true);
     });
@@ -553,7 +544,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const ready = discover(dir).epics[0].detail.next_phase_ready;
+      const ready = discover(dir, 'v1').next_phase_ready;
       const mint = ready.find(n => n.name === 'mint-release-tool');
       const commit = ready.find(n => n.name === 'commit-command');
       assert.strictEqual(mint.action, 'start_implementation');
@@ -581,8 +572,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, []);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.unaccounted_discussions, []);
     });
 
     it('spec with empty sources array', () => {
@@ -597,8 +588,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.unaccounted_discussions, ['auth']);
     });
 
     it('spec with no sources field', () => {
@@ -613,8 +604,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.unaccounted_discussions, ['auth']);
     });
 
     it('multiple items ready simultaneously', () => {
@@ -639,8 +630,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.next_phase_ready.length, 4);
       const actions = d.next_phase_ready.map(n => n.action).sort();
       assert.deepStrictEqual(actions, ['start_implementation', 'start_planning', 'start_planning', 'start_review']);
@@ -663,14 +653,13 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.unaccounted_discussions.length, 2);
+      const d = discover(dir, 'v1');
+      assert.strictEqual(d.unaccounted_discussions.length, 2);
     });
 
     it('gating flags all false for empty epic', () => {
       createManifest(dir, 'v1', { work_type: 'epic' });
-      const r = discover(dir);
-      const g = r.epics[0].detail.gating;
+      const g = discover(dir, 'v1').gating;
       assert.strictEqual(g.can_start_specification, false);
       assert.strictEqual(g.can_start_planning, false);
       assert.strictEqual(g.can_start_implementation, false);
@@ -694,8 +683,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const spec = r.epics[0].detail.phases.specification[0];
+      const spec = discover(dir, 'v1').phases.specification[0];
       assert.strictEqual(Array.isArray(spec.sources), true);
       assert.strictEqual(spec.sources.length, 2);
       assert.strictEqual(spec.sources[0].topic, 'core-architecture');
@@ -726,8 +714,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions.sort(), ['billing', 'payments']);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.unaccounted_discussions.sort(), ['billing', 'payments']);
     });
 
     it('object-format sources detect reopened discussions', () => {
@@ -747,8 +735,8 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.reopened_discussions, ['auth']);
     });
 
     it('completed discussion that is in-progress is not both reopened and unaccounted', () => {
@@ -766,9 +754,9 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, ['auth']);
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, []);
+      const d = discover(dir, 'v1');
+      assert.deepStrictEqual(d.reopened_discussions, ['auth']);
+      assert.deepStrictEqual(d.unaccounted_discussions, []);
     });
   });
 
@@ -778,8 +766,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.deepStrictEqual(d.discovery_map, []);
       assert.strictEqual(d.convergence_state, null);
       assert.strictEqual(d.map_summary, null);
@@ -790,8 +777,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'feature',
         phases: { discovery: { items: { 'topic-a': { routing: 'research', source: 'discovery' } } } },
       });
-      const r = discover(dir);
-      assert.strictEqual(r.epics.length, 0);
+      assert.strictEqual(discover(dir, 'auth'), null);
     });
 
     it('discovery items only render as fresh / ○ tier', () => {
@@ -806,8 +792,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.discovery_map.length, 2);
       assert.ok(d.discovery_map.every(t => t.tier === '○'));
       assert.ok(d.discovery_map.every(t => t.lifecycle === 'fresh'));
@@ -845,8 +830,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const tiers = r.epics[0].detail.discovery_map.map(t => `${t.tier} ${t.name}`);
+      const tiers = discover(dir, 'v1').discovery_map.map(t => `${t.tier} ${t.name}`);
       assert.deepStrictEqual(tiers, [
         '✓ decided-topic',
         '→ ready-topic',
@@ -864,7 +848,7 @@ describe('workflow-continue-epic discovery', () => {
           discovery: { items: { topic: { routing: 'research', source: 'discovery' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'fresh');
       assert.strictEqual(t.tier, '○');
       assert.strictEqual(t.next_action, 'start_research');
@@ -877,7 +861,7 @@ describe('workflow-continue-epic discovery', () => {
           discovery: { items: { topic: { routing: 'discussion', source: 'discovery' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'fresh');
       assert.strictEqual(t.next_action, 'start_discussion');
     });
@@ -890,7 +874,7 @@ describe('workflow-continue-epic discovery', () => {
           research: { items: { topic: { status: 'in-progress' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'researching');
       assert.strictEqual(t.tier, '◐');
       assert.strictEqual(t.next_action, 'continue_research');
@@ -905,7 +889,7 @@ describe('workflow-continue-epic discovery', () => {
           research: { items: { topic: { status: 'completed' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'ready_for_discussion');
       assert.strictEqual(t.tier, '→');
       assert.strictEqual(t.next_action, 'start_discussion_after_research');
@@ -919,7 +903,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { topic: { status: 'in-progress' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'discussing');
       assert.strictEqual(t.tier, '◐');
       assert.strictEqual(t.next_action, 'continue_discussion');
@@ -936,7 +920,7 @@ describe('workflow-continue-epic discovery', () => {
             discussion: { items: { topic: { status: 'in-progress' } } },
           },
         });
-        const t = discover(dir).epics[0].detail.discovery_map[0];
+        const t = discover(dir, 'v1').discovery_map[0];
         assert.strictEqual(t.lifecycle, 'discussing');
         assert.strictEqual(t.next_action, action, status);
         assert.deepStrictEqual(t.waits, [{ kind: 'research', status }]);
@@ -951,7 +935,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { topic: { status: 'completed' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'decided');
       assert.strictEqual(t.tier, '✓');
       assert.strictEqual(t.next_action, null);
@@ -965,7 +949,7 @@ describe('workflow-continue-epic discovery', () => {
           research: { items: { topic: { status: 'cancelled' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'cancelled');
       assert.strictEqual(t.tier, '⊘');
     });
@@ -979,7 +963,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { topic: { status: 'cancelled' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.lifecycle, 'cancelled');
       assert.strictEqual(t.tier, '⊘');
       assert.strictEqual(t.next_action, null);
@@ -1003,7 +987,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.convergence_state, 'settled');
     });
 
@@ -1026,7 +1010,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.convergence_state, 'settled');
     });
 
@@ -1043,7 +1027,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { a: { status: 'completed' } } },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.convergence_state, 'in-progress');
     });
 
@@ -1055,7 +1039,7 @@ describe('workflow-continue-epic discovery', () => {
           research: { items: { umbrella: { status: 'completed' } } },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.tier, '⊙');
       assert.strictEqual(t.lifecycle, 'handled');
       assert.strictEqual(t.next_action, null);
@@ -1075,7 +1059,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { decided: { status: 'completed' } } },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.convergence_state, 'settled');
       assert.strictEqual(d.map_summary.handled, 1);
     });
@@ -1094,7 +1078,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { live: { status: 'in-progress' } } },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       // Only the handled topic lacks an order; it's excluded, so no sequencing needed.
       assert.strictEqual(d.needs_sequencing, false);
     });
@@ -1104,7 +1088,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discovery: { items: { topic: { routing: 'research', source: 'discovery' } } } },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.source_provenance, null);
     });
 
@@ -1113,7 +1097,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discovery: { items: { topic: { routing: 'research', source: 'research-split:kitchen-hardware' } } } },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.source_provenance, 'from kitchen-hardware');
     });
 
@@ -1122,7 +1106,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discovery: { items: { topic: { routing: 'discussion', source: 'gap-analysis' } } } },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.source_provenance, 'from gap-analysis');
     });
 
@@ -1131,7 +1115,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discovery: { items: { topic: { routing: 'research', source: 'direct-start' } } } },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.source_provenance, 'from direct-start');
     });
 
@@ -1163,7 +1147,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const s = discover(dir).epics[0].detail.map_summary;
+      const s = discover(dir, 'v1').map_summary;
       assert.strictEqual(s.total, 5);
       assert.strictEqual(s.ready, 1);
       assert.strictEqual(s.in_flight, 1);
@@ -1180,7 +1164,7 @@ describe('workflow-continue-epic discovery', () => {
           discussion: { items: { topic: { status: 'in-progress' } } },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.phases.discovery, undefined);
       assert.ok(d.phases.discussion);
     });
@@ -1197,7 +1181,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const d = discover(dir).epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.in_progress.length, 0);
       assert.strictEqual(d.completed.length, 0);
       assert.strictEqual(d.cancelled.length, 0);
@@ -1218,14 +1202,14 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const t = discover(dir).epics[0].detail.discovery_map[0];
+      const t = discover(dir, 'v1').discovery_map[0];
       assert.strictEqual(t.summary, 'A one-line description');
       assert.strictEqual(t.routing, 'discussion');
     });
   });
 
   describe('work_unit filtering', () => {
-    it('returns only the specified epic when work_unit provided', () => {
+    it('returns the detail of the named epic, never another', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
@@ -1234,43 +1218,19 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
       });
-      const r = discover(dir, 'v1');
-      assert.deepStrictEqual(r.epics.map((e) => e.name), ['v1']);
+      assert.deepStrictEqual(discover(dir, 'v1').phases.discussion.map((i) => i.name), ['auth']);
+      assert.deepStrictEqual(discover(dir, 'v2').phases.discussion.map((i) => i.name), ['billing']);
     });
 
-    it('returns all epics when work_unit not provided', () => {
+    it('returns null when work_unit does not match any epic', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
       });
-      createManifest(dir, 'v2', {
-        work_type: 'epic',
-        phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
-      });
-      const r = discover(dir);
-      assert.strictEqual(r.epics.length, 2);
+      assert.strictEqual(discover(dir, 'nonexistent'), null);
     });
 
-    it('returns empty when work_unit does not match any epic', () => {
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-      });
-      const r = discover(dir, 'nonexistent');
-      assert.strictEqual(r.epics.length, 0);
-    });
-
-    it('filters by work_unit and still excludes non-epic types', () => {
-      createManifest(dir, 'auth', { work_type: 'feature' });
-      createManifest(dir, 'v1', {
-        work_type: 'epic',
-        phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
-      });
-      const r = discover(dir, 'auth');
-      assert.strictEqual(r.epics.length, 0);
-    });
-
-    it('produces full detail for filtered epic', () => {
+    it('produces full detail for the named epic', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
@@ -1282,9 +1242,7 @@ describe('workflow-continue-epic discovery', () => {
         work_type: 'epic',
         phases: { discussion: { items: { billing: { status: 'in-progress' } } } },
       });
-      const r = discover(dir, 'v1');
-      assert.strictEqual(r.epics.length, 1);
-      const d = r.epics[0].detail;
+      const d = discover(dir, 'v1');
       assert.strictEqual(d.completed.length, 2);
       assert.strictEqual(d.gating.can_start_specification, true);
       assert.strictEqual(d.gating.can_start_planning, true);
@@ -1299,8 +1257,7 @@ describe('workflow-continue-epic discovery', () => {
           specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
         },
       });
-      const r = discover(dir);
-      const ready = r.epics[0].detail.next_phase_ready;
+      const ready = discover(dir, 'v1').next_phase_ready;
       const entry = ready.find(n => n.action === 'start_specification' && n.name === 'auth-grouping');
       assert.ok(entry, 'proposed spec surfaced as a start_specification entry');
     });
@@ -1317,8 +1274,7 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
-      const ready = r.epics[0].detail.next_phase_ready;
+      const ready = discover(dir, 'v1').next_phase_ready;
       const specIdx = ready.findIndex(n => n.action === 'start_specification');
       const planIdx = ready.findIndex(n => n.action === 'start_planning');
       assert.ok(specIdx >= 0 && planIdx >= 0, 'both entries present');
@@ -1339,10 +1295,10 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
+      const d = discover(dir, 'v1');
       // payments is grouped into a proposed spec → accounted. auth is in no
       // spec item at all → ungrouped, the new meaning of unaccounted.
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
+      assert.deepStrictEqual(d.unaccounted_discussions, ['auth']);
     });
 
     it('a cancelled or superseded specification groups nothing — its sources read unaccounted again', () => {
@@ -1360,10 +1316,10 @@ describe('workflow-continue-epic discovery', () => {
           },
         },
       });
-      const r = discover(dir);
+      const d = discover(dir, 'v1');
       // auth's only spec is cancelled → free to regroup; payments rides the
       // superseding spec; roles went with its promoted spec.
-      assert.deepStrictEqual(r.epics[0].detail.unaccounted_discussions, ['auth']);
+      assert.deepStrictEqual(d.unaccounted_discussions, ['auth']);
     });
 
     it('does not mark an in-progress discussion sourced only by a proposed item as reopened', () => {
@@ -1374,10 +1330,10 @@ describe('workflow-continue-epic discovery', () => {
           specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
         },
       });
-      const r = discover(dir);
+      const d = discover(dir, 'v1');
       // Reopened stays materialized-only — a proposed grouping has nothing
       // extracted to revisit.
-      assert.deepStrictEqual(r.epics[0].detail.reopened_discussions, []);
+      assert.deepStrictEqual(d.reopened_discussions, []);
     });
 
     it('keeps can_start_planning false when the only spec is proposed', () => {
@@ -1387,8 +1343,8 @@ describe('workflow-continue-epic discovery', () => {
           specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
         },
       });
-      const r = discover(dir);
-      assert.strictEqual(r.epics[0].detail.gating.can_start_planning, false);
+      const d = discover(dir, 'v1');
+      assert.strictEqual(d.gating.can_start_planning, false);
     });
 
     it('includes a proposed spec item in phases.specification for display', () => {
@@ -1398,8 +1354,7 @@ describe('workflow-continue-epic discovery', () => {
           specification: { items: { 'auth-grouping': { status: 'proposed', sources: { auth: { status: 'pending' } } } } },
         },
       });
-      const r = discover(dir);
-      const specPhase = r.epics[0].detail.phases.specification;
+      const specPhase = discover(dir, 'v1').phases.specification;
       assert.ok(specPhase, 'specification phase present');
       const item = specPhase.find(i => i.name === 'auth-grouping');
       assert.strictEqual(item.status, 'proposed');
@@ -1758,13 +1713,13 @@ describe('workflow-continue-epic detail counts (imports/seeds)', () => {
         { path: 'imports/early-thoughts.md', imported_at: '2026-05-10T10:01:00Z' },
       ],
     });
-    const d = discover(dir).epics[0].detail;
+    const d = discover(dir, 'v1');
     assert.strictEqual(d.imports_count, 2);
   });
 
   it('imports_count is zero when the field is missing', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
-    const d = discover(dir).epics[0].detail;
+    const d = discover(dir, 'v1');
     assert.strictEqual(d.imports_count, 0);
   });
 
@@ -1775,13 +1730,13 @@ describe('workflow-continue-epic detail counts (imports/seeds)', () => {
         { path: 'seeds/2026-04-02-billing-overhaul.md', source: 'inbox:idea', seeded_at: '2026-05-10T10:00:00Z' },
       ],
     });
-    const d = discover(dir).epics[0].detail;
+    const d = discover(dir, 'v1');
     assert.strictEqual(d.seeds_count, 1);
   });
 
   it('seeds_count is zero when the field is missing', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
-    const d = discover(dir).epics[0].detail;
+    const d = discover(dir, 'v1');
     assert.strictEqual(d.seeds_count, 0);
   });
 });
@@ -1946,10 +1901,10 @@ describe('workflow-continue-epic CLI dispatch', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('  1  —  continue_research  auth  → /workflow-research-process epic v1 auth  (recommended)'), res.stdout);
     assert.ok(res.stdout.includes('  2  —  continue_discussion  auth  → /workflow-discussion-process epic v1 auth  (in session: last active 4m ago)'), res.stdout);
-    assert.match(res.stdout.replace(/\n+/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
+    assert.match(res.stdout.replace(/\n +/g, ' '), /~~Continue "Auth" — \*discussion\*~~ · in session \(last active 4m ago\)/, res.stdout);
     const gate = run(['in-session-gate', 'v1', '2']);
     assert.strictEqual(gate.status, 0, gate.stderr);
-    assert.ok(gate.stdout.replace(/\n+/g, ' ').includes(
+    assert.ok(gate.stdout.replace(/\n +/g, ' ').includes(
       'Its entry is also held shut — research on "Auth" is outstanding — so proceeding meets that gate next.'), gate.stdout);
 
     // The same heartbeat with a dead owner: the row goes, and the topic is
@@ -2081,7 +2036,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
     const res = run(['postpone-menu', 'v1']);
     assert.strictEqual(res.status, 0, res.stderr);
     assert.ok(res.stdout.includes('  └─ 1. Auth [discussing] · in session (last active 2m ago)'), res.stdout);
-    assert.ok(/Postpone "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n+/g, ' ')), res.stdout);
+    assert.ok(/Postpone "Auth" — \*discussing\* · in session \(last active 2m ago\)/.test(res.stdout.replace(/\n +/g, ' ')), res.stdout);
     assert.ok(res.stdout.includes('  1  —  postpone  auth  discovery  → (internal)'), 'the cue never locks — the row keeps its key');
 
     const own = spawnSync('node', [GATEWAY, 'postpone-menu', 'v1'], {

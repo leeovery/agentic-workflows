@@ -27,19 +27,17 @@
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { loadActiveManifests } = engine.reads;
-const { phaseItems } = engine.derivations;
+
+/** @typedef {import('../../workflow-engine/scripts/domain/epic-detail.cjs').EpicDetail} EpicDetail */
 
 /**
- * The active epics, each with its detail — the one named `workUnit` where the
- * caller names one.
- * @param {string} cwd @param {string} [workUnit]
- * @returns {{epics: {name: string, detail: any}[]}}
+ * The detail of the active epic `workUnit` names, or null where none does.
+ * @param {string} cwd @param {string} workUnit
+ * @returns {EpicDetail|null}
  */
 function discover(cwd, workUnit) {
-  const epics = loadActiveManifests(cwd)
-    .filter((m) => m.work_type === 'epic' && (workUnit === undefined || m.name === workUnit))
-    .map((m) => ({ name: m.name, detail: engine.detail.epicDetail(cwd, m) }));
-  return { epics };
+  const manifest = loadActiveManifests(cwd).find((m) => m.work_type === 'epic' && m.name === workUnit);
+  return manifest ? engine.detail.epicDetail(cwd, manifest) : null;
 }
 
 /** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
@@ -93,15 +91,14 @@ function reconcilePending(d) {
 // read: the all-done flag, analysis-cache statuses, the sequencing flag, and
 // the discovery-map rows (tier, lifecycle, routing, field presence, current
 // summary text).
-function formatScoped(workUnit, result) {
-  const e = result.epics[0];
+/** @param {string} workUnit @param {EpicDetail|null} d */
+function formatScoped(workUnit, d) {
   const lines = [];
   lines.push(`=== EPIC: ${workUnit} ===`);
-  if (!e) {
+  if (!d) {
     lines.push('error: no active epic with this name');
     return lines.join('\n') + '\n';
   }
-  const d = e.detail;
   lines.push(`all_done: ${computeAllDone(d)}`);
   lines.push(`reconcile_pending: ${reconcilePending(d).join(', ') || '(none)'}`);
   lines.push(`analysis_caches: gap_analysis=${d.analysis_caches.gap_analysis.status}`);
@@ -129,13 +126,11 @@ function formatScoped(workUnit, result) {
 // One snapshot for Step 6: reasoning DATA (flags + the ACTIONS table), the
 // rendered dashboard + key (DISPLAY), and the menu (MENU).
 function view(workUnit, newArrivalsJson) {
-  const result = discover(process.cwd(), workUnit);
-  const e = result.epics[0];
-  if (!e) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' })
-      + engine.project.selectionNotFound('epic', workUnit || '(missing)');
+  const d = discover(process.cwd(), workUnit);
+  if (!d) {
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: 'no active epic with this name' })
+      + engine.project.selectionNotFound('epic', workUnit);
   }
-  const d = e.detail;
 
   let newArrivals = {};
   if (newArrivalsJson) {
@@ -148,17 +143,17 @@ function view(workUnit, newArrivalsJson) {
   // whole point — a session that steps back to the menu holds a row of its
   // own, and striking it through would have the display arguing with the
   // user about a topic they are sitting in.
-  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
+  const presence = engine.presence.scanPresence(process.cwd(), workUnit).sessions
     .filter((r) => !engine.presence.ownsRow(r));
   const held = presence.filter((r) => r.held);
   // Code takes one slot per checkout, so the code entries read the whole
   // project's held rows, not just this epic's.
   const codeHeld = engine.presence.heldCodeSessions(process.cwd());
 
-  const menu = engine.project.epicMenu(e.name, d, { presence, codeHeld });
+  const menu = engine.project.epicMenu(workUnit, d, { presence, codeHeld });
 
   const dataLines = [];
-  dataLines.push(`work_unit: ${e.name}`);
+  dataLines.push(`work_unit: ${workUnit}`);
   dataLines.push(`sessions_in_progress: ${held.map((r) => `${r.phase}/${r.topic} (last active ${engine.presence.fmtAge(r.age_seconds)} ago)`).join(', ') || '(none)'}`);
   dataLines.push(`convergence: ${d.convergence_state || 'none'}`);
   dataLines.push(`needs_sequencing: ${d.needs_sequencing}`);
@@ -181,7 +176,7 @@ function view(workUnit, newArrivalsJson) {
     return cells;
   }));
 
-  const display = engine.project.epicDashboard(e.name, d, { newArrivals, presence });
+  const display = engine.project.epicDashboard(workUnit, d, { newArrivals, presence });
   const key = engine.project.epicKey(d);
 
   return [
@@ -196,25 +191,24 @@ function view(workUnit, newArrivalsJson) {
 // at the gate that displays it, recomputed from the same detail and presence
 // the snapshot read.
 function inSessionGate(workUnit, key) {
-  const result = discover(process.cwd(), workUnit);
-  const e = result.epics[0];
-  if (!e) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' });
+  const d = discover(process.cwd(), workUnit);
+  if (!d) {
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: 'no active epic with this name' });
   }
-  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
+  const presence = engine.presence.scanPresence(process.cwd(), workUnit).sessions
     .filter((r) => !engine.presence.ownsRow(r));
   const codeHeld = engine.presence.heldCodeSessions(process.cwd());
-  const entry = engine.project.epicMenuKeys(e.name, e.detail, { presence, codeHeld }).find((k) => k.key === key);
+  const entry = engine.project.epicMenuKeys(workUnit, d, { presence, codeHeld }).find((k) => k.key === key);
   if (!entry) {
-    return engine.gateway.dataBlock({ work_unit: e.name, error: `no menu entry with key "${key}"` });
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: `no menu entry with key "${key}"` });
   }
   if (!entry.in_session) {
-    return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is not held by another session — no gate to render` });
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is not held by another session — no gate to render` });
   }
   if (entry.code_session) {
-    return engine.gateway.dataBlock({ work_unit: e.name, error: `entry "${key}" is a code phase — the code slot is gated where the phase starts (render code-gate), never here` });
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: `entry "${key}" is a code phase — the code slot is gated where the phase starts (render code-gate), never here` });
   }
-  return engine.project.epicInSessionGate(e.name, entry);
+  return engine.project.epicInSessionGate(workUnit, entry);
 }
 
 /** @typedef {(name: string, detail: object, opts: {presence: object[]}) => {keys: object[], title: string, display: string, rendered: string}} SubViewProjection */
@@ -225,18 +219,17 @@ function inSessionGate(workUnit, key) {
 // its in-session age, a cue and never a lock.
 /** @param {string} workUnit @param {SubViewProjection} projection */
 function subView(workUnit, projection) {
-  const result = discover(process.cwd(), workUnit);
-  const e = result.epics[0];
-  if (!e) {
-    return engine.gateway.dataBlock({ work_unit: workUnit || '(missing)', error: 'no active epic with this name' })
-      + engine.project.selectionNotFound('epic', workUnit || '(missing)');
+  const d = discover(process.cwd(), workUnit);
+  if (!d) {
+    return engine.gateway.dataBlock({ work_unit: workUnit, error: 'no active epic with this name' })
+      + engine.project.selectionNotFound('epic', workUnit);
   }
-  const presence = engine.presence.scanPresence(process.cwd(), e.name).sessions
+  const presence = engine.presence.scanPresence(process.cwd(), workUnit).sessions
     .filter((r) => !engine.presence.ownsRow(r));
-  const view = projection(e.name, e.detail, { presence });
+  const view = projection(workUnit, d, { presence });
 
   const dataLines = [
-    `work_unit: ${e.name}`,
+    `work_unit: ${workUnit}`,
     ...engine.project.actionsTable(['action', 'topic', 'phase', '→ route'], view.keys, (k) => [
       k.action, k.topic || '—', k.phase || '—', `→ ${k.route || '(internal)'}`, ...(k.dep ? [`(dep: ${k.dep})`] : []), ...(k.item ? [`(item: ${k.item})`] : []),
     ]),

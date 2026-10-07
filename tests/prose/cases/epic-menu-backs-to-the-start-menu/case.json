@@ -1,5 +1,5 @@
 {
-  "origin": "the epic menu's d door asked for a new topic's name with no way back — a mis-pressed d or a change of mind had nowhere to go but a name; the prompt now offers back, which puts the menu back with nothing written",
+  "origin": "the epic menu's b/back row puts the user on the start menu — rendered in place through the start skill's own reference, as the roadmap's, the baseline's and help's back do, never by invoking /workflow-start or handing anything off — and nothing walked it",
   "entry": "workflow-continue-epic",
   "files": [
     "skills/workflow-continue-epic/SKILL.md",
@@ -12,26 +12,33 @@
     "skills/workflow-shared/references/topic-discovery-dispatch.md",
     "skills/workflow-continue-epic/references/banner-and-completion.md",
     "skills/workflow-continue-epic/references/epic-display-and-menu.md",
-    "skills/workflow-continue-epic/references/new-topic.md"
+    "skills/workflow-start/references/start-menu.md",
+    "skills/workflow-start/references/active-work.md"
   ],
   "answers": [
-    "d — start a discussion on a new topic",
-    "back"
+    "b — return to the start menu"
   ],
   "invariants": {
     "calls_in_order": [
+      "workflow-continue-epic/scripts/gateway.cjs search-relevance",
+      "session label search-relevance",
       "workflow-continue-epic/scripts/gateway.cjs view search-relevance",
-      "workflow-continue-epic/scripts/gateway.cjs view search-relevance"
+      "engine.cjs session repair",
+      "workflow-start/scripts/gateway.cjs view"
     ],
     "calls_exclude": [
-      "render direct-entry-gate",
-      "manifest get search-relevance.discovery",
-      "discovery-map add",
+      "engine.cjs boot",
+      "engine.cjs handoff",
+      "render epic-soft-gate",
+      "in-session-gate",
+      "render phase-completed",
+      "render phase-paused",
+      "render epic-all-done-gate",
       "discovery-map sequence",
+      "build-order sequence",
       "topic start",
       "manifest set",
-      "engine.cjs commit",
-      "engine.cjs handoff"
+      "engine.cjs commit"
     ]
   }
 }

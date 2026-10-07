@@ -296,11 +296,14 @@ const VIEW_MENUS = {
     const result = START_GATEWAY.discover(dir);
     return [() => (result.state.has_any_work ? LIB.project.startMenu(result) : LIB.project.emptyMenu(result))];
   },
-  epic: (dir) => EPIC_GATEWAY.discover(dir).epics.flatMap((e) => [
-    () => LIB.project.epicMenu(e.name, e.detail),
-    () => LIB.project.epicCompletedMenu(e.name, e.detail),
-    ...specificationViewMenus(dir, e.name),
-  ]),
+  epic: (dir) => listWorkUnits(dir).flatMap((wu) => {
+    const detail = EPIC_GATEWAY.discover(dir, wu);
+    return detail ? [
+      () => LIB.project.epicMenu(wu, detail),
+      () => LIB.project.epicCompletedMenu(wu, detail),
+      ...specificationViewMenus(dir, wu),
+    ] : [];
+  }),
   linear: (dir) => listWorkUnits(dir).map((wu) => LIB.detail.activeWorkUnit(dir, wu)).filter(Boolean)
     .map((/** @type {any} */ { type, unit }) => () => LIB.project.workUnitMenu(type, unit)),
 };
@@ -640,12 +643,12 @@ function pickRoute(sim, keys, action, topic) {
 
 /** The epic menu's pick into work. @param {Sim} sim @param {string} wu @param {string} action @param {string} [topic] */
 function epicPick(sim, wu, action, topic) {
-  return pickRoute(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys, action, topic);
+  return pickRoute(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys, action, topic);
 }
 
 /** The epic menu's entry for a command option. @param {Sim} sim @param {string} wu @param {string} action */
 function epicKey(sim, wu, action) {
-  const key = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys.find((k) => k.action === action);
+  const key = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys.find((k) => k.action === action);
   assert.ok(key, `the epic menu offers ${action}`);
   return key;
 }
@@ -1196,7 +1199,7 @@ describe('pipeline simulation', () => {
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2']);
-    const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+    const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.topic === topic).map((k) => [k.action, drawLabel(k.label)]);
 
     // A research-side concern parks on alpha before any discussion exists —
@@ -1253,12 +1256,12 @@ describe('pipeline simulation', () => {
     const heldScan = sim.run(['presence', 'scan', wu]).sessions;
     assert.strictEqual(heldScan.find((r) => r.phase === 'discussion' && r.topic === 'alpha').held, true);
     assert.deepStrictEqual(
-      epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail, { presence: heldScan }).keys
+      epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu), { presence: heldScan }).keys
         .filter((k) => k.topic === 'alpha').map((k) => [k.action, k.in_session === true, k.blocked_by]),
       [['continue_research', false, undefined], ['continue_discussion', true, ['research']]]);
     peerInAlpha.run(['presence', 'clear', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(
-      epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail, { presence: sim.run(['presence', 'scan', wu]).sessions }).keys
+      epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu), { presence: sim.run(['presence', 'scan', wu]).sessions }).keys
         .filter((k) => k.topic === 'alpha').map((k) => k.action),
       ['continue_research']);
     // A landing is the engine's own act — never held, whichever side it parks on.
@@ -1303,7 +1306,7 @@ describe('pipeline simulation', () => {
     // The doors are the menu's own flows: rows with no route, never handed to
     // the soft gate, and the handoff refuses an epic's research or discussion
     // without a topic.
-    const doors = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+    const doors = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.action === 'new_discussion' || k.action === 'new_research');
     assert.deepStrictEqual(doors.map((k) => [k.key, k.route]), [['d', null], ['r', null]]);
     for (const [phase, action] of [['discussion', 'new_discussion'], ['research', 'new_research']]) {
@@ -1828,7 +1831,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     assert.match(arriveAtEpicMenu(sim, wu, 'research'), /Research completed for "Overhaul"\./);
     // The menu's way back: the start menu, the epic still its row.
-    assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys)
+    assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys)
       .some((k) => k.action === 'continue_work_unit' && k.route === `/workflow-continue-epic ${wu}`));
     const ops = sim.write(`.workflows/.cache/${wu}/discovery/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.research.alpha`, fields: { reconcile_needed: true } }]);
@@ -1928,10 +1931,10 @@ describe('pipeline simulation', () => {
     // The cue follows the queue, not the status: the reopened item is
     // in-progress with no stub to read, yet its rows say what waits — and
     // the fold retires the cue.
-    const betaRow = () => drawLabel(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+    const betaRow = () => drawLabel(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label);
     assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · triage waiting');
-    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).replace(/\n[ │]+/g, ' '),
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)).replace(/\n[ │]+/g, ' '),
       /Discussing · triage waiting/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked/);
@@ -2211,13 +2214,13 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', 'beta'), []);
     assert.match(arriveAtEpicMenu(sim, wu, 'discussion', 'paused'),
       /"Beta" awaits research on the topic \(parked — not yet started\)\./);
-    const betaRows = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+    const betaRows = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.topic === 'beta').map((k) => k.action);
     assert.deepStrictEqual(betaRows, ['start_research'], 'the research row is the topic\'s own');
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', 'beta']).created, false, 'the session inside resumes');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'content' }),
       /Entry blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
-    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).replace(/\n[ │]+/g, ' '),
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)).replace(/\n[ │]+/g, ' '),
       /Discussing · awaiting research · triage waiting · input moved/);
     // The research row is the way in: the stub starts (the birth guard's
     // allowance), the gate reads the research in flight, the queued concern
@@ -2391,7 +2394,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'pick',
       '--blocking', 'alpha'], { expect: 'content' }), /\*\*`1`\*\* → Alpha — Needs alpha shipped/);
     sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
-    const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
+    const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const menuNow = () => require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
     let keys = menuNow().keys;
     assert.ok(!keys.some((k) => k.action === 'start_implementation' && k.topic === 'unified'),
@@ -2680,7 +2683,7 @@ describe('pipeline simulation', () => {
     // started specification holds its source topic, the code under the
     // specification holds the specification. The menu lists both, keyless
     // with the reason; the gate and the verb refuse.
-    const units = EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail.cancellable;
+    const units = EPIC_GATEWAY.discover(sim.dir, wu).cancellable;
     assert.strictEqual(units.find((u) => u.stage === 'discovery' && u.name === 'beta').locked,
       'locked by specification "Unified" — cancel it first');
     assert.strictEqual(units.find((u) => u.stage === 'specification' && u.name === 'unified').locked,
@@ -2717,7 +2720,7 @@ describe('pipeline simulation', () => {
       '-m', `spec(${wu}/unified): reroute the refund-window gap to its own topic`]);
     assert.strictEqual(gapParked.status, 'triaged');
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.refund-window.status', 'pending']);
-    const blockedByGap = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail.spec_blocked;
+    const blockedByGap = () => EPIC_GATEWAY.discover(sim.dir, wu).spec_blocked;
     assert.deepStrictEqual(blockedByGap(), [{ name: 'unified', by: ['refund-window'] }],
       'a source that has never concluded blocks its spec like one back in-progress');
     assert.match(sim.render(['entry-gate', `${wu}.specification.unified`], { expect: 'content' }),
@@ -2779,7 +2782,7 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-map', 'sequence', wu, 'export=1', 'auth=2', 'billing=3', 'roles=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
-    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
+    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const pickable = () => epicCancelMenu(detail()).keys.filter((k) => k.action === 'cancel').map((k) => `${k.phase}/${k.topic}`);
     const locked = () => detail().cancellable.filter((u) => u.locked !== undefined).map((u) => `${u.stage}/${u.name}: ${u.locked}`);
     const cancelledUnits = () => detail().cancelled.map((u) => `${u.stage}/${u.name}`);
@@ -3171,7 +3174,7 @@ describe('pipeline simulation', () => {
     ])]);
     sim.run(['discovery-map', 'sequence', wu, 'fresh-one=1', 'researched=2', 'decided=3', 'specd=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
-    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail;
+    const detail = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const postponable = () => epicPostponeMenu(detail()).keys.filter((k) => k.action === 'postpone').map((k) => k.topic);
     const pullable = () => epicPullForwardMenu(detail()).keys.filter((k) => k.action === 'pull-forward').map((k) => [k.topic, k.item]);
     const menuActions = () => epicMenu(wu, detail()).keys.map((k) => k.action);
@@ -3399,10 +3402,10 @@ describe('pipeline simulation', () => {
       /⚑ Conclusion blocked — this plan awaits its specification[\s\S]*Keep planning here/);
     assert.match(arriveAtEpicMenu(sim, wu, 'planning', 'paused'),
       /Planning paused for "Holdplan" — "Billing" awaits its specification/);
-    const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+    const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.action === 'continue_planning' || k.action === 'start_planning').map((k) => k.topic).sort();
     assert.deepStrictEqual(planRows(), [], 'a held plan carries no menu row — the specification\'s is the way in');
-    assert.deepStrictEqual(EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail.phases.planning[0].blocked_by, ['specification']);
+    assert.deepStrictEqual(EPIC_GATEWAY.discover(sim.dir, wu).phases.planning[0].blocked_by, ['specification']);
 
     // The specification reconciles — the discussion re-concludes, the row
     // re-incorporates, the flag clears — and every hold releases with it.
@@ -3998,7 +4001,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['topic', 'queue', epic, 'discussion', 'stray-topic']).files,
       [`.workflows/${epic}/discussion/.triage/stray-topic/001-rollback-owner.md`],
       'the queued concern waits on the epic topic — its session raises it');
-    assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic).epics[0].detail).replace(/\n[ │]+/g, ' '),
+    assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic)).replace(/\n[ │]+/g, ' '),
       /Stray Topic[^\n]*triage waiting/, 'the epic tree cues the waiting concern');
     const m = sim.manifest(epic);
     assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
@@ -5307,7 +5310,7 @@ describe('pipeline simulation', () => {
     // The menu is experiment-shaped: one leading entry per topic with live
     // records, ranked above every other recommendation — which record to
     // work resolves inside the phase, never in the route.
-    const menu = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail);
+    const menu = epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu));
     const expEntries = menu.keys.filter((k) => k.action === 'continue_experiment');
     assert.deepStrictEqual(expEntries.map((k) => [k.key, k.topic]),
       [['1', 'timing'], ['2', 'layout']]);
@@ -5344,7 +5347,7 @@ describe('pipeline simulation', () => {
     // only over a designed record.
     // The dashboard renders over the live series — the waiting cue on the
     // map row, the state audited whole after the spawn transactions.
-    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail), /awaiting E1/);
+    assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /awaiting E1/);
 
     label(sim, wu, 'experiment', 'timing');
     sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
@@ -5444,7 +5447,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'complete', wu, 'research', 'layout'], /^research "layout" carries reconcile_needed: experiment/);
     sim.run(['manifest', 'delete', `${wu}.research.layout`, 'reconcile_needed']);
     sim.run(['topic', 'complete', wu, 'research', 'layout']);
-    assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu).epics[0].detail).keys
+    assert.ok(!epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .some((k) => k.action === 'continue_experiment'), 'terminal records retire from the menu');
 
     // The series is never reactivated on its own — its rows stand; a new
