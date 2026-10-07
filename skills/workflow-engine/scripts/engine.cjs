@@ -405,9 +405,9 @@ Commands:
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
 //
 // No field write heartbeats. A three-segment `set` looks self-referential and
-// frequently is not: the storage-path backfills, review's `updated` stamp and
-// the epic menu's unblock all write one phase's item from another phase's
-// session, and a beat there manufactures a hold on a topic nobody is in (P8).
+// frequently is not: review's `updated` stamp and the epic menu's unblock
+// both write one phase's item from another phase's session, and a beat there
+// manufactures a hold on a topic nobody is in (P8).
 // The session's cadence commit is its heartbeat; `apply`, the cross-topic
 // batch door, never beat either.
 // ---------------------------------------------------------------------------
@@ -1894,7 +1894,7 @@ function runCommit(call, argv) {
         if (!planItem) throw new Error(`commit --plan: no planning item "${plan}" in "${wu}"`);
         const declared = planItem.storage_paths;
         if (declared === undefined) {
-          throw new Error(`commit --plan: planning item "${plan}" has no storage_paths — a pre-upgrade plan; record the format's declared pathspecs once: engine manifest set ${wu}.planning.${plan} storage_paths '[…]' (the format's authoring.md names them; '[]' when it stores inside the work unit)`);
+          throw new Error(`commit --plan: planning item "${plan}" has no storage_paths — record the format's declared pathspecs once: engine manifest set ${wu}.planning.${plan} storage_paths '[…]' (the format's authoring.md names them; '[]' when it stores inside the work unit)`);
         }
         if (!Array.isArray(declared) || declared.some((p) => typeof p !== 'string')) {
           throw new Error(`commit --plan: planning item "${plan}" has a malformed storage_paths (${JSON.stringify(declared)}) — must be an array of relative pathspec strings`);

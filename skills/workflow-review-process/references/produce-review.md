@@ -6,7 +6,7 @@
 
 Aggregate QA findings into a review document using the **[template.md](template.md)**.
 
-Write the review to `.workflows/{work_unit}/review/{topic}/report.md`. The review is always per-plan.
+Write the review to `.workflows/{work_unit}/review/{topic}/report.md`.
 
 **Verdict** — derived by the synthesis stage, never chosen here. Read it from `actions.json`; when no findings were collected the file does not exist and the verdict is **Pass** by the same derivation — nothing outstanding:
 - **Pass** — nothing outstanding needs planning. `do-now` work and `out-of-scope` findings do not block: the first is already applied — a blocking issue corrected in this session among it — the second was never part of this specification

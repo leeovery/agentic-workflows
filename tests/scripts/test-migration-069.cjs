@@ -41,9 +41,9 @@ function writeUnit(name, manifest) {
 const readText = (name) => fs.readFileSync(manifestPath(name), 'utf8');
 
 /**
- * An epic with two cancelled series — one whose records the cancel left
- * terminal, one still holding a live sub-experiment — beside a live series,
- * the spawning conversations, and a map that never marked the topics.
+ * An epic with two cancelled series, every record the cancel left terminal,
+ * beside a live series, the spawning conversations, and a map that never
+ * marked the topics.
  */
 function epic() {
   return {
@@ -76,7 +76,7 @@ function epic() {
           previous_status: 'in-progress',
           experiments: {
             E1: { slug: 'grid', status: 'abandoned', reason: 'series cancelled' },
-            'E1.1': { slug: 'columns', status: 'running' },
+            'E1.1': { slug: 'columns', status: 'abandoned', reason: 'series cancelled' },
           },
         },
         sizing: {
@@ -94,7 +94,7 @@ function epicSettled() {
   const { timing, layout } = m.phases.experiment.items;
   timing.status = 'completed';
   delete timing.previous_status;
-  layout.status = 'in-progress';
+  layout.status = 'completed';
   delete layout.previous_status;
   return m;
 }
@@ -110,19 +110,19 @@ describe('migration 069: settle cancelled experiment series', () => {
 
   it('describes itself and hands nothing back', () => {
     assert.strictEqual(MIGRATION.id, '069');
-    assert.strictEqual(MIGRATION.description, 'settle cancelled experiment series — a series reads completed or in-progress over its records');
+    assert.strictEqual(MIGRATION.description, 'settle cancelled experiment series — a series the old per-series cancel closed reads completed');
     writeUnit('lab', epic());
     assert.strictEqual(run(), undefined);
   });
 
-  it('settles each cancelled series over its records, the stash deleted, the rest of the manifest kept in the engine\'s serialisation', () => {
+  it('settles each cancelled series completed, the stash deleted, the rest of the manifest kept in the engine\'s serialisation', () => {
     writeUnit('lab', epic());
     run();
     assert.strictEqual(readText('lab'), json(epicSettled()));
     assert.deepStrictEqual({ updates, skips }, { updates: 1, skips: 0 });
   });
 
-  it('a series whose records are all terminal reads completed — sub-experiments counted', () => {
+  it('a cancelled series reads completed, its records left as they are', () => {
     writeUnit('lab', epic());
     run();
     const series = JSON.parse(readText('lab')).phases.experiment.items;
@@ -130,27 +130,7 @@ describe('migration 069: settle cancelled experiment series', () => {
       status: 'completed',
       experiments: epic().phases.experiment.items.timing.experiments,
     });
-  });
-
-  it('a series holding a live record reads in-progress — a live sub-experiment is enough', () => {
-    writeUnit('lab', epic());
-    run();
-    const { layout } = JSON.parse(readText('lab')).phases.experiment.items;
-    assert.strictEqual(layout.status, 'in-progress');
-    assert.ok(!Object.hasOwn(layout, 'previous_status'));
-    assert.deepStrictEqual(layout.experiments, epic().phases.experiment.items.layout.experiments, 'the records are left as they are');
-  });
-
-  it('a cancelled series with no records reads completed, and one whose record is not an object reads in-progress', () => {
-    writeUnit('bare', { name: 'bare', work_type: 'epic', status: 'in-progress', phases: { experiment: { items: {
-      empty: { status: 'cancelled', previous_status: 'in-progress' },
-      odd: { status: 'cancelled', experiments: { E1: null } },
-    } } } });
-    run();
-    const items = JSON.parse(readText('bare')).phases.experiment.items;
-    assert.deepStrictEqual(items.empty, { status: 'completed' });
-    assert.deepStrictEqual(items.odd, { status: 'in-progress', experiments: { E1: null } });
-    assert.deepStrictEqual({ updates, skips }, { updates: 1, skips: 0 });
+    assert.deepStrictEqual(series.layout.experiments, epic().phases.experiment.items.layout.experiments);
   });
 
   it('counts one update per changed unit, and leaves a unit with nothing cancelled byte-identical', () => {

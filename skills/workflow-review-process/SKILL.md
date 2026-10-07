@@ -200,7 +200,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic start {work_unit} r
 
 ## Step 2: Read the Plan and Specification
 
-Load **[read-plans.md](references/read-plans.md)** and follow its instructions as written.
+Load **[read-plan.md](references/read-plan.md)** and follow its instructions as written.
 
 → On return, proceed to **Step 3**.
 

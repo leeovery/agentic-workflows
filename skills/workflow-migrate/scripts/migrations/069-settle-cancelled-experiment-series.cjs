@@ -4,14 +4,14 @@
 // Migration 069: Settle cancelled experiment series
 //
 // An experiment series' status is derived from its records — `completed`
-// once every record is terminal (`concluded` or `abandoned`, sub-experiments
-// included), `in-progress` otherwise — and a topic's cancel abandons the open
+// once every record is terminal — and a topic's cancel abandons the open
 // records and lets the series settle. The per-series cancel of
 // v0.7.22–v0.7.54 wrote `status: cancelled` on the series item instead,
-// stashing `previous_status`. Each such item takes the status its records
-// settle to, and its `previous_status` is deleted. The records, the spawning
-// conversations, and the discovery map row are left as they are; everything
-// else in the manifest stands, in the format the engine writes it in.
+// stashing `previous_status`, after abandoning every open record — so each
+// such series reads `completed`, and its `previous_status` is deleted. The
+// records, the spawning conversations, and the discovery map row are left as
+// they are; everything else in the manifest stands, in the format the engine
+// writes it in.
 //
 // A directory whose manifest is absent or does not parse is not a work unit,
 // and is left alone.
@@ -22,22 +22,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const TERMINAL_RECORD_STATUSES = ['concluded', 'abandoned'];
-
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
-}
-
-/**
- * The status a series settles to over its records, sub-experiments among
- * them.
- * @param {Record<string, any>} series
- * @returns {'completed'|'in-progress'}
- */
-function settledStatus(series) {
-  const records = isObject(series.experiments) ? Object.values(series.experiments) : [];
-  return records.every((r) => isObject(r) && TERMINAL_RECORD_STATUSES.includes(r.status)) ? 'completed' : 'in-progress';
 }
 
 /**
@@ -53,7 +40,7 @@ function settleCancelledSeries(manifest) {
   let changed = false;
   for (const series of Object.values(items)) {
     if (!isObject(series) || series.status !== 'cancelled') continue;
-    series.status = settledStatus(series);
+    series.status = 'completed';
     delete series.previous_status;
     changed = true;
   }
@@ -62,7 +49,7 @@ function settleCancelledSeries(manifest) {
 
 module.exports = {
   id: '069',
-  description: 'settle cancelled experiment series — a series reads completed or in-progress over its records',
+  description: 'settle cancelled experiment series — a series the old per-series cancel closed reads completed',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     let entries;
