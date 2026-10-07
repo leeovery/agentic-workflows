@@ -130,7 +130,7 @@ function workUnitMenu(type, unit) {
       label: 'Mark the work unit completed',
     }
     : {
-      key: 'y', word: 'yes', action: 'continue', topic: unit.name,
+      key: 'y', word: 'yes', action: 'continue', topic: unit.next_topic ?? unit.name,
       route: phaseRoute(type, unit.next_phase, unit.name, unit.next_topic),
       label: `Proceed to ${unit.next_phase}`,
     }];

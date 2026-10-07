@@ -7,13 +7,14 @@
 // two-discussion promotion (each moved discussion's epic item reads promoted
 // with promoted_to, the unit's bare discussion item takes the epic's other
 // fields, the unit's specification gains it as a source at the epic row's
-// status, every other item and field kept in the engine's serialisation), a
-// source whose file still sits in the epic left alone, a unit item that is no
-// longer bare and a source the unit already carries kept, one update per
-// changed unit,
-// skip/no-op, idempotency, the malformed-manifest guard, shapes that are not
-// objects, a promoted_to unit that does not exist or cannot be addressed,
-// and a project with no work units.
+// status, every other item and field kept in the engine's serialisation); the
+// epic side marking only the completed item the promotion left, the unit side
+// running wherever the unit holds the file; the epic's lifecycle fields never
+// crossing; a unit item that is no longer bare and a source the unit already
+// carries kept; either side missing its item, or the unit its specification;
+// one update per changed unit, skip/no-op, idempotency, the malformed-manifest
+// guard, shapes that are not objects, a promoted_to unit that does not exist
+// or cannot be addressed, and a project with no work units.
 //
 
 require('./hermetic-env.cjs');
@@ -209,13 +210,80 @@ describe('migration 070: record promoted discussions', () => {
     assert.deepStrictEqual({ updates, skips }, { updates: 2, skips: 0 });
   });
 
-  it('leaves a source whose file still sits in the epic alone — it never moved', () => {
+  it('a file the epic holds again leaves its epic item alone — the unit still records its own copy as the source', () => {
     payments();
     writeFile('payments/discussion/ttl-policy.md');
     run();
     assert.strictEqual(read('payments').phases.discussion.items['ttl-policy'].status, 'completed');
-    assert.deepStrictEqual(read('caching').phases.specification.items.caching.sources,
-      { 'cache-invalidation': { status: 'incorporated' } });
+    assert.deepStrictEqual(read('caching').phases.specification.items.caching.sources, {
+      'cache-invalidation': { status: 'incorporated' },
+      'ttl-policy': { status: 'incorporated' },
+    });
+  });
+
+  it('marks only the completed item the promotion left — a cancelled, postponed or triage-reopened one keeps its state, and the unit side runs all the same', () => {
+    payments();
+    const epic = paymentsEpic();
+    epic.phases.discussion.items['cache-invalidation'] = { status: 'cancelled', previous_status: 'completed', subtopics: { ttl: { status: 'decided', parent: null } } };
+    epic.phases.discussion.items['ttl-policy'] = { status: 'in-progress', reconcile_needed: 'research', dismissed_grounds: ['not this year'] };
+    writeUnit('payments', epic);
+    run();
+    assert.deepStrictEqual(read('payments').phases.discussion.items, epic.phases.discussion.items, 'each keeps its own state');
+    assert.deepStrictEqual(read('caching').phases.discussion.items, {
+      'cache-invalidation': { status: 'completed', subtopics: { ttl: { status: 'decided', parent: null } } },
+      'ttl-policy': { status: 'completed', dismissed_grounds: ['not this year'] },
+    }, 'the epic\'s lifecycle fields — a hold\'s stash, a reconcile flag — never cross');
+    assert.deepStrictEqual(Object.keys(read('caching').phases.specification.items.caching.sources), ['cache-invalidation', 'ttl-policy']);
+
+    const postponed = paymentsEpic();
+    postponed.phases.discussion.items['ttl-policy'] = { status: 'postponed', previous_status: 'completed' };
+    writeUnit('payments', postponed);
+    run();
+    assert.deepStrictEqual(read('payments').phases.discussion.items['ttl-policy'], { status: 'postponed', previous_status: 'completed' });
+  });
+
+  it("never carries the epic item's reconcile flag — its upstream stays in the epic", () => {
+    payments();
+    const epic = paymentsEpic();
+    epic.phases.discussion.items['cache-invalidation'].reconcile_needed = 'experiment';
+    writeUnit('payments', epic);
+    run();
+    assert.deepStrictEqual(read('caching').phases.discussion.items['cache-invalidation'],
+      { status: 'completed', subtopics: { ttl: { status: 'decided', parent: null } } });
+    assert.strictEqual(read('payments').phases.discussion.items['cache-invalidation'].reconcile_needed, 'experiment', 'the epic keeps its own');
+  });
+
+  it('a unit or an epic with no discussion item for the source: the other sides still record it', () => {
+    payments();
+    const unit = cachingUnit();
+    delete unit.phases.discussion.items['ttl-policy'];
+    writeUnit('caching', unit);
+    const epic = paymentsEpic();
+    delete epic.phases.discussion.items['cache-invalidation'];
+    writeUnit('payments', epic);
+    run();
+    assert.deepStrictEqual(read('caching').phases.discussion.items, { 'cache-invalidation': { status: 'completed' } },
+      'no item is created on either side');
+    assert.deepStrictEqual(Object.keys(read('payments').phases.discussion.items), ['ttl-policy', 'fee-model']);
+    assert.strictEqual(read('payments').phases.discussion.items['ttl-policy'].status, 'promoted');
+    assert.deepStrictEqual(Object.keys(read('caching').phases.specification.items.caching.sources), ['cache-invalidation', 'ttl-policy']);
+  });
+
+  it('a unit with no specification item of its name, or sources that are not an object, takes no source', () => {
+    payments();
+    const unit = cachingUnit();
+    unit.phases.specification.items = { other: { status: 'completed' } };
+    writeUnit('caching', unit);
+    run();
+    assert.deepStrictEqual(read('caching').phases.specification.items, { other: { status: 'completed' } });
+    assert.strictEqual(read('payments').phases.discussion.items['ttl-policy'].status, 'promoted', 'the epic side still records the move');
+
+    writeUnit('payments', paymentsEpic());
+    const listed = cachingUnit();
+    listed.phases.specification.items.caching.sources = [{ name: 'ttl-policy', status: 'incorporated' }];
+    writeUnit('caching', listed);
+    run();
+    assert.deepStrictEqual(read('caching').phases.specification.items.caching.sources, [{ name: 'ttl-policy', status: 'incorporated' }]);
   });
 
   it('fills only the bare item promote wrote — a discussion the unit already worked keeps every field of its own', () => {
@@ -283,6 +351,20 @@ describe('migration 070: record promoted discussions', () => {
     const before = [readText('payments'), readText('dotted'), readText('caching')];
     run();
     assert.deepStrictEqual([readText('payments'), readText('dotted'), readText('caching')], before);
+    assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
+  });
+
+  it('an empty promoted_to names no unit — never the .workflows directory itself, nor the project manifest there', () => {
+    const project = json({ phases: { specification: { items: { '': { status: 'completed' } } } } });
+    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), project);
+    writeFile('discussion/ttl-policy.md');
+    const epic = paymentsEpic();
+    epic.phases.specification.items['caching-strategy'].promoted_to = '';
+    writeUnit('payments', epic);
+    const before = readText('payments');
+    run();
+    assert.strictEqual(readText('payments'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8'), project);
     assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
   });
 

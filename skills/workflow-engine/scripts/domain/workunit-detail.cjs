@@ -21,6 +21,7 @@ const {
   phaseItems,
   computeUnitPhaseState,
   triagePhases,
+  ownNamedItems,
   inputMoved,
   movedFrom,
 } = require('./derivations.cjs');
@@ -80,7 +81,7 @@ const WORK_UNIT_TYPES = {
  *                                     a reconcile flag — `from` is the flag value (the upstream
  *                                     phase that moved, or `true` for a brief flag)
  * @property {string[]} [triage_phases]  phases whose triage queue holds concerns for the unit's
- *                                     topic — the pipeline row's and menu's `triage waiting` cue
+ *                                     topics — the pipeline row's and menu's `triage waiting` cue
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
@@ -118,18 +119,6 @@ function reconcilePhases(cfg, manifest) {
     if (moved) out.push({ phase, from: /** @type {string|boolean} */ (movedFrom(moved)) });
   }
   return out;
-}
-
-/**
- * A phase's items where any carries a name other than the unit's, and none
- * where each carries the unit's — as every single-topic unit's do but a
- * promoted one's, whose moved discussions keep their epic names.
- * @param {object} manifest @param {string} phase
- * @returns {{name: string, status?: string}[]}
- */
-function ownNamedItems(manifest, phase) {
-  const items = phaseItems(manifest, phase);
-  return items.some((i) => i.name !== manifest.name) ? items : [];
 }
 
 /**
@@ -192,7 +181,7 @@ function activeWorkUnit(cwd, name) {
   };
   const flagged = reconcilePhases(cfg, m);
   if (flagged.length > 0) unit.reconcile_phases = flagged;
-  const queued = triagePhases(path.join(cwd, '.workflows'), m, m.name);
+  const queued = triagePhases(path.join(cwd, '.workflows'), m);
   if (queued.length > 0) unit.triage_phases = queued;
   if (cfg.surfacesSeeds) {
     unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;

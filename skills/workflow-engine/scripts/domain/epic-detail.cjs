@@ -25,7 +25,8 @@ const {
   liveUnitItems,
   specIsStarted,
   specGroupsSources,
-  lockingSpecs,
+  unitLocks,
+  unitLockNames,
   CLOSED_LIFECYCLES,
   postponePlan,
   postponedItem,
@@ -257,12 +258,13 @@ function unitRestores(manifest, stage, name) {
 
 /** The menu's lock reason for a Discovery unit, or undefined when it is free. @param {object} manifest @param {string} topic */
 function discoveryLockReason(manifest, topic) {
-  const specs = lockingSpecs(manifest, topic);
-  if (specs.length === 0) return undefined;
-  const named = specs.map((n) => `"${titlecase(n)}"`).join(', ');
-  return specs.length === 1
-    ? `locked by specification ${named} — cancel it first`
-    : `locked by specifications ${named} — cancel them first`;
+  const locks = unitLocks(manifest, topic);
+  if (locks.length === 0) return undefined;
+  const one = locks.length === 1;
+  const recovery = locks.some((lock) => lock.promoted_to !== null)
+    ? 'promotion is terminal'
+    : `cancel ${one ? 'it' : 'them'} first`;
+  return `locked by specification${one ? '' : 's'} ${unitLockNames(locks, titlecase)} — ${recovery}`;
 }
 
 /** The menu's lock reason for a cancelled specification, or undefined when it can return. @param {object} manifest @param {string} spec */

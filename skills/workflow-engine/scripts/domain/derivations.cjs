@@ -317,6 +317,40 @@ function lockingSpecs(manifest, topic) {
 }
 
 /**
+ * A specification holding a Discovery unit shut — `promoted_to` names the
+ * cross-cutting unit a promoted one moved to, null for a started one.
+ * @typedef {{name: string, promoted_to: string|null}} UnitLock
+ */
+
+/**
+ * The specifications that lock a topic's Discovery unit against its cancel
+ * and its postpone — the topic is past specification under each: every
+ * started specification sourcing its discussion, then every one promoted
+ * with it to a cross-cutting unit, where its record continues.
+ * @param {object} manifest @param {string} topic
+ * @returns {UnitLock[]}
+ */
+function unitLocks(manifest, topic) {
+  const promoted = Object.entries(phaseData(manifest, 'specification').items || {})
+    .filter(([, item]) => item && typeof item === 'object' && item.status === 'promoted'
+      && sourceRow(item.sources, topic) !== undefined)
+    .map(([name, item]) => ({ name, promoted_to: /** @type {string} */ (item.promoted_to) }));
+  return [...lockingSpecs(manifest, topic).map((name) => ({ name, promoted_to: null })), ...promoted];
+}
+
+/**
+ * The locking specifications, named — a promoted one with the unit it moved
+ * to — the list every lock's wording names.
+ * @param {UnitLock[]} locks @param {(name: string) => string} [nameOf]
+ * @returns {string}
+ */
+function unitLockNames(locks, nameOf = (n) => n) {
+  return locks
+    .map(({ name, promoted_to }) => (promoted_to === null ? `"${nameOf(name)}"` : `"${nameOf(name)}" (promoted to "${promoted_to}")`))
+    .join(', ');
+}
+
+/**
  * The started specifications a specification incorporates — their content
  * is extracted beside its discussions, and its completion supersedes them.
  * A proposed grouping reads what its start would take in: the started
@@ -524,12 +558,12 @@ function postponedItem(project, workUnit, topic) {
 /**
  * The specifications holding a Discovery unit, as one clause — the subject
  * both unit refusals share; each supplies its own recovery tail.
- * @param {string[]} specs @param {(name: string) => string} [nameOf]
+ * @param {UnitLock[]} locks @param {(name: string) => string} [nameOf]
  * @returns {string}
  */
-function lockingSpecsPhrase(specs, nameOf = (n) => n) {
-  const named = specs.map((n) => `"${nameOf(n)}"`).join(', ');
-  return specs.length === 1
+function lockingSpecsPhrase(locks, nameOf = (n) => n) {
+  const named = unitLockNames(locks, nameOf);
+  return locks.length === 1
     ? `the specification ${named} sources its discussion`
     : `the specifications ${named} source its discussion`;
 }
@@ -572,7 +606,7 @@ function postponePlan(manifest, name, project, horizon) {
   if (lifecycle === 'handled') {
     locks.push({ reason: `"${name}" is closed as a dead end — reopen it first` });
   }
-  const specs = lockingSpecs(manifest, name);
+  const specs = unitLocks(manifest, name);
   if (specs.length > 0) {
     locks.push({ reason: `postponing "${name}" is refused while ${lockingSpecsPhrase(specs)} — a topic past specification is past "not yet"` });
   }
@@ -1192,6 +1226,17 @@ function computeTopicLifecycle(manifest, topicName) {
 // research reopened beneath one names the closure, not the research.
 const CLOSED_LIFECYCLES = ['cancelled', 'handled', 'postponed'];
 
+/**
+ * The refusal every write over a promoted item makes — each hand transition
+ * and the field surface: it left the epic for the cross-cutting unit it
+ * names, and continues there.
+ * @param {string} phase @param {string} topic @param {{promoted_to?: unknown}} item
+ */
+function promotedRefusal(phase, topic, item) {
+  const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
+  return `${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`;
+}
+
 // Why a lifecycle stands in the way of a move — the map ops' refusals and
 // the phase-birth guard share it, so the engine and the epic menu's
 // conversational rejections never drift. Derived from the actual research
@@ -1306,13 +1351,31 @@ function triageQueued(workflowsDir, manifest, topic) {
 }
 
 /**
- * The phases whose queue holds concerns for one topic — the single-topic
- * surfaces' cue (the start rows, the continue dashboard), where topic = work
- * unit and any triage-legal phase may own the queue.
- * @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {string[]}
+ * A single-topic unit's phase items where any carries a name other than the
+ * unit's, and none where each carries the unit's — as every single-topic
+ * unit's do but a promoted one's, whose moved discussions keep their epic
+ * names.
+ * @param {object} manifest @param {string} phase
+ * @returns {{name: string, status?: string}[]}
  */
-function triagePhases(workflowsDir, manifest, topic) {
-  return TRIAGE_PHASES.filter((phase) => triageQueueDepth(workflowsDir, manifest, phase, topic) > 0);
+function ownNamedItems(manifest, phase) {
+  const items = phaseItems(manifest, phase);
+  return items.some((i) => i.name !== manifest.name) ? items : [];
+}
+
+/**
+ * The phases whose queue holds concerns for a single-topic unit — the start
+ * rows' and the continue dashboard's cue — any triage-legal phase owning one,
+ * on the unit's name or, where the phase's items carry names of their own, on
+ * any of them.
+ * @param {string} workflowsDir @param {object} manifest @returns {string[]}
+ */
+function triagePhases(workflowsDir, manifest) {
+  return TRIAGE_PHASES.filter((phase) => {
+    const own = ownNamedItems(manifest, phase);
+    const topics = own.length > 0 ? own.map((i) => i.name) : [manifest.name];
+    return topics.some((topic) => triageQueueDepth(workflowsDir, manifest, phase, topic) > 0);
+  });
 }
 
 /**
@@ -1412,6 +1475,8 @@ module.exports = {
   inputMoved,
   movedFrom,
   lockingSpecs,
+  unitLocks,
+  unitLockNames,
   specIncorporations,
   cancelPlan,
   postponePlan,
@@ -1445,12 +1510,14 @@ module.exports = {
   CONVERSATION_ACTIONS,
   CLOSED_LIFECYCLES,
   lifecyclePhrase,
+  promotedRefusal,
   itemOf,
   computeMapSummary,
   computeSourceProvenance,
   compareMapRows,
   computeNeedsSequencing,
   buildDiscoveryMap,
+  ownNamedItems,
   triagePhases,
   TIER_RANK,
 };

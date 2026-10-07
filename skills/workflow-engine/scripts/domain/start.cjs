@@ -221,10 +221,10 @@ function startDetail(cwd) {
       phase_label: state.phase_label,
       finalising: state.finalising,
     };
-    // Single-topic types cue concerns queued on the unit's own topic; an
+    // Single-topic types cue concerns queued on the unit's own topics; an
     // epic's row carries no phase state — its dashboard cues per topic.
     if (m.work_type !== 'epic') {
-      const queued = triagePhases(workflowsDir, m, m.name);
+      const queued = triagePhases(workflowsDir, m);
       if (queued.length > 0) unit.triage_phases = queued;
     }
 

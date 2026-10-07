@@ -566,6 +566,39 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     assert.strictEqual(workUnitMenu('cross-cutting', unit).keys[0].route, '/workflow-discussion-process cross-cutting fees fee-rules');
   });
 
+  it('cues a concern queued on a moved discussion as triage waiting', () => {
+    assert.strictEqual(promoted().triage_phases, undefined);
+    createFile(dir, '.workflows/fees/discussion/.triage/fee-display/001-rounding.md', '# Rounding\n');
+    const unit = unitOf(dir, 'cross-cutting', 'fees');
+    assert.deepStrictEqual(unit.triage_phases, ['discussion']);
+    assert.match(workUnitStatus('cross-cutting', unit), /Discussion +\[completed\]/);
+    assert.match(workUnitMenu('cross-cutting', unit).rendered, /· triage waiting\./);
+  });
+
+  it('continues into a parked stub by name where nothing is in flight in the phase', () => {
+    createManifest(dir, 'fees', {
+      work_type: 'cross-cutting',
+      phases: {
+        research: { items: { 'fee-rules': { status: 'triaged' } } },
+        discussion: { items: { 'fee-rules': { status: 'in-progress' }, 'fee-display': { status: 'completed' } } },
+        specification: { items: { fees: { status: 'completed', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } } },
+      },
+    });
+    const parked = unitOf(dir, 'cross-cutting', 'fees');
+    assert.strictEqual(parked.phase_label, 'research (parked — feeds the discussion)');
+    assert.strictEqual(parked.next_topic, 'fee-rules');
+    assert.strictEqual(workUnitMenu('cross-cutting', parked).keys[0].route, '/workflow-research-process cross-cutting fees fee-rules');
+  });
+
+  it('continues into the item whose input moved by name where nothing is in flight or parked', () => {
+    const unit = promoted({ discussion: { 'fee-display': { status: 'completed', reconcile_needed: 'research' } } });
+    assert.strictEqual(unit.phase_label, 'discussion (input moved — reconcile)');
+    assert.strictEqual(unit.next_topic, 'fee-display');
+    const [cont] = workUnitMenu('cross-cutting', unit).keys;
+    assert.deepStrictEqual([cont.topic, cont.route], ['fee-display', '/workflow-discussion-process cross-cutting fees fee-display'],
+      'the continue row names the item its route names');
+  });
+
   it('continues into the specification\'s reconcile once the discussion concludes again — by the unit alone', () => {
     const unit = promoted({ specification: { reconcile_needed: 'discussion', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } });
     assert.strictEqual(unit.phase_label, 'specification (input moved — reconcile)');

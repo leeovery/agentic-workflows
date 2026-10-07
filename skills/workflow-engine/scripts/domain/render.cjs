@@ -60,7 +60,7 @@ const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = requir
 const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
-  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, lockingSpecs, deliveryStarted, cancelPlan,
+  sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
   postponePlan, postponeTarget, postponedItem, openExperiments,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
@@ -4198,9 +4198,9 @@ function discoveryCancelStatement(manifest, topic) {
   if (lifecycle === 'postponed') {
     throw new Error(`render cancel-gate: "${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
-  const locking = lockingSpecs(manifest, topic);
+  const locking = unitLocks(manifest, topic);
   if (locking.length > 0) {
-    throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${locking.join(', ')}) — the menu never offers it`);
+    throw new Error(`render cancel-gate: "${topic}" is locked by the specification sourcing its discussion (${unitLockNames(locking)}) — the menu never offers it`);
   }
   const name = titlecase(topic);
   const plan = cancelPlan(manifest, 'discovery', topic);
@@ -4599,6 +4599,12 @@ function entryGate(cwd, { dotpath, own }) {
     if (item.status === 'cancelled') {
       return blocker(`"${t}" is cancelled`, 'Reactivate it from the epic menu (`e/reactivate`).');
     }
+    if (item.status === 'promoted') {
+      return blocker(
+        `"${t}" was promoted to the cross-cutting work unit "${String(item.promoted_to || '')}"`,
+        'Continue it from that work unit.',
+      );
+    }
     if (phase !== 'specification') {
       if (item.status !== 'postponed') return '';
       return blocker(
@@ -4610,12 +4616,6 @@ function entryGate(cwd, { dotpath, own }) {
       return blocker(
         `The specification for "${t}" was consolidated into "${titlecase(String(item.superseded_by || ''))}"`,
         'Work on that specification instead.',
-      );
-    }
-    if (item.status === 'promoted') {
-      return blocker(
-        `"${t}" was promoted to the cross-cutting work unit "${String(item.promoted_to || '')}"`,
-        'Continue it from that work unit.',
       );
     }
     return '';
@@ -4773,19 +4773,24 @@ function entryGate(cwd, { dotpath, own }) {
       }
       return '';
     }
-    // feature / cross-cutting: the topic's own discussion.
-    const disc = itemOf(manifest, 'discussion', topic);
-    if (!disc) {
-      return blocker(
-        `No discussion found for "${wu}"`,
-        'A completed discussion is required before specification can begin.',
-      );
-    }
-    if (disc.status !== 'completed') {
-      return blocker(
-        `The discussion for "${wu}" is not yet completed`,
-        'The discussion must be completed before specification can begin.',
-      );
+    // feature / cross-cutting: the topic's own discussion — or, where the
+    // discussions carry names of their own (a promoted unit's moved ones),
+    // each of them.
+    const own = ownNamedItems(manifest, 'discussion');
+    for (const name of own.length > 0 ? own.map((i) => i.name) : [topic]) {
+      const disc = itemOf(manifest, 'discussion', name);
+      if (!disc) {
+        return blocker(
+          `No discussion found for "${wu}"`,
+          'A completed discussion is required before specification can begin.',
+        );
+      }
+      if (disc.status !== 'completed') {
+        return blocker(
+          `The discussion for "${titlecase(name)}" is not yet completed`,
+          'The discussion must be completed before specification can begin.',
+        );
+      }
     }
     return '';
   }

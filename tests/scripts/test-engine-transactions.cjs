@@ -285,7 +285,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.match(started, /◆ Cancel it\?/);
     assert.match(started, /\*\*`y\/yes`\*\* → Confirm cancellation/);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.session-model']).error,
-      /"session-model" is locked by the specification sourcing its discussion \(session-model\) — the menu never offers it/);
+      /"session-model" is locked by the specification sourcing its discussion \("session-model"\) — the menu never offers it/);
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.discovery.data-export']).error, /already cancelled — the menu never offers it/);
     assert.match(engineFails(dir, ['render', 'cancel-gate', 'payments.research.auth-flow']).error,

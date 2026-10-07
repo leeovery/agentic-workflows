@@ -119,6 +119,18 @@ describe('epic projections: dashboard (map branch)', () => {
     assert.match(out, /RESEARCH & DISCUSSION \(2 topics · all decided\)/, out);
     assert.match(out, /✓ Fees\n  │     Fee rules\n  │     ↳ Decided · promoted to fees-cc\n/, out);
     assert.match(out, /✓ Refunds\n        Refund rules\n        ↳ Decided\n/, out);
+
+    // Past specification, moved elsewhere: its cancel and postpone rows stand
+    // locked, naming the unit — never "nothing has started".
+    assert.deepStrictEqual(detail.cancellable.find((u) => u.name === 'fees'), {
+      name: 'fees', stage: 'discovery', state: 'decided · promoted to fees-cc',
+      locked: 'locked by specification "Fees" (promoted to "fees-cc") — promotion is terminal',
+    });
+    assert.match(detail.postponable.find((u) => u.name === 'fees').locked, /the specification "fees" \(promoted to "fees-cc"\) sources its discussion/);
+    const cancelView = epicCancelMenu(detail);
+    assert.ok(!cancelView.keys.some((k) => k.topic === 'fees'), 'a locked row takes no key');
+    assert.match(cancelView.display.replace(/\s+/g, ' '), /Fees \[decided · promoted to fees-cc\] · locked by specification "Fees" \(promoted to "fees-cc"\) — promotion is terminal/, cancelView.display);
+    assert.ok(!epicPostponeMenu(detail).keys.some((k) => k.topic === 'fees'));
   });
 
   it('a postponed topic drops out of the tree and its counts, named with its horizon on one line beneath', () => {

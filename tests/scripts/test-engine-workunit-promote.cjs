@@ -35,7 +35,7 @@ function epicManifest(overrides = {}) {
             subtopics: { purge: { status: 'decided', parent: null }, fanout: { status: 'deferred', parent: 'purge' } },
             dismissed_grounds: ['a CDN purge is out of scope'],
           },
-          'ttl-policy': { status: 'completed' },
+          'ttl-policy': { status: 'completed', reconcile_needed: 'research' },
           'fee-model': { status: 'completed' },
         },
       },
@@ -197,9 +197,10 @@ describe('engine workunit promote — happy path', () => {
 
     // The cc manifest is the canonical document, already completed, with
     // origin provenance; each moved discussion's item travels whole under its
-    // own name — its Discussion Map and dismissed grounds with it — reading
-    // completed, and stays the spec item's source at its row's status; topic
-    // = work unit name for the spec item.
+    // own name — its Discussion Map and dismissed grounds with it, never its
+    // reconcile flag, whose upstream stays in the epic — reading completed,
+    // and stays the spec item's source at its row's status; topic = work unit
+    // name for the spec item.
     assert.deepStrictEqual(readManifest(fix, 'caching'), {
       name: 'caching',
       work_type: 'cross-cutting',
@@ -253,7 +254,7 @@ describe('engine workunit promote — happy path', () => {
         dismissed_grounds: ['a CDN purge is out of scope'],
         promoted_to: 'caching',
       },
-      'ttl-policy': { status: 'promoted', promoted_to: 'caching' },
+      'ttl-policy': { status: 'promoted', reconcile_needed: 'research', promoted_to: 'caching' },
       'fee-model': { status: 'completed' },
     });
 

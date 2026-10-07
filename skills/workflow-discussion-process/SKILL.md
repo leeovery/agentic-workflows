@@ -153,7 +153,7 @@ Set `resumed` from where the reference returns: `true` for **Step 2**, the earli
 
 → On return, proceed as the reference directed — `continue` lands on **Step 2**, `restart` on **Step 1**.
 
-#### If `phase_status` is `postponed` or `cancelled`
+#### If `phase_status` is `postponed`, `cancelled`, or `promoted`
 
 Render the terminal blocker — the engine derives which from the item's status — and emit both sections verbatim per their markers:
 

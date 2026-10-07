@@ -20,7 +20,7 @@ const {
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
-  specIsStarted, specGroupsSources, lockingSpecs, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
   postponePlan, postponeTarget, postponeClashPhrase, postponedItem,
   openSources, specUnsettled, specUnsettledPhrase,
 } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
@@ -1085,6 +1085,17 @@ describe('reads + derivations', () => {
       const m = unitManifest();
       assert.deepStrictEqual(lockingSpecs(m, 'auth'), []);
       assert.deepStrictEqual(lockingSpecs(m, 'timing'), ['unified']);
+    });
+
+    it('unitLocks: a started specification and a promoted one each lock the topic — the promoted one naming its unit', () => {
+      const m = unitManifest();
+      m.phases.specification.items.done.promoted_to = 'auth-cc';
+      assert.deepStrictEqual(unitLocks(m, 'auth'), [{ name: 'done', promoted_to: 'auth-cc' }], 'promoted, never proposed or status-less');
+      assert.deepStrictEqual(unitLocks(m, 'timing'), [{ name: 'unified', promoted_to: null }]);
+      assert.deepStrictEqual(lockingSpecs(m, 'auth'), [], 'a promoted specification is never an individual one');
+      assert.strictEqual(unitLockNames(unitLocks(m, 'auth'), (n) => n.toUpperCase()), '"DONE" (promoted to "auth-cc")');
+      const [lock] = postponePlan(m, 'auth', null).locks.filter((l) => /past specification/.test(l.reason));
+      assert.strictEqual(lock.reason, 'postponing "auth" is refused while the specification "done" (promoted to "auth-cc") sources its discussion — a topic past specification is past "not yet"');
     });
 
     it('cancelPlan over a discovery unit: the live items, every open record in register order, the proposed groupings', () => {

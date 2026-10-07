@@ -33,7 +33,7 @@ const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES,
   OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, lifecyclePhrase,
   awaitedExperiments, waits, settleItemStatus,
-  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, lockingSpecs, lockingSpecsPhrase, deliveryStarted,
+  sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
@@ -81,16 +81,6 @@ function assertNotDerived(phase, message) {
  */
 function postponedRefusal(phase, topic) {
   return `${phase} item "${topic}" is postponed — the topic waits on the roadmap; pull it forward from there instead`;
-}
-
-/**
- * The refusal every hand transition makes over a promoted item: it left the
- * epic for the cross-cutting unit it names, and continues there.
- * @param {string} phase @param {string} topic @param {{promoted_to?: unknown}} item
- */
-function promotedRefusal(phase, topic, item) {
-  const to = 'promoted_to' in item ? ` (to "${item.promoted_to}")` : '';
-  return `${phase} item "${topic}" is promoted${to} — promotion is terminal; continue it from the cross-cutting work unit`;
 }
 
 /**
@@ -1369,9 +1359,11 @@ function cancelDiscoveryUnit(manifest, topic) {
   if (lifecycle === 'postponed') {
     throw new Error(`"${topic}" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first`);
   }
-  const locking = lockingSpecs(manifest, topic);
+  const locking = unitLocks(manifest, topic);
   if (locking.length > 0) {
-    const recovery = locking.length === 1 ? 'cancel the specification first' : 'cancel them first';
+    const recovery = locking.some((lock) => lock.promoted_to !== null)
+      ? 'promotion is terminal, so the topic continues in its cross-cutting unit'
+      : `cancel ${locking.length === 1 ? 'the specification' : 'them'} first`;
     throw new Error(`cancelling "${topic}" is refused while ${lockingSpecsPhrase(locking)} — ${recovery}`);
   }
   const plan = cancelPlan(manifest, 'discovery', topic);

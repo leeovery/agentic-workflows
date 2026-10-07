@@ -227,12 +227,14 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       carried.map((c) => ({ src: `.workflows/${workUnit}/${c.entry.path}`, dest: c.basename })));
 
     // Each moved discussion's item travels whole into the unit, under the
-    // unit's own status; the epic keeps its item, marked as having left.
+    // unit's own status — but for a reconcile flag, whose upstream stays in
+    // the epic; the epic keeps its item, marked as having left.
     /** @type {Record<string, Record<string, any>>} */
     const discussionItems = {};
     for (const name of plan) {
       const discussion = phases.discussion?.items?.[name];
       discussionItems[name] = { ...copyWhole(discussion ?? {}), status: 'completed' };
+      delete discussionItems[name].reconcile_needed;
       if (discussion) Object.assign(discussion, { status: 'promoted', promoted_to: to });
     }
     item.status = 'promoted';

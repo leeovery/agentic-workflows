@@ -10,27 +10,35 @@
 // discussion as a bare `{status: 'completed'}` — its Discussion Map and every
 // other field left behind — and the unit's specification item carried no
 // `sources`. For every epic specification item reading `promoted` with
-// `promoted_to`, each source discussion whose file is gone from the epic and
-// present in the promoted unit's `discussion/`:
-//   - its epic item is marked `promoted` + `promoted_to`;
+// `promoted_to`, each source discussion whose file the promoted unit holds in
+// its `discussion/`:
 //   - the unit's discussion item, where it is still that bare item, is filled
-//     from the epic's: every field but `status` and `promoted_to`, never one
-//     the unit already holds;
+//     from the epic's: every field but those of the epic's own lifecycle —
+//     its `status`, `promoted_to`, the `previous_status` a hold stashed, and a
+//     `reconcile_needed` whose upstream stays in the epic — and never one the
+//     unit already holds;
 //   - the unit's specification item (`{promoted_to}`) gains the source as
 //     `sources.{name}.status` — the epic specification's status for it —
-//     where absent.
-// A source whose file still sits in the epic was never moved, and is left
-// alone; so is a unit that does not exist or whose manifest does not parse.
+//     where absent;
+//   - where the epic no longer holds the file, its item, still reading the
+//     `completed` the promotion left, is marked `promoted` + `promoted_to`. An
+//     item the epic has worked since — cancelled, postponed, or reopened by a
+//     triage landing — keeps its own state.
+// A unit that does not exist or whose manifest does not parse is left alone.
 //
 // A directory whose manifest is absent or does not parse is not a work unit,
 // and is left alone.
 //
-// Idempotent: a recorded discussion reads `promoted`, a filled item is no
-// longer bare (or had nothing to take), a recorded source is present.
+// Idempotent: a marked discussion no longer reads `completed`, a filled item
+// is no longer bare (or had nothing to take), a recorded source is present.
 //
 
 const fs = require('fs');
 const path = require('path');
+
+// The epic item's fields that belong to the epic's own lifecycle, never
+// carried into the unit.
+const EPIC_ONLY_FIELDS = ['status', 'promoted_to', 'previous_status', 'reconcile_needed'];
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
@@ -44,11 +52,12 @@ function itemsOf(manifest, phase) {
 }
 
 /**
- * Mark the epic's discussion item as having left for `to`.
+ * Mark the epic's discussion item as having left for `to` — only the
+ * `completed` item the promotion left.
  * @param {unknown} item @param {string} to @returns {boolean} whether it changed
  */
 function markPromoted(item, to) {
-  if (!isObject(item) || (item.status === 'promoted' && item.promoted_to === to)) return false;
+  if (!isObject(item) || item.status !== 'completed') return false;
   item.status = 'promoted';
   item.promoted_to = to;
   return true;
@@ -56,8 +65,8 @@ function markPromoted(item, to) {
 
 /**
  * Fill the unit's discussion item from the epic's, where it is still the
- * bare `{status: 'completed'}` the promotion wrote: every field but
- * `promoted_to` the unit does not hold — its own `status` among those it does.
+ * bare `{status: 'completed'}` the promotion wrote: every field the epic's
+ * lifecycle does not own and the unit does not hold.
  * @param {unknown} unitItem @param {unknown} epicItem @returns {boolean} whether it changed
  */
 function fillBare(unitItem, epicItem) {
@@ -65,7 +74,7 @@ function fillBare(unitItem, epicItem) {
   if (Object.keys(unitItem).length !== 1 || unitItem.status !== 'completed') return false;
   let filled = false;
   for (const [field, value] of Object.entries(epicItem)) {
-    if (field === 'promoted_to' || Object.hasOwn(unitItem, field)) continue;
+    if (EPIC_ONLY_FIELDS.includes(field) || Object.hasOwn(unitItem, field)) continue;
     unitItem[field] = value;
     filled = true;
   }
@@ -126,7 +135,6 @@ module.exports = {
         const unit = load(to);
         for (const [name, row] of Object.entries(spec.sources)) {
           if (!isObject(row) || /[./]/.test(name)) continue;
-          if (fs.existsSync(path.join(workflowsDir, entry.name, 'discussion', `${name}.md`))) continue;
           if (!fs.existsSync(path.join(workflowsDir, to, 'discussion', `${name}.md`))) continue;
 
           const epicItem = (itemsOf(epic, 'discussion') ?? {})[name];
@@ -134,7 +142,8 @@ module.exports = {
             if (fillBare((itemsOf(unit, 'discussion') ?? {})[name], epicItem)) changed.add(to);
             if (addSource((itemsOf(unit, 'specification') ?? {})[to], name, row)) changed.add(to);
           }
-          if (markPromoted(epicItem, to)) changed.add(entry.name);
+          const moved = !fs.existsSync(path.join(workflowsDir, entry.name, 'discussion', `${name}.md`));
+          if (moved && markPromoted(epicItem, to)) changed.add(entry.name);
         }
       }
     }

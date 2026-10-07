@@ -501,13 +501,13 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
-    const discussion = /discussion item "fees" is promoted to "billing-cc" — continue it from that cross-cutting work unit/;
+    const discussion = /discussion item "fees" is promoted \(to "billing-cc"\) — promotion is terminal; continue it from the cross-cutting work unit/;
     assert.match(runFails(dir, ['set', 'payments.discussion.fees', 'status', 'completed']).error, discussion);
     assert.match(runFails(dir, ['delete', 'payments.discussion', 'items.fees']).error, discussion);
     assert.match(runFails(dir, ['delete', 'payments.discussion.fees', 'promoted_to']).error, discussion);
     // A grouping landing on a promoted specification's key never overwrites it.
     assert.match(runFails(dir, ['set', 'payments.specification.billing', 'status', 'proposed']).error,
-      /specification item "billing" is promoted to "billing-cc"/);
+      /specification item "billing" is promoted \(to "billing-cc"\)/);
     assert.strictEqual(fs.readFileSync(manifestPath, 'utf8'), before, 'nothing written');
   });
 

@@ -2690,7 +2690,7 @@ describe('pipeline simulation', () => {
       'implementation started — fix forward');
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'beta'],
       /cancelling "beta" is refused while the specification "unified" sources its discussion — cancel the specification first/);
-    sim.refuses(['render', 'cancel-gate', `${wu}.discovery.beta`], /locked by the specification sourcing its discussion \(unified\)/);
+    sim.refuses(['render', 'cancel-gate', `${wu}.discovery.beta`], /locked by the specification sourcing its discussion \("unified"\)/);
     sim.refuses(['topic', 'cancel', wu, 'specification', 'unified'],
       /"unified" is locked — implementation has started; code in the tree is fixed forward, and the work-unit cancel abandons the epic/);
     sim.refuses(['render', 'cancel-gate', `${wu}.specification.unified`], /is locked — implementation has started/);
@@ -4108,6 +4108,17 @@ describe('pipeline simulation', () => {
       billing: { status: 'completed' },
     });
     sim.refuses(['topic', 'reopen', wu, 'discussion', 'tracing'], /promoted \(to "logging-cc"\)/);
+    // Past specification, moved elsewhere: the topics lock against cancel
+    // and postpone, the sub-views naming the unit.
+    sim.refuses(['topic', 'cancel', wu, 'discovery', 'tracing'],
+      /the specification "logging" \(promoted to "logging-cc"\) sources its discussion — promotion is terminal/);
+    sim.refuses(['topic', 'postpone', wu, 'tracing', '--horizon', 'v2'], /a topic past specification is past "not yet"/);
+    const units = EPIC_GATEWAY.discover(sim.dir, wu);
+    for (const topic of ['logging', 'tracing']) {
+      assert.match(units.cancellable.find((u) => u.name === topic)?.locked ?? '', /\(promoted to "logging-cc"\) — promotion is terminal/);
+      assert.match(units.postponable.find((u) => u.name === topic)?.locked ?? '', /\(promoted to "logging-cc"\)/);
+    }
+    assert.strictEqual(units.cancellable.find((u) => u.name === 'billing')?.locked, undefined);
     const grouping = specDetail(sim.dir, wu);
     assert.strictEqual(grouping.counts.discussion_count, 1);
     assert.strictEqual(grouping.scenario, 'single');
@@ -4157,6 +4168,20 @@ describe('pipeline simulation', () => {
     assert.match(dump, /^revisitable_phases: discussion\/logging, discussion\/tracing$/m, dump);
     assert.strictEqual(LIB.detail.activeWorkUnit(sim.dir, cc)?.unit.phase_label, 'specification (input moved — reconcile)');
     bridgeTo(sim, cc, 'specification');
+
+    // The specification's entry reconciles: reopened, its flag cleared, and
+    // the source gate holding the re-conclusion until the stale row is
+    // re-incorporated; then the pipeline's end completes the unit.
+    label(sim, cc, 'specification', cc);
+    sim.render(['entry-gate', `${cc}.specification.${cc}`], { expect: 'empty' });
+    sim.run(['topic', 'reopen', cc, 'specification', cc]);
+    sim.run(['manifest', 'delete', `${cc}.specification.${cc}`, 'reconcile_needed']);
+    sim.refuses(['topic', 'complete', cc, 'specification', cc], /unresolved source rows \(tracing\)/);
+    sim.run(['manifest', 'set', `${cc}.specification.${cc}`, 'sources.tracing.status', 'incorporated']);
+    sim.run(['topic', 'complete', cc, 'specification', cc]);
+    assert.match(BRIDGE.format(BRIDGE.discover(sim.dir, cc)), /^next_phase: done$/m);
+    sim.run(['workunit', 'complete', cc, '-m', `workflow(${cc}): complete cross-cutting pipeline`]);
+    assert.strictEqual(sim.manifest(cc).status, 'completed');
   });
 
   it('reference imports: a research session lands files, absorb re-homes them over a collision, promote carries the linked one', () => {
