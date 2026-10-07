@@ -2,7 +2,8 @@ The prose should have taken this path:
 
 1. initialisation runs the boot pipeline and the start screen renders
    the active search-relevance epic; the first answer continues it
-2. the epic is validated and the one-time recoveries checked: no
+2. the epic's scoped snapshot is read and the one-time recoveries
+   checked: no
    legacy research to split, and one map row — `query-autocomplete` —
    missing both its summary and its description
 3. the backfill looks for the topic's discussion file, finds none, and

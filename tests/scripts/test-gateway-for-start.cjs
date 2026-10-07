@@ -4,6 +4,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
@@ -578,7 +579,8 @@ describe('workflow-start sub-view sections', () => {
       assert.ok(out.includes(`\n${firstRow}\n`), `${args[0]}: ${out}`);
     }
 
-    const empty = run(['completed', 'bugfix']);
+    fs.rmSync(path.join(dir, '.workflows', 'done-feat'), { recursive: true });
+    const empty = run(['completed']);
     assert.ok(empty.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo completed or cancelled work units found.\n'), empty);
     assert.ok(!empty.includes('=== MENU'), empty);
   });

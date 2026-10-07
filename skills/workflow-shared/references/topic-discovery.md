@@ -6,7 +6,7 @@
 
 Drives cache-based dispatch of `discovery-gap-analysis` against an epic. When the cache is stale the flow is **stage → present → approve → write → stamp**: the analysis stages its genuinely-new candidates to a staging file, the gate ([analysis-approval-gate.md](analysis-approval-gate.md)) presents each for per-item approval, approved items are written to `phases.discovery.items.{topic}` with `source` provenance, and the cache is stamped once the gate completes. The no-gate cases (already-on-map, dismissed) are resolved silently at stage time against the per-work-unit `phases.discovery.dismissed[]` list.
 
-The gate runs before the dashboard — it is the epic menu's boot-time review surface, run at `workflow-continue-epic` Step 6 through the shared dispatch.
+The gate runs before the dashboard — it is the epic menu's boot-time review surface, run at `workflow-continue-epic` Step 3 through the shared dispatch.
 
 The analysis self-gates on a precondition (at least one completed research OR discussion item). When the precondition fails it returns without staging, gating, or stamping — dispatching on `stale` is safe even when no qualifying inputs exist yet.
 

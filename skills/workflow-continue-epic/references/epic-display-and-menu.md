@@ -4,7 +4,7 @@
 
 ---
 
-Display the full phase-by-phase breakdown for the selected epic, then present an interactive menu of actionable items. The caller is responsible for providing:
+Display the full phase-by-phase breakdown for the epic, then present an interactive menu of actionable items. The caller is responsible for providing:
 - `work_unit` — the epic's work unit name
 - `new_arrivals` (optional) — tracker from `topic-discovery.md` listing the topic names added during this boot-up (`gap_analysis`). Drives the "new topics added" callout above the Discovery Map. Empty / absent means no callout.
 
@@ -104,6 +104,10 @@ Match the user's input to its `ACTIONS` entry — a number or a command option's
 → Load **[specification-display-and-menu.md](specification-display-and-menu.md)** and follow its instructions as written.
 
 → On return, proceed to **C. Route Selection**.
+
+#### If `action` is `back`
+
+→ Load **[start-menu.md](../../workflow-start/references/start-menu.md)**.
 
 #### Otherwise
 

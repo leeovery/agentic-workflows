@@ -1,5 +1,5 @@
 {
-  "origin": "continue-epic had no coverage — the epic navigation spine from the dashboard through validation, the skipped one-time recoveries, the first-visit map sequencing, and the epic dashboard to the handoff into a topic's discussion entry; the entry's own brief-read initialisation is discussion-initialises-from-research's",
+  "origin": "continue-epic had no coverage — the epic navigation spine from the dashboard through the scoped dump, the skipped one-time recoveries, the first-visit map sequencing, and the epic dashboard to the handoff into a topic's discussion; the discussion's own brief-read initialisation is discussion-initialises-from-research's",
   "entry": "workflow-start",
   "world": "claims",
   "files": [
@@ -12,7 +12,6 @@
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-start/references/active-work.md",
     "skills/workflow-continue-epic/SKILL.md",
-    "skills/workflow-continue-epic/references/validate-selection.md",
     "skills/workflow-continue-epic/references/banner-and-completion.md",
     "skills/workflow-shared/references/topic-discovery-dispatch.md",
     "skills/workflow-shared/references/sequence-discovery-map.md",

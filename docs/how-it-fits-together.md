@@ -14,7 +14,7 @@ The skills are organised into tiers, each with a narrow role, so that a given mo
 |---|---|
 | **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, and routes you everywhere else. |
 | **First phase** | Discovery. Shapes brand-new work, settles its type, and persists it. |
-| **Navigation** | The per-type dashboards. They show a work unit's current state and hand the work off to whichever phase you pick. |
+| **Navigation** | The dashboards — an epic's, and one the single-topic types share. They show a work unit's current state, hand the work off to whichever phase you pick, and lead back to the start menu. |
 | **Processing** | The phases themselves, where the actual work happens: the conversations, the documents, the loops. Each checks that it can start — the record it builds on is settled, no other session is writing code in the checkout — then picks up where its last session left off, or begins. |
 | **Bridge** | Decides where the work goes when a phase ends, and hands it off. |
 | **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely. |
@@ -29,7 +29,7 @@ Two disciplines run through every skill regardless of tier. The first is that a 
 
 Following one action shows how the layers cooperate. You type `/workflow-start`. It boots the system — bringing any older project structure up to date and confirming the memory is ready — then asks the engine for a snapshot of all your work and shows it to you. That snapshot is computed, not remembered, which is why the same state always looks the same.
 
-If you start something new, the work is handed off to discovery, where it is shaped in conversation and, at the moment you confirm it, written to disk in a single transaction. If you pick up existing work, you land on that work type's dashboard instead, and the phase you pick there is handed off the same way. Either way you end up inside a **processing** skill, doing the real work of a phase.
+If you start something new, the work is handed off to discovery, where it is shaped in conversation and, at the moment you confirm it, written to disk in a single transaction. If you pick up existing work, you land on its dashboard instead, and the phase you pick there is handed off the same way. Either way you end up inside a **processing** skill, doing the real work of a phase.
 
 When that phase concludes, it goes through the bridge.
 

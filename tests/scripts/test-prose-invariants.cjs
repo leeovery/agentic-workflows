@@ -802,7 +802,7 @@ describe('entry points — where a walk may begin', () => {
   });
 
   it('rejects any other navigation skill — always invoked by workflow-start, never cold', () => {
-    const [error] = cases.entryErrors('workflow-continue-feature');
+    const [error] = cases.entryErrors('workflow-continue-linear');
     assert.match(error, /not somewhere a session starts/);
   });
 

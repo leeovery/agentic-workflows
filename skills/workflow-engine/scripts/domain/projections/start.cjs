@@ -60,13 +60,10 @@ const SECTIONS = [
   { label: 'Epics:', group: 'epics', type: 'epic' },
 ];
 
-const CONTINUE_SKILL = {
-  feature: 'workflow-continue-feature',
-  bugfix: 'workflow-continue-bugfix',
-  'quick-fix': 'workflow-continue-quickfix',
-  'cross-cutting': 'workflow-continue-cross-cutting',
-  epic: 'workflow-continue-epic',
-};
+/** The continue menu a work unit of `type` opens on. @param {TypeSection['type']} type */
+function continueSkill(type) {
+  return type === 'epic' ? 'workflow-continue-epic' : 'workflow-continue-linear';
+}
 
 // ---------------------------------------------------------------------------
 // Shared composition helpers
@@ -208,7 +205,7 @@ function startMenu(detail) {
         action: 'continue_work_unit',
         work_type: s.type,
         work_unit: u.name,
-        route: `/${CONTINUE_SKILL[s.type]} ${u.name}`,
+        route: `/${continueSkill(s.type)} ${u.name}`,
         label: continueLabel(u, s.type),
       });
     }
@@ -731,40 +728,23 @@ function planTopicsMenu(md) {
  * @property {string} last_phase
  */
 
-// The `Showing:` label per work-type filter — the overview's section labels.
-/** @type {Record<string, string>} */
-const FILTER_LABELS = {
-  feature: 'Features',
-  bugfix: 'Bugfixes',
-  'quick-fix': 'Quick Fixes',
-  'cross-cutting': 'Cross-Cutting',
-  epic: 'Epics',
-};
-
 // A closed row's tail: how it closed, and in which phase.
 /** @type {Record<string, string>} */
 const CLOSED_TAIL = { completed: 'completed after', cancelled: 'cancelled during' };
 
 /**
- * The completed & cancelled snapshot, optionally filtered to one work type
- * (the per-type navigation skills pass their own): completed then cancelled
- * as one numbered pick menu, numbers resolving through the DATA `UNITS`
- * table — or, with nothing closed, the empty display and no menu.
+ * The completed & cancelled snapshot: completed then cancelled as one
+ * numbered pick menu, numbers resolving through the DATA `UNITS` table — or,
+ * with nothing closed, the empty display and no menu.
  * @param {StartDetail} detail
- * @param {string} [filter]  a work type, or undefined for all
  * @returns {{data: string, display?: string, menu?: string, rows: ClosedRow[]}}
  */
-function completedView(detail, filter) {
-  if (filter !== undefined && !FILTER_LABELS[filter]) {
-    throw new Error(`unknown work-type filter "${filter}" (${Object.keys(FILTER_LABELS).join(' | ')})`);
-  }
-  const match = (/** @type {import('../start.cjs').ClosedEntry} */ e) => filter === undefined || e.work_type === filter;
+function completedView(detail) {
   /** @type {ClosedRow[]} */
-  const rows = [...detail.completed.filter(match), ...detail.cancelled.filter(match)]
+  const rows = [...detail.completed, ...detail.cancelled]
     .map((e, i) => ({ n: i + 1, status: e.status, work_type: e.work_type, work_unit: e.name, last_phase: e.last_phase || 'none' }));
 
   const data = [
-    `filter: ${filter || '(none)'}`,
     `completed_count: ${rows.filter((r) => r.status === 'completed').length}`,
     `cancelled_count: ${rows.filter((r) => r.status === 'cancelled').length}`,
     'UNITS (n  status  work_type  work_unit  last_phase):',
@@ -777,13 +757,7 @@ function completedView(detail, filter) {
     ...rows.map((r) => cmdOption(String(r.n), null, { head: titlecase(r.work_unit), tail: `${CLOSED_TAIL[r.status]} ${r.last_phase}` })),
     cmdOption('b', 'back', 'Return'),
   ];
-  return {
-    data,
-    menu: filter === undefined
-      ? menu('Which work unit?', options)
-      : menu(`Showing: ${FILTER_LABELS[filter]}`, options, { question: 'Which work unit?' }),
-    rows,
-  };
+  return { data, menu: menu('Which work unit?', options), rows };
 }
 
 /**

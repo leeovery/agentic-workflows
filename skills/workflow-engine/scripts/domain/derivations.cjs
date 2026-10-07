@@ -1304,8 +1304,8 @@ function triageQueued(workflowsDir, manifest, topic) {
 
 /**
  * The phases whose queue holds concerns for one topic — the single-topic
- * surfaces' cue (the start rows, the continue dashboards, the pick lists),
- * where topic = work unit and any triage-legal phase may own the queue.
+ * surfaces' cue (the start rows, the continue dashboard), where topic = work
+ * unit and any triage-legal phase may own the queue.
  * @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {string[]}
  */
 function triagePhases(workflowsDir, manifest, topic) {

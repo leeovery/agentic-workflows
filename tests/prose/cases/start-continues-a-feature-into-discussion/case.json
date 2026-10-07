@@ -1,5 +1,5 @@
 {
-  "origin": "the continue-* spine from the dashboard through feature navigation — validation, the straight-through proceed with nothing to revisit — to the handoff into the discussion entry; the entry's own new arm and the discussion's initialisation are discussion-runs-to-convergence's",
+  "origin": "the continue spine from the dashboard through the linear continue menu — the feature's view, the straight-through proceed with nothing to revisit — to the handoff into the discussion; the discussion's own first start and initialisation are discussion-runs-to-convergence's",
   "entry": "workflow-start",
   "files": [
     "skills/workflow-start/SKILL.md",
@@ -10,9 +10,8 @@
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
     "skills/workflow-start/references/active-work.md",
-    "skills/workflow-continue-feature/SKILL.md",
-    "skills/workflow-continue-feature/references/validate-selection.md",
-    "skills/workflow-continue-feature/references/feature-display-and-menu.md",
+    "skills/workflow-continue-linear/SKILL.md",
+    "skills/workflow-continue-linear/references/display-and-menu.md",
     "skills/workflow-shared/references/handing-off.md"
   ],
   "answers": [
@@ -22,15 +21,14 @@
     "calls_include": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
-      "workflow-continue-feature/scripts/gateway.cjs",
+      "workflow-continue-linear/scripts/gateway.cjs view pay",
       "handoff /workflow-discussion-process feature pay"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs",
-      "workflow-continue-feature/scripts/gateway.cjs",
       "session label pay",
-      "workflow-continue-feature/scripts/gateway.cjs view pay",
+      "workflow-continue-linear/scripts/gateway.cjs view pay",
       "handoff /workflow-discussion-process feature pay"
     ],
     "calls_exclude": [

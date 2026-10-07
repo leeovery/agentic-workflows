@@ -6,7 +6,7 @@
 
 The caller passes:
 
-- `work_unit` — the selected epic
+- `work_unit` — the epic's work unit name
 - `items_to_recover` — list of discovery-map rows missing summary, description, or both. Each row carries `name`, `routing`, `summary=present|absent`, `description=present|absent`, and — after `—` — the current summary text when present
 
 ## A. Read Source Files

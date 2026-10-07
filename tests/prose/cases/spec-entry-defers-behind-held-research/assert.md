@@ -1,8 +1,8 @@
 The prose should have taken this path:
 
-1. continue-epic opens with its phase title and reads its own discovery
-   dump; the work unit arrived as an argument, so no selection menu
-   renders and validation runs the scoped snapshot directly
+1. continue-epic opens with its phase title and reads the scoped
+   snapshot of the epic it was handed — no index of every epic, no
+   pick-an-epic menu
 2. the backfill checks find nothing, topic discovery reads the
    gap-analysis cache as valid and dispatches nothing — the research in
    flight is not yet a completed input — and the map is already

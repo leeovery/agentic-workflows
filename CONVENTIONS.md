@@ -925,7 +925,6 @@ Simple reference files use named sections (`## Seed Idea`, `## Current Knowledge
 | Name | Purpose |
 |------|---------|
 | `gather-context.md` | User interview / context gathering questions |
-| `validate-{thing}.md` | Pre-flight validation (the selected work unit exists, etc.) |
 | `display-{variant}.md` | Display outputs (for skills with multiple displays) |
 | `analysis-flow.md` | Multi-step analysis logic |
 
