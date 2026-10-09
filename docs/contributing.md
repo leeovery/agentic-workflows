@@ -33,9 +33,10 @@ is to run them before every commit rather than at the end of a branch.
 | `npm run test:cli` | Shell contract suites: manifest field surface, inbox promotion, the `engine knowledge` surface |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) |
-| `npm run typecheck:mod` | Both gate mods' types (`workflow-gates` and `workflow-gates-rows`) against Claude Code's mod API declarations — owed for any change under `skills/workflow-gates*/` |
+| `npm run typecheck:mod` | Both gate mods' types (`workflow-gates` and `workflow-gates-rows`) against the mod API declarations Claude Code lays when it loads a mod — owed for any change under `skills/workflow-gates*/` |
 | `npm run test:mod` | Both gate mods' suites under `claude plugin test` — owed for any change under `skills/workflow-gates*/` |
-| `npm run mod:types` | Fetches those declarations into the gitignored `skills/workflow-gates/types/` — run before the first `typecheck:mod` |
+
+Claude Code lays a mod's declarations into its gitignored `.claude-plugin/types/` whenever it loads the mod for development, for the build that is running: load both mods once in a session — `claude --plugin-dir skills/workflow-gates --plugin-dir skills/workflow-gates-rows` — before the first `typecheck:mod`. The mods need Claude Code 2.1.287 or newer; a change that relies on a newer Claude Code raises that floor in the same PR.
 
 **Never pipe a gate's output.** A pipe swallows the exit code, and a
 suite that aborts halfway then reads as green. Redirect to a file and
