@@ -1,12 +1,12 @@
-# Off-Topic Concern — Epic
+# Off-Topic Point — Epic
 
-*Shared reference. Loaded by the research and discussion epic sessions when a concern belongs elsewhere on the map.*
+*Shared reference. Loaded by the research and discussion epic sessions when a point belongs elsewhere on the map.*
 
 ---
 
-The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `concern` with its discussed context, and `reason` — `off-topic` (the default when omitted: a concern this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own — on `research`, its register `slug` comes with it). Either way the concern's home on an epic is a sibling topic, existing or new. Offer the reroute, resolve the target yourself, and land the concern where it belongs.
+The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `point` with its discussed context, and `reason` — `off-topic` (the default when omitted: a point this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own — on `research`, its register `slug` comes with it). Either way the point's home on an epic is a sibling topic, existing or new. Offer to send it, resolve the target yourself, and send it where it belongs.
 
-**If the concern is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. A surfaced capability parks; a topic already on the map postpones instead — the postponing door. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
+**If the point is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. A surfaced capability parks; a topic already on the map postpones instead — the postponing door. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
@@ -26,13 +26,13 @@ Read the live map:
 node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
 ```
 
-You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The concern's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the concern; hold the derived name whichever way the read lands. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](triage-landing.md)** — the concern's nature decides, so the judgement holds whatever the target.
+You hold the conversation and the map — resolve the target yourself from each topic's name, summary, routing, and lifecycle. The point's home is the topic whose remit it falls under; when nothing fits, a new kebab-case topic name you derive from the point; hold the derived name whichever way the read lands. Don't put the reading back on the user. Judge `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](sending-a-message.md)** — the point's nature decides, so the judgement holds whatever the target.
 
 On a `grown-thread` entry the current topic is never the answer — the thread grew here and a home of its own is the point, so the target is a sibling or the new name by construction.
 
 #### If the resolved target is the current topic
 
-It was a detail of this session's own topic after all, not a reroute — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, an `off-topic` concern enters the register as a thread (`research-threads add {work_unit} {topic} {title:(kebabcase)} --question "…" --origin conversation`, its short title as the slug) and is carried in the file, while a `grown-thread` keep leaves its row where it stands.
+It was a detail of this session's own topic after all, nothing to send — keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, an `off-topic` point enters the register as a thread (`research-threads add {work_unit} {topic} {title:(kebabcase)} --question "…" --origin conversation`, its short title as the slug) and is carried in the file, while a `grown-thread` keep leaves its row where it stands.
 
 → Return to caller for **B. Session Loop**.
 
@@ -40,20 +40,20 @@ It was a detail of this session's own topic after all, not a reroute — keep it
 
 An existing topic, or the new name when nothing fits. Set `resolution = clear`.
 
-→ Proceed to **B. Offer the Reroute**.
+→ Proceed to **B. Offer to Send**.
 
 #### Otherwise
 
 Two or more plausible homes and the conversation doesn't settle it. Set `resolution = ambiguous`.
 
-→ Proceed to **B. Offer the Reroute**.
+→ Proceed to **B. Offer to Send**.
 
-## B. Offer the Reroute
+## B. Offer to Send
 
-Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/reroute-offer.json` with the Write tool (`{"concern": "…", "target": "…", "landing_phase": "…", "new_target": true, "grown": true}` — the concern's short title, with `target` and `landing_phase` only when `resolution` is `clear`; add `new_target` when the **A** map read showed no such topic, since the landing creates it, and `grown` when `reason` is `grown-thread`, which implies it), then render it:
+Write the offer payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/send-offer.json` with the Write tool (`{"title": "…", "target": "…", "landing_phase": "…", "new_target": true, "grown": true}` — the point's short title, with `target` and `landing_phase` only when `resolution` is `clear`; add `new_target` when the **A** map read showed no such topic, since sending creates it, and `grown` when `reason` is `grown-thread`, which implies it), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render reroute-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/reroute-offer.json
+node .claude/skills/workflow-engine/scripts/engine.cjs render send-offer {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/send-offer.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -62,22 +62,22 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `keep`:**
 
-Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, an `off-topic` concern enters the register as a thread (`research-threads add {work_unit} {topic} {title:(kebabcase)} --question "…" --origin conversation`, its short title as the slug) and is carried in the file, while a `grown-thread` keep leaves its row where it stands.
+Keep it: on `discussion`, record it as a `pending` subtopic (session loop step 2); on `research`, an `off-topic` point enters the register as a thread (`research-threads add {work_unit} {topic} {title:(kebabcase)} --question "…" --origin conversation`, its short title as the slug) and is carried in the file, while a `grown-thread` keep leaves its row where it stands.
 
 → Return to caller for **B. Session Loop**.
 
-**If `reroute` and `resolution` is `clear`:**
+**If `send` and `resolution` is `clear`:**
 
 A phase appended to the reply overrides `landing_phase`.
 
-→ Proceed to **C. Land It**.
+→ Proceed to **C. Send It**.
 
-**If `reroute` and `resolution` is `ambiguous`:**
+**If `send` and `resolution` is `ambiguous`:**
 
-Write the candidates payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/reroute-candidates.json` with the Write tool (`{"concern": "…", "landing_phase": "…", "candidates": [{"name": "…", "lifecycle": "…"}]}` — every plausible home, lifecycle from the map read), then render it:
+Write the candidates payload to `.workflows/.cache/{work_unit}/{phase}/{topic}/send-candidates.json` with the Write tool (`{"title": "…", "landing_phase": "…", "candidates": [{"name": "…", "lifecycle": "…"}]}` — every plausible home, lifecycle from the map read), then render it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render reroute-candidates {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/reroute-candidates.json
+node .claude/skills/workflow-engine/scripts/engine.cjs render send-candidates {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/send-candidates.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -86,24 +86,24 @@ Emit the call's MENU section verbatim per its marker.
 
 The surface numbers the candidates in payload order — the picked row's `name` is the target; `new` takes the name derived in **A**. A phase appended to the selection overrides `landing_phase`.
 
-→ Proceed to **C. Land It**.
+→ Proceed to **C. Send It**.
 
-## C. Land It
+## C. Send It
 
-The concern travels with the full context discussed about it — the target picks it up cold. Honour triage-landing's one-ask-per-file rule as you build it: material making several asks the target could accept or reject independently is delivered as separate concerns under this one confirmed reroute.
+The message carries the full context discussed about the point — the target picks it up cold. Honour the one-ask-per-file rule in sending-a-message as you build it: material making several asks the target could accept or reject independently is sent as separate messages under this one confirmed send.
 
-→ Load **[triage-landing.md](triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{concern}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, derives another.
+→ Load **[sending-a-message.md](sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{point}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, derives another.
 
 **If `result` is `cancelled`:**
 
-Nothing landed.
+Nothing sent.
 
 → Return to caller for **B. Session Loop**.
 
 **Otherwise:**
 
-The concern landed in `{landed_topic}`'s `{landing_phase}` triage queue — the delivery committed itself. This session's own record is unchanged — rerouting sends the concern away from this topic, it doesn't mark it — with one exception: a research `grown-thread` landing takes its register rows with it, `research-threads remove {work_unit} {topic} {child}` for each child and then `research-threads remove {work_unit} {topic} {slug}`, and the file's note names where the question went.
+The message is in `{landed_topic}`'s `{landing_phase}` mailbox — the delivery committed itself. This session's own record is unchanged — sending takes the point away from this topic, it doesn't mark it — with one exception: a research `grown-thread` send takes its register rows with it, `research-threads remove {work_unit} {topic} {child}` for each child and then `research-threads remove {work_unit} {topic} {slug}`, and the file's note names where the question went.
 
-**If the response carried `reconcile_flagged` or `sources_staled`:** also tell the user what the landing flagged — on a research landing, `{landed_topic}`'s discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion landing, the specification(s) named in `sources_staled`, whose extraction of `{landed_topic}` is now stale.
+**If the response carried `reconcile_flagged` or `sources_staled`:** also tell the user what the delivery flagged — on a research landing, `{landed_topic}`'s discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion landing, the specification(s) named in `sources_staled`, whose extraction of `{landed_topic}` is now stale.
 
 → Return to caller for **B. Session Loop**.

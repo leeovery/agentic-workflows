@@ -8,18 +8,18 @@
 
 - `closure` — which closure applies: `discussion` (the findings feed a discussion) or `dead-end` (the topic is closed as a dead end)
 
-First check the topic's triage queue:
+First check the topic's mailbox:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} research {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} research {topic}
 ```
 
 **If `count` is non-zero:**
 
-A rerouted concern is still queued — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
+A message is still waiting — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.research.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.research.{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 6**.

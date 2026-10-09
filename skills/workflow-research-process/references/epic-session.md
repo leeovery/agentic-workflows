@@ -6,11 +6,11 @@
 
 ## A. Background Agents
 
-One kind of background agent operates during research — the deep dive — and two protocol files cover the topic's triage queue and the files the user shares. Load their instructions now — they run at the appropriate moments during the session loop.
+One kind of background agent operates during research — the deep dive — and two protocol files cover the topic's mailbox and the files the user shares. Load their instructions now — they run at the appropriate moments during the session loop.
 
 → Load **[deep-dive-agent.md](deep-dive-agent.md)** and follow its instructions as written.
 
-→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's triage check enters its **A. Check**; nothing runs at load time.
+→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
 
 → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `research/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
 
@@ -26,11 +26,11 @@ Per-topic session with topic awareness and convergence routing.
 
 ## C. Topic Awareness
 
-When a concern surfaces that belongs to a *different* topic — raised in conversation, not yet written into this file — flag it rather than letting it accumulate here. (Sustained *written* drift over multiple exchanges triggers the same reroute from **D. Convergence Routing**.) The heuristic: a thread that informs this topic's own question stays here; a concern whose home is a different topic — one that exists, or one that should — isn't this research's to explore.
+When a point surfaces that belongs to a *different* topic — raised in conversation, not yet written into this file — flag it rather than letting it accumulate here. (Sustained *written* drift over multiple exchanges triggers the same send from **D. Convergence Routing**.) The heuristic: a thread that informs this topic's own question stays here; a point whose home is a different topic — one that exists, or one that should — isn't this research's to explore.
 
-When a concern reads as off-topic, hold it with the full context discussed about it:
+When a point reads as off-topic, hold it with the full context discussed about it:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the concern, with its discussed context}`, reason = `off-topic`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, point = `{the point, with its discussed context}`, reason = `off-topic`.
 
 → On return, proceed as the reference directed.
 
@@ -44,9 +44,9 @@ When you notice convergence signals (from the research guidelines), flag it and 
 
 Either the session's written material keeps deepening ground that deserves a map topic of its own — sustained accumulation over multiple exchanges, not a clean thematic separation alone — or the user names a thread and asks for it to become a topic.
 
-Hold the thread with the full context worked out about it — its children's questions travel in that context — and name its slug: once the reroute lands, the reference drops its rows; on `keep` they stay:
+Hold the thread with the full context worked out about it — its children's questions travel in that context — and name its slug: once the message is sent, the reference drops its rows; on `keep` they stay:
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, concern = `{the thread, with its worked-out context}`, reason = `grown-thread`, slug = `{slug}`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research`, point = `{the thread, with its worked-out context}`, reason = `grown-thread`, slug = `{slug}`.
 
 → On return, proceed as the reference directed.
 

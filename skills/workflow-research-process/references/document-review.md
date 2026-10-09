@@ -39,7 +39,7 @@ Walk the conversation against the document and check six dimensions (the last tw
 
 3. **Accuracy drift** — positions documented as firmer than they were, tentative leans written as decisions, softened user views, tradeoffs reframed beyond what the conversation supported, or context omitted that changes how a position should read.
 
-4. **Misdirected knowledge** (epics only) — prose addressed to another topic instead of recording this topic's own ground: notes to carry forward ("→ {topic}: …"), findings owed to a sibling, "tell {topic} about X" asides, wherever they sit. A citation of a sibling's conclusions as context is fine — only knowledge *owed to* another document qualifies, and owed means the note makes an **ask** of the target: a question to explore, a defect in its own ground, substance it owns. A conclusion that answers a question a sibling deferred or triaged to this topic owes nothing back — the sibling's deferral is its forward pointer and its stale prose ages out. A `Sibling check:` line that concluded nothing is owed is settled — never re-litigated here. The sanctioned path for these is the session's own reroute at the moment the finding is known; anything found here is a miss to repair, not a convention to preserve.
+4. **Misdirected knowledge** (epics only) — prose addressed to another topic instead of recording this topic's own ground: notes to carry forward ("→ {topic}: …"), findings owed to a sibling, "tell {topic} about X" asides, wherever they sit. A citation of a sibling's conclusions as context is fine — only knowledge *owed to* another document qualifies, and owed means the note makes an **ask** of the target: a question to explore, a defect in its own ground, substance it owns. A conclusion that answers a question a sibling deferred or sent to this topic owes nothing back — the sibling's deferral is its forward pointer and its stale prose ages out. A `Sibling check:` line that concluded nothing is owed is settled — never re-litigated here. The sanctioned path for these is the session's own send at the moment the finding is known; anything found here is a miss to repair, not a convention to preserve.
 
 5. **Pipeline meta** — the document stating its own pipeline position: notes that the research is complete or ready for discussion — whether written this session or in an earlier session. The manifest carries that state.
 
@@ -80,19 +80,19 @@ Single-topic work has no sibling to route to. Surface each note now, one sentenc
 
 #### If no unhandled note remains
 
-Every note set aside in **B** has been gated (or none existed). When any reroute record was written, commit it — each landing already committed itself:
+Every note set aside in **B** has been gated (or none existed). When any send record was written, commit it — each send already committed itself:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): document review — reroute carry-notes via triage"
+node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} --topic research/{topic} -m "research({work_unit}/{topic}): document review — send carry-notes as messages"
 ```
 
 → Proceed to **D. Brief the User**.
 
 #### Otherwise
 
-Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a landed note reads as a reroute record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is not a reroute — treat it as undocumented substance: fold it into the document, no gate.
+Take the next unhandled note. Handled-ness lives in the walk and is recoverable from the document itself: a sent note reads as a send record, a kept note stays as prose — so a re-run after a context refresh re-presents kept notes, which costs a repeat ask, never a silent loss. A note addressed to *this* topic is nothing to send — treat it as undocumented substance: fold it into the document, no gate.
 
-Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim per its marker:
+Judge the target topic from the note's own addressing, and `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)**. Write the payload to `.workflows/.cache/{work_unit}/research/{topic}/carry-note.json` with the Write tool — `{"note": [the note's lines, quoted], "target": "{target}", "landing_phase": "{landing_phase}"}` — then fetch the gate, emitting each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render carry-note-gate {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/carry-note.json
@@ -102,11 +102,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render carry-note-gate {w
 
 **If `yes`:**
 
-Build the concern from the note *plus* the session context it stems from — the finding, the reasoning, what the target needs to know — the target resolves it from cold.
+Build the message from the note *plus* the session context it stems from — the finding, the reasoning, what the target needs to know — the target resolves it from cold.
 
-→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the note's full context}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`.
+→ Load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{the note's full context}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`.
 
-On return: if `result` is `landed`, the note is handled — replace the stranded prose with a reroute record in place, `Rerouted to {landed_topic} triage ({date}).`, and when the landing response carried `reconcile_flagged` or `sources_staled`, tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents; dropping it for good is the `skip` arm's job.
+On return: if `result` is `landed`, the note is handled — replace the stranded prose with a send record in place, `Sent to {landed_topic}'s mailbox ({date}).`, and when the send response carried `reconcile_flagged` or `sources_staled`, tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). If `result` is `cancelled`, nothing was written — the note stays unhandled and re-presents; dropping it for good is the `skip` arm's job.
 
 → Return to **C. Route Misdirected Knowledge**.
 
@@ -118,7 +118,7 @@ The note is handled — the prose stands as written, by the user's choice.
 
 **If comment:**
 
-Adjust the target, landing phase, or concern content per the user's feedback; the note stays unhandled and re-presents.
+Adjust the target, landing phase, or message content per the user's feedback; the note stays unhandled and re-presents.
 
 → Return to **C. Route Misdirected Knowledge**.
 

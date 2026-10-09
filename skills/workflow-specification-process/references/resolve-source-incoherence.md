@@ -136,11 +136,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {
 
 **If `yes`:**
 
-Land the gap in the owning document's triage queue — its item reopens and the queued concern survives any context clear; the reopened session surfaces it and cannot conclude without folding it.
+Send the gap to the owning document's mailbox — its item reopens and the message survives any context clear; the reopened session raises it and cannot conclude without folding it.
 
 **If the work type is `epic`:**
 
-→ Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
+→ Load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`.
 
 On return, read `result`.
 
@@ -152,14 +152,14 @@ The delivery committed itself.
 
 **If `result` is `cancelled`:**
 
-Re-read the spec item's status as at the top of this section; a terminal status takes the collapse exit there. Otherwise the concern stays with this session: a caller that entered at **A** works it through with the user (→ Return to **A. Classify**); a caller that entered here takes it back to its own exchange (→ Return to caller).
+Re-read the spec item's status as at the top of this section; a terminal status takes the collapse exit there. Otherwise the gap stays with this session: a caller that entered at **A** works it through with the user (→ Return to **A. Classify**); a caller that entered here takes it back to its own exchange (→ Return to caller).
 
 **If the work type is not `epic`:**
 
-Write the concern in the triage entry shape pinned in [triage-landing.md](../../workflow-shared/references/triage-landing.md) — `### {short title}`, `*From: {topic} · specification · {date}*`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md` with the Write tool, then deliver it — the transaction reopens the source item, queues the concern, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
+Write the message in the message shape pinned in [sending-a-message.md](../../workflow-shared/references/sending-a-message.md) — `### {short title}`, `*From: {topic} · specification · {date}*`, then what the topic needs, the quotes where sources frame it, what was just explored — to `.workflows/.cache/{work_unit}/specification/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself (`{source phase}` is the source's own: `discussion`, or `investigation` for a bugfix):
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {source phase} {doc} --concern .workflows/.cache/{work_unit}/specification/{topic}/gap-concern.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
+node .claude/skills/workflow-engine/scripts/engine.cjs topic send {work_unit} {source phase} {doc} --content .workflows/.cache/{work_unit}/specification/{topic}/gap-message.md --slug {kebab-case gap name} -m "spec({work_unit}): gap routed to {doc}"
 ```
 
 → Proceed to **D. Pause the Specification**.
@@ -168,7 +168,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} 
 
 Offered on an epic alone. The gap is nobody's topic yet — it becomes one. Its name is the one the user gave in the exchange, or a kebab-case name derived from the gap where they gave none.
 
-→ Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{the name}`, concern = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap on the new topic's discussion queue.
+→ Load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{the name}`, message = `{the gap: what the topic needs, both quotes where sources frame it, what was just explored}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`. It creates the map item and parks the gap in the new topic's discussion mailbox.
 
 On return, read `result`.
 
@@ -224,7 +224,7 @@ Another session owns that document, however long it has idled. Do not edit. Writ
 node .claude/skills/workflow-engine/scripts/engine.cjs render incoherence-gate {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/incoherence-gate.json --variant held-doc
 ```
 
-**STOP.** Wait for user response. Either answer first delivers the agreed resolution to the held session's queue — epic: load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic triage` transaction shown in **B**, concern = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the landing delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is queued, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
+**STOP.** Wait for user response. Either answer first sends the agreed resolution to the held session's mailbox — epic: load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{the agreed resolution}`, origin = `{topic}`, phase = `specification`, landing_phase = `discussion`, date = `{today}`; other work types: the `topic send` transaction shown in **B**, message = the agreed resolution. The delivery flags the source's extractions stale (and reopens a completed source); this specification cannot conclude while its row for `{doc}` is `pending` or `stale`. A `cancelled` result from the send delivered nothing — the point stays with this session: a caller that entered at **A** re-classifies (→ Return to **A. Classify**); a caller that entered here with its resolution settled takes it back (→ Return to caller). Then, on `next`: → Return to caller — the resolution is waiting in a mailbox, not landed: construction sets this topic's remaining extraction aside and continues with others; a findings walk leaves the specification's copy untouched and continues with its remaining findings. On `stop`: commit the session's work and stop — terminal condition.
 
 #### Otherwise
 

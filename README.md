@@ -116,7 +116,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Full audit trail.** Every phase, decision, and review finding lands in git through engine-owned commits; the manifest is versioned alongside your code.
 - **Self-healing epics.** A background analysis re-reads completed research and discussions to surface emergent topics, gaps between artifacts, and work that should exist but doesn't.
 - **Provenance everywhere.** Every topic records how it landed on the map, every knowledge answer cites its source, every review finding names the concrete failure it prevents and traces to the verifier that raised it.
-- **Nothing falls on the floor.** Off-topic concerns raised mid-session are triaged into the right topic's queue and block that topic's conclusion until drained.
+- **Nothing falls on the floor.** Off-topic points raised mid-session are sent as messages to the right topic's mailbox and block that topic's conclusion until read.
 - **Many sessions, one checkout.** Run as many document phases in parallel as you like — every commit stages only its own topic's files, so nothing gets swept into someone else's record. Writing code is the exception a working tree forces: implementation and review run one at a time, and a second one meets a red stop naming who holds the slot, which you can override.
 - **Convergence diagnostics.** Loops that stop converging get diagnosed rather than repeated: cycle tracking distinguishes what's resolving from what's recurring before escalating to you.
 - **Environment aware.** Implementation discovers your linters and project-specific skills and applies them through the TDD cycle and review.

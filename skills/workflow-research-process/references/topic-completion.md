@@ -8,12 +8,12 @@
 
 The current topic is converging — tradeoffs are clear, it's approaching decision territory.
 
-## A. Triage Queue
+## A. Mailbox
 
-First check the topic's triage queue — a queued concern is work the conclusion cannot pass:
+First check the topic's mailbox — a waiting message is work the conclusion cannot pass:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} research {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} research {topic}
 ```
 
 #### If `count` is non-zero
@@ -21,7 +21,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} r
 Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.research.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.research.{topic}
 ```
 
 → Return to caller.

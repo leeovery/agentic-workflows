@@ -72,7 +72,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 ### Open Threads
 - Anything deliberately deferred or left for future discussion
-- Concerns rerouted to other topics (with links)
+- Messages sent to other topics (with links)
 
 ### Current State
 - What's resolved
@@ -104,7 +104,7 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 ```markdown
 #### {YYYY-MM-DD} — revised
-*Trigger: {substance — e.g. triage from {origin}: "{concern title}" — {one-line substance} / review finding: {one-line substance} / user reversal: {what changed}}*
+*Trigger: {substance — e.g. message from {origin}: "{message title}" — {one-line substance} / review finding: {one-line substance} / user reversal: {what changed}}*
 
 {the current decision — what we now choose, why, what changed from the entry below}
 
@@ -139,7 +139,7 @@ The finding id rides only where this discussion's own review raised the call; a 
 - Don't turn into plan (no implementation steps)
 - Don't write code — unless it came up in discussion (e.g., API shape, pattern example) and is relevant to capture
 - Don't summarise the journey — document it
-- Don't stuff concerns that belong to a different topic into subtopics — reroute them to that topic
+- Don't stuff points that belong to a different topic into subtopics — send them to that topic
 - Don't assert tree facts from memory — a load-bearing count, enumeration, or "all X are Y" is measured when written, and carries its command
 - Don't record the pipeline — no readiness declarations ("ready for specification"), decided-subtopic counts, or review-cycle tallies, in Current State or anywhere else; the resolved/uncertain rows carry substance, the manifest carries state
 

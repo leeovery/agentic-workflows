@@ -4,18 +4,18 @@
 
 ---
 
-When the discussion session returns here (the map settled, or the user signalled conclusion), first check the topic's triage queue:
+When the discussion session returns here (the map settled, or the user signalled conclusion), first check the topic's mailbox:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} discussion {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} discussion {topic}
 ```
 
 **If `count` is non-zero:**
 
-A rerouted concern is still queued — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
+A message is still waiting — it must be discussed and folded before concluding. Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.discussion.{topic}
 ```
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.

@@ -180,7 +180,7 @@ It is a decision the source document never made, so it lands there first. For a 
 On return, land by what the reference did:
 
 - **The decision landed** — apply the finding's Proposed Text to the specification exactly as staged, re-derived as above; Resolution `Routed` with Notes naming the document the decision landed in and the specification content re-aligned to it.
-- **The resolution was queued** to a session holding the document — the specification's copy stays untouched; Resolution `Routed` with Notes naming the queue. The decision reaches the specification when the source re-concludes and this specification reconciles.
+- **The resolution was sent** to the mailbox of a session holding the document — the specification's copy stays untouched; Resolution `Routed` with Notes naming the mailbox. The decision reaches the specification when the source re-concludes and this specification reconciles.
 - **The landing returned `cancelled`** — the owning topic is closed and nothing landed. Raise it in conversation as **discuss** raises one — a stop owed whatever the gate mode, since a call with no document to own it is not one the specification makes alone — and dispose it by the exchange: the call stands → apply the Proposed Text to the specification, Resolution `Approved` with Notes naming why the owning document could not take it; the call falls → Resolution `Declined` with the reason.
 
 When every finding on the screen is disposed, commit the specification and the tracking file together:
@@ -277,10 +277,10 @@ On return, land the outcome by what actually happened there:
 
 - **A resolution landed in the source document** (edited and reindexed): re-align the specification's affected content to it — the write lands the resolution the source now carries (the user's settlement, the measurement's, or the derivation the flow landed there), never content of this session's own invention, announced in one line. A re-aligned section invalidates any later finding's Current block that quotes it — re-derive from the file before applying that finding.
 - **The record already settled the point** (no edit was needed): align the specification's affected content to the governing decision the record names, announced the same way.
-- **The resolution was queued to a session holding the document** (nothing landed): leave the specification's copy alone — the delivery flagged the source's extractions stale, and this specification cannot conclude while its row for `{doc}` is `pending` or `stale`; the reconcile runs when the source re-concludes.
+- **The resolution was sent to the mailbox of a session holding the document** (nothing landed): leave the specification's copy alone — the delivery flagged the source's extractions stale, and this specification cannot conclude while its row for `{doc}` is `pending` or `stale`; the reconcile runs when the source re-concludes.
 - **The gap was parked on the roadmap** (nothing landed anywhere and nothing reopened): the ground is beyond this specification's scope. Content the finding indicted as a decision no source made comes out of the specification — the capability is the roadmap's now, and the specification states no rule for it; a finding about an absence removes nothing.
 
-Then update the tracking file — Resolution `Routed` with a note naming what landed or queued where, or `Declined` with the roadmap item the park named, announced in a line — and commit. (The gap exit's other destinations do not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
+Then update the tracking file — Resolution `Routed` with a note naming what landed or was sent where, or `Declined` with the roadmap item the park named, announced in a line — and commit. (The gap exit's other destinations do not return: the specification pauses and the reference routes the session out; the tracking entry stays `in-progress` in the manifest, and its remaining findings re-process at the next entry.)
 
 → Return to **E. The Routes**.
 

@@ -6,13 +6,13 @@
 
 ## A. Background Agents
 
-Two types of background agent operate during the discussion, and two protocol files cover the topic's triage queue and the files the user shares. Load their instructions now — they run at the appropriate moments during the session loop.
+Two types of background agent operate during the discussion, and two protocol files cover the topic's mailbox and the files the user shares. Load their instructions now — they run at the appropriate moments during the session loop.
 
 → Load **[review-agent.md](review-agent.md)** and follow its instructions as written.
 
 → Load **[perspective-agents.md](perspective-agents.md)** and follow its instructions as written.
 
-→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion` — a protocol, not a step: the session loop's triage check enters its **A. Check**; nothing runs at load time.
+→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
 
 → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `discussion/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
 
@@ -24,7 +24,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
 
 1. **Check for findings** — anything waiting is surfaced before the conversation moves on. Each check below reads fresh every iteration — an answer from an earlier read, resume detection's included, is not this iteration's.
 
-   Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
+   Check the mailbox first: follow **A. Check** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**. Its offer and raise gates end the turn — the agent checks below wait for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
    Then check for landed input: follow **L. Landed Input**. Its landed branches end the turn on what they read — the agent checks below wait for a later iteration.
 
@@ -37,13 +37,13 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    Last, at a natural break with no screen or raise left open, a non-empty calls queue flushes — follow **J. Flush the Calls Queue**, whose own branches cover the empty case. A resumed session's queue flushes here too.
 
    **A ceremony underway resumes here.** The close was entered — the map settled or the user signalled — and an interruption sent the flow back to the loop: the wait for agents still running as the session leaves — at the closing gates or the wait gate's pause — and the walk of what came back, the final review's bounce with a raised finding, a pulled call's raise from the flush. Once the checks above find nothing pending and no raise is open, follow **G. Concluding** again — no signal, no set required; its gates classify afresh over the current store. **Keep going** at a closing gate, `n/no` at the wrap-up, defer, or conclude gate, or `k/keep` at the wait gate ends the ceremony (its `y/yes` ends the session itself, through the bridge); so does landed input the close reads and puts to the user (**L. Landed Input**) — their answer is a fresh signal, or the conversation carrying on; a `later` at an offer the close raised holds it until that work drains; a map the interruption re-opened, or one with nothing on it, ends it at **H. The Map Gate**. Nothing else ends it.
-2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new concerns are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
+2. **Discuss** — Engage with the user on the current subtopic or wherever the conversation leads. Challenge thinking, push back, explore edge cases. Participate as an expert architect. A point the record settles is not a question — per **[ask-or-decide.md](../../workflow-shared/references/ask-or-decide.md)**, make the call, queue it (**I. Settled Calls**), and carry on. Follow interesting threads — tangents that surface new questions are valuable. New subtopics may emerge; record each on the map as it's identified (kebab-case name; new subtopics start `pending`; `--parent` nests under an existing top-level subtopic):
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs discussion-map add {work_unit} {topic} {subtopic} [--parent {parent}]
    ```
 
-   A concern that doesn't belong under this topic is not a subtopic — route it through **F. Off-Topic Concerns**. A concern the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no reroute; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**. A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. A topic the user calls off is none of these — follow **Cancelling the Topic** in **[the skill](../SKILL.md)**.
+   A point that doesn't belong under this topic is not a subtopic — take it through **F. Off-Topic Points**. A point the user rules out of scope as it surfaces — settled when the work was shaped, not up for discussion — is neither: no map entry, no message; acknowledge and move on. A number about to bear a decision is the laboratory's cue — offer it through **K. The Experiment Offer**. A path the user offers — a screenshot, a document, a diagram — lands before the conversation moves on: follow **A. Land It** in **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)**. A topic the user calls off is none of these — follow **Cancelling the Topic** in **[the skill](../SKILL.md)**.
 3. **Navigate** — When a subtopic feels explored or a decision lands, record the transition and guide the user to what's still open:
 
    ```bash
@@ -51,7 +51,7 @@ The discussion is an organic conversation. The Discussion Map is your tracking b
    ```
 
    The command's JSON response carries `all_decided` and `unresolved_count` — no follow-up read needed. Route on it: `all_decided: true` is the map settling — finish this iteration's document and commit (steps 4–5), then follow **G. Concluding**. Otherwise guide the user to what's still open (**D. Navigation**) — don't force transitions, suggest them; the user can follow your suggestion or go wherever they want.
-4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. When the session re-decides a decision recorded in an *earlier sitting* — an absorbed triage concern, a review finding, a user reversal — the new decision lands as a dated entry on that block per the template's revision convention, wrapping a plain block first; refining an entry still being written this session edits it in place, no entry. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
+4. **Document** — At natural pauses, update the discussion file — it holds the knowledge. When a subtopic reaches `decided`, write up its section (Context → Options → Journey → Decision); keep the Summary current. When the session re-decides a decision recorded in an *earlier sitting* — an absorbed message, a review finding, a user reversal — the new decision lands as a dated entry on that block per the template's revision convention, wrapping a plain block first; refining an entry still being written this session edits it in place, no entry. Capture provisional thinking for subtopics still in progress if context compaction is a risk. The live map state lives in the manifest only — never write a map section into the file.
 5. **Commit & dispatch check** — Commit after each write. Don't batch. When the write documents an agent finding's engagement, the subject carries `({id} {finding})` — e.g. `discussion({work_unit}/{topic}): decided webhook reconciliation (review-003 F2)` — and the commit carries only the engagement's write; unrelated substance commits separately:
 
    ```bash
@@ -77,7 +77,7 @@ Subtopics move through states as the conversation progresses. The judgment call 
 
 **decided** → Decision reached with rationale. The subtopic section gets written up with the full Context → Options → Journey → Decision structure. Terminal for the map, though a later sitting may re-decide — the re-decision lands as a dated entry on the block's timeline (template revision convention).
 
-**deferred** → Deliberately set aside. Written by the defer gate in **G. Concluding** — and by a triage fold that re-parks previously-`deferred` ground a rerouted concern reopened (the raise showed the user what is being set aside, and the fold writes the Open Threads note itself) — and nowhere else: never set it during the session loop, however plainly the user parks something. When they say a subtopic stays open, leave it in the state the conversation reached and carry on; the defer gate sweeps it at conclusion. Setting it early makes `all_decided` true, so the gate never renders — the user is never shown what is being set aside, and the Open Threads entry the gate writes never lands.
+**deferred** → Deliberately set aside. Written by the defer gate in **G. Concluding** — and by a mailbox fold that re-parks previously-`deferred` ground a message reopened (the raise showed the user what is being set aside, and the fold writes the Open Threads note itself) — and nowhere else: never set it during the session loop, however plainly the user parks something. When they say a subtopic stays open, leave it in the state the conversation reached and carry on; the defer gate sweeps it at conclusion. Setting it early makes `all_decided` true, so the gate never renders — the user is never shown what is being set aside, and the Open Threads entry the gate writes never lands.
 
 **State transitions are judgement calls.** Move a subtopic to `converging` when the viable options are narrowed and the discussion is heading toward resolution. Move to `decided` when there's a clear outcome with rationale — even if provisional. Don't wait for absolute certainty. Any state can move to any other — judgment may revisit. The one exception is `deferred`: it belongs to the defer gate, not to session judgement.
 
@@ -97,7 +97,7 @@ You own transitions between subtopics. The goal is natural flow, not rigid seque
 
 No template and no question — the closing gates are the offer; enter **G. Concluding**.
 
-**When a tangent surfaces a new concern:**
+**When a tangent surfaces a new question:**
 
 Record it on the map as `pending` (`discussion-map add`, session loop step 2). If it's closely related to the current subtopic, it might become a child (`--parent`). If it's independent, it sits at the top level. A tangent the user waves out of scope gets no entry — acknowledge and move on.
 
@@ -132,11 +132,11 @@ Don't render the map after every exchange — do it at meaningful transitions. I
 
 ---
 
-## F. Off-Topic Concerns
+## F. Off-Topic Points
 
-During organic discussion a concern may surface that doesn't belong under the current topic. The heuristic: a detail that informs a decision *within* the current topic is a subtopic — keep it here (session loop step 2). A concern whose home is a *different* topic — one that exists, or one that should — isn't this discussion's to resolve. Example: "How do we handle token refresh?" within an auth discussion is a subtopic (keep). "What's our caching strategy?" surfacing during auth because tokens need caching belongs elsewhere.
+During organic discussion a point may surface that doesn't belong under the current topic. The heuristic: a detail that informs a decision *within* the current topic is a subtopic — keep it here (session loop step 2). A point whose home is a *different* topic — one that exists, or one that should — isn't this discussion's to resolve. Example: "How do we handle token refresh?" within an auth discussion is a subtopic (keep). "What's our caching strategy?" surfacing during auth because tokens need caching belongs elsewhere.
 
-When a concern reads as off-topic, hold it with the full context discussed about it, and resolve the work type deterministically:
+When a point reads as off-topic, hold it with the full context discussed about it, and resolve the work type deterministically:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} work_type
@@ -144,13 +144,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 #### If `work_type` is `epic`
 
-→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, concern = `{the concern, with its discussed context}`, reason = `off-topic`.
+→ Load **[off-topic-epic.md](../../workflow-shared/references/off-topic-epic.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `discussion`, point = `{the point, with its discussed context}`, reason = `off-topic`.
 
 → On return, proceed as the reference directed.
 
 #### Otherwise
 
-→ Load **[off-topic-non-epic.md](off-topic-non-epic.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, concern = `{the concern, with its discussed context}`.
+→ Load **[off-topic-non-epic.md](off-topic-non-epic.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, point = `{the point, with its discussed context}`.
 
 → On return, proceed as the reference directed.
 
@@ -160,7 +160,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit} 
 
 One ceremony, two ways in — enter when either, or both at once, holds:
 
-- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever in the session it runs: the loop's step 3, a triage fold (**D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing — never a correction inside the close's own tail. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — and any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues): in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. A queued rerouted concern meets the closing gates as an offer on this way in, never as a refusal; the drain's last fold re-enters here. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
+- **The map settles** — a `discussion-map set` this session runs answers `all_decided: true`, wherever in the session it runs: the loop's step 3, a mailbox fold (**D. Fold** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**), a landed call in **J. Flush the Calls Queue**, a review finding's `decide` landing — never a correction inside the close's own tail. Enter once the write behind it is committed — the loop's steps 4–5, the absorb, or the landing's own commit — and any protocol mid-flight has run out (a drain with entries remaining continues to its next raise, a flush with screens left continues): in the same turn, never held for a later break, never put to the user in prose — the closing gates carry the way back. A waiting message meets the closing gates as an offer on this way in, never as a refusal; the drain's last fold re-enters here. The set is the trigger, not the standing state: after a keep-going or `n/no` at the closing gates, the way back in is the user's signal or a further set answering `all_decided: true`; an interruption the ceremony itself opened is not an exit — the session loop's check resumes it.
 - **The user signals conclusion** — *"that covers it"*, *"let's wrap up"*, *"I think we're done"*.
 
 Every entry runs the ceremony from here — a re-entry included, however recently it last ran: the calls flush, the landed-input check, the wait gate, the map gate, then the closing gates, none skipped. A non-empty calls queue flushes first — follow **J. Flush the Calls Queue**; its empty exit returns here, a pulled call's raise re-enters the conversation first, and the ceremony resumes once `pulled` drains — the session loop's check re-enters here. An unlanded call is undocumented knowledge.
@@ -361,7 +361,7 @@ The topic's research moved beneath this discussion. Whether it has landed decide
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
-**If `in-progress` or `triaged`:**
+**If `in-progress` or `unstarted`:**
 
 Research still outstanding is the wait gate's business at the close — the flag stays, and nothing is said here.
 

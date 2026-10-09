@@ -34,7 +34,7 @@ The brief just read is the carrier — nothing more to read here.
 
 ## B. Check for Research
 
-Completed research reaches a topic two ways: under the topic's own name, and through provenance — a rerouted or split-out topic carries its origin in its discovery item's `source` (`reroute:{origin}`, `legacy-split:{parent}`, or the historical `research-analysis:{parent}` / `research-split:{parent}`), naming the topic whose research contributed it.
+Completed research reaches a topic two ways: under the topic's own name, and through provenance — a topic created by a message or split out carries its origin in its discovery item's `source` (`message:{origin}`, `legacy-split:{parent}`, or the historical `research-analysis:{parent}` / `research-split:{parent}`), naming the topic whose research contributed it.
 
 Read the topic's own research status:
 
@@ -72,7 +72,7 @@ No completed research for this topic.
 
 An interview stands in for a missing carrier on a first start. A topic has none where it is an epic topic started fresh from the epic menu — the source read at **B** is exactly `direct-start` — or a cross-cutting unit promoted from an epic's specification, with no discovery session log at **A**.
 
-#### If `phase_status` is empty or `triaged` and the topic has no carrier
+#### If `phase_status` is empty or `unstarted` and the topic has no carrier
 
 → Load **[gather-context.md](gather-context.md)** and follow its instructions as written.
 
@@ -102,9 +102,9 @@ The inputs just read — the seed, the brief or carrier, any prior record, and a
 
    Populate from the inputs read at **A**, the interview's answers when it ran, and anything the user said in the conversation that launched this session. Derive initial subtopics from whatever context is available — the seed, the brief or carrier, the topic itself, obvious architectural concerns. These are seeds, not a complete list — the map grows during discussion.
 
-   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. A prior record's queued concern is not substance to carry: it enters only as **B** of **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** places it, its case left in that record. List each input read — the brief, research file(s), seed file(s), a prior record's files — under Context → References, so a later session can re-open what seeded this discussion.
+   The Context section carries the substance of what was read — the brief's soft decisions, rejected paths, and open questions land here, not a pointer to them: this file is what a resumed session inherits. A prior record's waiting message is not substance to carry: it enters only as **B** of **[read-prior-record.md](../../workflow-shared/references/read-prior-record.md)** places it, its case left in that record. List each input read — the brief, research file(s), seed file(s), a prior record's files — under Context → References, so a later session can re-open what seeded this discussion.
 
-   Either way, this topic's own triage queue is not a seeding source: its parked concerns enter as raises through the session loop's triage check, and pre-adding their titles to the map forces every fold into the wrong branch. A prior record's queue is not that: a concern read there whose ask still applies is an open question that record left, and seeds the map beside the brief's.
+   Either way, this topic's own mailbox is not a seeding source: its messages enter as raises through the session loop's mailbox check, and pre-adding their titles to the map forces every fold into the wrong branch. A prior record's mailbox is not that: a message read there whose ask still applies is an open question that record left, and seeds the map beside the brief's.
 
 5. Seed the Discussion Map — record each initial subtopic (kebab-case name; new subtopics start `pending`):
    ```bash

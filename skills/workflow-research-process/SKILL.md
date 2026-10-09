@@ -17,7 +17,7 @@ The exploration phase, entered from discovery — explore feasibility (technical
 ### What This Skill Needs
 
 Positional arguments:
-- `$0` — **work_type**: `epic`, `feature`, or `cross-cutting`. Determines session behaviour — epic sessions carry topic awareness and reroute a grown thread to its own topic; feature and cross-cutting use the single-topic session.
+- `$0` — **work_type**: `epic`, `feature`, or `cross-cutting`. Determines session behaviour — epic sessions carry topic awareness and send a grown thread to its own topic; feature and cross-cutting use the single-topic session.
 - `$1` — **work_unit**: the work unit name.
 - `$2` — **topic**: what to research. A single-topic unit's topic is the work unit, so it may be left off: topic = `$2`, or `$1` where `work_type` is not `epic`.
 
@@ -83,9 +83,9 @@ Read the phase status, storing it as `phase_status`:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
 ```
 
-#### If `phase_status` is empty or `triaged`
+#### If `phase_status` is empty or `unstarted`
 
-A first start, not a resume — no session has ever run. A `triaged` stub's parked concerns wait in the topic's triage queue, untouched by initialization — the session loop's triage check surfaces them.
+A first start, not a resume — no session has ever run. An `unstarted` stub's messages wait in the topic's mailbox, untouched by initialization — the session loop's mailbox check raises them.
 
 Set `resumed` = `false`.
 
