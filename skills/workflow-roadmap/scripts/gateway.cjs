@@ -36,9 +36,9 @@ function stateLines(s) {
     `totals: ${s.totals.items} items — ${s.totals.in_flight} in flight, ${s.totals.waiting} waiting, ${s.totals.shipped} shipped, ${s.totals.orphaned} orphaned`,
   ];
   if (s.items.length > 0) {
-    lines.push('ITEMS (name  horizon  state  work_unit):');
+    lines.push('ITEMS (name  horizon  kind  state  work_unit):');
     for (const i of s.items) {
-      lines.push(`  ${i.name}  ${i.horizon}  ${i.state}  ${i.work_unit || '—'}`);
+      lines.push(`  ${i.name}  ${i.horizon}  ${i.kind}  ${i.state}  ${i.work_unit || '—'}`);
     }
   }
   if (s.session_logs.length > 0) {

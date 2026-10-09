@@ -7,8 +7,7 @@
 // and archived lists, the working set, the manage flow, and the completed &
 // cancelled view. Sub-view projections return `{data, display, menu}` bodies
 // — a pick view carries its menu, or its display when there is nothing to
-// pick (the adapter wraps them in section markers); flows with later gates also
-// return labelled `sections` emitted at the same call (the mixed-type blocker).
+// pick (the adapter wraps them in section markers).
 //
 // Deterministic: same detail, same string. The overview is a flat list (one
 // numbered item + one └─ sub-row each, numbering continuous across the type
@@ -19,7 +18,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
-const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
@@ -472,13 +471,12 @@ function archivedDeleteGate(item) {
 /**
  * The working-set snapshot: the set tree (summaries are model-synthesised and
  * arrive via the caller's payload, keyed by inbox path — a row renders
- * without a body when its summary is missing), the set menu (`w/work` renders
- * only for a type-uniform set), a `DISPLAY: blocker` section on a mixed-type
- * set. The add/drop gate sections are served by workingSetAddGate /
- * workingSetDropGate, fetched by the gateway verbs at each gate.
+ * without a body when its summary is missing) and the set menu. The add/drop
+ * gate sections are served by workingSetAddGate / workingSetDropGate,
+ * fetched by the gateway verbs at each gate.
  * @param {WorkingSetDetail} ws
  * @param {Record<string, string>} [summaries]
- * @returns {{data: string, title: string, display: string, menu: string, sections: string}}
+ * @returns {{data: string, title: string, display: string, menu: string}}
  */
 function workingSetView(ws, summaries = {}) {
   // The heading is the adapter's TITLE section, as every sibling sub-view's
@@ -494,23 +492,22 @@ function workingSetView(ws, summaries = {}) {
 
   const data = [
     `set_count: ${ws.count}`,
-    `set_uniform: ${ws.uniform}`,
     `set_type: ${ws.set_type}`,
     `addable_count: ${ws.addable.length}`,
     ...itemTable('SET', ws.items),
     ...itemTable('ADDABLE', ws.addable),
   ].join('\n');
 
-  const options = [];
-  if (ws.uniform) options.push(cmdOption('w', 'work', 'Proceed to discovery with this set'));
-  options.push(
+  const options = [
+    cmdOption('w', 'work', 'Proceed to discovery with this set'),
+    cmdOption('o', 'roadmap', 'Move the set out of the inbox onto the roadmap'),
     cmdOption('a', 'add', 'Add another inbox item to the set'),
     cmdOption('d', 'drop', 'Drop item(s) from the set (keeps them in the inbox)'),
     cmdOption('r', 'archive', 'Archive the whole set out of the inbox'),
     cmdOption('v', 'view', 'View full content of the set'),
     cmdOption('b', 'back', 'Return to the inbox list'),
     promptOption('Ask', 'Ask about the set'),
-  );
+  ];
   const menu = dotMenu([
     'Type a shortcut, or just tell me in your own words — e.g. "add 2 and 4", "drop the bug", "archive these".',
     '',
@@ -519,16 +516,7 @@ function workingSetView(ws, summaries = {}) {
     ...options,
   ]);
 
-  const sections = [];
-  if (!ws.uniform) {
-    sections.push(labelled(
-      'DISPLAY: blocker',
-      emitAs('properties', ', directly after the display — it renders the blocker red'),
-      '⚑ Work is unavailable while the set mixes types — drop to a single type to enable it.',
-    ));
-  }
-
-  return { data, title, display, menu, sections: sections.join('\n') };
+  return { data, title, display, menu };
 }
 
 // The add and drop gates' pick: one row per candidate, several picks

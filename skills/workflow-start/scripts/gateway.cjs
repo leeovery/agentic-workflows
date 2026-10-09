@@ -152,7 +152,7 @@ function pickSnapshot(v, title) {
 }
 
 // The working-set snapshot over the caller-held selection: DATA (set + addable
-// tables), the set tree, the set menu, and the mixed-type blocker.
+// tables), the set tree, and the set menu.
 // `--summaries <file>` names a JSON payload of model-synthesised item
 // summaries keyed by inbox path — rows render without one. The add/drop gate
 // sections are served by their own verbs below, fetched at each gate.
@@ -183,8 +183,7 @@ function workingSetView(...args) {
     engine.gateway.titleBlock(v.title),
     engine.gateway.displayBlock(v.display),
     engine.gateway.menuBlock(v.menu),
-    v.sections,
-  ].filter(Boolean).join('\n');
+  ].join('\n');
 }
 
 // The add/drop gates over the caller-held selection — fetched at the gate

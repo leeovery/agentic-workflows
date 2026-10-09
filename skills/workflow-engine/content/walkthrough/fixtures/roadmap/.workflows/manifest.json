@@ -9,6 +9,7 @@
       "sign-in": {
         "horizon": "launch",
         "summary": "accounts, sessions and the sign-in surface",
+        "kind": "idea",
         "origin": "harvest",
         "pulled_to": {
           "work_unit": "launch-core"
@@ -17,6 +18,7 @@
       "billing": {
         "horizon": "launch",
         "summary": "plans, invoices and the payment provider",
+        "kind": "idea",
         "origin": "harvest",
         "pulled_to": {
           "work_unit": "launch-core"
@@ -25,16 +27,19 @@
       "the-basic-reports": {
         "horizon": "launch",
         "summary": "the numbers a customer checks every day",
+        "kind": "idea",
         "origin": "harvest"
       },
       "exports": {
         "horizon": "v1",
         "summary": "csv and pdf of any report",
+        "kind": "idea",
         "origin": "harvest"
       },
       "marketplace": {
         "horizon": "someday",
         "summary": "third-party integrations, listed and billed",
+        "kind": "idea",
         "origin": "harvest"
       }
     }

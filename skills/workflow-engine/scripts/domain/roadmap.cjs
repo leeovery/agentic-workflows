@@ -4,8 +4,9 @@
 // Domain ring: the product roadmap — the project-level layer above the work
 // unit, stored on the project manifest's `roadmap` node: an ordered
 // `horizons` list (user-named release labels; position carries the
-// semantics) and an `items` record of capability-grain chunks, each
-// `{horizon, summary, origin[, sources][, pulled_to][, postponed_from]}` —
+// semantics) and an `items` record — ideas at capability grain, a bug or a
+// quick-fix one fix each — every one
+// `{horizon, summary, kind, origin[, sources][, pulled_to][, postponed_from]}`,
 // never a status field: item lifecycle is computed at render time by joining
 // `pulled_to` against the named work unit, the same trick the discovery map
 // uses one level down. "Waiting" is the absence of a join, and
@@ -26,6 +27,11 @@
 // from the middle of any session must be durable immediately. The node and
 // any named horizon are created just-in-time — the roadmap has no genesis
 // ceremony (decision 10).
+//
+// An item moved off the inbox brings its note: the file moves to the
+// roadmap's own notes (`.roadmap/notes/{folder}/{file}`, the inbox's folder
+// and filename kept) and is the item's source; removing the item while it
+// waits sends the note to the inbox archive, declined and restorable.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -43,16 +49,24 @@ const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, INBOX, FOLDER_KIND } = require('./inbox.cjs');
+
+/** @typedef {'idea'|'bug'|'quick-fix'} RoadmapKind */
+
+const KINDS = /** @type {RoadmapKind[]} */ (['idea', 'bug', 'quick-fix']);
+
+// A roadmap note as a source — relative to `.workflows/`, as every source is.
+const NOTE_SOURCE = /^\.roadmap\/notes\/(ideas|bugs|quickfixes)\/([^/]+\.md)$/;
 
 // Item provenance vocabulary (design decision 19): how the item landed.
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
-// valve, origin = the session's container), `inbox:{slug}` (groomed off the
-// backlog), `postpone:{work_unit}` (a topic that left an epic for the
-// roadmap).
+// valve, origin = the session's container), `inbox:{file stem}` (moved off
+// the inbox with its note), `postpone:{work_unit}` (a topic that left an epic
+// for the roadmap).
 /** @param {*} origin */
 function validateOrigin(origin) {
   if (typeof origin !== 'string' || !/^(harvest|park:[^\s]+|inbox:[^\s]+|postpone:[^\s]+)$/.test(origin)) {
-    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{slug}, postpone:{work_unit}`);
+    throw new Error(`unknown origin ${JSON.stringify(origin ?? null)} — one of: harvest, park:{origin}, inbox:{file stem}, postpone:{work_unit}`);
   }
 }
 
@@ -83,6 +97,13 @@ function requireSourcesOnDisk(cwd, sources) {
   const named = missing.map((s) => JSON.stringify(s)).join(', ');
   const [what, verb] = missing.length === 1 ? ['source', 'does'] : ['sources', 'do'];
   throw new Error(`${what} ${named} ${verb} not exist under .workflows/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
+}
+
+/** @param {*} kind */
+function validateKind(kind) {
+  if (!KINDS.includes(kind)) {
+    throw new Error(`unknown kind ${JSON.stringify(kind ?? null)} — one of: ${KINDS.join(', ')}`);
+  }
 }
 
 /** @param {*} summary */
@@ -202,6 +223,7 @@ function deriveItemState(cwd, item) {
  * @property {string} name
  * @property {string} horizon
  * @property {string} summary
+ * @property {RoadmapKind} kind
  * @property {string} origin
  * @property {string[]} sources
  * @property {'waiting'|'in-flight'|'shipped'|'orphaned'} state
@@ -215,12 +237,14 @@ function deriveItemState(cwd, item) {
  * @property {string} op
  * @property {string} [name]
  * @property {string} [horizon]
+ * @property {RoadmapKind} [kind]
  * @property {string} [origin]
  * @property {string} [state]
  * @property {string[]} [horizons]
  * @property {number} [item_total]
  * @property {boolean} [horizon_created]
- * @property {{name: string, horizon: string}[]} [added]
+ * @property {{name: string, horizon: string, kind: RoadmapKind}[]} [added]
+ * @property {{from: string, to: string}[]} [notes_moved]  add-batch: notes off the inbox; remove: notes to the inbox archive
  * @property {string[]} [horizons_created]
  * @property {string} [summary]
  * @property {string} [renamed_from]
@@ -318,6 +342,7 @@ function roadmapState(cwd) {
       name,
       horizon: typeof item.horizon === 'string' ? item.horizon : '',
       summary: typeof item.summary === 'string' ? item.summary : '',
+      kind: item.kind,
       origin: typeof item.origin === 'string' ? item.origin : '',
       sources: Array.isArray(item.sources) ? item.sources.filter((/** @type {*} */ s) => typeof s === 'string') : [],
       state: derived.state,
@@ -360,16 +385,21 @@ function transactProject(cwd, fn) {
 
 /**
  * Tail-commit the project manifest — and a work unit's alongside it, for the
- * mutations that reach across the boundary — and stamp the result: the shared
- * close of every mutation. The state write has landed; a git failure degrades
- * to a warning and a pending note, never a failed verb. `warnings` seeds the
- * array where the mutation already gathered some (a knowledge sync).
+ * mutations that reach across the boundary, and both ends of every file a
+ * mutation moved — and stamp the result: the shared close of every mutation.
+ * The state write has landed; a git failure degrades to a warning and a
+ * pending note, never a failed verb. `warnings` seeds the array where the
+ * mutation already gathered some (a knowledge sync).
  * @param {string} cwd @param {RoadmapOpResult} result @param {string} message
- * @param {{workUnit?: string, warnings?: string[]}} [opts]
+ * @param {{workUnit?: string, moves?: {from: string, to: string}[], warnings?: string[]}} [opts]
  * @returns {RoadmapOpResult}
  */
-function commitRoadmap(cwd, result, message, { workUnit, warnings = [] } = {}) {
-  const spec = workUnit ? [PROJECT_MANIFEST_SPEC, `.workflows/${workUnit}/manifest.json`] : PROJECT_MANIFEST_SPEC;
+function commitRoadmap(cwd, result, message, { workUnit, moves = [], warnings = [] } = {}) {
+  const spec = [
+    PROJECT_MANIFEST_SPEC,
+    ...(workUnit ? [`.workflows/${workUnit}/manifest.json`] : []),
+    ...moves.flatMap((m) => [m.from, m.to]),
+  ];
   const outcome = commitTailPathspec(cwd, spec, message, warnings);
   result.committed = outcome.committed;
   if (warnings.length > 0) result.warnings = warnings;
@@ -401,14 +431,15 @@ function ensureHorizon(roadmap, horizon, position) {
  * items. Self-commits.
  * @param {string} cwd
  * @param {string} name
- * @param {{horizon?: string, summary?: string, origin?: string, sources?: string[]}} [fields]
+ * @param {{horizon?: string, summary?: string, kind?: string, origin?: string, sources?: string[]}} [fields]
  * @returns {RoadmapOpResult}
  */
-function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sources = [] } = {}) {
+function addRoadmapItem(cwd, name, { horizon, summary, kind = 'idea', origin = 'harvest', sources = [] } = {}) {
   assertLegalName('item', name);
   if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
   assertLegalName('horizon', horizon);
   validateSummary(summary);
+  validateKind(kind);
   validateOrigin(origin);
   validateSources(sources);
   requireSourcesOnDisk(cwd, sources);
@@ -420,11 +451,11 @@ function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sourc
     }
     const horizonCreated = ensureHorizon(roadmap, horizon);
     /** @type {Record<string, unknown>} */
-    const item = { horizon, summary, origin };
+    const item = { horizon, summary, kind, origin };
     if (sources.length > 0) item.sources = sources;
     roadmap.items[name] = item;
     /** @type {RoadmapOpResult} */
-    const out = { op: 'add', name, horizon, origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
+    const out = { op: 'add', name, horizon, kind: /** @type {RoadmapKind} */ (kind), origin, state: 'waiting', horizons: [...roadmap.horizons], item_total: Object.keys(roadmap.items).length };
     if (horizonCreated) out.horizon_created = true;
     return out;
   });
@@ -432,66 +463,120 @@ function addRoadmapItem(cwd, name, { horizon, summary, origin = 'harvest', sourc
 }
 
 /**
- * Add a whole item set in one transaction — the harvest's batch form. Every
- * entry is validated before anything is applied (a failing entry means
- * nothing persisted), horizons are JIT-created in entry order, and the whole
- * batch lands under one commit.
+ * @typedef {object} BatchEntry  one add-batch entry, validated and resolved
+ * @property {string} name
+ * @property {string} horizon
+ * @property {string} summary
+ * @property {RoadmapKind} kind
+ * @property {string} origin
+ * @property {string[]} sources
+ * @property {{from: string, to: string}} [move]  the note's move off the inbox, project-relative
+ */
+
+/**
+ * Validate one add-batch entry and resolve what it lands. A `note` — a live
+ * inbox path — sets the rest: the kind is its folder's (a contradicting
+ * `kind` refused), the origin `inbox:{file stem}`, and the one source the
+ * note's home on the roadmap, so an `origin` or `sources` beside it is
+ * refused too.
+ * @param {*} e
+ * @returns {BatchEntry}
+ */
+function resolveBatchEntry(e) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) throw new Error('must be an object');
+  assertLegalName('item', e.name);
+  if (typeof e.horizon !== 'string' || e.horizon === '') throw new Error('"horizon" is required');
+  assertLegalName('horizon', e.horizon);
+  validateSummary(e.summary);
+  if (e.kind !== undefined) validateKind(e.kind);
+  const base = { name: e.name, horizon: e.horizon, summary: e.summary };
+  if (e.note === undefined) {
+    if (e.origin !== undefined) validateOrigin(e.origin);
+    if (e.sources !== undefined) validateSources(e.sources);
+    return { ...base, kind: e.kind ?? 'idea', origin: e.origin ?? 'harvest', sources: e.sources ?? [] };
+  }
+  if (typeof e.note !== 'string') throw new Error('"note" must be a live inbox path');
+  const note = parseInboxPath(e.note, { archived: false });
+  const kind = FOLDER_KIND[note.folder];
+  if (e.kind !== undefined && e.kind !== kind) {
+    throw new Error(`"kind" is ${e.kind}, but the note "${note.given}" is a ${kind} — a note's kind is its inbox folder's`);
+  }
+  if (e.origin !== undefined || e.sources !== undefined) {
+    throw new Error('a note sets the entry\'s origin and source — drop "origin" and "sources"');
+  }
+  const source = `.roadmap/notes/${note.folder}/${note.file}`;
+  return {
+    ...base,
+    kind,
+    origin: `inbox:${note.file.replace(/\.md$/, '')}`,
+    sources: [source],
+    move: { from: note.given, to: `.workflows/${source}` },
+  };
+}
+
+/**
+ * Add a whole item set in one transaction — the harvest's batch form, and
+ * the inbox's way onto the roadmap. Every entry is validated before anything
+ * is applied — names, clashes, every note a live inbox file with its roadmap
+ * home free — so a refusal moves and persists nothing; then every note moves
+ * off the inbox, horizons are JIT-created in entry order, and the whole
+ * batch lands under one commit naming the notes at both ends.
  * @param {string} cwd
- * @param {{name: string, horizon: string, summary: string, origin?: string, sources?: string[]}[]} entries
+ * @param {Record<string, any>[]} entries  `{name, horizon, summary, kind?, origin?, sources?, note?}`
  * @returns {RoadmapOpResult}
  */
 function addRoadmapItemsBatch(cwd, entries) {
   if (!Array.isArray(entries) || entries.length === 0) {
-    throw new Error('add-batch: entries must be a non-empty array of {name, horizon, summary, origin?, sources?}');
+    throw new Error('add-batch: entries must be a non-empty array of {name, horizon, summary, kind?, origin?, sources?, note?}');
   }
-  entries.forEach((e, i) => {
-    const at = `entry ${i + 1}`;
-    if (!e || typeof e !== 'object' || Array.isArray(e)) throw new Error(`add-batch: ${at} must be an object`);
+  const resolved = entries.map((e, i) => {
     try {
-      assertLegalName('item', e.name);
-      if (typeof e.horizon !== 'string' || e.horizon === '') throw new Error('"horizon" is required');
-      assertLegalName('horizon', e.horizon);
-      validateSummary(e.summary);
-      if (e.origin !== undefined) validateOrigin(e.origin);
-      if (e.sources !== undefined) validateSources(e.sources);
+      return resolveBatchEntry(e);
     } catch (err) {
-      throw new Error(`add-batch: ${at} — ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`add-batch: entry ${i + 1} — ${err instanceof Error ? err.message : String(err)}`);
     }
   });
-  const names = entries.map((e) => e.name);
+  const names = resolved.map((e) => e.name);
   const dupe = names.find((n, i) => names.indexOf(n) !== i);
   if (dupe) throw new Error(`add-batch: "${dupe}" appears more than once in the batch`);
+  const moves = resolved.flatMap((e) => (e.move ? [e.move] : []));
   try {
-    requireSourcesOnDisk(cwd, entries.flatMap((e) => e.sources ?? []));
+    parseInboxPaths(cwd, moves.map((m) => m.from), { archived: false });
+    refuseTakenDestinations(cwd, moves);
+    requireSourcesOnDisk(cwd, resolved.flatMap((e) => (e.move ? [] : e.sources)));
   } catch (err) {
     throw new Error(`add-batch: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   const result = transactProject(cwd, (manifest) => {
     const roadmap = ensureRoadmap(manifest);
-    for (const e of entries) {
+    for (const e of resolved) {
       if (roadmap.items[e.name]) {
         throw new Error(`add-batch: "${e.name}" is already on the roadmap — nothing was added; edit it, or pick a different name`);
       }
     }
+    moveFiles(cwd, moves);
     /** @type {string[]} */
     const horizonsCreated = [];
-    for (const e of entries) {
+    for (const e of resolved) {
       if (ensureHorizon(roadmap, e.horizon)) horizonsCreated.push(e.horizon);
       /** @type {Record<string, unknown>} */
-      const item = { horizon: e.horizon, summary: e.summary, origin: e.origin ?? 'harvest' };
-      if (e.sources !== undefined && e.sources.length > 0) item.sources = e.sources;
+      const item = { horizon: e.horizon, summary: e.summary, kind: e.kind, origin: e.origin };
+      if (e.sources.length > 0) item.sources = e.sources;
       roadmap.items[e.name] = item;
     }
-    return {
+    /** @type {RoadmapOpResult} */
+    const out = {
       op: 'add-batch',
-      added: entries.map((e) => ({ name: e.name, horizon: e.horizon })),
+      added: resolved.map((e) => ({ name: e.name, horizon: e.horizon, kind: e.kind })),
       horizons_created: horizonsCreated,
       horizons: [...roadmap.horizons],
       item_total: Object.keys(roadmap.items).length,
     };
+    if (moves.length > 0) out.notes_moved = moves;
+    return out;
   });
-  return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`);
+  return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`, { moves });
 }
 
 /**
@@ -571,18 +656,40 @@ function moveRoadmapItem(cwd, name, horizon) {
 }
 
 /**
+ * The moves that send a removed item's roadmap notes to the inbox archive —
+ * each note on disk that no other item names (a note two items share stays
+ * with the one still waiting on it).
+ * @param {string} cwd @param {Record<string, any>} items @param {string} name
+ * @returns {{from: string, to: string}[]}
+ */
+function noteArchiveMoves(cwd, items, name) {
+  const sources = (/** @type {*} */ s) => (Array.isArray(s) ? s : []);
+  const named = new Set(Object.entries(items)
+    .filter(([other, item]) => other !== name && item && typeof item === 'object')
+    .flatMap(([, item]) => sources(item.sources)));
+  return sources(items[name].sources).flatMap((/** @type {*} */ source) => {
+    const match = typeof source === 'string' ? NOTE_SOURCE.exec(source) : null;
+    if (!match || named.has(source) || !fs.existsSync(path.join(cwd, '.workflows', source))) return [];
+    return [{ from: `.workflows/${source}`, to: `${INBOX}/.archived/${match[1]}/${match[2]}` }];
+  });
+}
+
+/**
  * Delete an item. Refused on a pulled item (the epic-side cancel is the
- * path; its revert returns the item first). An item a postpone put here
- * takes the epic's row with it — "actually never" has one door, so the
- * marker and every stashed item flip to cancelled in the same transaction
- * and one commit covers both manifests. No dismissed list — git history and
- * the session logs keep the story. Self-commits.
+ * path; its revert returns the item first). Its roadmap note goes to the
+ * inbox archive in the same transaction — declined, restorable. An item a
+ * postpone put here takes the epic's row with it — "actually never" has one
+ * door, so the marker and every stashed item flip to cancelled in the same
+ * transaction and one commit covers both manifests. No dismissed list — git
+ * history and the session logs keep the story. Self-commits.
  * @param {string} cwd @param {string} name
  * @returns {RoadmapOpResult}
  */
 function removeRoadmapItem(cwd, name) {
-  const preflight = roadmapItem(requireRoadmap(readProjectManifest(cwd)), name);
+  const preRoadmap = requireRoadmap(readProjectManifest(cwd));
+  const preflight = roadmapItem(preRoadmap, name);
   refuseJoined(preflight, name, 'removing');
+  refuseTakenDestinations(cwd, noteArchiveMoves(cwd, preRoadmap.items, name));
   const postponed = itemPostponedFrom(preflight);
   // The epic's row is cancelled before the item is deleted: a crash between
   // leaves a cancelled row and a removable item, never a live postponed row
@@ -595,15 +702,20 @@ function removeRoadmapItem(cwd, name) {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
     refuseJoined(item, name, 'removing');
+    const moves = noteArchiveMoves(cwd, roadmap.items, name);
+    refuseTakenDestinations(cwd, moves);
+    moveFiles(cwd, moves);
     delete roadmap.items[name];
     /** @type {RoadmapOpResult} */
     const out = { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
+    if (moves.length > 0) out.notes_moved = moves;
     if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
     return out;
   });
+  const moves = result.notes_moved ?? [];
   return postponed
-    ? commitRoadmap(cwd, result, `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit })
-    : commitRoadmap(cwd, result, `roadmap: remove ${name}`);
+    ? commitRoadmap(cwd, result, `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit, moves })
+    : commitRoadmap(cwd, result, `roadmap: remove ${name}`, { moves });
 }
 
 /**
@@ -896,7 +1008,7 @@ function returnPostponed(cwd, name, into, topic) {
 }
 
 /**
- * Pull-forward: bring a waiting item into an in-flight epic as a map topic —
+ * Pull-forward: bring a waiting idea into an in-flight epic as a map topic —
  * the mid-epic expansion move (design decision 15, post-harvest form), one
  * confirm in prose, one composed transaction here. Creates the discovery-map
  * item (topic = item name, source `roadmap`, summary carried from the item)
@@ -924,6 +1036,9 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
   if (!preItem || typeof preItem !== 'object') throw new Error(`no roadmap item "${name}"`);
   const preJoin = itemJoin(preItem);
   if (preJoin) throw new Error(`"${name}" is already joined to work unit "${preJoin.work_unit}" — pull-forward takes a waiting item`);
+  if (preItem.kind !== 'idea') {
+    throw new Error(`"${name}" is a ${preItem.kind} — an epic grows by topics, and pull-forward takes ideas only; start it with the pull (roadmap pull), as work of its own`);
+  }
 
   /** @type {any} */
   let unit;
@@ -1046,7 +1161,7 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
     }
     const bornHorizon = ensureHorizon(roadmap, horizon);
     if (!target.joined) {
-      roadmap.items[target.name] = { horizon, summary, origin: `postpone:${workUnit}` };
+      roadmap.items[target.name] = { horizon, summary, kind: 'idea', origin: `postpone:${workUnit}` };
     }
     const item = roadmap.items[target.name];
     if (target.joined) {
@@ -1217,6 +1332,7 @@ function flagJoined(cwd, name) {
 }
 
 module.exports = {
+  ROADMAP_KINDS: KINDS,
   roadmapState,
   hasRoadmapNode,
   ensureRoadmap,

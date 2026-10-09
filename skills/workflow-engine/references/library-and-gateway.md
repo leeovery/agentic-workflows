@@ -80,7 +80,7 @@ engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / 
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
-engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)
+engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
 engine.detail.activeWorkUnit(cwd, wu)             // → { type, unit: WorkUnitEntry } — one single-topic unit in progress (feature | bugfix | quick-fix | cross-cutting), its type read from its manifest; null otherwise
 engine.detail.phaseTargets(manifest, nextPhase)   // → { next, revisit } — the {phase, topic} each single-topic route enters: the next phase and the revisit candidates (completed phases before nextPhase, pipeline-filtered); topic names the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise
@@ -107,7 +107,7 @@ engine.project.emptyOverview(detail)              // → empty-state overview bl
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
 engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
-engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu, mixed-type blocker
+engine.project.workingSetView(ws, summaries)      // → { data, title, display, menu } — set tree and menu
 engine.project.workingSetAddGate(ws)              // → MENU: add gate, the addable items as its rows — the gateway working-set-add-gate verb
 engine.project.workingSetDropGate(ws)             // → MENU: drop gate, the set's items as its rows — the gateway working-set-drop-gate verb
 engine.project.manageListView(detail)             // → { data, menu, rows } — manage selection snapshot, the units as the menu's rows
