@@ -4,7 +4,7 @@
 
 ---
 
-The caller provides `work_unit`, `topic`, and `phase` (the session's own). The user has said to put an idea aside — "roadmap it", "inbox it", "backlog that", "push it back". The idea is already theirs and already said: take it from the conversation rather than shaping it further.
+The caller provides `work_unit`, `topic`, and `phase` (the session's own). The user has said to put an idea, a bug or a fix aside — "roadmap it", "inbox it", "backlog that", "push it back". It is already theirs and already said: take it from the conversation rather than shaping it further.
 
 From inside a phase the park is one verb. The roadmap skill is the product session and is never invoked here.
 
@@ -32,7 +32,7 @@ A label already on the map, or a new one in their own words — "under Next", "t
 
 #### Otherwise
 
-The instruction says put it aside and no more — "backlog it", "later", "not now". Only the user can say which backlog, so ask. Write `{"idea": "…"}` — the idea's short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, then render the gate:
+The instruction says put it aside and no more — "backlog it", "later", "not now". Only the user can say which backlog, so ask. Write `{"idea": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, then render the gate:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json
@@ -106,7 +106,7 @@ The comment names what to change — the name, the kind, the horizon, or the sum
 
 ## D. Capture
 
-The idea goes to the inbox as a note, unconfirmed as every capture is. Invoke the matching capture skill: `/workflow-log-bug` for something broken, `/workflow-log-quickfix` for a small mechanical change, `/workflow-log-idea` for anything else and whenever it is unclear. The capture skill writes the inbox file but does not commit it, so commit it now:
+It goes to the inbox as a note, unconfirmed as every capture is. Invoke the matching capture skill: `/workflow-log-bug` for something broken, `/workflow-log-quickfix` for a small mechanical change, `/workflow-log-idea` for anything else and whenever it is unclear. The capture skill writes the inbox file but does not commit it, so commit it now:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
