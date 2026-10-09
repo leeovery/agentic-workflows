@@ -9,7 +9,7 @@ features are rebuilt, is still being explored.
 
 Nothing else on the epic has started. No research item exists under any
 name, no specification groups this discussion, no experiment record is
-open, and the topic's triage queue is empty — so the Discovery unit
+open, and the topic's mailbox is empty — so the Discovery unit
 under `behavioural-ranking` is the map row and the one in-progress
 discussion item.
 

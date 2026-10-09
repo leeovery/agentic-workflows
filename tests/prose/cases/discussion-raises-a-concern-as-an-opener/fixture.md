@@ -8,15 +8,15 @@ A later behavioural-ranking sitting measured what the nightly
 pair-counts actually cover and found that the cutover as decided
 strands a whole class of searches — misspellings of long-tail product
 names never form a reformulation-and-click pair, so coverage never
-arrives for them. It worked the cutover through and rerouted the
-result here as one concern. The entry is deliberately exhaustive: two
+arrives for them. It worked the cutover through and sent the
+result here as one message. The message is deliberately exhaustive: two
 paragraphs of background with coverage figures, two options with
 their costs itemised (a permanent fallback tier; a one-off seeded
 import at a discounted weight with a decay window), a rejected
 parallel-merge alternative, a lookup-latency figure against the search
 budget, the origin session's own lean with its derivation, and the
-one ask it leaves synonym-handling. Triage reopened synonym-handling
-and installed the concern as one queue file whose
+one ask it leaves synonym-handling. The send reopened synonym-handling
+and installed the message as one file whose
 title names no subtopic but whose ask re-decides the decided
 expansion-source's cutover clause; the delivery's own commit closed that session.
 

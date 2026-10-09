@@ -1,5 +1,5 @@
 {
-  "origin": "Planning's third tier had no coverage, and it is the only one that moves the pipeline: a gap the exchange shows needs real discussion work goes to the owning discussion's triage queue and the plan waits for it. Nothing is decided, nothing is written into either document, and the hold that follows is derived from the specification's own state rather than stored on the plan. This is the twin of planning-lands-a-decision-in-the-discussion — the same raise, a user who will not settle it off the cuff — and it walks the linear work type's direct triage delivery, the pause commit, the wait gate the landing makes non-empty, and the bridge hand-off.",
+  "origin": "Planning's third tier had no coverage, and it is the only one that moves the pipeline: a gap the exchange shows needs real discussion work goes to the owning discussion's mailbox and the plan waits for it. Nothing is decided, nothing is written into either document, and the hold that follows is derived from the specification's own state rather than stored on the plan. This is the twin of planning-lands-a-decision-in-the-discussion — the same raise, a user who will not settle it off the cuff — and it walks the linear work type's direct message delivery, the pause commit, the wait gate the landing makes non-empty, and the bridge hand-off.",
   "entry": "workflow-planning-process",
   "world": "claims",
   "files": [
@@ -24,7 +24,7 @@
     "skills/workflow-planning-process/references/task-design.md",
     "skills/workflow-planning-process/references/read-specification.md",
     "skills/workflow-planning-process/references/resolve-spec-gap.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-shared/references/reconcile-advisory.md"
   ],
   "answers": [
@@ -43,8 +43,8 @@
       "manifest get pay.planning.pay status",
       "render resume-gate pay.planning.pay --variant plan",
       "render phase-tree pay.planning.pay",
-      "topic triage pay discussion pay",
-      "--concern .workflows/.cache/pay/planning/pay/gap-concern.md",
+      "topic send pay discussion pay",
+      "--content .workflows/.cache/pay/planning/pay/gap-message.md",
       "planning(pay): gap routed to pay",
       "planning(pay): pause — gap routed to pay",
       "--topic planning/pay",
@@ -54,8 +54,8 @@
       "render entry-gate pay.planning.pay",
       "render resume-gate pay.planning.pay --variant plan",
       "render phase-tree pay.planning.pay",
-      "write:.workflows/.cache/pay/planning/pay/gap-concern.md",
-      "topic triage pay discussion pay",
+      "write:.workflows/.cache/pay/planning/pay/gap-message.md",
+      "topic send pay discussion pay",
       "planning(pay): pause — gap routed to pay",
       "render wait-gate pay.planning.pay"
     ],
@@ -67,7 +67,7 @@
       "render task-list",
       "render conclude-gate",
       "render spec-corrections",
-      "render triage-closed-target",
+      "render send-closed-target",
       "topic complete pay planning",
       "topic reopen",
       "topic start pay discussion",

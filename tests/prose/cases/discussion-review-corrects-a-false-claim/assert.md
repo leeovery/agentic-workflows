@@ -32,7 +32,7 @@ The prose should have taken this path:
 Further claims:
 
 - the discussion item moves in-progress → completed exactly once; no
-  reopen, no triage landing
+  reopen, no message send
 - nothing outside .workflows changes: the checkout modules are read
   and counted, never edited
 - cache and scratch files under `.workflows/.cache/` are expected

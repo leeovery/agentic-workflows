@@ -1,5 +1,5 @@
 {
-  "origin": "the triage check's conclusion reading had no coverage — a recent `later` defers the queue's re-offer until the conversation moves on, but a conclusion attempt is the break the deferral was waiting for: the blocker names the queue, and the same turn offers it again rather than falling silent",
+  "origin": "the mailbox check's conclusion reading had no coverage — a recent `later` defers the mailbox's re-offer until the conversation moves on, but a conclusion attempt is the break the deferral was waiting for: the blocker names the mailbox, and the same turn offers it again rather than falling silent",
   "entry": "workflow-research-process",
   "world": "claims",
   "files": [
@@ -22,7 +22,7 @@
     "skills/workflow-research-process/references/epic-session.md",
     "skills/workflow-research-process/references/session-loop.md",
     "skills/workflow-research-process/references/deep-dive-agent.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-research-process/references/topic-completion.md",
     "skills/workflow-shared/references/natural-breaks.md"
@@ -31,27 +31,27 @@
     "c — continue",
     "l — later"
   ],
-  "conduct": "The user comes back to close the measurement research out. The queue's one concern is offered to them at the door and they say later — they want to say one thing first, and want it written down: that NDCG@10 over click-derived judgments is the metric they will take into the discussion; the file still calls it the leading candidate, and they are done weighing. Then they say they are done and want to conclude. They run the shop and introduce no new material beyond that one position; when the queue is offered again after the blocker, the walk has reached its stop and they answer nothing.",
+  "conduct": "The user comes back to close the measurement research out. The mailbox's one message is offered to them at the door and they say later — they want to say one thing first, and want it written down: that NDCG@10 over click-derived judgments is the metric they will take into the discussion; the file still calls it the leading candidate, and they are done weighing. Then they say they are done and want to conclude. They run the shop and introduce no new material beyond that one position; when the mailbox is offered again after the blocker, the walk has reached its stop and they answer nothing.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.research.relevance-measurement status",
       "render resume-gate search-relevance.research.relevance-measurement",
-      "topic queue search-relevance research relevance-measurement",
-      "render triage-offer search-relevance.research.relevance-measurement",
-      "render triage-block search-relevance.research.relevance-measurement"
+      "topic mailbox search-relevance research relevance-measurement",
+      "render mail-offer search-relevance.research.relevance-measurement",
+      "render mail-block search-relevance.research.relevance-measurement"
     ],
     "calls_in_order": [
       "manifest get search-relevance.research.relevance-measurement status",
       "render resume-gate search-relevance.research.relevance-measurement",
-      "render triage-offer search-relevance.research.relevance-measurement",
-      "render triage-block search-relevance.research.relevance-measurement",
-      "render triage-offer search-relevance.research.relevance-measurement"
+      "render mail-offer search-relevance.research.relevance-measurement",
+      "render mail-block search-relevance.research.relevance-measurement",
+      "render mail-offer search-relevance.research.relevance-measurement"
     ],
     "calls_exclude": [
-      "render triage-announce",
+      "render mail-announce",
       "topic absorb",
-      "topic requeue",
+      "topic forward",
       "topic complete",
       "render wait-gate search-relevance.research.relevance-measurement",
       "render research-conclude-gate",
@@ -65,7 +65,7 @@
       "research-threads reframe",
       "research-threads remove",
       "experiment create",
-      "topic triage",
+      "topic send",
       "topic reopen",
       "--dead-end"
     ]

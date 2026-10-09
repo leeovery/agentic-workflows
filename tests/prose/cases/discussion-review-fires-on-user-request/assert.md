@@ -14,7 +14,7 @@ The prose should have taken this path:
    the trigger: the movement backoff and the content conditions don't
    apply. Nothing the conversation settled is waiting to be written
    (the user decided nothing), the prior reviews are all drained, both
-   queues are empty, and no wrap-up was signalled — so nothing blocks
+   mailboxes are empty, and no wrap-up was signalled — so nothing blocks
 5. the session dispatches the review with `--final` — the user's
    request outranks the movement backoff that would have refused a
    bare dispatch at 0 of 3 moves — announces that the background

@@ -89,7 +89,7 @@ Further claims:
   both stops are gated stops
 - nothing about the record moved: no specification status is read, no
   presence scanned, no corrigendum written, no knowledge re-index, no
-  triage landing and no `sources stale`. A failure is not a gap, and a
+  message send and no `sources stale`. A failure is not a gap, and a
   walk that entered the tiers over one has mistaken a test it cannot
   pass for a question the product has not answered
 - the plan is untouched beyond pay-1-2's own status: no task amended, no

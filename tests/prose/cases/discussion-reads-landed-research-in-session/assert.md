@@ -14,13 +14,13 @@ The prose should have taken this path:
    initialisation is skipped
 3. the guidelines load, the knowledge base is addressed once as a
    contextual query, the session opens, and its loop's first check
-   reads the discussion's triage queue and finds it empty
+   reads the discussion's mailbox and finds it empty
 4. immediately after that read the armed substitution performs the
    peer's re-landing, once, as the peer: the research reopens (the
    engine flags the discussion `research` at that moment), the
    research file is rewritten with the stability-line measurement, the
    research completes again, and the peer's commit lands
-5. the loop's landed-input check follows the triage check in the same
+5. the loop's landed-input check follows the mailbox check in the same
    iteration: it reads the discussion's reconcile flag and finds
    `research`, then reads the research item's status and finds
    `completed`, so it loads the advisory — the input-moved callout,
@@ -49,7 +49,7 @@ Further claims:
   the walk never reached the conclusion
 - nothing else moved: the map's two subtopics stay `decided`, the
   discussion document is byte-unchanged, no subtopic was added for
-  the landed ground, no review was dispatched, and both queues are
+  the landed ground, no review was dispatched, and both mailboxes are
   empty
 - the user was asked exactly one thing before the stop — the resume
   choice

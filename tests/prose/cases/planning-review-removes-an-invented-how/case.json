@@ -96,7 +96,7 @@
       "render incoherence-gate",
       "render spec-corrections",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "sources stale",
       "restart planning",
       "workunit create",

@@ -110,7 +110,7 @@ Also true:
   phase-structure confirmation, the graph approval, finding 1's gate,
   finding 2's gate, the re-loop prompt, and the conclude gate
 - the specification and the discussion are untouched: nothing was
-  corrected, nothing reopened, nothing triaged, and no corrigendum was
+  corrected, nothing reopened, nothing sent, and no corrigendum was
   written. The plan had no ground for the mechanism and that is a plan
   defect, not a gap in the record
 - no second work unit exists; cache and scratch files under

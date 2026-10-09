@@ -1,5 +1,5 @@
 {
-  "origin": "the gap stop had no prose coverage — this walks a conflict raise whose exchange reveals neither side stands, the re-classification to a genuine gap, the acknowledgement gate, the queue landing, the pause, and the return to the epic menu",
+  "origin": "the gap stop had no prose coverage — this walks a conflict raise whose exchange reveals neither side stands, the re-classification to a genuine gap, the acknowledgement gate, the mailbox landing, the pause, and the return to the epic menu",
   "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
@@ -24,7 +24,7 @@
     "skills/workflow-specification-process/references/review-tracking-format.md",
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-shared/references/compliance-check.md"
   ],
   "conduct": "The user is specifying the expansion pipeline and knows both records cold. When the batch-vs-live-stream conflict is raised they do not pick a side: they explain that neither decision survives, because what expansion freshness the product actually needs was never explored in either discussion — the live stream was rejected on cost, the daily batch was assumed without measuring, and picking either here would invent ground. They engage briefly on the merits but hold that this needs real discussion work, not a menu answer. When the gap raise appears stating it will route to synonym-handling and pause the spec, they confirm the route it proposes: the ground belongs to the synonym-handling discussion, which decided the expansion source in the first place, so there is nothing here to open as a topic of its own and nothing to shelve for a later release. They would push back only if asked to choose or classify, and they expect to land back on the epic menu told which discussion to re-conclude. They never ask to reopen anything themselves and never offer a settling decision.",
@@ -35,12 +35,12 @@
       "topic start search-relevance specification expansion",
       "render incoherence-gate search-relevance.specification.expansion --file .workflows/.cache/search-relevance/specification/expansion/incoherence-gate.json --variant conflict",
       "render incoherence-gate search-relevance.specification.expansion --file .workflows/.cache/search-relevance/specification/expansion/incoherence-gate.json --variant gap-route",
-      "topic triage search-relevance discussion synonym-handling"
+      "topic send search-relevance discussion synonym-handling"
     ],
     "calls_in_order": [
       "render incoherence-gate search-relevance.specification.expansion --file .workflows/.cache/search-relevance/specification/expansion/incoherence-gate.json --variant conflict",
       "render incoherence-gate search-relevance.specification.expansion --file .workflows/.cache/search-relevance/specification/expansion/incoherence-gate.json --variant gap-route",
-      "topic triage search-relevance discussion synonym-handling"
+      "topic send search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [
       "topic reopen",

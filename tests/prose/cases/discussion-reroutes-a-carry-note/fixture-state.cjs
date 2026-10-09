@@ -8,7 +8,7 @@
 // must also emit reformulation-and-click *pair* aggregates), the
 // session stranded it as a carry-note in Summary → Open Threads and
 // walked away without concluding. The next session opens cold to wrap
-// up; document review must catch the note and route it through triage.
+// up; document review must catch the note and send it as a message.
 
 const e = require('../../mainlines/epic.cjs');
 

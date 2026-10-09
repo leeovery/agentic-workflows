@@ -3,7 +3,7 @@
 // The harvested `search-relevance` epic with its map sequenced, and the
 // synonym-handling research one sitting in: the file holds what the
 // first pass turned up and the thread register carries two open
-// questions. No deep dive has ever been dispatched, the triage queue is
+// questions. No deep dive has ever been dispatched, the mailbox is
 // empty, and no discussion has been born under the name — so the topic's
 // Discovery unit is the map row and the one in-progress research item.
 //

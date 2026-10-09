@@ -27,7 +27,7 @@
     ],
     "calls_exclude": [
       "engine.cjs knowledge setup",
-      "topic triage",
+      "topic send",
       "topic start",
       "discussion-map",
       "engine.cjs knowledge index"

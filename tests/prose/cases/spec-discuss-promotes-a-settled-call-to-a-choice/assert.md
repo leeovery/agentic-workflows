@@ -155,8 +155,7 @@ Also true:
   resume choice, the batch screen, the choice, the re-loop prompt,
   and sign-off
 - no incoherence gate renders: the landing enters that flow at its
-  landing step, so nothing classifies, nothing routes to a triage
-  queue, and no source is reopened
+  landing step, so nothing classifies, nothing routes to a mailbox, and no source is reopened
 - the discussion item never leaves `completed`, and the
   specification never pauses
 - the manifest holds the specification completed with a date, the

@@ -14,8 +14,8 @@ The prose should have taken this path:
    initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the
-   epic research session; the session loop's triage check reads the
-   queue and finds it empty
+   epic research session; the session loop's mailbox check reads the
+   mailbox and finds it empty
 4. the conversation goes at the recovery number, and the session
    recognises the laboratory's bar is met — a controlled measurement
    would settle the replacement choice, not merely inform it — so it
@@ -66,7 +66,7 @@ Further claims:
   entered the research file as a result
 - git history holds the research topic's spawn commit before the
   experiment record's problem-statement commit
-- no deep-dive was dispatched and nothing was rerouted or triaged
+- no deep-dive was dispatched and nothing was sent
 
 EXPECTED WORLD — the fixture plus: the synonym-handling research item
 `in-progress` carrying `awaiting_experiments: ["E1"]`; a

@@ -11,10 +11,10 @@ The prose should have taken this path:
    — and the user continues; initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the
-   epic research session — the deep-dive and rerouted-concerns
+   epic research session — the deep-dive and reading-the-mailbox
    protocols loaded, nothing run at load
 4. the loop's first iteration is the resumed session's natural break,
-   and it runs before the user has said a word: the triage queue is
+   and it runs before the user has said a word: the mailbox is
    read and comes back empty, then the store — the scan answers one
    pending row, `deep-dive-001-tail-regressions`, nothing in flight,
    nothing dead — and the fold is entered from there, not from any
@@ -40,7 +40,7 @@ The prose should have taken this path:
    alternative — never a script, never a menu; the turn ends there
    awaiting the user, who declines — no lab, no inline count — and says
    they are done
-8. the wrapper enters topic completion: the triage queue reads empty,
+8. the wrapper enters topic completion: the mailbox reads empty,
    the wait gate answers empty, and the in-flight check finds nothing
    pending and nothing in flight, no gate, so the close proceeds — the
    document review reconciles the file against a conversation that

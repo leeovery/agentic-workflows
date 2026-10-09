@@ -12,22 +12,21 @@ The prose should have taken this path:
    the user continues
 3. initialisation is skipped; the guidelines load; the knowledge base
    is addressed once as a contextual query (empty or keyword-only
-   store — the session proceeds); the session loop's first triage
-   check reads the queue and finds it empty — no agenda, nothing
+   store — the session proceeds); the session loop's first mailbox
+   check reads the mailbox and finds it empty — no agenda, nothing
    surfaced
 4. mid-flow, before result caching lands, the user's click-window
    worry is recognised as another topic's ground: the target is
    resolved before the offer — behavioural-ranking, one clear home —
-   and the reroute offer itself names it, reading research-side with
-   a phase override available; the user accepts with a plain reroute,
+   and the send offer itself names it, reading research-side with
+   a phase override available; the user accepts with a plain send,
    overriding nothing
-5. triage landing resolves behavioural-ranking on the live map and
+5. sending resolves behavioural-ranking on the live map and
    delivers at the recommended research landing through the
-   self-committing `topic triage`: the research item is created as
-   `triaged` (parked, never started), the concern lands as one
-   engine-numbered file in behavioural-ranking's research triage
-   queue carrying the full feasibility context, and the delivery
-   commits under the reroute message. The response carries
+   self-committing `topic send`: the research item is created as
+   `unstarted` (parked, never started), the message lands as one
+   engine-numbered file in behavioural-ranking's research mailbox carrying the full feasibility context, and the delivery
+   commits under the send message. The response carries
    `reconcile_flagged` — behavioural-ranking's discussion is
    completed — and the landing line tells the user so
 6. the session returns to its own thread and works result caching to
@@ -37,32 +36,32 @@ The prose should have taken this path:
    action-scoped; once it is committed the ceremony opens in the same
    turn, with or without the user's own wrap-up
 7. the closing gates run the review machinery per the conduct (the
-   stubbed review returns clean), the conclude gate finds the queue
+   stubbed review returns clean), the conclude gate finds the mailbox
    still empty, and the discussion completes with its conclusion commit
 8. the sweep finds no leavings, and the walk stops at the bridge
    invocation
 
 Further claims:
 
-- behavioural-ranking's research triage queue holds exactly one file
+- behavioural-ranking's research mailbox holds exactly one file
   (`001-…`) whose provenance line names synonym-handling · discussion
   and whose body carries the click-window feasibility substance, not
   a bare title
-- the manifest holds `research.behavioural-ranking` as `triaged`,
+- the manifest holds `research.behavioural-ranking` as `unstarted`,
   `discussion.behavioural-ranking` still `completed` with
   `reconcile_needed` set to `research`, and
   `discussion.synonym-handling` `completed`
 - no research artifact file exists for behavioural-ranking — the
-  concern is parked in the queue, nothing started
+  message is parked in the mailbox, nothing started
 - behavioural-ranking's discussion document is untouched
-- the delivery's scratch concern file under `.workflows/.cache/` is
+- the delivery's scratch message file under `.workflows/.cache/` is
   consumed
 - git history holds the delivery commit
-  (`discussion(search-relevance/synonym-handling): reroute concern to
+  (`discussion(search-relevance/synonym-handling): send message to
   behavioural-ranking`) and the completion commit, distinct
 - synonym-handling's document records the result-caching decision;
   the click-window worry is never there as explored content — no
   options weighed, no answer reached, nothing the target topic would
   need to re-derive. Rerouting leaves this session's record unchanged:
-  the reroute's record is its commit, and a document that carries no
+  the send's record is its commit, and a document that carries no
   line about it is the expected shape

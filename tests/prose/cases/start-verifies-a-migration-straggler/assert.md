@@ -11,12 +11,12 @@ The prose should have taken this path:
    reads the research and discussion artifacts, recognises the
    malformed heading holding a real parked entry in
    synonym-handling's document, moves the entry into the topic's
-   triage queue as an engine-numbered file carrying its full text,
+   mailbox as an engine-numbered file carrying its full text,
    and removes the triage content from the document (the section
    reset or the emptied heading removed — the topic is not completed,
    so either is within the addendum's instruction)
 3. the review reads both the status of the paths the workflows own —
-   the new queue file among them — and their diff, which shows the
+   the new mailbox file among them — and their diff, which shows the
    document change; the summary describes the recovery in natural
    language, and the user continues at the confirm gate, after which
    the migration commit runs
@@ -26,7 +26,7 @@ The prose should have taken this path:
 
 Further claims:
 
-- synonym-handling's discussion triage queue holds exactly one
+- synonym-handling's discussion mailbox holds exactly one
   engine-numbered file whose name carries the concern's slug and
   whose body carries the full stale-concern text with its provenance
   line

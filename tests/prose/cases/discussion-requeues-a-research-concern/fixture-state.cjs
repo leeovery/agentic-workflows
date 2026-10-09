@@ -1,10 +1,10 @@
 'use strict';
 
-// A reopened discussion holding one wrong-side concern: both epic
+// A reopened discussion holding one wrong-side message: both epic
 // discussions concluded, synonym-handling reopened for one late subtopic
-// (result caching), and its discussion triage queue holds a question that
+// (result caching), and its discussion mailbox holds a question that
 // belongs research-side — an open empirical ask about the engine's query
-// pipeline, landed discussion-side by its origin session. The requeue this
+// pipeline, landed discussion-side by its origin session. The forward this
 // case pins is the session's repair for exactly this shape.
 
 const e = require('../../mainlines/epic.cjs');
@@ -23,7 +23,7 @@ module.exports = {
     h.engine('commit', WU, '--topic', 'discussion/synonym-handling', '-m',
       `discussion(${WU}): reopen synonym-handling for result caching`);
 
-    h.write(`.workflows/.cache/${WU}/discussion/relevance-measurement/concern-query-time-expansion-hooks.md`, [
+    h.write(`.workflows/.cache/${WU}/discussion/relevance-measurement/message-query-time-expansion-hooks.md`, [
       '### Does the engine expose expansion hooks at query time?',
       '*From: relevance-measurement · discussion · 2026-07-22*',
       '',
@@ -39,9 +39,9 @@ module.exports = {
       'matching — exploration, not a decision.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'synonym-handling',
-      '--concern', `.workflows/.cache/${WU}/discussion/relevance-measurement/concern-query-time-expansion-hooks.md`,
+    h.engine('topic', 'send', WU, 'discussion', 'synonym-handling',
+      '--content', `.workflows/.cache/${WU}/discussion/relevance-measurement/message-query-time-expansion-hooks.md`,
       '--slug', 'query-time-expansion-hooks',
-      '-m', `discussion(${WU}/relevance-measurement): reroute concern to synonym-handling`);
+      '-m', `discussion(${WU}/relevance-measurement): send message to synonym-handling`);
   },
 };

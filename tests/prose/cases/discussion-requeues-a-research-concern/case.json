@@ -1,5 +1,5 @@
 {
-  "origin": "a concern parked on the wrong side of the research/discussion pair had no exit — a session surfacing it could only decide it in the wrong register or leave it blocking conclusion; this walk pins the repair: the raise judges the queued entry owed the other phase-side, the engine-rendered offer gates the move, and one `topic requeue` transaction re-parks it without the concern ever touching this session's map or document; its close then meets the engine's wait gate over the research it parked — the conclusion refusal that backs the entry hold — and pauses through the pipeline bridge",
+  "origin": "a message parked on the wrong side of the research/discussion pair had no exit — a session surfacing it could only decide it in the wrong register or leave it blocking conclusion; this walk pins the repair: the raise judges the waiting entry owed the other phase-side, the engine-rendered offer gates the move, and one `topic forward` transaction re-parks it without the message ever touching this session's map or document; its close then meets the engine's wait gate over the research it parked — the conclusion refusal that backs the message hold — and pauses through the pipeline bridge",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -23,9 +23,9 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/closing-gates.md",
     "skills/workflow-discussion-process/references/review-agent.md",
@@ -45,7 +45,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user returned to settle result caching. When the session opens on the queued concern's agenda they take it — yes. Offered the move because the tokenizer question is exploration rather than a decision this discussion can make, they agree and take it; told it now waits research-side they carry on without another word about it. They settle result caching decisively — a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh; no cross-session cache, no new infrastructure — and when it feels settled they say that covers it and ask to wrap up. Told at the close that the discussion waits on the research they parked, they take the pause rather than keep talking — they are not going to open the research in this sitting. They decline optional extras and never introduce new material.",
+  "conduct": "The user returned to settle result caching. When the session opens on the waiting message's agenda they take it — yes. Offered the move because the tokenizer question is exploration rather than a decision this discussion can make, they agree and take it; told it now waits research-side they carry on without another word about it. They settle result caching decisively — a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh; no cross-session cache, no new infrastructure — and when it feels settled they say that covers it and ask to wrap up. Told at the close that the discussion waits on the research they parked, they take the pause rather than keep talking — they are not going to open the research in this sitting. They decline optional extras and never introduce new material.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -53,9 +53,9 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "render triage-offer search-relevance.discussion.synonym-handling",
-      "render requeue-offer search-relevance.discussion.synonym-handling",
-      "topic requeue search-relevance discussion research synonym-handling",
+      "render mail-offer search-relevance.discussion.synonym-handling",
+      "render forward-offer search-relevance.discussion.synonym-handling",
+      "topic forward search-relevance discussion research synonym-handling",
       "discussion-map set search-relevance synonym-handling result-caching decided",
       "render wait-gate search-relevance.discussion.synonym-handling",
       "agent scan search-relevance discussion synonym-handling"
@@ -73,8 +73,8 @@
       "render in-flight-agents-gate"
     ],
     "calls_in_order": [
-      "render requeue-offer search-relevance.discussion.synonym-handling",
-      "topic requeue search-relevance discussion research synonym-handling",
+      "render forward-offer search-relevance.discussion.synonym-handling",
+      "topic forward search-relevance discussion research synonym-handling",
       "render wait-gate search-relevance.discussion.synonym-handling",
       "agent scan search-relevance discussion synonym-handling"
     ]

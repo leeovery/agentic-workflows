@@ -12,8 +12,8 @@ nothing — wallet payments carry no address, saved cards only sometimes
 — so for a share of the very orders the bug affects the fall-through
 has nowhere to land, and nothing in the record says what such an order
 is taxed at. That is product intent a specification cannot invent, so
-it routed the gap back to its source: one concern in the pinned shape,
-landed by the engine in the investigation's triage queue, reopening
+it routed the gap back to its source: one message in the pinned shape,
+landed by the engine in the investigation's mailbox, reopening
 the investigation and pausing the specification with its single source
 row still pending. The entry is deliberately exhaustive: background
 with the wallet and saved-card shares, two options with their costs

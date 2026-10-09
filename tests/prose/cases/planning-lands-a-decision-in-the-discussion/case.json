@@ -78,7 +78,7 @@
       "planning(pay): approve Phase 1 task list"
     ],
     "calls_exclude": [
-      "topic triage",
+      "topic send",
       "topic reopen",
       "render incoherence-gate",
       "render wait-gate",

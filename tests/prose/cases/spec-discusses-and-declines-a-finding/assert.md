@@ -70,5 +70,5 @@ Also true:
   concludes over the Declined row without objection — a declined
   finding is settled, not pending
 - nothing routes to a source: no incoherence gate, no presence scan,
-  no reindex, no triage, no reopen; the discussion document is
+  no reindex, no message sent, no reopen; the discussion document is
   untouched

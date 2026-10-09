@@ -10,7 +10,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue; its
+4. the session loop's mailbox check no-ops on an empty mailbox; its
    check-for-results runs the agent scan and finds an empty store —
    nothing pending, nothing to surface, no announce
 5. the user signals the discussion covers it; the close opens: the

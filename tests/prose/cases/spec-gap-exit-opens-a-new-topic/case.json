@@ -1,5 +1,5 @@
 {
-  "origin": "Some gaps have no home yet. A review finds the specification deciding something no source decided, the derivation runs out, and the exchange that follows shows the answer needs a room rather than a reply — and the ground it sits on belongs to no topic on the map. The gap exit's third destination is that case: the gap becomes a topic of its own, created on the map, parked on its discussion queue, and added to this specification's sources as pending, so the specification waits for it and extracts it when it concludes. This walks that destination end to end on an epic — the classify running out, the acknowledgement gate offering the three homes a map affords, the name confirmed, the landing self-committing, and the pause handing the session back to the epic.",
+  "origin": "Some gaps have no home yet. A review finds the specification deciding something no source decided, the derivation runs out, and the exchange that follows shows the answer needs a room rather than a reply — and the ground it sits on belongs to no topic on the map. The gap exit's third destination is that case: the gap becomes a topic of its own, created on the map, parked on its discussion mailbox, and added to this specification's sources as pending, so the specification waits for it and extracts it when it concludes. This walks that destination end to end on an epic — the classify running out, the acknowledgement gate offering the three homes a map affords, the name confirmed, the landing self-committing, and the pause handing the session back to the epic.",
   "entry": "workflow-specification-process",
   "world": "claims",
   "files": [
@@ -22,7 +22,7 @@
     "skills/workflow-specification-process/references/spec-review.md",
     "skills/workflow-specification-process/references/review-tracking-format.md",
     "skills/workflow-specification-process/references/process-review-findings.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-shared/references/create-discovery-topic.md",
     "skills/workflow-shared/references/topic-name-validation.md",
     "skills/workflow-shared/references/compliance-check.md",
@@ -44,7 +44,7 @@
       "render incoherence-gate search-relevance.specification.behavioural-ranking --file .workflows/.cache/search-relevance/specification/behavioural-ranking/incoherence-gate.json --variant gap-route",
       "workflow-discovery/scripts/gateway.cjs search-relevance",
       "discovery-map add search-relevance signal-weighting discussion",
-      "topic triage search-relevance discussion signal-weighting",
+      "topic send search-relevance discussion signal-weighting",
       "manifest set search-relevance.specification.behavioural-ranking sources.signal-weighting.status",
       "spec(search-relevance): pause"
     ],
@@ -68,7 +68,7 @@
       "manifest get search-relevance.specification.behavioural-ranking status",
       "render incoherence-gate search-relevance.specification.behavioural-ranking --file .workflows/.cache/search-relevance/specification/behavioural-ranking/incoherence-gate.json --variant gap-route",
       "discovery-map add search-relevance signal-weighting discussion",
-      "topic triage search-relevance discussion signal-weighting",
+      "topic send search-relevance discussion signal-weighting",
       "manifest set search-relevance.specification.behavioural-ranking sources.signal-weighting.status",
       "spec(search-relevance): pause"
     ]

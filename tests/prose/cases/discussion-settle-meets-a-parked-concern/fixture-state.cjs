@@ -1,11 +1,11 @@
 'use strict';
 
-// A live discussion one decision short of settled, with a rerouted
-// concern already parked in its queue: both epic discussions concluded,
+// A live discussion one decision short of settled, with a sent
+// message already parked in its mailbox: both epic discussions concluded,
 // then synonym-handling reopened for one late subtopic (result caching),
-// and a peer session's concern delivered into the topic's triage queue
+// and a peer session's message delivered into the topic's mailbox
 // before this sitting opens. The last decision settles the map over the
-// parked concern — the moment this case pins.
+// parked message — the moment this case pins.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -23,7 +23,7 @@ module.exports = {
     h.engine('commit', WU, '--topic', 'discussion/synonym-handling', '-m',
       `discussion(${WU}): reopen synonym-handling for result caching`);
 
-    h.write(`.workflows/.cache/${WU}/discussion/relevance-measurement/concern-expansion-cache-invalidation.md`, [
+    h.write(`.workflows/.cache/${WU}/discussion/relevance-measurement/message-expansion-cache-invalidation.md`, [
       '### Expansion Cache Invalidation',
       '*From: relevance-measurement · discussion · 2026-01-03*',
       '',
@@ -34,9 +34,9 @@ module.exports = {
       'of the caching design — belongs to the expansion topic.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'synonym-handling',
-      '--concern', `.workflows/.cache/${WU}/discussion/relevance-measurement/concern-expansion-cache-invalidation.md`,
+    h.engine('topic', 'send', WU, 'discussion', 'synonym-handling',
+      '--content', `.workflows/.cache/${WU}/discussion/relevance-measurement/message-expansion-cache-invalidation.md`,
       '--slug', 'expansion-cache-invalidation',
-      '-m', `discussion(${WU}/relevance-measurement): reroute concern to synonym-handling`);
+      '-m', `discussion(${WU}/relevance-measurement): send message to synonym-handling`);
   },
 };

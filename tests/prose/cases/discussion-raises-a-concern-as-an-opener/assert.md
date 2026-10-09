@@ -3,26 +3,26 @@ The prose should have taken this path:
 1. the skill asks the engine whether research is outstanding on the
    topic (it is not); ensuring the discovery item finds it already
    on the map — nothing is created; it then reads the discussion status
-   once — in-progress, reopened by the triage delivery — emits the
+   once — in-progress, reopened by the message delivery — emits the
    resuming phase note, and checks the reconcile flag (absent —
    silent) — the user is asked nothing about the carrier
 2. beneath the note, with the file found, the resume surface carries on
    — the map with expansion-source decided, then the
-   continue-or-restart gate, the one-concern triage warning directly
+   continue-or-restart gate, the one-message mail warning directly
    above its menu, with no second heading of its own — and the user
    continues; initialisation is skipped
 3. the guidelines load; the knowledge base is addressed once as a
-   contextual query; the session loop's first triage check finds a
-   resumed sitting with a non-empty queue and renders the one-entry
+   contextual query; the session loop's first mailbox check finds a
+   resumed sitting with a non-empty mailbox and renders the one-message
    agenda — title and origin only, body unread — with the offer menu
    before any session output, and stops for the user
-4. the user opts in; the raise reads the queue file as the session's
+4. the user opts in; the raise reads the message file as the session's
    own brief; the ask is a decision this discussion owes, so no
-   requeue offer renders; the concern's title names no subtopic, but
+   forward offer renders; the message's title names no subtopic, but
    its ask re-decides the cutover clause of the decided
    `expansion-source`, so that ground re-arms `exploring` before
    anything is said — no new subtopic is added
-5. the raise is composed as an opener from the entry and emitted in
+5. the raise is composed as an opener from the message and emitted in
    the same turn, and the turn ends awaiting the user, where the walk
    stops
 
@@ -30,7 +30,7 @@ Presentation claims — the opener shape is the behaviour under test:
 
 - the first sentence names the shop's shopper and their moment — a
   shopper typing a misspelt product name once the hand list is gone,
-  or the like — and names no topic, queue, entry, concern, or sibling;
+  or the like — and names no topic, mailbox, entry, message, or sibling;
   behavioural-ranking and what it settled arrive in a clause only
   after the situation is on the page
 - the problem lands through one to three devices — a worked instance
@@ -43,7 +43,7 @@ Presentation claims — the opener shape is the behaviour under test:
   abdication; the alternative gets at most one clause naming the kind
   of cost it carries, never two costs, never a cost with its
   consequence spelled out
-- the entry's tuning stays back: the seed weight (three-tenths of a
+- the message's tuning stays back: the seed weight (three-tenths of a
   real pair), the decay window (ninety days) and the search budget
   (three hundred milliseconds, a threshold) appear nowhere in the
   raise; the two measurements — coverage, and the lookup's cost — may
@@ -61,9 +61,9 @@ Presentation claims — the opener shape is the behaviour under test:
   position, and nothing drawn from the held-back depth
 - the raise's prose runs to about three hundred words at most, a
   diagram aside — the length of a raise that lands, against an entry
-  of 494 words — readable in a glance — and the entry is never emitted
+  of 494 words — readable in a glance — and the message is never emitted
   verbatim: no paragraph of it appears in the turn
-- the raise covers this concern alone: no other item, finding, or
+- the raise covers this message alone: no other item, finding, or
   gap rides along
 - no outcome is documented in the raise's turn: nothing is written to
   the discussion file, no decision is recorded, and the map state
@@ -71,11 +71,11 @@ Presentation claims — the opener shape is the behaviour under test:
 
 Further claims:
 
-- no review dispatch, no requeue offer, no absorb, no completion
+- no review dispatch, no forward offer, no absorb, no completion
 - the discussion file is byte-unchanged and no commit lands past the
   fixture's (render payloads and per-turn presence heartbeats under
   `.workflows/.cache/` are machinery, not writes)
-- the queue file is still present with its content intact
+- the message file is still present with its content intact
 - behavioural-ranking's document is unchanged
 - the walk stops with the raise pending; the user never answers it
 

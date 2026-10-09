@@ -37,7 +37,7 @@ The prose should have taken this path:
    resolution commits with a message naming the discussion and the
    settlement
 8. synonym-handling's item status stays completed throughout — no
-   reopen, no triage landing, no new topic
+   reopen, no message send, no new topic
 9. construction continues against the updated source; the chunks the
    conflict held are extracted from the now-coherent record; both
    source rows flip to incorporated when their extraction exhausts

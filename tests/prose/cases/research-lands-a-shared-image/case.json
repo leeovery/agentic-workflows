@@ -22,7 +22,7 @@
     "skills/workflow-research-process/references/feature-session.md",
     "skills/workflow-research-process/references/session-loop.md",
     "skills/workflow-research-process/references/deep-dive-agent.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md"
   ],
   "answers": [
@@ -51,7 +51,7 @@
       "mv notes/Rival Checkout Permissions.PNG",
       "research/assets",
       "topic complete",
-      "topic triage",
+      "topic send",
       "agent dispatch",
       "experiment create",
       "render research-conclude-gate",

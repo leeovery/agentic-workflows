@@ -90,7 +90,7 @@
       "render fix-gate",
       "task fix-attempt",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "sources stale",
       "topic start pay specification",
       "topic complete pay specification",

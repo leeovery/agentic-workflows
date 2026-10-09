@@ -11,7 +11,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk reaches the guidelines,
    addresses the knowledge base once as a contextual query, and enters
    the session step
-4. the session loop's triage check no-ops on an empty queue
+4. the session loop's mailbox check no-ops on an empty mailbox
 5. the check-for-results scan finds the acknowledged row with four
    findings remaining, the announce menu is rendered — a count and the
    lane shape — and the user opts in
@@ -22,11 +22,11 @@ The prose should have taken this path:
 7. the decide and walked lanes are empty, so the route batch follows: a
    second finding-batch render, this time the route lane, naming each
    target — three items, two of them bound for the same sibling
-8. the user approves. Each concern is delivered through the shared
-   triage landing into its target topic's queue, carrying the context
+8. the user approves. Each message is delivered through the shared
+   message send into its target topic's mailbox, carrying the context
    built here, and both ids are recorded in ONE surface call, which
    drains the row so it incorporates automatically. Landing phase
-   follows each concern's nature, not the target's routing: the two open
+   follows each message's nature, not the target's routing: the two open
    questions land research-side, and the decision owed lands
    discussion-side — including where the same sibling receives one of
    each
@@ -46,13 +46,13 @@ Presentation claims:
 Further claims:
 
 - the apply lane is cleared before the route lane is offered
-- exactly one surface call carries all three route ids — the concerns
+- exactly one surface call carries all three route ids — the messages
   are not sent one at a time with a stop each
-- each landing seeds its target topic's triage queue, and neither
-  sibling's discussion is entered or edited. Rerouting sends a concern
-  away without marking this topic: behavioural-ranking's own Triage
-  section still reads `(none)`, its Discussion Map is unchanged, and no
-  reroute record is written
+- each landing seeds its target topic's mailbox, and neither
+  sibling's discussion is entered or edited. Sending a message
+  away without marking this topic: behavioural-ranking's own document
+  carries no record of it, its Discussion Map is unchanged, and no
+  send record is written
 - no fresh review dispatch, no ack, no incorporate call
 - the sends confirm in one line total, and the drained row closes out
   loud in the same turn — a line that the findings are worked through,
@@ -61,7 +61,7 @@ Further claims:
   entered
 
 EXPECTED WORLD — the fixture plus: the Decision clause amended in place
-and committed; a triage entry in each of synonym-handling's and
-relevance-measurement's research queues plus one in synonym-handling's
-discussion queue; and the store row `review-001` with all four findings
+and committed; a message in each of synonym-handling's and
+relevance-measurement's research mailboxes plus one in synonym-handling's
+discussion mailbox; and the store row `review-001` with all four findings
 surfaced, standing `incorporated`.

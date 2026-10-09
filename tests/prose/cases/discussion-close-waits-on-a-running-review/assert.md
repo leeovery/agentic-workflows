@@ -10,14 +10,14 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue; its
+4. the session loop's mailbox check no-ops on an empty mailbox; its
    check-for-results scans the store and finds only the three
    incorporated rows — nothing pending, nothing in flight, nothing to
    surface
 5. the user asks for a fresh review of the document. Their request is
    the trigger: the movement backoff does not apply. Nothing settled is
    waiting to be written, the prior reviews are all drained, both
-   queues are empty, and the closing gates are neither next nor
+   mailboxes are empty, and the closing gates are neither next nor
    underway — so nothing blocks
 6. the session dispatches the review with `--final` — review-004 —
    announces that the background review is dispatched, and does not
@@ -25,7 +25,7 @@ The prose should have taken this path:
    flight
 7. the user says that covers it and asks to wrap up. The map is read
    through the gateway and comes back fully decided; the closing gates
-   load; the triage queue is empty
+   load; the mailbox is empty
 8. classification finds review-004 in flight — review-running — and
    the mandatory review gate renders in its review-running shape: a
    review is still running, what it finds must be heard before

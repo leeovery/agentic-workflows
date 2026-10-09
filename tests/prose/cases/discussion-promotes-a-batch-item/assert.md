@@ -10,7 +10,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk reaches the guidelines,
    addresses the knowledge base once as a contextual query (empty store
    — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue
+4. the session loop's mailbox check no-ops on an empty mailbox
 5. the check-for-results scan finds the acknowledged row with three
    findings remaining, the announce menu is rendered, and the user opts
    in

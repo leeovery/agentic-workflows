@@ -78,7 +78,7 @@
       "begin review cycle 3",
       "render incoherence-gate",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "restart planning",
       "workunit create",
       "engine.cjs knowledge index"

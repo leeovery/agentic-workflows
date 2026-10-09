@@ -1,8 +1,8 @@
 'use strict';
 
 // The behavioural-ranking specification met a gap its record could not
-// settle and routed it into its source: the concern sits in the
-// behavioural-ranking discussion's triage queue, the discussion is back in
+// settle and routed it into its source: the message sits in the
+// behavioural-ranking discussion's mailbox, the discussion is back in
 // progress, and the specification's source row is stale. The session
 // committed its work and paused through the bridge, whose handoff lands the
 // epic on its menu with the specification's pause. The gap analysis has
@@ -42,8 +42,8 @@ module.exports = {
     h.engine('commit', WU, '--topic', `specification/${TOPIC}`, '-m', `spec(${WU}): construct ${TOPIC}`);
     h.engine('build-order', 'sequence', WU, `${TOPIC}=1`);
 
-    const concern = `.workflows/.cache/${WU}/specification/${TOPIC}/score-weighting.md`;
-    h.write(concern, [
+    const message = `.workflows/.cache/${WU}/specification/${TOPIC}/score-weighting.md`;
+    h.write(message, [
       '### Score weighting',
       `*From: ${TOPIC} · specification · 2026-01-01*`,
       '',
@@ -52,7 +52,7 @@ module.exports = {
       'signals reach ranking and stopped there.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', TOPIC, '--concern', concern, '--slug', 'score-weighting',
+    h.engine('topic', 'send', WU, 'discussion', TOPIC, '--content', message, '--slug', 'score-weighting',
       '-m', `spec(${WU}): gap routed to ${TOPIC}`);
     h.engine('commit', WU, '--topic', `specification/${TOPIC}`, '-m', `spec(${WU}): pause — gap routed to ${TOPIC}`);
 

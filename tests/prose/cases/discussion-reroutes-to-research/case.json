@@ -1,5 +1,5 @@
 {
-  "origin": "the sender side of the triage pipeline had no prose coverage — an off-topic concern raised mid-discussion, the judged landing recommendation at the reroute menu, the self-committing delivery into another topic's research queue, and the reconcile flag a research-side landing sets beneath a completed discussion; this walk pins the origin-session half end to end",
+  "origin": "the sender side of the mailbox pipeline had no prose coverage — an off-topic message raised mid-discussion, the judged landing recommendation at the send menu, the self-committing delivery into another topic's research mailbox, and the reconcile flag a research-side landing sets beneath a completed discussion; this walk pins the origin-session half end to end",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -21,9 +21,9 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-shared/references/create-discovery-topic.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-shared/references/off-topic-epic.md",
@@ -45,7 +45,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user reopened synonym-handling to settle result caching, and they settle it decisively: a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh — no cross-session cache, no extra infrastructure. Mid-flow, while connecting caching to signal freshness, they raise a worry that is not this topic's to answer: whether the events pipeline could even expose per-session click windows if expansion ever wanted them — a feasibility question about behavioural-ranking's territory, where batch-only ingestion was settled. Offered the reroute, they agree it belongs to behavioural-ranking and accept the recommended research-side landing without overriding. Told the delivery landed and that behavioural-ranking's completed discussion is flagged to reconcile, they acknowledge and return to their own topic. They add nothing beyond these two threads, decide rather than park, and when result caching feels settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: one more review is declined when offered, offers of new threads are declined. They never introduce new material.",
+  "conduct": "The user reopened synonym-handling to settle result caching, and they settle it decisively: a per-session cache keyed on the normalised query, invalidated when the nightly aggregates refresh — no cross-session cache, no extra infrastructure. Mid-flow, while connecting caching to signal freshness, they raise a worry that is not this topic's to answer: whether the events pipeline could even expose per-session click windows if expansion ever wanted them — a feasibility question about behavioural-ranking's territory, where batch-only ingestion was settled. Offered the send, they agree it belongs to behavioural-ranking and accept the recommended research-side landing without overriding. Told the delivery landed and that behavioural-ranking's completed discussion is flagged to reconcile, they acknowledge and return to their own topic. They add nothing beyond these two threads, decide rather than park, and when result caching feels settled they say that covers it and ask to wrap up. On the way out they are agreeable to required steps — a mandatory review or the conclusion gets a yes — but they decline optional extras: one more review is declined when offered, offers of new threads are declined. They never introduce new material.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -54,8 +54,8 @@
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
       "discussion-map set search-relevance synonym-handling result-caching",
-      "topic triage search-relevance research behavioural-ranking",
-      "reroute concern to behavioural-ranking",
+      "topic send search-relevance research behavioural-ranking",
+      "send message to behavioural-ranking",
       "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
@@ -68,7 +68,7 @@
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "topic triage search-relevance research behavioural-ranking",
+      "topic send search-relevance research behavioural-ranking",
       "topic complete search-relevance discussion synonym-handling"
     ]
   }

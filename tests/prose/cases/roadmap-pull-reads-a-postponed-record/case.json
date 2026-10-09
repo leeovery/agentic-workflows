@@ -1,5 +1,5 @@
 {
-  "origin": "topic-postpone design R6 — an item that used to be a topic carries a record its `sources` do not list: the epic it was in, that topic's brief, its research and discussion, and the concerns queued against it and never delivered. A pull that enumerates the record from `sources` alone births the epic blind to all of it, and nothing walked the read derived from the postpone's own address, or the backfill authored over what it finds while the earlier epic's files stay exactly where they are",
+  "origin": "topic-postpone design R6 — an item that used to be a topic carries a record its `sources` do not list: the epic it was in, that topic's brief, its research and discussion, and the messages waiting against it and never delivered. A pull that enumerates the record from `sources` alone births the epic blind to all of it, and nothing walked the read derived from the postpone's own address, or the backfill authored over what it finds while the earlier epic's files stay exactly where they are",
   "entry": "workflow-roadmap",
   "world": "claims",
   "files": [
@@ -43,10 +43,10 @@
       "roadmap pull-forward",
       "roadmap bind",
       "topic start",
-      "topic triage",
+      "topic send",
       "topic absorb",
-      "topic requeue",
-      "topic queue",
+      "topic forward",
+      "topic mailbox",
       "topic postpone",
       "topic reactivate",
       "discovery-map",
