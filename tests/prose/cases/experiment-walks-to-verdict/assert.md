@@ -5,8 +5,8 @@ The prose should have taken this path:
    and — exactly one live record — resolves E1 with nothing asked; the
    conceived record announces through the engine note (`Starting E1`),
    and the picker is never rendered
-2. with the record resolved, the session label refreshes and the
-   record's directory is derived from its id and slug; `conceived`
+2. with the record resolved, the session records where it is working
+   and the record's directory is derived from its id and slug; `conceived`
    comes from that one read — the series is not read again before
    initialisation
 3. initialisation reads from disk, in full: the problem statement

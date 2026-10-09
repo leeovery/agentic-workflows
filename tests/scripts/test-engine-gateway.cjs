@@ -171,16 +171,15 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
   }
 });
 
-// A context-refresh recovery reads state and announces the position; the gate
-// the flow resumes at is fetched by the step that shows it, once the position
-// is confirmed. Every command a recovery names — a full `node .claude/skills/…`
-// call, or an `engine render` shorthand — is run over a world holding each
-// phase's item at the placeholder address, in the states a gate would be owed
-// over: an undecided subtopic beside a decided one (the defer gate), threads
-// on the research register, several live experiments (the record pick),
-// agents in flight, a baseline mid-assessment, and a roadmap with waiting
-// items.
-describe('a context-refresh recovery fetches no gate', () => {
+// A context-refresh recovery reads state and carries on with nothing shown;
+// the gate the flow resumes at is fetched by the step that shows it. Every
+// command a recovery names — a full `node .claude/skills/…` call, or an
+// `engine render` shorthand — is run over a world holding each phase's item
+// at the placeholder address, in the states a gate would be owed over: an
+// undecided subtopic beside a decided one (the defer gate), threads on the
+// research register, several live experiments (the record pick), agents in
+// flight, a baseline mid-assessment, and a roadmap with waiting items.
+describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   const SKILLS = path.join(__dirname, '../../skills');
   const COMMAND = /node \.claude\/skills\/\S+(?: [^`\n]+)?|\bengine render [^`\n]+/g;
   const recoveries = fs.readdirSync(SKILLS).flatMap((skill) => {
@@ -245,7 +244,7 @@ describe('a context-refresh recovery fetches no gate', () => {
     const defer = spawnSync('node', [ENGINE, 'render', 'defer-gate', 'wu.discussion.t'], { cwd: dir, encoding: 'utf8' });
     assert.match(defer.stdout, /^=== MENU: defer gate/m, 'a defer gate is owed over this map — the recovery read must not carry it');
     const pick = spawnSync('node', [ENGINE, 'render', 'experiment-pick', 'wu.experiment.t'], { cwd: dir, encoding: 'utf8' });
-    assert.match(pick.stdout, /^=== MENU/m, 'a record pick is owed over this series — the recovery register must not carry it');
+    assert.match(pick.stdout, /^=== MENU/m, 'a record pick is owed over this series — the recovery read must not carry it');
     for (const phase of ['discussion', 'research']) {
       const scan = spawnSync('node', [ENGINE, 'agent', 'scan', 'wu', phase, 't'], { cwd: dir, encoding: 'utf8' });
       assert.strictEqual(JSON.parse(scan.stdout).in_flight.length, 1, `${phase}: an agent is in flight`);
@@ -253,7 +252,7 @@ describe('a context-refresh recovery fetches no gate', () => {
   });
 
   for (const { skill, command } of recoveries) {
-    it(`${skill}: \`${command}\` answers without a MENU section`, () => {
+    it(`${skill}: \`${command}\` answers without a MENU, DISPLAY or TITLE section`, () => {
       const argv = command
         .replace(/^engine render /, 'node .claude/skills/workflow-engine/scripts/engine.cjs render ')
         .replaceAll('{work_unit}', 'wu')
@@ -262,7 +261,7 @@ describe('a context-refresh recovery fetches no gate', () => {
       const script = path.join(SKILLS, argv[1].replace('.claude/skills/', ''));
       const res = spawnSync('node', [script, ...argv.slice(2)], { cwd: dir, encoding: 'utf8' });
       assert.strictEqual(res.status, 0, res.stderr);
-      assert.doesNotMatch(res.stdout, /^=== MENU/m);
+      assert.doesNotMatch(res.stdout, /^=== (MENU|DISPLAY|TITLE)/m);
     });
   }
 });

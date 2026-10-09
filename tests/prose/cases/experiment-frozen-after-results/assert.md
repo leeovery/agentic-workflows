@@ -4,9 +4,9 @@ The prose should have taken this path:
    finds it live, and — exactly one live record — resolves E1 with
    nothing asked; the record in flight announces through the resuming
    phase note, and the picker is never rendered
-2. the session label refreshes and the record's directory is derived;
-   `running` comes from that one read; initialisation reads the
-   problem statement and then the record's own documents — the frozen
+2. the session records where it is working and the record's directory
+   is derived; `running` comes from that one read; initialisation reads
+   the problem statement and then the record's own documents — the frozen
    design and the partial report — never the spawning conversation:
    the freeze is the boundary and it is behind us
 3. the run leg re-reads the record, finds it `running` with no live

@@ -18,11 +18,9 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 const { parseInboxPaths } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 
 const HANDOFF_ENV = 'WORKFLOWS_HANDOFF';
-
-const HANDOFF_INSTRUCTION = 'json for the gate mod — never display';
 
 const OUTCOMES = ['completed', 'paused', 'cancelled', 'postponed'];
 
@@ -217,7 +215,7 @@ function handoffSections(handoff) {
   return [
     dataSection(data),
     section('DISPLAY: handoff', CONTINUE_INSTRUCTION, handoff.line),
-    carried ? section('HANDOFF', HANDOFF_INSTRUCTION, JSON.stringify(handoff)) : '',
+    carried ? section('HANDOFF', GATE_MOD_INSTRUCTION, JSON.stringify(handoff)) : '',
   ].join('');
 }
 

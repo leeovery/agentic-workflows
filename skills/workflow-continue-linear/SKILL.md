@@ -13,7 +13,7 @@ Continue an in-progress feature, bugfix, quick-fix or cross-cutting concern. Det
 This skill receives one positional argument:
 - `$0` — **work_unit**: the work unit to continue — its type is read from its manifest. Held downstream as `{work_unit}`.
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}

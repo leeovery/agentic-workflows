@@ -7,8 +7,8 @@ The prose should have taken this path:
    nothing upstream chose a record. The user answers E1; the resolved
    record announces through the engine note (`Starting E1`) — the back
    option is never taken
-2. with E1 resolved, the session label refreshes and E1's directory is
-   derived from its id and slug; `conceived` comes from that one read
+2. with E1 resolved, the session records where it is working and E1's
+   directory is derived from its id and slug; `conceived` comes from that one read
 3. E1's initialisation reads the problem statement, then — conceived —
    the spawning research document in full, the seed check (an epic:
    nothing to read), and the topic's discovery brief, tracked as

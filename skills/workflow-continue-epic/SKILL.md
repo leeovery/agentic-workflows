@@ -61,7 +61,7 @@ Emit its `DISPLAY: not found` section verbatim per its marker.
 
 ## Step 2: Backfill
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}

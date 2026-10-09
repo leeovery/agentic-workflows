@@ -6,15 +6,15 @@
 // project-manifest opt-in and the hooks it syncs in the project's settings
 // (SessionEnd: `session cleanup` while labels are on, `presence cleanup` and
 // `conversation end` regardless; SessionStart: `session resume` while labels
-// are on), the
-// per-checkout stash, the arrival forms (a work unit alone, the roadmap and
-// baseline identities), phase-hop recomposition, peer-checkout isolation,
-// user-rename adoption, id drift across a server restart (chain resolution,
-// drifted restore, boot repair, orphan pruning), owner identity, the
-// repair's own-label restore, restore ownership, the position record a
-// resume re-applies, and the hooks' stdin contract. tmux itself is the
-// shared PATH stub (`tmux-stub.cjs`) modelling one session; the engine only
-// ever sees the stub.
+// are on), the per-checkout stash, the arrival forms (a work unit alone, the
+// roadmap and baseline identities), phase-hop recomposition, peer-checkout
+// isolation, user-rename adoption, id drift across a server restart (chain
+// resolution, drifted restore, boot repair, orphan pruning), owner identity,
+// the repair's own-label restore, restore ownership, the conversation's
+// position every label call records and a resume re-applies (position.cjs,
+// whose own suite is test-engine-position.cjs), and the hooks' stdin
+// contract. tmux itself is the shared PATH stub (`tmux-stub.cjs`) modelling
+// one session; the engine only ever sees the stub.
 //
 
 require('./hermetic-env.cjs');
@@ -408,18 +408,24 @@ describe('engine session label', () => {
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
-  it('the enable check precedes argument validation — a bad call site stays silent for a non-opted user', () => {
-    const res = engine(['session', 'label', 'ghost', 'deploying', 'alpha']);
-    assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
+  it('a bad call site fails loudly for a user who never opted in too — nothing labelled, no position recorded', () => {
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    for (const [args, error] of [[['pay', 'deploying', 'alpha'], /unknown phase/], [['ghost', 'discussion', 'alpha'], /no work unit directory/]]) {
+      assert.match(engine(['session', 'label', ...args], { expectFail: true }).error, error);
+    }
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
+    assert.strictEqual(stashFile(), null);
   });
 
-  it('rejects an unknown phase when enabled', () => {
+  it('rejects an unknown phase with labels on as well — nothing labelled, no position recorded', () => {
     optIn();
     const err = engine(['session', 'label', 'pay', 'deploying', 'alpha'], { expectFail: true });
     assert.match(err.error, /unknown phase/);
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(position('sess-1'), null);
   });
 
-  it('rejects a missing work unit when enabled', () => {
+  it('rejects a missing work unit with labels on as well', () => {
     optIn();
     const err = engine(['session', 'label', 'ghost', 'discussion', 'alpha'], { expectFail: true });
     assert.match(err.error, /no work unit directory/);
@@ -432,7 +438,7 @@ describe('engine session label', () => {
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
-  it('rejects an unknown name-only when enabled, and a project identity carrying a phase', () => {
+  it('rejects an unknown name-only with labels on as well, and a project identity carrying a phase', () => {
     optIn();
     assert.match(engine(['session', 'label', 'ghost'], { expectFail: true }).error, /no work unit directory/);
     assert.match(engine(['session', 'label', 'roadmap', 'discovery', 'roadmap'], { expectFail: true }).error, /no work unit directory/);
@@ -444,7 +450,7 @@ describe('engine session label — the position record', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('records the calling session\'s position behind a landed label, in its conversation\'s folder', () => {
+  it('records the calling session\'s position in its conversation\'s folder', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
@@ -464,20 +470,23 @@ describe('engine session label — the position record', () => {
     assert.deepStrictEqual(fs.readdirSync(conversation('sess-1')).sort(), ['position.json', 'workflow']);
   });
 
-  it('a no-op label records nothing — disabled, outside tmux, a tmux error, a failed rename', () => {
-    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+  it('a no-op label records the position all the same — disabled, outside tmux, a tmux error, a failed rename', () => {
     optIn();
-    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { noTmux: true });
-    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { fail: true });
-    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { failRename: true });
-    assert.strictEqual(position('sess-1'), null, 'no position without a landed label');
+    engine(['session', 'label-config', 'false']);
+    engine(['session', 'label', 'pay', 'research', 'alpha']);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'research', topic: 'alpha' }, 'disabled');
+    optIn();
+    for (const [phase, opts] of [['discussion', { noTmux: true }], ['specification', { fail: true }], ['planning', { failRename: true }]]) {
+      engine(['session', 'label', 'pay', phase, 'alpha'], opts);
+      assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase, topic: 'alpha' }, JSON.stringify(opts));
+    }
   });
 
-  it('a failed stash records nothing either', () => {
+  it('a failed stash records the position all the same', () => {
     optIn();
     fs.writeFileSync(path.join(dir, '.workflows', '.cache'), '');
     assert.deepStrictEqual(engine(['session', 'label', 'pay', 'discussion', 'alpha']), { ok: true, labelled: false, reason: 'stash-error' });
-    assert.strictEqual(position('sess-1'), null);
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
   });
 
   it('a position that cannot be written never fails the landed label — a courtesy, never a failure', () => {
@@ -497,7 +506,7 @@ describe('engine session label — the position record', () => {
     assert.deepStrictEqual(fs.readdirSync(configDir), ['conversations']);
   });
 
-  it('a landed label with no session id records nothing — there is no id to resume under', () => {
+  it('a landed label with no session id records no position — there is no id to resume under', () => {
     optIn();
     assert.strictEqual(engine(['session', 'label', 'pay'], { sessionId: null }).labelled, true);
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1'], 'the opt-in\'s own, and nothing more');
@@ -1021,7 +1030,7 @@ describe('engine session repair', () => {
     assert.strictEqual(stashFile(), null);
   });
 
-  it('drops the calling session\'s own position with its own label — the start menu is no position', () => {
+  it('drops the calling session\'s own position as it restores its own label — the start menu is no position', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.ok(position('sess-1'));
@@ -1038,11 +1047,18 @@ describe('engine session repair', () => {
     assert.ok(position('sess-old'), 'kept for the resume');
   });
 
-  it('a failed rename keeps the position too — the label is still on', () => {
+  it('the calling session\'s own position comes off whatever the label does — a failed rename, labels off, outside tmux', () => {
     optIn();
     engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(engine(['session', 'repair'], { failRename: true }), { ok: true, repaired: false });
-    assert.ok(position('sess-1'));
+    assert.strictEqual(position('sess-1'), null);
+    engine(['session', 'label', 'pay', 'discussion', 'alpha'], { noTmux: true });
+    assert.deepStrictEqual(engine(['session', 'repair'], { noTmux: true }), { ok: true, repaired: false });
+    assert.strictEqual(position('sess-1'), null);
+    engine(['session', 'label-config', 'false']);
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    assert.deepStrictEqual(engine(['session', 'repair']), { ok: true, repaired: false });
+    assert.strictEqual(position('sess-1'), null);
   });
 
   it('ages no position out — a position lives as long as its conversation\'s folder, opted in or not', () => {

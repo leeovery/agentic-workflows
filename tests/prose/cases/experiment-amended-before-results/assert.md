@@ -5,8 +5,8 @@ The prose should have taken this path:
    and — exactly one live record — resolves E1 with nothing asked; the
    picker is never rendered, and the resolved record's announce is the
    engine note (`Resuming E1`)
-2. with the record resolved, the session label refreshes and the
-   record's directory is derived from its id and slug; `running` comes
+2. with the record resolved, the session records where it is working
+   and the record's directory is derived from its id and slug; `running` comes
    from that one read — the series is not read again before
    initialisation
 3. initialisation reads the record's own documents from disk — the
