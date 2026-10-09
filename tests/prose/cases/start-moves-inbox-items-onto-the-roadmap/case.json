@@ -30,17 +30,16 @@
       "gateway.cjs working-set",
       "roadmap state",
       "render horizon-pick",
-      "render inbox-roadmap-gate --file .workflows/.cache/inbox/roadmap.json",
-      "roadmap add-batch --file .workflows/.cache/inbox/roadmap-items.json"
+      "render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json",
+      "roadmap add-batch --file .workflows/.cache/inbox-roadmap.json"
     ],
     "calls_in_order": [
       "engine.cjs boot",
       "workflow-start/scripts/gateway.cjs inbox",
       "gateway.cjs working-set",
       "render horizon-pick",
-      "write:.workflows/.cache/inbox/roadmap.json",
+      "write:.workflows/.cache/inbox-roadmap.json",
       "render inbox-roadmap-gate",
-      "write:.workflows/.cache/inbox/roadmap-items.json",
       "roadmap add-batch"
     ],
     "calls_exclude": [

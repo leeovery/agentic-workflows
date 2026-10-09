@@ -41,7 +41,7 @@ module.exports = {
 
     h.write('.workflows/.inbox/bugs/2026-01-01--tip-charged-twice.md', DOUBLE_TIP);
     h.write('.workflows/.inbox/bugs/2026-01-01--receipt-omits-the-tip.md', RECEIPT_TIP);
-    const entries = '.workflows/.cache/inbox/roadmap-items.json';
+    const entries = '.workflows/.cache/inbox-roadmap.json';
     h.write(entries, JSON.stringify([
       {
         name: 'tip-charged-twice',
