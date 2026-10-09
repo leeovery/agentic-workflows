@@ -6,13 +6,13 @@ its map.
 Beneath it, research is parked. A session working
 relevance-measurement's research hit an empirical question that is
 behavioural ranking's ground — how much click and purchase signal a
-query actually collects in the events warehouse — and rerouted it
+query actually collects in the events warehouse — and sent it
 research-side. The delivery created behavioural ranking's research
-item as a parked stub holding that one concern, and flagged the
+item as a parked stub holding that one message, and flagged the
 discussion: its decisions may rest on ground the research re-examines.
 
 No session has started the research. No review has ever run, the
-discussion's own triage queue is empty, and no other session is
+discussion's own mailbox is empty, and no other session is
 mid-flight. The context was cleared at the phase boundary — this
 session opens cold at the discussion skill with its three arguments
 and what is on disk.

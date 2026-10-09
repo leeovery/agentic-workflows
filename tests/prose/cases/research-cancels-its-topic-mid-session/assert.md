@@ -7,8 +7,8 @@ The prose should have taken this path:
    topic already has its carrier, so no source is read and nothing is
    gathered
 2. beneath the note, with the file found, the resume surface carries on
-   — the thread register rendered, the triage queue read (empty, so no
-   triage warning), then the continue-or-restart gate, with no second
+   — the thread register rendered, the mailbox read (empty, so no
+   mail warning), then the continue-or-restart gate, with no second
    heading of its own — and the user continues
 3. initialisation is skipped; the walk passes through file strategy and
    the research guidelines, addresses the knowledge base once as a
@@ -16,11 +16,11 @@ The prose should have taken this path:
    so results come back and one line acknowledges the surfaced context —
    and enters the session step, which routes an epic to its own session
    wrapper
-4. the session loop's triage check no-ops on an empty queue; no dive has
+4. the session loop's mailbox check no-ops on an empty mailbox; no dive has
    ever been dispatched, so nothing is folded
 5. the session takes up one of the open threads and the user calls the
    topic off. The session does not read that as a thread to park, a
-   reroute, or a done-signal: nothing is set `parked`, no thread is
+   send, or a done-signal: nothing is set `parked`, no thread is
    added, no deep dive is offered, no conclude gate renders, and the
    research is never completed — with or without a dead end
 6. the cancel protocol resolves the unit before anything else — the work

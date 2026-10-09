@@ -11,7 +11,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines, addresses
    the knowledge base once as a contextual query, and enters the session
    step
-4. the session loop's triage check no-ops on an empty queue
+4. the session loop's mailbox check no-ops on an empty mailbox
 5. the user says that covers it; the map is read through the gateway and
    comes back fully decided, and the closing gates load. No review has
    ever run on this topic, so the mandatory review gate is put — not the
@@ -21,7 +21,7 @@ The prose should have taken this path:
    clean, and the gate is satisfied with nothing to surface
 7. the document review and the compliance self-check run over the
    document, and the conclusion is reached
-8. the conclusion runs in order: the queue is empty, the closing recap
+8. the conclusion runs in order: the mailbox is empty, the closing recap
    renders above the conclude gate, the user confirms,
    the summary is confirmed populated, the topic is completed through the
    engine — which indexes the artifact — and the conclusion's own commit

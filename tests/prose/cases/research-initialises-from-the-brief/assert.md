@@ -39,7 +39,7 @@ EXPECTED WORLD — from a harvested epic with no per-topic work:
   `.workflows/search-relevance/research/relevance-measurement.md`
   holding a Starting Point that reflects the brief — the
   measurement problem, no evaluation set, the user never having built a
-  harness — with no findings recorded yet; the topic's triage queue
+  harness — with no findings recorded yet; the topic's mailbox
   is empty
 - the manifest holding one research item, relevance-measurement, in
   progress — the epic's only per-phase item — carrying a thread register

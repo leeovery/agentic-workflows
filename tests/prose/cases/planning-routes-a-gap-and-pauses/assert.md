@@ -2,7 +2,7 @@ The walk resumes a plan into Phase 1's task design, meets a
 specification defect the record does not settle, and takes it to the
 user as a brief exchange. The user's answer is that the point needs
 real discussion work rather than a snap call, so nothing is decided
-here: the concern goes to the owning discussion's triage queue and the
+here: the message goes to the owning discussion's mailbox and the
 plan pauses behind it. Nothing is written into the plan, nothing is
 written into the discussion document, and the specification is not
 touched.
@@ -27,7 +27,7 @@ Expected path:
    stubbed return carries the two-task table **and** a `## Spec
    Defects` section naming what the shopper is shown while capture is
    unconfirmed, its Ground recording a search that came up empty
-6. the entry is classified **before anything is written or rendered**,
+6. the message is classified **before anything is written or rendered**,
    and it is a fork in what the product does that the record does not
    settle: the classification does not enter the correction route — no
    specification status read, no presence scan for it — and goes
@@ -40,21 +40,20 @@ Expected path:
 8. the user's answer does not settle it — the whole post-checkout
    experience needs exploration the record never did. The session does
    not press for a pick, does not re-present the fork, and does not
-   settle it on its own: the point goes to the owning document's triage
-   queue
+   settle it on its own: the point goes to the owning document's mailbox
 9. the work type is `feature`, so the epic landing never runs — no map
-   topic is created or resolved (the triage-landing reference may be read
-   for the entry shape the prose cites, nothing more). The concern is
-   written in the triage entry shape — a short title, a `*From: pay ·
+   topic is created or resolved (the sending-a-message reference may be read
+   for the message shape the prose cites, nothing more). The message is
+   written in the message shape — a short title, a `*From: pay ·
    planning · {date}*` line, then what the plan needs, the evidence,
    and what was explored — to
-   `.workflows/.cache/pay/planning/pay/gap-concern.md` with the Write
+   `.workflows/.cache/pay/planning/pay/gap-message.md` with the Write
    tool
-10. one engine transaction delivers it: `topic triage pay discussion
-    pay` with the concern file, a kebab-case slug and the message
+10. one engine transaction delivers it: `topic send pay discussion
+    pay` with the message file, a kebab-case slug and the message
     `planning(pay): gap routed to pay`. It reopens the completed
-    discussion item to in-progress, installs the concern as the first
-    numbered file in that topic's triage queue, and commits itself —
+    discussion item to in-progress, installs the message as the first
+    numbered file in that topic's mailbox, and commits itself —
     the session commits nothing for the delivery
 11. the plan pauses: the session's own work commits on the planning
     topic's scope with the pause message, an honest no-op here since
@@ -74,10 +73,10 @@ Further claims:
   subtopic, no timeline entry, no edit of any kind. A document that
   changed means a decision was landed where the user asked for a
   discussion
-- exactly one file sits in the discussion's triage queue for this
-  topic, engine-numbered, carrying the gap in the triage entry shape
+- exactly one file sits in the discussion's mailbox for this
+  topic, engine-numbered, carrying the gap in the message shape
   with the `*From: pay · planning · …*` line. It was installed by the
-  engine, never written into the queue by hand
+  engine, never written into the mailbox by hand
 - the specification document is byte-identical to the fixture's: no
   corrigendum, no Corrigenda section, no edit. The specification item
   carries `reconcile_needed: discussion` and its `pay` source row reads
@@ -99,5 +98,5 @@ Further claims:
   phase-structure gate, the exchange, and the wait gate, in that order.
   The user was never asked to pick a side after saying the point needed
   discussion, and never asked to classify anything
-- no second work unit exists, and the cache's concern scratch and phase
+- no second work unit exists, and the cache's message scratch and phase
   tree payload are expected working artifacts

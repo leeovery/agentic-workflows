@@ -146,9 +146,9 @@ Also true:
   to the user
 - nothing runs the incoherence flow's classification: the batch's
   landing enters at the landing step, so no incoherence gate renders
-  and no gap is routed to a triage queue
-- the discussion item never leaves `completed` — no reopen, no triage
-  landing; the specification never pauses
+  and no gap is routed to a mailbox
+- the discussion item never leaves `completed` — no reopen, no message
+  send; the specification never pauses
 - cache and scratch files under `.workflows/.cache/` are expected
   working artifacts
 

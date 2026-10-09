@@ -5,9 +5,9 @@
 // its points decided and written up. Then a peer session working
 // relevance-measurement's research hit an empirical question that is
 // behavioural-ranking's ground — how much click and purchase signal a
-// query actually collects in the events warehouse — and rerouted it
+// query actually collects in the events warehouse — and sent it
 // research-side. The delivery created behavioural-ranking's research
-// item as a parked stub holding that one concern and flagged the
+// item as a parked stub holding that one message and flagged the
 // in-progress discussion `reconcile_needed: research`. No session has
 // started the research.
 
@@ -114,8 +114,8 @@ module.exports = {
 
     // The peer's delivery — research-side, from relevance-measurement's
     // research session: the engine parks the stub, flags the discussion,
-    // installs the concern, and commits.
-    const scratch = `.workflows/.cache/${WU}/research/relevance-measurement/concern-signal-density.md`;
+    // installs the message, and commits.
+    const scratch = `.workflows/.cache/${WU}/research/relevance-measurement/message-signal-density.md`;
     h.write(scratch, [
       '### How dense is the behavioural signal per query?',
       '*From: relevance-measurement · research · 2026-01-01*',
@@ -130,9 +130,9 @@ module.exports = {
       'window — a measurement, not a decision.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'research', TOPIC,
-      '--concern', scratch,
+    h.engine('topic', 'send', WU, 'research', TOPIC,
+      '--content', scratch,
       '--slug', 'signal-density',
-      '-m', `research(${WU}/relevance-measurement): reroute concern to ${TOPIC}`);
+      '-m', `research(${WU}/relevance-measurement): send message to ${TOPIC}`);
   },
 };

@@ -5,13 +5,13 @@ The prose should have taken this path:
    in progress, emits the resuming phase note, and checks the reconcile
    flag (absent — silent) — the user is asked nothing about the carrier
 2. beneath the note, with the file found, the resume surface carries on
-   — the current map shown, the triage queue read (empty, so no triage
+   — the current map shown, the mailbox read (empty, so no mail
    warning), then the continue-or-restart gate, with no second heading
    of its own — and the user continues
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue; its
+4. the session loop's mailbox check no-ops on an empty mailbox; its
    check-for-results runs the agent scan and finds two review rows,
    both incorporated — nothing pending, nothing acknowledged, nothing
    to surface, no announce; no calls queue exists, nothing flushes
@@ -34,7 +34,7 @@ The prose should have taken this path:
    (`render wait-gate pay.discussion.pay`), which comes back empty —
    nothing owed — then reads the map through the gateway, finds it
    all decided, emits the settled line, and loads the closing gates
-8. the closing gates read the triage queue (empty) and the agent
+8. the closing gates read the mailbox (empty) and the agent
    store. The highest-numbered review row is incorporated, so the
    movement filter runs, anchored on review-002 — the highest-numbered
    review whose report is on disk: git log since its `created`
@@ -90,7 +90,7 @@ EXPECTED WORLD — from the fixture:
   third row
 - git history holds the walk's own commit(s) on the discussion file
   after the layered drain commit, none carrying a drain or deferral
-  marker; the topic's triage queue is empty
+  marker; the topic's mailbox is empty
 - no research, specification, planning, implementation, or review
   artifacts anywhere; the work-unit description unchanged; no second
   work unit; per-turn cache heartbeats under `.workflows/.cache/` are

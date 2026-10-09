@@ -119,7 +119,7 @@ Further claims:
   Resolution `Fixed`, and a Proposal carrying the landing — the decision
   in the discussion and the specification brought into line. A row still
   reading `choice` with Options means the re-dispose never ran; a row
-  reading `Routed` means the walk queued the gap instead of landing it
+  reading `Routed` means the walk sent the gap instead of landing it
 - finding 1's row ends Move `settled`, Resolution Fixed; neither row
   reads Declined, Pending or Skipped
 - the discussion gains exactly one new subtopic section, deciding what
@@ -133,7 +133,7 @@ Further claims:
   decision in the discussion means a product call was landed where no
   document records it
 - no `sources stale` call is recorded — single-topic work skips the
-  step — and no triage landing, no `topic reopen`, and no incoherence
+  step — and no message send, no `topic reopen`, and no incoherence
   gate anywhere
 - the specification item is untouched: still `completed`, no reopen, no
   reconcile flag, its source row still `incorporated` — which is why

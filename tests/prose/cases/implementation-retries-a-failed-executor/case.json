@@ -85,7 +85,7 @@
       "render fix-gate",
       "task fix-attempt",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "sources stale",
       "engine.cjs knowledge index",
       "topic complete pay implementation",

@@ -2,8 +2,8 @@
 
 // An epic topic mid-discussion whose review came back split across two
 // lanes: one correction the document's own decision determines, and two
-// concerns that belong to sibling topics. The walk clears the apply lane
-// first, then sends the route batch — two triage landings, one call.
+// messages that belong to sibling topics. The walk clears the apply lane
+// first, then sends the route batch — two message sends, one call.
 
 const e = require('../../mainlines/epic.cjs');
 

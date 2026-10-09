@@ -68,7 +68,7 @@ Further claims:
   that order and nowhere else
 - the specification is untouched — no corrigendum, no reindex, no
   status change — and the discussion document is untouched; nothing was
-  triaged and nothing reopened
+  sent and nothing reopened
 - cache payloads are expected working artifacts
 
 EXPECTED WORLD — from an authored, graphed, once-reviewed plan:

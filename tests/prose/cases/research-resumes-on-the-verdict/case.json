@@ -22,7 +22,7 @@
     "skills/workflow-research-process/references/epic-session.md",
     "skills/workflow-research-process/references/session-loop.md",
     "skills/workflow-research-process/references/deep-dive-agent.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-shared/references/experiment-spawn.md",
     "skills/workflow-research-process/references/topic-completion.md",
@@ -45,7 +45,7 @@
       "manifest get search-relevance.experiment.synonym-handling experiments",
       "manifest delete search-relevance.research.synonym-handling reconcile_needed",
       "render research-threads search-relevance.research.synonym-handling",
-      "topic queue search-relevance research synonym-handling",
+      "topic mailbox search-relevance research synonym-handling",
       "render wait-gate search-relevance.research.synonym-handling",
       "render research-conclude-gate search-relevance.research.synonym-handling",
       "topic complete search-relevance research synonym-handling"
@@ -64,7 +64,7 @@
       "--dead-end",
       "topic reopen search-relevance",
       "discovery-map handle",
-      "topic triage",
+      "topic send",
       "manifest get search-relevance.research.synonym-handling awaiting_experiments",
       "agent dispatch"
     ]

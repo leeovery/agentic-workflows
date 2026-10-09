@@ -4,7 +4,7 @@ The `search-relevance` epic with its thinking half done: three topics on
 a sequenced map (`behavioural-ranking` 1, `synonym-handling` 2,
 `relevance-measurement` 3), the first two discussed and decided, the
 third never started. No specification has been proposed over either
-discussion, no experiment record exists, and no triage queue holds
+discussion, no experiment record exists, and no mailbox holds
 anything — so each topic's Discovery unit is its map row and whatever
 conversation sits under it.
 

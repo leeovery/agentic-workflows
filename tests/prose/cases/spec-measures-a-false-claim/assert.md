@@ -54,8 +54,8 @@ The prose should have taken this path:
 
 Further claims:
 
-- the discussion item never leaves completed — no reopen, no triage
-  landing, no new topic
+- the discussion item never leaves completed — no reopen, no message
+  send, no new topic
 - nothing outside .workflows changes: the webhook sources are read and
   measured, never edited
 - cache and scratch files under `.workflows/.cache/` are expected

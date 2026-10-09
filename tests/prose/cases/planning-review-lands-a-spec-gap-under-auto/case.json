@@ -108,7 +108,7 @@
       "render correction-gate",
       "render plan-review-gate",
       "render spec-corrections",
-      "topic triage",
+      "topic send",
       "topic reopen",
       "sources stale",
       "topic start pay discussion",

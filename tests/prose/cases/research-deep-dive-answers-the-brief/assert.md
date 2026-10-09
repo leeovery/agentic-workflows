@@ -14,10 +14,9 @@ The prose should have taken this path:
    the user continues; initialisation is skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the
-   epic research session — the deep-dive and rerouted-concerns
+   epic research session — the deep-dive and reading-the-mailbox
    protocols loaded, nothing run at load
-4. the session loop's first iteration checks what landed: the triage
-   queue reads empty, and the resumed session's first iteration is a
+4. the session loop's first iteration checks what landed: the mailbox reads empty, and the resumed session's first iteration is a
    natural break, so the walk reads the store — the scan answers one
    pending row, `deep-dive-001-tail-regressions`, and nothing in flight.
    No row is closed as dead: the dive landed, and the landed arm is the

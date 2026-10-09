@@ -1,12 +1,12 @@
 'use strict';
 
-// A concluded discussion reopened by one rich triage entry. The
+// A concluded discussion reopened by one rich message. The
 // behaviour under test is the raise: it must open on the shopper's
 // situation, name behavioural-ranking in a clause once that is on the
 // page, take a position with one reason, and say where the ball sits —
-// while the entry's itemised costs, its tuning numbers, and its rejected
+// while the message's itemised costs, its tuning numbers, and its rejected
 // alternative stay back. The entry is authored exhaustive on purpose, so
-// what the raise holds back is checkable against what the queue holds.
+// what the raise holds back is checkable against what the mailbox holds.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -19,7 +19,7 @@ module.exports = {
     e.harvest(h);
     e.completeDiscussions(h);
 
-    const scratch = `.workflows/.cache/${WU}/discussion/behavioural-ranking/concern-hand-list-cutover.md`;
+    const scratch = `.workflows/.cache/${WU}/discussion/behavioural-ranking/message-hand-list-cutover.md`;
     h.write(scratch, [
       '### Hand-list cutover',
       '*From: behavioural-ranking · discussion · 2026-01-06*',
@@ -84,8 +84,8 @@ module.exports = {
       'itself, already decided.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'synonym-handling',
-      '--concern', scratch, '--slug', 'hand-list-cutover',
-      '-m', `discussion(${WU}/behavioural-ranking): reroute concern to synonym-handling`);
+    h.engine('topic', 'send', WU, 'discussion', 'synonym-handling',
+      '--content', scratch, '--slug', 'hand-list-cutover',
+      '-m', `discussion(${WU}/behavioural-ranking): send message to synonym-handling`);
   },
 };

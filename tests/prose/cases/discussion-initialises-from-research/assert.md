@@ -44,7 +44,7 @@ research is complete:
   holding a Context section that reflects what the research found —
   the measurement gap, the judgment-source trade-offs, offline metrics
   versus interleaving — with no decisions recorded yet; the topic's
-  triage queue is empty
+  mailbox is empty
 - the manifest holding one discussion item, relevance-measurement, in
   progress, its subtopics pending and recognisably drawn from the
   research's carried-forward concerns; the research item still

@@ -11,7 +11,7 @@ vocabulary.
 
 The question is open, not answered: this is research mid-flight, not
 research that has run its course. No deep dive has ever been
-dispatched, the triage queue is empty, no discussion exists under the
+dispatched, the mailbox is empty, no discussion exists under the
 name, and nothing else on the epic has started.
 
 The context was cleared at the sitting's end — this session opens cold

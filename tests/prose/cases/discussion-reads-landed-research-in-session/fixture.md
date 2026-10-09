@@ -8,7 +8,7 @@ query, a purchase weighted as five clicks.
 
 Nothing has moved beneath the discussion: its research is completed
 and carries no reconcile flag, no review has ever run, the discussion's
-own triage queue is empty, and no other session is mid-flight. The
+own mailbox is empty, and no other session is mid-flight. The
 context was cleared at the phase boundary — this session opens cold at
 the discussion skill with its three arguments and what is on disk.
 

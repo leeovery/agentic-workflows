@@ -7,7 +7,7 @@ The prose should have taken this path:
    the file found, the thread register renders, then the
    continue-or-restart gate, which is answered `continue` — no context
    gathering, no interview
-2. the session loop opens on a clean topic: the triage queue is empty,
+2. the session loop opens on a clean topic: the mailbox is empty,
    there is no reconcile flag, and no dive has ever been dispatched
 3. **the path the user offers is landed, not questioned.** One call —
    `workunit import pay 'notes/rival-checkout.png' --from research/pay` —
@@ -71,7 +71,7 @@ Further claims:
 - the screenshot is never handed to the knowledge base — a PNG is tracked
   on the manifest alone
 - the research item stays `in-progress`; no completion, no reopen, no
-  triage delivery, no experiment
+  message delivery, no experiment
 
 EXPECTED WORLD — the fixture plus: the screenshot at
 `.workflows/pay/imports/rival-checkout-permissions.png`, byte-identical

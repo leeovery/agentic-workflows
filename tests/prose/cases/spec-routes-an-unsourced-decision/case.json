@@ -65,7 +65,7 @@
     ],
     "calls_exclude": [
       "topic reopen",
-      "topic triage",
+      "topic send",
       "topic supersede",
       "sources stale",
       "render incoherence-gate",

@@ -132,7 +132,7 @@ Also true:
   write none — and the manifest's tracking subtree holds the two
   traceability entries alone
 - the specification and the discussion are untouched; nothing
-  reopens, restarts or triages; no second work unit exists
+  reopens, restarts or sends; no second work unit exists
 - cache and scratch files under `.workflows/.cache/` are expected
   working artifacts
 

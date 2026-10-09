@@ -61,7 +61,7 @@
       "render incoherence-gate",
       "presence scan",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "sources stale",
       "workunit create"
     ],

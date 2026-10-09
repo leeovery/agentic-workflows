@@ -125,8 +125,7 @@ Also true:
   behaviour is written into it — the discussion's own decisions
   determine both, so they land in the specification alone
 - no incoherence gate renders: the pick's landing enters the flow at
-  its landing step, so nothing classifies, nothing routes to a triage
-  queue, and no source is reopened
+  its landing step, so nothing classifies, nothing routes to a mailbox, and no source is reopened
 - the discussion item never leaves `completed`, and the specification
   never pauses
 - cache and scratch files under `.workflows/.cache/` are expected

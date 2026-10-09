@@ -16,9 +16,9 @@ The prose should have taken this path:
    the knowledge base once as a contextual query, and routes into the
    epic research session
 4. the user signals they are done with nothing to add. The session loop's
-   triage check reads the queue and finds it empty, and the walk enters
+   mailbox check reads the mailbox and finds it empty, and the walk enters
    topic completion
-5. topic completion re-reads the triage queue — still empty — checks the
+5. topic completion re-reads the mailbox — still empty — checks the
    waits (nothing owed), finds no dive in flight, and runs the closing
    checks in order: document
    review reconciles the session against the file and finds it already
@@ -34,7 +34,7 @@ The prose should have taken this path:
 7. the user takes the dead end. The map item is marked first, with no
    commit of its own — the conclusion's commit carries the manifest
    change
-8. the conclusion runs with the dead-end closure: the queue is checked a
+8. the conclusion runs with the dead-end closure: the mailbox is checked a
    final time, the register holds nothing open or parked so no Open
    Threads section is written, the research completes and indexes, and
    one conclusion commit closes it. Presence clears, and the sweep finds
@@ -52,7 +52,7 @@ Further claims:
   no commit of its own
 - the research item is `completed`, not `cancelled` and not `superseded`
   — the file is kept as record, so its knowledge-base chunks survive
-- nothing was routed anywhere: no triage delivery, no new map topic, no
+- nothing was routed anywhere: no message delivery, no new map topic, no
   reopening of a sibling
 - the research document is unchanged in substance — document review had
   nothing to reconcile, and no "unexplored" residue was written into it

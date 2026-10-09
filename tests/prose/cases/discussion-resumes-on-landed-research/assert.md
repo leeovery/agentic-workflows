@@ -18,8 +18,8 @@ The prose should have taken this path:
    is skipped, so the initialisation's own research check never runs
    and the research is not read a second time through it
 4. the guidelines load, the knowledge base is addressed once as a
-   contextual query, the session opens, and its loop's first triage
-   check reads the discussion queue and finds it empty; the walk stops
+   contextual query, the session opens, and its loop's first mailbox
+   check reads the discussion mailbox and finds it empty; the walk stops
    at the session's first turn to the user, which carries the landed
    research into the conversation — the weighting decision is named as
    ground the research re-examined, the head/tail split as what it now
@@ -39,7 +39,7 @@ Further claims:
   reached the conclusion anyway
 - nothing else moved: the research item stays `completed`, its file
   and the discussion document are byte-unchanged, the map's two
-  subtopics stay `decided`, and the research queue holds no files
+  subtopics stay `decided`, and the research mailbox holds no files
 - the user was asked exactly one thing before the stop — the resume
   choice
 

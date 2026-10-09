@@ -107,7 +107,7 @@ Further claims:
   states the point the file had left open and the derivation that
   settled it; the manifest's specification item is untouched — still
   completed, no reopen, no status change, no reconcile flag
-- nothing was routed and nothing was queued: no triage landing, no
+- nothing was routed and nothing waits in any mailbox: no message send, no
   `topic reopen`, no `sources stale`, and no correction gate anywhere —
   the correction is this work unit's own specification from a
   downstream phase, which is silent by construction

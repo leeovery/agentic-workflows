@@ -10,7 +10,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty store
    — the session proceeds silently), and enters the session step
-4. the session loop's checks run: the triage check no-ops on an empty
+4. the session loop's checks run: the mailbox check no-ops on an empty
    queue, and the agent check finds nothing — no agent has been
    dispatched yet. A session just opened with no thread underway is a
    natural break, so the non-empty calls queue flushes: the flush

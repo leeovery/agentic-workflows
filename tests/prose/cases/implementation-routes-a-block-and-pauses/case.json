@@ -1,5 +1,5 @@
 {
-  "origin": "The third tier is the one that has to end the session, and on a feature it has no epic machinery to lean on: the concern is written and delivered straight to the source discussion's queue, the work is committed, and the session stops dead — no Step 8, no conclude gate, nothing that would let a later turn carry on building against a record that has just been reopened. It is also the one arm the block gate reaches without a pick: the gate offers the fork's sides numbered with the recommendation first and **Comment**, and this walk takes the Comment — the user saying the question changes what cancelling an order means and is not theirs to settle alone. It pins the terminal stop and what the delivery leaves behind — the discussion reopened, its queue holding one concern, the specification flagged to reconcile and its source row staled — because every one of those is what the way back is built from, and a walk that instead marched on to the conclude gate would look successful while doing exactly what the tier exists to prevent.",
+  "origin": "The third tier is the one that has to end the session, and on a feature it has no epic machinery to lean on: the message is written and delivered straight to the source discussion's mailbox, the work is committed, and the session stops dead — no Step 8, no conclude gate, nothing that would let a later turn carry on building against a record that has just been reopened. It is also the one arm the block gate reaches without a pick: the gate offers the fork's sides numbered with the recommendation first and **Comment**, and this walk takes the Comment — the user saying the question changes what cancelling an order means and is not theirs to settle alone. It pins the terminal stop and what the delivery leaves behind — the discussion reopened, its mailbox holding one message, the specification flagged to reconcile and its source row staled — because every one of those is what the way back is built from, and a walk that instead marched on to the conclude gate would look successful while doing exactly what the tier exists to prevent.",
   "entry": "workflow-implementation-process",
   "world": "claims",
   "files": [
@@ -28,7 +28,7 @@
     "skills/workflow-implementation-process/references/invoke-executor.md",
     "skills/workflow-implementation-process/references/bank-deposit.md",
     "skills/workflow-planning-process/references/resolve-spec-gap.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-shared/references/reconcile-advisory.md",
     "skills/workflow-implementation-process/references/display-task-result.md"
   ],
@@ -51,8 +51,8 @@
       "render task-brief pay.implementation.pay",
       "task-result.json --result blocked",
       "render executor-block-gate pay.implementation.pay --result blocked --file .workflows/.cache/pay/implementation/pay/block-sides.json",
-      "topic triage pay discussion pay",
-      "--concern .workflows/.cache/pay/implementation/pay/gap-concern.md",
+      "topic send pay discussion pay",
+      "--content .workflows/.cache/pay/implementation/pay/gap-message.md",
       "impl(pay): gap routed to pay",
       "impl(pay): record the paused task",
       "--plan pay",
@@ -68,8 +68,8 @@
       "task-result.json --result blocked",
       "write:.workflows/.cache/pay/implementation/pay/block-sides.json",
       "render executor-block-gate pay.implementation.pay --result blocked --file .workflows/.cache/pay/implementation/pay/block-sides.json",
-      "write:.workflows/.cache/pay/implementation/pay/gap-concern.md",
-      "topic triage pay discussion pay",
+      "write:.workflows/.cache/pay/implementation/pay/gap-message.md",
+      "topic send pay discussion pay",
       "impl(pay): record the paused task",
       "impl(pay): pause — gap routed to pay"
     ],

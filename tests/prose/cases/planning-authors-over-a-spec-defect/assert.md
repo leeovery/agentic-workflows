@@ -123,7 +123,7 @@ Further claims:
   ambiguity — the answer went into the record, not the plan
 - the specification item is untouched: still `completed`, no reopen, no
   reconcile flag, its source row still `incorporated`; nothing was
-  triaged, no wait gate and no incoherence gate rendered, the
+  sent, no wait gate and no incoherence gate rendered, the
   discussion document is byte-identical to the fixture's, and the plan
   is never concluded
 - cache payload files (phase tree, task list) are expected working

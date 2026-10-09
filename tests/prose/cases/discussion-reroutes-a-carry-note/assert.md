@@ -11,7 +11,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
-   step; the session loop's triage check finds the queue empty and
+   step; the session loop's mailbox check finds the mailbox empty and
    shows nothing
 4. the user has nothing to add — everything was decided in the earlier
    sitting — and signals the discussion covers it; the map is read
@@ -27,15 +27,15 @@ The prose should have taken this path:
    sibling, set aside for routing, never silently deleted
 7. the routing gate presents the note with behavioural-ranking as the
    target and discussion as the judged landing phase; the user lands
-   it. Triage landing resolves the target on the live map and delivers
-   through the self-committing `topic triage`: behavioural-ranking's
+   it. Sending resolves the target on the live map and delivers
+   through the self-committing `topic send`: behavioural-ranking's
    completed discussion reopens to in-progress and the note lands as
-   one file in its triage queue carrying the full pair-aggregates
-   context; the stranded prose is replaced in place with a reroute
+   one file in its mailbox carrying the full pair-aggregates
+   context; the stranded prose is replaced in place with a send
    record naming the landed topic, and the prose edit is committed
    under a subject leading with "document review"
 8. compliance runs its re-read discipline, and the conclusion follows:
-   the topic's own queue is empty, the user confirms, `topic complete`
+   the topic's own mailbox is empty, the user confirms, `topic complete`
    marks the discussion completed and indexes it, the commit lands,
    the sweep finds no leavings, and the walk stops at the bridge
    invocation
@@ -43,20 +43,20 @@ The prose should have taken this path:
 Further claims:
 
 - behavioural-ranking's discussion item ends `in-progress` — reopened
-  by the landing, not by any session; its triage queue holds exactly
+  by the landing, not by any session; its mailbox holds exactly
   one file whose provenance line names synonym-handling, discussion,
   and a date, and whose body carries the pair-aggregates correction
   with enough context to resolve it cold (the decided schema covers
   click and purchase counts; expansion needs reformulation-and-click
   pair aggregates)
 - behavioural-ranking's discussion file itself is untouched — the
-  landing parks knowledge in the queue, never edits the document
+  landing parks knowledge in the mailbox, never edits the document
 - synonym-handling's discussion item ends `completed`; its Summary no
-  longer carries the carry-note — a reroute record naming
+  longer carries the carry-note — a send record naming
   behavioural-ranking and a date stands where it was; the Expansion
   Source section, its Sibling check line, and the rest of the document
   are otherwise unchanged
-- the reroute prose commit's subject leads with "document review" so
+- the send prose commit's subject leads with "document review" so
   the closing classifiers read it as bookkeeping
 - the map gained no subtopics and the discovery map gained no items;
   relevance-measurement still has no per-phase work

@@ -112,7 +112,7 @@ Also true:
   Checkout Session, and in Refunds both which deadline is enforced and
   that a refund waits for capture confirmation
 - nothing routes to a source: no `incoherence-gate` render, no
-  presence scan, no reindex of the discussion, no triage, no reopen.
+  presence scan, no reindex of the discussion, no message sent, no reopen.
   The discussion document is untouched
 - cache and scratch files under `.workflows/.cache/` are expected
   working artifacts

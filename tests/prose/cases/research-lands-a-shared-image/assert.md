@@ -12,9 +12,9 @@ The prose should have taken this path:
 3. the walk passes through file strategy and the guidelines, addresses the
    knowledge base once as a contextual query, reads the work type, and
    routes into the single-topic session wrapper — the deep-dive,
-   rerouted-concerns and shared-files protocols loaded, nothing run at
+   reading-the-mailbox and shared-files protocols loaded, nothing run at
    load
-4. the loop's first iteration checks what landed: the triage queue reads
+4. the loop's first iteration checks what landed: the mailbox reads
    empty, the landed-evidence read finds no reconcile flag, and the dive
    check finds nothing to fold — no dive was ever dispatched
 5. **the path the user offers lands before anything is written.** One
@@ -66,7 +66,7 @@ Landing claims — the lens is the behaviour under test:
 Further claims:
 
 - the research item stays `in-progress`; no completion, no reopen, no
-  triage delivery, no map operation, no experiment
+  message delivery, no map operation, no experiment
 - nothing about the landing is put to the user as a choice — the whole of
   it is the call, the read, and the link
 

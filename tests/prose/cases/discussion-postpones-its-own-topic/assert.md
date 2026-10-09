@@ -7,7 +7,7 @@ The prose should have taken this path:
    phase note, and checks the reconcile flag (absent — silent) — the
    user is asked nothing about the carrier
 2. beneath the note, with the file found, the resume surface carries on
-   — the current map shown, the triage queue read (empty, so no triage
+   — the current map shown, the mailbox read (empty, so no mail
    warning), then the continue-or-restart gate, with no second heading
    of its own — and the user continues
 3. initialisation is skipped: the walk lands at the guidelines,
@@ -15,12 +15,12 @@ The prose should have taken this path:
    store holds the epic's discovery session log, so results come back
    and one line acknowledges the surfaced context — and enters the
    session step
-4. the session loop's triage check no-ops on an empty queue; its
+4. the session loop's mailbox check no-ops on an empty mailbox; its
    check-for-results finds an empty agent store — nothing pending,
    nothing to surface, no dispatch
 5. the session takes up the live subtopic and the user sends the whole
    topic to a later release. The session does not read that as a
-   subtopic, a reroute, a deferral, or an idea to put aside: no
+   subtopic, a send, a deferral, or an idea to put aside: no
    `discussion-map add`, nothing set `deferred`, no backlog gate, no
    park gate, no closing gates, no wait gate, no document review, no
    `topic complete`

@@ -2,33 +2,33 @@ The prose should have taken this path:
 
 1. the skill asks the engine whether research is outstanding on the
    topic (it is not), then reads the discussion status once, finds it
-   in progress (the triage reopen left it so), emits the resuming phase
+   in progress (the message delivery reopen left it so), emits the resuming phase
    note, and checks the reconcile flag (absent — silent) — the user is
    asked nothing about the carrier
 2. beneath the note, with the file found, the resume surface carries on
-   — the current map shown, the triage queue read (one entry), then the
-   resume gate with the triage warning directly above its menu, with no
+   — the current map shown, the mailbox read (one message), then the
+   resume gate with the mail warning directly above its menu, with no
    second heading of its own — and the user continues
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's first triage check finds a resumed sitting with
-   a queued concern: the one-entry agenda and the offer menu render
+4. the session loop's first mailbox check finds a resumed sitting with
+   a waiting message: the one-message agenda and the offer menu render
    before any session output — no opening question, no thread of the
    topic's own first — and the user opts in
-5. the concern's queue file is read as the session's own brief. Its
+5. the message's file is read as the session's own brief. Its
    ask is a decision owed here, so no move to the other phase-side is
    offered. Its title names a decided subtopic, so the ground re-arms
    at the raise: the map's subtopics are read and
    `failed-payment-retries` is set `exploring` before the raise —
-   composed as an opener in the walk's own voice, never the entry
+   composed as an opener in the walk's own voice, never the message
    verbatim, never from the title alone — and the map is no longer
    all decided
-6. the concern is discussed as real material and the user lands the
+6. the message is discussed as real material and the user lands the
    changed decision: soft declines retry as before, a hard decline
    ends the attempt at once with the order left open. The fold lands
    it into the existing `## Failed Payment Retries` section — the
-   provenance line and the concern's body appended to its Context,
+   provenance line and the message's body appended to its Context,
    and the re-decision as a dated timeline entry on its Decision per
    the template's revision convention: the original prose wrapped
    verbatim as `#### Initial`, the new decision above it with a
@@ -39,8 +39,8 @@ The prose should have taken this path:
    query on the way is legal, not owed)
 7. the map is set back to `decided` — `discussion-map set pay pay
    failed-payment-retries decided` answers `all_decided: true` — and
-   the concern is absorbed in one engine transaction naming its
-   ground (`--subtopic failed-payment-retries`): the queue file
+   the message is absorbed in one engine transaction naming its
+   ground (`--subtopic failed-payment-retries`): the message file
    deleted, the fold committed under the absorb's own message, the
    subtopic settled into the review-arming anchor. `remaining` is 0,
    so the clear line renders, and nothing recaps the walk
@@ -49,7 +49,7 @@ The prose should have taken this path:
    (`render wait-gate pay.discussion.pay`), which comes back empty —
    nothing owed — then reads the map through the gateway, finds it
    all decided, emits the settled line, and loads the closing gates
-9. the closing gates read the triage queue (empty now) and the agent
+9. the closing gates read the mailbox (empty now) and the agent
    store. The highest-numbered review row is incorporated, so the
    movement filter runs, anchored on review-002 — the highest-numbered
    review whose report is on disk: git log since its `created`
@@ -75,8 +75,8 @@ Further claims:
   landed-input read (no flag) is the one engine call between them
 - the defer gate never renders and nothing is written `deferred`; no
   `(deferral)` commit exists
-- no review is dispatched at any point: while the concern was queued
-  the dispatch check's triage box held it shut, and after the absorb
+- no review is dispatched at any point: while the message was waiting
+  the dispatch check's mailbox box held it shut, and after the absorb
   arming reads no map movement since review-002 against the two moves
   two completed cycles need. No ack, no surface, no incorporate — the
   store's two review rows stay incorporated; the anchor's snapshot
@@ -86,8 +86,8 @@ Further claims:
   `review-running`) never render — the store held drained,
   report-backed reviews, so the offer was optional and the user's `n`
   is what routed to the conclude gate
-- no second subtopic was created for the concern — the fold reused
-  the existing subtopic; the requeue offer never rendered — the ask
+- no second subtopic was created for the message — the fold reused
+  the existing subtopic; the forward offer never rendered — the ask
   was a decision, owed here
 - the specification item was not touched by the walk: still in
   progress, its source row for the discussion still `stale`, its
@@ -98,14 +98,14 @@ EXPECTED WORLD — from the fixture:
 - the discussion file at `.workflows/pay/discussion/pay.md` holds the
   `## Failed Payment Retries` section with a Context that now ends in
   the provenance line (`*From: pay · specification · 2026-01-01*`) and
-  the concern's body, and a Decision block of two entries, latest
+  the message's body, and a Decision block of two entries, latest
   first: a dated `#### {date} — revised` entry directly beneath the
   heading recording soft-decline-only retries with a hard decline
   ending the attempt at once and the order left open, then
   `#### Initial` holding the original three-attempts prose unedited —
   wrapped, not rewritten, not annotated; the other three sections are
   unchanged
-- the topic's triage queue is empty — the concern file deleted by the
+- the topic's mailbox is empty — the message file deleted by the
   absorb, its deletion staged in the absorb commit alongside the fold
 - the manifest holds the discussion in progress with all four
   subtopics `decided` — none pending, exploring, or deferred; the
@@ -116,7 +116,7 @@ EXPECTED WORLD — from the fixture:
   settle of the anchor's snapshot entry, which leaves it reading
   `decided`
 - git history holds the absorb commit on the discussion file after
-  the layered drain commit, naming the concern file and its origin,
+  the layered drain commit, naming the message file and its origin,
   carrying no drain or deferral marker
 - no research, planning, implementation, or review artifacts anywhere;
   the work-unit description unchanged; no second work unit; per-turn
