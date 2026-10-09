@@ -131,9 +131,13 @@ describe('roadmap projections: map view', () => {
     assert.match(out, /Menus\n.*operators maintain\n.*↳ Waiting/);
   });
 
-  it('marks an existing bug row beneath a harvest proposal; the proposed rows are ideas', () => {
-    const out = roadmapProposalView(state([FIXES[0]]), [{ name: 'gift-cards', horizon: 'v1', summary: 'stored value' }]);
-    assert.match(out, /↳ Bug · waiting/);
-    assert.strictEqual((out.match(/↳ Bug/g) || []).length, 1);
+  it('marks a bug row in a harvest proposal, proposed or existing; a proposed row with no kind is an idea', () => {
+    const out = roadmapProposalView(state([FIXES[0]]), [
+      { name: 'gift-cards', horizon: 'v1', summary: 'stored value' },
+      { name: 'slow-search', horizon: 'v1', summary: 'search lags', kind: 'bug' },
+    ]);
+    assert.match(out, /Gift Cards\n.*stored value\n.*↳ Waiting/);
+    assert.match(out, /Slow Search\n.*search lags\n.*↳ Bug · waiting/);
+    assert.match(out, /Login Crash\n.*sign-in crashes\n.*↳ Bug · waiting/);
   });
 });

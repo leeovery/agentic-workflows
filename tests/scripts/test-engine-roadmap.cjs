@@ -198,7 +198,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
       { name: 'fresh', horizon: 'mvp', summary: 's' },
       { name: 'loyalty', horizon: 'v1', summary: 's' },
     ]));
-    assert.match(runFail(dir, ['add-batch', '--file', 'dup.json']).error, /"loyalty" is already on the roadmap — nothing was added/);
+    assert.strictEqual(runFail(dir, ['add-batch', '--file', 'dup.json']).error,
+      'add-batch: "loyalty" is already on the roadmap — edit it, or pick a different name');
 
     fs.writeFileSync(path.join(dir, 'twice.json'), JSON.stringify([
       { name: 'x', horizon: 'mvp', summary: 's' },
@@ -308,7 +309,7 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     const fresh = { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA };
 
     assert.match(runFail(dir, batch([fresh, { name: 'loyalty', horizon: 'v1', summary: 's', note: BUG }])).error,
-      /add-batch: "loyalty" is already on the roadmap — nothing was added/);
+      /add-batch: "loyalty" is already on the roadmap — edit it, or pick a different name/);
     assert.strictEqual(runFail(dir, batch([{ ...fresh, kind: 'bug' }])).error,
       `add-batch: entry 1 — "kind" is bug, but the note "${IDEA}" is a idea — a note's kind is its inbox folder's`);
     assert.match(runFail(dir, batch([{ ...fresh, origin: 'harvest' }])).error, /entry 1 — a note sets the entry's origin and source/);
@@ -317,6 +318,9 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.match(runFail(dir, batch([{ ...fresh, note: '.workflows/.inbox/ideas/2026-09-09--ghost.md' }])).error, /add-batch: inbox file not found/);
     assert.match(runFail(dir, batch([fresh, { name: 'twin', horizon: 'later', summary: 's', note: IDEA }])).error, /add-batch: duplicate inbox path/);
     assert.match(runFail(dir, batch([{ ...fresh, note: 42 }])).error, /entry 1 — "note" must be a live inbox path/);
+    const spaced = '.workflows/.inbox/ideas/2026-03-04--dark mode.md';
+    fs.writeFileSync(path.join(dir, spaced), 'a hand-dropped file\n');
+    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — unknown origin "inbox:2026-03-04--dark mode"/);
     fs.mkdirSync(path.dirname(path.join(dir, IDEA_NOTE)), { recursive: true });
     fs.writeFileSync(path.join(dir, IDEA_NOTE), 'taken\n');
     assert.match(runFail(dir, batch([fresh])).error, /add-batch: destination already exists/);
@@ -324,6 +328,37 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.ok(exists(IDEA) && exists(BUG), 'every note stays in the inbox');
     assert.strictEqual(projectManifestText(dir), before);
     assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('a move that throws midway puts back every note it moved and restores the manifest — no note is left in neither place', () => {
+    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
+    const before = projectManifestText(dir);
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    // A file where the bugs folder belongs: the idea's note moves, the bug's cannot.
+    fs.mkdirSync(path.join(dir, '.workflows/.roadmap/notes'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/.roadmap/notes/bugs'), 'in the way\n');
+
+    runFail(dir, batch([
+      { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA },
+      { name: 'login-crash', horizon: 'later', summary: 's', note: BUG },
+    ]));
+
+    assert.ok(exists(IDEA) && exists(BUG), 'both notes are back in the inbox');
+    assert.strictEqual(exists(IDEA_NOTE), false);
+    assert.strictEqual(projectManifestText(dir), before, 'the manifest as it was read');
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('a remove whose archive move throws leaves the item and its note as they were', () => {
+    runOk(dir, batch([{ name: 'login-crash', horizon: 'later', summary: 's', note: BUG }]));
+    const before = projectManifestText(dir);
+    fs.mkdirSync(path.join(dir, '.workflows/.inbox/.archived'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/.inbox/.archived/bugs'), 'in the way\n');
+
+    runFail(dir, ['remove', 'login-crash']);
+
+    assert.ok(exists(BUG_NOTE), 'the note stays on the roadmap, named by its item');
+    assert.strictEqual(projectManifestText(dir), before);
   });
 
   it('remove of a waiting item sends its roadmap note to the inbox archive under the same commit', () => {
@@ -731,12 +766,19 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(item.kind, 'idea');
   });
 
-  it('a re-wait keeps the item\'s own kind', () => {
+  it('a bug or a quick-fix never binds to a topic — it rides with the unit — so a re-wait is always an idea\'s', () => {
     runOk(dir, ['add', 'checkout-crash', '--horizon', 'mvp', '--summary', 'the order page crashes', '--kind', 'bug']);
-    runOk(dir, ['pull', 'checkout-crash', '--into', 'mvp']);
-    runOk(dir, ['bind', 'checkout-crash', '--topic', 'ordering']);
-    engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
-    assert.strictEqual(readProject(dir).roadmap.items['checkout-crash'].kind, 'bug');
+    runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
+    runOk(dir, ['pull', 'checkout-crash', 'typo', '--into', 'mvp']);
+    const before = projectManifestText(dir);
+    assert.strictEqual(runFail(dir, ['bind', 'checkout-crash', '--topic', 'ordering']).error,
+      '"checkout-crash" is a bug — it rides with the unit as material; only an idea binds to a topic');
+    assert.match(runFail(dir, ['bind', 'typo', '--topic', 'ordering']).error, /^"typo" is a quick-fix — it rides with the unit/);
+    assert.strictEqual(projectManifestText(dir), before);
+    const res = engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']);
+    assert.strictEqual(res.roadmap.reverted_join, false, 'nothing bound to the topic, so the topic\'s own idea is born');
+    assert.strictEqual(readProject(dir).roadmap.items.ordering.kind, 'idea');
+    assert.deepStrictEqual(readProject(dir).roadmap.items['checkout-crash'].pulled_to, { work_unit: 'mvp' }, 'the bug rides on with the unit');
   });
 
   it('a name clash seeded between the gate and the verb refuses the whole transaction — nothing on either manifest moves', () => {

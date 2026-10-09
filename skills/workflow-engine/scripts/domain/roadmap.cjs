@@ -51,9 +51,9 @@ const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClash
 const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, INBOX, FOLDER_KIND } = require('./inbox.cjs');
 
-/** @typedef {'idea'|'bug'|'quick-fix'} RoadmapKind */
+/** @typedef {import('./inbox.cjs').ItemKind} RoadmapKind */
 
-const KINDS = /** @type {RoadmapKind[]} */ (['idea', 'bug', 'quick-fix']);
+const KINDS = /** @type {RoadmapKind[]} */ (Object.values(FOLDER_KIND));
 
 // A roadmap note as a source — relative to `.workflows/`, as every source is.
 const NOTE_SOURCE = /^\.roadmap\/notes\/(ideas|bugs|quickfixes)\/([^/]+\.md)$/;
@@ -384,6 +384,46 @@ function transactProject(cwd, fn) {
 }
 
 /**
+ * A transaction that moves notes: `fn` mutates the manifest and names its
+ * moves. A note is always somewhere it can be seen — named by an item, or in
+ * the inbox — so a note coming onto the roadmap moves after the manifest
+ * names it, and one leaving (`leaving`) moves before the manifest lets it
+ * go: an interruption between the two leaves an item naming a note still in
+ * the inbox, never a note nothing names. Whichever half throws, the other is
+ * undone — files put back, or the manifest restored as it was read.
+ * @template T
+ * @param {string} cwd
+ * @param {(manifest: Record<string, any>) => {out: T, moves: {from: string, to: string}[]}} fn
+ * @param {{leaving?: boolean}} [opts]
+ * @returns {T}
+ */
+function transactProjectAndMove(cwd, fn, { leaving = false } = {}) {
+  return withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    const before = JSON.parse(JSON.stringify(manifest));
+    const { out, moves } = fn(manifest);
+    if (leaving) {
+      moveFiles(cwd, moves);
+      try {
+        writeProjectManifestAtomic(cwd, manifest);
+      } catch (err) {
+        moveFiles(cwd, moves.map(({ from, to }) => ({ from: to, to: from })).reverse());
+        throw err;
+      }
+    } else {
+      writeProjectManifestAtomic(cwd, manifest);
+      try {
+        moveFiles(cwd, moves);
+      } catch (err) {
+        writeProjectManifestAtomic(cwd, before);
+        throw err;
+      }
+    }
+    return out;
+  });
+}
+
+/**
  * Tail-commit the project manifest — and a work unit's alongside it, for the
  * mutations that reach across the boundary, and both ends of every file a
  * mutation moved — and stamp the result: the shared close of every mutation.
@@ -505,57 +545,81 @@ function resolveBatchEntry(e) {
     throw new Error('a note sets the entry\'s origin and source — drop "origin" and "sources"');
   }
   const source = `.roadmap/notes/${note.folder}/${note.file}`;
+  const origin = `inbox:${note.file.replace(/\.md$/, '')}`;
+  validateOrigin(origin);
   return {
     ...base,
     kind,
-    origin: `inbox:${note.file.replace(/\.md$/, '')}`,
+    origin,
     sources: [source],
     move: { from: note.given, to: `.workflows/${source}` },
   };
 }
 
 /**
- * Add a whole item set in one transaction — the harvest's batch form, and
- * the inbox's way onto the roadmap. Every entry is validated before anything
- * is applied — names, clashes, every note a live inbox file with its roadmap
- * home free — so a refusal moves and persists nothing; then every note moves
- * off the inbox, horizons are JIT-created in entry order, and the whole
- * batch lands under one commit naming the notes at both ends.
- * @param {string} cwd
- * @param {Record<string, any>[]} entries  `{name, horizon, summary, kind?, origin?, sources?, note?}`
- * @returns {RoadmapOpResult}
+ * Validate a whole add-batch payload against the roadmap's items and the
+ * disk, and resolve what it lands — the one validator the verb and the
+ * inbox's confirm gate share: every entry (see resolveBatchEntry), no name
+ * twice in the set or already on the roadmap, every note a live inbox file
+ * named once with its roadmap home free, every other source on disk.
+ * Refuses naming what failed; writes nothing.
+ * @param {string} cwd @param {*} entries @param {Record<string, any>} items  the roadmap's items now
+ * @returns {{resolved: BatchEntry[], moves: {from: string, to: string}[]}}
  */
-function addRoadmapItemsBatch(cwd, entries) {
+function planBatch(cwd, entries, items) {
   if (!Array.isArray(entries) || entries.length === 0) {
-    throw new Error('add-batch: entries must be a non-empty array of {name, horizon, summary, kind?, origin?, sources?, note?}');
+    throw new Error('entries must be a non-empty array of {name, horizon, summary, kind?, origin?, sources?, note?}');
   }
   const resolved = entries.map((e, i) => {
     try {
       return resolveBatchEntry(e);
     } catch (err) {
-      throw new Error(`add-batch: entry ${i + 1} — ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`entry ${i + 1} — ${err instanceof Error ? err.message : String(err)}`);
     }
   });
   const names = resolved.map((e) => e.name);
   const dupe = names.find((n, i) => names.indexOf(n) !== i);
-  if (dupe) throw new Error(`add-batch: "${dupe}" appears more than once in the batch`);
+  if (dupe) throw new Error(`"${dupe}" appears more than once in the batch`);
+  const taken = names.find((n) => items[n]);
+  if (taken) throw new Error(`"${taken}" is already on the roadmap — edit it, or pick a different name`);
   const moves = resolved.flatMap((e) => (e.move ? [e.move] : []));
-  try {
-    parseInboxPaths(cwd, moves.map((m) => m.from), { archived: false });
-    refuseTakenDestinations(cwd, moves);
-    requireSourcesOnDisk(cwd, resolved.flatMap((e) => (e.move ? [] : e.sources)));
-  } catch (err) {
-    throw new Error(`add-batch: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  parseInboxPaths(cwd, moves.map((m) => m.from), { archived: false });
+  refuseTakenDestinations(cwd, moves);
+  requireSourcesOnDisk(cwd, resolved.flatMap((e) => (e.move ? [] : e.sources)));
+  return { resolved, moves };
+}
 
-  const result = transactProject(cwd, (manifest) => {
-    const roadmap = ensureRoadmap(manifest);
-    for (const e of resolved) {
-      if (roadmap.items[e.name]) {
-        throw new Error(`add-batch: "${e.name}" is already on the roadmap — nothing was added; edit it, or pick a different name`);
-      }
+/**
+ * The add-batch plan as a dry run against the roadmap as it stands — what
+ * the inbox's confirm gate shows, refused exactly where the verb would be.
+ * @param {string} cwd @param {*} entries
+ * @returns {BatchEntry[]}
+ */
+function planRoadmapBatch(cwd, entries) {
+  return planBatch(cwd, entries, roadmapItems(readProjectManifest(cwd))).resolved;
+}
+
+/**
+ * Add a whole item set in one transaction — the harvest's batch form, and
+ * the inbox's way onto the roadmap. The plan (planBatch) runs under the
+ * project lock, so a refusal moves and persists nothing; then the items land
+ * — horizons JIT-created in entry order — and every note moves off the
+ * inbox, the manifest written first (transactProjectAndMove), the whole
+ * batch under one commit naming the notes at both ends.
+ * @param {string} cwd
+ * @param {Record<string, any>[]} entries  `{name, horizon, summary, kind?, origin?, sources?, note?}`
+ * @returns {RoadmapOpResult}
+ */
+function addRoadmapItemsBatch(cwd, entries) {
+  const result = transactProjectAndMove(cwd, (manifest) => {
+    let plan;
+    try {
+      plan = planBatch(cwd, entries, roadmapItems(manifest));
+    } catch (err) {
+      throw new Error(`add-batch: ${err instanceof Error ? err.message : String(err)}`);
     }
-    moveFiles(cwd, moves);
+    const { resolved, moves } = plan;
+    const roadmap = ensureRoadmap(manifest);
     /** @type {string[]} */
     const horizonsCreated = [];
     for (const e of resolved) {
@@ -574,9 +638,9 @@ function addRoadmapItemsBatch(cwd, entries) {
       item_total: Object.keys(roadmap.items).length,
     };
     if (moves.length > 0) out.notes_moved = moves;
-    return out;
+    return { out, moves };
   });
-  return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`, { moves });
+  return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`, { moves: result.notes_moved ?? [] });
 }
 
 /**
@@ -698,20 +762,19 @@ function removeRoadmapItem(cwd, name) {
     const { cancelPostponedUnit } = require('./transitions.cjs');
     cancelPostponedUnit(cwd, postponed.work_unit, postponed.topic, name);
   }
-  const result = transactProject(cwd, (manifest) => {
+  const result = transactProjectAndMove(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
     refuseJoined(item, name, 'removing');
     const moves = noteArchiveMoves(cwd, roadmap.items, name);
     refuseTakenDestinations(cwd, moves);
-    moveFiles(cwd, moves);
     delete roadmap.items[name];
     /** @type {RoadmapOpResult} */
     const out = { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
     if (moves.length > 0) out.notes_moved = moves;
     if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
-    return out;
-  });
+    return { out, moves };
+  }, { leaving: true });
   const moves = result.notes_moved ?? [];
   return postponed
     ? commitRoadmap(cwd, result, `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit, moves })
@@ -950,6 +1013,9 @@ function bindItem(cwd, name, { topic } = {}) {
     const item = roadmapItem(roadmap, name);
     const join = itemJoin(item);
     if (!join) throw new Error(`"${name}" is not joined to a work unit — pull it first`);
+    if (item.kind !== 'idea') {
+      throw new Error(`"${name}" is a ${item.kind} — it rides with the unit as material; only an idea binds to a topic`);
+    }
     /** @type {any} */
     let unit;
     try {
@@ -1332,7 +1398,8 @@ function flagJoined(cwd, name) {
 }
 
 module.exports = {
-  ROADMAP_KINDS: KINDS,
+  validateKind,
+  planRoadmapBatch,
   roadmapState,
   hasRoadmapNode,
   ensureRoadmap,

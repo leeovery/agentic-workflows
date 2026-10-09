@@ -305,14 +305,16 @@ describe('gateway.cjs adapter: map-view', () => {
 
   it('--proposed-file renders the synthesis view and flags each proposed name in DATA', () => {
     richFixture(dir);
-    // A waiting roadmap item sharing a proposed name — the anti-twin flag; a
-    // pulled one does not fire it (its collision is the join's business).
+    // A waiting roadmap idea sharing a proposed name — the anti-twin flag; a
+    // pulled one does not fire it (its collision is the join's business), nor
+    // a waiting bug, which never becomes a topic.
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
       roadmap: {
         horizons: ['v1'],
         items: {
-          'kitchen-printers': { horizon: 'v1', summary: 'waiting twin', origin: 'harvest' },
-          'old-idea': { horizon: 'v1', summary: 'pulled elsewhere', origin: 'harvest', pulled_to: { work_unit: 'payments' } },
+          'kitchen-printers': { horizon: 'v1', summary: 'waiting twin', kind: 'idea', origin: 'harvest' },
+          'old-idea': { horizon: 'v1', summary: 'pulled elsewhere', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'payments' } },
+          'receipt-crash': { horizon: 'v1', summary: 'a waiting bug', kind: 'bug', origin: 'harvest' },
         },
       },
     }, null, 2));
@@ -321,17 +323,19 @@ describe('gateway.cjs adapter: map-view', () => {
       { name: 'menu-management', routing: 'research', summary: 'collides with an active item', description: 'd' },
       { name: 'old-idea', routing: 'research', summary: 'previously dismissed', description: 'd' },
       { name: 'bad.name', routing: 'research', summary: 'dots break addressing', description: 'd' },
+      { name: 'receipt-crash', routing: 'discussion', summary: 'shares a waiting bug\'s name', description: 'd' },
     ]));
     const res = run(['map-view', 'payments', '--proposed-file', 'proposed.json']);
     assert.strictEqual(res.status, 0);
     assert.match(res.stdout, /mode: synthesis\n/);
-    assert.match(res.stdout, /proposed \(4\):/);
+    assert.match(res.stdout, /proposed \(5\):/);
+    assert.match(res.stdout, /receipt-crash routing=discussion exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
     assert.match(res.stdout, /kitchen-printers routing=discussion exists_on_map=false matches_dismissed=false legal_name=true waiting_on_roadmap=true/);
     assert.match(res.stdout, /menu-management routing=research exists_on_map=true matches_dismissed=false legal_name=true waiting_on_roadmap=false/);
     assert.match(res.stdout, /old-idea routing=research exists_on_map=false matches_dismissed=true legal_name=true waiting_on_roadmap=false/);
     assert.match(res.stdout, /bad\.name routing=research exists_on_map=false matches_dismissed=false legal_name=false waiting_on_roadmap=false/);
     assert.ok(res.stdout.includes('\nSynthesised Discovery Map — Payments'));
-    assert.ok(res.stdout.includes('\nNew this session (4)\n'));
+    assert.ok(res.stdout.includes('\nNew this session (5)\n'));
     assert.ok(res.stdout.includes('\nAlready on the map (7)\n'));
   });
 
