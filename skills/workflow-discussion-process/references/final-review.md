@@ -160,7 +160,7 @@ Record the dispatch — the engine allocates the id and answers with the content
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review --final
 ```
 
-**If the response is `ok: false` naming the triage queue** — a concern landed after the queue gate (a peer session's delivery): surface the engine's error verbatim; the queue owns the close now.
+**If the response is `ok: false` naming the mailbox** — a message arrived after the mailbox gate (a peer session's send): surface the engine's error verbatim; the mailbox owns the close now.
 
 → Return to **[the skill](../SKILL.md)** for **Step 5**.
 

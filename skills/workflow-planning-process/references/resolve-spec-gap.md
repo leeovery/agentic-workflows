@@ -16,7 +16,7 @@ What gets built is what the specification decided; where it decided nothing, or 
 
 The moves, by effort — and derivation is exhausted before any stop: context, the specification's own decisions, sibling artifacts, measurement against the tree. What the record yields is settled and lands silently. The one thing never derived is product intent: neither the plan nor the code invents what the product does.
 
-An entry an earlier settle already landed — its corrigendum present in the specification, or its concern already queued on `{doc}`'s triage queue (`node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {source_phase} {doc}` lists it) — is skipped, and the planning lanes move on to the next entry. From `implementation` the two part:
+An entry an earlier settle already landed — its corrigendum present in the specification, or its message already waiting in `{doc}`'s mailbox (`node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} {source_phase} {doc}` lists it) — is skipped, and the planning lanes move on to the next entry. From `implementation` the two part:
 
 **If the corrigendum is in the specification:**
 
@@ -24,9 +24,9 @@ The record carries the answer. Set `verdict = landed`.
 
 → Return to caller.
 
-**If the concern is queued on `{doc}`:**
+**If the message is waiting in `{doc}`'s mailbox:**
 
-The record has not settled it — the queued concern is what an answer waits on. Tell the user in one line that the question is still queued on `{doc}` and the work waits for it. Set `verdict = stopped`.
+The record has not settled it — the waiting message is what an answer waits on. Tell the user in one line that the question is still waiting in `{doc}`'s mailbox and the work waits for it. Set `verdict = stopped`.
 
 → Return to caller.
 
@@ -176,9 +176,9 @@ Tell the user in one line that the specification is out and the answer rides the
 
 #### If a row matches `{doc}`'s phase and topic with `held` true
 
-The room is occupied. The agreed resolution goes to the held session's queue, and the work waits for the record.
+The room is occupied. The agreed resolution goes to the held session's mailbox, and the work waits for the record.
 
-→ Proceed to **D. Route the Gap** with the agreed resolution as the concern.
+→ Proceed to **D. Route the Gap** with the agreed resolution as the message.
 
 #### Otherwise
 
@@ -210,11 +210,11 @@ Say it in one line, keyed on the lane. From the planning lanes: the decision is 
 
 ## D. Route the Gap
 
-The point goes to `{doc}`'s triage queue — its item reopens, the queued concern survives any context clear, and the reopened session surfaces it and cannot conclude without folding it.
+The point goes to `{doc}`'s mailbox — its item reopens, the message survives any context clear, and the reopened session raises it and cannot conclude without folding it.
 
 #### If the work type is `epic`
 
-→ Load **[../../workflow-shared/references/triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{doc}`, concern = `{what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `discussion`, date = `{today}`.
+→ Load **[../../workflow-shared/references/sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{doc}`, message = `{what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `discussion`, date = `{today}`.
 
 On return, read `result` and `landed_topic`.
 
@@ -238,10 +238,10 @@ Nothing was written, and the agreed resolution reached nobody — say so in one 
 
 #### Otherwise
 
-Write the concern in the triage entry shape pinned in [triage-landing.md](../../workflow-shared/references/triage-landing.md) — `### {short title}`, `*From: {topic} · {phase} · {date}*`, then what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped — to `.workflows/.cache/{work_unit}/{phase}/{topic}/gap-concern.md` with the Write tool, then deliver it — the transaction reopens the source item, queues the concern, and commits itself:
+Write the message in the message shape pinned in [sending-a-message.md](../../workflow-shared/references/sending-a-message.md) — `### {short title}`, `*From: {topic} · {phase} · {date}*`, then what the work needs, the evidence, what was explored, the agreed resolution where there is one, and from implementation the task it stopped — to `.workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md` with the Write tool, then send it — the transaction reopens the source item, puts the message in its mailbox, and commits itself:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic triage {work_unit} {source_phase} {doc} --concern .workflows/.cache/{work_unit}/{phase}/{topic}/gap-concern.md --slug {kebab-case gap name} -m "{scope}({work_unit}): gap routed to {doc}"
+node .claude/skills/workflow-engine/scripts/engine.cjs topic send {work_unit} {source_phase} {doc} --content .workflows/.cache/{work_unit}/{phase}/{topic}/gap-message.md --slug {kebab-case gap name} -m "{scope}({work_unit}): gap routed to {doc}"
 ```
 
 Set `landed_topic` = `{doc}`.
@@ -261,7 +261,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): pause — gap routed to {landed_topic}" --topic implementation/{topic}
 ```
 
-Say in one line that the concern is queued on `{landed_topic}` and implementation resumes once it has decided: the landing flagged the specification to reconcile against it, and the epic menu and the linear next-phase derivation both route back to the reopened record.
+Say in one line that the message is waiting in `{landed_topic}`'s mailbox and implementation resumes once it has decided: the landing flagged the specification to reconcile against it, and the epic menu and the linear next-phase derivation both route back to the reopened record.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -296,7 +296,7 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Paused with the gap queued — planning resumes once {landed_topic} has decided it and the specification has been brought into line.
+> Paused with the gap in {landed_topic}'s mailbox — planning resumes once {landed_topic} has decided it and the specification has been brought into line.
 ```
 
 Invoke `/workflow-bridge {work_unit} planning none paused`.

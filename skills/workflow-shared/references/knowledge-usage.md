@@ -1,6 +1,6 @@
 # Knowledge Usage
 
-*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; by `rerouted-concerns.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by the epic menu's `analysis-flow.md`.*
+*Shared reference. Loaded by the research, discussion, investigation, scoping, planning, implementation, and review processing skills; by `contextual-query.md` for **B**, **C** and **D**, and planning's `cross-cutting-context.md` for **C** and **D**; by `reading-the-mailbox.md` and discussion's `background-agent-surfacing.md` for **G**; and consulted for **B** by the epic menu's `analysis-flow.md`.*
 
 ---
 
@@ -124,8 +124,8 @@ Before documenting such a decision:
 1. **Consult** — run a scoped query for the term or the re-decided ground, or cite the sibling's current decided text when it is already in this session's context.
 2. **Trace** — record the check as one line inside the documented decision, whether the consult queried or cited: `Sibling check: {topic} — {what its decided text holds}`, or `Sibling check: no overlap found.`
 
-When the consult surfaces text the new decision contradicts or supersedes, route by owner. Text that *anticipates* the decision — a lean recorded as a lean, a question the sibling deferred or triaged to this topic — is neither: the deferral is its forward pointer, nothing is owed, and no reroute fires. A sibling topic in the same epic: reroute through the session's off-topic path at that moment. Another work unit's specification: it is owed a correction — never a prose note to carry — follow **E. When a surfaced artifact is wrong**. Any other document of another work unit: no correction is owed — this topic's own record of the decision stands, and the stale text ages out (**E**'s non-spec arm).
+When the consult surfaces text the new decision contradicts or supersedes, route by owner. Text that *anticipates* the decision — a lean recorded as a lean, a question the sibling deferred or sent to this topic — is neither: the deferral is its forward pointer, nothing is owed, and no message is sent. A sibling topic in the same epic: send it a message through the session's off-topic path at that moment. Another work unit's specification: it is owed a correction — never a prose note to carry — follow **E. When a surfaced artifact is wrong**. Any other document of another work unit: no correction is owed — this topic's own record of the decision stands, and the stale text ages out (**E**'s non-spec arm).
 
-In ordinary conversation the first trigger is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a rerouted triage concern's fold — both triggers apply and the consult is a required step; the engagement flows name it.
+In ordinary conversation the first trigger is the same advisory judgment as §A trigger 2. At engagement decision points — a review or synthesis finding's outcome, a message's fold — both triggers apply and the consult is a required step; the engagement flows name it.
 
 → Return to caller.

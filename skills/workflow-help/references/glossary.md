@@ -42,7 +42,7 @@ One named piece of work of one kind, with its own home under `.workflows/` and i
 _Avoid_: unit, project, ticket
 
 **epic**:
-A piece of work that is several distinct things wearing one name. Its concerns become topics, each travelling the phases on its own, held together by a map and a dashboard.
+A piece of work that is several distinct things wearing one name. Its parts become topics, each travelling the phases on its own, held together by a map and a dashboard.
 
 **feature**:
 One coherent thing to build. It runs the full journey from discussion to review as a single topic.
@@ -57,7 +57,7 @@ A small, mechanical change with nothing to debate. Its middle is a single scopin
 A standard, pattern or policy for the codebase to follow, rather than something to ship. It ends at its specification, which becomes a standing document.
 
 **topic**:
-One concern inside an epic, with its own name, its own routing and its own trip through the phases. For every other kind of work the topic is the work itself and the word never appears.
+One part of an epic, with its own name, its own routing and its own trip through the phases. For every other kind of work the topic is the work itself and the word never appears.
 
 ## The journey
 
@@ -151,9 +151,13 @@ An epic's view: the three stages as bands, the topics and their state beneath th
 **build order**:
 A suggested sequence over an epic's specifications for planning and building. Advisory: stepping ahead of it warns and never blocks.
 
-**reroute**:
-Sending a concern that came up in one topic's conversation to the topic it belongs to. It waits there as *triage waiting* until that topic's next session raises it.
-_Avoid_: triage (as a verb), spawn
+**mailbox**:
+Where a topic receives messages from the other topics of its epic. The topic's next session raises each one, and the topic cannot conclude while one waits; the menus show it as *mail waiting*.
+_Avoid_: triage queue, queue
+
+**message**:
+Something one topic's conversation found that belongs to another topic, sent to that topic's mailbox with everything worked out about it.
+_Avoid_: concern, reroute, triage (as a verb), spawn
 
 **dead end**:
 Research that concluded with nothing to carry forward under its own name. The topic stays on the map as the record that it was explored.

@@ -16,6 +16,6 @@ Not every piece of work deserves the same process. A one-line rename and a month
 
 You never have to choose. Press `s` from the start menu, describe the work, and the system works out the kind in conversation, telling you its read and asking whether it's right before anything is created. The typed rows on the start menu (`f`, `e`, `b`, `q`, `c`) are hints when you already know, and even then the shape is confirmed before it's committed to.
 
-A piece of work of any kind is called a work unit, and each has its own home under `.workflows/` in your repository. Inside an epic the separate concerns are called topics; for every other kind the topic is simply the work itself and the word never comes up.
+A piece of work of any kind is called a work unit, and each has its own home under `.workflows/` in your repository. Inside an epic the separate parts are called topics; for every other kind the topic is simply the work itself and the word never comes up.
 
 Getting the kind wrong at the start costs nothing. A feature that grows into several things can pivot into an epic, and a feature that belongs inside a larger effort can be absorbed into one, both from the manage menu. Both are described under *Reshaping work*.

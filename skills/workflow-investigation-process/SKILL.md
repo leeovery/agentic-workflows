@@ -109,9 +109,9 @@ Read the phase status, storing it as `phase_status`:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.investigation.{topic} status
 ```
 
-#### If `phase_status` is empty or `triaged`
+#### If `phase_status` is empty or `unstarted`
 
-A first start — a `triaged` stub's parked concerns wait in the topic's triage queue, surfaced at symptom gathering. Render and emit the section verbatim per its marker:
+A first start — an `unstarted` stub's messages wait in the topic's mailbox, raised at symptom gathering. Render and emit the section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render phase-note {work_unit}.investigation.{topic} --verb Starting
@@ -177,7 +177,7 @@ Load **[landing-shared-files.md](../workflow-shared/references/landing-shared-fi
 
 An earlier session already interviewed the user — don't re-interview. Fold in anything new they have mentioned this session (commit if the file changed).
 
-Then surface the triage queue — a gap routed here by a paused specification arrives as a queued concern; an empty queue is a no-op. Load **[rerouted-concerns.md](../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+Then read the mailbox — a gap a paused specification sent here arrives as a message; an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
 → On return, proceed to **Step 4**.
 
@@ -201,7 +201,7 @@ Load **[symptom-gathering.md](references/symptom-gathering.md)** and use its que
 
 Document symptoms in the investigation file as you gather them: what an answer gave goes into the file before the next question is asked. Commit after each significant addition. The Symptoms section's fields are prompts, not a form: it holds only what the carrier and the user said. What they don't know goes in as not known, in their words; a Symptoms field the interview never reached is dropped, never filled in. The other sections stay as the template left them.
 
-Then surface the triage queue — an empty queue is a no-op. Load **[rerouted-concerns.md](../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+Then read the mailbox — an empty mailbox is a no-op. Load **[reading-the-mailbox.md](../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
 When symptoms are sufficiently understood to begin code analysis:
 
