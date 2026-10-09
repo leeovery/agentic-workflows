@@ -15,18 +15,19 @@ The prose should have taken this path:
 5. the answer names no horizon, so the horizon step reads the roadmap's
    state and, finding horizons, renders the engine's pick over them
    (`mvp` then `v1`); the fourth answer's number resolves to `v1`
-6. both notes are read in full, and one item is composed per note, in
-   set order: the idea named `scheduled-pickup` with kind `idea`, the
-   bug named `tip-charged-twice` with kind `bug` — each name the note's
-   filename without its date prefix — and each a one-line summary in
-   the product's terms. The payload is written to the cache and the
-   confirm renders through the engine, stating both items and `v1`, and
+6. both notes are read in full, and one entry is composed per note, in
+   set order: the idea named `scheduled-pickup`, the bug named
+   `tip-charged-twice` — each name the note's filename without its date
+   prefix — each with the horizon `v1`, a one-line summary in the
+   product's terms, and its inbox path as `note`; no kind is written —
+   the engine reads it from the note's folder. The entries are written
+   once to the cache, and the confirm renders through the engine over
+   that file, stating both items with the bug marked as a bug, and `v1`,
    flagging nothing new — the map already holds `v1`. The walk
    **STOPS** there
-7. on the fifth answer the entries are written to the cache, one per
-   item with its inbox path as `note`, and one `roadmap add-batch` lands
-   them. The verb commits itself: no commit call follows, nothing is
-   archived, and no work unit is created
+7. on the fifth answer one `roadmap add-batch` lands the same file. The
+   verb commits itself: no commit call follows, nothing is archived,
+   and no work unit is created
 8. the user is told in one line that two items went onto the roadmap
    under `v1`; the working set is empty, so the flow returns to the
    inbox view, which now has nothing in it, and on to the start menu,
@@ -62,5 +63,5 @@ EXPECTED WORLD — the walk should have produced, from the fixture:
   project manifest and the moved notes, and nothing else new; nothing
   is left dirty
 - the cache scratch the walk wrote is expected — the working-set
-  summaries and the two `.workflows/.cache/inbox/` payloads are the
+  summaries and the `.workflows/.cache/inbox-roadmap.json` entries are the
   surfaces' inputs, not state
