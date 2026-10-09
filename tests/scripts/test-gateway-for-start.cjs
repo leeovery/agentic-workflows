@@ -643,6 +643,29 @@ describe('workflow-start sub-view sections', () => {
     assert.ok(manage.includes('Start the project baseline assessment'), manage);
   });
 
+  it('a set of any mix offers work and the roadmap row, its pre-seed the largest shape in it — never a blocker', () => {
+    const IDEA = '.workflows/.inbox/ideas/2026-06-02--smart-retry.md';
+    const BUG = '.workflows/.inbox/bugs/2026-06-01--login-timeout.md';
+    const QUICKFIX = '.workflows/.inbox/quickfixes/2026-06-03--tidy-logs.md';
+    createFile(dir, IDEA, '# Smart Retry\n');
+    createFile(dir, BUG, '# Login Timeout\n');
+    createFile(dir, QUICKFIX, '# Tidy Logs\n');
+
+    for (const [set, type] of /** @type {[string[], string][]} */ ([
+      [[BUG, QUICKFIX, IDEA], 'none'],
+      [[QUICKFIX, BUG], 'bugfix'],
+      [[QUICKFIX], 'quick-fix'],
+    ])) {
+      const out = run(['working-set', ...set]);
+      assert.ok(out.includes(`\nset_type: ${type}\n`), out);
+      assert.ok(!out.includes('set_uniform'), out);
+      assert.ok(out.includes('**`w/work`**'), out);
+      assert.ok(out.includes('**`o/roadmap`** → Move the set out of the inbox onto the roadmap'), out);
+      assert.ok(!out.includes('blocker') && !out.includes('⚑'), out);
+      assert.ok(out.trimEnd().endsWith('**Ask**       → Ask about the set'), 'the menu closes the snapshot');
+    }
+  });
+
   it('the add and drop gates render on demand over the caller-held set — never on the snapshot', () => {
     createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
     createFile(dir, '.workflows/.inbox/ideas/2026-06-02--smart-retry.md', '# Smart Retry\n');

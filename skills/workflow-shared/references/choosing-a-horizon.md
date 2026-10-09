@@ -1,6 +1,6 @@
 # Choosing a Horizon
 
-*Shared reference. Loaded by [backlogging.md](backlogging.md) and [postponing-the-topic.md](postponing-the-topic.md).*
+*Shared reference. Loaded by [backlogging.md](backlogging.md), [postponing-the-topic.md](postponing-the-topic.md), and workflow-start's [inbox-working-set.md](../../workflow-start/references/inbox-working-set.md).*
 
 ---
 

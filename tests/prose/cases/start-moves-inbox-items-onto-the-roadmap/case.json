@@ -1,0 +1,56 @@
+{
+  "origin": "the inbox's roadmap row had no coverage — a working set mixing an idea and a bug is put on the roadmap under one horizon, confirmed at one gate, and landed by one transaction that moves each note to the roadmap's own notes, so the archive never becomes a roadmap source",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/start-from-inbox.md",
+    "skills/workflow-start/references/inbox-working-set.md",
+    "skills/workflow-shared/references/choosing-a-horizon.md"
+  ],
+  "answers": [
+    "i — view the inbox",
+    "1 and 2 — both of them",
+    "o — put them on the roadmap",
+    "2 — v1",
+    "y — yes, put them there"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs inbox",
+      "gateway.cjs working-set",
+      "roadmap state",
+      "render horizon-pick",
+      "render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json",
+      "roadmap add-batch --file .workflows/.cache/inbox-roadmap.json"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs inbox",
+      "gateway.cjs working-set",
+      "render horizon-pick",
+      "write:.workflows/.cache/inbox-roadmap.json",
+      "render inbox-roadmap-gate",
+      "roadmap add-batch"
+    ],
+    "calls_exclude": [
+      "inbox archive",
+      "inbox restore",
+      "inbox delete",
+      "commit --inbox",
+      "commit --roadmap",
+      "workunit create",
+      "engine.cjs handoff",
+      "workflow-roadmap/scripts/gateway.cjs"
+    ]
+  }
+}

@@ -100,6 +100,8 @@ function auditState(dir, label) {
   for (const row of rm.items) {
     assert.ok(['waiting', 'in-flight', 'shipped', 'orphaned'].includes(row.state),
       ctx(`roadmap item ${row.name}: state "${row.state}" not in vocabulary`));
+    assert.ok(['idea', 'bug', 'quick-fix'].includes(row.kind),
+      ctx(`roadmap item ${row.name}: kind ${JSON.stringify(row.kind)} not in vocabulary`));
     // A source is recorded only once it is on disk, and whatever moves the
     // file carries the pointer with it.
     for (const source of row.sources) {
@@ -698,12 +700,12 @@ function startNew(sim, preSeed) {
   return toDiscovery(sim, preSeed, 'none');
 }
 
-// The working set's w/work (inbox-working-set F): a set of one type goes to
-// discovery, the type its pre-seed and the items' inbox paths its seeds.
+// The working set's w/work (inbox-working-set F): a set of any mix goes to
+// discovery, the largest shape in it its pre-seed and the items' inbox paths
+// its seeds.
 /** @param {Sim} sim @param {string[]} paths */
 function workTheSet(sim, paths) {
   const set = LIB.detail.workingSetDetail(sim.dir, paths);
-  assert.ok(set.uniform, 'only a set of one type is worked');
   return toDiscovery(sim, set.set_type, set.items.map((/** @type {{path: string}} */ item) => item.path).join(','));
 }
 
@@ -3620,6 +3622,77 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).status, 'in-progress');
     assert.match(sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' }),
       /reactivated/, 'reactivate receipt renders from the restored state');
+  });
+
+  it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone is a bugfix, an idea and a bug a feature, a removed item\'s note is declined', () => {
+    const inbox = {
+      idea: sim.write('.workflows/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
+      timeout: sim.write('.workflows/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
+      chart: sim.write('.workflows/.inbox/bugs/2026-02-03--blank-chart.md', '# Blank Chart\n'),
+      typo: sim.write('.workflows/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n'),
+    };
+    sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
+
+    // The working set takes any mix — work or the roadmap, never a blocker.
+    const set = LIB.detail.workingSetDetail(sim.dir, Object.values(inbox));
+    assert.strictEqual(set.set_type, 'none', 'an idea in the set leaves the type to discovery');
+    assert.match(LIB.project.workingSetView(set).menu, /`o\/roadmap`/);
+
+    // The roadmap row: the horizon once, one confirm over the very file the
+    // move takes — every item and its kind from its note's folder — then one
+    // transaction moving each note off the inbox.
+    const notes = [inbox.idea, inbox.timeout, inbox.chart, inbox.typo];
+    const entries = [
+      { name: 'saved-views', horizon: 'next', summary: 'operators save a filtered view', note: inbox.idea },
+      { name: 'export-timeout', horizon: 'next', summary: 'large exports time out', note: inbox.timeout },
+      { name: 'blank-chart', horizon: 'next', summary: 'the chart renders blank on an empty range', note: inbox.chart },
+      { name: 'footer-typo', horizon: 'next', summary: 'the footer misspells the product', note: inbox.typo },
+    ];
+    const batch = sim.write('.workflows/.cache/inbox-roadmap.json', entries);
+    const gate = sim.render(['inbox-roadmap-gate', '--file', batch], { expect: 'content' });
+    assert.match(gate, /MENU: inbox roadmap gate[\s\S]*\*\*Export Timeout\*\* `\[bug\]`[\s\S]*The roadmap is created with them\./);
+    const added = sim.run(['roadmap', 'add-batch', '--file', batch]);
+    assert.deepStrictEqual(added.added.map((a) => a.kind), ['idea', 'bug', 'bug', 'quick-fix']);
+    for (const note of notes) {
+      assert.strictEqual(fs.existsSync(path.join(sim.dir, note)), false, `${note} left the inbox`);
+    }
+    let state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.items.find((i) => i.name === 'export-timeout').sources, ['.roadmap/notes/bugs/2026-02-02--export-timeout.md']);
+    assert.strictEqual(state.items.find((i) => i.name === 'export-timeout').origin, 'inbox:2026-02-02--export-timeout');
+    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Export Timeout\n.*large exports time out\n.*↳ Bug · waiting/);
+    // The gate refuses where the move would: the same file again names notes
+    // that have left the inbox and names already on the roadmap.
+    sim.refuses(['render', 'inbox-roadmap-gate', '--file', batch], /"saved-views" is already on the roadmap/);
+    sim.refuses(['roadmap', 'add-batch', '--file', batch], /"saved-views" is already on the roadmap/);
+
+    // An epic grows by topics: a bug is never pulled forward into one.
+    sim.run(['workunit', 'create', 'reports', 'epic', '--description', 'Reporting', '--session-log-file', sessionLog(sim, 'reports')]);
+    sim.refuses(['roadmap', 'pull-forward', 'blank-chart', '--into', 'reports', '--routing', 'discussion'], /pull-forward takes ideas only; start it with the pull/);
+
+    // A bug pulled alone is a bugfix — its note stays on the roadmap, read as a source.
+    sim.run(['workunit', 'create', 'export-timeout', 'bugfix', '--description', 'Large exports time out',
+      '--session-log-file', sessionLog(sim, 'export-timeout')]);
+    const bugPull = sim.run(['roadmap', 'pull', 'export-timeout', '--into', 'export-timeout']);
+    assert.deepStrictEqual(bugPull.remainder, { next: 3 });
+    assert.strictEqual(sim.manifest('export-timeout').work_type, 'bugfix');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows/.roadmap/notes/bugs/2026-02-02--export-timeout.md')));
+
+    // An idea and a bug pulled together are a feature — the bug rides along.
+    sim.run(['workunit', 'create', 'saved-views', 'feature', '--description', 'Saved views, and the blank chart they expose',
+      '--session-log-file', sessionLog(sim, 'saved-views')]);
+    sim.run(['roadmap', 'pull', 'saved-views', 'blank-chart', '--into', 'saved-views']);
+    state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.work_unit]),
+      [['saved-views', 'saved-views'], ['export-timeout', 'export-timeout'], ['blank-chart', 'saved-views']]);
+    sim.refuses(['roadmap', 'remove', 'blank-chart'], /joined to work unit "saved-views"/);
+
+    // Removing a waiting item declines it: its note goes to the inbox archive,
+    // restorable from there.
+    const removed = sim.run(['roadmap', 'remove', 'footer-typo']);
+    const archived = '.workflows/.inbox/.archived/quickfixes/2026-02-04--footer-typo.md';
+    assert.deepStrictEqual(removed.notes_moved, [{ from: '.workflows/.roadmap/notes/quickfixes/2026-02-04--footer-typo.md', to: archived }]);
+    sim.run(['inbox', 'restore', archived]);
+    assert.ok(fs.existsSync(path.join(sim.dir, inbox.typo)), 'the declined note is back in the inbox');
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {

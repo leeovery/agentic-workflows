@@ -7,14 +7,16 @@
 //
 // Deterministic: same state, same string. Item lifecycle arrives derived
 // (waiting/in-flight/shipped/orphaned — lifecycle by join, never stored);
-// rows carry it as a `↳ state` note, joins named. Horizons are the user's
-// own release labels — position carries the semantics, so groups render in
-// list order.
+// rows carry it as a `↳ state` note, joins named. A bug or a quick-fix row
+// names its kind — in the note on a tree row, as a `[term]` on a numbered
+// one; an idea row is unmarked. Horizons are the user's own release labels —
+// position carries the semantics, so groups render in list order.
 // ---------------------------------------------------------------------------
 
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
 const { menu, menuFrame, cmdOption, rangeOption, promptOption } = require('./surfaces.cjs');
+const { markedKind } = require('../roadmap.cjs');
 
 /** @typedef {import('../roadmap.cjs').RoadmapItemRow} RoadmapItemRow */
 /** @typedef {ReturnType<import('../roadmap.cjs').roadmapState>} RoadmapState */
@@ -37,6 +39,12 @@ function roadmapStateLabel(row) {
   return 'waiting';
 }
 
+/** The row's `↳` note — its kind, where marked, ahead of its state. @param {RoadmapItemRow} row */
+function roadmapNote(row) {
+  const kind = markedKind(row.kind);
+  return kind ? `${kind} · ${roadmapStateLabel(row)}` : roadmapStateLabel(row);
+}
+
 // Item rows as kernel tree nodes: glyph + name; a waiting (or orphaned) row
 // carries its summary — a joined row is a window onto the work unit, so the
 // join note alone is the truth worth printing.
@@ -46,7 +54,7 @@ function roadmapNodes(rows) {
     title: title({ glyph: ROADMAP_GLYPH[row.state] || '', label: titlecase(row.name) }),
     body: [
       ...(row.state === 'waiting' && row.summary ? [row.summary] : []),
-      stateNote(roadmapStateLabel(row)),
+      stateNote(roadmapNote(row)),
     ],
   }));
 }
@@ -112,6 +120,7 @@ function roadmapMapView(state) {
  * @property {string} name
  * @property {string} horizon
  * @property {string} summary  one line, from the exploration
+ * @property {import('../roadmap.cjs').RoadmapKind} [kind]  idea when absent
  */
 
 /**
@@ -137,7 +146,7 @@ function roadmapProposalView(state, proposed) {
     if (!horizons.includes(p.horizon)) horizons.push(p.horizon);
   }
   const rows = proposed.map((p) => /** @type {RoadmapItemRow} */ ({
-    name: p.name, horizon: p.horizon, summary: p.summary, origin: 'harvest', sources: [], state: 'waiting',
+    name: p.name, horizon: p.horizon, summary: p.summary, kind: p.kind ?? 'idea', origin: 'harvest', sources: [], state: 'waiting',
   }));
 
   parts.push(`${hasExisting ? 'New this session' : 'Proposed items'} (${proposed.length})`);
@@ -157,33 +166,34 @@ function roadmapProposalView(state, proposed) {
 
 /**
  * The pull working set — the commitment point's selection screen: waiting
- * items numbered horizon-major, a DATA table resolving numbers, the select
+ * items numbered horizon-major, each row a sentence wrapped under its text,
+ * a DATA table resolving numbers, the select
  * menu. Consumed by the roadmap skill's gateway (numbers must resolve
  * mechanically, so the reasoning table rides beside the display).
  * @param {RoadmapState} state
- * @returns {{data: string, display: string, menu: string, rows: {n: number, name: string, horizon: string}[]}}
+ * @returns {{data: string, display: string, menu: string, rows: {n: number, name: string, horizon: string, kind: string}[]}}
  */
 function roadmapPullSetView(state) {
   const waiting = state.items.filter((r) => r.state === 'waiting');
   if (waiting.length === 0) {
     throw new Error('roadmapPullSetView: no waiting items — nothing to pull');
   }
-  /** @type {{n: number, name: string, horizon: string}[]} */
+  /** @type {{n: number, name: string, horizon: string, kind: string}[]} */
   const rows = [];
-  const lines = [];
-  for (const g of groupByHorizon(state.horizons, waiting)) {
-    if (lines.length) lines.push('');
-    lines.push(g.horizon);
-    g.rows.forEach((row, gi) => {
-      rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon });
-      lines.push(`  ${gi === g.rows.length - 1 ? '└─' : '├─'} ${rows.length}. ${titlecase(row.name)} — ${row.summary}`);
+  const groups = groupByHorizon(state.horizons, waiting).map((g) => {
+    const nodes = g.rows.map((row) => {
+      rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon, kind: row.kind });
+      const number = `${rows.length}. `;
+      const kind = markedKind(row.kind);
+      return { title: `${number}${titlecase(row.name)}${kind ? ` [${kind}]` : ''} — ${row.summary}`, hang: number.length };
     });
-  }
+    return `${g.horizon}\n${renderTree(nodes, { width: TREE_WIDTH, wrapTitles: true })}`;
+  });
 
   const data = [
     `waiting_count: ${waiting.length}`,
-    'ITEMS (n  name  horizon):',
-    ...rows.map((r) => `  ${r.n}  ${r.name}  ${r.horizon}`),
+    'ITEMS (n  name  horizon  kind):',
+    ...rows.map((r) => `  ${r.n}  ${r.name}  ${r.horizon}  ${r.kind}`),
   ].join('\n');
 
   const options = [];
@@ -196,7 +206,7 @@ function roadmapPullSetView(state) {
 
   return {
     data,
-    display: lines.join('\n') + '\n',
+    display: groups.join('\n'),
     menu: menuFrame(['Which items do you want to start building?', '', ...options]),
     rows,
   };
@@ -204,37 +214,40 @@ function roadmapPullSetView(state) {
 
 /**
  * The add-to-joined-horizon routed confirm (design/product-roadmap.md
- * decision 28): a horizon
- * fully in delivery takes the strict two-way menu (into the epic / another
- * horizon — no waiting side-door into a release that is now an epic); one
- * still holding waiting members keeps the three-way (waiting beside them is
- * how a release is composed). `units` names the work units the delivery
- * row pulls into.
+ * decision 28). Delivery is a new topic, so it is an epic in flight a member
+ * was pulled into — a bugfix, quick-fix or feature takes no topic, nor does
+ * finished work. A horizon wholly in such epics takes the strict two-way
+ * menu (into the epic / another horizon — no waiting side-door into a
+ * release that is now an epic); any other member — waiting, or pulled
+ * elsewhere — keeps the three-way (waiting beside them is how a release is
+ * composed). `units` names the epics the delivery row pulls into.
  * @param {RoadmapState} state @param {string} horizon
  * @returns {{units: string[], menu: string}}
  */
 function roadmapAddGate(state, horizon) {
   const members = state.items.filter((r) => r.horizon === horizon);
-  const joined = members.filter((r) => r.state === 'in-flight' || r.state === 'shipped');
+  const inEpic = members.filter((r) => r.state === 'in-flight' && r.work_type === 'epic');
   const waiting = members.filter((r) => r.state === 'waiting');
-  if (joined.length === 0) {
-    throw new Error(`roadmapAddGate: no member of "${horizon}" is in delivery — a plain add needs no gate`);
+  if (inEpic.length === 0) {
+    throw new Error(`roadmapAddGate: no member of "${horizon}" is in an epic underway — a plain add needs no gate`);
   }
-  const units = [...new Set(joined.map((r) => /** @type {string} */ (r.work_unit)))];
+  const units = [...new Set(inEpic.map((r) => /** @type {string} */ (r.work_unit)))];
   const deliveryLabel = units.length === 1
     ? `Into the work underway — a new topic in "${units[0]}"`
     : 'Into the work underway — a new topic in one of its work units (name which)';
+  const wholly = inEpic.length === members.length;
 
   const options = [cmdOption('d', 'delivery', deliveryLabel)];
-  if (waiting.length > 0) {
-    options.push(cmdOption('w', 'waiting', { head: `On the roadmap in "${horizon}", waiting with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}` }));
+  if (!wholly) {
+    const beside = waiting.length > 0 ? ` with its ${waiting.length} other item${waiting.length === 1 ? '' : 's'}` : '';
+    options.push(cmdOption('w', 'waiting', { head: `On the roadmap in "${horizon}", waiting${beside}` }));
   }
   options.push(cmdOption('h', 'horizon', 'Another horizon (name it)'));
   options.push(promptOption('Ask', 'Talk it through first'));
 
-  const statement = waiting.length > 0
-    ? `"${horizon}" is partly being built.`
-    : `"${horizon}" is being built right now.`;
+  const statement = wholly
+    ? `"${horizon}" is being built right now.`
+    : `"${horizon}" is partly being built.`;
   return { units, menu: menu(statement, options, { question: 'Where does this go?' }) };
 }
 
@@ -258,7 +271,7 @@ function roadmapHomeMenu(state) {
       : 'Talk about the product, add or re-sort items',
   });
   if (state.totals.waiting > 0) {
-    keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Start work on waiting item(s) — creates an epic or feature (${state.totals.waiting} waiting)` });
+    keys.push({ key: 'p', word: 'pull', action: 'pull', label: `Start work on waiting item(s) — creates a piece of work (${state.totals.waiting} waiting)` });
   }
   keys.push({ key: 'b', word: 'back', action: 'back', label: 'Return to the start menu' });
 
@@ -289,11 +302,11 @@ function roadmapParksGate() {
   ], { question: 'Park these on the roadmap?' });
 }
 
-/** The pull's shape confirm — epic vs feature, the framing. */
+/** The pull's shape confirm — the work's shape, the framing. */
 function roadmapShapeGate() {
   return menu('', [
     cmdOption('y', 'yes', 'Create it and carry on into it'),
-    promptOption('Adjust', 'Tell me what to change (epic or feature, the description)'),
+    promptOption('Adjust', 'Tell me what to change (the shape, the description)'),
   ], { question: 'Shape it this way?' });
 }
 

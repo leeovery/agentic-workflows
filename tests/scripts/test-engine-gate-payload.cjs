@@ -660,11 +660,9 @@ describe('gate payload — every gateway verb', () => {
     });
   }
 
-  it('the sweep reaches the displays only a mixed-type set and a missing unit draw', () => {
+  it('the sweep reaches the display only a missing unit draws', () => {
     const drawn = [...responses.values()].map(({ stdout }) => stdout).join('\n');
-    for (const marker of ['=== DISPLAY: blocker (', '=== DISPLAY: not found (']) {
-      assert.ok(drawn.includes(marker), `no gateway call drew ${marker}`);
-    }
+    assert.ok(drawn.includes('=== DISPLAY: not found ('), 'no gateway call drew === DISPLAY: not found (');
   });
 
   it('the world reaches every row shape the menu builders draw', () => {

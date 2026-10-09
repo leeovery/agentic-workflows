@@ -320,6 +320,20 @@ describe('render shape: renderTree (wrapped titles)', () => {
     }
   });
 
+  it('a node\'s hang sets its wrapped title\'s continuations that many columns past its first column, the first line filling its own width', () => {
+    const lines = renderTree([
+      { title: '9. Ninth — a summary long enough to run past the narrow width', hang: 3 },
+      { title: '10. Tenth — a summary long enough to run past the narrow width', hang: 4 },
+    ], { width: 40, wrapTitles: true }).split('\n');
+    assert.deepStrictEqual(lines, [
+      '  ├─ 9. Ninth — a summary long enough to',
+      '  │     run past the narrow width',
+      '  └─ 10. Tenth — a summary long enough',
+      '         to run past the narrow width',
+      '',
+    ]);
+  });
+
   it('leaves titles unwrapped by default', () => {
     const lines = renderTree(SENTENCES, { width: 65, childIndent: 2 }).split('\n');
     assert.ok(lines[0].startsWith('  ├─ ● Does a Space identify a home alone, or is home a display+Space pair?'));

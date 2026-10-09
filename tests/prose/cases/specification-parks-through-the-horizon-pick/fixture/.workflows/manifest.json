@@ -13,11 +13,13 @@
       "wallet-payments": {
         "horizon": "v1",
         "summary": "shoppers pay with Apple Pay or Google Pay at checkout",
+        "kind": "idea",
         "origin": "harvest"
       },
       "subscription-billing": {
         "horizon": "v2",
         "summary": "customers are charged on a recurring plan",
+        "kind": "idea",
         "origin": "harvest"
       }
     }

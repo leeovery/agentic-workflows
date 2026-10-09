@@ -1,0 +1,47 @@
+{
+  "origin": "a working set mixing an idea and a bug was blocked from work — it now starts like any set, its pre-seed taken from the largest kind it holds: an idea leaves the shape to discovery, and the bug rides along as a seed that never sets it",
+  "entry": "workflow-start",
+  "world": "claims",
+  "files": [
+    "skills/workflow-start/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-start/references/empty-state.md",
+    "skills/workflow-start/references/start-from-inbox.md",
+    "skills/workflow-start/references/inbox-working-set.md",
+    "skills/workflow-start/references/route-to-discovery.md",
+    "skills/workflow-shared/references/handing-off.md"
+  ],
+  "answers": [
+    "i — view the inbox",
+    "1 and 2 — both of them",
+    "w — work the set"
+  ],
+  "invariants": {
+    "calls_include": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs inbox",
+      "gateway.cjs working-set",
+      "handoff /workflow-discovery none none .workflows/.inbox/ideas/2026-01-01--saved-search-filters.md,.workflows/.inbox/bugs/2026-01-01--date-filter-drops-the-last-day.md"
+    ],
+    "calls_in_order": [
+      "engine.cjs boot",
+      "workflow-start/scripts/gateway.cjs inbox",
+      "gateway.cjs working-set",
+      "handoff /workflow-discovery none none"
+    ],
+    "calls_exclude": [
+      "handoff /workflow-discovery bugfix",
+      "inbox archive",
+      "inbox restore",
+      "inbox delete",
+      "roadmap add-batch",
+      "workunit create",
+      "workflow-discovery/scripts/gateway.cjs"
+    ]
+  }
+}

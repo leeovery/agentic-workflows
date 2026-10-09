@@ -4,7 +4,7 @@
 
 ---
 
-Select inbox items to work on, or manage what's been archived. Selecting one or more items builds a working set that carries into discovery; the folder pre-seeds a work-type hint (bugs → bugfix, quickfixes → quick-fix, ideas → none) and discovery confirms the shape.
+Triage the inbox — start items now, put them on the roadmap, or archive them — or manage what's been archived. Selecting one or more items, of any mix of types, builds a working set; carried into discovery, its largest kind pre-seeds a work-type hint (quick-fixes only → quick-fix, any bug and no idea → bugfix, any idea → none) and discovery confirms the shape.
 
 ## A. Display and Menu
 

@@ -2179,6 +2179,21 @@ describe('engine inbox archive / restore / delete', () => {
     assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '2');
   });
 
+  it('a set whose move throws midway puts back what moved — every file where it was, nothing committed', () => {
+    // A file where the archive's bugs folder belongs: the idea moves, the bug cannot.
+    writeFile(dir, '.workflows/.inbox/.archived/bugs', 'in the way\n');
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    engineFails(dir, [
+      'inbox', 'archive',
+      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.workflows/.inbox/bugs/2026-06-02--login-loop.md',
+    ]);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/bugs/2026-06-02--login-loop.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
   it('restores an archived item back to its live folder', () => {
     engine(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']);
     const res = engine(dir, ['inbox', 'restore', '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
