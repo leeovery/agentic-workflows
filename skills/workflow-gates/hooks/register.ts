@@ -97,6 +97,9 @@ type Handoff = { text: string; line: string }
 /** How long a continuation the mod could not carry stays on screen to send. */
 const UNCARRIED_TOAST_MS = 30_000
 
+/** How long the toast saying where the work went stays up. */
+const HANDED_OFF_TOAST_MS = 8_000
+
 /** The file a conversation's band is kept in for a resume. */
 const KEPT = 'gate.json'
 
@@ -409,7 +412,7 @@ async function handOff($: EngineInterface, { text, line }: Handoff) {
     (await took(fill($, text)))
 
   if (isCarried) {
-    $.ui.toast(`Handed off ${line}`)
+    $.ui.toast(`Handed off ${line}`, { timeoutMs: HANDED_OFF_TOAST_MS })
   } else {
     $.ui.toast(`Not handed off ${line} — send this to carry on: ${text}`, {
       timeoutMs: UNCARRIED_TOAST_MS,
