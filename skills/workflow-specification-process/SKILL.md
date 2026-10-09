@@ -52,8 +52,8 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
 2. **Read all tracking and state files** for the current topic — the specification file, review tracking files, or any working documents this skill creates. These are your source of truth for progress. Hold the source material again as **[session-setup.md](references/session-setup.md)** holds it — the sources, the grouping's tensions, the incorporated specifications — without its gate-mode reset.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Announce your position** to the user before continuing: what step you believe you're at, what's been completed, and what comes next. Wait for confirmation.
-5. **Check `finding_gate_mode` and `construction_gate_mode`** via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode` and `... construction_gate_mode`) — if either is `auto`, the user previously opted in during this session. Preserve that value.
+4. **Check `finding_gate_mode` and `construction_gate_mode`** via `engine manifest` (`node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.specification.{topic} finding_gate_mode` and `... construction_gate_mode`) — if either is `auto`, the user previously opted in during this session. Preserve that value.
+5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, answer it; where the conversation was at a gate, put the gate back, fetched fresh; otherwise continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -118,7 +118,7 @@ Emit both sections verbatim per their markers — the red blocker line, then its
 
 ### Step 0.2: Resume Detection
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} specification {topic}

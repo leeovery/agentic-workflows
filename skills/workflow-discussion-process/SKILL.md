@@ -37,7 +37,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 2. **Read the discussion file** at `.workflows/{work_unit}/discussion/{topic}.md`. This is the only working document this skill creates. The Discussion Map is your primary progress indicator — which subtopics are decided, exploring, converging, pending, or deferred. It lives in the manifest; read it with `node .claude/skills/workflow-discussion-process/scripts/gateway.cjs map {work_unit} {topic}`.
 3. **Check agent state.** Run `node .claude/skills/workflow-engine/scripts/engine.cjs agent scan {work_unit} discussion {topic}` — `in_flight` agents still running, `pending` results unread, `acknowledged` results partially surfaced. Read `.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` if present — queued settled calls and pulled raises survive there, not in conversation memory. A close underway does not survive either: treat it as ended — the next signal or settling set re-enters it, a settled map on its own never does.
 4. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-5. **Announce your position** to the user before continuing: render the current Discussion Map (the adapter call above — emit its DISPLAY section verbatim per its marker), state what step you believe you're at, and what comes next. Wait for confirmation.
+5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, answer it; where the conversation was at a gate, put the gate back, fetched fresh; otherwise continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -93,7 +93,7 @@ Emit both sections verbatim per their markers — the red blocker line, then its
 
 Load **[ensure-discovery-item.md](../workflow-shared/references/ensure-discovery-item.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, routing = `discussion`.
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} discussion {topic}

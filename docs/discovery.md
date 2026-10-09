@@ -68,7 +68,7 @@ Some edits are allowed only while a topic is still fresh, before any research or
 
 Two recovery paths protect you. If a previous discovery session for an epic was left open, discovery notices and offers to continue it or restart — and restarting keeps any map edits you had already applied, discarding only the narrative record of the abandoned session. Either way it gives you a short "where we'd got to" briefing drawn from the recent session logs, so you resume a conversation rather than a bare topic list.
 
-And if the underlying conversation is compacted mid-discovery, the rule is simple: if the work had not yet been confirmed, the shaping is genuinely gone (nothing was on disk) and discovery re-opens with you; if it had, discovery recovers from the files and git history — which are authoritative, not its own recollection — announces where it thinks it is, and waits for you to confirm before continuing.
+And if the underlying conversation is compacted mid-discovery, the rule is simple: if the work had not yet been confirmed, the shaping is genuinely gone (nothing was on disk) and discovery re-opens with you; if it had, discovery recovers from the files and git history — which are authoritative, not its own recollection — and carries on where it was, with no recap.
 
 ## What you are left with
 

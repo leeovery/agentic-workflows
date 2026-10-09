@@ -135,14 +135,24 @@ function counterOf(item, field) {
 }
 
 /**
- * The phase number embedded in an internal id (`{topic}-{phase_id}-{task_id}`),
- * or null when the id carries none.
+ * The plan step an internal id (`{topic}-{phase_id}-{task_id}`) ends in, or
+ * null when the id carries none.
+ * @param {string} internalId
+ * @returns {{phase: number, task: number}|null}
+ */
+function stepOfInternalId(internalId) {
+  const m = /-(\d+)-(\d+)$/.exec(internalId);
+  return m ? { phase: parseInt(m[1], 10), task: parseInt(m[2], 10) } : null;
+}
+
+/**
+ * The phase number embedded in an internal id, or null when the id carries
+ * none.
  * @param {string} internalId
  * @returns {number|null}
  */
 function phaseOfInternalId(internalId) {
-  const m = /-(\d+)-\d+$/.exec(internalId);
-  return m ? parseInt(m[1], 10) : null;
+  return stepOfInternalId(internalId)?.phase ?? null;
 }
 
 /**
@@ -462,4 +472,4 @@ function analysisCycle(cwd, workUnit, topic) {
   });
 }
 
-module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT };
+module.exports = { initTasks, startTask, fixAttempt, completeTask, analysisCycle, gateOf, counterOf, stepOfInternalId, FIX_THRESHOLD, CYCLE_LIMIT };

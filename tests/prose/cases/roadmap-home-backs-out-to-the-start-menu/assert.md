@@ -4,8 +4,8 @@ The prose should have taken this path:
    renders the map from its snapshot (horizons, items, waiting states)
    with the converse/pull menu beneath — pull offered, since waiting
    items exist
-2. `b/back` puts the original session label back and re-renders the
-   start menu in place — the harvested-no-work overview and its
+2. `b/back` records the arrival at the start menu — the label put back
+   where the user opted in — and re-renders the start menu in place — the harvested-no-work overview and its
    `r/roadmap` row, the flow stopped there for the user — with no
    session opened, nothing pulled, nothing edited
 

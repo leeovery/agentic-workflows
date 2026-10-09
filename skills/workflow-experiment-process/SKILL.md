@@ -38,13 +38,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside. The full process, steps, and rules must be reloaded.
 2. **Read the record's state.** Re-derive `{dir}` when it is lost: `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments` gives the id and slug — the record lives at `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`. Read the record's documents under `{dir}` — `problem.md`, `design.md`, `report.md` where each exists, sub-experiment directories included. The record files are the source of truth for where the experiment stands — a frozen design is frozen whatever the conversation remembered.
 3. **Check git state.** Run `git status` and `git log --oneline -10` to see recent commits. Commit messages follow a conventional pattern that reveals what was completed.
-4. **Announce your position** to the user before continuing. Render the register and emit its DISPLAY section verbatim per its marker:
-
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
-   ```
-
-   Then state the record's lifecycle status and what comes next. Wait for confirmation.
+4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, answer it; where the conversation was at a gate, put the gate back, fetched fresh; otherwise continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -102,7 +96,7 @@ Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with rou
 
 Derive `{dir}` = `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`.
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} experiment {topic}
