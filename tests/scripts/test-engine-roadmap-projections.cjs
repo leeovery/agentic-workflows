@@ -69,6 +69,22 @@ describe('roadmap projections: pull working set', () => {
     assert.deepStrictEqual(view.rows[1], { n: 2, name: 'login-crash', horizon: 'mvp', kind: 'bug' });
   });
 
+  it('wraps a long row at the display width, continuations under its text — the number and the kind mark kept', () => {
+    const long = {
+      name: 'export-timeout', horizon: 'v1', kind: 'bug', origin: 'harvest', sources: [], state: 'waiting',
+      summary: 'large exports of a whole year of orders time out before the file is ready to download',
+    };
+    assert.strictEqual(roadmapPullSetView(state([ROWS[1], long])).display, [
+      'mvp',
+      '  └─ 1. Menus — operators maintain',
+      '',
+      'v1',
+      '  └─ 2. Export Timeout [bug] — large exports of a whole year',
+      '        of orders time out before the file is ready to download',
+      '',
+    ].join('\n'));
+  });
+
   it('a single waiting item takes the bare `1` option; none refuses', () => {
     const one = roadmapPullSetView(state([ROWS[1]]));
     assert.match(one.menu, /`1`/);

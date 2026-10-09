@@ -169,7 +169,8 @@ function roadmapProposalView(state, proposed) {
 
 /**
  * The pull working set — the commitment point's selection screen: waiting
- * items numbered horizon-major, a DATA table resolving numbers, the select
+ * items numbered horizon-major, each row a sentence wrapped under its text,
+ * a DATA table resolving numbers, the select
  * menu. Consumed by the roadmap skill's gateway (numbers must resolve
  * mechanically, so the reasoning table rides beside the display).
  * @param {RoadmapState} state
@@ -182,16 +183,15 @@ function roadmapPullSetView(state) {
   }
   /** @type {{n: number, name: string, horizon: string, kind: string}[]} */
   const rows = [];
-  const lines = [];
-  for (const g of groupByHorizon(state.horizons, waiting)) {
-    if (lines.length) lines.push('');
-    lines.push(g.horizon);
-    g.rows.forEach((row, gi) => {
+  const groups = groupByHorizon(state.horizons, waiting).map((g) => {
+    const nodes = g.rows.map((row) => {
       rows.push({ n: rows.length + 1, name: row.name, horizon: row.horizon, kind: row.kind });
+      const number = `${rows.length}. `;
       const kind = kindMark(row);
-      lines.push(`  ${gi === g.rows.length - 1 ? '└─' : '├─'} ${rows.length}. ${titlecase(row.name)}${kind ? ` [${kind}]` : ''} — ${row.summary}`);
+      return { title: `${number}${titlecase(row.name)}${kind ? ` [${kind}]` : ''} — ${row.summary}`, hang: number.length };
     });
-  }
+    return `${g.horizon}\n${renderTree(nodes, { width: TREE_WIDTH, wrapTitles: true })}`;
+  });
 
   const data = [
     `waiting_count: ${waiting.length}`,
@@ -209,7 +209,7 @@ function roadmapPullSetView(state) {
 
   return {
     data,
-    display: lines.join('\n') + '\n',
+    display: groups.join('\n'),
     menu: menuFrame(['Which items do you want to start building?', '', ...options]),
     rows,
   };
