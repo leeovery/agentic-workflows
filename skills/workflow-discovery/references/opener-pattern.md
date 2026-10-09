@@ -16,7 +16,7 @@ Read the recognition indexes silently for the detection core's **J** (skip eithe
 
 #### If `inbox_seeds` is non-empty
 
-Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The folder already pre-seeded `work_type` (bugs → bugfix, quick-fixes → quick-fix, ideas → none); the seeds are still confirmed like any other pick.
+Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The set's largest kind already pre-seeded `work_type` (quick-fixes only → quick-fix, any bug and no idea → bugfix, any idea → none); the seeds are still confirmed like any other pick.
 
 With a single seed, hold its filename for the name derivation at the confirm-trigger (the filename-slug becomes the name). With several, the name is derived from the conversation instead.
 
@@ -36,12 +36,12 @@ Render the opener matching what the caller told us.
 
 #### If inbox seeds were read
 
-The seeds share one type (the working set only carries items of one kind). Name that type, pluralised with a count when there are several, and give one combined sketch across them.
+Name the seeds by kind, each counted where there are several, and give one combined sketch across them. Where ideas are among them, the sketch is the ideas' shape, the bugs and quick-fixes in it as material.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-I've read your {bug | idea | quick-fix — pluralised with a count when several, e.g. "3 ideas"}. Here's the shape I'm picking up:
+I've read your {the seeds by kind, each counted when several — e.g. "bug", "3 ideas", "2 ideas and a bug"}. Here's the shape I'm picking up:
 
 {one-line sketch — a single combined picture across the item(s)}
 

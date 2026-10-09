@@ -121,19 +121,19 @@ The list of choices beneath a screen. Each row has a key and a word (`n/next`). 
 ## The product layer
 
 **roadmap**:
-The layer above the pieces of work: everything shaped about the product but not yet committed to build, held as items in horizons. Born the first time something is put on it.
+The layer above the pieces of work: everything decided about the product but not yet started — ideas, bugs and quick-fixes — held as items in horizons. Born the first time something is put on it.
 
 **item**:
-A capability on the roadmap at the grain you would move around a real roadmap, with a one-line summary and a pointer to the conversation that produced it.
+One thing on the roadmap, marked as an idea, a bug or a quick-fix: an idea is a capability at the grain you would move around a real roadmap, a bug or a quick-fix one fix. Each has a one-line summary and a pointer to the conversation or inbox note it came from.
 
 **horizon**:
 A named bucket on the roadmap, in the person's own staging words (launch, v1, someday). Their order is the meaning: first is next up.
 
 **park**:
-Putting a capability on the roadmap from the middle of another conversation by naming where it belongs ("that's a v2 thing"). The stated placement is what makes it a park rather than an inbox note. A capability surfacing as you talk, never a topic already on an epic's map — that is a postpone.
+Putting something on the roadmap from the middle of another conversation by naming where it belongs ("that's a v2 thing", "fix that before launch") — a capability, a bug or a quick-fix. The stated placement is what makes it a park rather than an inbox note; a topic already on an epic's map is never parked — that is a postpone.
 
 **start work on**:
-Choosing roadmap items to build now. Several items usually become an epic, one becomes a feature, and the new piece of work is fenced to exactly those items while the rest wait.
+Choosing roadmap items or inbox notes to build now; from the roadmap, the new piece of work is fenced to exactly those items while the rest wait. The choice takes its largest shape — ideas an epic or a feature, any bug without an idea a bugfix, quick-fixes alone a quick-fix — and bugs and quick-fixes ride along without ever adding size.
 _Avoid_: pull (the docs' word), promote
 
 ## Epics
@@ -165,10 +165,10 @@ Research that concluded with nothing to carry forward under its own name. The to
 ## Everyday
 
 **inbox**:
-Where thoughts are put down without stopping: ideas, bugs and quick-fixes captured in a line ("log that as an idea"). Items wait there until picked up from workflow start, promoted into a piece of work or archived.
+Where thoughts are put down without stopping: ideas, bugs and quick-fixes captured in a line ("log that as an idea"), waiting until decided. Triaging it from workflow start works a set of any mix: archive it, put it on the roadmap, or start work on it now.
 
 **backlog**:
-Putting an idea aside from any conversation, whichever phase you are in. It covers both homes: a park onto the roadmap when you place it, an inbox note when you don't — and you are asked which one when your words leave it open.
+Putting something aside from any conversation, whichever phase you are in. It covers both homes: a park onto the roadmap when you place it, an inbox note when you don't — and you are asked which one when your words leave it open. The roadmap's backlog is whichever horizon you name for it, such as Backlog or Later.
 
 **seed**:
 The inbox note a piece of work was started from, moved into the work as its permanent record of origin.
