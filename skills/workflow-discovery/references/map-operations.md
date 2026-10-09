@@ -69,9 +69,9 @@ Apply per-operation validation gates **before** any STOP gate. If validation fai
 
 Postpone takes no pre-check at all: its gate is the postpone confirm, which refuses a cancelled, postponed, or dead-ended row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. A dead end is the answer to its own question and carries nothing forward under the topic's name, so "later" over one is a contradiction: it reopens first. Every other lifecycle postpones.
 
-`fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including a `triaged` stub of parked rerouted concerns (dump cue `triage=waiting`). Surface the engine's refusal as the rejection.
+`fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including an `unstarted` stub holding messages (dump cue `mail=waiting`). Surface the engine's refusal as the rejection.
 
-Close as dead end is non-destructive — it sets a display/convergence marker (`handled` in the manifest), for a topic with nothing to carry forward under its own name. It's allowed from any actionable lifecycle; an already-closed or `cancelled` topic is rejected, and so is one carrying the `triage=waiting` cue — rerouted concerns are parked on it, and the engine refuses the close until they are heard. Reopen is its inverse — allowed on `handled` only, clearing the marker; a cancel marker over the dead end reads `cancelled`, and that is the reactivate's to clear.
+Close as dead end is non-destructive — it sets a display/convergence marker (`handled` in the manifest), for a topic with nothing to carry forward under its own name. It's allowed from any actionable lifecycle; an already-closed or `cancelled` topic is rejected, and so is one carrying the `mail=waiting` cue — messages wait in its mailbox, and the engine refuses the close until they are heard. Reopen is its inverse — allowed on `handled` only, clearing the marker; a cancel marker over the dead end reads `cancelled`, and that is the reactivate's to clear.
 
 The engine enforces these same gates — `engine discovery-map` refuses an illegal op with an error naming the blocking lifecycle, so this pre-validation and the write path can never disagree. The rejection displays below stay this file's job, rendered from the pre-check here or from an engine error.
 
@@ -96,7 +96,7 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 
 `{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For a `cancelled` target, `Reactivate it from the epic menu first.` For a `postponed` target, `Pull it forward from the roadmap first.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead — or postpone it to the roadmap for later.`
 
-**Marker-op rejection** — for a Close as dead end op on an already-closed, `cancelled`, or `triage=waiting` topic, or a Reopen op on a non-`handled` topic:
+**Marker-op rejection** — for a Close as dead end op on an already-closed, `cancelled`, or `mail=waiting` topic, or a Reopen op on a non-`handled` topic:
 
 > *Output the next fenced block as a text code block (```text fence):*
 
@@ -109,7 +109,7 @@ The engine enforces these same gates — `engine discovery-map` refuses an illeg
 - Close as dead end on `handled` — `it's already closed`
 - Close as dead end on `cancelled` — `it's cancelled; reactivate it from the epic menu first`
 - Close as dead end on `postponed` — `it's postponed; pull it forward from the roadmap first`
-- Close as dead end on `triage=waiting` — `rerouted concerns are parked in its {research|discussion} triage; start the topic to drain them, or cancel the topic from the epic menu instead`
+- Close as dead end on `mail=waiting` — `messages wait in its {research|discussion} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`
 - Reopen on `cancelled` — `it's cancelled; reactivate it from the epic menu first`
 - Reopen on `postponed` — `it's postponed; pull it forward from the roadmap first`
 - Reopen on any other non-`handled` lifecycle — `it isn't closed as a dead end, so there's nothing to reopen`

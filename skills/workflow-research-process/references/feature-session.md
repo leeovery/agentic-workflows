@@ -6,11 +6,11 @@
 
 ## A. Background Agents
 
-One kind of background agent operates during research — the deep dive — and two protocol files cover the topic's triage queue and the files the user shares. Load their instructions now — they run at the appropriate moments during the session loop.
+One kind of background agent operates during research — the deep dive — and two protocol files cover the topic's mailbox and the files the user shares. Load their instructions now — they run at the appropriate moments during the session loop.
 
 → Load **[deep-dive-agent.md](deep-dive-agent.md)** and follow its instructions as written.
 
-→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's triage check enters its **A. Check**; nothing runs at load time.
+→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `research` — a protocol, not a step: the session loop's mailbox check enters its **A. Check**; nothing runs at load time.
 
 → Load **[landing-shared-files.md](../../workflow-shared/references/landing-shared-files.md)** with work_unit = `{work_unit}`, origin = `research/{topic}` — a protocol, not a step: the session loop enters its **A. Land It** when the user offers a path; nothing runs at load time.
 
@@ -18,7 +18,7 @@ One kind of background agent operates during research — the deep dive — and 
 
 ## B. Session Loop
 
-Focused, single-topic session — one research file; off-topic concerns route through **D. Off-Topic Concerns**.
+Focused, single-topic session — one research file; off-topic points go through **D. Off-Topic Points**.
 
 → Load **[session-loop.md](session-loop.md)** and follow its conversation process.
 
@@ -40,11 +40,11 @@ Stepping away for the day, picking it up next time — a pause, not a done-signa
 
 ---
 
-## D. Off-Topic Concerns
+## D. Off-Topic Points
 
-When a concern surfaces that's beyond this topic's scope, a single-topic work type has no other topic to route it to.
+When a point surfaces that's beyond this topic's scope, a single-topic work type has no other topic to send it to.
 
-Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json` with the Write tool (`{"concern": "…"}` — the concern's short title), then render it:
+Write the offer payload to `.workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json` with the Write tool (`{"title": "…"}` — the point's short title), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render off-topic-offer {work_unit}.research.{topic} --file .workflows/.cache/{work_unit}/research/{topic}/off-topic-offer.json
@@ -56,7 +56,7 @@ Emit the call's MENU section verbatim per its marker. The pivot option is offere
 
 **If `log`:**
 
-Capture the concern via the `workflow-log-idea` skill so it lands in the inbox for later triage.
+Capture the point via the `workflow-log-idea` skill so it lands in the inbox for later triage.
 
 → Return to **B. Session Loop**.
 
@@ -64,21 +64,21 @@ Capture the concern via the `workflow-log-idea` skill so it lands in the inbox f
 
 1. Load **[pivot-to-epic.md](../../workflow-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. The work unit is now an epic (conversion committed) with this topic on its discovery map.
 
-2. From the context you already have, derive two values: `proposed_name` — a kebab-case topic name for the concern; and `concern` — the concern with the full context discussed about it.
+2. From the context you already have, derive two values: `proposed_name` — a kebab-case topic name for the point; and `point` — the point with the full context discussed about it.
 
-3. Judge `landing_phase` per **Judging the Landing Phase**, then load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, concern = `{concern}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the concern in the research file so it isn't lost; otherwise the concern landed as the `{landed_topic}` topic and the delivery committed itself.
+3. Judge `landing_phase` per **Judging the Landing Phase**, then load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{proposed_name}`, message = `{point}`, origin = `{topic}`, phase = `research`, landing_phase = `{landing_phase}`, date = `{today}`. It validates the name against the map and, on a clash, prompts to pick another or cancel. If `result` is `cancelled`, the topic wasn't created — note the point in the research file so it isn't lost; otherwise the message is in the new `{landed_topic}` topic's mailbox and the delivery committed itself.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> This work is now an epic — continuing here with the current topic. The concern is preserved for its own handling later.
+> This work is now an epic — continuing here with the current topic. The point is preserved for its own handling later.
 ```
 
 → Return to **B. Session Loop**.
 
 **If `ignore`:**
 
-Note the concern in the research file for the user to consider separately, and continue.
+Note the point in the research file for the user to consider separately, and continue.
 
 → Return to **B. Session Loop**.
 

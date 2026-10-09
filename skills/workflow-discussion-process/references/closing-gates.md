@@ -6,10 +6,10 @@
 
 The passage from conversation to conclusion runs two gates: the **review gate** — is a review still owed, or one more worth offering, and does the user want it — then the **conclude gate**. Nothing here proceeds silently: whatever the classification, the user hears what comes next and answers.
 
-The triage queue precedes both gates — a queued concern is work the conclusion cannot pass, and a review dispatched over it would read a document the walk is about to move. Check it first:
+The mailbox precedes both gates — a waiting message is work the conclusion cannot pass, and a review dispatched over it would read a document the walk is about to move. Check it first:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} discussion {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} discussion {topic}
 ```
 
 **If `count` is non-zero and this entry is the user's signal:**
@@ -17,14 +17,14 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} d
 Render the blocker and emit both its sections verbatim per their markers — the red blocker line, then its guidance:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.discussion.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.discussion.{topic}
 ```
 
 → Return to caller for **B. Session Loop**.
 
 **If `count` is non-zero:**
 
-The map settled, or the ceremony resumed, over a queued concern — it is raised before the gates, never refused: the session loop's triage check offers the queue at this break (the close holds over an earlier `later`), and the drain's last fold re-enters the close.
+The map settled, or the ceremony resumed, over a waiting message — it is raised before the gates, never refused: the session loop's mailbox check offers the mailbox at this break (the close holds over an earlier `later`), and the drain's last fold re-enters the close.
 
 → Return to caller for **B. Session Loop**.
 
