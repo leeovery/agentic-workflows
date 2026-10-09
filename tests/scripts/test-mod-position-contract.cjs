@@ -4,8 +4,9 @@
 // the gate mod finds the answer by its POSITION section marker and reads the
 // keys of its one line of JSON, the rows mod knows a compaction's note by the
 // engine's opening words, and both name the record of the notes handed up
-// alike. Each literal is read off the mod's source — a mod cannot import the
-// engine — and held against a real answer.
+// alike; the gate mod's spinner reads the position file the engine keeps, by
+// its name and keys. Each literal is read off the mod's source — a mod cannot
+// import the engine — and held against a real answer.
 
 require('./hermetic-env.cjs');
 
@@ -15,6 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
+const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -30,11 +32,12 @@ function literal(rel, name) {
 let dir;
 let config;
 
+const env = () => ({ WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined });
+
 /** The engine's answer for a conversation at a discussion: its whole output, and its POSITION line parsed. */
 function answer() {
-  const env = { WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined };
-  harness.ok(dir, ['session', 'label', 'pay', 'discussion', 'ledger'], { env });
-  const out = harness.output(dir, ['conversation', 'position'], { env });
+  harness.ok(dir, ['session', 'label', 'pay', 'discussion', 'ledger'], { env: env() });
+  const out = harness.output(dir, ['conversation', 'position'], { env: env() });
   const lines = out.split('\n');
   const at = lines.findIndex((line) => line.startsWith(literal('skills/workflow-gates/hooks/compaction.ts', 'POSITION_MARKER')));
   assert.notStrictEqual(at, -1, out);
@@ -82,6 +85,33 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.match(source('skills/workflow-gates-rows/hooks/compacted.ts'), /notes\[text\]/, 'the rows mod looks the row\'s trimmed text up');
     const { json } = answer();
     assert.strictEqual(json.text, json.text.trim(), 'the note is the key the row\'s trimmed text finds');
+  });
+
+  it('the spinner reads the position file the engine writes, by the keys it writes, the task in flight as `{phase}.{task}`', () => {
+    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
+    }));
+    harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
+    const file = path.join(config, 'conversations', 'sess-1', literal('skills/workflow-gates/hooks/folder.ts', 'POSITION'));
+    assert.ok(fs.existsSync(file), 'the engine keeps the position under the name the mod reads');
+    const written = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.deepStrictEqual(written, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
+    const type = /export type Position = \{([^}]*)\}/.exec(source('skills/workflow-gates/hooks/position.ts'));
+    assert.ok(type, 'the spinner declares the position it reads');
+    const keys = [...type[1].matchAll(/(\w+)\??: string/g)].map((m) => m[1]);
+    assert.deepStrictEqual(Object.keys(written).sort(), [...keys].sort(), 'the spinner reads every key the engine writes');
+    assert.match(source('skills/workflow-gates/hooks/position.ts'), /`\$\{word\} task \$\{task\}`/, 'the spinner says the task as the engine writes it');
+  });
+
+  it('the spinner has a word for every phase and project-level place the engine records', () => {
+    const words = (name) => {
+      const map = new RegExp(`const ${name}[^=]*= new Map\\(\\[([\\s\\S]*?)\\]\\)`).exec(source('skills/workflow-gates/hooks/position.ts'));
+      assert.ok(map, `the spinner declares ${name}`);
+      return [...map[1].matchAll(/\['([^']+)', '[^']+'\]/g)].map((m) => m[1]).sort();
+    };
+    assert.deepStrictEqual(words('PHASE_WORDS'), [...VALID_PHASES].sort());
+    assert.deepStrictEqual(words('PLACE_WORDS'), [...PROJECT_IDENTITIES].sort());
   });
 
   it('the rows mod knows the note by the words the engine opens it with', () => {

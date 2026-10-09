@@ -4,9 +4,9 @@
 // Domain ring: the conversation's position — where in the workflows a
 // conversation is working, kept as `position.json` in its folder
 // (conversation.cjs) for whatever carries the conversation on: the tmux
-// label's resume (session-label.cjs), and `conversation position`, the note
-// the gate mod appends to a compaction, naming what to re-read to carry on
-// there.
+// label's resume (session-label.cjs), the gate mod's spinner, and
+// `conversation position`, the note the gate mod appends to a compaction,
+// naming what to re-read to carry on there.
 //
 // Every place records itself on arrival, through the calls that label it,
 // labels on or off: `session label {wu} {phase} {topic}` inside a phase,
