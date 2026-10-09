@@ -16,12 +16,12 @@ If `.workflows/.baseline/overview.md` exists, read it in full — silent ambient
 
 #### If `pull_continuation` is set (an epic just born at a roadmap pull)
 
-The slice was fenced at the pull and its record backfilled into `session-{session_number}.md` — the conversation continues, narrower. Name the items brought over from the roadmap in one conversational sentence (by name, in plain words — never "slice", "pull", or "fenced"), then render the transition:
+The slice was fenced at the pull and its record backfilled into `session-{session_number}.md` — the conversation continues, narrower. Name the items brought over from the roadmap in one conversational sentence (by name, in plain words — never "slice", "pull", or "fenced"); a bug or a quick-fix among them rides along as material for the topics it bears on, never a topic shape of its own. Then render the transition:
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-Topics come later — they fall out once we've gone deeper; the items you brought over are the rough shapes.
+Topics come later — they fall out once we've gone deeper; the ideas you brought over are the rough shapes.
 
 Anything to reshape before we go deeper — or shall we dig in?
 ```
@@ -136,10 +136,10 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
 2. **Recognise intent.** The user's message may contain:
    - **Exploration content** — answers to your questions, new surfaces, descriptions of how parts work or connect, positions taken on a decision. Continue the conversation: push on the thread the user opened, counter-frame, follow where it leads. See [discovery-guidelines.md](discovery-guidelines.md) → *The Exploration Stance — How* for the register and where to push.
    - **An edit operation on an existing map item** — *"remove X"*, *"rename X to Y"*, *"edit summary of X"*, *"postpone X"*, etc. Only possible when the map is non-empty. Delegate to [map-operations.md](map-operations.md) — it handles the operation, writes to the **Edits** section, commits.
-   - **A staged product capability — the park valve.** The user places a surfaced capability beyond this epic (*"that's a v2 thing"*), or confirms your proposed placement. When no log is installed yet, conjure it **before the park** ([template.md](template.md) → *Lazy creation and finalisation*), so the `--source` names the log the open allocated (`session_number` set from its response). Park it on the roadmap — born at the first park; the verb validates and self-commits — capture-weight, never shaping:
+   - **Something staged beyond this epic — the park valve.** The user places a surfaced capability, bug or fix beyond this epic (*"that's a v2 thing"*, *"fix that after launch"*), or confirms your proposed placement — placement decides the home, whatever the kind. When no log is installed yet, conjure it **before the park** ([template.md](template.md) → *Lazy creation and finalisation*), so the `--source` names the log the open allocated (`session_number` set from its response). Park it on the roadmap — born at the first park; the verb validates and self-commits — capture-weight, never shaping:
 
      ```bash
-     node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/sessions/session-{session_number}.md
+     node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {idea|bug|quick-fix} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discovery/sessions/session-{session_number}.md
      ```
 
      Record it under **Edits** (`Parked: {name} → {horizon}`), commit, and continue:
@@ -148,8 +148,8 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
      node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): park {name} — session-{session_number:03d}" --discovery
      ```
 
-     A thought about an item already **pulled into in-flight work** is that work's business, not a park — when this session materially deepened its ground, flag the join instead (`engine roadmap flag {name}`). An unplaced tangent stays the inbox's (the scope-down in the detection core). A surfaced capability parks; a topic already on the map postpones instead — the edit operation above.
-   - **A roadmap item pulled forward** — *"actually, bring loyalty into this epic"*. One composed transaction lands it as a map topic (source `roadmap`) and writes its join — or, over a topic this epic postponed, restores that row instead of creating a second one, `--routing` naming nothing there; record it under **Edits** (`Pulled forward: {name}`):
+     A thought about an item already **pulled into in-flight work** is that work's business, not a park — when this session materially deepened its ground, flag the join instead (`engine roadmap flag {name}`). An unplaced tangent stays the inbox's (the scope-down in the detection core). Surfaced material parks; a topic already on the map postpones instead — the edit operation above.
+   - **A roadmap idea pulled forward** — *"actually, bring loyalty into this epic"* (a waiting bug or quick-fix is never pulled forward; it is pulled as its own work). One composed transaction lands it as a map topic (source `roadmap`) and writes its join — or, over a topic this epic postponed, restores that row instead of creating a second one, `--routing` naming nothing there; record it under **Edits** (`Pulled forward: {name}`):
 
      ```bash
      node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {name} --into {work_unit} --routing {research|discussion}

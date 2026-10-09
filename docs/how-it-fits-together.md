@@ -12,12 +12,12 @@ The skills are organised into tiers, each with a narrow role, so that a given mo
 
 | Tier | Its job |
 |---|---|
-| **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, and routes you everywhere else. |
+| **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, triages the inbox — starting a note now, putting it on the roadmap, or declining it — and routes you everywhere else. |
 | **First phase** | Discovery. Shapes brand-new work, settles its type, and persists it. |
 | **Navigation** | The dashboards — an epic's, and one the single-topic types share. They show a work unit's current state, hand the work off to whichever phase you pick, and lead back to the start menu. |
 | **Processing** | The phases themselves, where the actual work happens: the conversations, the documents, the loops. Each checks that it can start — the record it builds on is settled, no other session is writing code in the checkout — then picks up where its last session left off, or begins. |
 | **Bridge** | Decides where the work goes when a phase ends, and hands it off. |
-| **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely, and the triage that starts each note now, puts it on the roadmap, or declines it. |
+| **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely. |
 | **Baseline** | The brownfield assessment — project-level, outside the pipeline, reached from the start menus. |
 | **Roadmap** | The product layer above the work unit — project-level conversations, horizons of decided-but-unstarted ideas, bugs and quick-fixes, and the pull that births work units fenced to a slice. |
 | **Help** | How the workflows work — the eight-screen walkthrough, the reference cards, and the glossary every answer is written from. Project-level, outside the pipeline, reached from the start menus. |

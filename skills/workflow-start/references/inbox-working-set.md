@@ -193,33 +193,62 @@ The whole set goes under one horizon.
 
 That label is `{horizon}`.
 
-→ Proceed to **H. Confirm the Roadmap Items**.
+→ Proceed to **H. Compose the Roadmap Items**.
 
 #### Otherwise
 
 → Load **[choosing-a-horizon.md](../../workflow-shared/references/choosing-a-horizon.md)** and follow its instructions as written.
 
-→ On return, proceed to **H. Confirm the Roadmap Items**.
+→ On return, proceed to **H. Compose the Roadmap Items**.
 
-## H. Confirm the Roadmap Items
+## H. Compose the Roadmap Items
 
-Read each note in the set in full with the Read tool, then compose one item per note:
+Read each note in the set in full with the Read tool, then compose one entry per note:
 
 - `name` — the note's slug: its filename without the `YYYY-MM-DD--` date prefix and the `.md` extension, kebab-case.
-- `kind` — from its inbox folder: `ideas` → `idea`, `bugs` → `bug`, `quickfixes` → `quick-fix`.
-- `summary` — one line in the product's terms: an idea at capability grain (one capability the user would move around a roadmap as one thing), a bug or a quick-fix as the one fix it is.
+- `summary` — one line in the product's terms. A note in `ideas/` is an idea, at capability grain (one capability the user would move around a roadmap as one thing); a note in `bugs/` or `quickfixes/` is the one fix it is.
+- `horizon` — `{horizon}`, the same on every entry.
+- `note` — the note's inbox path.
 
-Write the payload to `.workflows/.cache/inbox/roadmap.json` with the Write tool, the items in set order:
+Write the entries to `.workflows/.cache/inbox-roadmap.json` with the Write tool, in set order:
 
 ```json
-{ "horizon": "{horizon}", "items": [{ "name": "{name}", "kind": "{kind}", "summary": "{summary}" }] }
+[{ "name": "{name}", "horizon": "{horizon}", "summary": "{summary}", "note": "{path}" }]
 ```
 
-Render the confirm — it states every item and the horizon, flagged new when the map does not hold it and naming the roadmap's own birth when there is none. A refusal names an item already on the roadmap: derive another name for it from its note — more specific, never a numeric suffix — and render again.
+→ Proceed to **I. Confirm the Roadmap Items**.
+
+## I. Confirm the Roadmap Items
+
+Render the confirm — it states every item with its kind, and the horizon, flagged new when the map does not hold it and naming the roadmap's own birth when there is none. It refuses whatever the landing would refuse:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox/roadmap.json
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json
 ```
+
+#### If the call refuses a name
+
+The name is already on the roadmap, or two entries share it. Derive a more specific name for that item from its note — never a numeric suffix — and rewrite the file.
+
+→ Return to **I. Confirm the Roadmap Items**.
+
+#### If the call refuses the horizon
+
+Ask in prose for another label — one without a dot or a slash.
+
+**STOP.** Wait for user response.
+
+Set the label their answer names as every entry's `horizon` and rewrite the file.
+
+→ Return to **I. Confirm the Roadmap Items**.
+
+#### If the call refuses anything else
+
+Nothing is recorded. Show the engine's error verbatim.
+
+→ Return to **A. Render the Working Set**.
+
+#### Otherwise
 
 Emit the call's MENU section verbatim per its marker.
 
@@ -227,7 +256,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `yes`:**
 
-→ Proceed to **I. Land the Items**.
+→ Proceed to **J. Land the Items**.
 
 **If `no`:**
 
@@ -237,31 +266,19 @@ Nothing is recorded; the set stands.
 
 **If comment:**
 
-The comment names what to change — an item's name or summary, or the horizon. Take it as the instruction and compose the payload again; what it does not name stands.
+The comment names what to change — an item's name or summary, or the horizon. Take it as the instruction and rewrite the file; what it does not name stands.
 
-→ Return to **H. Confirm the Roadmap Items**.
+→ Return to **I. Confirm the Roadmap Items**.
 
-## I. Land the Items
+## J. Land the Items
 
-Write the entries to `.workflows/.cache/inbox/roadmap-items.json` with the Write tool — one per item, in set order, `note` the item's inbox path:
-
-```json
-[{ "name": "{name}", "horizon": "{horizon}", "summary": "{summary}", "note": "{path}" }]
-```
-
-Land them — the verb moves each note to the roadmap's notes, derives each item's kind, origin and source from its note, and self-commits, so no commit call follows:
+Land the file the confirm rendered — the verb moves each note to the roadmap's notes, derives each item's kind, origin and source from its note, and self-commits, so no commit call follows:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox/roadmap-items.json
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox-roadmap.json
 ```
 
-#### If the response is `ok: false` refusing a name already on the roadmap
-
-Nothing moved. Derive another name for that item as **H** does.
-
-→ Return to **H. Confirm the Roadmap Items**.
-
-#### If the response is any other `ok: false`
+#### If the response is `ok: false`
 
 Nothing moved. Show the engine's error verbatim.
 
