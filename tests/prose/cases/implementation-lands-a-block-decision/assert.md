@@ -131,7 +131,7 @@ Further claims:
   it
 - the specification item is untouched: still `completed`, no reopen, no
   reconcile flag, its source row still `incorporated`. Nothing was
-  routed and nothing queued — no triage landing, no `topic reopen`, no
+  routed and nothing waits in any mailbox — no message send, no `topic reopen`, no
   `sources stale`, and no pause commit
 - the walk consumes exactly four user answers — the two setup skips, the
   side pick at the block gate, and the task approval — in that order and

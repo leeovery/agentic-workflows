@@ -153,7 +153,7 @@ describe('engine CLI: discovery-map operations', () => {
             'decided-topic': { routing: 'discussion', source: 'discovery' },
             'handled-topic': { routing: 'research', source: 'discovery', handled: true },
             'cancelled-topic': { routing: 'research', source: 'discovery' },
-            'triaged-topic': { routing: 'research', source: 'reroute:discussing-topic' },
+            'unstarted-topic': { routing: 'research', source: 'message:discussing-topic' },
           },
           dismissed: ['dismissed-name'],
         },
@@ -162,7 +162,7 @@ describe('engine CLI: discovery-map operations', () => {
             'researching-topic': { status: 'in-progress' },
             'ready-topic': { status: 'completed' },
             'cancelled-topic': { status: 'cancelled' },
-            'triaged-topic': { status: 'triaged' },
+            'unstarted-topic': { status: 'unstarted' },
           },
         },
         discussion: {
@@ -578,9 +578,9 @@ describe('engine CLI: discovery-map operations', () => {
       // One phrase for handled, whatever the topic's research state.
       'handled-topic': /it is closed as a dead end and stays on the map as record.*reopen it to make it actionable again/,
       'cancelled-topic': /it is cancelled and stays on the map as record.*reactivate it from the epic menu first/,
-      // triaged-topic derives fresh, but its parked stub is real content —
-      // the refusal names the triage, not the historical anchor.
-      'triaged-topic': /rerouted concerns are parked in its triage; start the topic to drain them, or cancel from the epic menu/,
+      // unstarted-topic derives fresh, but its parked stub is real content —
+      // the refusal names the mailbox, not the historical anchor.
+      'unstarted-topic': /messages wait in its mailbox; start the topic to drain them, or cancel from the epic menu/,
     };
 
     it('remove refuses every non-fresh lifecycle, leaving the manifest untouched', () => {
@@ -616,7 +616,7 @@ describe('engine CLI: discovery-map operations', () => {
       // hard-deletable.
       const m = readManifest(dir);
       m.phases.research.items['fresh-topic'] = { status: 'superseded' };
-      m.phases.discussion.items['fresh-topic'] = { status: 'triaged' };
+      m.phases.discussion.items['fresh-topic'] = { status: 'unstarted' };
       fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       const before = JSON.stringify(readManifest(dir));
 
@@ -702,10 +702,10 @@ describe('engine CLI: discovery-map operations', () => {
       assert.match(err.error, /it's cancelled; reactivate it from the epic menu first/);
     });
 
-    it('refuses a topic with a parked stub — a dead end never buries rerouted concerns', () => {
-      const err = runFail(dir, ['handle', 'payments', 'triaged-topic']);
-      assert.match(err.error, /"triaged-topic" can't be closed as a dead end — rerouted concerns are parked in its research triage; start the topic to drain them, or cancel the topic from the epic menu instead/);
-      assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['triaged-topic'], false);
+    it('refuses a topic with a parked stub — a dead end never buries messages', () => {
+      const err = runFail(dir, ['handle', 'payments', 'unstarted-topic']);
+      assert.match(err.error, /"unstarted-topic" can't be closed as a dead end — messages wait in its research mailbox; start the topic to drain them, or cancel the topic from the epic menu instead/);
+      assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['unstarted-topic'], false);
     });
   });
 

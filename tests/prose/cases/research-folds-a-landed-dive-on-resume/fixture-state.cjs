@@ -5,7 +5,7 @@
 // thread is still digging, its report sits pending in the store after the
 // sitting that dispatched it ended. The brief's harness question is
 // learned, the user's label-freshness question open, a human-raters idea
-// parked with its reason. The triage queue is empty; no experiment exists.
+// parked with its reason. The mailbox is empty; no experiment exists.
 // The user comes back only to conclude — the resumed session's first check
 // folds what landed, and the measurement it opened is offered once and
 // declined before the close.

@@ -1,5 +1,5 @@
 {
-  "origin": "a landing mid-session was pinned only as one leg of an hour-long case that fused a landing, a deferral, a second decision, a settle, a drain and two entries into the close — split out: this walk holds only that a concern a peer lands after a decision is offered at the next break and stays queued when the user says later",
+  "origin": "a landing mid-session was pinned only as one leg of an hour-long case that fused a landing, a deferral, a second decision, a settle, a drain and two entries into the close — split out: this walk holds only that a message a peer lands after a decision is offered at the next break and stays waiting when the user says later",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -23,9 +23,9 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/closing-gates.md",
     "skills/workflow-discussion-process/references/review-agent.md",
@@ -44,10 +44,10 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user returned to settle result caching and the shape of its key, and settles result caching first, decisively: a per-session cache keyed on the normalised query, invalidated at the nightly aggregate refresh. When the session offers the concern that lands mid-flight, they say later — they want the key shape settled first. They add nothing beyond that, never signal conclusion, and answer what a rendered menu asks.",
+  "conduct": "The user returned to settle result caching and the shape of its key, and settles result caching first, decisively: a per-session cache keyed on the normalised query, invalidated at the nightly aggregate refresh. When the session offers the message that lands mid-flight, they say later — they want the key shape settled first. They add nothing beyond that, never signal conclusion, and answer what a rendered menu asks.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned",
-    "discussion-peer-landing": "once, immediately after the commit that records the result-caching decision — before the session takes its next turn, and before any other subtopic is touched — acting as the peer relevance-measurement session, not as this session — write the stub content to .workflows/.cache/search-relevance/discussion/relevance-measurement/concern-expansion-cache-invalidation.md, then run: node .claude/skills/workflow-engine/scripts/engine.cjs topic triage search-relevance discussion synonym-handling --concern .workflows/.cache/search-relevance/discussion/relevance-measurement/concern-expansion-cache-invalidation.md --slug expansion-cache-invalidation -m \"discussion(search-relevance/relevance-measurement): reroute concern to synonym-handling\""
+    "discussion-peer-landing": "once, immediately after the commit that records the result-caching decision — before the session takes its next turn, and before any other subtopic is touched — acting as the peer relevance-measurement session, not as this session — write the stub content to .workflows/.cache/search-relevance/discussion/relevance-measurement/message-expansion-cache-invalidation.md, then run: node .claude/skills/workflow-engine/scripts/engine.cjs topic send search-relevance discussion synonym-handling --content .workflows/.cache/search-relevance/discussion/relevance-measurement/message-expansion-cache-invalidation.md --slug expansion-cache-invalidation -m \"discussion(search-relevance/relevance-measurement): send message to synonym-handling\""
   },
   "invariants": {
     "engine_before_write": true,
@@ -55,24 +55,24 @@
       "manifest get search-relevance.discussion.synonym-handling status",
       "render resume-gate search-relevance.discussion.synonym-handling",
       "discussion-map set search-relevance synonym-handling result-caching decided",
-      "topic triage search-relevance discussion synonym-handling",
-      "reroute concern to synonym-handling",
-      "topic queue search-relevance discussion synonym-handling",
-      "render triage-offer search-relevance.discussion.synonym-handling"
+      "topic send search-relevance discussion synonym-handling",
+      "send message to synonym-handling",
+      "topic mailbox search-relevance discussion synonym-handling",
+      "render mail-offer search-relevance.discussion.synonym-handling"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
       "render resume-gate search-relevance.discussion.synonym-handling",
       "discussion-map set search-relevance synonym-handling result-caching decided",
-      "topic triage search-relevance discussion synonym-handling",
-      "render triage-offer search-relevance.discussion.synonym-handling"
+      "topic send search-relevance discussion synonym-handling",
+      "render mail-offer search-relevance.discussion.synonym-handling"
     ],
     "calls_exclude": [
       "topic absorb",
       "discussion-map add search-relevance synonym-handling expansion-cache-invalidation",
       "discussion-map set search-relevance synonym-handling expansion-cache-invalidation",
       "discussion-map set search-relevance synonym-handling cache-key-shape decided",
-      "render triage-block",
+      "render mail-block",
       "render wait-gate",
       "render closing-gate",
       "render conclude-gate",

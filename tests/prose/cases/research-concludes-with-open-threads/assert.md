@@ -15,12 +15,11 @@ The prose should have taken this path:
    skipped
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, and routes into the
-   epic research session; the loop's first iteration finds the triage
-   queue empty and nothing landed — no dive was ever dispatched, and the
+   epic research session; the loop's first iteration finds the mailbox empty and nothing landed — no dive was ever dispatched, and the
    store says so
 4. the user signals they are done, and the walk enters topic
    completion
-5. topic completion re-reads the triage queue — still empty — reads
+5. topic completion re-reads the mailbox — still empty — reads
    the research item's reconcile flag (none), fetches the wait gate
    and gets nothing back (no experiment wait, nothing owed — no gate
    emitted, nothing blocks); the in-flight check then reads the store
@@ -37,7 +36,7 @@ The prose should have taken this path:
    MENU: the four threads with the parked reason beneath its row, then
    the two-row menu with no dead-end option; both emitted verbatim, the
    display first; the user concludes
-7. the conclusion runs with the discussion closure: the queue is checked
+7. the conclusion runs with the discussion closure: the mailbox is checked
    a final time; the register is read off the manifest; the file gains
    an `## Open Threads` closing section — one line for the
    label-freshness question carrying its state, one for the human-raters
@@ -62,7 +61,7 @@ Further claims:
 - the Open Threads section is the file's last section and the only edit
   the conclusion makes to it; the body above it is unchanged in
   substance
-- nothing was routed anywhere: no triage delivery, no new map topic, no
+- nothing was routed anywhere: no message delivery, no new map topic, no
   map marking, no reopening of a sibling
 - no agent was dispatched at any point, no dive offered, no experiment
   offered

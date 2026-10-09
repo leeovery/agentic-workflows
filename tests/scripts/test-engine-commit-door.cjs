@@ -121,9 +121,9 @@ describe('engine commit --topic: pathspec isolation', () => {
       'the record tree is clean; only the peer dirt remains');
   });
 
-  it('topic absorb deletes one queue file, commits action-scoped, and answers remaining', () => {
-    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
-    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/002-second.md', '### Second\nbody\n');
+  it('topic absorb deletes one message file, commits action-scoped, and answers remaining', () => {
+    writeFile(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-first.md', '### First\nbody\n');
+    writeFile(dir, '.workflows/payments/discussion/.mailbox/topic-a/002-second.md', '### Second\nbody\n');
     commitAll(dir, 'deliveries');
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nfold\n');
     writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
@@ -133,21 +133,21 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.strictEqual(res.absorbed, '001-first.md');
     assert.strictEqual(res.remaining, 1, 'answers the post-deletion count');
     assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md')), 'queue file deleted');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-first.md')), 'message file deleted');
     const files = headFiles(dir);
     assert.ok(files.includes('.workflows/payments/discussion/topic-a.md'), 'fold rides the commit');
-    assert.ok(files.includes('.workflows/payments/discussion/.triage/topic-a/001-first.md'), 'the deletion rides the commit');
+    assert.ok(files.includes('.workflows/payments/discussion/.mailbox/topic-a/001-first.md'), 'the deletion rides the commit');
     assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic not swept');
 
     const last = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
-    assert.strictEqual(last.remaining, 0, 'the emptied queue answers zero');
+    assert.strictEqual(last.remaining, 0, 'the emptied mailbox answers zero');
 
     assert.match(
       engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'x']).error,
-      /is not in the topic-a discussion triage queue/);
+      /is not in the topic-a discussion mailbox/);
     assert.match(
       engineFails(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '../002-second.md', '-m', 'x']).error,
-      /queue-file name, not a path/);
+      /message-file name, not a path/);
     assert.match(
       engineFails(dir, ['topic', 'absorb', 'payments', 'planning', 'topic-a', '--file', '001-x.md', '-m', 'x']).error,
       /research\|discussion\|investigation only/);
@@ -183,29 +183,29 @@ describe('engine commit --topic: pathspec isolation', () => {
     assert.strictEqual(missing.note, 'nothing to commit');
   });
 
-  it('regression: --topic commits survive an emptied triage queue (the post-drain state)', () => {
-    // Deliver a concern (creates + commits the sidecar file), drain it (rm +
+  it('regression: --topic commits survive an emptied mailbox (the post-drain state)', () => {
+    // Deliver a message (creates + commits the sidecar file), drain it (rm +
     // commit stages the deletion), then keep working: the emptied-but-present
     // directory must not poison later --topic commits.
     writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
-    engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-a',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/x): reroute concern to topic-a']);
-    fs.unlinkSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a/001-q.md'));
-    const drain = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain triage', '--topic', 'discussion/topic-a']);
+    engine(dir, ['topic', 'send', 'payments', 'discussion', 'topic-a',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/x): send message to topic-a']);
+    fs.unlinkSync(path.join(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-q.md'));
+    const drain = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain mailbox', '--topic', 'discussion/topic-a']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
 
     writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress after the drain\n');
     const after = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
-    assert.match(after.committed, /^[0-9a-f]+$/, 'the emptied queue directory no longer breaks the pathspec');
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage/topic-a')), 'the empty dir is still on disk — excluded, not deleted');
+    assert.match(after.committed, /^[0-9a-f]+$/, 'the emptied mailbox directory no longer breaks the pathspec');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox/topic-a')), 'the empty dir is still on disk — excluded, not deleted');
   });
 
-  it('an investigation\'s triage queue rides its own topic\'s commit', () => {
-    // Triage is legal for investigation, and a delivery whose own tail commit
-    // failed leaves the concern file on disk with a pending note prescribing
+  it('an investigation\'s mailbox rides its own topic\'s commit', () => {
+    // A mailbox is legal for investigation, and a delivery whose own tail commit
+    // failed leaves the message file on disk with a pending note prescribing
     // `--topic investigation/{topic} --sweep` as the retry. Without the
     // sidecar in the scope that retry commits the manifest and walks past the
-    // concern it was run to land.
+    // message it was run to land.
     writeFile(dir, '.workflows/crash-fix/manifest.json', JSON.stringify({
       name: 'crash-fix',
       work_type: 'bugfix',
@@ -215,18 +215,18 @@ describe('engine commit --topic: pathspec isolation', () => {
     writeFile(dir, '.workflows/crash-fix/investigation/crash-fix.md', '# Investigation — Crash Fix\n');
     commitAll(dir, 'a bugfix under investigation');
 
-    writeFile(dir, '.workflows/crash-fix/investigation/.triage/crash-fix/001-q.md',
+    writeFile(dir, '.workflows/crash-fix/investigation/.mailbox/crash-fix/001-q.md',
       '### Q\n*From: topic-a · discussion · 2026-01-01*\n\nBody.\n');
-    const landed = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): land the concern',
+    const landed = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): land the message',
       '--topic', 'investigation/crash-fix', '--sweep']);
 
     assert.match(landed.committed, /^[0-9a-f]+$/);
-    assert.ok(headFiles(dir).includes('.workflows/crash-fix/investigation/.triage/crash-fix/001-q.md'),
-      'the queued concern rides the investigation topic commit');
+    assert.ok(headFiles(dir).includes('.workflows/crash-fix/investigation/.mailbox/crash-fix/001-q.md'),
+      'the waiting message rides the investigation topic commit');
 
     // And the drain's deletion commits on the same scope.
-    fs.unlinkSync(path.join(dir, '.workflows/crash-fix/investigation/.triage/crash-fix/001-q.md'));
-    const drain = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): drain triage',
+    fs.unlinkSync(path.join(dir, '.workflows/crash-fix/investigation/.mailbox/crash-fix/001-q.md'));
+    const drain = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): drain mailbox',
       '--topic', 'investigation/crash-fix']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
     assert.deepStrictEqual(statusLines(dir), [], 'nothing left dirty');
@@ -867,36 +867,36 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--sweep']).error, /Usage/);
   });
 
-  it('the topic verbs a session runs on its own topic beat — and the reads and triage never create one', () => {
+  it('the topic verbs a session runs on its own topic beat — and the reads and a send never create one', () => {
     const me = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'door-sess' };
-    // The queue read is reachable for any topic — a session checking a
-    // foreign queue must not manufacture a hold there.
-    engine(dir, ['topic', 'queue', 'payments', 'discussion', 'topic-a'], me);
-    assert.ok(!beaten('discussion', 'topic-a'), 'a queue read never creates a heartbeat');
+    // The mailbox read is reachable for any topic — a session checking a
+    // foreign mailbox must not manufacture a hold there.
+    engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'topic-a'], me);
+    assert.ok(!beaten('discussion', 'topic-a'), 'a mailbox read never creates a heartbeat');
 
     engine(dir, ['topic', 'start', 'payments', 'planning', 'topic-a'], me);
     assert.ok(beaten('planning', 'topic-a'), 'start opens the session\'s own topic');
 
-    writeFile(dir, '.workflows/payments/discussion/.triage/topic-a/001-first.md', '### First\nbody\n');
-    commitAll(dir, 'a delivered concern');
+    writeFile(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-first.md', '### First\nbody\n');
+    commitAll(dir, 'a delivered message');
     engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md',
       '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)'], me);
-    assert.ok(beaten('discussion', 'topic-a'), 'absorb folds a concern into the session\'s own document');
+    assert.ok(beaten('discussion', 'topic-a'), 'absorb folds a message into the session\'s own document');
 
-    // The per-turn queue poll on the session's own topic is turn coverage:
+    // The per-turn mailbox poll on the session's own topic is turn coverage:
     // it refreshes the hold the write-shaped verbs established.
     const own = beatFile('discussion', 'topic-a');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(own, past, past);
-    engine(dir, ['topic', 'queue', 'payments', 'discussion', 'topic-a'], me);
+    engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'topic-a'], me);
     assert.ok(fs.statSync(own).mtimeMs > Date.now() - 60 * 1000, 'the poll keeps the owned hold live');
 
     // Delivery acts on the TARGET topic from the origin's session — a beat
     // there would manufacture a hold on a topic no session is in.
     writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
-    engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-b',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): reroute to topic-b'], me);
-    assert.ok(!beaten('discussion', 'topic-b'), 'triage never beats the target');
+    engine(dir, ['topic', 'send', 'payments', 'discussion', 'topic-b',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'], me);
+    assert.ok(!beaten('discussion', 'topic-b'), 'send never beats the target');
   });
 
   it('no field write beats — a three-segment set is often a cross-phase write', () => {
@@ -1173,19 +1173,19 @@ describe('commit door: transaction-tail degrade', () => {
     // so a delivery's retry must carry the same suppression the delivery has.
     writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
-    const delivered = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'topic-b',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): reroute to topic-b'],
+    const delivered = engine(dir, ['topic', 'send', 'payments', 'discussion', 'topic-b',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'],
     { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
     assert.strictEqual(delivered.committed, null);
     assert.match(delivered.note, /--topic discussion\/topic-b --sweep -m/, 'the delivery\'s retry never beats the target');
 
-    const moved = engine(dir, ['topic', 'requeue', 'payments', 'discussion', 'research', 'topic-b',
+    const moved = engine(dir, ['topic', 'forward', 'payments', 'discussion', 'research', 'topic-b',
       '--file', '001-q.md', '-m', 'research(payments/topic-b): move 001-q to the research side'],
     { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
     assert.strictEqual(moved.committed, null);
     assert.match(moved.note, /--topic research\/topic-b --sweep -m/, 'the move\'s retry never beats the destination');
 
-    // Absorb is the session folding a concern into its own document — its
+    // Absorb is the session folding a message into its own document — its
     // retry beats, exactly as the verb does.
     const absorbed = engine(dir, ['topic', 'absorb', 'payments', 'research', 'topic-b',
       '--file', '001-q.md', '-m', 'research(payments/topic-b): absorb 001-q (from topic-a)'],

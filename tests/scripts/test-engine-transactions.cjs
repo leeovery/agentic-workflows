@@ -79,7 +79,7 @@ function unitManifest() {
           'session-model': { routing: 'discussion', source: 'discovery', order: 4 },
         },
       },
-      research: { items: { 'auth-flow': { status: 'completed' }, 'fee-model': { status: 'triaged' } } },
+      research: { items: { 'auth-flow': { status: 'completed' }, 'fee-model': { status: 'unstarted' } } },
       discussion: {
         items: {
           'auth-flow': { status: 'in-progress', awaiting_experiments: ['E1'] },
@@ -165,7 +165,7 @@ describe('engine topic cancel — the discovery unit', () => {
       /⚑ Knowledge removal warning[\s\S]*Cancelled "Auth Flow"\./);
   });
 
-  it('a parked stub is taken with the topic — triaged stashed like any status', () => {
+  it('a parked stub is taken with the topic — unstarted stashed like any status', () => {
     // fee-model's specification is implementation-locked in the fixture; with
     // no code under it, the specification cancels and frees the topic.
     const m = unitManifest();
@@ -174,10 +174,10 @@ describe('engine topic cancel — the discovery unit', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']);
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
     assert.deepStrictEqual(res.cancelled, [
-      { phase: 'research', previous_status: 'triaged' },
+      { phase: 'research', previous_status: 'unstarted' },
       { phase: 'discussion', previous_status: 'completed' },
     ]);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['fee-model'], { status: 'cancelled', previous_status: 'triaged' });
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['fee-model'], { status: 'cancelled', previous_status: 'unstarted' });
   });
 
   it('a started specification locks its source topic; cancelling the specification frees it', () => {
@@ -678,11 +678,11 @@ describe('engine topic start', () => {
     assert.match(engineFails(dir, ['topic', 'start', 'ghost', 'research', 'auth-flow']).error, /manifest not found/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'nonsense', 'auth-flow']).error, /unknown or non-lifecycle phase "nonsense"/);
     assert.match(engineFails(dir, ['topic', 'start', 'payments', 'research']).error, /Usage: engine topic start/);
-    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|triage\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|queue\|incorporations\|absorb\|requeue>/);
+    assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'research', 'auth-flow']).error, /Usage: engine topic <start\|send\|complete\|reopen\|supersede\|cancel\|reactivate\|postpone\|mailbox\|incorporations\|absorb\|forward>/);
   });
 
-  it('flips a triaged stub to in-progress — the one exit from triaged', () => {
-    engine(dir, ['topic', 'triage', 'payments', 'research', 'parked-topic']);
+  it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
+    engine(dir, ['topic', 'send', 'payments', 'research', 'parked-topic']);
     const res = engine(dir, ['topic', 'start', 'payments', 'research', 'parked-topic']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'parked-topic', phase: 'research', status: 'in-progress', created: false });
@@ -690,87 +690,87 @@ describe('engine topic start', () => {
   });
 });
 
-describe('engine topic triage', () => {
+describe('engine topic send', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('creates an absent phase item with status triaged — no commit', () => {
-    const { res, sections } = okSections(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases']);
+  it('creates an absent phase item with status unstarted — no commit', () => {
+    const { res, sections } = okSections(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases']);
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'discussion', status: 'triaged', created: true, status_before: null });
-    assert.strictEqual(sections, '', 'triage appends no sections');
+    assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'discussion', status: 'unstarted', created: true, status_before: null });
+    assert.strictEqual(sections, '', 'send appends no sections');
 
     const m = readManifest(dir, 'payments');
-    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'triaged' });
+    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'unstarted' });
     // No commit inside — the calling flow commits the artefact append alongside.
     assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
     assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
   });
 
-  it('delivery form: installs the concern in the sidecar, self-commits concern + manifest only', () => {
+  it('delivery form: installs the message in the sidecar, self-commits message + manifest only', () => {
     writeFile(dir, '.workflows/payments/discussion/refund-policy.md', '# Peer topic\ndirty peer content\n');
-    const scratch = path.join(dir, '.workflows/.cache/scratch/concern-scratch.md');
-    writeFile(dir, '.workflows/.cache/scratch/concern-scratch.md', '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
+    const scratch = path.join(dir, '.workflows/.cache/scratch/message-scratch.md');
+    writeFile(dir, '.workflows/.cache/scratch/message-scratch.md', '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
 
-    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): reroute concern to edge-cases']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): send message to edge-cases']);
 
     assert.strictEqual(res.created, true);
-    assert.strictEqual(res.status, 'triaged');
-    assert.strictEqual(res.concern_path, '.workflows/payments/discussion/.triage/edge-cases/001-rate-limits.md');
+    assert.strictEqual(res.status, 'unstarted');
+    assert.strictEqual(res.message_path, '.workflows/payments/discussion/.mailbox/edge-cases/001-rate-limits.md');
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(res.warnings, []);
-    const installed = fs.readFileSync(path.join(dir, res.concern_path), 'utf8');
+    const installed = fs.readFileSync(path.join(dir, res.message_path), 'utf8');
     assert.match(installed, /### Rate limits/);
-    assert.ok(!fs.existsSync(scratch), 'scratch concern file consumed');
+    assert.ok(!fs.existsSync(scratch), 'scratch message file consumed');
     const show = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual(show, [
-      '.workflows/payments/discussion/.triage/edge-cases/001-rate-limits.md',
+      '.workflows/payments/discussion/.mailbox/edge-cases/001-rate-limits.md',
       '.workflows/payments/manifest.json',
-    ], 'commit confined to concern + manifest');
+    ], 'commit confined to message + manifest');
     assert.match(git(dir, ['status', '--porcelain']), /discussion\/refund-policy\.md/, 'peer dirt untouched');
   });
 
-  it('delivery form: numbers concerns sequentially and never collides', () => {
+  it('delivery form: numbers messages sequentially and never collides', () => {
     for (const slug of ['first', 'second']) {
       writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
-      engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-        '--concern', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `discussion(payments/x): reroute concern to edge-cases`]);
+      engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+        '--content', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `discussion(payments/x): send message to edge-cases`]);
     }
-    const files = fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases')).sort();
+    const files = fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.mailbox/edge-cases')).sort();
     assert.deepStrictEqual(files, ['001-first.md', '002-second.md']);
   });
 
-  it('delivery form: refuses a missing or empty concern file, a bad slug, a missing message — nothing written', () => {
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', '.workflows/.cache/scratch/absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file not found/);
+  it('delivery form: refuses a missing or empty message file, a bad slug, a missing commit message — nothing written', () => {
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+      '--content', '.workflows/.cache/scratch/absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file not found/);
     writeFile(dir, '.workflows/.cache/scratch/empty.md', '  \n');
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', '.workflows/.cache/scratch/empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /concern file is empty/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+      '--content', '.workflows/.cache/scratch/empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file is empty/);
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug']).error, /Usage/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug']).error, /Usage/);
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no item conjured');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.triage')), 'no sidecar conjured');
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox')), 'no sidecar conjured');
   });
 
-  it('hardening: refuses a concern path outside .workflows/.cache — a live artifact is never consumed', () => {
+  it('hardening: refuses a message path outside .workflows/.cache — a live artifact is never consumed', () => {
     writeFile(dir, '.workflows/payments/research/live.md', '# Live artifact\n');
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases',
-      '--concern', '.workflows/payments/research/live.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'edge-cases',
+      '--content', '.workflows/payments/research/live.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
     assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/live.md')), 'live artifact untouched');
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases',
-      '--concern', '../outside.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'edge-cases',
+      '--content', '../outside.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
   });
 
-  it('hardening: refuses traversal in topic names — triage, queue, presence', () => {
+  it('hardening: refuses traversal in topic names — send, mailbox, presence', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', '../../../evil',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'x', '-m', 'msg']).error, /invalid topic name/);
-    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion', '../evil']).error, /invalid topic name/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', '../../../evil',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'x', '-m', 'msg']).error, /invalid topic name/);
+    assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'discussion', '../evil']).error, /invalid topic name/);
     assert.ok(!fs.existsSync(path.join(dir, '.workflows/evil')), 'nothing escaped');
   });
 
@@ -780,31 +780,31 @@ describe('engine topic triage', () => {
     fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
 
-    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'session-model',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'msg']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'session-model',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'msg']);
 
     assert.strictEqual(res.reconcile_flagged, undefined);
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].reconcile_needed, true, 'brief flag preserved');
   });
 
-  it('delivery form: a terminal target refuses before the concern is consumed', () => {
+  it('delivery form: a terminal target refuses before the message is consumed', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'refund-policy']);
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'refund-policy',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/scratch/c.md')), 'scratch concern preserved on refusal');
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'refund-policy',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/scratch/c.md')), 'scratch message preserved on refusal');
   });
 
   it('research-side delivery beneath a completed discussion flags it for reconciliation', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
-    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'session-model',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): reroute concern to session-model']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'session-model',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): send message to session-model']);
 
     assert.strictEqual(res.reconcile_flagged, true);
     const m = readManifest(dir, 'payments');
     assert.strictEqual(m.phases.discussion.items['session-model'].reconcile_needed, 'research');
     assert.strictEqual(m.phases.discussion.items['session-model'].status, 'completed', 'the discussion itself is not reopened');
-    assert.strictEqual(m.phases.research.items['session-model'].status, 'triaged', 'the research item parks the concern');
+    assert.strictEqual(m.phases.research.items['session-model'].status, 'unstarted', 'the research item parks the message');
   });
 
   it('discussion-side delivery beneath a spec-sourced discussion flags the spec and stales the row', () => {
@@ -815,8 +815,8 @@ describe('engine topic triage', () => {
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
 
-    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'shifted-ground', '-m', 'm']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'shifted-ground', '-m', 'm']);
 
     assert.strictEqual(res.reopened, true, 'the landing reopens the discussion');
     assert.strictEqual(res.reconcile_flagged, true);
@@ -828,64 +828,64 @@ describe('engine topic triage', () => {
 
   it('no reconcile flag for a discussion-side delivery — its downstream is the spec join', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
-    const disc = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
+    const disc = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
     assert.strictEqual(disc.reconcile_flagged, undefined);
   });
 
   it('research-side delivery beneath a live discussion flags it — research feeds discussion', () => {
     writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
-    const live = engine(dir, ['topic', 'triage', 'payments', 'research', 'refund-policy',
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
+    const live = engine(dir, ['topic', 'send', 'payments', 'research', 'refund-policy',
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
     assert.strictEqual(live.reconcile_flagged, true);
     const m = readManifest(dir, 'payments');
     assert.strictEqual(m.phases.discussion.items['refund-policy'].reconcile_needed, 'research');
     assert.strictEqual(m.phases.discussion.items['refund-policy'].status, 'in-progress', 'the discussion stays in flight — the flag says why it cannot conclude');
-    assert.strictEqual(m.phases.research.items['refund-policy'].status, 'triaged', 'the research item parks the concern');
+    assert.strictEqual(m.phases.research.items['refund-policy'].status, 'unstarted', 'the research item parks the message');
   });
 
-  it('queue read: empty for a missing directory, lists delivered concerns sorted, refuses illegal phases', () => {
-    const empty = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
+  it('mailbox read: empty for a missing directory, lists delivered messages sorted, refuses illegal phases', () => {
+    const empty = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
     assert.deepStrictEqual(empty, { ok: true, work_unit: 'payments', phase: 'discussion', topic: 'edge-cases', count: 0, files: [] });
 
     for (const slug of ['first', 'second']) {
       writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
-      engine(dir, ['topic', 'triage', 'payments', 'discussion', 'edge-cases',
-        '--concern', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', 'discussion(payments/x): reroute concern to edge-cases']);
+      engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
+        '--content', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', 'discussion(payments/x): send message to edge-cases']);
     }
-    const two = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
+    const two = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
     assert.strictEqual(two.count, 2);
     assert.deepStrictEqual(two.files, [
-      '.workflows/payments/discussion/.triage/edge-cases/001-first.md',
-      '.workflows/payments/discussion/.triage/edge-cases/002-second.md',
+      '.workflows/payments/discussion/.mailbox/edge-cases/001-first.md',
+      '.workflows/payments/discussion/.mailbox/edge-cases/002-second.md',
     ]);
 
-    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases/dir.md'), { recursive: true });
-    const withDir = engine(dir, ['topic', 'queue', 'payments', 'discussion', 'edge-cases']);
-    assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a concern');
+    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion/.mailbox/edge-cases/dir.md'), { recursive: true });
+    const withDir = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
+    assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a message');
 
-    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'planning', 'edge-cases']).error, /research\|discussion\|investigation only/);
-    assert.match(engineFails(dir, ['topic', 'queue', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
-    assert.match(engineFails(dir, ['topic', 'queue', 'payments', 'discussion']).error, /Usage/);
+    assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'planning', 'edge-cases']).error, /research\|discussion\|investigation only/);
+    assert.match(engineFails(dir, ['topic', 'mailbox', 'ghost', 'discussion', 'edge-cases']).error, /no work unit directory/);
+    assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'discussion']).error, /Usage/);
   });
 
-  it('is idempotent — a second call on a triaged stub is a no-op', () => {
-    engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
-    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'edge-cases']);
+  it('is idempotent — a second call on an unstarted stub is a no-op', () => {
+    engine(dir, ['topic', 'send', 'payments', 'research', 'edge-cases']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'edge-cases']);
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'research', status: 'triaged', created: false, status_before: 'triaged' });
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'], { status: 'triaged' });
+    assert.deepStrictEqual(res, { ok: true, topic: 'edge-cases', phase: 'research', status: 'unstarted', created: false, status_before: 'unstarted' });
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'], { status: 'unstarted' });
   });
 
   it('leaves an in-progress item untouched — never backwards', () => {
-    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'auth-flow']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'auth-flow']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'auth-flow', phase: 'research', status: 'in-progress', created: false, status_before: 'in-progress' });
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
   });
 
   it('reopens a completed item to in-progress — never land an entry in a concluded artefact', () => {
-    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model']);
 
     assert.deepStrictEqual(res, { ok: true, topic: 'session-model', phase: 'discussion', status: 'in-progress', created: false, status_before: 'completed', reopened: true });
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].status, 'in-progress');
@@ -898,7 +898,7 @@ describe('engine topic triage', () => {
     } };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model']);
 
     assert.strictEqual(res.reopened, true);
     assert.strictEqual(res.reconcile_flagged, true);
@@ -917,7 +917,7 @@ describe('engine topic triage', () => {
 
     // refund-policy's discussion is in-progress — the bare call leaves it
     // untouched and must not stale the spec.
-    const res = engine(dir, ['topic', 'triage', 'payments', 'discussion', 'refund-policy']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'refund-policy']);
 
     assert.strictEqual(res.reopened, undefined);
     assert.strictEqual(res.reconcile_flagged, undefined);
@@ -927,7 +927,7 @@ describe('engine topic triage', () => {
   it('refuses a closed map row before the item is touched; off the map, a cancelled or superseded item refuses with the start messages', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     for (const phase of ['research', 'discussion']) {
-      assert.strictEqual(engineFails(dir, ['topic', 'triage', 'payments', phase, 'auth-flow']).error,
+      assert.strictEqual(engineFails(dir, ['topic', 'send', 'payments', phase, 'auth-flow']).error,
         '"auth-flow" is cancelled — reactivate it from the epic menu first', phase);
     }
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['auth-flow'], undefined, 'nothing born under a cancelled row');
@@ -936,111 +936,111 @@ describe('engine topic triage', () => {
     m.phases.discovery.items['dead-lead'] = { routing: 'research', source: 'discovery', handled: true };
     m.phases.research.items['dead-lead'] = { status: 'completed' };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    assert.strictEqual(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'dead-lead']).error,
+    assert.strictEqual(engineFails(dir, ['topic', 'send', 'payments', 'research', 'dead-lead']).error,
       '"dead-lead" is closed as a dead end — reopen it in discovery first');
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['dead-lead'].status, 'completed', 'the dead end is not reopened underneath');
 
     // session-model has no map row — the item's own refusal stands.
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']).error, /discussion item "session-model" is cancelled — reactivate it instead/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'session-model']).error, /discussion item "session-model" is cancelled — reactivate it instead/);
 
     engine(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'auth-flow']);
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'research', 'fee-model']).error, /is superseded \(by "auth-flow"\) — supersession is terminal/);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'fee-model']).error, /is superseded \(by "auth-flow"\) — supersession is terminal/);
   });
 
-  it('heals a status-less item to triaged — fields preserved, manifest saved', () => {
+  it('heals a status-less item to unstarted — fields preserved, manifest saved', () => {
     const m0 = epicManifest();
     m0.phases.research.items['half-written'] = { reconcile_needed: true };
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
-    const res = engine(dir, ['topic', 'triage', 'payments', 'research', 'half-written']);
+    const res = engine(dir, ['topic', 'send', 'payments', 'research', 'half-written']);
 
-    assert.deepStrictEqual(res, { ok: true, topic: 'half-written', phase: 'research', status: 'triaged', created: false, status_before: null });
+    assert.deepStrictEqual(res, { ok: true, topic: 'half-written', phase: 'research', status: 'unstarted', created: false, status_before: null });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['half-written'],
-      { reconcile_needed: true, status: 'triaged' });
+      { reconcile_needed: true, status: 'unstarted' });
   });
 
-  it('refuses phases whose vocabulary lacks triaged — schema-driven', () => {
-    const err = engineFails(dir, ['topic', 'triage', 'payments', 'planning', 'auth-flow']);
-    assert.match(err.error, /Invalid status "triaged" for phase "planning"/);
+  it('refuses phases whose vocabulary lacks unstarted — schema-driven', () => {
+    const err = engineFails(dir, ['topic', 'send', 'payments', 'planning', 'auth-flow']);
+    assert.match(err.error, /Invalid status "unstarted" for phase "planning"/);
     // Nothing created on the refused path.
     assert.strictEqual(readManifest(dir, 'payments').phases.planning, undefined);
   });
 });
 
-describe('engine topic requeue', () => {
+describe('engine topic forward', () => {
   let dir;
   beforeEach(() => { dir = setupEpicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  /** Land one concern in a topic's queue via the delivery form. */
+  /** Land one message in a topic's mailbox via the delivery form. */
   function land(phase, topic, slug) {
     writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody of ${slug}.\n`);
-    return engine(dir, ['topic', 'triage', 'payments', phase, topic,
-      '--concern', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `land ${slug}`]);
+    return engine(dir, ['topic', 'send', 'payments', phase, topic,
+      '--content', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `land ${slug}`]);
   }
 
-  it('moves the concern to the other phase-side: dest item parked, file renumbered, stub removed, action-scoped commit', () => {
+  it('moves the message to the other phase-side: dest item parked, file renumbered, stub removed, action-scoped commit', () => {
     land('research', 'edge-cases', 'a-decision-owed');
     writeFile(dir, '.workflows/payments/research/auth-flow.md', 'dirty peer\n');
 
-    const res = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '001-a-decision-owed.md', '-m', 'research(payments/edge-cases): requeue 001-a-decision-owed to discussion']);
+    const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '001-a-decision-owed.md', '-m', 'research(payments/edge-cases): forward 001-a-decision-owed to discussion']);
 
     assert.strictEqual(res.from_phase, 'research');
     assert.strictEqual(res.to_phase, 'discussion');
     assert.strictEqual(res.moved, '001-a-decision-owed.md');
-    assert.strictEqual(res.concern_path, '.workflows/payments/discussion/.triage/edge-cases/001-a-decision-owed.md');
+    assert.strictEqual(res.message_path, '.workflows/payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md');
     assert.strictEqual(res.remaining, 0);
-    assert.strictEqual(res.status, 'triaged');
+    assert.strictEqual(res.status, 'unstarted');
     assert.strictEqual(res.created, true);
     assert.strictEqual(res.source_item_removed, true);
     assert.match(res.committed, /^[0-9a-f]+$/);
 
     const m = readManifest(dir, 'payments');
     assert.strictEqual(m.phases.research.items['edge-cases'], undefined, 'the emptied parked stub is removed');
-    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'triaged' });
-    assert.match(fs.readFileSync(path.join(dir, res.concern_path), 'utf8'), /Body of a-decision-owed/);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/research/.triage/edge-cases/001-a-decision-owed.md')), 'source file gone');
+    assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'unstarted' });
+    assert.match(fs.readFileSync(path.join(dir, res.message_path), 'utf8'), /Body of a-decision-owed/);
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'source file gone');
     const show = git(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual(show, [
-      '.workflows/payments/discussion/.triage/edge-cases/001-a-decision-owed.md',
+      '.workflows/payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md',
       '.workflows/payments/manifest.json',
-      '.workflows/payments/research/.triage/edge-cases/001-a-decision-owed.md',
-    ], 'commit confined to the two queue paths + manifest');
+      '.workflows/payments/research/.mailbox/edge-cases/001-a-decision-owed.md',
+    ], 'commit confined to the two mailbox paths + manifest');
     assert.match(git(dir, ['status', '--porcelain', '-uall']), /research\/auth-flow\.md/, 'peer dirt untouched');
-    assert.strictEqual(lastMessage(dir), 'research(payments/edge-cases): requeue 001-a-decision-owed to discussion');
+    assert.strictEqual(lastMessage(dir), 'research(payments/edge-cases): forward 001-a-decision-owed to discussion');
   });
 
-  it('renumbers into the destination queue behind existing entries', () => {
+  it('renumbers into the destination mailbox behind existing entries', () => {
     land('discussion', 'edge-cases', 'already-queued');
     land('research', 'edge-cases', 'a-decision-owed');
 
-    const res = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+    const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
       '--file', '001-a-decision-owed.md', '-m', 'm']);
 
-    assert.strictEqual(res.concern_path, '.workflows/payments/discussion/.triage/edge-cases/002-a-decision-owed.md');
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.triage/edge-cases')).sort(),
+    assert.strictEqual(res.message_path, '.workflows/payments/discussion/.mailbox/edge-cases/002-a-decision-owed.md');
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.mailbox/edge-cases')).sort(),
       ['001-already-queued.md', '002-a-decision-owed.md']);
   });
 
-  it('leaves an in-progress source item alone, and a still-populated triaged source stub in place', () => {
+  it('leaves an in-progress source item alone, and a still-populated unstarted source stub in place', () => {
     land('research', 'auth-flow', 'a-decision-owed');
-    const live = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'auth-flow',
+    const live = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'auth-flow',
       '--file', '001-a-decision-owed.md', '-m', 'm']);
     assert.strictEqual(live.source_item_removed, undefined);
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
 
     land('research', 'edge-cases', 'first');
     land('research', 'edge-cases', 'second');
-    const partial = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+    const partial = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
       '--file', '001-first.md', '-m', 'm']);
     assert.strictEqual(partial.remaining, 1);
     assert.strictEqual(partial.source_item_removed, undefined);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'].status, 'triaged', 'a stub with entries left keeps parking them');
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['edge-cases'].status, 'unstarted', 'a stub with entries left keeps parking them');
   });
 
-  it('a completed destination reopens and hops — the same staleness a triage delivery lands', () => {
+  it('a completed destination reopens and hops — the same staleness a message delivery lands', () => {
     const m = epicManifest();
     m.phases.specification = { items: {
       unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
@@ -1048,7 +1048,7 @@ describe('engine topic requeue', () => {
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     land('research', 'session-model', 'a-decision-owed');
 
-    const res = engine(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'session-model',
+    const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'session-model',
       '--file', '001-a-decision-owed.md', '-m', 'm']);
 
     assert.strictEqual(res.reopened, true);
@@ -1060,35 +1060,35 @@ describe('engine topic requeue', () => {
     assert.strictEqual(items.unified.sources['session-model'].status, 'stale');
   });
 
-  it('moves discussion-side concerns to research too', () => {
+  it('moves discussion-side messages to research too', () => {
     land('discussion', 'refund-policy', 'an-open-question');
 
-    const res = engine(dir, ['topic', 'requeue', 'payments', 'discussion', 'research', 'refund-policy',
+    const res = engine(dir, ['topic', 'forward', 'payments', 'discussion', 'research', 'refund-policy',
       '--file', '001-an-open-question.md', '-m', 'm']);
 
     assert.strictEqual(res.to_phase, 'research');
-    assert.strictEqual(res.concern_path, '.workflows/payments/research/.triage/refund-policy/001-an-open-question.md');
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['refund-policy'].status, 'triaged');
+    assert.strictEqual(res.message_path, '.workflows/payments/research/.mailbox/refund-policy/001-an-open-question.md');
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['refund-policy'].status, 'unstarted');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress', 'source discussion untouched');
   });
 
-  it('refuses anything outside the research↔discussion pair, a path for --file, and a file not in the queue — nothing written', () => {
+  it('refuses anything outside the research↔discussion pair, a path for --file, and a file not in the mailbox — nothing written', () => {
     land('research', 'edge-cases', 'a-decision-owed');
 
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'research', 'edge-cases',
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'research', 'edge-cases',
       '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'investigation', 'edge-cases',
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'investigation', 'edge-cases',
       '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'planning', 'discussion', 'edge-cases',
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'planning', 'discussion', 'edge-cases',
       '--file', '001-a-decision-owed.md', '-m', 'm']).error, /other phase-side/);
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', 'sub/001-a-decision-owed.md', '-m', 'm']).error, /queue-file name, not a path/);
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
-      '--file', '009-ghost.md', '-m', 'm']).error, /not in the edge-cases research triage queue/);
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'edge-cases',
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', 'sub/001-a-decision-owed.md', '-m', 'm']).error, /message-file name, not a path/);
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
+      '--file', '009-ghost.md', '-m', 'm']).error, /not in the edge-cases research mailbox/);
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
       '--file', '001-a-decision-owed.md']).error, /Usage/);
 
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.triage/edge-cases/001-a-decision-owed.md')), 'queue untouched on every refusal');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'mailbox untouched on every refusal');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no destination item conjured');
   });
 
@@ -1096,55 +1096,55 @@ describe('engine topic requeue', () => {
     land('research', 'session-model', 'a-decision-owed');
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']);
 
-    assert.match(engineFails(dir, ['topic', 'requeue', 'payments', 'research', 'discussion', 'session-model',
+    assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'session-model',
       '--file', '001-a-decision-owed.md', '-m', 'm']).error, /is cancelled — reactivate it instead/);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.triage/session-model/001-a-decision-owed.md')), 'concern still queued at the source');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.mailbox/session-model/001-a-decision-owed.md')), 'message still waiting at the source');
   });
 });
 
-describe('triaged guards across the other verbs', () => {
+describe('unstarted guards across the other verbs', () => {
   let dir;
   beforeEach(() => {
     dir = setupEpicFixture();
-    engine(dir, ['topic', 'triage', 'payments', 'research', 'parked-topic']);
+    engine(dir, ['topic', 'send', 'payments', 'research', 'parked-topic']);
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('complete refuses a triaged stub — parked concerns must never bury as completed', () => {
+  it('complete refuses an unstarted stub — parked messages must never bury as completed', () => {
     const err = engineFails(dir, ['topic', 'complete', 'payments', 'research', 'parked-topic']);
-    assert.match(err.error, /is triaged — parked concerns have never been worked; start the topic first/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'triaged');
+    assert.match(err.error, /is unstarted — its messages have never been worked; start the topic first/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'unstarted');
   });
 
-  it('supersede refuses a triaged stub', () => {
+  it('supersede refuses an unstarted stub', () => {
     const err = engineFails(dir, ['topic', 'supersede', 'payments', 'research', 'parked-topic', '--by', 'fee-model']);
-    assert.match(err.error, /is triaged — parked concerns have never been worked; start the topic to drain them first/);
-    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'triaged');
+    assert.match(err.error, /is unstarted — its messages have never been worked; start the topic to drain them first/);
+    assert.strictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'].status, 'unstarted');
   });
 
-  it('supersede refuses a triaged stub as the absorbing --by target — lineage must point at worked topics', () => {
+  it('supersede refuses an unstarted stub as the absorbing --by target — lineage must point at worked topics', () => {
     const err = engineFails(dir, ['topic', 'supersede', 'payments', 'research', 'fee-model', '--by', 'parked-topic']);
-    assert.match(err.error, /"parked-topic" is triaged — a stub of parked concerns cannot absorb other topics; start it first/);
+    assert.match(err.error, /"parked-topic" is unstarted — a stub holding messages cannot absorb other topics; start it first/);
     // Nothing mutated, no KB removal path taken.
     const m = readManifest(dir, 'payments');
     assert.strictEqual(m.phases.research.items['fee-model'].status, 'completed');
-    assert.strictEqual(m.phases.research.items['parked-topic'].status, 'triaged');
+    assert.strictEqual(m.phases.research.items['parked-topic'].status, 'unstarted');
   });
 
-  it('reopen refuses a triaged stub with the existing not-completed message', () => {
+  it('reopen refuses an unstarted stub with the existing not-completed message', () => {
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'parked-topic']);
-    assert.match(err.error, /is not completed \(status: triaged\) — only a completed item can be reopened/);
+    assert.match(err.error, /is not completed \(status: unstarted\) — only a completed item can be reopened/);
   });
 
-  it('a topic cancel stashes triaged as previous_status; reactivate restores it', () => {
+  it('a topic cancel stashes unstarted as previous_status; reactivate restores it', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'parked-topic']);
     const cancelled = readManifest(dir, 'payments').phases.research.items['parked-topic'];
     assert.strictEqual(cancelled.status, 'cancelled');
-    assert.strictEqual(cancelled.previous_status, 'triaged');
+    assert.strictEqual(cancelled.previous_status, 'unstarted');
 
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'parked-topic']);
-    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'triaged' }]);
-    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'], { status: 'triaged' });
+    assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'unstarted' }]);
+    assert.deepStrictEqual(readManifest(dir, 'payments').phases.research.items['parked-topic'], { status: 'unstarted' });
   });
 });
 
@@ -1469,7 +1469,7 @@ describe('engine topic reopen', () => {
     const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
     const refusal = /discussion item "session-model" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, refusal);
-    assert.match(engineFails(dir, ['topic', 'triage', 'payments', 'discussion', 'session-model']).error, refusal);
+    assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'session-model']).error, refusal);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
   });
 
@@ -1479,10 +1479,10 @@ describe('engine topic reopen', () => {
       m.phases.research.items['session-model'] = { status };
       writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     };
-    withResearch('triaged');
+    withResearch('unstarted');
     const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
-    assert.match(err.error, /discussion can't reopen on "session-model" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.match(err.error, /discussion can't reopen on "session-model" — research is parked on it \(mail waiting\); research feeds discussion, so it lands first — the menu names the way in/);
     assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
     withResearch('in-progress');
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, /research is in flight on it/);
@@ -2375,13 +2375,13 @@ describe('the knowledge store never rides an engine commit', () => {
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
   const { VALID_PHASE_STATUSES } = require('../../skills/workflow-engine/scripts/kernel/manifest-schema.cjs');
 
-  it('discovery is not a lifecycle phase — start/triage/complete/reopen refuse it; cancel addresses the unit', () => {
+  it('discovery is not a lifecycle phase — start/send/complete/reopen refuse it; cancel addresses the unit', () => {
     const dir = setupGitFixture();
     writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2));
-    for (const verb of ['start', 'triage', 'complete', 'reopen']) {
+    for (const verb of ['start', 'send', 'complete', 'reopen']) {
       assert.match(
         engineFails(dir, ['topic', verb, 'payments', 'discovery', 'auth-flow']).error,
         /non-lifecycle phase "discovery"[\s\S]*discovery tooling/
@@ -2409,8 +2409,8 @@ describe('engine usage banner', () => {
     assert.strictEqual(res.code, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',
-      'topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]',
-      'topic queue <work-unit> <phase> <topic>',
+      'topic send <work-unit> <phase> <topic> [--content <file> --slug <kebab> -m <message>]',
+      'topic mailbox <work-unit> <phase> <topic>',
       'topic complete <work-unit> <phase> <topic>',
       'topic reopen <work-unit> <phase> <topic>',
       'topic supersede <work-unit> <phase> <topic> --by <topic>',
@@ -2501,8 +2501,8 @@ describe('engine topic start — the discovery map gates the birth of a phase it
             iota: { routing: 'discussion', source: 'discovery', cancelled: true },
           },
         },
-        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' }, eta: { status: 'triaged' }, theta: { status: 'triaged' } } },
-        discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'triaged' }, zeta: { status: 'in-progress' }, theta: { status: 'triaged' } } },
+        research: { items: { gamma: { status: 'unstarted' }, delta: { status: 'completed' }, zeta: { status: 'in-progress' }, eta: { status: 'unstarted' }, theta: { status: 'unstarted' } } },
+        discussion: { items: { gamma: { status: 'in-progress' }, epsilon: { status: 'unstarted' }, zeta: { status: 'in-progress' }, theta: { status: 'unstarted' } } },
       },
     }, null, 2) + '\n');
     commitAll(dir, 'init');
@@ -2523,18 +2523,18 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   it('a parked discussion stub on a research-routed topic waits for the research', () => {
     const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'epsilon']);
     assert.match(err.error, /it is routed to research and nothing has started/);
-    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.epsilon.status, 'triaged');
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.epsilon.status, 'unstarted');
   });
 
   it('research parked on a discussion-routed topic comes first — the discussion cannot be born over it', () => {
     const err = engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'eta']);
-    assert.match(err.error, /discussion can't start on "eta" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.match(err.error, /discussion can't start on "eta" — research is parked on it \(mail waiting\); research feeds discussion, so it lands first — the menu names the way in/);
     assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.eta, undefined);
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'eta']).created, false);
   });
 
   it('a parked research stub starts from its menu row — even beneath a live discussion, which resumes: the hold is at its door, not the engine', () => {
-    // gamma: research triaged, discussion in-progress — the discussion is
+    // gamma: research unstarted, discussion in-progress — the discussion is
     // already in session; the entry gate holds it, and complete's wait is
     // the backstop, so start (a resume, not a birth) passes.
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'gamma']).created, false);
@@ -2546,8 +2546,8 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   it('a parked discussion stub cannot be born over parked research — the stub\'s one exit is held too', () => {
     // theta: both stubs parked — the research one exits first.
     assert.match(engineFails(dir, ['topic', 'start', 'mapped', 'discussion', 'theta']).error,
-      /discussion can't start on "theta" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
-    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.theta.status, 'triaged', 'nothing touched');
+      /discussion can't start on "theta" — research is parked on it \(mail waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+    assert.strictEqual(readManifest(dir, 'mapped').phases.discussion.items.theta.status, 'unstarted', 'nothing touched');
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'research', 'theta']).created, false);
   });
 
@@ -2626,7 +2626,7 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
   });
 
   it('a parked research stub is the same wait', () => {
-    withResearch('triaged');
+    withResearch('unstarted');
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
       /awaits research on the topic/);
   });

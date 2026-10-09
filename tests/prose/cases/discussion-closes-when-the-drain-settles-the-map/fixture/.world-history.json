@@ -14,7 +14,7 @@
   {
     "message": "spec(pay): gap routed to pay",
     "files": [
-      ".workflows/pay/discussion/.triage/pay/001-failed-payment-retries.md"
+      ".workflows/pay/discussion/.mailbox/pay/001-failed-payment-retries.md"
     ]
   }
 ]

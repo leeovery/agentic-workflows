@@ -8,7 +8,7 @@ discussion's weighting stands on a number rather than an assumption.
 What we know so far:
 - The discussion has settled batch nightly aggregation and a
   purchase-weighted blend of clicks and purchases per query.
-- A concern rerouted from relevance-measurement asked whether most
+- A message sent from relevance-measurement asked whether most
   queries carry enough behavioural signal to rank on at all.
 
 ---
@@ -44,4 +44,4 @@ clicks amplifies a single event into a ranking swing.
 *From: relevance-measurement · research · 2026-01-01*
 
 Folded into Per-Query Signal Density above — the measurement the
-concern asked for.
+message asked for.

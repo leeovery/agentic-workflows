@@ -22,7 +22,7 @@ The common case. No output.
 
 #### If output is `research` (the topic's research moved)
 
-Research feeds this work. The topic's research moved after this work began — a concern landed on it, or it reopened — and what it finds may unseat decisions here. Whether it landed, closed, or was parked again decides what happens here; read its status:
+Research feeds this work. The topic's research moved after this work began — a message arrived in its mailbox, or it reopened — and what it finds may unseat decisions here. Whether it landed, closed, or was parked again decides what happens here; read its status:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.research.{topic} status
@@ -48,7 +48,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_uni
 
 → Return to caller.
 
-**If `in-progress` or `triaged` (a peer session parked research on this topic since this work last read it):**
+**If `in-progress` or `unstarted` (a peer session parked research on this topic since this work last read it):**
 
 Leave the flag in place — the entry or session check that finds the research landed clears it — and say so:
 

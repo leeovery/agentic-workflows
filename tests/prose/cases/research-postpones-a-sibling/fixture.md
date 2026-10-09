@@ -13,7 +13,7 @@ That research is live and going somewhere. The topic beside it,
 `relevance-measurement`, has never started: a map row with a summary, a
 description, and a brief, and nothing under it at all.
 
-No deep dive has ever been dispatched, no triage queue holds anything,
+No deep dive has ever been dispatched, no mailbox holds anything,
 no discussion exists under any name, and the project has no roadmap —
 nothing has ever been parked onto one and no work unit was ever pulled
 from one.

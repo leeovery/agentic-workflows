@@ -1,7 +1,7 @@
 The walk resumes an epic's specification into its review, meets a
 decision the specification made and no source did, finds nothing that
 settles it, and takes the gap out to a topic that does not exist yet —
-created on the map, parked on its discussion queue, and added to this
+created on the map, parked on its discussion mailbox, and added to this
 specification's sources so the specification waits for it.
 
 The prose should have taken this path:
@@ -62,17 +62,17 @@ The prose should have taken this path:
 10. the user takes the new topic row. The topic's name is the one they
     gave in the exchange, `signal-weighting` — the session neither
     proposes a name back to them nor stops to have one confirmed
-11. the triage landing resolves the target against the live map,
+11. the send resolves the target against the live map,
     finds no row, and creates one through the shared topic-creation
     core: the name is validated against the map and the dismissed
     list, then the discovery item is written routed at the landing
     phase — `discussion`, because what is owed is a decision — with
-    provenance `reroute:behavioural-ranking`
-12. the concern is written to the topic cache in the triage entry
+    provenance `message:behavioural-ranking`
+12. the message is written to the topic cache in the message
     shape and delivered by the engine, which creates the
-    signal-weighting discussion item as `triaged` — parked, never
-    started — installs the concern as the first numbered file in its
-    queue, and commits the delivery itself. The concern carries the
+    signal-weighting discussion item as `unstarted` — parked, never
+    started — installs the message as the first numbered file in its
+    mailbox, and commits the delivery itself. The message carries the
     gap's full context, written by the delivery rather than by hand
 13. on `landed`, the new topic is added to this specification's
     sources with status `pending` — the row that holds the
@@ -93,11 +93,11 @@ The prose should have taken this path:
 The end world's claims:
 
 - the discovery map carries a fourth topic, `signal-weighting`,
-  routed `discussion` with `source: reroute:behavioural-ranking`; the
+  routed `discussion` with `source: message:behavioural-ranking`; the
   three original topics stand as they were
 - a discussion item named `signal-weighting` exists with status
-  `triaged` — parked, never started — and one engine-numbered file
-  sits in its triage queue carrying the gap: what the weighting
+  `unstarted` — parked, never started — and one engine-numbered file
+  sits in its mailbox carrying the gap: what the weighting
   decides for a shopper, what was searched, and why nothing in the
   epic settles it
 - the behavioural-ranking discussion item still reads `completed` and
@@ -126,7 +126,7 @@ The end world's claims:
   neither was ever set to auto
 - the project manifest has no roadmap node: the gate's park
   destination was offered and not taken
-- the git history ends at the self-committed triage delivery followed
+- the git history ends at the self-committed message delivery followed
   by the pause commit; nothing is left dirty
 - the user was asked exactly three things in this walk: the resume
   choice, the unmade decision (in conversation, not at a gate), and

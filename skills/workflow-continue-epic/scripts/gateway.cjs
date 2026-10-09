@@ -41,8 +41,8 @@ function discover(cwd, workUnit) {
 }
 
 /** A parked stub is undrained work — never done. @param {any} d @returns {boolean} */
-function parkedConcerns(d) {
-  return ['research', 'discussion'].some((phase) => ((d.phases && d.phases[phase]) || []).some((i) => i.status === 'triaged'));
+function unstartedStubs(d) {
+  return ['research', 'discussion'].some((phase) => ((d.phases && d.phases[phase]) || []).some((i) => i.status === 'unstarted'));
 }
 
 /**
@@ -63,7 +63,7 @@ function computeAllDone(d) {
     && d.in_progress.length === 0
     && d.next_phase_ready.length === 0
     && d.unaccounted_discussions.length === 0
-    && !parkedConcerns(d)
+    && !unstartedStubs(d)
     && reconcilePending(d).length === 0
     && (d.convergence_state === 'settled' || d.convergence_state === null);
 }
@@ -113,7 +113,7 @@ function formatScoped(workUnit, d) {
     line += ` routing=${t.routing || 'none'}`;
     line += ` summary=${t.summary_present ? 'present' : 'absent'}`;
     line += ` description=${t.description_present ? 'present' : 'absent'}`;
-    if (t.triage_parked) line += ` triage=waiting`;
+    if (t.mail_waiting) line += ` mail=waiting`;
     if (t.waits.length > 0) {
       line += ` awaiting=${t.waits.map((w) => (w.kind === 'research' ? 'research' : w.id)).join(',')}`;
     }

@@ -4,7 +4,7 @@
 // behavioural-ranking discussion two sittings in: one subtopic decided
 // and written up, a second still being explored. Nothing downstream
 // exists — no specification groups the discussion, no experiment is
-// open, no rerouted concern is parked — so the topic's Discovery unit is
+// open, no sent message is parked — so the topic's Discovery unit is
 // one discussion item and the map row above it.
 //
 // The product already has a roadmap: two horizons in release order, `v1`

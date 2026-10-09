@@ -57,8 +57,8 @@ The prose should have taken this path:
 
 Further claims:
 
-- the discussion item never leaves completed — no reopen, no triage
-  landing; the specification never pauses
+- the discussion item never leaves completed — no reopen, no message
+  send; the specification never pauses
 - auto mode is never engaged on either gate; the routed finding never
   rides any auto lane
 - the cap's value is never put to the user as a question — the only

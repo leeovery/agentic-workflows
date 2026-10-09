@@ -48,7 +48,7 @@ direct-start topic:
 - a discussion file at
   `.workflows/search-relevance/discussion/query-intent.md` holding a
   Context section drawn from the interview, with no decisions recorded
-  yet; the topic's triage queue is empty
+  yet; the topic's mailbox is empty
 - the manifest holding one discussion item, query-intent, in progress,
   its subtopics pending and drawn from the interview;
   `brief_incorporated: true` on the topic's discovery item, which

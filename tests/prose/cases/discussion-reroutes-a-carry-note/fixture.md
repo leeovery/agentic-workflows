@@ -12,12 +12,12 @@ which its decided schema (click and purchase counts only) does not
 cover. Instead of rerouting that correction at the moment it was known,
 the session stranded it as a carry-note in Summary → Open Threads and
 walked away without concluding. The subtopic is decided on the map; the
-triage queue is empty; behavioural-ranking's file and manifest item are
+mailbox is empty; behavioural-ranking's file and manifest item are
 untouched.
 
 Hours have passed. The context was cleared — this session opens cold at
 the discussion skill with nothing but the three arguments and
 what is on disk. The user only wants to wrap up. Document review is the
-last line that can catch the stranded note before conclusion and route
-it through triage — reopening behavioural-ranking so the correction is
+last line that can catch the stranded note before conclusion and send
+it as a message — reopening behavioural-ranking so the correction is
 resolved where it belongs.

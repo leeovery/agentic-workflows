@@ -1,11 +1,11 @@
 'use strict';
 
-// A topic that exists only as one parked, bundled concern: a sibling
-// discussion concluded and rerouted a three-ask measurement position into
-// relevance-measurement as a single queue entry (the pre-split shape the
+// A topic that exists only as one parked, bundled message: a sibling
+// discussion concluded and sent a three-ask measurement position into
+// relevance-measurement as a single message (the pre-split shape the
 // landing rule now forbids at the origin — entries like it are still in
-// queues). The discussion item was created `triaged` by the delivery — no
-// artifact, no session; the walk must take the entry one ask at a time.
+// mailboxes). The discussion item was created `unstarted` by the delivery — no
+// artifact, no session; the walk must take the message one ask at a time.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -18,7 +18,7 @@ module.exports = {
     e.harvest(h);
     // The map gates a discussion's birth: relevance-measurement is
     // research-routed at the harvest, and the deliveries below park
-    // concerns on its discussion — which can only start once the map
+    // messages on its discussion — which can only start once the map
     // names discussion as the topic's next step. Shaped here as a
     // discussion topic, the way synonym-handling is in the mainline.
     h.engine('discovery-map', 'reroute', WU, 'relevance-measurement', 'discussion');
@@ -27,7 +27,7 @@ module.exports = {
     // The mainline's synonym-handling decision rests on the live
     // click-signal stream behavioural-ranking rejected — deliberate for
     // the cross-document conflict cases, a latent mine here: the consult surfaces it
-    // mid-fold and the document-review safety net reroutes it, mutating
+    // mid-fold and the document-review safety net sends it, mutating
     // a sibling this case's claims hold still. Re-conclude the document
     // coherently (batch-computed expansion, Sibling check in place) so
     // the walk is the only thing this world exercises.
@@ -89,7 +89,7 @@ module.exports = {
     h.engine('commit', WU, '-m',
       `discussion(${WU}/synonym-handling): correct expansion decision to batch-computed`);
 
-    h.write(`.workflows/.cache/${WU}/discussion/behavioural-ranking/concern-measurement-gates-for-ranking-changes.md`, [
+    h.write(`.workflows/.cache/${WU}/discussion/behavioural-ranking/message-measurement-gates-for-ranking-changes.md`, [
       '### Measurement gates for ranking changes',
       '*From: behavioural-ranking · discussion · 2026-01-02*',
       '',
@@ -123,9 +123,9 @@ module.exports = {
       'any of it wrong, say so and behavioural-ranking reopens.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'relevance-measurement',
-      '--concern', `.workflows/.cache/${WU}/discussion/behavioural-ranking/concern-measurement-gates-for-ranking-changes.md`,
+    h.engine('topic', 'send', WU, 'discussion', 'relevance-measurement',
+      '--content', `.workflows/.cache/${WU}/discussion/behavioural-ranking/message-measurement-gates-for-ranking-changes.md`,
       '--slug', 'measurement-gates-for-ranking-changes',
-      '-m', `discussion(${WU}/behavioural-ranking): reroute concern to relevance-measurement`);
+      '-m', `discussion(${WU}/behavioural-ranking): send message to relevance-measurement`);
   },
 };

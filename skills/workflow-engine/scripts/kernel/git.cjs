@@ -118,8 +118,8 @@ function hasChangesInPaths(cwd, specs) {
 /**
  * Whether the directory holds any file, at any depth. An existing-but-empty
  * directory is a git no-man's-land: `git add` tolerates its pathspec silently
- * while `git commit -- <paths>` refuses it — the state every triage queue
- * reaches once its last concern's deletion is committed.
+ * while `git commit -- <paths>` refuses it — the state every mailbox
+ * reaches once its last message's deletion is committed.
  * @param {string} dirAbs
  * @returns {boolean}
  */
@@ -181,7 +181,7 @@ function hasStagedDeletions(cwd, spec) {
  * The `add` catches untracked files among the paths. Pathspecs git knows
  * nothing about are dropped: it refuses one that matches nothing, and a
  * scope naming a path its transaction never created is normal (an absent
- * triage queue, a work unit with no imports).
+ * mailbox, a work unit with no imports).
  * @param {string} cwd      project root
  * @param {string|string[]} pathspec
  * @param {string} message

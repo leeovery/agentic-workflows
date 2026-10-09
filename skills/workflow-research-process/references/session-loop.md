@@ -10,7 +10,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
 1. **Check what landed** — anything waiting is folded before the conversation moves on.
 
-   Check the triage queue first: follow **A. Check** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**. Its offer and raise gates end the turn — the dive check below waits for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
+   Check the mailbox first: follow **A. Check** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**. Its offer and raise gates end the turn — the dive check below waits for a later iteration; an absorb never ends the turn, the protocol itself continues to the next raise.
 
    Then check for landed evidence: follow **Landed Evidence** below. Its landed branch ends the turn on what it read — the dive check below waits for a later iteration.
 
@@ -40,7 +40,7 @@ Not a rigid checklist — a natural cadence for productive research conversation
 
 The register is what this topic set out to learn — typed state in the manifest (`phases.research.items.{topic}.threads`), a lens the conversation keeps honest, never a plan: nothing gates on a thread's state, and any state may follow any other. You make every call; the engine `research-threads` verbs record it; the cadence commit carries the change.
 
-- **A thread enters** when the conversation opens a question worth carrying — one this topic will answer or hand to discussion, not every passing curiosity; a question the user takes away to answer themselves is carried the same way, and stays `open` while they do. Origin `user` when the user raised it, `conversation` when the exchange did; `--parent` nests it under the top-level thread it bends (two levels). A rerouted concern enters at its fold — **D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** — with the rerouting topic's name as its origin:
+- **A thread enters** when the conversation opens a question worth carrying — one this topic will answer or hand to discussion, not every passing curiosity; a question the user takes away to answer themselves is carried the same way, and stays `open` while they do. Origin `user` when the user raised it, `conversation` when the exchange did; `--parent` nests it under the top-level thread it bends (two levels). A message enters at its fold — **D. Fold** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** — with the sending topic's name as its origin:
 
   ```bash
   node .claude/skills/workflow-engine/scripts/engine.cjs research-threads add {work_unit} {topic} {slug} --question "{the question, as asked}" --origin "{origin}" [--parent {slug}]

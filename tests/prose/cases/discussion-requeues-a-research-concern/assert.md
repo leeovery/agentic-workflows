@@ -9,23 +9,23 @@ The prose should have taken this path:
    — the map with result-caching open, then the continue-or-restart
    gate, with no second heading of its own — and the user continues;
    initialisation is skipped; the guidelines load; the session's first
-   triage consult finds the resumed sitting with a non-empty queue and
-   renders the offer before any session output: the one-concern agenda
+   mailbox consult finds the resumed sitting with a non-empty mailbox and
+   renders the offer before any session output: the one-message agenda
    plus the yes/later menu
-3. the user says yes; the raise reads the queue file as the
+3. the user says yes; the raise reads the message file as the
    session's own brief and judges its ask owed the other phase-side —
    an open empirical question in a deciding session — so before any
-   raise or map arming it renders the engine's requeue offer: the
+   raise or map arming it renders the engine's forward offer: the
    statement, the diamond question naming research, the yes/discuss
    options
-4. the user takes the move; one `topic requeue` transaction renumbers
-   the file into synonym-handling's research queue, creates the
-   research item as `triaged` (parked, never started), and commits
-   action-scoped; the session announces where the concern now waits —
+4. the user takes the move; one `topic forward` transaction renumbers
+   the file into synonym-handling's research mailbox, creates the
+   research item as `unstarted` (parked, never started), and commits
+   action-scoped; the session announces where the message now waits —
    that this discussion cannot conclude, nor be re-entered once this
    session closes, until the research lands, the menu carrying the way
-   in — and, the queue being empty, emits the clear line
-5. the concern never becomes session material: no subtopic is added
+   in — and, the mailbox being empty, emits the clear line
+5. the message never becomes session material: no subtopic is added
    for it, no raise is composed, nothing about it is written
    into the discussion document
 6. the session works result caching to its decision, the map records
@@ -55,17 +55,17 @@ The prose should have taken this path:
 
 Further claims:
 
-- the discussion queue directory holds no files at the end, and the
-  moved concern sits at
-  `.workflows/search-relevance/research/.triage/synonym-handling/001-query-time-expansion-hooks.md`
+- the discussion mailbox directory holds no files at the end, and the
+  moved message sits at
+  `.workflows/search-relevance/research/.mailbox/synonym-handling/001-query-time-expansion-hooks.md`
   with its content intact — provenance line included
-- the manifest holds `research.synonym-handling` as `triaged` and
+- the manifest holds `research.synonym-handling` as `unstarted` and
   `discussion.synonym-handling` as `in-progress` — the wait held its
   conclusion shut
 - the discussion document holds a decided result-caching subtopic and
-  no trace of the tokenizer concern — no section, no map entry, no
+  no trace of the tokenizer message — no section, no map entry, no
   mention
-- git history holds the requeue commit (naming the move to research)
+- git history holds the forward commit (naming the move to research)
   before the session's result-caching commit; no completion commit
   exists
 - behavioural-ranking's and relevance-measurement's items are

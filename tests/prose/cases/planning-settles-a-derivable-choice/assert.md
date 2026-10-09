@@ -110,5 +110,5 @@ Also true:
 - no traceability tracking file exists — that review returned clean —
   and the manifest's tracking subtree holds the integrity entry alone
 - the specification is untouched; nothing reopens, restarts, or
-  triages; no second work unit exists
+  sends; no second work unit exists
 - the user is never asked to approve the same finding twice

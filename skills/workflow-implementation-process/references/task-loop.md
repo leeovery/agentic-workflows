@@ -177,7 +177,7 @@ Land it on the task in flight — **[ad-hoc-plan-changes.md](ad-hoc-plan-changes
 
 → Return to **B. Execute Task**.
 
-**If `stopped`** — the question this task needs is already queued on the discussion that owns it:
+**If `stopped`** — the question this task needs is already waiting in the mailbox of the discussion that owns it:
 
 Say in one line that implementation resumes once that discussion has decided it — the epic menu and the linear next-phase derivation both route back to the reopened record.
 

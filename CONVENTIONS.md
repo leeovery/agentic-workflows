@@ -250,7 +250,7 @@ Unnumbered trees follow the same structure:
 
 ### Worklists
 
-A **worklist** is a transient list the session works through and throws away — the analysis and review synthesis cycles, review-findings overviews, surfacing batches, the triage agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown (not a code block)**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
+A **worklist** is a transient list the session works through and throws away — the analysis and review synthesis cycles, review-findings overviews, surfacing batches, the mail agenda. It is one engine shape (`domain/projections/worklist.cjs`), emitted **as markdown (not a code block)**: the register needs strikethrough and code-span tags, and a flat list has no indentation for a fence to protect. Never hand-draw one.
 
 ```
 **Integrity Review** — 3 findings · 1 remaining
@@ -266,7 +266,7 @@ A **worklist** is a transient list the session works through and throws away —
 - **Strikethrough means done here.** The epic menu's struck option means *held by another session* — the two never share a surface.
 - **Tags**: one short term in a backticked bracket — `` `[high]` ``, `` `[→ target]` `` for a route row's destination. One term only; compound tags are how sibling surfaces drift apart, and multi-word source vocabularies map to short tokens at the payload site. Anything longer belongs in the `↳` note. A tag that cannot fit its row's last line drops to its own line at the title column.
 - **The `↳` note** is the one home for row detail and provenance — a summary, `From {topic} · {phase} · {date}` — indented two columns past the title column.
-- **A walked list that flows straight into its walk closes on the walk statement** ("Let's work through these one at a time.") — numberless, because a resume re-renders with rows already decided. A walked list handed to a gate menu (the triage agenda's offer) closes on that menu instead; the menu's own option carries the walk.
+- **A walked list that flows straight into its walk closes on the walk statement** ("Let's work through these one at a time.") — numberless, because a resume re-renders with rows already decided. A walked list handed to a gate menu (the mail agenda's offer) closes on that menu instead; the menu's own option carries the walk.
 - Layout stays engine-owned: rows and notes wrap at the detected display width with continuations aligned under the text, and leading indents are non-breaking spaces (four leading real spaces reads as a code block). The header and a batch intro are prose lines left to soft-wrap in the display. Row text is markdown-escaped by the engine.
 
 ### Status Terms
@@ -347,7 +347,7 @@ Cancelling **Data Export** takes it off the board — nothing has started, so on
 **`n/no`**  → Return to menu
 ```
 
-Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. The split serves every menu, not only consent gates: a route menu (several destinations, no yes to answer — the off-topic reroute family, the resume continue/restart gates) keeps its statement as context and asks beneath it (`**`◆ Where should it go?`**`, `**`◆ How would you like to proceed?`**`), and a conversational instruction line takes the statement's place where the opening needs guidance (the working-set menu's shape).
+Engine-side the split is `menu(label, options, { question })` — the statement label stays context (never auto-glyphed), the question takes the diamond. The split serves every menu, not only consent gates: a route menu (several destinations, no yes to answer — the off-topic send family, the resume continue/restart gates) keeps its statement as context and asks beneath it (`**`◆ Where should it go?`**`, `**`◆ How would you like to proceed?`**`), and a conversational instruction line takes the statement's place where the opening needs guidance (the working-set menu's shape).
 
 **Options state their consequences.** A label says what choosing it does — a terse clause, weight scaled to the effect; a terminal or hard-to-reverse consequence is always named plainly, never softened into a display preference.
 

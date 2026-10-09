@@ -3,8 +3,8 @@
 // A settled epic revisited: both discussions concluded, then synonym-handling
 // reopened for one late subtopic (result caching). Behavioural-ranking's
 // completed discussion settled batch-only signal ingestion — the ground a
-// mid-session feasibility concern will be rerouted onto, research-side. No
-// triage queues hold anything; the reroute this case pins originates here,
+// mid-session feasibility message will be sent onto, research-side. No
+// mailboxes hold anything; the send this case pins originates here,
 // it doesn't arrive here.
 
 const e = require('../../mainlines/epic.cjs');

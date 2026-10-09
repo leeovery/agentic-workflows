@@ -3,7 +3,7 @@ The prose should have taken this path:
 1. the skill asks the engine whether research is outstanding on the
    topic (it is not); ensuring the discovery item finds it already
    on the map — nothing is created; it then reads the discussion status
-   once, finds it in progress (the triage reopen left it so), emits the
+   once, finds it in progress (the message delivery reopen left it so), emits the
    resuming phase note, and checks the reconcile flag (absent —
    silent) — asking the user nothing
 2. beneath the note, with the file found, the resume surface carries on
@@ -13,22 +13,22 @@ The prose should have taken this path:
    addresses the knowledge base once as a contextual query
    (keyword-only store — the session proceeds), and enters the session
    step
-4. the session loop's first triage check reads the queue and renders
-   the one-entry agenda with the offer menu; on the user's go the
-   concern's queue file is read as the session's own brief and
-   raised as an opener — the entry never emitted verbatim, and never
-   from the title alone. Because the concern's title names an
+4. the session loop's first mailbox check reads the mailbox and renders
+   the one-message agenda with the offer menu; on the user's go the
+   message's file is read as the session's own brief and
+   raised as an opener — the message never emitted verbatim, and never
+   from the title alone. Because the message's title names an
    existing subtopic in a settled state, the ground re-arms at the
    raise: `expansion-source` is set to `exploring` before the
    discussion starts, and the map is no longer all-decided; the raise
    puts what the settled call rested on beside what has moved and
    says whether the call still holds
-5. the session discusses the concern as real material and the user
+5. the session discusses the message as real material and the user
    lands the changed decision (batch aggregates, daily refresh). The
    outcome re-decides ground this document didn't introduce — the
    batch aggregates are behavioural-ranking's — so the sibling
    consult runs before it is recorded: the sibling's decided text is
-   already in context (the rerouted concern carries it), so citing it
+   already in context (the sent message carries it), so citing it
    satisfies the consult with no query owed. The fold then lands it:
    the subtopic already exists — armed at the raise — so the
    provenance line and body join the existing `## Expansion Source`
@@ -36,12 +36,12 @@ The prose should have taken this path:
    entry per the template's revision convention: the block's
    original prose wrapped verbatim as `#### Initial`, the new
    decision above it as a dated entry whose trigger line carries the
-   substance of the triaged concern from behavioural-ranking — not a
+   substance of the sent message from behavioural-ranking — not a
    bare id — and whose text carries the `Sibling check:` line naming
    behavioural-ranking and what its decided text holds. The map is
    set to `decided` — the recorded state reflects the re-decision
-   that just happened — and the queue file is deleted and absorbed
-   under its own commit naming the concern and its origin
+   that just happened — and the message file is deleted and absorbed
+   under its own commit naming the message and its origin
 6. the fold's set answered `all_decided: true`, so the absorb's clear
    line is followed in the same turn by the closing flow — the wait
    gate (empty), the map read through the gateway, the settled line —
@@ -75,13 +75,13 @@ Further claims:
   behavioural-ranking and the substance of its decided text (batch
   aggregates, no live stream) — wording free, the citation required;
   a knowledge query was legal but not owed, since the drained
-  concern carried the sibling's decision in context
+  message carried the sibling's decision in context
 - the `#### Initial` entry holds the block's original decision prose
   (live click-signal stream at query time) unedited — wrapped, not
   rewritten, not annotated
-- the triage queue is empty again — the drained concern file deleted
+- the mailbox is empty again — the drained message file deleted
 - the subtopic ends `decided` on the map and the discussion item ends
   `completed` in the manifest
-- no second subtopic was created for the drained concern — the fold
+- no second subtopic was created for the drained message — the fold
   reused the existing Expansion Source subtopic
 - behavioural-ranking's discussion file is untouched

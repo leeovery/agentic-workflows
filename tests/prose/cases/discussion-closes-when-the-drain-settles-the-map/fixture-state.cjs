@@ -1,6 +1,6 @@
 'use strict';
 
-// A discussion drained, concluded, and reopened by one rerouted concern.
+// A discussion drained, concluded, and reopened by one sent message.
 // Every subtopic was decided and written; a background review's two
 // findings were walked through in a prior sitting and the row stands
 // incorporated; a second review fired on the movement that followed,
@@ -9,9 +9,9 @@
 // re-decides settled ground moves the map by nothing and arms no review.
 // The user concluded the discussion; the specification pass over it
 // found the retry decision could not be built as recorded and routed the
-// gap back through the linear work type's own delivery — `topic triage`
-// reopened the discussion and installed the concern as the topic's
-// one-entry queue, flagging the spec's extraction stale. The discussion
+// gap back through the linear work type's own delivery — `topic send`
+// reopened the discussion and installed the message as the topic's
+// one-message mailbox, flagging the spec's extraction stale. The discussion
 // file's only commit is the first review's drain engagement, layered as
 // world history so it carries its drain marker; the spec's construction
 // and the gap's delivery are layered after it.
@@ -218,8 +218,8 @@ module.exports = {
     // The user concluded; the specification began over the concluded
     // record — one source, extracted — and its construction hit a gap
     // the discussion owns. The linear work type's gap route delivers it
-    // straight through `topic triage`: the discussion reopens, the
-    // concern lands as the topic's one-entry queue, and the spec's
+    // straight through `topic send`: the discussion reopens, the
+    // message lands as the topic's one-message mailbox, and the spec's
     // extraction flips stale. The specification pauses in progress.
     h.engine('topic', 'complete', WU, 'discussion', WU);
     h.engine('topic', 'start', WU, 'specification', WU);
@@ -234,7 +234,7 @@ module.exports = {
       ] },
     ]));
     h.engine('manifest', 'set', `${WU}.specification.${WU}`, `sources.${WU}.status`, 'incorporated');
-    h.write(`.workflows/.cache/${WU}/specification/${WU}/gap-concern.md`, [
+    h.write(`.workflows/.cache/${WU}/specification/${WU}/gap-message.md`, [
       '### Failed Payment Retries',
       `*From: ${WU} · specification · 2026-01-01*`,
       '',
@@ -255,22 +255,22 @@ module.exports = {
       'costs nothing to read.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', WU,
-      '--concern', `.workflows/.cache/${WU}/specification/${WU}/gap-concern.md`,
+    h.engine('topic', 'send', WU, 'discussion', WU,
+      '--content', `.workflows/.cache/${WU}/specification/${WU}/gap-message.md`,
       '--slug', 'failed-payment-retries',
       '-m', `spec(${WU}): gap routed to ${WU}`);
 
     // World history: the drain engagement's write (the discussion file's
     // single commit, carrying its marker), then the specification's
     // construction, then the gap's delivery — so the absorb's deletion
-    // of the queue file closes the bracket its landing opened.
+    // of the message file closes the bracket its landing opened.
     h.write('.world-history.json', JSON.stringify([
       { message: `discussion(${WU}/${WU}): decided webhook reconciliation (review-001 F2)`,
         files: [`.workflows/${WU}/discussion/${WU}.md`] },
       { message: `spec(${WU}): construct`,
         files: [`.workflows/${WU}/specification/${WU}/specification.md`] },
       { message: `spec(${WU}): gap routed to ${WU}`,
-        files: [`.workflows/${WU}/discussion/.triage/${WU}/001-failed-payment-retries.md`] },
+        files: [`.workflows/${WU}/discussion/.mailbox/${WU}/001-failed-payment-retries.md`] },
     ], null, 2));
     h.engine('commit', WU, '-m', `discussion(${WU}/${WU}): decided webhook reconciliation (review-001 F2)`);
   },

@@ -15,8 +15,8 @@ The prose should have taken this path:
 3. the walk passes through file strategy and the guidelines, addresses
    the knowledge base once as a contextual query, reads the work type,
    and routes into the single-topic session wrapper — the deep-dive and
-   rerouted-concerns protocols loaded, nothing run at load
-4. the loop's first iteration checks what landed: the triage queue
+   reading-the-mailbox protocols loaded, nothing run at load
+4. the loop's first iteration checks what landed: the mailbox
    reads empty — resume detection's read moments earlier may stand for
    it — the landed-evidence read finds no reconcile flag on the
    research item, and the dive check finds nothing to fold — no dive
@@ -80,7 +80,7 @@ Register claims — the lens is the behaviour under test:
   declined; none on the follow-on the user carries themselves, none on
   a question the user answered in the room, and nothing is dispatched
 - no review of any kind is dispatched, considered, or mentioned —
-  research has none; no experiment is offered; no concern is rerouted
+  research has none; no experiment is offered; no message is sent
 
 Further claims:
 
@@ -91,7 +91,7 @@ Further claims:
   no Open Threads section — that is written once, at conclusion, and
   the research did not conclude
 - the research item stays `in-progress`; no completion, no reopen, no
-  triage delivery, no map operation
+  message delivery, no map operation
 
 EXPECTED WORLD — the fixture plus: the register holding `hosted-fields`
 open with its rewritten question and `seed` origin, a child thread

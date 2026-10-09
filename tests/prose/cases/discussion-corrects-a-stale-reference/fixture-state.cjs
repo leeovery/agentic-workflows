@@ -1,14 +1,14 @@
 'use strict';
 
 // A pure stale-reference correction waiting in a completed discussion's
-// triage queue. Behavioural-ranking's batch decision later retired its
+// mailbox. Behavioural-ranking's batch decision later retired its
 // interim click-weights table in favour of flat pair-counts files;
 // synonym-handling's decision layer is coherent with the batch ruling
 // (Sibling check in place) but two of its prose sites still cite the
 // retired table as the current mechanism. A later behavioural-ranking
-// sitting spotted the stale citation and rerouted the concern;
-// `topic triage` reopened the completed discussion with the concern as
-// one queue file whose title names no subtopic. The next session's fold must amend the two sites in place —
+// sitting spotted the stale citation and sent the message;
+// `topic send` reopened the completed discussion with the message as
+// one message file whose title names no subtopic. The next session's fold must amend the two sites in place —
 // dated notes naming the retiring decision — with no new section and no
 // title-minted subtopic.
 
@@ -136,7 +136,7 @@ module.exports = {
     ].join('\n'));
     h.engine('commit', WU, '-m', `discussion(${WU}): reconcile discussion records`);
 
-    h.write('.workflows/.cache/scratch/concern-scratch.md', [
+    h.write('.workflows/.cache/scratch/message-scratch.md', [
       '### The click-weights table cited as current; it was retired',
       '*From: behavioural-ranking · discussion · 2026-01-05*',
       '',
@@ -159,9 +159,9 @@ module.exports = {
       'way; only the citing prose names a mechanism that no longer exists.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'synonym-handling',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'click-weights-cited-as-current',
-      '-m', `discussion(${WU}/behavioural-ranking): reroute concern to synonym-handling`);
+    h.engine('topic', 'send', WU, 'discussion', 'synonym-handling',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'click-weights-cited-as-current',
+      '-m', `discussion(${WU}/behavioural-ranking): send message to synonym-handling`);
 
   },
 };

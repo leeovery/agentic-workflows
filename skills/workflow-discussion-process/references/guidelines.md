@@ -79,7 +79,7 @@ Then commit. The file and manifest are the source of truth, not the conversation
 
 **Too much detail too soon**: "Need user-specific cache keys with query params" not "Cache key: metrics:{user_id}:{date}:{SHA256(params)}"
 
-**Scope creep**: If a concern belongs to a different topic, reroute it to that topic rather than stuffing it into the current discussion
+**Scope creep**: If a point belongs to a different topic, send it to that topic rather than stuffing it into the current discussion
 
 ## Quality Check
 

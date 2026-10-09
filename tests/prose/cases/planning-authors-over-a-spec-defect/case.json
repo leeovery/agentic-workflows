@@ -87,7 +87,7 @@
       "render task-count-gate",
       "render wait-gate",
       "render conclude-gate",
-      "topic triage",
+      "topic send",
       "topic reopen",
       "topic complete pay planning",
       "topic complete pay specification",

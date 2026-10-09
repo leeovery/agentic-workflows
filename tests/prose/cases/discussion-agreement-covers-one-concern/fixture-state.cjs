@@ -1,10 +1,10 @@
 'use strict';
 
-// A topic that exists only as parked concerns: both sibling discussions
-// concluded and each rerouted a measurement question into
-// relevance-measurement, whose discussion item was created `triaged` by the
-// deliveries — no artifact, no session, just a two-entry queue. The next
-// session's entry is a first start where the queue is the whole agenda.
+// A topic that exists only as parked messages: both sibling discussions
+// concluded and each sent a measurement question into
+// relevance-measurement, whose discussion item was created `unstarted` by the
+// deliveries — no artifact, no session, just a two-message mailbox. The next
+// session's entry is a first start where the mailbox is the whole agenda.
 
 const e = require('../../mainlines/epic.cjs');
 
@@ -17,7 +17,7 @@ module.exports = {
     e.harvest(h);
     // The map gates a discussion's birth: relevance-measurement is
     // research-routed at the harvest, and the deliveries below park
-    // concerns on its discussion — which can only start once the map
+    // messages on its discussion — which can only start once the map
     // names discussion as the topic's next step. Shaped here as a
     // discussion topic, the way synonym-handling is in the mainline.
     h.engine('discovery-map', 'reroute', WU, 'relevance-measurement', 'discussion');
@@ -26,7 +26,7 @@ module.exports = {
     // The mainline's synonym-handling decision rests on the live
     // click-signal stream behavioural-ranking rejected — deliberate for
     // the cross-document conflict cases, a latent mine here: the consult surfaces it
-    // mid-fold and the document-review safety net reroutes it, mutating
+    // mid-fold and the document-review safety net sends it, mutating
     // a sibling this case's claims hold still. Re-conclude the document
     // coherently (batch-computed expansion, Sibling check in place) so
     // the drain is the only thing this world exercises.
@@ -88,7 +88,7 @@ module.exports = {
     h.engine('commit', WU, '-m',
       `discussion(${WU}/synonym-handling): correct expansion decision to batch-computed`);
 
-    h.write(`.workflows/.cache/${WU}/discussion/behavioural-ranking/concern-offline-metrics-baseline.md`, [
+    h.write(`.workflows/.cache/${WU}/discussion/behavioural-ranking/message-offline-metrics-baseline.md`, [
       '### Offline Metrics Baseline',
       '*From: behavioural-ranking · discussion · 2026-01-02*',
       '',
@@ -100,12 +100,12 @@ module.exports = {
       'this topic owns.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'relevance-measurement',
-      '--concern', `.workflows/.cache/${WU}/discussion/behavioural-ranking/concern-offline-metrics-baseline.md`,
+    h.engine('topic', 'send', WU, 'discussion', 'relevance-measurement',
+      '--content', `.workflows/.cache/${WU}/discussion/behavioural-ranking/message-offline-metrics-baseline.md`,
       '--slug', 'offline-metrics-baseline',
-      '-m', `discussion(${WU}/behavioural-ranking): reroute concern to relevance-measurement`);
+      '-m', `discussion(${WU}/behavioural-ranking): send message to relevance-measurement`);
 
-    h.write(`.workflows/.cache/${WU}/discussion/synonym-handling/concern-expansion-quality-tracking.md`, [
+    h.write(`.workflows/.cache/${WU}/discussion/synonym-handling/message-expansion-quality-tracking.md`, [
       '### Expansion Quality Tracking',
       '*From: synonym-handling · discussion · 2026-01-02*',
       '',
@@ -116,9 +116,9 @@ module.exports = {
       'expansion one.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'relevance-measurement',
-      '--concern', `.workflows/.cache/${WU}/discussion/synonym-handling/concern-expansion-quality-tracking.md`,
+    h.engine('topic', 'send', WU, 'discussion', 'relevance-measurement',
+      '--content', `.workflows/.cache/${WU}/discussion/synonym-handling/message-expansion-quality-tracking.md`,
       '--slug', 'expansion-quality-tracking',
-      '-m', `discussion(${WU}/synonym-handling): reroute concern to relevance-measurement`);
+      '-m', `discussion(${WU}/synonym-handling): send message to relevance-measurement`);
   },
 };

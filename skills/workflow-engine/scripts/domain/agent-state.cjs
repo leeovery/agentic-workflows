@@ -26,6 +26,7 @@ const io = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { subtopicStatuses } = require('./discussion-map.cjs');
+const { mailboxDir } = require('./derivations.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -259,11 +260,11 @@ function anchorReviewRow(dir) {
 }
 
 /**
- * Fold a triage-absorbed concern's ground into the arming anchor: the
+ * Fold an absorbed message's ground into the arming anchor: the
  * anchor row's `map_snapshot` entry for the subtopic is set to its current
  * map status, so the walk's map writes on that ground never count as
- * movement. An absorbed concern is settled ground, deliberately worked
- * with the user — a sitting that only drained the queue stays quiet, and
+ * movement. An absorbed message is settled ground, deliberately worked
+ * with the user — a sitting that only drained the mailbox stays quiet, and
  * its review duty belongs to the closing gates' final pass. Organic work —
  * new subtopics, forward transitions of the session's own ground — still
  * measures. Tolerant throughout: the absorb transaction must never fail on
@@ -360,8 +361,8 @@ function latestReview(cwd, workUnit, topic) {
  * Dispatch: allocate the next id for this kind, record the row in-flight,
  * and answer with the content-file path the sub-agent must write. No file
  * is created — the content file's later existence is the completion signal.
- * A discussion review refuses while the topic's triage queue holds entries —
- * a queued rerouted concern is a pending change to the document the review
+ * A discussion review refuses while the topic's mailbox holds messages —
+ * a waiting message is a pending change to the document the review
  * would read, so the report would be stale on arrival — and while unarmed
  * (`reviewArming`); `final: true`, the mandatory closing pass, bypasses the
  * movement gate. Every discussion review row is stamped with the map
@@ -400,14 +401,13 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     /** @type {Record<string, string> | null} */
     let mapSnapshot = null;
     if (kind === 'review' && phase === 'discussion') {
-      const queueDir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
-      let queued = 0;
+      let waiting = 0;
       try {
-        queued = fs.readdirSync(queueDir, { withFileTypes: true })
+        waiting = fs.readdirSync(path.join(cwd, mailboxDir(workUnit, phase, topic)), { withFileTypes: true })
           .filter((e) => e.isFile() && e.name.endsWith('.md')).length;
-      } catch { /* no queue — clear */ }
-      if (queued > 0) {
-        throw new Error(`review dispatch blocked: ${queued} rerouted concern(s) wait in the ${phase}/${topic} triage queue — absorb them (topic absorb) before dispatching a review`);
+      } catch { /* no mailbox — clear */ }
+      if (waiting > 0) {
+        throw new Error(`review dispatch blocked: ${waiting} message(s) wait in the ${phase}/${topic} mailbox — absorb them (topic absorb) before dispatching a review`);
       }
       if (!final) {
         const arming = reviewArming(cwd, workUnit, topic);

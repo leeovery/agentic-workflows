@@ -1,5 +1,5 @@
 {
-  "origin": "companion to discussion-review-holds-until-map-moves — the backoff's escape hatch: a review the user explicitly asks for is its own trigger, dispatched --final past the movement gate the automatic path respects, with the safety conditions (drained store, empty queues) still holding; pins that a quiet topic never refuses the user (design/review-cadence.md C5)",
+  "origin": "companion to discussion-review-holds-until-map-moves — the backoff's escape hatch: a review the user explicitly asks for is its own trigger, dispatched --final past the movement gate the automatic path respects, with the safety conditions (drained store, empty mailboxes) still holding; pins that a quiet topic never refuses the user (design/review-cadence.md C5)",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -20,7 +20,7 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/closing-gates.md",

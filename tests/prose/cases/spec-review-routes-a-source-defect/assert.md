@@ -50,8 +50,8 @@ The prose should have taken this path:
 
 Further claims:
 
-- the discussion item never leaves completed — no reopen, no triage
-  landing
+- the discussion item never leaves completed — no reopen, no message
+  send
 - auto mode is never engaged on either gate; the routed finding never
   rides any auto lane
 - nothing outside .workflows changes: the checkout modules are read

@@ -132,7 +132,7 @@ Also true:
   to the user
 - no incoherence gate renders: the choice's landing enters the flow at
   its landing step, so nothing classifies, nothing is routed to a
-  triage queue, and no source is reopened. The declined finding is not
+  mailbox, and no source is reopened. The declined finding is not
   a route either — no measurement or sibling artifact pins the field
   order, so it belongs to no source document
 - the discussion item never leaves `completed`, and the specification

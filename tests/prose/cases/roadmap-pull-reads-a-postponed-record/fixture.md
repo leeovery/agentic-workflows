@@ -16,9 +16,9 @@ topic: the postponed one, which records where it came from and lists the
 topic's brief and discussion as its sources.
 
 One thing about that topic is in neither list. After it had already
-left, behavioural ranking routed it a concern — the stream the expansion
-decision reads is the one nobody will build — and that concern is still
-sitting in the epic's triage queue, undelivered, with the topic it was
+left, behavioural ranking routed it a message — the stream the expansion
+decision reads is the one nobody will build — and that message is still
+sitting in the epic's mailbox, undelivered, with the topic it was
 meant for.
 
 The user is back, ready to commit the managed search work to building.

@@ -161,7 +161,7 @@ Do not re-ask. The user has already committed to working through the set.
 
 ## D. Route by Lane
 
-Lanes run in a fixed order — **apply, then decide, then the walk, then route**. The cheap lanes clear the deck first — a settled call can close ground a raise would otherwise reopen — and the route batch runs last so that a reroute raised *during* the walk joins the same send.
+Lanes run in a fixed order — **apply, then decide, then the walk, then route**. The cheap lanes clear the deck first — a settled call can close ground a raise would otherwise reopen — and the route batch runs last so that a finding bound for another topic *during* the walk joins the same send.
 
 Intersect the row's `remaining` with each finding's lane, and take the first lane in that order that still holds findings.
 
@@ -353,7 +353,7 @@ After this, control belongs to the conversation. The user will engage (or reject
 
   The ground is a neutral one-line statement of the territory the finding covered — never its verdict, never the user's reason. The list reads back with `manifest get` and comes off with `manifest pull` whenever the user asks.
 
-Rejection settles interest, never ownership: a finding whose home is a sibling topic still routes, whatever the user makes of it here. An engagement that concludes the concern belongs to a sibling moves the finding to the `route` lane rather than rerouting it now — **H** sends the batch, and one send beats two.
+Rejection settles interest, never ownership: a finding whose home is a sibling topic still routes, whatever the user makes of it here. An engagement that concludes the point belongs to a sibling moves the finding to the `route` lane rather than sending it now — **H** sends the batch, and one send beats two.
 
 → Return to caller.
 
@@ -383,7 +383,7 @@ Emit the lane marker on this drain's first screen only — later screens and re-
 **`▪ Belongs Elsewhere`**
 ```
 
-Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[triage-landing.md](../../workflow-shared/references/triage-landing.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic — or, when no topic on the map owns the finding, the new kebab-case name the report proposed (the landing creates the topic; say so in `detail`), `detail` is why it is theirs and which queue it lands in), then render it:
+Judge each finding's `landing_phase` per **Judging the Landing Phase** in **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)**. Write the payload with the Write tool (`{"lane": "route", "items": [{"title": "…", "target": "…", "detail": "…"}], "remaining": N}`, one entry per remaining finding — up to five, `remaining` counting the lane's findings beyond this screen: `title` is the report's own claim, `target` is the owning topic — or, when no topic on the map owns the finding, the new kebab-case name the report proposed (the landing creates the topic; say so in `detail`), `detail` is why it is theirs and which mailbox it lands in), then render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render finding-batch {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/batch-route.json
@@ -395,9 +395,9 @@ Emit the call's DISPLAY and MENU sections, each verbatim per its marker — exce
 
 **If `yes`:**
 
-Deliver each finding in turn, with the context built here so its target resolves it from cold — honouring triage-landing's one-ask-per-file rule: a finding making several asks the target could accept or reject independently is delivered as separate concerns. Write no reroute record and leave the Discussion Map untouched — the target's queue is the record.
+Deliver each finding in turn, with the context built here so its target resolves it from cold — honouring sending-a-message's one-ask-per-file rule: a finding making several asks the target could accept or reject independently is sent as separate messages. Write no send record and leave the Discussion Map untouched — the target's mailbox is the record.
 
-→ Load **[triage-landing.md](../../workflow-shared/references/triage-landing.md)** with work_unit = `{work_unit}`, target = `{target}`, concern = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
+→ Load **[sending-a-message.md](../../workflow-shared/references/sending-a-message.md)** with work_unit = `{work_unit}`, target = `{target}`, message = `{the finding with the context built here}`, origin = `{topic}`, phase = `{phase}`, landing_phase = `{landing_phase}`, date = `{today}`.
 
 On return, a `result` of `cancelled` means nothing was written for that finding — leave it unsurfaced and re-present it on the next visit. When a landing response carried `reconcile_flagged` or `sources_staled`, also tell the user what it flagged — the target's discussion, live or decided (research landing) or the specification(s) named in `sources_staled` (discussion landing, their extraction now stale). When every delivery has returned, record the landed ids in one call:
 

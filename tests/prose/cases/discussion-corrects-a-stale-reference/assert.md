@@ -3,47 +3,47 @@ The prose should have taken this path:
 1. the skill asks the engine whether research is outstanding on the
    topic (it is not), finds the topic's row already on the discovery
    map (nothing created), then reads the discussion status once —
-   in-progress, reopened by the triage delivery — emits the resuming
+   in-progress, reopened by the message delivery — emits the resuming
    phase note, and checks the reconcile flag (absent — silent) —
    nothing is gathered
 2. beneath the note, with the file found, the resume surface carries on
    with no second heading of its own — the map with expansion-source
-   decided, then the continue-or-restart gate with the one-concern
-   triage warning directly above its menu — and the user continues
+   decided, then the continue-or-restart gate with the one-message
+   mail warning directly above its menu — and the user continues
 3. guidelines load; the knowledge base is addressed once as a
-   contextual query; the session loop's first triage check reads the
-   queue and renders the one-entry agenda with the offer menu, and
+   contextual query; the session loop's first mailbox check reads the
+   mailbox and renders the one-message agenda with the offer menu, and
    stops for the user
-4. the user opts in; the raise reads the concern's queue file as the
+4. the user opts in; the raise reads the message's file as the
    session's own brief, then arms the map from it — the correction's
    title names no subtopic, so the subtopic whose recorded content it
    corrects, expansion-source, re-arms from decided to exploring; no
    discussion-map add is issued
-5. the concern is raised as an opener — the entry never emitted
+5. the message is raised as an opener — the message never emitted
    verbatim — that covers it alone and ends awaiting the user (at
    most one question, no menu, and its last beat says where the ball sits — a genuine question, or an invitation to push back on the stated lean — never a dead stop after the position); the user accepts the
    correction as prescribed
 6. the fold takes the pure-correction branch: the two citing sites are
    amended in place, each amendment a dated note naming
    behavioural-ranking's retiring decision, the stale table citations
-   struck or rewritten; no new section is created for the concern and
+   struck or rewritten; no new section is created for the message and
    no Context block is written; expansion-source is set back to
    decided
-7. topic absorb deletes the queue file and commits action-scoped;
+7. topic absorb deletes the message file and commits action-scoped;
    remaining is 0, the clear line renders, and nothing recaps the
-   absorbed concern
+   absorbed message
 8. the fold's set back to `decided` answered `all_decided: true`, so
    the absorb's clear line is followed in the same turn by the closing
    flow — with or without the user's own wrap-up; the closing gates
    run the review machinery per the conduct (the stubbed review
-   returns clean); the conclude gate reads the empty queue; the
+   returns clean); the conclude gate reads the empty mailbox; the
    discussion completes with its conclusion commit; the walk stops at the
    bridge invocation
 
 Further claims:
 
-- the document holds no heading naming the concern — no section about
-  click-weights, no `### Context` block carrying the concern's body —
+- the document holds no heading naming the message — no section about
+  click-weights, no `### Context` block carrying the message's body —
   and no new `##` section anywhere; the record of the correction is
   the dated amendment notes at the two sites plus the absorb commit
 - the two amended sites (the Expansion Source Journey and the Summary
@@ -55,8 +55,8 @@ Further claims:
   batch-computed decision was never reopened, and no revision entry
   was added to its timeline
 - the map holds exactly the subtopics it started with —
-  expansion-source `decided`; nothing named after the concern's title
-- the triage queue directory for synonym-handling is empty; git holds
-  one absorb commit naming the concern's file and origin
+  expansion-source `decided`; nothing named after the message's title
+- the mailbox directory for synonym-handling is empty; git holds
+  one absorb commit naming the message's file and origin
 - the manifest holds `discussion.synonym-handling` as `completed`
 - behavioural-ranking's document is unchanged

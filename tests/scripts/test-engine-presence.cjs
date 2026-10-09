@@ -400,20 +400,20 @@ describe('engine presence', () => {
     assert.ok(fs.existsSync(presenceFile(dir, 'discussion', 'alpha')), 'the record stands');
   });
 
-  it('a queue read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
-    const res = engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
+  it('a mailbox read stamps nothing where no heartbeat exists — reads never manufacture a hold', () => {
+    const res = engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.count, 0);
     assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')),
-      'a foreign topic\'s queue check leaves no presence behind');
+      'a foreign topic\'s mailbox check leaves no presence behind');
   });
 
-  it('a queue read refreshes a heartbeat this session owns', () => {
+  it('a mailbox read refreshes a heartbeat this session owns', () => {
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-one' });
     const p = presenceFile(dir, 'discussion', 'alpha');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
+    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'sess-one');
     assert.strictEqual(record.pid, process.pid, 'the refresh re-stamps the full identity');
@@ -422,13 +422,13 @@ describe('engine presence', () => {
     assert.ok(row.age_seconds < 60, 'the quiet-turn poll keeps the own hold\'s last-active age fresh');
   });
 
-  it('a queue read never overwrites a peer\'s heartbeat', () => {
+  it('a mailbox read never overwrites a peer\'s heartbeat', () => {
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'peer-sess' });
     const p = presenceFile(dir, 'discussion', 'alpha');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
+    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
     const record = JSON.parse(fs.readFileSync(p, 'utf8'));
     assert.strictEqual(record.session_id, 'peer-sess', 'the peer\'s identity stands');
     assert.strictEqual(record.pid, null);
@@ -441,7 +441,7 @@ describe('engine presence', () => {
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
-    engineWith(dir, ['topic', 'queue', 'pay', 'discussion', 'alpha']);
+    engineWith(dir, ['topic', 'mailbox', 'pay', 'discussion', 'alpha']);
     assert.ok(fs.statSync(p).mtimeMs < Date.now() - 15 * 60 * 1000, 'an unowned record is never claimed');
   });
 

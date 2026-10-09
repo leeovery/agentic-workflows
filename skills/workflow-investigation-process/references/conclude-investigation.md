@@ -22,10 +22,10 @@ Emit the call's MENU section verbatim per its marker.
 
 #### If `yes`
 
-First check the topic's triage queue — a queued concern must be worked before concluding:
+First check the topic's mailbox — a waiting message must be worked before concluding:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} investigation {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox {work_unit} investigation {topic}
 ```
 
 **If the response's `files` is non-empty:**
@@ -33,10 +33,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} i
 Render the blocker and emit both its sections verbatim per their markers:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render triage-block {work_unit}.investigation.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render mail-block {work_unit}.investigation.{topic}
 ```
 
-→ Load **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
+→ Load **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)** with work_unit = `{work_unit}`, topic = `{topic}`, phase = `investigation` — enter **A. Check**.
 
 On return:
 

@@ -1086,12 +1086,12 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
-    // The discussion's own requeue parks a concern research-side: the stub is
+    // The discussion's own forward parks a message research-side: the stub is
     // pre-live to the phase walk, yet research feeds discussion — the linear
     // continue routes to it, and the discussion is held at entry and at its
     // conclusion alike, the entry gate naming the work unit's next step. The
     // session already inside resumes: the engine holds births, not resumes.
-    sim.run(['topic', 'triage', wu, 'research', wu]);
+    sim.run(['topic', 'send', wu, 'research', wu]);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }),
@@ -1133,7 +1133,7 @@ describe('pipeline simulation', () => {
     // A concluded discussion is held the same way: a research-side landing
     // beneath it reopens the research, and the discussion's reopen refuses
     // until that research lands again.
-    assert.strictEqual(sim.run(['topic', 'triage', wu, 'research', wu]).reopened, true);
+    assert.strictEqual(sim.run(['topic', 'send', wu, 'research', wu]).reopened, true);
     sim.refuses(['topic', 'reopen', wu, 'discussion', wu],
       /discussion can't reopen on "ledger" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
@@ -1161,17 +1161,17 @@ describe('pipeline simulation', () => {
     // close, and the session's own check stays silent.
     const scratch = sim.write('.workflows/.cache/scratch/late-question.md',
       '### Late question\n*From: tally · discussion · 2026-07-23*\n\nWhat does the tally round to?\n');
-    const landed = sim.run(['topic', 'triage', wu, 'research', wu,
-      '--concern', scratch, '--slug', 'late-question', '-m', `discussion(${wu}): requeue a research question`]);
+    const landed = sim.run(['topic', 'send', wu, 'research', wu,
+      '--content', scratch, '--slug', 'late-question', '-m', `discussion(${wu}): forward a research question`]);
     assert.strictEqual(landed.reopened, true);
     assert.strictEqual(landed.reconcile_flagged, true);
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discussion.${wu}`, 'reconcile_needed']), 'research');
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.${wu}`, 'status']), 'in-progress');
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /^discussion "tally" awaits research on the topic/);
-    // The peer drains the queue and concludes the research: the wait
+    // The peer drains the mailbox and concludes the research: the wait
     // releases, and the unread flag is now what holds the close.
     sim.run(['topic', 'absorb', wu, 'research', wu,
-      '--file', path.basename(landed.concern_path), '-m', `research(${wu}): absorb late-question`]);
+      '--file', path.basename(landed.message_path), '-m', `research(${wu}): absorb late-question`]);
     sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): the rounding answer`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
@@ -1202,18 +1202,18 @@ describe('pipeline simulation', () => {
     const rows = (topic) => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .filter((k) => k.topic === topic).map((k) => [k.action, drawLabel(k.label)]);
 
-    // A research-side concern parks on alpha before any discussion exists —
+    // A research-side message parks on alpha before any discussion exists —
     // the research is alpha's own row, and the discussion is held for it at
     // the birth guard, the d door, and the entry gate alike.
-    sim.run(['topic', 'triage', wu, 'research', 'alpha']);
-    assert.deepStrictEqual(rows('alpha'), [['start_research', 'Start research for "Alpha" — *triage waiting*']]);
+    sim.run(['topic', 'send', wu, 'research', 'alpha']);
+    assert.deepStrictEqual(rows('alpha'), [['start_research', 'Start research for "Alpha" — *mail waiting*']]);
     sim.refuses(['topic', 'start', wu, 'discussion', 'alpha'],
-      /discussion can't start on "alpha" — research is parked on it \(triage waiting\); research feeds discussion, so it lands first — the menu names the way in/);
+      /discussion can't start on "alpha" — research is parked on it \(mail waiting\); research feeds discussion, so it lands first — the menu names the way in/);
     assert.match(sim.render(['direct-entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
-      /research is parked on it \(triage waiting\)[\s\S]*Its research row is the way in/);
+      /research is parked on it \(mail waiting\)[\s\S]*Its research row is the way in/);
     assert.match(sim.render(['entry-gate', `${wu}.discussion.alpha`], { expect: 'content' }),
       /Entry blocked — this discussion awaits research on "Alpha" \(parked — not yet started\)[\s\S]*Return to the epic menu — its research row is the way in\./);
-    sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /rerouted concerns are parked in its research triage/);
+    sim.refuses(['discovery-map', 'handle', wu, 'alpha'], /messages wait in its research mailbox/);
 
     // The research lands — the discussion row returns, the gate clears, and
     // the discussion is born; each row the menu offers hands off to its phase.
@@ -1265,7 +1265,7 @@ describe('pipeline simulation', () => {
         .filter((k) => k.topic === 'alpha').map((k) => k.action),
       ['continue_research']);
     // A landing is the engine's own act — never held, whichever side it parks on.
-    assert.strictEqual(sim.run(['topic', 'triage', wu, 'discussion', 'alpha']).status, 'in-progress');
+    assert.strictEqual(sim.run(['topic', 'send', wu, 'discussion', 'alpha']).status, 'in-progress');
     sim.render(['epic-soft-gate', wu, '--action', 'continue_research', '--topic', 'alpha'], { expect: 'empty' });
     sim.render(['epic-soft-gate', wu, '--action', 'start_research', '--topic', 'beta'], { expect: 'empty' });
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
@@ -1285,12 +1285,12 @@ describe('pipeline simulation', () => {
     // A concluded discussion is held the same way: a research-side landing
     // beneath it reopens the research, and the discussion's reopen refuses
     // until that research lands again.
-    assert.strictEqual(sim.run(['topic', 'triage', wu, 'research', 'alpha']).reopened, true);
+    assert.strictEqual(sim.run(['topic', 'send', wu, 'research', 'alpha']).reopened, true);
     sim.refuses(['topic', 'reopen', wu, 'discussion', 'alpha'],
       /discussion can't reopen on "alpha" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research']);
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n\nThe landed concern.\n');
-    sim.run(['commit', wu, '-m', `research(${wu}): alpha lands the concern`, '--topic', 'research/alpha']);
+    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n\nThe landed message.\n');
+    sim.run(['commit', wu, '-m', `research(${wu}): alpha lands the message`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     sim.run(['manifest', 'delete', `${wu}.discussion.alpha`, 'reconcile_needed']);
     assert.strictEqual(sim.run(['topic', 'reopen', wu, 'discussion', 'alpha']).status, 'in-progress');
@@ -1373,8 +1373,8 @@ describe('pipeline simulation', () => {
   });
 
   it('a specification pausing on a gap it routed goes through the bridge — a linear unit into the reopened record, an epic to its menu', () => {
-    // The gap exit (resolve-source-incoherence B → D): the concern lands in
-    // the source's triage queue, reopening it and staling the spec's row;
+    // The gap exit (resolve-source-incoherence B → D): the message lands in
+    // the source's mailbox, reopening it and staling the spec's row;
     // the pause commits the session's work and hands off as a pause. The
     // gap routes into the first of the specification's sources.
     const pauseOnGap = (wu, sourcePhase, spec, [source, ...rest]) => {
@@ -1382,9 +1382,9 @@ describe('pipeline simulation', () => {
       sim.run(['topic', 'start', wu, 'specification', spec]);
       sim.run(['manifest', 'set', `${wu}.specification.${spec}`,
         ...[source, ...rest].map((name) => `sources.${name}.status=incorporated`)]);
-      const concern = sim.write('.workflows/.cache/scratch/spec-gap.md', '### Gap — retry window\n\nWhat the spec needs decided.\n');
-      const landed = sim.run(['topic', 'triage', wu, sourcePhase, source,
-        '--concern', concern, '--slug', 'retry-window', '-m', `spec(${wu}): gap routed to ${source}`]);
+      const message = sim.write('.workflows/.cache/scratch/spec-gap.md', '### Gap — retry window\n\nWhat the spec needs decided.\n');
+      const landed = sim.run(['topic', 'send', wu, sourcePhase, source,
+        '--content', message, '--slug', 'retry-window', '-m', `spec(${wu}): gap routed to ${source}`]);
       assert.strictEqual(landed.reopened, true);
       assert.deepStrictEqual(landed.sources_staled, [spec]);
       sim.run(['commit', wu, '-m', `spec(${wu}): pause — gap routed to ${source}`, '--topic', `specification/${spec}`]);
@@ -1426,14 +1426,14 @@ describe('pipeline simulation', () => {
   });
 
   it('an epic arrival that backfills hands the menu off to start afresh, carrying the banner', () => {
-    // A discussion reroutes a concern to a topic it opens (create-discovery-
+    // A discussion sends a message to a topic it opens (create-discovery-
     // topic B): the row lands with no summary or description for the next
     // epic entry to draft. The conclusion's arrival meets it at Step 2, the
     // backfill commits, and backfill-checks C hands the menu off with the
     // arguments it arrived with — the fresh menu recovers nothing and leads
     // with the banner.
-    const wu = 'reroutes';
-    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Reroutes', '--session-log-file', sessionLog(sim, wu)]);
+    const wu = 'sends';
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Sends', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
       [{ name: 'alpha', routing: 'discussion', summary: 'Alpha', description: 'What alpha settles.' }])]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
@@ -1443,10 +1443,10 @@ describe('pipeline simulation', () => {
     label(sim, wu, 'discussion', 'alpha');
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
-    sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'reroute:alpha', '--backfill', '--force-dismissed']);
-    const concern = sim.write('.workflows/.cache/scratch/reroute.md', '### Off-topic\n*From: alpha · discussion · 2026-01-01*\n\nDetails.\n');
-    sim.run(['topic', 'triage', wu, 'discussion', 'beta', '--concern', concern, '--slug', 'off-topic',
-      '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
+    sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'message:alpha', '--backfill', '--force-dismissed']);
+    const message = sim.write('.workflows/.cache/scratch/message.md', '### Off-topic\n*From: alpha · discussion · 2026-01-01*\n\nDetails.\n');
+    sim.run(['topic', 'send', wu, 'discussion', 'beta', '--content', message, '--slug', 'off-topic',
+      '-m', `discussion(${wu}/alpha): send message to beta`]);
     sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
 
@@ -1462,7 +1462,7 @@ describe('pipeline simulation', () => {
       [{ op: 'set', path: `${wu}.discovery.beta`, fields: { summary: 'Beta', description: 'What beta settles.' } }])]);
     sim.run(['commit', wu, '-m', `discovery(${wu}): backfill 2 discovery summary field(s)`, '--discovery']);
 
-    assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Reroutes"\./);
+    assert.match(arriveAtEpicMenu(sim, wu, 'discussion'), /Discussion completed for "Sends"\./);
     assert.deepStrictEqual(toRecover(), [], 'the fresh menu finds nothing to recover');
   });
 
@@ -1533,12 +1533,12 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
     sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
 
-    // A spec-routed gap lands in the investigation's own triage queue: the
-    // delivery reopens the item and stales the spec row; the queue answers;
+    // A spec-routed gap lands in the investigation's own mailbox: the
+    // delivery reopens the item and stales the spec row; the mailbox answers;
     // absorb drains it and the pipeline re-concludes.
-    sim.write('.workflows/.cache/scratch/gap-concern.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
-    const gapLand = sim.run(['topic', 'triage', wu, 'investigation', wu,
-      '--concern', '.workflows/.cache/scratch/gap-concern.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
+    sim.write('.workflows/.cache/scratch/gap-message.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    const gapLand = sim.run(['topic', 'send', wu, 'investigation', wu,
+      '--content', '.workflows/.cache/scratch/gap-message.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
     assert.strictEqual(gapLand.reopened, true);
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
     assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
@@ -1547,16 +1547,16 @@ describe('pipeline simulation', () => {
     const startRow = () => startMenu(START_GATEWAY.discover(sim.dir)).keys
       .map((k) => drawLabel(k.label)).find((label) => label.startsWith('Continue "Crash Fix"'));
     const bugfixUnit = () => LIB.detail.activeWorkUnit(sim.dir, wu).unit;
-    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · triage waiting');
-    assert.deepStrictEqual(bugfixUnit().triage_phases, ['investigation']);
-    assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · triage waiting\]/);
-    const gapQueue = sim.run(['topic', 'queue', wu, 'investigation', wu]);
+    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)* · mail waiting');
+    assert.deepStrictEqual(bugfixUnit().mail_phases, ['investigation']);
+    assert.match(workUnitStatus('bugfix', bugfixUnit()), /◐ Investigation +\[in-progress · mail waiting\]/);
+    const gapQueue = sim.run(['topic', 'mailbox', wu, 'investigation', wu]);
     assert.strictEqual(gapQueue.files.length, 1);
     sim.run(['topic', 'absorb', wu, 'investigation', wu,
       '--file', gapQueue.files[0].split('/').pop(), '-m', `investigation(${wu}/${wu}): absorb retry-semantics (from ${wu})`]);
-    assert.strictEqual(sim.run(['topic', 'queue', wu, 'investigation', wu]).files.length, 0);
-    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the drained queue retires the cue');
-    assert.strictEqual(bugfixUnit().triage_phases, undefined);
+    assert.strictEqual(sim.run(['topic', 'mailbox', wu, 'investigation', wu]).files.length, 0);
+    assert.strictEqual(startRow(), 'Continue "Crash Fix" — *bugfix, investigation (in-progress)*', 'the drained mailbox retires the cue');
+    assert.strictEqual(bugfixUnit().mail_phases, undefined);
     sim.run(['topic', 'complete', wu, 'investigation', wu]);
     sim.run(['manifest', 'delete', `${wu}.specification.${wu}`, 'reconcile_needed']);
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, `sources.${wu}.status`, 'incorporated']);
@@ -1635,7 +1635,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Looked small', '--session-log-file', log]);
 
     // Complexity check (complexity-check B): which criteria the change fails
-    // is the session's read, so the concerns ride a payload; the type is the
+    // is the session's read, so the messages ride a payload; the type is the
     // surface's to check. Both manifests flip, then commit.
     const concerns = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/complexity.json`,
       { concerns: ['Requires design decisions about the new API surface'] });
@@ -1823,7 +1823,7 @@ describe('pipeline simulation', () => {
       'the register rides above the conclude gate as the hand-off');
     assert.match(gate, /↳ Needs a machine cycle/);
     assert.match(gate, /d\/dead-end/);
-    // Research in flight is no concern of a discussion entry — the soft gate
+    // Research in flight is no message of a discussion entry — the soft gate
     // is empty for a discussion start while alpha's research runs.
     sim.render(['epic-soft-gate', wu, '--action', 'start_discussion', '--topic', 'beta'], { expect: 'empty' });
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
@@ -1857,7 +1857,7 @@ describe('pipeline simulation', () => {
     arriveAtEpicMenu(sim, wu, 'discussion');
 
     // The hop on a direct reopen: research alpha beneath alpha's decided
-    // discussion — the same flag a triage landing sets.
+    // discussion — the same flag a message landing sets.
     const reopenHop = sim.run(['topic', 'reopen', wu, 'research', 'alpha']);
     assert.deepStrictEqual(reopenHop.reconcile_flagged, [{ phase: 'discussion', topic: 'alpha' }]);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.reconcile_needed, 'research');
@@ -1918,24 +1918,24 @@ describe('pipeline simulation', () => {
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
-    // The triage-fold settle: a reroute reopens the concluded discussion, the
+    // The message-fold settle: a send reopens the concluded discussion, the
     // raise arms new ground, and the absorb settles that ground into the
-    // review anchor — a sitting that only drained the queue arms no review;
+    // review anchor — a sitting that only drained the mailbox arms no review;
     // its review duty belongs to the closing gates' final pass.
-    sim.write('.workflows/.cache/scratch/concern-scratch.md',
+    sim.write('.workflows/.cache/scratch/message-scratch.md',
       '### Escalation path\n*From: alpha · discussion · 2026-07-23*\n\nWho gets paged?\n');
-    const reroute = sim.run(['topic', 'triage', wu, 'discussion', 'beta',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'escalation-path',
-      '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
-    assert.strictEqual(reroute.reopened, true, 'a delivery beneath a concluded discussion reopens it');
-    // The cue follows the queue, not the status: the reopened item is
+    const sent = sim.run(['topic', 'send', wu, 'discussion', 'beta',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'escalation-path',
+      '-m', `discussion(${wu}/alpha): send message to beta`]);
+    assert.strictEqual(sent.reopened, true, 'a delivery beneath a concluded discussion reopens it');
+    // The cue follows the mailbox, not the status: the reopened item is
     // in-progress with no stub to read, yet its rows say what waits — and
     // the fold retires the cue.
     const betaRow = () => drawLabel(epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
       .find((k) => k.topic === 'beta' && k.action === 'continue_discussion').label);
-    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · triage waiting');
+    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion* · mail waiting');
     assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)).replace(/\n[ │]+/g, ' '),
-      /Discussing · triage waiting/);
+      /Discussing · mail waiting/);
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /review dispatch blocked/);
     sim.run(['discussion-map', 'add', wu, 'beta', 'escalation-path']);
@@ -1948,8 +1948,8 @@ describe('pipeline simulation', () => {
       '-m', `discussion(${wu}/beta): absorb 001-escalation-path (from alpha)`]);
     assert.strictEqual(folded.arming_settled, true, 'the fold\'s ground joins the anchor snapshot');
     assert.strictEqual(folded.remaining, 0);
-    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the drained queue retires the cue');
-    // The drained queue re-arms nothing — the fold never counts as movement.
+    assert.strictEqual(betaRow(), 'Continue "Beta" — *discussion*', 'the drained mailbox retires the cue');
+    // The drained mailbox re-arms nothing — the fold never counts as movement.
     sim.refuses(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review'],
       /0 of 3 map moves since review-003/);
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
@@ -1971,45 +1971,45 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['gamma-prime'].cancelled, undefined, 'the marker is gone');
     sim.run(['topic', 'cancel', wu, 'discovery', 'gamma-prime']);
 
-    // Delta: an off-topic concern rerouted from alpha parks on an unstarted
-    // topic — the item is triaged, never in-progress; the delivery form is one
-    // self-committing transaction (engine-numbered queue file, scratch
-    // consumed, commit confined to concern + manifest).
-    sim.run(['discovery-map', 'add', wu, 'delta', 'research', '--summary', 'Delta summary', '--source', 'reroute:alpha']);
-    sim.write('.workflows/.cache/scratch/concern-scratch.md',
-      '### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
-    const parked = sim.run(['topic', 'triage', wu, 'research', 'delta',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'parked-concern',
-      '-m', `discussion(${wu}/alpha): reroute concern to delta`]);
-    assert.strictEqual(parked.status, 'triaged');
+    // Delta: an off-topic message sent from alpha parks on an unstarted
+    // topic — the item is unstarted, never in-progress; the delivery form is one
+    // self-committing transaction (engine-numbered message file, scratch
+    // consumed, commit confined to message + manifest).
+    sim.run(['discovery-map', 'add', wu, 'delta', 'research', '--summary', 'Delta summary', '--source', 'message:alpha']);
+    sim.write('.workflows/.cache/scratch/message-scratch.md',
+      '### Parked message\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
+    const parked = sim.run(['topic', 'send', wu, 'research', 'delta',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'parked-message',
+      '-m', `discussion(${wu}/alpha): send message to delta`]);
+    assert.strictEqual(parked.status, 'unstarted');
     assert.strictEqual(parked.created, true);
-    assert.strictEqual(parked.concern_path, `.workflows/${wu}/research/.triage/delta/001-parked-concern.md`);
+    assert.strictEqual(parked.message_path, `.workflows/${wu}/research/.mailbox/delta/001-parked-message.md`);
     assert.ok(parked.committed, 'delivery self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows/.cache/scratch/concern-scratch.md')), 'scratch consumed');
-    const queue = sim.run(['topic', 'queue', wu, 'research', 'delta']);
-    assert.strictEqual(queue.count, 1);
-    assert.deepStrictEqual(queue.files, [parked.concern_path], 'the read verb lists the delivered concern');
-    // The queue read is reachable for any topic — a session checking a
-    // foreign queue must not manufacture a hold there. No verb has yet
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows/.cache/scratch/message-scratch.md')), 'scratch consumed');
+    const mailbox = sim.run(['topic', 'mailbox', wu, 'research', 'delta']);
+    assert.strictEqual(mailbox.count, 1);
+    assert.deepStrictEqual(mailbox.files, [parked.message_path], 'the read verb lists the delivered message');
+    // The mailbox read is reachable for any topic — a session checking a
+    // foreign mailbox must not manufacture a hold there. No verb has yet
     // acted on delta from this session, so the read stamps nothing.
     assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
-      'a queue read never creates a heartbeat');
-    // Research carries no review — the refusal is on kind, before any queue
+      'a mailbox read never creates a heartbeat');
+    // Research carries no review — the refusal is on kind, before any mailbox
     // read — and the deep dive, the phase's one instrument, is never gated
-    // by the queue.
+    // by the mailbox.
     sim.refuses(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'review'],
       /research carries no review — the deep dive is the phase's instrument/);
     sim.run(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'deep-dive', '--label', 'scope']);
     assert.ok(fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
       'the write-shaped verb is what claims the slot');
-    // topic absorb — the delivery's mirror: deliver a second concern, absorb
+    // topic absorb — the delivery's mirror: deliver a second message, absorb
     // it, and the self-committing response answers what remains.
-    sim.write('.workflows/.cache/scratch/concern-scratch.md',
+    sim.write('.workflows/.cache/scratch/message-scratch.md',
       '### Second parked\n*From: alpha · discussion · 2026-07-23*\n\nMore.\n');
-    sim.run(['topic', 'triage', wu, 'research', 'delta',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'second-parked',
-      '-m', `discussion(${wu}/alpha): reroute concern to delta`]);
-    // The fold enters the concern on the register with the rerouting topic as its origin.
+    sim.run(['topic', 'send', wu, 'research', 'delta',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'second-parked',
+      '-m', `discussion(${wu}/alpha): send message to delta`]);
+    // The fold enters the message on the register with the rerouting topic as its origin.
     const entered = sim.run(['research-threads', 'add', wu, 'delta', 'second-parked', '--question', 'More?', '--origin', 'alpha']);
     assert.strictEqual(entered.origin, 'alpha');
     sim.run(['research-threads', 'set', wu, 'delta', 'second-parked', 'learned']);
@@ -2018,52 +2018,52 @@ describe('pipeline simulation', () => {
     assert.strictEqual(absorbed.absorbed, '002-second-parked.md');
     assert.strictEqual(absorbed.remaining, 1, 'the absorb answers the post-deletion count');
     assert.ok(absorbed.committed, 'absorb self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/${wu}/research/.triage/delta/002-second-parked.md`)), 'queue file deleted');
-    // topic requeue — the wrong-side repair: the raise judges the remaining
-    // concern owed the pair's other phase-side, the offer gate renders over
-    // the live queue, and one transaction moves it — destination parked as a
-    // fresh triaged stub, the emptied source stub removed.
-    sim.write('.workflows/.cache/scratch/requeue-offer.json', JSON.stringify({
-      file: '001-parked-concern.md', title: 'Parked concern', reason: 'it asks delta to decide, not to explore.',
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/${wu}/research/.mailbox/delta/002-second-parked.md`)), 'message file deleted');
+    // topic forward — the wrong-side repair: the raise judges the remaining
+    // message owed the pair's other phase-side, the offer gate renders over
+    // the live mailbox, and one transaction moves it — destination parked as a
+    // fresh unstarted stub, the emptied source stub removed.
+    sim.write('.workflows/.cache/scratch/forward-offer.json', JSON.stringify({
+      file: '001-parked-message.md', title: 'Parked message', reason: 'it asks delta to decide, not to explore.',
     }));
-    sim.render(['requeue-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/requeue-offer.json'], { expect: 'content' });
-    const moved = sim.run(['topic', 'requeue', wu, 'research', 'discussion', 'delta',
-      '--file', '001-parked-concern.md', '-m', `research(${wu}/delta): requeue 001-parked-concern to discussion`]);
+    sim.render(['forward-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/forward-offer.json'], { expect: 'content' });
+    const moved = sim.run(['topic', 'forward', wu, 'research', 'discussion', 'delta',
+      '--file', '001-parked-message.md', '-m', `research(${wu}/delta): forward 001-parked-message to discussion`]);
     assert.strictEqual(moved.remaining, 0);
     assert.strictEqual(moved.created, true);
     assert.strictEqual(moved.source_item_removed, true, 'the emptied research stub is removed');
-    assert.strictEqual(moved.concern_path, `.workflows/${wu}/discussion/.triage/delta/001-parked-concern.md`);
-    assert.ok(moved.committed, 'requeue self-commits');
+    assert.strictEqual(moved.message_path, `.workflows/${wu}/discussion/.mailbox/delta/001-parked-message.md`);
+    assert.ok(moved.committed, 'forward self-commits');
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta, undefined);
-    assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'triaged');
+    assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
     // …and the mirror move restores the research-side parking for the steps below.
-    const movedBack = sim.run(['topic', 'requeue', wu, 'discussion', 'research', 'delta',
-      '--file', '001-parked-concern.md', '-m', `discussion(${wu}/delta): requeue 001-parked-concern to research`]);
+    const movedBack = sim.run(['topic', 'forward', wu, 'discussion', 'research', 'delta',
+      '--file', '001-parked-message.md', '-m', `discussion(${wu}/delta): forward 001-parked-message to research`]);
     assert.strictEqual(movedBack.source_item_removed, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta, undefined);
-    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'triaged');
-    assert.deepStrictEqual(sim.run(['topic', 'queue', wu, 'research', 'delta']).files,
-      [`.workflows/${wu}/research/.triage/delta/001-parked-concern.md`]);
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'unstarted');
+    assert.deepStrictEqual(sim.run(['topic', 'mailbox', wu, 'research', 'delta']).files,
+      [`.workflows/${wu}/research/.mailbox/delta/001-parked-message.md`]);
     // The raise's display surfaces: the fresh-sitting notice, the offer gate
-    // (agenda payload validated against the live queue), and the conclusion
+    // (agenda payload validated against the live mailbox), and the conclusion
     // blocker — the entry itself is read by the session, never rendered.
-    sim.write('.workflows/.cache/scratch/triage-offer.json', JSON.stringify({
-      items: [{ file: '001-parked-concern.md', title: 'Parked concern', origin: 'alpha', from_phase: 'discussion', from_date: '2026-07-23' }],
+    sim.write('.workflows/.cache/scratch/mail-offer.json', JSON.stringify({
+      items: [{ file: '001-parked-message.md', title: 'Parked message', origin: 'alpha', from_phase: 'discussion', from_date: '2026-07-23' }],
     }));
-    sim.render(['triage-announce', `${wu}.research.delta`], { expect: 'content' });
-    sim.render(['triage-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/triage-offer.json'], { expect: 'content' });
-    sim.render(['triage-block', `${wu}.research.delta`], { expect: 'content' });
+    sim.render(['mail-announce', `${wu}.research.delta`], { expect: 'content' });
+    sim.render(['mail-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/mail-offer.json'], { expect: 'content' });
+    sim.render(['mail-block', `${wu}.research.delta`], { expect: 'content' });
     // Judgment landing: a research-side delivery beneath beta's completed
-    // discussion parks the concern AND flags the discussion for
+    // discussion parks the message AND flags the discussion for
     // reconciliation — the discussion itself stays completed.
-    sim.write('.workflows/.cache/scratch/concern-scratch.md', '### Feasibility question\n*From: alpha · discussion · 2026-07-23*\n\nIs this even possible?\n');
-    const flagged = sim.run(['topic', 'triage', wu, 'research', 'beta',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'feasibility-question',
-      '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
+    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Feasibility question\n*From: alpha · discussion · 2026-07-23*\n\nIs this even possible?\n');
+    const flagged = sim.run(['topic', 'send', wu, 'research', 'beta',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'feasibility-question',
+      '-m', `discussion(${wu}/alpha): send message to beta`]);
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'completed');
-    // The absorb drains the queue; a deep dive — research's one agent kind —
+    // The absorb drains the mailbox; a deep dive — research's one agent kind —
     // dispatches over the drained topic.
     sim.run(['topic', 'absorb', wu, 'research', 'beta',
       '--file', '001-feasibility-question.md', '-m', `research(${wu}/beta): absorb 001-feasibility-question (from alpha)`]);
@@ -2160,26 +2160,26 @@ describe('pipeline simulation', () => {
     // uncommitted, and the commit contains no path outside the topic + manifest.
     sim.write(`.workflows/${wu}/research/alpha.md`, '# Research: Alpha\n\nown progress\n');
     sim.write(`.workflows/${wu}/research/delta.md`,
-      '# Research: Delta\n\n## Triage\n\n### Parked concern\n*From: alpha · discussion · 2026-07-23*\n\nDetails. Peer dirt.\n');
+      '# Research: Delta\n\n## Triage\n\n### Parked message\n*From: alpha · discussion · 2026-07-23*\n\nDetails. Peer dirt.\n');
     sim.run(['commit', wu, '-m', `research(${wu}/alpha): progress`, '--topic', 'research/alpha']);
     const porcelain = git(sim.dir, ['status', '--porcelain']);
     assert.match(porcelain, /research\/delta\.md/, 'peer topic dirt survives a --topic commit');
     const headPaths = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!headPaths.includes('research/delta.md'), 'peer topic path absent from the --topic commit');
     sim.run(['commit', wu, '-m', `research(${wu}): sweep delta dirt for the next steps`, '--topic', 'research/delta', '--sweep']);
-    const reparked = sim.run(['topic', 'triage', wu, 'research', 'delta']);
+    const reparked = sim.run(['topic', 'send', wu, 'research', 'delta']);
     assert.strictEqual(reparked.created, false);
-    assert.strictEqual(reparked.status, 'triaged');
-    // A stub refuses the verbs that would bury or absorb never-worked concerns
+    assert.strictEqual(reparked.status, 'unstarted');
+    // A stub refuses the verbs that would bury or absorb never-worked messages
     // — as the source and as the absorbing --by target alike.
-    sim.refuses(['topic', 'complete', wu, 'research', 'delta'], /triaged/);
-    sim.refuses(['topic', 'supersede', wu, 'research', 'delta', '--by', 'alpha'], /triaged/);
+    sim.refuses(['topic', 'complete', wu, 'research', 'delta'], /unstarted/);
+    sim.refuses(['topic', 'supersede', wu, 'research', 'delta', '--by', 'alpha'], /unstarted/);
     sim.refuses(['topic', 'supersede', wu, 'research', 'alpha', '--by', 'delta'], /cannot absorb/);
     // Landing on a completed discussion reopens it to receive the entry. The
-    // drain's fold-into-existing branch: the concern collides with a decided
+    // drain's fold-into-existing branch: the message collides with a decided
     // subtopic, so the fold flips it back to exploring — re-arming the
     // conclusion gate — and the session re-decides before re-completing.
-    const reopened = sim.run(['topic', 'triage', wu, 'discussion', 'beta']);
+    const reopened = sim.run(['topic', 'send', wu, 'discussion', 'beta']);
     assert.strictEqual(reopened.reopened, true);
     assert.strictEqual(reopened.status, 'in-progress');
     sim.refuses(['discussion-map', 'add', wu, 'beta', 'retry-policy'], /already exists/);
@@ -2194,10 +2194,10 @@ describe('pipeline simulation', () => {
     // again: the hop out of research reaches a live discussion, not only a
     // decided one.
     sim.run(['manifest', 'delete', `${wu}.discussion.beta`, 'reconcile_needed']);
-    sim.write('.workflows/.cache/scratch/concern-scratch.md', '### Cost model\n*From: alpha · discussion · 2026-07-23*\n\nWhat does it cost?\n');
-    const landedLive = sim.run(['topic', 'triage', wu, 'research', 'beta',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'cost-model',
-      '-m', `discussion(${wu}/alpha): reroute concern to beta`]);
+    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Cost model\n*From: alpha · discussion · 2026-07-23*\n\nWhat does it cost?\n');
+    const landedLive = sim.run(['topic', 'send', wu, 'research', 'beta',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'cost-model',
+      '-m', `discussion(${wu}/alpha): send message to beta`]);
     assert.strictEqual(landedLive.reconcile_flagged, true, 'the hop out of research flags the discussion in flight');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.status, 'in-progress');
@@ -2221,14 +2221,14 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['entry-gate', `${wu}.discussion.beta`], { expect: 'content' }),
       /Entry blocked — this discussion awaits research on "Beta" \(parked — not yet started\)/);
     assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)).replace(/\n[ │]+/g, ' '),
-      /Discussing · awaiting research · triage waiting · input moved/);
+      /Discussing · awaiting research · mail waiting · input moved/);
     // The research row is the way in: the stub starts (the birth guard's
-    // allowance), the gate reads the research in flight, the queued concern
+    // allowance), the gate reads the research in flight, the waiting message
     // folds, the research lands — and the wait releases.
     const started = sim.run(['topic', 'start', wu, 'research', 'beta']);
     assert.strictEqual(started.created, false);
     assert.match(sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'content' }), /awaits research on "Beta" \(in flight\)/);
-    const landedFile = path.basename(landedLive.concern_path);
+    const landedFile = path.basename(landedLive.message_path);
     sim.run(['topic', 'absorb', wu, 'research', 'beta',
       '--file', landedFile, '-m', `research(${wu}/beta): absorb ${landedFile} (from alpha)`]);
     sim.write(`.workflows/${wu}/research/beta.md`, '# Research — Beta\n\nThe cost model.\n');
@@ -2244,11 +2244,11 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // The topic's cancel/reactivate round-trips the stub; start is the one
-    // exit from triaged.
+    // exit from unstarted.
     sim.run(['topic', 'cancel', wu, 'discovery', 'delta']);
-    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.previous_status, 'triaged');
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.previous_status, 'unstarted');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'delta']);
-    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'triaged');
+    assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'unstarted');
     // A parked research stub starts from its menu row — the r door refuses
     // it like any mapped name, the discussion side of the same name too.
     sim.render(['direct-entry-gate', `${wu}.research.delta`], { expect: 'content' });
@@ -2256,7 +2256,7 @@ describe('pipeline simulation', () => {
     const drained = sim.run(['topic', 'start', wu, 'research', 'delta']);
     assert.strictEqual(drained.status, 'in-progress');
     assert.strictEqual(drained.created, false);
-    sim.write(`.workflows/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked concern.\n');
+    sim.write(`.workflows/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked message.\n');
     sim.run(['commit', wu, '-m', `research(${wu}): delta`, '--topic', 'research/delta']);
     sim.run(['topic', 'complete', wu, 'research', 'delta']);
 
@@ -2269,10 +2269,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.delta.handled, true);
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'completed',
       'the dead-end marker leaves the research record alone');
-    // A reroute aimed at the closed topic stops at the gate — the surface
+    // A send aimed at the closed topic stops at the gate — the surface
     // derives the closure from the same join the marker wrote.
-    assert.match(sim.render(['triage-closed-target', `${wu}.discovery.delta`], { expect: 'content' }),
-      /"delta" is closed as a dead end, so it won't pick up rerouted concerns\./);
+    assert.match(sim.render(['send-closed-target', `${wu}.discovery.delta`], { expect: 'content' }),
+      /"delta" is closed as a dead end, so it won't pick up messages\./);
     sim.refuses(['discovery-map', 'handle', wu, 'delta'],
       /"delta" can't be closed as a dead end — it's already closed/);
     const reopenedMap = sim.run(['discovery-map', 'unhandle', wu, 'delta']);
@@ -2374,7 +2374,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(specData.items.unified.order, 1);
     assert.strictEqual(specData.build_order_stale, undefined, 'sequencing clears the stale flag');
     // The soft gate is engine-rendered and empty when nothing sits ahead —
-    // unified is the whole live set, so planning it raises no concern.
+    // unified is the whole live set, so planning it raises no message.
     sim.render(['epic-soft-gate', wu, '--action', 'start_planning', '--topic', 'unified'], { expect: 'empty' });
     epicPick(sim, wu, 'start_planning', 'unified');
 
@@ -2464,9 +2464,9 @@ describe('pipeline simulation', () => {
     assert.ok(specDetail(sim.dir, wu).concluded.some((r) => r.name === 'unified'));
     sim.render(['spec-confirm-gate', `${wu}.specification.unified`], { expect: 'empty' });
 
-    // A BARE triage landing on the spec'd completed discussion takes the
+    // A BARE message landing on the spec'd completed discussion takes the
     // same hop — no completed→in-progress transition skips it.
-    const bareReopen = sim.run(['topic', 'triage', wu, 'discussion', 'beta']);
+    const bareReopen = sim.run(['topic', 'send', wu, 'discussion', 'beta']);
     assert.strictEqual(bareReopen.reopened, true);
     assert.strictEqual(bareReopen.reconcile_flagged, true);
     assert.deepStrictEqual(bareReopen.sources_staled, ['unified']);
@@ -2711,14 +2711,14 @@ describe('pipeline simulation', () => {
     assert.match(gapGate, /`y\/yes`.+→ Reopen "refund-window" with the gap and pause here/);
     assert.match(gapGate, /`t\/topic`/);
     assert.match(gapGate, /`r\/roadmap`/);
-    sim.write('.workflows/.cache/scratch/concern-scratch.md',
+    sim.write('.workflows/.cache/scratch/message-scratch.md',
       '### Refund window\n*From: unified · specification · 2026-07-23*\n\nHow long can a refund be claimed?\n');
     sim.run(['discovery-map', 'add', wu, 'refund-window', 'discussion',
-      '--summary', 'How long a refund can be claimed', '--source', 'reroute:unified']);
-    const gapParked = sim.run(['topic', 'triage', wu, 'discussion', 'refund-window',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'refund-window',
-      '-m', `spec(${wu}/unified): reroute the refund-window gap to its own topic`]);
-    assert.strictEqual(gapParked.status, 'triaged');
+      '--summary', 'How long a refund can be claimed', '--source', 'message:unified']);
+    const gapParked = sim.run(['topic', 'send', wu, 'discussion', 'refund-window',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'refund-window',
+      '-m', `spec(${wu}/unified): send the refund-window gap to its own topic`]);
+    assert.strictEqual(gapParked.status, 'unstarted');
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.refund-window.status', 'pending']);
     const blockedByGap = () => EPIC_GATEWAY.discover(sim.dir, wu).spec_blocked;
     assert.deepStrictEqual(blockedByGap(), [{ name: 'unified', by: ['refund-window'] }],
@@ -2810,7 +2810,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(cancelledUnits(), []);
 
     // A started topic: a discussion in flight with a spawned experiment, a
-    // research stub parked beneath it by a reroute, and a proposed grouping
+    // research stub parked beneath it by a send, and a proposed grouping
     // over its discussion. The cancel takes all of it in one write — the
     // wait released first, so the flag lands on the holder while it is
     // still live.
@@ -2819,9 +2819,9 @@ describe('pipeline simulation', () => {
     const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion',
       '--problem', sim.write(`.workflows/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
-    sim.write('.workflows/.cache/scratch/concern-scratch.md', '### Token lifetime\n*From: billing · discussion · d*\n\nHow long?\n');
-    sim.run(['topic', 'triage', wu, 'research', 'auth', '--concern', '.workflows/.cache/scratch/concern-scratch.md',
-      '--slug', 'token-lifetime', '-m', `discussion(${wu}/billing): reroute concern to auth`]);
+    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Token lifetime\n*From: billing · discussion · d*\n\nHow long?\n');
+    sim.run(['topic', 'send', wu, 'research', 'auth', '--content', '.workflows/.cache/scratch/message-scratch.md',
+      '--slug', 'token-lifetime', '-m', `discussion(${wu}/billing): send message to auth`]);
     // The landing's hop flagged the discussion; the session's re-entry
     // cleared it (prose-owned) — so the cancel's own release is the flag
     // that lands next.
@@ -2831,10 +2831,10 @@ describe('pipeline simulation', () => {
       [{ op: 'set', path: `${wu}.specification.grouping`, fields: { status: 'proposed', sources: { auth: { status: 'pending' } } } }])]);
     assert.deepStrictEqual(locked(), [], 'a proposed grouping never locks');
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.auth`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
-      /Cancelling \*\*Auth\*\* marks its research \[triaged\] and discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
+      /Cancelling \*\*Auth\*\* marks its research \[unstarted\] and discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\. The proposed grouping \*\*Grouping\*\* is discarded — the next grouping analysis rebuilds from the new world\./);
     const taken = sim.run(['topic', 'cancel', wu, 'discovery', 'auth']);
     assert.deepStrictEqual(taken.cancelled, [
-      { phase: 'research', previous_status: 'triaged' },
+      { phase: 'research', previous_status: 'unstarted' },
       { phase: 'discussion', previous_status: 'in-progress' },
     ]);
     assert.deepStrictEqual(taken.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
@@ -2859,9 +2859,9 @@ describe('pipeline simulation', () => {
     // and the parked research holds the discussion's conclusion as before —
     // its own row is the way in, and its landing releases the wait.
     const back = sim.run(['topic', 'reactivate', wu, 'discovery', 'auth']);
-    assert.deepStrictEqual(back.restored, [{ phase: 'research', status: 'triaged' }, { phase: 'discussion', status: 'in-progress' }]);
+    assert.deepStrictEqual(back.restored, [{ phase: 'research', status: 'unstarted' }, { phase: 'discussion', status: 'in-progress' }]);
     assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
-      /Reactivated "Auth"\. Restored research \[triaged\] · discussion \[in-progress\]\./);
+      /Reactivated "Auth"\. Restored research \[unstarted\] · discussion \[in-progress\]\./);
     for (const phase of ['research', 'discussion']) sim.render(['entry-gate', `${wu}.${phase}.auth`, '--own'], { expect: 'empty' });
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'experiment', 'the flag is live again');
     sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
@@ -2973,13 +2973,13 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(cancelledUnits(), ['specification/roles-v2']);
     assert.strictEqual(detail().cancelled[0].locked, 'locked — the specification "Roles" now sources "Roles"; regroup the discussions from the menu (s/spec)');
 
-    // A closed map row takes no concern — dead-ended or cancelled — the
+    // A closed map row takes no message — dead-ended or cancelled — the
     // backstop for a peer closing the target under a landing; the cancel
     // marker sits over the dead end and lifts off it.
     sim.run(['discovery-map', 'handle', wu, 'export']);
-    sim.refuses(['topic', 'triage', wu, 'research', 'export'], /^"export" is closed as a dead end — reopen it in discovery first$/);
+    sim.refuses(['topic', 'send', wu, 'research', 'export'], /^"export" is closed as a dead end — reopen it in discovery first$/);
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
-    sim.refuses(['topic', 'triage', wu, 'discussion', 'export'], /^"export" is cancelled — reactivate it from the epic menu first$/);
+    sim.refuses(['topic', 'send', wu, 'discussion', 'export'], /^"export" is cancelled — reactivate it from the epic menu first$/);
     sim.refuses(['discovery-map', 'unhandle', wu, 'export'], /it's cancelled; reactivate it from the epic menu first/);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
     assert.strictEqual(detail().discovery_map.find((r) => r.name === 'export').lifecycle, 'handled');
@@ -3232,14 +3232,14 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.workflows'), 'gap-analysis')
       .map((f) => path.basename(f)), ['specd.md']);
 
-    // The roadmap owns it: cancel and reactivate refuse, triage lands.
+    // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);
     sim.refuses(['topic', 'reactivate', wu, 'discovery', 'decided'], /"decided" is postponed, not cancelled — pull it forward from the roadmap instead/);
-    sim.write('.workflows/.cache/scratch/concern-scratch.md', '### Mail that waits\n*From: specd · discussion · d*\n\nStill?\n');
-    const mail = sim.run(['topic', 'triage', wu, 'discussion', 'decided',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'mail-that-waits',
-      '-m', `discussion(${wu}/specd): reroute concern to decided`]);
-    assert.strictEqual(mail.status, 'postponed', 'a concern for a topic that waits is mail that waits with it');
+    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Mail that waits\n*From: specd · discussion · d*\n\nStill?\n');
+    const mail = sim.run(['topic', 'send', wu, 'discussion', 'decided',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits',
+      '-m', `discussion(${wu}/specd): send message to decided`]);
+    assert.strictEqual(mail.status, 'postponed', 'a message for a topic that waits is mail that waits with it');
 
     // `roadmap remove` is the door to "actually never".
     const removed = sim.run(['roadmap', 'remove', 'fresh-one']);
@@ -3295,7 +3295,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
     // A discussion cannot be born beneath live research: start it first, park
     // the research under it, and let the peer lift the stub.
-    sim.run(['topic', 'triage', wu, 'research', 'alpha']);
+    sim.run(['topic', 'send', wu, 'research', 'alpha']);
     peer.run(['topic', 'start', wu, 'research', 'alpha']);
 
     const before = sim.run(['presence', 'scan', wu]);
@@ -3322,7 +3322,7 @@ describe('pipeline simulation', () => {
     mappedEpic(sim, wu, ['alpha']);
     const peer = sim.session('peer-session', 1);
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
-    sim.run(['topic', 'triage', wu, 'research', 'alpha']);
+    sim.run(['topic', 'send', wu, 'research', 'alpha']);
     peer.run(['topic', 'start', wu, 'research', 'alpha']);
 
     const taken = sim.run(['topic', 'postpone', wu, 'alpha', '--horizon', 'next']);
@@ -3381,7 +3381,7 @@ describe('pipeline simulation', () => {
     sim.render(['entry-gate', `${wu}.planning.billing`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'planning', 'billing']);
 
-    // A concern lands back on both source discussions: each specification's
+    // A message lands back on both source discussions: each specification's
     // row stales and takes the flag — the record is moving beneath the plan.
     for (const topic of ['billing', 'fees']) {
       const ro = sim.run(['topic', 'reopen', wu, 'discussion', topic]);
@@ -3421,7 +3421,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'planning', 'fees']);
   });
 
-  it('the triage door reaches the hold, and a planning-origin sources stale spares the plan\'s own specification', () => {
+  it('the send door reaches the hold, and a planning-origin sources stale spares the plan\'s own specification', () => {
     const wu = 'holdgate';
     mappedEpic(sim, wu, ['shared']);
     // One discussion, two specifications extracting it, a plan on one.
@@ -3436,11 +3436,11 @@ describe('pipeline simulation', () => {
     }
     sim.run(['topic', 'start', wu, 'planning', 'alpha-spec']);
 
-    // D4's door: a bare triage lands a concern on the source discussion.
+    // D4's door: a bare a send lands a message on the source discussion.
     // The specification never transitions — it still reads `completed` —
     // and its source row alone carries the landing, which is why the hold
     // cannot key on the specification's status.
-    const landed = sim.run(['topic', 'triage', wu, 'discussion', 'shared']);
+    const landed = sim.run(['topic', 'send', wu, 'discussion', 'shared']);
     assert.deepStrictEqual(landed.sources_staled.sort(), ['alpha-spec', 'beta-spec']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].status, 'completed',
       'the specification never transitioned — only its row moved');
@@ -3981,13 +3981,13 @@ describe('pipeline simulation', () => {
       '--problem', sim.write(`.workflows/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
     assert.ok(fs.existsSync(path.join(sim.dir, spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
-    // A peer reroutes a concern onto the discussion — it waits in the
-    // document's queue, and the queue follows the document.
-    const scratch = sim.write(`.workflows/.cache/${feat}/discussion/${feat}/concern-rollback-owner.md`,
+    // A peer sends a message to the discussion — it waits in the
+    // document's mailbox, and the mailbox follows the document.
+    const scratch = sim.write(`.workflows/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
       '### Rollback owner\n*From: billing · discussion · 2026-07-23*\n\nWho owns a rollback once the cutover starts?\n');
-    const landed = sim.run(['topic', 'triage', feat, 'discussion', feat, '--concern', scratch, '--slug', 'rollback-owner',
-      '-m', `discussion(${feat}): reroute concern to ${feat}`]);
-    assert.strictEqual(landed.concern_path, `.workflows/${feat}/discussion/.triage/${feat}/001-rollback-owner.md`);
+    const landed = sim.run(['topic', 'send', feat, 'discussion', feat, '--content', scratch, '--slug', 'rollback-owner',
+      '-m', `discussion(${feat}): send message to ${feat}`]);
+    assert.strictEqual(landed.message_path, `.workflows/${feat}/discussion/.mailbox/${feat}/001-rollback-owner.md`);
 
     // The manage flow's absorb gates render from the pre-absorb state.
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
@@ -3997,12 +3997,12 @@ describe('pipeline simulation', () => {
 
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
     assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
-    assert.deepStrictEqual(absorbed.triage_moved, [{ phase: 'discussion', path: 'discussion/.triage/stray-topic', count: 1 }]);
-    assert.deepStrictEqual(sim.run(['topic', 'queue', epic, 'discussion', 'stray-topic']).files,
-      [`.workflows/${epic}/discussion/.triage/stray-topic/001-rollback-owner.md`],
-      'the queued concern waits on the epic topic — its session raises it');
+    assert.deepStrictEqual(absorbed.mail_moved, [{ phase: 'discussion', path: 'discussion/.mailbox/stray-topic', count: 1 }]);
+    assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, 'discussion', 'stray-topic']).files,
+      [`.workflows/${epic}/discussion/.mailbox/stray-topic/001-rollback-owner.md`],
+      'the waiting message waits on the epic topic — its session raises it');
     assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic)).replace(/\n[ │]+/g, ' '),
-      /Stray Topic[^\n]*triage waiting/, 'the epic tree cues the waiting concern');
+      /Stray Topic[^\n]*mail waiting/, 'the epic tree cues the waiting message');
     const m = sim.manifest(epic);
     assert.ok(m.phases.discovery.items['stray-topic'], 'absorbed topic lands on the map');
     assert.strictEqual(m.phases.discussion.items['stray-topic'].status, 'in-progress');
@@ -4052,7 +4052,7 @@ describe('pipeline simulation', () => {
 
   it('spec promotion: a cross-cutting concern leaves the epic with its discussions, roadmap sources follow the files, and the unit routes to each moved discussion by name', () => {
     const wu = 'host';
-    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc concern', '--session-log-file', sessionLog(sim, wu)]);
+    sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc message', '--session-log-file', sessionLog(sim, wu)]);
     const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
       { name: 'logging', routing: 'discussion', summary: 'Logging everywhere' },
       { name: 'tracing', routing: 'discussion', summary: 'Tracing everywhere' },
@@ -5182,7 +5182,7 @@ describe('pipeline simulation', () => {
       }
     };
     const specScope = [`.workflows/${wu}/specification/ingest`, `.workflows/${wu}/manifest.json`];
-    const talkScope = [`.workflows/${wu}/discussion/ranking.md`, `.workflows/${wu}/discussion/.triage/ranking`, `.workflows/${wu}/manifest.json`];
+    const talkScope = [`.workflows/${wu}/discussion/ranking.md`, `.workflows/${wu}/discussion/.mailbox/ranking`, `.workflows/${wu}/manifest.json`];
 
     // --- A1 · B1 · A2 · B2: two document sessions, alternating -------------
     // A: a specification session on ingest. B: a discussion session on
@@ -5308,7 +5308,7 @@ describe('pipeline simulation', () => {
 
     talkSession.run(['commit', wu, '--topic', 'research/metrics', '--sweep',
       '-m', `chore(${wu}/metrics): sweep session leavings`]);
-    confined('sweep', [`.workflows/${wu}/research/metrics.md`, `.workflows/${wu}/research/.triage/metrics`, `.workflows/${wu}/manifest.json`],
+    confined('sweep', [`.workflows/${wu}/research/metrics.md`, `.workflows/${wu}/research/.mailbox/metrics`, `.workflows/${wu}/manifest.json`],
       [SPEC_FILE, TALK_FILE, CODE_FILE]);
     assert.ok(!dirty().includes(`.workflows/${wu}/research/metrics.md`), "the dead session's document is committed");
 

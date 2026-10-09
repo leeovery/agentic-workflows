@@ -3,12 +3,12 @@
 // A live epic discussion whose research moved beneath it and has since
 // landed. The map is harvested; behavioural-ranking's discussion is
 // mid-flight with both of its points decided and written up. A peer
-// session working relevance-measurement's research rerouted an empirical
+// session working relevance-measurement's research sent an empirical
 // question that is behavioural-ranking's ground — per-query signal
 // density in the events warehouse — research-side: the delivery parked
-// the research as a triaged stub and flagged the in-progress discussion
+// the research as an unstarted stub and flagged the in-progress discussion
 // `reconcile_needed: research`. A research session then started from the
-// stub, measured the warehouse, folded the concern, and concluded. The
+// stub, measured the warehouse, folded the message, and concluded. The
 // flag is still on the discussion: nothing has read the landed research
 // into it.
 
@@ -115,8 +115,8 @@ module.exports = {
 
     // The peer's delivery — research-side, from relevance-measurement's
     // research session: the engine parks the stub, flags the discussion,
-    // installs the concern, and commits.
-    const scratch = `.workflows/.cache/${WU}/research/relevance-measurement/concern-signal-density.md`;
+    // installs the message, and commits.
+    const scratch = `.workflows/.cache/${WU}/research/relevance-measurement/message-signal-density.md`;
     h.write(scratch, [
       '### How dense is the behavioural signal per query?',
       '*From: relevance-measurement · research · 2026-01-01*',
@@ -131,13 +131,13 @@ module.exports = {
       'window — a measurement, not a decision.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'research', TOPIC,
-      '--concern', scratch,
+    h.engine('topic', 'send', WU, 'research', TOPIC,
+      '--content', scratch,
       '--slug', 'signal-density',
-      '-m', `research(${WU}/relevance-measurement): reroute concern to ${TOPIC}`);
+      '-m', `research(${WU}/relevance-measurement): send message to ${TOPIC}`);
 
     // The research session: started from the stub, the warehouse measured,
-    // the concern folded and absorbed, the research concluded and indexed.
+    // the message folded and absorbed, the research concluded and indexed.
     h.engine('topic', 'start', WU, 'research', TOPIC);
     h.write(`.workflows/${WU}/research/${TOPIC}.md`, [
       '# Research: Behavioural Ranking',
@@ -150,7 +150,7 @@ module.exports = {
       'What we know so far:',
       '- The discussion has settled batch nightly aggregation and a',
       '  purchase-weighted blend of clicks and purchases per query.',
-      '- A concern rerouted from relevance-measurement asked whether most',
+      '- A message sent from relevance-measurement asked whether most',
       '  queries carry enough behavioural signal to rank on at all.',
       '',
       '---',
@@ -186,7 +186,7 @@ module.exports = {
       '*From: relevance-measurement · research · 2026-01-01*',
       '',
       'Folded into Per-Query Signal Density above — the measurement the',
-      'concern asked for.',
+      'message asked for.',
       '',
     ].join('\n'));
     h.engine('topic', 'absorb', WU, 'research', TOPIC,

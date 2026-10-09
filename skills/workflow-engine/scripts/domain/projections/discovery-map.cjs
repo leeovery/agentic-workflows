@@ -24,7 +24,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
  * @property {string|null} [promoted_to]  the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} [triage_parked]  rerouted concerns wait on the topic — a parked stub, or queue files beneath a started or reopened item
+ * @property {boolean} [mail_waiting]  messages wait on the topic — an unstarted stub, or message files beneath a started or reopened item
  * @property {boolean} [reconcile_pending]  a phase item beneath the row carries a live reconcile flag
  * @property {import('../derivations.cjs').Wait[]} [waits]  the live waits of the topic's in-progress phase items
  * @property {string|null} [summary]
@@ -75,7 +75,7 @@ function breakdown(summary) {
 function mapNodes(rows) {
   return rows.map((row) => ({
     title: title({ glyph: discoveryGlyph(row.lifecycle), label: titlecase(row.name) }),
-    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null))],
+    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.routing ?? null, row.research_state ?? null, row.mail_waiting ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null))],
   }));
 }
 

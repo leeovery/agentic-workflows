@@ -94,7 +94,7 @@ Further claims:
 - no `sources stale` call is recorded — this is single-topic work, and
   the step is skipped rather than run and found empty
 - the discussion item never leaves `completed` and is never reopened;
-  nothing was triaged, no wait gate rendered, and the plan never paused
+  nothing was sent, no wait gate rendered, and the plan never paused
 - the specification item is untouched: still `completed`, no reopen, no
   status change, no reconcile flag, its source row still `incorporated`
 - exactly two task-designer dispatches fired — the first returning the

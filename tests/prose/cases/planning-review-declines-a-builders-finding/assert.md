@@ -98,7 +98,7 @@ Also true:
   phase-structure confirmation, the graph approval, finding 2's gate,
   the re-loop prompt, and the conclude gate
 - the specification and the discussion are untouched; nothing reopens,
-  restarts or triages, and no second work unit exists
+  restarts or sends, and no second work unit exists
 - cache and scratch files under `.workflows/.cache/` are expected
   working artifacts
 

@@ -14,7 +14,7 @@ The prose should have taken this path:
    initial subtopics on the map as pending, and commits once
 4. the guidelines load, and the knowledge base is addressed once as a
    contextual query; with an empty store the session proceeds silently
-5. the session loop's triage check no-ops on an empty queue — no commit, nothing
+5. the session loop's mailbox check no-ops on an empty mailbox — no commit, nothing
    surfaced
 6. the session runs as an organic conversation: subtopics move through
    their lifecycle by engine calls as the discussion progresses, and
@@ -75,7 +75,7 @@ EXPECTED WORLD — from a feature holding only its discovery carrier:
   sections whose decisions match what the user actually said — webhook
   capture over polling, orders left open for bounded retries, hosted
   fields keeping card data out of scope — a Summary noting the unpaid
-  order expiry window as an open thread; the topic's triage queue is
+  order expiry window as an open thread; the topic's mailbox is
   empty
 - the manifest holding the discussion in progress with every subtopic
   settled — `decided` or `deferred`, none left pending or exploring —

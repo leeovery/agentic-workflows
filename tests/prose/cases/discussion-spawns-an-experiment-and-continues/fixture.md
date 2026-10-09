@@ -8,7 +8,7 @@ claims sub-second webhook delivery, the wait-window design leans on
 whether that claim holds against the real sandbox, and nobody has
 measured it.
 
-No experiment series exists, no review has ever run, the triage queue
+No experiment series exists, no review has ever run, the mailbox
 is empty, and no other session is mid-flight. The context was cleared
 at the phase boundary — this session opens cold at the discussion skill
 with its two arguments and what is on disk.

@@ -1,5 +1,5 @@
 {
-  "origin": "the triage raise is an opener, never a case: a rerouted concern puts the user in front of the problem in the product's terms, names the rerouting topic once the situation is on the page, states a position with one load-bearing reason, and says where the ball sits — the entry's depth (itemised costs, tuning numbers, the rejected alternative) stays back until the conversation asks and lands at the fold. The drift this guards is the wall: an exhaustive entry surfaced whole — every option costed, every number carried, the position with its derivation — leaving the user asking to be told what is actually being suggested. The entry is fixture-authored rich on purpose, so what the raise omits is checkable against what the entry holds",
+  "origin": "the message raise is an opener, never a case: a sent message puts the user in front of the problem in the product's terms, names the rerouting topic once the situation is on the page, states a position with one load-bearing reason, and says where the ball sits — the message's depth (itemised costs, tuning numbers, the rejected alternative) stays back until the conversation asks and lands at the fold. The drift this guards is the wall: an exhaustive entry surfaced whole — every option costed, every number carried, the position with its derivation — leaving the user asking to be told what is actually being suggested. The entry is fixture-authored rich on purpose, so what the raise omits is checkable against what the message holds",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -21,9 +21,9 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
@@ -37,29 +37,29 @@
     "c — continue",
     "y — yes"
   ],
-  "conduct": "The user concluded synonym handling in an earlier sitting and returns because a concern from behavioural-ranking landed in its triage queue — they know one is waiting and want to hear it before anything else. They continue at the resume gate and take the queue when it is offered, and they read the raised concern with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
+  "conduct": "The user concluded synonym handling in an earlier sitting and returns because a message from behavioural-ranking landed in its mailbox — they know one is waiting and want to hear it before anything else. They continue at the resume gate and take the mailbox when it is offered, and they read the raised message with interest — but the walk stops before they answer. They volunteer nothing new and do not steer the conversation anywhere else.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
       "render entry-gate search-relevance.discussion.synonym-handling",
       "manifest get search-relevance.discussion.synonym-handling status",
       "render resume-gate search-relevance.discussion.synonym-handling",
-      "topic queue search-relevance discussion synonym-handling",
-      "render triage-offer search-relevance.discussion.synonym-handling",
+      "topic mailbox search-relevance discussion synonym-handling",
+      "render mail-offer search-relevance.discussion.synonym-handling",
       "discussion-map set search-relevance synonym-handling expansion-source exploring"
     ],
     "calls_in_order": [
       "render entry-gate search-relevance.discussion.synonym-handling",
       "manifest get search-relevance.discussion.synonym-handling status",
       "render resume-gate search-relevance.discussion.synonym-handling",
-      "render triage-offer search-relevance.discussion.synonym-handling",
+      "render mail-offer search-relevance.discussion.synonym-handling",
       "discussion-map set search-relevance synonym-handling expansion-source exploring"
     ],
     "calls_exclude": [
-      "render requeue-offer",
-      "render triage-announce",
+      "render forward-offer",
+      "render mail-announce",
       "topic absorb",
-      "topic requeue",
+      "topic forward",
       "topic start search-relevance discussion synonym-handling",
       "topic reopen",
       "topic complete",

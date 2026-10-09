@@ -1,12 +1,12 @@
 'use strict';
 
-// A live discussion with an empty queue: both epic discussions concluded,
+// A live discussion with an empty mailbox: both epic discussions concluded,
 // then synonym-handling reopened for two late subtopics (result caching
 // and the shape of its key) — two, so the first decision leaves the map
 // open and the session has a thread to carry on with when the landing is
 // offered and parked. Mid-walk, an armed substitution acts as a peer
-// session and delivers a concern into this topic's queue — the world
-// itself starts with nothing queued, so everything the drain surfaces
+// session and delivers a message into this topic's mailbox — the world
+// itself starts with nothing waiting, so everything the drain surfaces
 // arrives during the session.
 
 const e = require('../../mainlines/epic.cjs');

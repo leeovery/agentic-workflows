@@ -25,7 +25,7 @@
     "skills/workflow-specification-process/references/review-tracking-format.md",
     "skills/workflow-specification-process/references/process-review-findings.md",
     "skills/workflow-specification-process/references/spec-completion.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-shared/references/compliance-check.md",
     "skills/workflow-discussion-process/references/template.md"
   ],
@@ -57,7 +57,7 @@
     ],
     "calls_exclude": [
       "topic reopen",
-      "topic triage",
+      "topic send",
       "topic supersede",
       "construction_gate_mode auto",
       "finding_gate_mode auto",

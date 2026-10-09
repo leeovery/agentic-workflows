@@ -4,8 +4,8 @@ The `search-relevance` epic: `behavioural-ranking` and
 `synonym-handling` were discussed and concluded; `relevance-measurement`
 is unexplored. The `behavioural-ranking` specification was under way
 when it met a gap its record could not settle — the weighting inside
-the behavioural score — and routed it into its source: the concern
-sits in the `behavioural-ranking` discussion's triage queue, that
+the behavioural score — and routed it into its source: the message
+sits in the `behavioural-ranking` discussion's mailbox, that
 discussion is back in progress, and the specification's source row
 reads stale. The specification stays in progress, its work committed.
 

@@ -150,7 +150,7 @@ function undeclaredProse(rows, declared) {
 
 /** The commands the walk ran, in order. */
 // Searching for a string is not running it. A walker greps the repo to
-// orient itself — `grep -rl "topic triage" .claude/skills` — and because
+// orient itself — `grep -rl "topic send" .claude/skills` — and because
 // both sides of a match drop quotes, that search argument is
 // indistinguishable from the call it names. A case failed `calls_exclude`
 // on a command no walk ran, and the asserter could see the string was

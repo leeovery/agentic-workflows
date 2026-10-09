@@ -8,7 +8,7 @@ number to the laboratory as E1. E1 is conceived and not yet worked, and
 its lock holds the discussion's conclusion until the evidence lands.
 
 No background review has ever run on the topic — the agent store is
-empty — and nothing is queued for it: no rerouted concern, no settled
+empty — and nothing waits for it: no message in its mailbox, no settled
 call.
 
 Hours have passed. The context was cleared — this session opens cold at

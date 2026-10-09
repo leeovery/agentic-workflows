@@ -23,7 +23,7 @@
       "render wait-gate",
       "topic start",
       "topic reopen",
-      "topic queue",
+      "topic mailbox",
       "workflow-discussion-process",
       "engine.cjs commit"
     ]

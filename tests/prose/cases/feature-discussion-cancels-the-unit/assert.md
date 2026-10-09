@@ -6,16 +6,16 @@ The prose should have taken this path:
    emits the resuming phase note, and checks the reconcile flag (absent
    — silent) — the user is asked nothing about the carrier
 2. beneath the note, with the file found, the resume surface carries on
-   — the current map shown, the triage queue read (empty, so no triage
+   — the current map shown, the mailbox read (empty, so no mail
    warning), then the continue-or-restart gate — and the user continues
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue; its
+4. the session loop's mailbox check no-ops on an empty mailbox; its
    check-for-results finds an empty agent store — nothing pending,
    nothing to surface, no dispatch
 5. the session takes up the live subtopic and the user calls the feature
-   off. The session does not read that as a subtopic, a reroute, or a
+   off. The session does not read that as a subtopic, a send, or a
    done-signal: no `discussion-map add`, nothing set `deferred`, no
    closing gates, no document review, no `topic complete`
 6. the cancel protocol reads the work type, finds `feature`, and

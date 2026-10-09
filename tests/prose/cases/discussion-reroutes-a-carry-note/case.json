@@ -1,5 +1,5 @@
 {
-  "origin": "the misdirected-knowledge check shipped with no prose coverage — document review detecting a carry-note stranded in Open Threads, gating it, landing it in the sibling's triage queue through the self-committing delivery, and replacing the prose with a reroute record; this walk pins the safety net end to end",
+  "origin": "the misdirected-knowledge check shipped with no prose coverage — document review detecting a carry-note stranded in Open Threads, gating it, landing it in the sibling's mailbox through the self-committing delivery, and replacing the prose with a send record; this walk pins the safety net end to end",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -21,9 +21,9 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
-    "skills/workflow-shared/references/triage-landing.md",
+    "skills/workflow-shared/references/sending-a-message.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/closing-gates.md",
     "skills/workflow-shared/references/in-flight-agents.md",
@@ -43,7 +43,7 @@
   "answers": [
     "c — continue"
   ],
-  "conduct": "The user decided everything in the earlier sitting and returns only to wrap the discussion up. They add nothing new, decline offered explorations or fresh threads, and say the discussion covers it at the first opportunity. They are agreeable to required steps — asked to proceed into a mandatory review or the conclusion, they say yes. The one thing they care about beyond concluding: when document review surfaces the stranded carry-note and offers to land it in behavioural-ranking's triage queue, they approve — that correction is owed and routing it properly is exactly what they want; they never ask to keep it as prose. If any other note or finding is offered they take the option that keeps the wrap-up moving. Once the bridge hand-off appears they are done.",
+  "conduct": "The user decided everything in the earlier sitting and returns only to wrap the discussion up. They add nothing new, decline offered explorations or fresh threads, and say the discussion covers it at the first opportunity. They are agreeable to required steps — asked to proceed into a mandatory review or the conclusion, they say yes. The one thing they care about beyond concluding: when document review surfaces the stranded carry-note and offers to land it in behavioural-ranking's mailbox, they approve — that correction is owed and routing it properly is exactly what they want; they never ask to keep it as prose. If any other note or finding is offered they take the option that keeps the wrap-up moving. Once the bridge hand-off appears they are done.",
   "stubs": {
     "discussion-review-clean": "when the engine records a dispatch of kind review — write the content to the path the dispatch response returned"
   },
@@ -51,15 +51,15 @@
     "engine_before_write": true,
     "calls_include": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "topic triage search-relevance discussion behavioural-ranking",
-      "document review — reroute carry-notes via triage",
+      "topic send search-relevance discussion behavioural-ranking",
+      "document review — send carry-notes as messages",
       "render conclude-gate search-relevance.discussion.synonym-handling",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_in_order": [
       "manifest get search-relevance.discussion.synonym-handling status",
-      "topic triage search-relevance discussion behavioural-ranking",
-      "document review — reroute carry-notes via triage",
+      "topic send search-relevance discussion behavioural-ranking",
+      "document review — send carry-notes as messages",
       "topic complete search-relevance discussion synonym-handling"
     ],
     "calls_exclude": [

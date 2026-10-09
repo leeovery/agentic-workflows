@@ -18,7 +18,7 @@ about labelling a slice too rare to accumulate clicks, and a number the
 shop would have to count in its own query log before a slice floor is
 even an option.
 
-The other two topics have not started, the triage queue is empty, no
+The other two topics have not started, the mailbox is empty, no
 experiment exists for the topic, and no other session is mid-flight.
 The context was cleared at the pause — this session opens cold at the
 research skill with its three arguments and what is on disk.

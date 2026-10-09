@@ -30,10 +30,10 @@ The prose should have taken this path:
    option to pick a side
 6. the user takes the reopen the gate's first row proposes: the gap
    belongs to synonym-handling, which decided the ground it sits on,
-   so neither a new topic nor a roadmap park is taken. The concern
+   so neither a new topic nor a roadmap park is taken. The message
    lands in
-   synonym-handling's discussion triage queue through the triage
-   landing — an
+   synonym-handling's discussion mailbox through the message
+   send — an
    engine-numbered file carrying the gap's full context — and the
    delivery commits itself; synonym-handling's item reopens to
    in-progress; the spec's never-extracted source rows stay pending
@@ -50,8 +50,7 @@ The prose should have taken this path:
 
 The end world's claims:
 
-- a queue file exists under the synonym-handling discussion triage
-  queue whose content carries the gap (the unexplored freshness
+- a message file exists under the synonym-handling discussion mailbox whose content carries the gap (the unexplored freshness
   ground), written by the engine delivery, not by hand
 - synonym-handling's discussion item reads in-progress; its document
   file is byte-identical to the fixture's — no timeline entry, no
@@ -63,7 +62,7 @@ The end world's claims:
   behavioural-ranking's row may read either pending or incorporated
   depending on how far extraction ran before the collision's ground
   arrived
-- the git history ends at the self-committed triage delivery; the
+- the git history ends at the self-committed message delivery; the
   pause commit ran and answered as a no-op, nothing left dirty
 - no topic was created and nothing was parked: the map carries the
   same three topics it started with, and the project manifest has no
