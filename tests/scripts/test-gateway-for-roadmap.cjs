@@ -112,6 +112,22 @@ describe('workflow-roadmap gateway: pull-set', () => {
     assert.match(res.stdout, /=== MENU[\s\S]*Which items do you want to start building\?/);
   });
 
+  it('wraps a long row at the display width, its continuation under the row\'s text', () => {
+    writeRoadmap(dir, { horizons: ['v1'], items: {
+      'export-timeout': { horizon: 'v1', kind: 'bug', origin: 'harvest',
+        summary: 'large exports of a whole year of orders time out before the file is ready to download' },
+    } });
+    const res = run(['pull-set']);
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.ok(res.stdout.includes([
+      '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
+      'v1',
+      '  └─ 1. Export Timeout [bug] — large exports of a whole year',
+      '        of orders time out before the file is ready to download',
+      '',
+    ].join('\n')), res.stdout);
+  });
+
   it('refuses loudly when nothing is waiting', () => {
     writeRoadmap(dir, { horizons: ['mvp'], items: {} });
     const res = run(['pull-set']);
