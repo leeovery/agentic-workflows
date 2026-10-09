@@ -34,19 +34,21 @@ The prose should have taken this path:
    never written and never rendered — the home was never in question —
    and the horizon step is never entered, because the horizon is
    already the user's. No roadmap state is read to get there
-8. **C. Park** derives a kebab-case name and a one-line summary at
+8. **C. Park** derives a kebab-case name, a one-line summary at
    capability grain — the shopper's saved card, not this task's
-   mechanics — and takes the source from the phase table:
+   mechanics — and the kind `idea`, since saved cards are a
+   capability, nothing broken; and takes the source from the phase
+   table:
    implementation points at the specification, so the source is
    `pay/specification/pay/specification.md`
 9. the confirm renders through the engine carrying the name, the
-   horizon, the summary and that source. There is no roadmap, so the
+   kind, the horizon, the summary and that source. There is no roadmap, so the
    statement says the roadmap is created with the item and the
    horizon carries no `(new)` flag — the flag speaks to a map that
    exists and this one does not. The walk **STOPS**
 10. on the fourth scripted answer the park is one engine call:
-    `roadmap add {name} --horizon "Next" --summary "…" --origin
-    park:pay --source pay/specification/pay/specification.md`. The
+    `roadmap add {name} --kind idea --horizon "Next" --summary "…"
+    --origin park:pay --source pay/specification/pay/specification.md`. The
     verb validates, births the roadmap node and the horizon
     just-in-time, and commits the project manifest itself — no commit
     call follows it, and the roadmap skill is never invoked
@@ -66,9 +68,9 @@ The end world's claims:
 
 - the project manifest carries a roadmap node it did not have before:
   one horizon, the user's own word for it, holding exactly one item —
-  a kebab-case capability name for saved cards, `origin: park:pay`, a
-  summary that reads as the capability rather than as this task's
-  business, and `pay/specification/pay/specification.md` as its one
+  a kebab-case capability name for saved cards, `kind: idea`,
+  `origin: park:pay`, a summary that reads as the capability rather
+  than as this task's business, and `pay/specification/pay/specification.md` as its one
   source. The item carries no `pulled_to`: it is waiting, joined to
   nothing. No second horizon and no second item exist
 - the park left the work unit alone. The implementation item still
