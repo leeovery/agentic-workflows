@@ -19,9 +19,11 @@ const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const INBOX = '.workflows/.inbox';
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
 
-// Each folder's kind of item — the vocabulary the inbox lists and the
-// roadmap's items share.
-const FOLDER_KIND = /** @type {Record<string, 'idea'|'bug'|'quick-fix'>} */ ({ ideas: 'idea', bugs: 'bug', quickfixes: 'quick-fix' });
+/** @typedef {'idea'|'bug'|'quick-fix'} ItemKind */
+
+// Each folder's kind of item — the one home of the kind vocabulary, which
+// the inbox lists and the roadmap's items share.
+const FOLDER_KIND = /** @type {Record<string, ItemKind>} */ ({ ideas: 'idea', bugs: 'bug', quickfixes: 'quick-fix' });
 
 /**
  * @typedef {object} InboxItem
@@ -111,12 +113,22 @@ function refuseTakenDestinations(cwd, moves) {
 
 /**
  * Move each file to its destination, creating the destination's directory.
+ * All or nothing: a move that throws puts every file already moved back
+ * where it was, then rethrows.
  * @param {string} cwd @param {{from: string, to: string}[]} moves project-relative
  */
 function moveFiles(cwd, moves) {
-  for (const { from, to } of moves) {
-    fs.mkdirSync(path.dirname(path.join(cwd, to)), { recursive: true });
-    fs.renameSync(path.join(cwd, from), path.join(cwd, to));
+  /** @type {{from: string, to: string}[]} */
+  const done = [];
+  try {
+    for (const move of moves) {
+      fs.mkdirSync(path.dirname(path.join(cwd, move.to)), { recursive: true });
+      fs.renameSync(path.join(cwd, move.from), path.join(cwd, move.to));
+      done.push(move);
+    }
+  } catch (err) {
+    for (const { from, to } of done.reverse()) fs.renameSync(path.join(cwd, to), path.join(cwd, from));
+    throw err;
   }
 }
 

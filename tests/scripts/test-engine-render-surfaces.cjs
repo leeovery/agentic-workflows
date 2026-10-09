@@ -5352,7 +5352,8 @@ describe('roadmap surfaces', () => {
       '',
       '**`y/yes`**   → Park it',
       '**`n/no`**    → Leave it — nothing is recorded',
-      '**Comment** → Tell me what to change (name, horizon, or summary)',
+      '**Comment** → Tell me what to change (name, kind, horizon, or',
+      `${NB(10)}summary)`,
       '',
     ].join('\n'));
   });
@@ -5391,17 +5392,29 @@ describe('roadmap surfaces', () => {
     const idea = unwrap(renderSurface(dir, 'park-gate', { name: 'csv', horizon: 'v1', summary: 's', kind: 'idea' }));
     assert.match(idea, /^Parking \*\*Csv\*\* — /m);
     assert.throws(() => renderSurface(dir, 'park-gate', { name: 'csv', horizon: 'v1', summary: 's', kind: 'feature' }),
-      /render park-gate: --kind must be one of idea, bug, quick-fix \(got "feature"\)/);
+      /render park-gate: unknown kind "feature" — one of: idea, bug, quick-fix/);
   });
 
-  it('inbox-roadmap-gate: every item — its kind where not an idea — and the horizon, y/n and Comment', () => {
+  // The gate takes the file `roadmap add-batch` takes; its notes are live inbox files.
+  const IDEA = '.workflows/.inbox/ideas/2026-03-01--dark-mode.md';
+  const BUG = '.workflows/.inbox/bugs/2026-03-02--login-crash.md';
+  const FIX = '.workflows/.inbox/quickfixes/2026-03-03--footer-typo.md';
+  function inbox() {
+    for (const rel of [IDEA, BUG, FIX]) {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(dir, rel), '# note\n');
+    }
+  }
+  const gate = (entries) => renderSurface(dir, 'inbox-roadmap-gate', { file: writePayload(dir, 'entries.json', entries) });
+
+  it('inbox-roadmap-gate: every item — the kind its note\'s folder gives it, where not an idea — and the horizon, y/n and Comment', () => {
     writeRoadmap(TWO_HORIZONS);
-    const file = writePayload(dir, 'payload.json', { horizon: 'v1', items: [
-      { name: 'login-crash', kind: 'bug', summary: 'sign-in crashes' },
-      { name: 'dark-mode', kind: 'idea', summary: 'a dark theme' },
-      { name: 'footer-typo', kind: 'quick-fix', summary: 'the footer typo' },
-    ] });
-    assert.strictEqual(renderSurface(dir, 'inbox-roadmap-gate', { file }), [
+    inbox();
+    assert.strictEqual(gate([
+      { name: 'login-crash', horizon: 'v1', summary: 'sign-in crashes', note: BUG },
+      { name: 'dark-mode', horizon: 'v1', summary: 'a dark theme', note: IDEA },
+      { name: 'footer-typo', horizon: 'v1', summary: 'the footer typo', note: FIX },
+    ]), [
       "=== MENU: inbox roadmap gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       'Putting these on the roadmap under "v1", waiting until each is pulled into work — their notes leave the inbox with them:',
@@ -5417,11 +5430,13 @@ describe('roadmap surfaces', () => {
       '**Comment** → Tell me what to change (name, horizon, or summary)',
       '',
     ].join('\n'));
+    assert.ok(fs.existsSync(path.join(dir, BUG)), 'a dry run — nothing moves');
   });
 
   it('inbox-roadmap-gate: one item reads in the singular; a new horizon is flagged, a never-born map says its birth instead', () => {
-    const one = (horizon) => writePayload(dir, 'payload.json', { horizon, items: [{ name: 'dark-mode', kind: 'idea', summary: 'a dark theme' }] });
-    const born = unwrap(renderSurface(dir, 'inbox-roadmap-gate', { file: one('later') }));
+    inbox();
+    const one = (horizon) => [{ name: 'dark-mode', horizon, summary: 'a dark theme', note: IDEA }];
+    const born = unwrap(gate(one('later')));
     assert.match(born, /^Putting this on the roadmap under "later", waiting until it is pulled into work — its note leaves the inbox with it:$/m);
     assert.match(born, /^The roadmap is created with it\.$/m);
     assert.ok(!born.includes('(new)'));
@@ -5429,24 +5444,37 @@ describe('roadmap surfaces', () => {
     assert.match(born, /`n\/no`.*Leave it in the inbox — nothing moves/);
 
     writeRoadmap(TWO_HORIZONS);
-    const flagged = unwrap(renderSurface(dir, 'inbox-roadmap-gate', { file: one('later') }));
+    const flagged = unwrap(gate(one('later')));
     assert.match(flagged, /under "later" \(new\), waiting/);
     assert.ok(!flagged.includes('The roadmap is created'));
-    assert.ok(!unwrap(renderSurface(dir, 'inbox-roadmap-gate', { file: one('v1') })).includes('(new)'));
+    assert.ok(!unwrap(gate(one('v1'))).includes('(new)'));
   });
 
-  it('inbox-roadmap-gate: refuses a name the roadmap holds in the add verb\'s own words, and a malformed payload', () => {
+  it('inbox-roadmap-gate: refuses exactly where add-batch would — the verb\'s own words — and nothing moves', () => {
     writeRoadmap(TWO_HORIZONS);
-    const gate = (payload) => renderSurface(dir, 'inbox-roadmap-gate', { file: writePayload(dir, 'payload.json', payload) });
-    const item = { name: 'dark-mode', kind: 'idea', summary: 's' };
-    assert.throws(() => gate({ horizon: 'v1', items: [item, { name: 'loyalty', kind: 'idea', summary: 's' }] }),
-      /render inbox-roadmap-gate: "loyalty" is already on the roadmap — edit it, or pick a different name/);
-    assert.throws(() => gate({ horizon: 'v1', items: [item, item] }), /render inbox-roadmap-gate: "dark-mode" appears more than once/);
-    assert.throws(() => gate({ items: [item] }), /render inbox-roadmap-gate: "horizon" must be a non-empty string/);
-    assert.throws(() => gate({ horizon: 'v1', items: [] }), /"items" must be a non-empty list/);
-    assert.throws(() => gate({ horizon: 'v1', items: [{ name: 'x', kind: 'idea' }] }), /item 1 needs a non-empty "name" and "summary"/);
-    assert.throws(() => gate({ horizon: 'v1', items: [{ ...item, kind: 'epic' }] }), /item 1's "kind" must be one of idea, bug, quick-fix/);
-    assert.throws(() => renderSurface(dir, 'inbox-roadmap-gate', {}), /--file <payload.json> is required/);
+    inbox();
+    const item = { name: 'dark-mode', horizon: 'v1', summary: 's', note: IDEA };
+    const refused = (entries, pattern) => assert.throws(() => gate(entries), pattern);
+    refused([item, { name: 'loyalty', horizon: 'v1', summary: 's', note: BUG }],
+      /^Error: render inbox-roadmap-gate: "loyalty" is already on the roadmap — edit it, or pick a different name$/);
+    refused([item, { ...item, note: BUG }], /render inbox-roadmap-gate: "dark-mode" appears more than once in the batch/);
+    refused([item, { ...item, name: 'twin' }], /render inbox-roadmap-gate: duplicate inbox path/);
+    refused([{ ...item, horizon: 'v1.5' }], /render inbox-roadmap-gate: entry 1 — .*not a legal horizon name/);
+    refused([{ ...item, horizon: 'q3/q4' }], /render inbox-roadmap-gate: entry 1 — .*not a legal horizon name/);
+    refused([{ ...item, name: 'dark.mode' }], /render inbox-roadmap-gate: entry 1 — .*not a legal item name/);
+    refused([{ ...item, note: '.workflows/.inbox/ideas/2026-09-09--gone.md' }], /render inbox-roadmap-gate: inbox file not found/);
+    refused([{ ...item, kind: 'bug' }], /render inbox-roadmap-gate: entry 1 — "kind" is bug, but the note .* is a idea/);
+    fs.writeFileSync(path.join(dir, '.workflows/.inbox/ideas/2026-03-04--dark mode.md'), '# x\n');
+    refused([{ ...item, note: '.workflows/.inbox/ideas/2026-03-04--dark mode.md' }], /render inbox-roadmap-gate: entry 1 — unknown origin "inbox:2026-03-04--dark mode"/);
+    fs.mkdirSync(path.join(dir, '.workflows/.roadmap/notes/ideas'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/.roadmap/notes/ideas/2026-03-01--dark-mode.md'), 'taken\n');
+    refused([item], /render inbox-roadmap-gate: destination already exists/);
+    refused([{ name: 'login-crash', horizon: 'v1', summary: 's', note: BUG }, { name: 'typo', horizon: 'v2', summary: 's', note: FIX }],
+      /render inbox-roadmap-gate: every entry goes under the one horizon/);
+    refused([{ name: 'loose', horizon: 'v1', summary: 's' }], /render inbox-roadmap-gate: every entry names its inbox note/);
+    refused([], /render inbox-roadmap-gate: entries must be a non-empty array/);
+    assert.throws(() => renderSurface(dir, 'inbox-roadmap-gate', {}), /--file <entries.json> is required/);
+    assert.ok(fs.existsSync(path.join(dir, BUG)) && fs.existsSync(path.join(dir, IDEA)), 'nothing moved');
   });
 
   it('park-gate: every required flag is refused by name', () => {

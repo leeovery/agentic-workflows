@@ -124,6 +124,7 @@ function roadmapMapView(state) {
  * @property {string} name
  * @property {string} horizon
  * @property {string} summary  one line, from the exploration
+ * @property {import('../roadmap.cjs').RoadmapKind} [kind]  idea when absent
  */
 
 /**
@@ -149,7 +150,7 @@ function roadmapProposalView(state, proposed) {
     if (!horizons.includes(p.horizon)) horizons.push(p.horizon);
   }
   const rows = proposed.map((p) => /** @type {RoadmapItemRow} */ ({
-    name: p.name, horizon: p.horizon, summary: p.summary, kind: 'idea', origin: 'harvest', sources: [], state: 'waiting',
+    name: p.name, horizon: p.horizon, summary: p.summary, kind: p.kind ?? 'idea', origin: 'harvest', sources: [], state: 'waiting',
   }));
 
   parts.push(`${hasExisting ? 'New this session' : 'Proposed items'} (${proposed.length})`);

@@ -3638,20 +3638,20 @@ describe('pipeline simulation', () => {
     assert.strictEqual(set.set_type, 'none', 'an idea in the set leaves the type to discovery');
     assert.match(LIB.project.workingSetView(set).menu, /`o\/roadmap`/);
 
-    // The roadmap row: the horizon once, one confirm stating every item, then
-    // one transaction moving each note off the inbox.
-    const items = [
-      { name: 'saved-views', kind: 'idea', summary: 'operators save a filtered view' },
-      { name: 'export-timeout', kind: 'bug', summary: 'large exports time out' },
-      { name: 'blank-chart', kind: 'bug', summary: 'the chart renders blank on an empty range' },
-      { name: 'footer-typo', kind: 'quick-fix', summary: 'the footer misspells the product' },
-    ];
-    const gate = sim.render(['inbox-roadmap-gate', '--file', sim.write('.workflows/.cache/inbox-roadmap.json', { horizon: 'next', items })],
-      { expect: 'content' });
-    assert.match(gate, /MENU: inbox roadmap gate[\s\S]*The roadmap is created with them\./);
+    // The roadmap row: the horizon once, one confirm over the very file the
+    // move takes — every item and its kind from its note's folder — then one
+    // transaction moving each note off the inbox.
     const notes = [inbox.idea, inbox.timeout, inbox.chart, inbox.typo];
-    const added = sim.run(['roadmap', 'add-batch', '--file', sim.write('.workflows/.cache/inbox-roadmap-batch.json',
-      items.map(({ name, summary }, i) => ({ name, horizon: 'next', summary, note: notes[i] })))]);
+    const entries = [
+      { name: 'saved-views', horizon: 'next', summary: 'operators save a filtered view', note: inbox.idea },
+      { name: 'export-timeout', horizon: 'next', summary: 'large exports time out', note: inbox.timeout },
+      { name: 'blank-chart', horizon: 'next', summary: 'the chart renders blank on an empty range', note: inbox.chart },
+      { name: 'footer-typo', horizon: 'next', summary: 'the footer misspells the product', note: inbox.typo },
+    ];
+    const batch = sim.write('.workflows/.cache/inbox-roadmap.json', entries);
+    const gate = sim.render(['inbox-roadmap-gate', '--file', batch], { expect: 'content' });
+    assert.match(gate, /MENU: inbox roadmap gate[\s\S]*\*\*Export Timeout\*\* `\[bug\]`[\s\S]*The roadmap is created with them\./);
+    const added = sim.run(['roadmap', 'add-batch', '--file', batch]);
     assert.deepStrictEqual(added.added.map((a) => a.kind), ['idea', 'bug', 'bug', 'quick-fix']);
     for (const note of notes) {
       assert.strictEqual(fs.existsSync(path.join(sim.dir, note)), false, `${note} left the inbox`);
@@ -3660,9 +3660,10 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(state.items.find((i) => i.name === 'export-timeout').sources, ['.roadmap/notes/bugs/2026-02-02--export-timeout.md']);
     assert.strictEqual(state.items.find((i) => i.name === 'export-timeout').origin, 'inbox:2026-02-02--export-timeout');
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Export Timeout\n.*large exports time out\n.*↳ Bug · waiting/);
-    // A gate over a name the roadmap now holds refuses in the add verb's words.
-    sim.refuses(['render', 'inbox-roadmap-gate', '--file', sim.write('.workflows/.cache/inbox-roadmap.json', { horizon: 'next', items: [items[0]] })],
-      /"saved-views" is already on the roadmap/);
+    // The gate refuses where the move would: the same file again names notes
+    // that have left the inbox and names already on the roadmap.
+    sim.refuses(['render', 'inbox-roadmap-gate', '--file', batch], /"saved-views" is already on the roadmap/);
+    sim.refuses(['roadmap', 'add-batch', '--file', batch], /"saved-views" is already on the roadmap/);
 
     // An epic grows by topics: a bug is never pulled forward into one.
     sim.run(['workunit', 'create', 'reports', 'epic', '--description', 'Reporting', '--session-log-file', sessionLog(sim, 'reports')]);

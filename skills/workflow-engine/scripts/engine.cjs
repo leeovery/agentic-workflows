@@ -366,7 +366,7 @@ Commands:
   render roadmap-add-gate --horizon <name>
   render horizon-pick
   render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
-  render inbox-roadmap-gate --file <payload.json>
+  render inbox-roadmap-gate --file <entries.json>
   render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate

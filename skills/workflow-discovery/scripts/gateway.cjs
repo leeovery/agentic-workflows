@@ -207,10 +207,12 @@ function mapView(workUnit, ...rest) {
     const proposed = readProposedFile(cwd, proposedFile);
     // Per-name flags the flow routes on: an active collision must be resolved
     // before the gate; a dismissed match needs --force-dismissed at persist;
-    // a waiting-roadmap-item match is the anti-twin check — never created as
-    // a fresh topic (the real move is pull-forward, or leave it waiting).
+    // a waiting-roadmap-idea match is the anti-twin check — never created as
+    // a fresh topic (the real move is pull-forward, or leave it waiting). A
+    // bug or a quick-fix of the name is no twin: it never becomes a topic.
     const waitingOnRoadmap = new Set(
-      engine.roadmap.roadmapState(cwd).items.filter((i) => i.state === 'waiting').map((i) => i.name),
+      engine.roadmap.roadmapState(cwd).items
+        .filter((i) => i.state === 'waiting' && i.kind === 'idea').map((i) => i.name),
     );
     dataLines.push(`proposed (${proposed.length}):`);
     for (const t of proposed) {

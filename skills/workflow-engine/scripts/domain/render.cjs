@@ -39,7 +39,7 @@ const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
-const { roadmapState, hasRoadmapNode, ROADMAP_KINDS } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode, validateKind, planRoadmapBatch } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
 const { discussionDeferGate } = require('./projections/discussion-map.cjs');
 const { latestReview } = require('./agent-state.cjs');
@@ -5483,23 +5483,6 @@ function horizonPick(cwd, _args) {
   return section('MENU: horizon pick', MENU_INSTRUCTION, menu('Which horizon?', options));
 }
 
-/** @param {*} kind @param {string} surface @param {string} field */
-function assertRoadmapKind(kind, surface, field) {
-  if (!ROADMAP_KINDS.includes(kind)) {
-    throw new Error(`render ${surface}: ${field} must be one of ${ROADMAP_KINDS.join(', ')} (got ${JSON.stringify(kind)})`);
-  }
-}
-
-// The roadmap gates refuse a name the map already holds, in the add verb's
-// own words — the confirm never offers what the verb would refuse.
-/** @param {ReturnType<typeof roadmapState>} state @param {string[]} names @param {string} surface */
-function refuseRoadmapClash(state, names, surface) {
-  const taken = names.find((name) => state.items.some((r) => r.name === name));
-  if (taken !== undefined) {
-    throw new Error(`render ${surface}: "${taken}" is already on the roadmap — edit it, or pick a different name`);
-  }
-}
-
 // ` (new)` for a horizon an existing map does not hold yet; a never-born map
 // says its own birth instead.
 /** @param {ReturnType<typeof roadmapState>} state @param {string} horizon */
@@ -5508,33 +5491,36 @@ function horizonFlag(state, horizon) {
 }
 
 /**
- * The confirm before inbox items move onto the roadmap: each item — name,
- * its kind where not an idea, summary — and the horizon they wait under.
+ * The confirm before inbox items move onto the roadmap, over the very file
+ * `roadmap add-batch` takes — every entry with a note, all under one
+ * horizon. add-batch's own plan runs as a dry run, so the gate refuses
+ * exactly where the verb would; each item shows its name, the kind its
+ * note's folder gives it where not an idea, and its summary.
  * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function inboxRoadmapGate(cwd, { file }) {
-  if (!file) throw new Error('render inbox-roadmap-gate: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'inbox-roadmap-gate');
-  if (!isFilled(p.horizon)) throw new Error('render inbox-roadmap-gate: "horizon" must be a non-empty string');
-  if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error('render inbox-roadmap-gate: "items" must be a non-empty list of {name, kind, summary}');
-  }
-  p.items.forEach((/** @type {*} */ item, /** @type {number} */ i) => {
-    if (!item || !isFilled(item.name) || !isFilled(item.summary)) {
-      throw new Error(`render inbox-roadmap-gate: item ${i + 1} needs a non-empty "name" and "summary"`);
+  if (!file) throw new Error('render inbox-roadmap-gate: --file <entries.json> is required');
+  const entries = readJsonPayload(cwd, file, 'inbox-roadmap-gate');
+  /** @type {import('./roadmap.cjs').BatchEntry[]} */
+  let items;
+  try {
+    if (Array.isArray(entries) && entries.some((e) => !e || e.note === undefined)) {
+      throw new Error('every entry names its inbox note');
     }
-    assertRoadmapKind(item.kind, 'inbox-roadmap-gate', `item ${i + 1}'s "kind"`);
-  });
-  const names = p.items.map((/** @type {*} */ item) => item.name);
-  const dupe = names.find((/** @type {string} */ n, /** @type {number} */ i) => names.indexOf(n) !== i);
-  if (dupe !== undefined) throw new Error(`render inbox-roadmap-gate: "${dupe}" appears more than once`);
+    items = planRoadmapBatch(cwd, entries);
+  } catch (err) {
+    throw new Error(`render inbox-roadmap-gate: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const horizon = items[0].horizon;
+  if (items.some((item) => item.horizon !== horizon)) {
+    throw new Error('render inbox-roadmap-gate: every entry goes under the one horizon');
+  }
   const state = roadmapState(cwd);
-  refuseRoadmapClash(state, names, 'inbox-roadmap-gate');
-  const one = p.items.length === 1;
+  const one = items.length === 1;
   const statement = [
-    `Putting ${one ? 'this' : 'these'} on the roadmap under "${p.horizon}"${horizonFlag(state, p.horizon)}, waiting until ${one ? 'it is' : 'each is'} pulled into work — ${one ? 'its note leaves' : 'their notes leave'} the inbox with ${one ? 'it' : 'them'}:`,
+    `Putting ${one ? 'this' : 'these'} on the roadmap under "${horizon}"${horizonFlag(state, horizon)}, waiting until ${one ? 'it is' : 'each is'} pulled into work — ${one ? 'its note leaves' : 'their notes leave'} the inbox with ${one ? 'it' : 'them'}:`,
     '',
-    ...p.items.map((/** @type {*} */ item) => `- **${titlecase(item.name)}**${item.kind === 'idea' ? '' : ` \`[${item.kind}]\``} — ${item.summary}`),
+    ...items.map((item) => `- **${titlecase(item.name)}**${item.kind === 'idea' ? '' : ` \`[${item.kind}]\``} — ${item.summary}`),
     ...(state.exists ? [] : ['', `The roadmap is created with ${one ? 'it' : 'them'}.`]),
   ].join('\n');
   return section('MENU: inbox roadmap gate', MENU_INSTRUCTION, menu(statement, [
@@ -5550,9 +5536,15 @@ function parkGate(cwd, args) {
   if (!isFilled(name)) throw new Error('render park-gate: --name is required');
   if (!isFilled(horizon)) throw new Error('render park-gate: --horizon is required');
   if (!isFilled(summary)) throw new Error('render park-gate: --summary is required');
-  assertRoadmapKind(kind, 'park-gate', '--kind');
+  try {
+    validateKind(kind);
+  } catch (err) {
+    throw new Error(`render park-gate: ${err instanceof Error ? err.message : String(err)}`);
+  }
   const state = roadmapState(cwd);
-  refuseRoadmapClash(state, [name], 'park-gate');
+  if (state.items.some((r) => r.name === name)) {
+    throw new Error(`render park-gate: "${name}" is already on the roadmap — edit it, or pick a different name`);
+  }
   const what = kind === 'idea' ? '' : `the ${kind} `;
   const statement = [
     `Parking ${what}**${titlecase(name)}** — ${summary} — puts it on the roadmap under "${horizon}"${horizonFlag(state, horizon)}, waiting until it is pulled into work.`,
@@ -5562,7 +5554,7 @@ function parkGate(cwd, args) {
   return section('MENU: park gate', MENU_INSTRUCTION, menu(statement, [
     cmdOption('y', 'yes', 'Park it'),
     cmdOption('n', 'no', 'Leave it — nothing is recorded'),
-    promptOption('Comment', 'Tell me what to change (name, horizon, or summary)'),
+    promptOption('Comment', 'Tell me what to change (name, kind, horizon, or summary)'),
   ], { question: 'Park it on the roadmap?' }));
 }
 
