@@ -224,7 +224,7 @@ Commands:
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
   roadmap state
-  roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
+  roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
   roadmap edit <name> --summary <text>
   roadmap rename <old> <new>
@@ -365,7 +365,8 @@ Commands:
   render roadmap-view
   render roadmap-add-gate --horizon <name>
   render horizon-pick
-  render park-gate --name <kebab> --horizon <h> --summary <text> [--source <path>]
+  render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
+  render inbox-roadmap-gate --file <payload.json>
   render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate
@@ -1420,11 +1421,12 @@ function runRoadmap(call, argv) {
       // Strict positional count: an unquoted summary would spill into
       // positionals and silently truncate the text — refuse instead.
       if (positional.length !== 1) {
-        throw new Error('Usage: engine roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]');
+        throw new Error('Usage: engine roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]');
       }
       respond(call, roadmap.addRoadmapItem(cwd, positional[0], {
         horizon: opts.horizon,
         summary: opts.summary,
+        kind: opts.kind,
         origin: opts.origin,
         sources: lists.source || [],
       }));

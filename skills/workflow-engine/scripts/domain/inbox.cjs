@@ -19,6 +19,10 @@ const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const INBOX = '.workflows/.inbox';
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
 
+// Each folder's kind of item — the vocabulary the inbox lists and the
+// roadmap's items share.
+const FOLDER_KIND = /** @type {Record<string, 'idea'|'bug'|'quick-fix'>} */ ({ ideas: 'idea', bugs: 'bug', quickfixes: 'quick-fix' });
+
 /**
  * @typedef {object} InboxItem
  * @property {string} given   the path as passed (normalised)
@@ -93,6 +97,30 @@ function commitMessage(verb, items) {
 }
 
 /**
+ * Refuse any move whose destination is already taken — run before the first
+ * file moves, so a refusal leaves every file where it was.
+ * @param {string} cwd @param {{from: string, to: string}[]} moves project-relative
+ */
+function refuseTakenDestinations(cwd, moves) {
+  for (const { to } of moves) {
+    if (fs.existsSync(path.join(cwd, to))) {
+      throw new Error(`destination already exists: "${to}"`);
+    }
+  }
+}
+
+/**
+ * Move each file to its destination, creating the destination's directory.
+ * @param {string} cwd @param {{from: string, to: string}[]} moves project-relative
+ */
+function moveFiles(cwd, moves) {
+  for (const { from, to } of moves) {
+    fs.mkdirSync(path.dirname(path.join(cwd, to)), { recursive: true });
+    fs.renameSync(path.join(cwd, from), path.join(cwd, to));
+  }
+}
+
+/**
  * Move every item to its destination (collision-checked first), then commit
  * the whole set scoped to the inbox.
  * @param {string} cwd @param {InboxItem[]} items
@@ -101,18 +129,10 @@ function commitMessage(verb, items) {
  * @returns {{moved: string[], committed: string|null}}
  */
 function moveAndCommit(cwd, items, destDir, verb) {
-  const moves = items.map((item) => ({ item, dest: `${destDir(item)}/${item.file}` }));
-  for (const { dest } of moves) {
-    if (fs.existsSync(path.join(cwd, dest))) {
-      throw new Error(`destination already exists: "${dest}"`);
-    }
-  }
-  const moved = [];
-  for (const { item, dest } of moves) {
-    fs.mkdirSync(path.dirname(path.join(cwd, dest)), { recursive: true });
-    fs.renameSync(path.join(cwd, item.given), path.join(cwd, dest));
-    moved.push(dest);
-  }
+  const moves = items.map((item) => ({ from: item.given, to: `${destDir(item)}/${item.file}` }));
+  refuseTakenDestinations(cwd, moves);
+  moveFiles(cwd, moves);
+  const moved = moves.map((m) => m.to);
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitTailPathspec(cwd, INBOX, commitMessage(verb, items), warnings);
@@ -175,4 +195,14 @@ function deleteItems(cwd, paths) {
   return result;
 }
 
-module.exports = { archiveItems, restoreItems, deleteItems, parseInboxPath, parseInboxPaths };
+module.exports = {
+  archiveItems,
+  restoreItems,
+  deleteItems,
+  parseInboxPath,
+  parseInboxPaths,
+  refuseTakenDestinations,
+  moveFiles,
+  INBOX,
+  FOLDER_KIND,
+};

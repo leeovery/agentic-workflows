@@ -11,12 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { discoverInbox } = require('./start.cjs');
-const { parseInboxPath } = require('./inbox.cjs');
-
-// Folder → display type (the index dump's vocabulary) and → the work-type
-// pre-seed a uniform set carries into discovery.
-const FOLDER_TYPE = { ideas: 'idea', bugs: 'bug', quickfixes: 'quick-fix' };
-const FOLDER_PRE_SEED = { ideas: 'none', bugs: 'bugfix', quickfixes: 'quick-fix' };
+const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 
 /**
  * @typedef {object} PickupItem
@@ -33,8 +28,7 @@ const FOLDER_PRE_SEED = { ideas: 'none', bugs: 'bugfix', quickfixes: 'quick-fix'
  * @typedef {object} WorkingSetDetail
  * @property {PickupItem[]} items    the set, in the caller's order
  * @property {number} count
- * @property {boolean} uniform       every item shares one folder
- * @property {string} set_type      uniform → the folder's pre-seed (`bugfix` | `quick-fix` | `none`); otherwise `mixed`
+ * @property {'none'|'bugfix'|'quick-fix'} set_type  the work-type pre-seed the set carries into discovery (see setType)
  * @property {PickupItem[]} addable  live inbox items not in the set, pickup order
  */
 
@@ -50,7 +44,7 @@ function folderItems(scan, folder, archived) {
   const base = archived ? '.workflows/.inbox/.archived' : '.workflows/.inbox';
   return rows.map((r) => ({
     n: 0,
-    type: FOLDER_TYPE[folder],
+    type: FOLDER_KIND[folder],
     folder,
     date: r.date,
     slug: r.slug,
@@ -79,6 +73,20 @@ function combinedInbox(scan, opts = {}) {
 }
 
 /**
+ * The work-type pre-seed for a set: work takes the largest shape in it, and
+ * bugs and quick-fixes never add size — any idea leaves the type to
+ * discovery (`none`), no idea and any bug is a bugfix, quick-fixes alone a
+ * quick-fix.
+ * @param {PickupItem[]} items
+ * @returns {'none'|'bugfix'|'quick-fix'}
+ */
+function setType(items) {
+  if (items.some((item) => item.type === 'idea')) return 'none';
+  if (items.some((item) => item.type === 'bug')) return 'bugfix';
+  return 'quick-fix';
+}
+
+/**
  * Build the working-set detail for a held selection of live inbox paths.
  * Loud on anything outside the live inbox — the set can only hold items that
  * are still there to act on.
@@ -93,16 +101,13 @@ function workingSetDetail(cwd, paths) {
   /** @type {PickupItem[]} */
   const items = paths.map((given, i) => ({ ...storeItem(live, given, false), n: i + 1 }));
 
-  const folders = new Set(items.map((item) => item.folder));
-  const uniform = folders.size === 1;
   const inSet = new Set(items.map((item) => item.path));
   const addable = live.filter((item) => !inSet.has(item.path)).map((item, i) => ({ ...item, n: i + 1 }));
 
   return {
     items,
     count: items.length,
-    uniform,
-    set_type: uniform ? FOLDER_PRE_SEED[items[0].folder] : 'mixed',
+    set_type: setType(items),
     addable,
   };
 }

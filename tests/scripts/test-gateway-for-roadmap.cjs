@@ -25,9 +25,9 @@ const MAP = {
   active_session: '002',
   imports: [{ path: 'imports/app-idea.md', imported_at: '2026-08-01T00:00:00Z' }],
   items: {
-    ordering: { horizon: 'mvp', summary: 'customers order', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
-    menus: { horizon: 'mvp', summary: 'operators maintain', origin: 'harvest' },
-    loyalty: { horizon: 'v1', summary: 'rewards', origin: 'park:mvp' },
+    ordering: { horizon: 'mvp', summary: 'customers order', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
+    menus: { horizon: 'mvp', summary: 'operators maintain', kind: 'idea', origin: 'harvest' },
+    loyalty: { horizon: 'v1', summary: 'rewards', kind: 'bug', origin: 'park:mvp' },
   },
 };
 
@@ -52,9 +52,9 @@ describe('workflow-roadmap gateway: view', () => {
     assert.match(res.stdout, /active_session: 002/);
     assert.match(res.stdout, /next_session_number: 003/);
     assert.match(res.stdout, /import_count: 1/);
-    assert.match(res.stdout, /ITEMS \(name {2}horizon {2}state {2}work_unit\):/);
-    assert.match(res.stdout, /  ordering {2}mvp {2}in-flight {2}mvp/);
-    assert.match(res.stdout, /  loyalty {2}v1 {2}waiting {2}—/);
+    assert.match(res.stdout, /ITEMS \(name {2}horizon {2}kind {2}state {2}work_unit\):/);
+    assert.match(res.stdout, /  ordering {2}mvp {2}idea {2}in-flight {2}mvp/);
+    assert.match(res.stdout, /  loyalty {2}v1 {2}bug {2}waiting {2}—/);
     assert.match(res.stdout, /SESSIONS \(number {2}path\):/);
     assert.match(res.stdout, /ACTIONS \(key {2}word {2}action\):/);
     assert.match(res.stdout, /  c {2}converse/);
@@ -62,6 +62,8 @@ describe('workflow-roadmap gateway: view', () => {
     assert.match(res.stdout, /  b {2}back/);
     assert.match(res.stdout, /=== TITLE[\s\S]*Roadmap/);
     assert.match(res.stdout, /=== DISPLAY[\s\S]*◐ Ordering/);
+    assert.match(res.stdout, /Loyalty\n.*rewards\n.*↳ Bug · waiting/);
+    assert.match(res.stdout, /Start work on waiting item\(s\) — creates a piece of\s+work \(2 waiting\)/);
     assert.match(res.stdout, /=== MENU[\s\S]*Resume the open product session/);
     // The way out of the roadmap is the surface it was entered from.
     assert.match(res.stdout, /\*\*`b\/back`\*\*\s+→ Return to the start menu/);
@@ -78,7 +80,7 @@ describe('workflow-roadmap gateway: view', () => {
   it('drops the pull row with nothing waiting; converse reads as open with no session', () => {
     writeRoadmap(dir, {
       horizons: ['mvp'],
-      items: { ordering: { horizon: 'mvp', summary: 's', origin: 'harvest', pulled_to: { work_unit: 'mvp' } } },
+      items: { ordering: { horizon: 'mvp', summary: 's', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp' } } },
     });
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
     const res = run(['view']);
@@ -102,9 +104,10 @@ describe('workflow-roadmap gateway: pull-set', () => {
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
     const res = run(['pull-set']);
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.match(res.stdout, /ITEMS \(n {2}name {2}horizon\):/);
-    assert.match(res.stdout, /  1 {2}menus {2}mvp/);
-    assert.match(res.stdout, /  2 {2}loyalty {2}v1/);
+    assert.match(res.stdout, /ITEMS \(n {2}name {2}horizon {2}kind\):/);
+    assert.match(res.stdout, /  1 {2}menus {2}mvp {2}idea/);
+    assert.match(res.stdout, /  2 {2}loyalty {2}v1 {2}bug/);
+    assert.match(res.stdout, /└─ 2\. Loyalty \[bug\] — rewards/);
     assert.ok(!/=== TITLE/.test(res.stdout), 'no TITLE — the skill step marker heads the ceremony');
     assert.match(res.stdout, /=== MENU[\s\S]*Which items do you want to start building\?/);
   });
