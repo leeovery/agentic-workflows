@@ -97,9 +97,11 @@ where the backlog lives. Opened 2026-09-23 from Lee's dislike of
   stays where it is: the pull reads it as a source, as every pulled
   item's sources are read, and carries it whole into the unit's first
   session log.
-- **R10 — Pull-forward into an in-flight epic stays ideas-only.** An epic
-  grows by topics, and a topic is a thing to decide; a bug wanted with an
-  in-flight epic is pulled as its own bugfix.
+- **R10 — Only an idea becomes a topic.** An epic grows by topics, and a
+  topic is a thing to decide. Pull-forward into an in-flight epic takes
+  ideas alone — a bug wanted with it is pulled as its own bugfix — and a
+  bug or quick-fix that reaches an epic with ideas rides with the unit as
+  material, never bound to a topic.
 
 ## The settled shape
 
@@ -183,15 +185,31 @@ it. Notes are never KB-indexed while they wait, as inbox items are not.
 **Triage from the inbox.** The working set gains a roadmap row beside
 work, add, drop, archive, view and back. It applies to the whole set:
 the horizon is picked once (the shared `choosing-a-horizon.md`), Claude
-composes each item's name (the note's slug, re-derived on a clash) and
-one-line summary from its note, and one confirm gate states every item —
-name, kind, summary — and the horizon (flagged new, and the roadmap's own
-birth, as the park gate states them); yes, no, and Comment. On yes, one
-engine transaction moves each note from the inbox to the roadmap's notes
-and adds its item (`origin: inbox:{slug}`, `sources: [the note]`, its
-kind from the inbox folder), one confined commit. The roadmap session's
-grooming (`session-loop.md`) uses the same transaction instead of
-archive-then-add.
+reads each note and composes its entry — name (the note's slug,
+re-derived more specifically on a clash with the roadmap or within the
+set), one-line summary, the horizon, and the note's inbox path — into
+one file. The confirm gate renders over that file and runs the verb's own
+validation as a dry run, so it never offers what the verb would refuse,
+showing each item's kind as its note's folder gives it; yes, no, and
+Comment. On yes, `roadmap add-batch` lands the same file: each note moves
+from the inbox to the roadmap's notes and its item is added (`origin:
+inbox:{file stem}`, `sources: [the note]`), one confined commit. The
+roadmap session's grooming (`session-loop.md`) uses the same transaction
+instead of archive-then-add.
+
+**No note goes missing.** A note is always in the inbox or named by an
+item. Coming onto the roadmap, the manifest lands first and the notes
+move after, put back with the manifest restored if a move throws; leaving
+it (remove), the note moves first and comes back if the write throws.
+
+**Only an idea becomes a topic.** One predicate holds R10 wherever an
+item meets an epic: the harvest binds ideas alone (a pulled bug or
+quick-fix rides with the unit as material for the topics it bears on),
+pull-forward takes ideas alone, a feature absorbed into an epic re-aims an
+idea's join at its topic and a bug's or quick-fix's at the epic alone,
+the add gate offers delivery only into an epic underway, and discovery's
+anti-twin flag counts waiting ideas alone. A postponed topic's re-waited
+item is therefore always an idea.
 
 **Start now from the inbox.** `w/work` is offered for any set. The
 work-type pre-seed follows R6: ideas present → `none`, and discovery
@@ -234,7 +252,10 @@ the "epic- or feature-shaped reads only" limit goes.
 | `roadmap add` | `--kind <idea\|bug\|quick-fix>`, `idea` when omitted |
 | `roadmap add-batch` | an entry takes `kind`, and `note` — a live inbox path, in the form the inbox verbs take; with a note the entry's kind is the note's folder (a contradicting `kind` refused), its origin `inbox:{file stem}`, and its one source the note's new path; every note moves and every item lands under one commit, a clash refused before anything moves |
 | notes | `.workflows/.roadmap/notes/{ideas,bugs,quickfixes}/{file}` — `sources` name it as `.roadmap/notes/{folder}/{file}` |
-| `render inbox-roadmap-gate --file <payload>` | payload `{"horizon": "…", "items": [{"name", "kind", "summary"}]}`; the statement lists each item and the horizon (flagged new, the roadmap's birth said where there is none); rows `y/yes`, `n/no`, Comment; refused naming any item already on the roadmap |
+| `render inbox-roadmap-gate --file <entries.json>` | add-batch's own file, `[{"name","horizon","summary","note"}]`, one horizon; add-batch's validation run dry — a name on the roadmap or repeated, an illegal name or horizon, a dead note, a taken destination, a file name with a space all refused, nothing moved; each kind shown from its note's folder; the horizon flagged new, the roadmap's birth said where there is none; rows `y/yes`, `n/no`, Comment |
+| scratch | `.workflows/.cache/inbox-roadmap.json` at the cache root — a folder named `inbox` would be a work unit's cache home |
+| `roadmap bind` | refuses a bug or a quick-fix |
+| `roadmap-add-gate`, `roadmap state` rows | delivery offered only into an epic underway; state rows carry the joined unit's `work_type` |
 | the working set | `o/roadmap` beside `w/work` (key `o`: `r` is archive's); `w/work` for any set; `set_type` is `none`, `bugfix` or `quick-fix` — never `mixed` |
 | `roadmap state` rows, `pull-set` DATA | carry `kind` |
 | `roadmap remove` | a waiting item's roadmap note moves to `.workflows/.inbox/.archived/{folder}/` under the same commit |
@@ -350,3 +371,10 @@ Two PRs stacked, this design standalone and merged last.
   the backlog a horizon (R3–R5); the largest-shape rule (R6); the inbox
   keeps its direct start (R8). Derived: R2, R7, R9, R10, the vocabulary
   map, the notes' home.
+- 2026-10-09 — Built as #1487 (the mailbox) and #1488 (the inbox and the
+  roadmap). The reviews settled: 071's straggler addendum; one entries
+  file the gate validates dry; the note-move ordering; R10 as one
+  predicate. Left as they stand: a topic named like a waiting bug refuses
+  a later postpone on the clash (the refusal names it; a rename
+  recovers); two ideas bound to one topic re-wait only the first on a
+  postpone — older than this design.
