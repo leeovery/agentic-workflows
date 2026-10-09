@@ -36,6 +36,8 @@ Apply the independence test and anti-patterns. Two surfaces that share a domain,
 
 For continuing sessions, also check: does any new candidate overlap with an existing map item? If so, the exploration likely belongs *inside* that item's future discussion or research, not as a new sibling.
 
+**A pulled bug or quick-fix is never a topic.** One the epic was pulled with is material for the topics it bears on — fold its ground into them, never propose it as a topic of its own.
+
 **The harvest sorts two ways.** A candidate the exploration staged beyond this epic — the user placed it (*"that's v2"*) or the record reads that way — is not a topic: set it aside to the **park set** (`{name, horizon, summary}`, capability-grain, the user's own horizon words). Parks not yet confirmed ride to the gate in **E** beside the topic proposal.
 
 #### If no candidates remain and the park set is non-empty
@@ -85,7 +87,7 @@ The output arrives in demarcated sections. Read `=== DATA` to reason from (never
 - `exists_on_map=true` — the name collides with an active map item. Fold the exploration into that item or pick a different name (revise the set, rewrite the file, re-run) before rendering the gate.
 - `legal_name=false` — dots or slashes break manifest addressing. Rename and re-run.
 - `matches_dismissed=true` — the name was previously dismissed. Fine to proceed — confirming at the gate below is the re-add decision; hold the flag for Step 12, which passes `--force-dismissed` on the write.
-- `waiting_on_roadmap=true` — the anti-twin rule: a waiting roadmap item already holds this ground, and a fresh topic beside it would strand its record. Never leave it in the working list — move it to the **pull-forward set** when it belongs in this epic (Step 12 lands it as a map topic and writes its join), or drop it from the proposal to leave it waiting.
+- `waiting_on_roadmap=true` — the anti-twin rule: a waiting roadmap idea already holds this ground, and a fresh topic beside it would strand its record (`engine roadmap state` names the item's kind; a waiting bug or quick-fix is never a twin — it waits to be pulled as its own work, and the topic stands). Never leave a twin in the working list — move it to the **pull-forward set** when it belongs in this epic (Step 12 lands it as a map topic and writes its join), or drop it from the proposal to leave it waiting.
 
 Emit the `=== DISPLAY` section verbatim per its marker — it shows the proposed topics with the existing map unchanged below, so the full picture is visible.
 
