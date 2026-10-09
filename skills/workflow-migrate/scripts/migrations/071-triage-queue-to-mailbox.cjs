@@ -16,6 +16,16 @@
 // A directory whose manifest is absent or does not parse is not a work unit,
 // and is left alone.
 //
+// Migration 054's verification addendum, which still fires on an install
+// that runs 054 in this same boot, tells the check to move a "## Triage"
+// straggler into `.triage/` — performed after every migration has run, so
+// after this rename. Where a research or discussion document still holds a
+// straggler — a triage section whose body carries anything but whitespace
+// and a lone "(none)" — this migration hands back an addendum of its own,
+// read after 054's, that points the move at the mailbox instead. An emptied
+// section, which 054's addendum leaves on a completed topic's document,
+// never fires it.
+//
 // Idempotent: a renamed directory, a rewritten status and a rewritten
 // segment no longer carry the old words.
 //
@@ -25,6 +35,15 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const STATUS_FIELDS = ['status', 'previous_status'];
+
+// The heading 054's addendum hunts, malformed forms ("## Triage:", "##Triage") included.
+const TRIAGE_HEADING = /^##\s*triage\b/i;
+
+// What closes a section: the next `#` or `##` heading — entries sit under `###`.
+const SECTION_END = /^#{1,2}(?!#)/;
+
+// The documents 054's addendum hunts in.
+const SECTION_PHASES = ['research', 'discussion'];
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
@@ -118,9 +137,53 @@ function rewriteSources(manifest) {
   return changed;
 }
 
+/**
+ * Whether a document holds a triage section still carrying content — any
+ * line in its body other than whitespace and a lone `(none)`.
+ * @param {string} text
+ * @returns {boolean}
+ */
+function holdsStraggler(text) {
+  let inSection = false;
+  for (const line of text.split('\n')) {
+    if (TRIAGE_HEADING.test(line)) {
+      inSection = true;
+      continue;
+    }
+    if (SECTION_END.test(line)) {
+      inSection = false;
+      continue;
+    }
+    const body = line.trim();
+    if (inSection && body !== '' && body !== '(none)') return true;
+  }
+  return false;
+}
+
+/**
+ * Whether any research or discussion document still holds a straggler.
+ * @param {string} workflowsDir @param {fs.Dirent[]} entries
+ * @returns {boolean}
+ */
+function holdsTriageSections(workflowsDir, entries) {
+  return entries.some((entry) => entry.isDirectory() && !entry.name.startsWith('.')
+    && SECTION_PHASES.some((phase) => {
+      const dir = path.join(workflowsDir, entry.name, phase);
+      let files;
+      try {
+        files = fs.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return false;
+      }
+      return files.some((f) => f.isFile() && f.name.endsWith('.md')
+        && holdsStraggler(fs.readFileSync(path.join(dir, f.name), 'utf8')));
+    }));
+}
+
 module.exports = {
   id: '071',
   description: 'the triage queue becomes the mailbox — directories, the unstarted status, and message: map sources',
+  info: 'The per-topic triage queue is renamed the mailbox. Over every work unit, whatever its status, this migration renames each {phase}/.triage/ directory to {phase}/.mailbox/ (the move staged in git), rewrites every phase item\'s status and previous_status from "triaged" to "unstarted", and rewrites each reroute: segment of a discovery map item\'s source to message:.',
   run({ projectDir, reportUpdate, reportSkip }) {
     const workflowsDir = path.join(projectDir, '.workflows');
     let entries;
@@ -154,5 +217,9 @@ module.exports = {
       }
     }
     if (!touched) reportSkip();
+    if (!holdsTriageSections(workflowsDir, entries)) return;
+    return {
+      verify: 'Some research or discussion documents still have content in a "## Triage" section. A topic\'s triage queue is now its mailbox: .workflows/{wu}/{phase}/.mailbox/{topic}/. So wherever an earlier check in this start-up says to move a straggler from a Triage section into .workflows/{wu}/{phase}/.triage/{topic}/, put it in that topic\'s mailbox instead, as NNN-{slug}.md with the next free number there — never into a .triage/ directory, which nothing reads any more.',
+    };
   },
 };
