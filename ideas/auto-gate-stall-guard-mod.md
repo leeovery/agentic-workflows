@@ -23,9 +23,9 @@ touching prose or engine:
   — are never touched.
 
 The discriminator is the phase and the engine sections seen this turn,
-both already in the mod's hands: the phase from the `session label` argv
-it reads for the position line, the sections from every engine result it
-intercepts. No transcript parsing, no `stop_hook_active`, and no trap —
+both already in the mod's hands: the phase from the conversation's
+`position.json`, which the engine records, the sections from every engine
+result it intercepts. No transcript parsing, no `stop_hook_active`, and no trap —
 the turn has already ended, the person can type over the resubmission,
 and the mod resubmits at most once per turn.
 
@@ -79,7 +79,8 @@ single-source invariants), which is what makes keying on them safe.
 
 - The `tool.call` hook (already the gate mod's) records, per turn, each
   engine section's kind: `menu`, `blocker`, `do-not-stop`, other.
-  `turn.start` resets the record; `session label` sets the phase.
+  `turn.start` resets the record; the phase is the conversation's
+  `position.json`, read after each engine call that moves it.
 - `turn.complete` with `reason: 'answer'` in a gated phase: if the record
   holds no `menu` and no `blocker`, and the final text does not end in
   `?`, resubmit once. Any other reason (`aborted`, `refusal`, `error`) —

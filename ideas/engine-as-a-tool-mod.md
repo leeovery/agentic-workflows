@@ -1,4 +1,4 @@
-# The Engine as a Tool — typed calls, and rows that read as engine verbs
+# The Engine as a Tool — typed calls, no shell
 
 ## The Idea
 
@@ -9,20 +9,10 @@ args[] } })`; the model calls it as `mcp__workflow-gates__engine`, and the
 mod's `tool.call` hook serves it by running the engine through
 `$.process.run` and answering with its stdout.
 
-Two things fall out:
-
-- **No shell.** Argv arrives as a JSON array. The zsh failure class behind
-  render-surfaces D7 — `[]` globbed, `~` expanded, `&&` chains and shell
-  variables improvised over a run of calls — cannot happen, because there
-  is no shell between the model and the engine.
-- **Rows read as engine verbs.** A plugin tool's transcript row draws its
-  own name. `Bash(node .claude/skills/workflow-engine/scripts/engine.cjs
-  render task-gate pay.implementation.pay)` becomes `engine · render
-  task-gate · pay.implementation.pay`, spinner while it runs, red on
-  error. The same effect is reachable on its own as a `ui.render
-  {component: "ToolUse"}` hook that redraws the Bash row — cosmetic, zero
-  engine change — but it is the smaller half of this idea, and it comes
-  free once the tool exists.
+Argv arrives as a JSON array. The zsh failure class behind
+render-surfaces D7 — `[]` globbed, `~` expanded, `&&` chains and shell
+variables improvised over a run of calls — cannot happen, because there is
+no shell between the model and the engine.
 
 Gate interception then matches on `{ tool: "mcp__workflow-gates__engine" }`
 rather than on a marker in a Bash result.
@@ -63,8 +53,6 @@ the typed tool answers the rest.
 
 ## Open Verification
 
-- Whether a plugin tool's row can carry the verb and dotpath in its label,
-  or only the tool name (then a `ToolUse` render hook supplies the label).
 - Whether `-p` runs and the prose-test walkers (which run the prose without
   the mod) need the Bash form retained permanently, which would make the
   migration a dual form rather than a replacement.
