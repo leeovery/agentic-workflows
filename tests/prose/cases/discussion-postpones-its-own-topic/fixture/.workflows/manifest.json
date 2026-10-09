@@ -13,11 +13,13 @@
       "saved-searches": {
         "horizon": "v1",
         "summary": "shoppers keep a search and hear when its results change",
+        "kind": "idea",
         "origin": "harvest"
       },
       "merchandising-rules": {
         "horizon": "v2",
         "summary": "buyers pin and bury products for a campaign",
+        "kind": "idea",
         "origin": "harvest"
       }
     }

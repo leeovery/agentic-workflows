@@ -8,6 +8,7 @@
       "ordering": {
         "horizon": "mvp",
         "summary": "customers order from a menu",
+        "kind": "idea",
         "origin": "harvest",
         "sources": [
           ".roadmap/sessions/session-001.md"
@@ -16,6 +17,7 @@
       "menu-management": {
         "horizon": "mvp",
         "summary": "operators maintain the menu",
+        "kind": "idea",
         "origin": "harvest",
         "sources": [
           ".roadmap/sessions/session-001.md"
@@ -24,6 +26,7 @@
       "kitchen-display": {
         "horizon": "mvp",
         "summary": "orders reach the kitchen",
+        "kind": "idea",
         "origin": "harvest",
         "sources": [
           ".roadmap/sessions/session-001.md"
@@ -32,6 +35,7 @@
       "loyalty": {
         "horizon": "v1",
         "summary": "repeat-customer rewards to drive reorders",
+        "kind": "idea",
         "origin": "harvest",
         "sources": [
           ".roadmap/sessions/session-001.md"
