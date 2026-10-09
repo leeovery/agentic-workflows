@@ -112,12 +112,12 @@ describe('cancel-gate', () => {
   it('a single item, a single open record: singular wording, no discard clause', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        research: { items: { auth: { status: 'triaged' } } },
+        research: { items: { auth: { status: 'unstarted' } } },
         experiment: { items: { auth: { status: 'in-progress', experiments: { E1: { slug: 'a', status: 'running' } } } } },
       },
     });
     const out = unwrap(renderSurface(dir, 'cancel-gate', { dotpath: 'pay.discovery.auth' }));
-    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \[triaged\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
+    assert.match(out, /Cancelling \*\*Auth\*\* marks its research \[unstarted\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
     assert.ok(!out.includes('discarded'), out);
   });
 
@@ -661,7 +661,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   });
 
   it('a parked stub reads parked', () => {
-    billingWith({ status: 'triaged' }, { status: 'in-progress' });
+    billingWith({ status: 'unstarted' }, { status: 'in-progress' });
     assert.match(renderSurface(dir, 'wait-gate', { dotpath: 'lab.discussion.billing' }),
       /⚑ Conclusion blocked — this discussion awaits research on "Billing" \(parked — not yet started\)\n/);
   });
@@ -695,7 +695,7 @@ describe('wait-gate — the blocked-conclusion gate over every wait', () => {
     writeManifest(dir, 'feat', {
       work_type: 'feature',
       phases: {
-        research: { items: { feat: { status: 'triaged' } } },
+        research: { items: { feat: { status: 'unstarted' } } },
         discussion: { items: { feat: { status: 'in-progress' } } },
       },
     });
@@ -759,7 +759,7 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
     writeManifest(dir, 'ledger', {
       work_type: 'feature',
       phases: {
-        research: { items: { ledger: { status: 'triaged' } } },
+        research: { items: { ledger: { status: 'unstarted' } } },
         discussion: { items: { ledger: { status: 'in-progress' } } },
       },
     });
@@ -823,7 +823,7 @@ describe('phase-paused — the epic menu\'s banner for a phase leaving on a paus
         discussion: {
           items: {
             'note-window': { status: 'in-progress' },
-            sync: { status: 'triaged' },
+            sync: { status: 'unstarted' },
             layout: { status: 'completed' },
           },
         },
@@ -1002,7 +1002,7 @@ describe('epic-soft-gate', () => {
           items: {
             auth: { status: 'in-progress' },
             billing: { status: 'completed' },
-            parked: { status: 'triaged' },
+            parked: { status: 'unstarted' },
             gone: { status: 'cancelled' },
             moved: { status: 'promoted', promoted_to: 'cc' },
           },
@@ -1288,21 +1288,21 @@ describe('render resume-gate', () => {
     ].join('\n'));
   });
 
-  it('prepends the triage warning display when --triage is passed', () => {
-    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', triage: '3' });
+  it('prepends the mail warning display when --mail is passed', () => {
+    const out = renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', mail: '3' });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage warning (emit verbatim as a text code block (```text fence), directly above the menu) ===',
-      "  ⚑ 3 rerouted concern(s) from other topics wait in this topic's",
-      '    triage queue. Restart leaves them queued — the restarted',
-      '    session raises them.',
+      '=== DISPLAY: mail warning (emit verbatim as a text code block (```text fence), directly above the menu) ===',
+      "  ⚑ 3 message(s) from other topics wait in this topic's mailbox.",
+      '    Restart leaves them there — the restarted session raises',
+      '    them.',
       '',
     ].join('\n')));
     assert.ok(out.includes('=== MENU: resume gate'));
   });
 
-  it('rejects a non-positive or non-integer triage count', () => {
+  it('rejects a non-positive or non-integer mail count', () => {
     for (const bad of ['0', '-1', 'two', '']) {
-      assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', triage: bad }), /--triage must be a positive integer/);
+      assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', mail: bad }), /--mail must be a positive integer/);
     }
   });
 
@@ -1311,9 +1311,9 @@ describe('render resume-gate', () => {
     assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'nope.discussion.x' }), /work unit "nope" not found/);
   });
 
-  it('rejects an unknown variant and --triage combined with a variant', () => {
+  it('rejects an unknown variant and --mail combined with a variant', () => {
     assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.discussion.auth-flow', variant: 'nope' }), /--variant must be "plan", "review", "scoping", or "session"/);
-    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.auth-flow', variant: 'scoping', triage: '2' }), /--triage only applies to the default variant/);
+    assert.throws(() => renderSurface(dir, 'resume-gate', { dotpath: 'pay.scoping.auth-flow', variant: 'scoping', mail: '2' }), /--mail only applies to the default variant/);
   });
 });
 
@@ -1896,7 +1896,7 @@ describe('render research-threads', () => {
   });
 });
 
-describe('render reroute-offer', () => {
+describe('render send-offer', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -1906,99 +1906,96 @@ describe('render reroute-offer', () => {
 
   it('renders the clear-home offer byte-exactly — destination named, override in hand', () => {
     const file = writePayload(dir, 'o.json', {
-      concern: 'Whether the pipeline can expose click windows',
+      title: 'Whether the pipeline can expose click windows',
       target: 'behavioural-ranking',
       landing_phase: 'research',
     });
-    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'send-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      '=== MENU: reroute offer (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
+      '=== MENU: send offer (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
-      'It reads as **behavioural-ranking**\'s ground, landing research-side — append a phase to override (e.g. `r discussion`).',
+      'It reads as **behavioural-ranking**\'s ground, landing research-side — append a phase to override (e.g. `s discussion`).',
       '',
       '**`◆ Where should it live?`**',
       '',
-      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
-      `${NB(12)}later`,
-      '**`k/keep`**    → Keep it here as part of this topic',
+      '**`s/send`** → Send it to the topic it belongs to; it picks it up later',
+      '**`k/keep`** → Keep it here as part of this topic',
       '',
     ].join('\n'));
   });
 
   it('renders the bare offer when no home is resolved', () => {
-    const file = writePayload(dir, 'b.json', { concern: 'A stray worry' });
-    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    const file = writePayload(dir, 'b.json', { title: 'A stray worry' });
+    const out = renderSurface(dir, 'send-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.match(out, /\*\*A stray worry\*\* belongs to a different topic, not this one\.\n\n\*\*/);
     assert.ok(!out.includes('ground, landing'), 'no destination line without a resolved home');
   });
 
   it('a new target adds the creation line byte-exactly — the two existing lines are untouched', () => {
     const file = writePayload(dir, 'n.json', {
-      concern: 'Whether the pipeline can expose click windows',
+      title: 'Whether the pipeline can expose click windows',
       target: 'behavioural-ranking',
       landing_phase: 'research',
       new_target: true,
     });
-    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'send-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      "=== MENU: send offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**Whether the pipeline can expose click windows** belongs to a different topic, not this one.',
-      "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `r discussion`).",
-      "**behavioural-ranking** isn't on the map yet — rerouting creates it.",
+      "It reads as **behavioural-ranking**'s ground, landing research-side — append a phase to override (e.g. `s discussion`).",
+      "**behavioural-ranking** isn't on the map yet — sending it creates it.",
       '',
       '**`◆ Where should it live?`**',
       '',
-      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
-      `${NB(12)}later`,
-      '**`k/keep`**    → Keep it here as part of this topic',
+      '**`s/send`** → Send it to the topic it belongs to; it picks it up later',
+      '**`k/keep`** → Keep it here as part of this topic',
       '',
     ].join('\n'));
   });
 
   it('a grown thread reframes both lines byte-exactly — creation, not relocation', () => {
     const file = writePayload(dir, 'g.json', {
-      concern: 'Whether the pipeline can expose click windows',
+      title: 'Whether the pipeline can expose click windows',
       target: 'behavioural-ranking',
       landing_phase: 'research',
       grown: true,
     });
-    const out = renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'send-offer', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      "=== MENU: send offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**Whether the pipeline can expose click windows** has grown into its own topic here.',
-      'Rerouting creates **behavioural-ranking** on the map, landing research-side — the material stays in this file and feeds the new topic through the queue entry and the provenance read at its discussion. Append a phase to override (e.g. `r discussion`).',
+      'Sending it creates **behavioural-ranking** on the map, landing research-side — the material stays in this file and feeds the new topic through the message and the provenance read at its discussion. Append a phase to override (e.g. `s discussion`).',
       '',
       '**`◆ Where should it live?`**',
       '',
-      '**`r/reroute`** → Send it to the topic it belongs to; it picks it up',
-      `${NB(12)}later`,
-      '**`k/keep`**    → Keep it here as part of this topic',
+      '**`s/send`** → Send it to the topic it belongs to; it picks it up later',
+      '**`k/keep`** → Keep it here as part of this topic',
       '',
     ].join('\n'));
     assert.ok(!out.includes('belongs to a different topic'), 'a grown thread never reads as relocation');
     assert.ok(!out.includes("isn't on the map yet"), 'the creation line is folded into the grown wording');
   });
 
-  it('validates loudly — concern required, target and phase together, phase constrained, flags need a name', () => {
-    const bad = (name, obj) => renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
-    assert.throws(() => bad('c.json', { target: 't', landing_phase: 'research' }), /"concern" must be a non-empty string/);
-    assert.throws(() => bad('t.json', { concern: 'x', target: 't' }), /come together/);
-    assert.throws(() => bad('p.json', { concern: 'x', landing_phase: 'research' }), /come together/);
-    assert.throws(() => bad('l.json', { concern: 'x', target: 't', landing_phase: 'planning' }), /"landing_phase" must be "research" or "discussion"/);
-    assert.throws(() => bad('g1.json', { concern: 'x', grown: true }),
+  it('validates loudly — title required, target and phase together, phase constrained, flags need a name', () => {
+    const bad = (name, obj) => renderSurface(dir, 'send-offer', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
+    assert.throws(() => bad('c.json', { target: 't', landing_phase: 'research' }), /"title" must be a non-empty string/);
+    assert.throws(() => bad('t.json', { title: 'x', target: 't' }), /come together/);
+    assert.throws(() => bad('p.json', { title: 'x', landing_phase: 'research' }), /come together/);
+    assert.throws(() => bad('l.json', { title: 'x', target: 't', landing_phase: 'planning' }), /"landing_phase" must be "research" or "discussion"/);
+    assert.throws(() => bad('g1.json', { title: 'x', grown: true }),
       /"grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into/);
-    assert.throws(() => bad('n1.json', { concern: 'x', new_target: true }),
+    assert.throws(() => bad('n1.json', { title: 'x', new_target: true }),
       /"new_target" needs "target" — there is no new topic without a name/);
-    assert.throws(() => bad('ft.json', { concern: 'x', target: 't', landing_phase: 'research', grown: 'yes' }), /"grown" must be true or false/);
-    assert.throws(() => bad('fn.json', { concern: 'x', target: 't', landing_phase: 'research', new_target: 1 }), /"new_target" must be true or false/);
-    assert.throws(() => renderSurface(dir, 'reroute-offer', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
+    assert.throws(() => bad('ft.json', { title: 'x', target: 't', landing_phase: 'research', grown: 'yes' }), /"grown" must be true or false/);
+    assert.throws(() => bad('fn.json', { title: 'x', target: 't', landing_phase: 'research', new_target: 1 }), /"new_target" must be true or false/);
+    assert.throws(() => renderSurface(dir, 'send-offer', { dotpath: 'pay.discussion.checkout' }), /--file <payload\.json> is required/);
   });
 });
 
-describe('render reroute-candidates', () => {
+describe('render send-candidates', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -2006,18 +2003,18 @@ describe('render reroute-candidates', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('states the concern and the research recommendation above the question, the numbered candidates and the new option beneath it, byte-exactly', () => {
+  it('states the title and the research recommendation above the question, the numbered candidates and the new option beneath it, byte-exactly', () => {
     const file = writePayload(dir, 'c.json', {
-      concern: 'Click-window feasibility',
+      title: 'Click-window feasibility',
       landing_phase: 'research',
       candidates: [
         { name: 'behavioural-ranking', lifecycle: 'decided' },
         { name: 'relevance-measurement', lifecycle: 'fresh' },
       ],
     });
-    const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'send-candidates', { dotpath: 'pay.discussion.checkout', file });
     assert.strictEqual(out, [
-      "=== MENU: reroute candidates (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      "=== MENU: send candidates (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       "**Click-window feasibility** belongs to a different topic, not this one. It reads as an open question — I'd land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).",
       '',
@@ -2032,7 +2029,7 @@ describe('render reroute-candidates', () => {
 
   it('a candidate wears the map\'s own words, never the raw manifest token', () => {
     const file = writePayload(dir, 'l.json', {
-      concern: 'x', landing_phase: 'research',
+      title: 'x', landing_phase: 'research',
       candidates: [
         { name: 'behavioural-ranking', lifecycle: 'handled' },
         { name: 'relevance-measurement', lifecycle: 'ready_for_discussion' },
@@ -2040,7 +2037,7 @@ describe('render reroute-candidates', () => {
         { name: 'query-parsing', lifecycle: 'fresh', routing: 'discussion' },
       ],
     });
-    const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'send-candidates', { dotpath: 'pay.discussion.checkout', file });
     assert.match(out, /→ behavioural-ranking \[dead end\]/);
     assert.match(out, /→ relevance-measurement \[research complete · ready for/);
     assert.match(out, /→ signal-freshness \[research superseded · ready for/);
@@ -2051,28 +2048,28 @@ describe('render reroute-candidates', () => {
 
   it('refuses a lifecycle outside the map vocabulary — a mislabel is worse than an echo', () => {
     const file = writePayload(dir, 'u.json', {
-      concern: 'x', landing_phase: 'research',
+      title: 'x', landing_phase: 'research',
       candidates: [{ name: 'a', lifecycle: 'in-progress' }],
     });
-    assert.throws(() => renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file }),
+    assert.throws(() => renderSurface(dir, 'send-candidates', { dotpath: 'pay.discussion.checkout', file }),
       /candidate 1 carries unknown lifecycle "in-progress" \(expected ready_for_discussion\/researching\/discussing\/decided\/fresh\/handled\/cancelled\/postponed\)/);
   });
 
   it('the discussion recommendation flips the wording and the override example', () => {
     const file = writePayload(dir, 'd.json', {
-      concern: 'x', landing_phase: 'discussion',
+      title: 'x', landing_phase: 'discussion',
       candidates: [{ name: 'a', lifecycle: 'fresh' }],
     });
-    const out = renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file });
+    const out = renderSurface(dir, 'send-candidates', { dotpath: 'pay.discussion.checkout', file });
     assert.match(out, /a decision to make — I'd land it discussion-side/);
     assert.match(out, /e\.g\. `1 research`/);
   });
 
   it('validates loudly — phase constrained, candidates non-empty and complete', () => {
-    const bad = (name, obj) => renderSurface(dir, 'reroute-candidates', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
-    assert.throws(() => bad('p.json', { concern: 'x', landing_phase: 'scoping', candidates: [{ name: 'a', lifecycle: 'f' }] }), /"landing_phase" must be "research" or "discussion"/);
-    assert.throws(() => bad('e.json', { concern: 'x', landing_phase: 'research', candidates: [] }), /"candidates" must be a non-empty array/);
-    assert.throws(() => bad('m.json', { concern: 'x', landing_phase: 'research', candidates: [{ name: 'a' }] }), /candidate 1 is missing "lifecycle"/);
+    const bad = (name, obj) => renderSurface(dir, 'send-candidates', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
+    assert.throws(() => bad('p.json', { title: 'x', landing_phase: 'scoping', candidates: [{ name: 'a', lifecycle: 'f' }] }), /"landing_phase" must be "research" or "discussion"/);
+    assert.throws(() => bad('e.json', { title: 'x', landing_phase: 'research', candidates: [] }), /"candidates" must be a non-empty array/);
+    assert.throws(() => bad('m.json', { title: 'x', landing_phase: 'research', candidates: [{ name: 'a' }] }), /candidate 1 is missing "lifecycle"/);
   });
 });
 
@@ -2368,7 +2365,7 @@ describe('render finding-batch', () => {
   });
 });
 
-describe('render triage surfaces', () => {
+describe('render mailbox surfaces', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -2377,52 +2374,52 @@ describe('render triage surfaces', () => {
   afterEach(() => teardown(dir));
 
   function writeQueue(topic, files) {
-    const qdir = path.join(dir, '.workflows', 'wu', 'discussion', '.triage', topic);
+    const qdir = path.join(dir, '.workflows', 'wu', 'discussion', '.mailbox', topic);
     fs.mkdirSync(qdir, { recursive: true });
     for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(qdir, f), body);
   }
 
-  it('triage-announce derives the count with verb agreement, refusing an empty queue', () => {
-    assert.throws(() => renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing to announce/);
+  it('mail-announce derives the count with verb agreement, refusing an empty mailbox', () => {
+    assert.throws(() => renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing to announce/);
     writeQueue('measurement', { '001-a.md': 'x' });
-    const one = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
-    assert.ok(one.startsWith('=== DISPLAY: triage announce (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ==='), one);
-    assert.ok(one.includes('1 rerouted concern from another topic waits'), one);
+    const one = renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' });
+    assert.ok(one.startsWith('=== DISPLAY: mail announce (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ==='), one);
+    assert.ok(one.includes('1 message from another topic waits'), one);
     writeQueue('measurement', { '002-b.md': 'y' });
-    const two = renderSurface(dir, 'triage-announce', { dotpath: 'wu.discussion.measurement' });
-    assert.ok(two.includes('2 rerouted concerns from other topics wait'), two);
+    const two = renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' });
+    assert.ok(two.includes('2 messages from other topics wait'), two);
   });
 
-  it('triage-offer renders the agenda in queue order and the yes/later menu', () => {
+  it('mail-offer renders the agenda in mailbox order and the yes/later menu', () => {
     writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
       { file: '001-metrics.md', title: 'Offline metrics', origin: 'ranking', from_phase: 'discussion', from_date: '2026-08-01' },
     ] });
-    const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
+    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage agenda (emit verbatim as markdown (not a code block)) ===',
-      '**Triage queue** — 2 concerns',
+      '=== DISPLAY: mail agenda (emit verbatim as markdown (not a code block)) ===',
+      '**Mailbox** — 2 messages',
       '',
       '○ 1. Offline metrics',
       `${NB(7)}↳ From ranking · discussion · 2026-08-01`,
       '○ 2. Expansion tracking',
       `${NB(7)}↳ From synonyms · discussion · 2026-08-02`,
     ].join('\n')), out);
-    assert.ok(out.includes("=== MENU: triage offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="));
+    assert.ok(out.includes("=== MENU: mail offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="));
     assert.ok(out.includes('Work through them now?'));
     assert.ok(/\*\*`y\/yes`\*\* +→ Surface and discuss them one at a time/.test(out));
     assert.ok(/\*\*`l\/later`\*\* +→ Carry on with the session/.test(out));
   });
 
-  it('triage-offer wraps a sentence-length title under itself, with the note beneath', () => {
+  it('mail-offer wraps a sentence-length title under itself, with the note beneath', () => {
     writeQueue('measurement', { '001-metrics.md': 'a' });
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', origin: 'note-model', from_phase: 'discussion', from_date: '2026-07-30' },
     ] });
-    const out = renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file });
+    const out = renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file });
     assert.ok(out.includes([
-      '**Triage queue** — 1 concern',
+      '**Mailbox** — 1 message',
       '',
       '○ 1. A preset binding persists until broken — three revisions to',
       `${NB(5)}the positioning model`,
@@ -2435,70 +2432,70 @@ describe('render triage surfaces', () => {
     for (const line of agenda.split('\n')) assert.ok(line.length <= 65, `overflowing row: ${line}`);
   });
 
-  it('triage-offer refuses an empty queue, a short payload, and a payload naming a file the queue lacks', () => {
+  it('mail-offer refuses an empty mailbox, a short payload, and a payload naming a file the mailbox lacks', () => {
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
     ] });
-    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file }), /queue is empty — nothing to offer/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file }), /mailbox is empty — nothing to offer/);
     writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
-    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file }), /payload items must cover the queue exactly/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file }), /payload items must cover the mailbox exactly/);
     const wrong = writePayload(dir, 'wrong.json', { items: [
       { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
       { file: '999-ghost.md', title: 'G', origin: 'o', from_phase: 'discussion', from_date: 'd' },
     ] });
-    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: wrong }), /payload items must cover the queue exactly/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file: wrong }), /payload items must cover the mailbox exactly/);
     const missing = writePayload(dir, 'missing.json', { items: [{ file: '001-metrics.md', title: 'T', origin: 'o', from_date: 'd' }] });
-    assert.throws(() => renderSurface(dir, 'triage-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
+    assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /item 1 is missing "from_phase"/);
   });
 
-  it('requeue-offer renders the statement, the diamond question naming the other phase, and the yes/discuss menu', () => {
+  it('forward-offer renders the statement, the diamond question naming the other phase, and the yes/discuss menu', () => {
     writeQueue('measurement', { '001-a-decision-owed.md': 'x' });
     const file = writePayload(dir, 'rq.json', {
       file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
     });
-    const out = renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file });
-    assert.ok(out.startsWith("=== MENU: requeue offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="), out);
+    const out = renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file });
+    assert.ok(out.startsWith("=== MENU: forward offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ==="), out);
     assert.ok(out.includes('**A decision owed** — it asks this topic to decide, not to find out.'), out);
     assert.ok(out.includes('**`◆ Move it to research?`**'), out);
-    assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research queue/.test(out), out);
+    assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research mailbox/.test(out), out);
     assert.ok(/\*\*`d\/discuss`\*\* +→ Work it here now/.test(out), out);
 
-    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
+    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.mailbox', 'measurement');
     fs.mkdirSync(rdir, { recursive: true });
     fs.writeFileSync(path.join(rdir, '001-a-decision-owed.md'), 'x');
-    const rout = renderSurface(dir, 'requeue-offer', { dotpath: 'wu.research.measurement', file });
+    const rout = renderSurface(dir, 'forward-offer', { dotpath: 'wu.research.measurement', file });
     assert.ok(rout.includes('**`◆ Move it to discussion?`**'), rout);
-    assert.ok(rout.includes("Move it to this topic's discussion queue"), rout);
+    assert.ok(rout.includes("Move it to this topic's discussion mailbox"), rout);
   });
 
-  it('requeue-offer refuses a missing payload field, a file the queue lacks, and a phase outside the pair', () => {
+  it('forward-offer refuses a missing payload field, a file the mailbox lacks, and a phase outside the pair', () => {
     writeQueue('measurement', { '001-a.md': 'x' });
-    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement' }), /--file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement' }), /--file <payload\.json> is required/);
     const missing = writePayload(dir, 'missing.json', { file: '001-a.md', title: 'T' });
-    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /"reason" must be a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /"reason" must be a non-empty string/);
     const ghost = writePayload(dir, 'ghost.json', { file: '009-ghost.md', title: 'T', reason: 'r' });
-    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.discussion.measurement', file: ghost }), /is not in the measurement discussion triage queue/);
+    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file: ghost }), /is not in the measurement discussion mailbox/);
     const ok = writePayload(dir, 'ok.json', { file: '001-a.md', title: 'T', reason: 'r' });
-    assert.throws(() => renderSurface(dir, 'requeue-offer', { dotpath: 'wu.investigation.measurement', file: ok }), /research\/discussion pair only/);
+    assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.investigation.measurement', file: ok }), /research\/discussion pair only/);
   });
 
-  it('triage-block derives the count and the phase word, refusing an empty queue', () => {
-    assert.throws(() => renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' }), /queue is empty — nothing blocks conclusion/);
+  it('mail-block derives the count and the phase word, refusing an empty mailbox', () => {
+    assert.throws(() => renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing blocks conclusion/);
     writeQueue('measurement', { '001-a.md': 'x' });
-    const out = renderSurface(dir, 'triage-block', { dotpath: 'wu.discussion.measurement' });
+    const out = renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' });
     assert.ok(out.startsWith([
-      '=== DISPLAY: triage block (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ Triage queue not empty — 1 rerouted concern awaiting discussion',
+      '=== DISPLAY: mail block (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ Mailbox not empty — 1 message awaiting discussion',
       '',
-      '=== DISPLAY: triage block guidance (emit verbatim as markdown (not a code block)) ===',
+      '=== DISPLAY: mail block guidance (emit verbatim as markdown (not a code block)) ===',
       '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
-    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.triage', 'measurement');
+    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.mailbox', 'measurement');
     fs.mkdirSync(rdir, { recursive: true });
     fs.writeFileSync(path.join(rdir, '001-a.md'), 'x');
     fs.writeFileSync(path.join(rdir, '002-b.md'), 'y');
-    const rout = renderSurface(dir, 'triage-block', { dotpath: 'wu.research.measurement' });
-    assert.ok(rout.includes('2 rerouted concerns awaiting exploration'), rout);
+    const rout = renderSurface(dir, 'mail-block', { dotpath: 'wu.research.measurement' });
+    assert.ok(rout.includes('2 messages awaiting exploration'), rout);
   });
 });
 
@@ -2752,11 +2749,11 @@ describe('render carry-note-gate', () => {
     const out = renderSurface(dir, 'carry-note-gate', { dotpath: 'pay.research.portal', file });
     assert.ok(out.includes('=== DISPLAY: carry note'));
     assert.ok(out.includes(payload.note[0]));
-    assert.ok(out.includes('*Addressed to: search-cache — lands in its discussion triage queue*'));
+    assert.ok(out.includes('*Addressed to: search-cache — lands in its discussion mailbox*'));
     assert.ok(out.includes('=== MENU: carry note gate'));
-    assert.ok(out.includes('This note lands in "search-cache"\'s triage queue; if "search-cache" is completed, landing reopens it.'));
+    assert.ok(out.includes('This note lands in "search-cache"\'s mailbox; if "search-cache" is completed, landing reopens it.'));
     assert.ok(out.includes('**`◆ Land it there?`**'), 'a consent gate carries its glyphed question');
-    assert.ok(/\*\*`y\/yes`\*\* +→ Land it there; this document keeps a reroute record/.test(out));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Land it there; this document keeps a record of the send/.test(out));
     assert.ok(/\*\*`s\/skip`\*\* +→ Leave it as prose in this document/.test(out));
     assert.ok(/\*\*Comment\*\* +→ Tell me what to change \(target, phase, or content\)/.test(out));
   });
@@ -4469,8 +4466,8 @@ describe('CLI boundary — engine render through the argv entry', () => {
 
   const run = (/** @type {string[]} */ args) => harness.output(dir, ['render', ...args]);
 
-  it('flags survive argv: --triage, --variant, --approve, --gate, scalar flags', () => {
-    assert.ok(run(['resume-gate', 'pay.discussion.pay', '--triage', '2']).includes('2 rerouted concern(s)'));
+  it('flags survive argv: --mail, --variant, --approve, --gate, scalar flags', () => {
+    assert.ok(run(['resume-gate', 'pay.discussion.pay', '--mail', '2']).includes('2 message(s)'));
     const tl = writePayload(dir, 'tl.json', { phase: 1, phase_name: 'X', tasks: [{ name: 'A', summary: 's' }] });
     assert.ok(run(['task-list', 'pay.planning.pay', '--file', tl, '--variant', 'existing']).includes('task list confirmed'));
     const pt = writePayload(dir, 'pt.json', { phases: [{ name: 'P' }] });
@@ -4775,7 +4772,7 @@ describe('render entry-gate', () => {
     // A topic the gap exit opened and parked waits the same way — it has
     // never concluded, and the specification is its reader.
     manifestWith({
-      discussion: { items: { a: { status: 'triaged' }, b: { status: 'completed' } } },
+      discussion: { items: { a: { status: 'unstarted' }, b: { status: 'completed' } } },
       specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'pending' }, b: { status: 'incorporated' } } } } },
     }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }),
@@ -4794,7 +4791,7 @@ describe('render entry-gate', () => {
     assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), '');
     // Plural open sources list every holder, whichever way each is open.
     manifestWith({
-      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'triaged' }, c: { status: 'completed' } } },
+      discussion: { items: { a: { status: 'in-progress' }, b: { status: 'unstarted' }, c: { status: 'completed' } } },
       specification: { items: { auth: { status: 'in-progress', sources: { a: { status: 'stale' }, b: { status: 'pending' }, c: { status: 'incorporated' } } } } },
     }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.specification.auth' }), /⚑ Sources for "Auth" are not concluded: a, b/);
@@ -4810,14 +4807,14 @@ describe('render entry-gate', () => {
     assert.match(out, /DISPLAY: entry blocker/);
     assert.match(out, /⚑ Entry blocked — this discussion awaits research on "Pay" \(in flight\)/);
     assert.match(out, /DISPLAY: blocker guidance[\s\S]*> Continue the work unit — the research is its next step\./);
-    feature({ status: 'triaged' });
+    feature({ status: 'unstarted' });
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' }), /awaits research on "Pay" \(parked — not yet started\)/);
     for (const research of [undefined, { status: 'completed' }, { status: 'cancelled', previous_status: 'in-progress' }, { status: 'superseded', superseded_by: 'other' }]) {
       feature(research);
       assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.pay' }), '', JSON.stringify(research));
     }
     // An epic's guidance names its menu; the discussion item need not exist yet, and a concluded one is held the same way.
-    manifestWith({ research: { items: { auth: { status: 'triaged' } } } }, 'epic');
+    manifestWith({ research: { items: { auth: { status: 'unstarted' } } } }, 'epic');
     assert.match(renderSurface(dir, 'entry-gate', { dotpath: 'pay.discussion.auth' }),
       /awaits research on "Auth" \(parked — not yet started\)[\s\S]*> Return to the epic menu — its research row is the way in\./);
     manifestWith({ research: { items: { auth: { status: 'in-progress' } } }, discussion: { items: { auth: { status: 'completed', reconcile_needed: 'research' } } } }, 'epic');
@@ -4935,8 +4932,8 @@ describe('render entry-gate --own', () => {
     ].join('\n'));
   });
 
-  it('is clear for a research or discussion item that is live, triaged, or absent', () => {
-    for (const status of ['in-progress', 'completed', 'triaged']) {
+  it('is clear for a research or discussion item that is live, unstarted, or absent', () => {
+    for (const status of ['in-progress', 'completed', 'unstarted']) {
       topicWith(status);
       for (const phase of ['research', 'discussion']) {
         assert.strictEqual(renderSurface(dir, 'entry-gate', { dotpath: `pay.${phase}.auth`, own: '1' }), '', `${phase} ${status}`);
@@ -5075,7 +5072,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, triage-announce, triage-offer, triage-block, requeue-offer, reroute-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, reroute-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, triage-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5552,19 +5549,19 @@ describe('baseline surfaces', () => {
 
   it('migrations-applied: the session\'s summary above the run\'s counts, the counts left out where no file was updated', () => {
     const counted = writePayload(dir, '.workflows/.cache/migrations-applied.json', {
-      summary: 'Recovered a rerouted concern the converter missed.', migrations: 2, files: 3,
+      summary: 'Recovered a message the converter missed.', migrations: 2, files: 3,
     });
     assert.strictEqual(renderSurface(dir, 'migrations-applied', { file: counted }), [
       '=== DISPLAY: migrations applied (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '**Migrations Applied**',
       '',
-      'Recovered a rerouted concern the converter missed.',
+      'Recovered a message the converter missed.',
       '',
       '2 migration(s), 3 file(s) updated.',
       '',
     ].join('\n'));
-    const fixesOnly = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'Recovered a rerouted concern.' });
-    assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a rerouted concern.\n'));
+    const fixesOnly = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'Recovered a message.' });
+    assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a message.\n'));
   });
 
   it('migrations-applied: each notice the run handed back stands beneath the summary, above the counts', () => {
@@ -6209,7 +6206,7 @@ describe('render off-topic-offer', () => {
 
   it('offers the pivot for a feature, aligned across three rows', () => {
     feature();
-    const file = writePayload(dir, 'o.json', { concern: 'Rate limiting on the public API' });
+    const file = writePayload(dir, 'o.json', { title: 'Rate limiting on the public API' });
     const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file });
     assert.strictEqual(out, [
       "=== MENU: off-topic offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
@@ -6219,8 +6216,8 @@ describe('render off-topic-offer', () => {
       '**`◆ Where should it go?`**',
       '',
       '**`l/log`**    → Capture it as an idea in the inbox for later',
-      '**`p/pivot`**  → Convert this work to an epic so it can hold the',
-      `${NB(11)}concern as its own topic`,
+      '**`p/pivot`**  → Convert this work to an epic so it can hold it as its',
+      `${NB(11)}own topic`,
       '**`i/ignore`** → Note it in the research file and move on',
       '',
     ].join('\n'));
@@ -6231,7 +6228,7 @@ describe('render off-topic-offer', () => {
       work_type: 'cross-cutting',
       phases: { research: { items: { xc: { status: 'in-progress' } } } },
     });
-    const file = writePayload(dir, 'o.json', { concern: 'Audit logging' });
+    const file = writePayload(dir, 'o.json', { title: 'Audit logging' });
     const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'xc.research.xc', file });
     assert.strictEqual(out, [
       "=== MENU: off-topic offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
@@ -6246,13 +6243,13 @@ describe('render off-topic-offer', () => {
     ].join('\n'));
   });
 
-  it('refuses a missing payload and an empty concern', () => {
+  it('refuses a missing payload and an empty title', () => {
     feature();
     assert.throws(() => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay' }), /--file <payload\.json> is required/);
-    const blank = writePayload(dir, 'b.json', { concern: '  ' });
+    const blank = writePayload(dir, 'b.json', { title: '  ' });
     assert.throws(
       () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file: blank }),
-      /"concern" must be a non-empty string/,
+      /"title" must be a non-empty string/,
     );
   });
 
@@ -6261,7 +6258,7 @@ describe('render off-topic-offer', () => {
       work_type: 'feature',
       phases: { discussion: { items: { pay: { status: 'in-progress' } } } },
     });
-    const file = writePayload(dir, 'o.json', { concern: 'Gift cards' });
+    const file = writePayload(dir, 'o.json', { title: 'Gift cards' });
     const out = renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.discussion.pay', file, variant: 'discussion' });
     assert.strictEqual(out, [
       "=== MENU: off-topic offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
@@ -6272,8 +6269,8 @@ describe('render off-topic-offer', () => {
       '',
       '**`l/log`**     → Capture it as an idea in the inbox for later',
       '**`r/roadmap`** → Put it on the product roadmap for a later release',
-      '**`p/pivot`**   → Convert this work to an epic so it can hold the',
-      `${NB(12)}concern as its own topic`,
+      '**`p/pivot`**   → Convert this work to an epic so it can hold it as its',
+      `${NB(12)}own topic`,
       '**`i/ignore`**  → Note it in the Summary and move on',
       '',
     ].join('\n'));
@@ -6281,7 +6278,7 @@ describe('render off-topic-offer', () => {
 
   it('refuses an unknown variant', () => {
     feature();
-    const file = writePayload(dir, 'o.json', { concern: 'X' });
+    const file = writePayload(dir, 'o.json', { title: 'X' });
     assert.throws(
       () => renderSurface(dir, 'off-topic-offer', { dotpath: 'pay.research.pay', file, variant: 'nope' }),
       /--variant takes "discussion"/,
@@ -6320,7 +6317,7 @@ describe('render backlog-gate', () => {
     live();
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay' }),
       /render backlog-gate: --file <payload\.json> is required/);
-    const absent = writePayload(dir, 'a.json', { concern: 'wrong key' });
+    const absent = writePayload(dir, 'a.json', { title: 'wrong key' });
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file: absent }),
       /render backlog-gate: "idea" must be a non-empty string/);
     const blank = writePayload(dir, 'e.json', { idea: '   ' });
@@ -6919,7 +6916,7 @@ describe('render candidate-gate', () => {
   });
 });
 
-describe('render triage-closed-target', () => {
+describe('render send-closed-target', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
@@ -6939,37 +6936,36 @@ describe('render triage-closed-target', () => {
   afterEach(() => teardown(dir));
 
   it('renders the dead-end target byte-exactly — the statement, then the ask over three destinations', () => {
-    assert.strictEqual(renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.auth-flow' }), [
+    assert.strictEqual(renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.auth-flow' }), [
       "=== MENU: closed target gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
-      '"auth-flow" is closed as a dead end, so it won\'t pick up rerouted concerns.',
+      '"auth-flow" is closed as a dead end, so it won\'t pick up messages.',
       '',
-      '**`◆ Where should the concern land?`**',
+      '**`◆ Where should the message go?`**',
       '',
-      '**`o/open`**      → Reopen it and land the concern there — it returns',
+      '**`o/open`**      → Reopen it and send the message there — it returns',
       `${NB(14)}to its name-matched lifecycle and counts as open`,
       `${NB(14)}again`,
       '**`e/elsewhere`** → Pick a different target',
-      '**`d/drop`**      → Drop the reroute; the concern stays with the',
-      `${NB(14)}current topic`,
+      "**`d/drop`**      → Don't send it; it stays with the current topic",
       '',
     ].join('\n'));
   });
 
   it('a cancelled target flips both words the lifecycle owns', () => {
-    const out = renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.legacy-bits' });
-    assert.match(out, /"legacy-bits" is cancelled, so it won't pick up rerouted concerns\./);
-    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and land the concern there — the/);
+    const out = renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.legacy-bits' });
+    assert.match(out, /"legacy-bits" is cancelled, so it won't pick up messages\./);
+    assert.match(out, /\*\*`o\/open`\*\*\s+→ Reactivate it and send the message there — the/);
     assert.match(out, /topic returns to its previous state and counts as\n/);
     assert.match(out, /open again/);
   });
 
   it('refuses a live target, an unknown name, and a non-discovery address', () => {
-    assert.throws(() => renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.live' }),
+    assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.live' }),
       /"live" is "fresh", not closed — the gate serves handled and cancelled targets/);
-    assert.throws(() => renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discovery.ghost' }),
+    assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discovery.ghost' }),
       /no discovery item "ghost" on the map/);
-    assert.throws(() => renderSurface(dir, 'triage-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
+    assert.throws(() => renderSurface(dir, 'send-closed-target', { dotpath: 'pay.discussion.legacy-bits' }),
       /address must be <work_unit>\.discovery\.<target>, got phase "discussion"/);
   });
 });
@@ -8054,7 +8050,7 @@ describe('render direct-entry-gate', () => {
             tau: { routing: 'discussion', source: 'discovery', postponed: true },
           },
         },
-        research: { items: { gamma: { status: 'triaged' }, delta: { status: 'in-progress' } } },
+        research: { items: { gamma: { status: 'unstarted' }, delta: { status: 'in-progress' } } },
         discussion: { items: { gamma: { status: 'in-progress' } } },
       },
     });
@@ -8079,10 +8075,10 @@ describe('render direct-entry-gate', () => {
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.delta' }), /research is in flight on it/);
     // Outstanding research names itself at either door — its row is the topic's own.
     const parked = renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.gamma' });
-    assert.match(parked, /⚑ "Gamma" is already on the map — research is parked on it \(triage waiting\)/);
+    assert.match(parked, /⚑ "Gamma" is already on the map — research is parked on it \(mail waiting\)/);
     assert.match(parked, /> Its research row is the way in\./);
     assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.research.delta' }), /research is in flight on it[\s\S]*Its research row is the way in/);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }), /research is parked on it \(triage waiting\)[\s\S]*Its research row is the way in/);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'pay.discussion.gamma' }), /research is parked on it \(mail waiting\)[\s\S]*Its research row is the way in/);
   });
 
   it('a marker-only cancelled row points at the reactivate — it carries no menu row to return to', () => {
@@ -8131,11 +8127,11 @@ describe('render direct-entry-gate', () => {
       work_type: 'epic',
       phases: {
         discovery: { items: { eta: { routing: 'discussion', source: 'discovery' } } },
-        research: { items: { eta: { status: 'triaged' } } },
+        research: { items: { eta: { status: 'unstarted' } } },
       },
     });
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.discussion.eta' }), /research is parked on it \(triage waiting\)[\s\S]*Its research row is the way in/);
-    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.research.eta' }), /research is parked on it \(triage waiting\)/);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.discussion.eta' }), /research is parked on it \(mail waiting\)[\s\S]*Its research row is the way in/);
+    assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: 'stub.research.eta' }), /research is parked on it \(mail waiting\)/);
   });
 
   it('a closed topic names its closure at either door, research reopened beneath it notwithstanding — a dead end points at discovery\'s reopen', () => {
@@ -8164,18 +8160,18 @@ describe('render direct-entry-gate', () => {
       phases: {
         discovery: { items: {
           done: { routing: 'discussion', source: 'discovery' },
-          requeued: { routing: 'discussion', source: 'discovery' },
+          forwarded: { routing: 'discussion', source: 'discovery' },
         } },
-        research: { items: { requeued: { status: 'triaged' } } },
-        discussion: { items: { done: { status: 'completed' }, requeued: { status: 'completed' } } },
+        research: { items: { forwarded: { status: 'unstarted' } } },
+        discussion: { items: { done: { status: 'completed' }, forwarded: { status: 'completed' } } },
       },
     });
     for (const phase of ['discussion', 'research']) {
       const out = renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.done` });
       assert.match(out, /⚑ "Done" is already on the map — discussion has concluded/, phase);
       assert.match(out, /DISPLAY: direct entry guidance[\s\S]*> Resume it from the menu \(`c\/completed`\) — a decided topic carries no row\./, phase);
-      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.requeued` }),
-        /research is parked on it \(triage waiting\)[\s\S]*> Its research row is the way in\./, phase);
+      assert.match(renderSurface(dir, 'direct-entry-gate', { dotpath: `settled.${phase}.forwarded` }),
+        /research is parked on it \(mail waiting\)[\s\S]*> Its research row is the way in\./, phase);
     }
   });
 

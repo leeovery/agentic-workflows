@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: topic transitions — start, triage, complete, reopen,
+// Domain ring: topic transitions — start, send, complete, reopen,
 // supersede, cancel, and reactivate, each a single transaction from the
 // caller's perspective.
 //
@@ -35,6 +35,7 @@ const {
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
+  MAILBOX_PHASES, mailboxDir,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -261,7 +262,7 @@ function startTopic(cwd, workUnit, phase, topic) {
     } else if (existing && existing.status === 'promoted') {
       throw new Error(promotedRefusal(phase, topic, existing));
     }
-    if (!existing || existing.status === 'triaged') {
+    if (!existing || existing.status === 'unstarted') {
       assertResearchLanded(manifest, phase, topic, 'start');
       assertSpecSettled(manifest, phase, topic, 'start');
     }
@@ -283,14 +284,14 @@ function startTopic(cwd, workUnit, phase, topic) {
 }
 
 /**
- * @typedef {object} TopicTriageResult
+ * @typedef {object} TopicSendResult
  * @property {string} topic
  * @property {string} phase
  * @property {string|null} status  the item's status after the call
- * @property {boolean} created     true when the phase item was created as `triaged`
+ * @property {boolean} created     true when the phase item was created as `unstarted`
  * @property {string|null} status_before  the item's status before the call (null when created)
- * @property {boolean} [reopened]  set when a completed item was reopened to receive the concern
- * @property {string} [concern_path]  delivery form: the installed concern file, project-relative
+ * @property {boolean} [reopened]  set when a completed item was reopened to receive the message
+ * @property {string} [message_path]  delivery form: the installed message file, project-relative
  * @property {boolean} [reconcile_flagged]  delivery form: the landing flagged downstream item(s) for reconciliation
  * @property {string[]} [sources_staled]  delivery form: spec items whose source row for this discussion flipped `incorporated` → `stale`
  * @property {string|null} [committed]  delivery form: short commit sha, or null
@@ -310,12 +311,12 @@ function assertLegalTopicName(topic) {
 }
 
 /**
- * The next concern number in a topic's triage sidecar: highest `NNN-` prefix
+ * The next message number in a topic's mailbox: highest `NNN-` prefix
  * plus one, `1` for a missing or empty directory.
  * @param {string} dirAbs
  * @returns {number}
  */
-function nextConcernNumber(dirAbs) {
+function nextMessageNumber(dirAbs) {
   /** @type {string[]} */
   let files;
   try {
@@ -339,7 +340,7 @@ function nextConcernNumber(dirAbs) {
 
 /**
  * Flag `topic`'s downstream neighbours when it goes stale — a reopen or a
- * triage landing, never the later re-completion. One hop only: the downstream
+ * message landing, never the later re-completion. One hop only: the downstream
  * phase's own reconciliation earns (or doesn't earn) the next.
  *
  * A source phase's downstream — discussion or investigation — is the reverse
@@ -463,11 +464,11 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
 }
 
 /**
- * Apply the parking semantics to a phase item receiving a concern: create it
- * as `triaged` when absent — a parked concern must never read as started
- * work — heal a status-less item to `triaged`, leave a `triaged` or
+ * Apply the parking semantics to a phase item receiving a message: create it
+ * as `unstarted` when absent — a parked message must never read as started
+ * work — heal a status-less item to `unstarted`, leave an `unstarted` or
  * `in-progress` item untouched, and set a `completed` item back to
- * `in-progress` (a landed concern reopens the conversation; no
+ * `in-progress` (a landed message reopens the conversation; no
  * knowledge-base action — re-completion re-indexes over the same identity).
  * Terminal states refuse with the same messages start uses. Mutates `items`;
  * the caller saves when `dirty`.
@@ -476,11 +477,11 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
  * @param {string} topic
  * @returns {{status: string, created: boolean, status_before: string|null, reopened?: boolean, dirty: boolean}}
  */
-function parkConcernItem(items, phase, topic) {
+function parkMessageItem(items, phase, topic) {
   const existing = items[topic];
   if (!existing || typeof existing !== 'object') {
-    items[topic] = { status: 'triaged' };
-    return { status: 'triaged', created: true, status_before: null, dirty: true };
+    items[topic] = { status: 'unstarted' };
+    return { status: 'unstarted', created: true, status_before: null, dirty: true };
   }
   const before = existing.status ?? null;
   if (before === 'cancelled') {
@@ -499,20 +500,20 @@ function parkConcernItem(items, phase, topic) {
   }
   if (before === null) {
     // A status-less item (partial field writes) has never been started —
-    // heal it to triaged, the same way start heals it to in-progress.
-    existing.status = 'triaged';
-    return { status: 'triaged', created: false, status_before: null, dirty: true };
+    // heal it to unstarted, the same way start heals it to in-progress.
+    existing.status = 'unstarted';
+    return { status: 'unstarted', created: false, status_before: null, dirty: true };
   }
   return { status: before, created: false, status_before: before, dirty: false };
 }
 
 /**
- * A concern lands on an open topic. On an epic the map row is the unit: a
- * cancelled or dead-ended row takes no concern — the backstop for a peer
+ * A message lands on an open topic. On an epic the map row is the unit: a
+ * cancelled or dead-ended row takes no message — the backstop for a peer
  * closing the target between the landing's read and its write.
  * @param {object} manifest @param {string} topic
  */
-function assertTriageTargetOpen(manifest, topic) {
+function assertSendTargetOpen(manifest, topic) {
   if (manifest.work_type !== 'epic' || !itemOf(manifest, 'discovery', topic)) return;
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   if (lifecycle === 'cancelled') {
@@ -524,57 +525,57 @@ function assertTriageTargetOpen(manifest, topic) {
 }
 
 /**
- * Park a rerouted concern on a topic (parking semantics per
- * `parkConcernItem`). Legal only in phases whose schema vocabulary contains
- * `triaged`. No git commit in the bare form — the calling flow commits the
- * artefact append alongside; the delivery form (`--concern`) installs the
- * concern file and commits action-scoped.
+ * Send a message to a topic (parking semantics per `parkMessageItem`).
+ * Legal only in phases whose schema vocabulary contains `unstarted`. No git
+ * commit in the bare form — the calling flow commits the artefact append
+ * alongside; the delivery form (`--content`) installs the message file in
+ * the topic's mailbox and commits action-scoped.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
  * @param {string} topic
- * @returns {TopicTriageResult}
+ * @returns {TopicSendResult}
  */
-function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
-  assertLegalWrite(phase, 'triaged');
-  const { concernFile, slug, message } = opts;
-  const delivering = concernFile !== undefined;
+function sendMessage(cwd, workUnit, phase, topic, opts = {}) {
+  assertLegalWrite(phase, 'unstarted');
+  const { contentFile, slug, message } = opts;
+  const delivering = contentFile !== undefined;
 
   assertLegalTopicName(topic);
 
   /** @type {string|null} */
-  let concern = null;
+  let content = null;
   if (delivering) {
     if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
       throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
     }
-    if (!message) throw new Error('topic triage --concern requires -m <message>');
+    if (!message) throw new Error('topic send --content requires -m <message>');
     // The scratch is consumed after delivery — confine it to the cache so a
     // mis-passed path can never read (and delete) a live artifact.
-    const scratchAbs = path.resolve(cwd, /** @type {string} */ (concernFile));
+    const scratchAbs = path.resolve(cwd, /** @type {string} */ (contentFile));
     const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
     if (!scratchAbs.startsWith(cacheRoot)) {
-      throw new Error(`--concern must point inside .workflows/.cache/ — got "${concernFile}"`);
+      throw new Error(`--content must point inside .workflows/.cache/ — got "${contentFile}"`);
     }
     try {
-      concern = fs.readFileSync(scratchAbs, 'utf8');
+      content = fs.readFileSync(scratchAbs, 'utf8');
     } catch {
-      throw new Error(`concern file not found: ${concernFile}`);
+      throw new Error(`message file not found: ${contentFile}`);
     }
-    if (concern.trim() === '') throw new Error(`concern file is empty: ${concernFile}`);
+    if (content.trim() === '') throw new Error(`message file is empty: ${contentFile}`);
   }
 
-  /** @type {TopicTriageResult} */
+  /** @type {TopicSendResult} */
   const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const ph = ensureContainer(phases, phase, `phases.${phase}`);
     const items = ensureContainer(ph, 'items', `phases.${phase}.items`);
 
-    assertTriageTargetOpen(manifest, topic);
-    const park = parkConcernItem(items, phase, topic);
+    assertSendTargetOpen(manifest, topic);
+    const park = parkMessageItem(items, phase, topic);
     let dirty = park.dirty;
-    /** @type {TopicTriageResult} */
+    /** @type {TopicSendResult} */
     const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before };
     if (park.reopened) base.reopened = true;
 
@@ -596,17 +597,17 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
     }
 
     if (delivering) {
-      // Install the concern in the topic's triage sidecar — a fresh
-      // engine-numbered file per concern, so concurrent deliveries can
+      // Install the message in the topic's mailbox — a fresh
+      // engine-numbered file per message, so concurrent deliveries can
       // never collide or lose an entry.
-      const dirRel = `.workflows/${workUnit}/${phase}/.triage/${topic}`;
+      const dirRel = mailboxDir(workUnit, phase, topic);
       const dirAbs = path.join(cwd, dirRel);
       fs.mkdirSync(dirAbs, { recursive: true });
-      const n = String(nextConcernNumber(dirAbs)).padStart(3, '0');
+      const n = String(nextMessageNumber(dirAbs)).padStart(3, '0');
       const rel = `${dirRel}/${n}-${slug}.md`;
-      const body = /** @type {string} */ (concern);
+      const body = /** @type {string} */ (content);
       fs.writeFileSync(path.join(cwd, rel), body.endsWith('\n') ? body : body + '\n');
-      base.concern_path = rel;
+      base.message_path = rel;
     }
 
     if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -614,12 +615,12 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
   });
 
   if (delivering) {
-    try { fs.unlinkSync(path.resolve(cwd, /** @type {string} */ (concernFile))); } catch { /* scratch already gone */ }
+    try { fs.unlinkSync(path.resolve(cwd, /** @type {string} */ (contentFile))); } catch { /* scratch already gone */ }
     /** @type {string[]} */
     const warnings = [];
     const outcome = commitTailPathspec(
       cwd,
-      [`.workflows/${workUnit}/manifest.json`, /** @type {string} */ (result.concern_path)],
+      [`.workflows/${workUnit}/manifest.json`, /** @type {string} */ (result.message_path)],
       /** @type {string} */ (message),
       warnings,
     );
@@ -638,38 +639,38 @@ function triageTopic(cwd, workUnit, phase, topic, opts = {}) {
 }
 
 /**
- * @typedef {object} TopicQueueResult
+ * @typedef {object} TopicMailboxResult
  * @property {string} work_unit
  * @property {string} phase
  * @property {string} topic
  * @property {number} count
- * @property {string[]} files  project-relative queue file paths, sorted
+ * @property {string[]} files  project-relative message file paths, sorted
  */
 
 /**
- * Read a topic's triage queue: the engine owns the queue layout, so gates
- * and drains ask instead of globbing. Legal only in triage-legal phases;
- * a missing directory is an empty queue.
+ * Read a topic's mailbox: the engine owns the mailbox layout, so gates
+ * and drains ask instead of globbing. Legal only in the mailbox phases;
+ * a missing directory is an empty mailbox.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
  * @param {string} topic
- * @returns {TopicQueueResult}
+ * @returns {TopicMailboxResult}
  */
-function queueStatus(cwd, workUnit, phase, topic) {
-  if (phase !== 'research' && phase !== 'discussion' && phase !== 'investigation') {
-    throw new Error(`triage queues exist for research|discussion|investigation only — got "${phase}"`);
+function mailboxStatus(cwd, workUnit, phase, topic) {
+  if (!MAILBOX_PHASES.includes(phase)) {
+    throw new Error(`mailboxes exist for ${MAILBOX_PHASES.join('|')} only — got "${phase}"`);
   }
   assertLegalTopicName(topic);
   if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
     throw new Error(`no work unit directory: .workflows/${workUnit}`);
   }
-  const dirRel = `.workflows/${workUnit}/${phase}/.triage/${topic}`;
+  const dirRel = mailboxDir(workUnit, phase, topic);
   /** @type {fs.Dirent[]} */
   let entries = [];
   try {
     entries = fs.readdirSync(path.join(cwd, dirRel), { withFileTypes: true });
-  } catch { /* no queue yet — empty */ }
+  } catch { /* no mailbox yet — empty */ }
   const files = entries
     .filter((e) => e.isFile() && e.name.endsWith('.md'))
     .map((e) => `${dirRel}/${e.name}`)
@@ -681,8 +682,8 @@ function queueStatus(cwd, workUnit, phase, topic) {
  * @typedef {object} TopicAbsorbResult
  * @property {string} phase
  * @property {string} topic
- * @property {string} absorbed  the queue-file basename removed
- * @property {number} remaining  queue files left after the removal
+ * @property {string} absorbed  the message-file basename removed
+ * @property {number} remaining  message files left after the removal
  * @property {boolean} [arming_settled]  discussion only: the fold's ground was settled into the review anchor
  * @property {string} [arming_note]      discussion only: why it wasn't, when it wasn't
  * @property {string|null} [committed]
@@ -691,24 +692,24 @@ function queueStatus(cwd, workUnit, phase, topic) {
  */
 
 /**
- * Absorb one rerouted concern — the mirror of `triage`'s delivery form:
- * delete its queue file and commit the fold action-scoped (the phase
+ * Absorb one message — the mirror of `send`'s delivery form:
+ * delete its message file and commit the fold action-scoped (the phase
  * artifact, this deletion, the work-unit manifest) under the caller's
  * message. The response answers `remaining` so the caller routes
  * loop-or-exit with no follow-up read. A discussion absorb names the
  * fold's subtopic and settles it into the review-arming anchor
- * (`settleFoldedSubtopic`): triage folds are settled ground, never map
- * movement, so a sitting that only drained the queue arms no review —
- * tolerant, because wedging the queue's drain would be worse than a
+ * (`settleFoldedSubtopic`): message folds are settled ground, never map
+ * movement, so a sitting that only drained the mailbox arms no review —
+ * tolerant, because wedging the mailbox's drain would be worse than a
  * missed settle.
  * @param {string} cwd @param {string} workUnit @param {string} phase
  * @param {string} topic @param {{file: string, message: string, subtopic?: string}} opts
  * @returns {TopicAbsorbResult}
  */
-function absorbConcern(cwd, workUnit, phase, topic, { file, message, subtopic }) {
-  const queue = queueStatus(cwd, workUnit, phase, topic);
+function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic }) {
+  const mailbox = mailboxStatus(cwd, workUnit, phase, topic);
   if (file !== path.basename(file) || !file.endsWith('.md')) {
-    throw new Error(`topic absorb: --file must be a queue-file name, not a path (got "${file}")`);
+    throw new Error(`topic absorb: --file must be a message-file name, not a path (got "${file}")`);
   }
   if (phase === 'discussion' && !subtopic) {
     throw new Error('topic absorb: a discussion fold names its ground — pass --subtopic <name> (the subtopic the raise armed) so the fold settles into the review anchor instead of counting as map movement');
@@ -716,13 +717,13 @@ function absorbConcern(cwd, workUnit, phase, topic, { file, message, subtopic })
   if (phase !== 'discussion' && subtopic !== undefined) {
     throw new Error(`topic absorb: --subtopic settles a discussion fold into the review anchor — not legal in ${phase}`);
   }
-  const rel = `.workflows/${workUnit}/${phase}/.triage/${topic}/${file}`;
-  if (!queue.files.includes(rel)) {
-    throw new Error(`topic absorb: "${file}" is not in the ${topic} ${phase} triage queue`);
+  const rel = `${mailboxDir(workUnit, phase, topic)}/${file}`;
+  if (!mailbox.files.includes(rel)) {
+    throw new Error(`topic absorb: "${file}" is not in the ${topic} ${phase} mailbox`);
   }
   fs.unlinkSync(path.join(cwd, rel));
   /** @type {TopicAbsorbResult} */
-  const result = { phase, topic, absorbed: file, remaining: queue.count - 1 };
+  const result = { phase, topic, absorbed: file, remaining: mailbox.count - 1 };
   if (phase === 'discussion' && subtopic) {
     const settled = settleFoldedSubtopic(cwd, workUnit, topic, subtopic);
     result.arming_settled = settled.settled;
@@ -745,23 +746,23 @@ function absorbConcern(cwd, workUnit, phase, topic, { file, message, subtopic })
   result.warnings = warnings;
   noteCommitOutcome(result, outcome);
   if (outcome.failed) {
-    result.note = `commit pending — the concern is absorbed; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
+    result.note = `commit pending — the message is absorbed; retry with: engine commit ${workUnit} --topic ${phase}/${topic} -m "<message>"`;
   }
   return result;
 }
 
 /**
- * @typedef {object} TopicRequeueResult
+ * @typedef {object} TopicForwardResult
  * @property {string} topic
  * @property {string} from_phase
  * @property {string} to_phase
- * @property {string} moved  the queue-file basename moved out of the source queue
- * @property {string} concern_path  the installed destination queue file, project-relative
- * @property {number} remaining  source-queue files left after the move
+ * @property {string} moved  the message-file basename moved out of the source mailbox
+ * @property {string} message_path  the installed destination message file, project-relative
+ * @property {number} remaining  source-mailbox files left after the move
  * @property {string|null} status  the destination item's status after the call
- * @property {boolean} created     true when the destination item was created as `triaged`
+ * @property {boolean} created     true when the destination item was created as `unstarted`
  * @property {string|null} status_before  the destination item's status before the call (null when created)
- * @property {boolean} [reopened]  set when a completed destination item was reopened to receive the concern
+ * @property {boolean} [reopened]  set when a completed destination item was reopened to receive the message
  * @property {boolean} [source_item_removed]  the source item was a parked stub this move emptied, and was removed
  * @property {boolean} [reconcile_flagged]  the move flagged completed downstream item(s) for reconciliation
  * @property {string[]} [sources_staled]  spec items whose source row for this topic flipped `incorporated` → `stale`
@@ -771,52 +772,53 @@ function absorbConcern(cwd, workUnit, phase, topic, { file, message, subtopic })
  */
 
 /**
- * Move one queued concern to the same topic's other phase-side — the repair
- * for a concern parked on the wrong side of the research/discussion pair.
- * One transaction: the destination item takes the parking semantics a triage
- * landing applies (`parkConcernItem` plus the downstream staleness hop), the
- * queue file is renumbered into the destination queue, a `triaged` source
- * item the move leaves with an empty queue is removed (it existed only to
- * park concerns), and the move commits action-scoped under the caller's
- * message. The response answers `remaining` for the source queue so the
+ * Forward one message to the same topic's other phase-side — the repair
+ * for a message parked on the wrong side of the research/discussion pair.
+ * One transaction: the destination item takes the parking semantics a
+ * message landing applies (`parkMessageItem` plus the downstream staleness
+ * hop), the message file is renumbered into the destination mailbox, an
+ * `unstarted` source item the move leaves with an empty mailbox is removed
+ * (it existed only to hold messages), and the move commits action-scoped
+ * under the caller's message. The response answers `remaining` for the
+ * source mailbox so the
  * caller routes loop-or-exit with no follow-up read.
  * @param {string} cwd @param {string} workUnit @param {string} fromPhase
  * @param {string} toPhase @param {string} topic
  * @param {{file: string, message: string}} opts
- * @returns {TopicRequeueResult}
+ * @returns {TopicForwardResult}
  */
-function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, message }) {
+function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, message }) {
   const pair = ['research', 'discussion'];
   if (!pair.includes(fromPhase) || !pair.includes(toPhase) || fromPhase === toPhase) {
-    throw new Error(`topic requeue moves a concern to the same topic's other phase-side — research↔discussion, got "${fromPhase}" → "${toPhase}"`);
+    throw new Error(`topic forward moves a message to the same topic's other phase-side — research↔discussion, got "${fromPhase}" → "${toPhase}"`);
   }
-  const queue = queueStatus(cwd, workUnit, fromPhase, topic);
+  const mailbox = mailboxStatus(cwd, workUnit, fromPhase, topic);
   if (file !== path.basename(file) || !file.endsWith('.md')) {
-    throw new Error(`topic requeue: --file must be a queue-file name, not a path (got "${file}")`);
+    throw new Error(`topic forward: --file must be a message-file name, not a path (got "${file}")`);
   }
-  const sourceRel = `.workflows/${workUnit}/${fromPhase}/.triage/${topic}/${file}`;
-  if (!queue.files.includes(sourceRel)) {
-    throw new Error(`topic requeue: "${file}" is not in the ${topic} ${fromPhase} triage queue`);
+  const sourceRel = `${mailboxDir(workUnit, fromPhase, topic)}/${file}`;
+  if (!mailbox.files.includes(sourceRel)) {
+    throw new Error(`topic forward: "${file}" is not in the ${topic} ${fromPhase} mailbox`);
   }
   const slug = file.replace(/^\d{3}-/, '').replace(/\.md$/, '');
 
-  /** @type {TopicRequeueResult} */
+  /** @type {TopicForwardResult} */
   const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const ph = ensureContainer(phases, toPhase, `phases.${toPhase}`);
     const items = ensureContainer(ph, 'items', `phases.${toPhase}.items`);
 
-    const park = parkConcernItem(items, toPhase, topic);
+    const park = parkMessageItem(items, toPhase, topic);
     let dirty = park.dirty;
-    /** @type {TopicRequeueResult} */
+    /** @type {TopicForwardResult} */
     const base = {
       topic,
       from_phase: fromPhase,
       to_phase: toPhase,
       moved: file,
-      concern_path: '',
-      remaining: queue.count - 1,
+      message_path: '',
+      remaining: mailbox.count - 1,
       status: park.status,
       created: park.created,
       status_before: park.status_before,
@@ -824,7 +826,7 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
     if (park.reopened) base.reopened = true;
 
     // The move is a delivery to the destination — the same staleness hop a
-    // triage landing makes there.
+    // message landing makes there.
     const fd = flagDownstream(manifest, manifest.work_type, toPhase, topic);
     if (fd.flagged.length > 0) {
       base.reconcile_flagged = true;
@@ -839,20 +841,20 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
       const srcPh = phases[fromPhase];
       const srcItems = srcPh && typeof srcPh === 'object' ? srcPh.items : undefined;
       const src = srcItems && typeof srcItems === 'object' ? srcItems[topic] : undefined;
-      if (src && typeof src === 'object' && src.status === 'triaged') {
+      if (src && typeof src === 'object' && src.status === 'unstarted') {
         delete srcItems[topic];
         base.source_item_removed = true;
         dirty = true;
       }
     }
 
-    const destDirRel = `.workflows/${workUnit}/${toPhase}/.triage/${topic}`;
+    const destDirRel = mailboxDir(workUnit, toPhase, topic);
     const destDirAbs = path.join(cwd, destDirRel);
     fs.mkdirSync(destDirAbs, { recursive: true });
-    const n = String(nextConcernNumber(destDirAbs)).padStart(3, '0');
+    const n = String(nextMessageNumber(destDirAbs)).padStart(3, '0');
     const destRel = `${destDirRel}/${n}-${slug}.md`;
     fs.renameSync(path.join(cwd, sourceRel), path.join(cwd, destRel));
-    base.concern_path = destRel;
+    base.message_path = destRel;
 
     if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
     return base;
@@ -862,7 +864,7 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
   const warnings = [];
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${workUnit}/manifest.json`, sourceRel, result.concern_path],
+    [`.workflows/${workUnit}/manifest.json`, sourceRel, result.message_path],
     message,
     warnings,
   );
@@ -870,9 +872,9 @@ function requeueConcern(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
   result.warnings = warnings;
   noteCommitOutcome(result, outcome);
   if (outcome.failed) {
-    // `--sweep` keeps the retry as beat-free as the move: requeue is a
+    // `--sweep` keeps the retry as beat-free as the move: forward is a
     // repair across a topic's two phase-sides, not a session working one.
-    result.note = `commit pending — the concern is moved; retry with: engine commit ${workUnit} --topic ${toPhase}/${topic} --sweep -m "<message>"`;
+    result.note = `commit pending — the message is moved; retry with: engine commit ${workUnit} --topic ${toPhase}/${topic} --sweep -m "<message>"`;
   }
   return result;
 }
@@ -932,8 +934,8 @@ function completeTopic(cwd, workUnit, phase, topic) {
   withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = phaseItem(manifest, phase, topic);
-    if (item.status === 'triaged') {
-      throw new Error(`${phase} item "${topic}" is triaged — parked concerns have never been worked; start the topic first`);
+    if (item.status === 'unstarted') {
+      throw new Error(`${phase} item "${topic}" is unstarted — its messages have never been worked; start the topic first`);
     }
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
@@ -1133,8 +1135,8 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (item.status === 'proposed') {
       throw new Error(`${phase} item "${topic}" is proposed — a proposed item has no artifact to supersede; reconcile removes it instead`);
     }
-    if (item.status === 'triaged') {
-      throw new Error(`${phase} item "${topic}" is triaged — parked concerns have never been worked; start the topic to drain them first`);
+    if (item.status === 'unstarted') {
+      throw new Error(`${phase} item "${topic}" is unstarted — its messages have never been worked; start the topic to drain them first`);
     }
     if (item.status === 'cancelled') {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
@@ -1155,8 +1157,8 @@ function supersedeTopic(cwd, workUnit, phase, topic, { by }) {
     if (!items[by] || typeof items[by] !== 'object') {
       throw new Error(`no ${phase} item "${by}" to supersede toward — the absorbing item must exist first`);
     }
-    if (items[by].status === 'triaged') {
-      throw new Error(`${phase} item "${by}" is triaged — a stub of parked concerns cannot absorb other topics; start it first`);
+    if (items[by].status === 'unstarted') {
+      throw new Error(`${phase} item "${by}" is unstarted — a stub holding messages cannot absorb other topics; start it first`);
     }
     item.status = 'superseded';
     item.superseded_by = by;
@@ -1739,4 +1741,4 @@ function cancelPostponedUnit(cwd, workUnit, topic, item) {
   });
 }
 
-module.exports = { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, flagDownstream, releaseExperimentWaits, assertLegalTopicName };
+module.exports = { startTopic, sendMessage, mailboxStatus, absorbMessage, forwardMessage, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic, restorePostponedUnit, cancelPostponedUnit, flagDownstream, releaseExperimentWaits, assertLegalTopicName };

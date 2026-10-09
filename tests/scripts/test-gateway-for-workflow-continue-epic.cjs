@@ -911,7 +911,7 @@ describe('workflow-continue-epic discovery', () => {
     });
 
     it('lifecycle: discussion in-progress over outstanding research → discussing, ◐, the research action', () => {
-      for (const [status, action] of [['in-progress', 'continue_research'], ['triaged', 'start_research']]) {
+      for (const [status, action] of [['in-progress', 'continue_research'], ['unstarted', 'start_research']]) {
         createManifest(dir, 'v1', {
           work_type: 'epic',
           phases: {
@@ -1462,16 +1462,16 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
     assert.ok(!out.includes(' — '));
   });
 
-  it('a parked stub carries the triage=waiting cue — parity with the discovery gateway dump', () => {
+  it('a parked stub carries the mail=waiting cue — parity with the discovery gateway dump', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { parked: { routing: 'discussion', source: 'reroute:origin' } } },
-        discussion: { items: { parked: { status: 'triaged' } } },
+        discovery: { items: { parked: { routing: 'discussion', source: 'message:origin' } } },
+        discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
     const out = formatScoped('v1', discover(dir, 'v1'));
-    assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent triage=waiting\n'), out);
+    assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent mail=waiting\n'), out);
   });
 
   it('a waiting discussion carries the awaiting= cue, every kind in the derivation\'s order', () => {
@@ -1537,12 +1537,12 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
       assert.ok(out.includes('reconcile_pending: review/auth-spec (implementation)'), out);
     });
 
-    it('false while a rerouted concern is parked — a stub is undrained work, whatever the review says', () => {
+    it('false while a message is parked — a stub is undrained work, whatever the review says', () => {
       createManifest(dir, 'v1', {
         work_type: 'epic',
         phases: {
           discussion: { items: { auth: { status: 'completed' } } },
-          research: { items: { auth: { status: 'triaged' } } },
+          research: { items: { auth: { status: 'unstarted' } } },
           specification: {
             items: { 'auth-spec': { status: 'completed', sources: [{ topic: 'auth', status: 'incorporated' }] } },
           },
@@ -1559,7 +1559,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
         work_type: 'epic',
         phases: {
           discovery: { items: { auth: { routing: 'discussion', source: 'discovery' } } },
-          research: { items: { auth: { status: 'triaged' } } },
+          research: { items: { auth: { status: 'unstarted' } } },
           discussion: { items: { auth: { status: 'in-progress', reconcile_needed: 'research' } } },
         },
       });
@@ -2256,12 +2256,12 @@ describe('workflow-continue-epic specification discovery', () => {
     assert.strictEqual(r.current_state.in_progress_count, 1);
   });
 
-  it('a triaged stub is not a discussion — excluded from counts, list, and has_discussions', () => {
+  it('an unstarted stub is not a discussion — excluded from counts, list, and has_discussions', () => {
     createManifest(dir, 'overhaul', {
       work_type: 'epic',
-      phases: { discussion: { items: { parked: { status: 'triaged' } } } },
+      phases: { discussion: { items: { parked: { status: 'unstarted' } } } },
     });
-    createFile(dir, '.workflows/overhaul/discussion/parked.md', '# Discussion: Parked\n\n## Triage\n\n### Concern\nBody.\n');
+    createFile(dir, '.workflows/overhaul/discussion/parked.md', '# Discussion: Parked\n\n## Triage\n\n### Message\nBody.\n');
     const r = specificationDiscovery(dir, 'overhaul');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');

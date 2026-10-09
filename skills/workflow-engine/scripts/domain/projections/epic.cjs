@@ -78,7 +78,7 @@ const STAGES = EPIC_PIPELINE.reduce((/** @type {{name: string, phases: string[]}
   return stages;
 }, []);
 
-const STATUS_ORDER = ['proposed', 'triaged', 'in-progress', 'completed', 'cancelled', 'promoted'];
+const STATUS_ORDER = ['proposed', 'unstarted', 'in-progress', 'completed', 'cancelled', 'promoted'];
 
 // The conversation phases' actions come from the map's own vocabulary; the
 // build phases' are the menu's.
@@ -117,7 +117,7 @@ const START_GATE = {
 
 /** @param {MapRow} row */
 function lifecycleLabel(row) {
-  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.triage_parked ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null);
+  return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state ?? null, row.mail_waiting ?? false, row.reconcile_pending ?? false, row.waits, row.promoted_to ?? null);
 }
 
 /** Count summary for a phase sub-header — statuses present, zero counts omitted. @param {PhaseEntry[]} items */
@@ -444,7 +444,7 @@ function epicDashboard(workUnit, detail, opts = {}) {
 const KEY_STATUS =
   '  Status:\n'
   + '    proposed    — analyzed grouping, not yet started\n'
-  + '    triaged     — rerouted concerns parked, topic not started\n'
+  + '    unstarted   — mail waiting, topic not started\n'
   + '    in-progress — work is ongoing\n'
   + '    completed   — phase or implementation done\n'
   + '    cancelled   — topic removed from active work\n'
@@ -541,13 +541,13 @@ function topicRoute(action, workUnit, topic) {
   return `/${phaseSkill(ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)])} epic ${workUnit} ${topic}`;
 }
 
-// The triage cue rides every row shape: the bare start rows carry it as
+// The mail cue rides every row shape: the bare start rows carry it as
 // their tail; a row that already has a tail carries it as the tail's cue,
 // the way continueLabel cues `input moved`.
-/** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [triageParked] @returns {LabelParts} */
-function discoveryEntryLabel(action, name, researchState, triageParked) {
+/** @param {string} action @param {string} name @param {string|null} [researchState] @param {boolean} [mailWaiting] @returns {LabelParts} */
+function discoveryEntryLabel(action, name, researchState, mailWaiting) {
   const t = titlecase(name);
-  const cue = triageParked ? 'triage waiting' : undefined;
+  const cue = mailWaiting ? 'mail waiting' : undefined;
   switch (action) {
     case 'start_research': return { head: `Start research for "${t}"`, tail: cue };
     case 'start_discussion': return { head: `Start discussion for "${t}"`, tail: cue };
@@ -586,27 +586,27 @@ function startVerbLabel(n, srcFlagged) {
   return { head, tail: n.label, cue: srcFlagged ? 'input moved' : undefined };
 }
 
-// A row's triage tail speaks for its own phase's queue — a research row
-// never carries the discussion queue's cue, nor a discussion row the
-// research's. The queue is read per phase: a `triaged` stub, or files landed
-// beneath a started or reopened item (the row's triage_queued, counted from
+// A row's mail tail speaks for its own phase's mailbox — a research row
+// never carries the discussion mailbox's cue, nor a discussion row the
+// research's. The mailbox is read per phase: an `unstarted` stub, or files landed
+// beneath a started or reopened item (the row's mail_queued, counted from
 // disk).
 /** @param {string} workUnit @param {MapRow} row @param {string} action @returns {MenuKey} */
 function discoveryEntry(workUnit, row, action) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)];
   const state = phase === 'research' ? row.research_state : row.discussion_state;
-  const queued = phase === 'research' ? row.triage_queued.research : row.triage_queued.discussion;
-  const parked = state === 'triaged' || queued > 0;
+  const queued = phase === 'research' ? row.mail_queued.research : row.mail_queued.discussion;
+  const mailWaiting = state === 'unstarted' || queued > 0;
   return {
     key: '',
     action,
     topic: row.name,
     route: topicRoute(action, workUnit, row.name),
-    label: discoveryEntryLabel(action, row.name, row.research_state ?? null, parked),
+    label: discoveryEntryLabel(action, row.name, row.research_state ?? null, mailWaiting),
   };
 }
 
-// Research parked beneath a decided topic — a `triaged` stub under a
+// Research parked beneath a decided topic — an `unstarted` stub under a
 // concluded discussion — gets its own row: the topic's own action is null,
 // and the research is the reconcile's first step. Every other live
 // lifecycle already leads with the research as the row's own action
@@ -618,7 +618,7 @@ function researchEntry(workUnit, row) {
   if (CLOSED_LIFECYCLES.includes(row.lifecycle)) return null;
   if (!OUTSTANDING_RESEARCH_STATUSES.includes(row.research_state ?? '')) return null;
   if (row.next_action && CONVERSATION_ACTIONS.research.includes(row.next_action)) return null;
-  return discoveryEntry(workUnit, row, row.research_state === 'triaged' ? 'start_research' : 'continue_research');
+  return discoveryEntry(workUnit, row, row.research_state === 'unstarted' ? 'start_research' : 'continue_research');
 }
 
 /**

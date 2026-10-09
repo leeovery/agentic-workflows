@@ -61,7 +61,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments,
+  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxDir,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
@@ -94,7 +94,7 @@ function resolveAddress(cwd, dotpath, surface) {
 // ---------------------------------------------------------------------------
 // resume-gate — the shared continue/restart gate over an in-progress phase
 // artifact. Address-backed; the artifact name is the phase segment. The
-// optional triage count comes from the caller's `topic queue` read and
+// optional mail count comes from the caller's `topic mailbox` read and
 // rides as a scalar flag.
 // ---------------------------------------------------------------------------
 
@@ -108,16 +108,16 @@ const RESUME_QUESTION = 'How would you like to proceed?';
  * revisit wording), `session` (bare work-unit address, the interrupted
  * discovery session).
  * @param {string} cwd
- * @param {{dotpath: string, triage?: string, variant?: string}} args
+ * @param {{dotpath: string, mail?: string, variant?: string}} args
  * @returns {string}
  */
 function resumeGate(cwd, args) {
-  const { dotpath, triage, variant } = args;
+  const { dotpath, mail, variant } = args;
   if (variant !== undefined && !['plan', 'review', 'scoping', 'session'].includes(variant)) {
     throw new Error(`render resume-gate: --variant must be "plan", "review", "scoping", or "session", got "${variant}"`);
   }
-  if (variant !== undefined && triage !== undefined) {
-    throw new Error('render resume-gate: --triage only applies to the default variant');
+  if (variant !== undefined && mail !== undefined) {
+    throw new Error('render resume-gate: --mail only applies to the default variant');
   }
   if (variant === 'session') {
     const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'resume-gate');
@@ -200,16 +200,16 @@ function resumeGate(cwd, args) {
     ));
   }
   const parts = [];
-  if (triage !== undefined) {
-    const n = parseInt(triage, 10);
+  if (mail !== undefined) {
+    const n = parseInt(mail, 10);
     if (!Number.isInteger(n) || n < 1) {
-      throw new Error(`render resume-gate: --triage must be a positive integer, got "${triage}"`);
+      throw new Error(`render resume-gate: --mail must be a positive integer, got "${mail}"`);
     }
     parts.push(section(
-      'DISPLAY: triage warning',
+      'DISPLAY: mail warning',
       emitAs('text', ', directly above the menu'),
-      callout(`${n} rerouted concern(s) from other topics wait in this topic's `
-        + 'triage queue. Restart leaves them queued — the restarted session raises them.'),
+      callout(`${n} message(s) from other topics wait in this topic's `
+        + 'mailbox. Restart leaves them there — the restarted session raises them.'),
     ));
   }
   parts.push(section(
@@ -715,12 +715,12 @@ function carryNoteGate(cwd, { dotpath, file }) {
   const display = section('DISPLAY: carry note', emitAs('markdown'), [
     ...note,
     '',
-    `*Addressed to: ${p.target} — lands in its ${p.landing_phase} triage queue*`,
+    `*Addressed to: ${p.target} — lands in its ${p.landing_phase} mailbox*`,
   ].join('\n'));
   const gate = section('MENU: carry note gate', MENU_INSTRUCTION, menu(
-    `This note lands in "${p.target}"'s triage queue; if "${p.target}" is completed, landing reopens it.`,
+    `This note lands in "${p.target}"'s mailbox; if "${p.target}" is completed, landing reopens it.`,
     [
-      cmdOption('y', 'yes', 'Land it there; this document keeps a reroute record'),
+      cmdOption('y', 'yes', 'Land it there; this document keeps a record of the send'),
       cmdOption('s', 'skip', 'Leave it as prose in this document'),
       promptOption('Comment', 'Tell me what to change (target, phase, or content)'),
     ],
@@ -1924,11 +1924,11 @@ function reviewGate(cwd, args) {
   );
 }
 
-// reroute-offer — the off-topic reroute's consent gate. The concern and,
+// send-offer — the off-topic send's consent gate. The message's title and,
 // when one home is clear, the resolved target with its judged landing
 // phase are judgment content; the chrome and the options are fixed. Two
 // flags shape what the offer says about the destination: `new_target` — the
-// home is a name the map does not hold yet, so rerouting creates it — and
+// home is a name the map does not hold yet, so sending creates it — and
 // `grown`, the same creation reached from the other end, where the thread
 // itself outgrew this topic. Grown implies new: a thread that grew into its
 // own topic has nowhere existing to go.
@@ -1938,47 +1938,47 @@ function reviewGate(cwd, args) {
  * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function rerouteOffer(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render reroute-offer: --file <payload.json> is required');
-  resolveAddress(cwd, dotpath, 'reroute-offer');
-  const p = readJsonPayload(cwd, file, 'reroute-offer');
-  if (!isFilled(p.concern)) throw new Error('render reroute-offer: "concern" must be a non-empty string');
+function sendOffer(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render send-offer: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'send-offer');
+  const p = readJsonPayload(cwd, file, 'send-offer');
+  if (!isFilled(p.title)) throw new Error('render send-offer: "title" must be a non-empty string');
   for (const flag of ['new_target', 'grown']) {
     if (p[flag] !== undefined && typeof p[flag] !== 'boolean') {
-      throw new Error(`render reroute-offer: "${flag}" must be true or false`);
+      throw new Error(`render send-offer: "${flag}" must be true or false`);
     }
   }
   const hasTarget = isFilled(p.target);
   const hasPhase = isFilled(p.landing_phase);
   if (hasTarget !== hasPhase) {
-    throw new Error('render reroute-offer: "target" and "landing_phase" come together — both for a clear home, neither otherwise');
+    throw new Error('render send-offer: "target" and "landing_phase" come together — both for a clear home, neither otherwise');
   }
   if (hasPhase && !['research', 'discussion'].includes(p.landing_phase)) {
-    throw new Error(`render reroute-offer: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
+    throw new Error(`render send-offer: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
   }
   const grown = p.grown === true;
   if (grown && !hasTarget) {
-    throw new Error('render reroute-offer: "grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into');
+    throw new Error('render send-offer: "grown" needs "target" and "landing_phase" — a thread that grew into its own topic carries the name it grew into');
   }
   if (p.new_target === true && !hasTarget) {
-    throw new Error('render reroute-offer: "new_target" needs "target" — there is no new topic without a name');
+    throw new Error('render send-offer: "new_target" needs "target" — there is no new topic without a name');
   }
   let label;
   if (grown) {
-    label = `**${p.concern}** has grown into its own topic here.\n`
-      + `Rerouting creates **${p.target}** on the map, landing ${p.landing_phase}-side — the material stays in this file and feeds the new topic through the queue entry and the provenance read at its discussion. Append a phase to override (e.g. \`r discussion\`).`;
+    label = `**${p.title}** has grown into its own topic here.\n`
+      + `Sending it creates **${p.target}** on the map, landing ${p.landing_phase}-side — the material stays in this file and feeds the new topic through the message and the provenance read at its discussion. Append a phase to override (e.g. \`s discussion\`).`;
   } else if (hasTarget) {
-    label = `**${p.concern}** belongs to a different topic, not this one.\n`
-      + `It reads as **${p.target}**'s ground, landing ${p.landing_phase}-side — append a phase to override (e.g. \`r discussion\`).`;
-    if (p.new_target === true) label += `\n**${p.target}** isn't on the map yet — rerouting creates it.`;
+    label = `**${p.title}** belongs to a different topic, not this one.\n`
+      + `It reads as **${p.target}**'s ground, landing ${p.landing_phase}-side — append a phase to override (e.g. \`s discussion\`).`;
+    if (p.new_target === true) label += `\n**${p.target}** isn't on the map yet — sending it creates it.`;
   } else {
-    label = `**${p.concern}** belongs to a different topic, not this one.`;
+    label = `**${p.title}** belongs to a different topic, not this one.`;
   }
   return section(
-    'MENU: reroute offer',
+    'MENU: send offer',
     MENU_INSTRUCTION,
     menu(label, [
-      cmdOption('r', 'reroute', 'Send it to the topic it belongs to; it picks it up later'),
+      cmdOption('s', 'send', 'Send it to the topic it belongs to; it picks it up later'),
       cmdOption('k', 'keep', 'Keep it here as part of this topic'),
     ], { question: 'Where should it live?' }),
   );
@@ -2192,8 +2192,8 @@ function reviewFindingsGate(cwd, { dotpath }) {
   ));
 }
 
-// off-topic-offer — the single-topic counterpart of reroute-offer: with no
-// sibling topic to route the concern to, it is logged, pivoted into an epic,
+// off-topic-offer — the single-topic counterpart of send-offer: with no
+// sibling topic to send it to, the thought is logged, pivoted into an epic,
 // or noted in place. The pivot row exists only for a feature — the one type
 // that can become an epic — and is derived from the manifest, never asked
 // for and never carried in the payload.
@@ -2210,7 +2210,7 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
   }
   const { manifest } = resolveAddress(cwd, dotpath, 'off-topic-offer');
   const p = readJsonPayload(cwd, file, 'off-topic-offer');
-  if (!isFilled(p.concern)) throw new Error('render off-topic-offer: "concern" must be a non-empty string');
+  if (!isFilled(p.title)) throw new Error('render off-topic-offer: "title" must be a non-empty string');
   const discussion = variant === 'discussion';
   const options = [cmdOption('l', 'log', 'Capture it as an idea in the inbox for later')];
   // The roadmap park is discussion's valve — research has no roadmap route.
@@ -2218,13 +2218,13 @@ function offTopicOffer(cwd, { dotpath, file, variant }) {
     options.push(cmdOption('r', 'roadmap', 'Put it on the product roadmap for a later release'));
   }
   if (manifest.work_type === 'feature') {
-    options.push(cmdOption('p', 'pivot', 'Convert this work to an epic so it can hold the concern as its own topic'));
+    options.push(cmdOption('p', 'pivot', 'Convert this work to an epic so it can hold it as its own topic'));
   }
   options.push(cmdOption('i', 'ignore', discussion ? 'Note it in the Summary and move on' : 'Note it in the research file and move on'));
   return section(
     'MENU: off-topic offer',
     MENU_INSTRUCTION,
-    menu(`**${p.concern}** is beyond this topic's scope.`, options, { question: 'Where should it go?' }),
+    menu(`**${p.title}** is beyond this topic's scope.`, options, { question: 'Where should it go?' }),
   );
 }
 
@@ -2248,7 +2248,7 @@ function backlogGate(cwd, { dotpath, file }) {
   ));
 }
 
-// reroute-candidates — the ambiguous reroute's selection gate. The plausible
+// send-candidates — the ambiguous send's selection gate. The plausible
 // homes and the judged landing phase are judgment content; the numbering,
 // the new-topic option, and the override grammar are fixed. A candidate's
 // state reaches the user in the map's own words: the raw lifecycle token is
@@ -2260,23 +2260,23 @@ function backlogGate(cwd, { dotpath, file }) {
  * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function rerouteCandidates(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render reroute-candidates: --file <payload.json> is required');
-  resolveAddress(cwd, dotpath, 'reroute-candidates');
-  const p = readJsonPayload(cwd, file, 'reroute-candidates');
-  if (!isFilled(p.concern)) throw new Error('render reroute-candidates: "concern" must be a non-empty string');
+function sendCandidates(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render send-candidates: --file <payload.json> is required');
+  resolveAddress(cwd, dotpath, 'send-candidates');
+  const p = readJsonPayload(cwd, file, 'send-candidates');
+  if (!isFilled(p.title)) throw new Error('render send-candidates: "title" must be a non-empty string');
   if (!['research', 'discussion'].includes(p.landing_phase)) {
-    throw new Error(`render reroute-candidates: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
+    throw new Error(`render send-candidates: "landing_phase" must be "research" or "discussion", got "${p.landing_phase}"`);
   }
   if (!Array.isArray(p.candidates) || p.candidates.length === 0) {
-    throw new Error('render reroute-candidates: "candidates" must be a non-empty array of {name, lifecycle}');
+    throw new Error('render send-candidates: "candidates" must be a non-empty array of {name, lifecycle}');
   }
   const options = p.candidates.map((c, i) => {
     for (const field of ['name', 'lifecycle']) {
-      if (!isFilled(c[field])) throw new Error(`render reroute-candidates: candidate ${i + 1} is missing "${field}"`);
+      if (!isFilled(c[field])) throw new Error(`render send-candidates: candidate ${i + 1} is missing "${field}"`);
     }
     if (!Object.hasOwn(DISCOVERY_GLYPH, c.lifecycle)) {
-      throw new Error(`render reroute-candidates: candidate ${i + 1} carries unknown lifecycle "${c.lifecycle}" (expected ${Object.keys(DISCOVERY_GLYPH).join('/')})`);
+      throw new Error(`render send-candidates: candidate ${i + 1} carries unknown lifecycle "${c.lifecycle}" (expected ${Object.keys(DISCOVERY_GLYPH).join('/')})`);
     }
     return cmdOption(String(i + 1), null, `${c.name} [${discoveryLifecycleLabel(c.lifecycle, c.routing, c.research_state)}]`);
   });
@@ -2285,15 +2285,15 @@ function rerouteCandidates(cwd, { dotpath, file }) {
     ? 'It reads as an open question — I\'d land it research-side. Reply with an option, appending a phase to override (e.g. `1 discussion`).'
     : 'It reads as a decision to make — I\'d land it discussion-side. Reply with an option, appending a phase to override (e.g. `1 research`).';
   return section(
-    'MENU: reroute candidates',
+    'MENU: send candidates',
     MENU_INSTRUCTION,
-    menu(`**${p.concern}** belongs to a different topic, not this one. ${recommendation}`, options, { question: 'Where should it land?' }),
+    menu(`**${p.title}** belongs to a different topic, not this one. ${recommendation}`, options, { question: 'Where should it land?' }),
   );
 }
 
 // ---------------------------------------------------------------------------
 // The discovery-map gates. A map edit, a staged candidate, a name collision
-// and a closed reroute target each stop the same way: the proposal above,
+// and a closed send target each stop the same way: the proposal above,
 // the confirm beneath. Judgment supplies the names and values; the bodies,
 // the questions and the option sets are fixed here, so a gate reads the same
 // whichever flow raised it and at any width.
@@ -2566,7 +2566,7 @@ function dismissedTopics(cwd, { dotpath }) {
   ].join('\n');
 }
 
-// triage-closed-target — the reroute's stop over a target no future session
+// send-closed-target — the send's stop over a target no future session
 // will surface. The address names the target and the surface derives its
 // lifecycle with the same join every other map consumer uses, so the two
 // closed states cannot drift apart in the wording. The statement names the
@@ -2577,30 +2577,30 @@ function dismissedTopics(cwd, { dotpath }) {
  * @param {{dotpath: string}} args
  * @returns {string}
  */
-function triageClosedTarget(cwd, { dotpath }) {
-  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'triage-closed-target');
+function sendClosedTarget(cwd, { dotpath }) {
+  const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'send-closed-target');
   if (phase !== 'discovery') {
-    throw new Error(`render triage-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
+    throw new Error(`render send-closed-target: address must be <work_unit>.discovery.<target>, got phase "${phase}"`);
   }
   const items = (((manifest.phases || {}).discovery || {}).items) || {};
   if (!items[topic]) {
-    throw new Error(`render triage-closed-target: no discovery item "${topic}" on the map`);
+    throw new Error(`render send-closed-target: no discovery item "${topic}" on the map`);
   }
   const { lifecycle } = computeTopicLifecycle(manifest, topic);
   if (lifecycle !== 'handled' && lifecycle !== 'cancelled') {
-    throw new Error(`render triage-closed-target: "${topic}" is "${lifecycle}", not closed — the gate serves handled and cancelled targets`);
+    throw new Error(`render send-closed-target: "${topic}" is "${lifecycle}", not closed — the gate serves handled and cancelled targets`);
   }
   const closed = lifecycle === 'handled' ? 'closed as a dead end' : 'cancelled';
   // The reopen row states its consequence: choosing it does not only land the
-  // concern, it puts the topic back in front of every convergence read.
+  // message, it puts the topic back in front of every convergence read.
   const reopen = lifecycle === 'handled'
-    ? 'Reopen it and land the concern there — it returns to its name-matched lifecycle and counts as open again'
-    : 'Reactivate it and land the concern there — the topic returns to its previous state and counts as open again';
-  return section('MENU: closed target gate', MENU_INSTRUCTION, menu(`"${topic}" is ${closed}, so it won't pick up rerouted concerns.`, [
+    ? 'Reopen it and send the message there — it returns to its name-matched lifecycle and counts as open again'
+    : 'Reactivate it and send the message there — the topic returns to its previous state and counts as open again';
+  return section('MENU: closed target gate', MENU_INSTRUCTION, menu(`"${topic}" is ${closed}, so it won't pick up messages.`, [
     cmdOption('o', 'open', reopen),
     cmdOption('e', 'elsewhere', 'Pick a different target'),
-    cmdOption('d', 'drop', 'Drop the reroute; the concern stays with the current topic'),
-  ], { question: 'Where should the concern land?' }));
+    cmdOption('d', 'drop', "Don't send it; it stays with the current topic"),
+  ], { question: 'Where should the message go?' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -3560,7 +3560,7 @@ function findingAnnounce(cwd, { dotpath, file }) {
 // the user: the `apply` batch (corrections determined by decisions already
 // made), the call batch (`settled` at the specification, `decide` at every
 // other door — calls the session made, presented for a scan before they
-// land), and the `route` batch (concerns owned by a sibling topic). The lane
+// land), and the `route` batch (findings owned by a sibling topic). The lane
 // fixes the chrome; the payload carries only judgment content, so the screen
 // is one call and the prose holds no template. A screen holds at most
 // BATCH_MAX items — a larger lane renders over successive screens, each
@@ -3615,8 +3615,8 @@ const BATCH_LANES = {
   decide: CALL_LANE,
   route: {
     intro: (n) => (n === 1
-      ? "Not this topic's to answer. It goes to its owner's triage queue as a concern, carrying the context built here."
-      : "Not this topic's to answer. Each goes to its owner's triage queue as a concern, carrying the context built here."),
+      ? "Not this topic's to answer. It goes to its owner's mailbox as a message, carrying the context built here."
+      : "Not this topic's to answer. Each goes to its owner's mailbox as a message, carrying the context built here."),
     question: (n) => (n === 1 ? 'Send it?' : 'Send them?'),
     confirm: (n, more) => `${n === 1 ? 'Send it' : `Send all ${n}`}${moreTail(more)}`,
     ask: 'Tell me a number to expand, or one that should stay here',
@@ -3882,27 +3882,27 @@ function findingSettled(p, head, item, { view, batched }) {
 }
 
 // ---------------------------------------------------------------------------
-// Triage surfaces — the queue sidecar is engine-owned layout, so these
+// Mailbox surfaces — the mailbox is engine-owned layout, so these
 // surfaces list it directly; entry content never populates a render from a
 // parse — per-entry agenda values arrive as a judgment payload.
 // ---------------------------------------------------------------------------
 
 /**
- * List a topic's triage queue: sorted engine-numbered basenames.
+ * List a topic's mailbox: sorted engine-numbered basenames.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  * @returns {{dir: string, files: string[]}}
  */
-function triageQueue(cwd, workUnit, phase, topic) {
-  const dir = path.join(cwd, '.workflows', workUnit, phase, '.triage', topic);
+function mailboxFiles(cwd, workUnit, phase, topic) {
+  const dir = path.join(cwd, mailboxDir(workUnit, phase, topic));
   return {
     dir,
     files: fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort() : [],
   };
 }
 
-// triage-offer — the offer gate over a non-empty queue: the agenda (count
-// and order from the live queue, per-entry lines from the caller's payload,
-// keyed by queue file so payload and queue stay in exact correspondence)
+// mail-offer — the offer gate over a non-empty mailbox: the agenda (count
+// and order from the live mailbox, per-entry lines from the caller's payload,
+// keyed by message file so payload and mailbox stay in exact correspondence)
 // plus the yes/later menu.
 
 /**
@@ -3910,31 +3910,31 @@ function triageQueue(cwd, workUnit, phase, topic) {
  * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function triageOffer(cwd, { dotpath, file }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-offer');
-  if (!file) throw new Error('render triage-offer: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'triage-offer');
-  const { files } = triageQueue(cwd, workUnit, phase, topic);
-  if (!files.length) throw new Error(`render triage-offer: the ${topic} ${phase} triage queue is empty — nothing to offer`);
-  if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render triage-offer: "items" must be a non-empty array');
+function mailOffer(cwd, { dotpath, file }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
+  if (!file) throw new Error('render mail-offer: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'mail-offer');
+  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  if (!files.length) throw new Error(`render mail-offer: the ${topic} ${phase} mailbox is empty — nothing to offer`);
+  if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
   /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
   const byFile = new Map();
   p.items.forEach((it, i) => {
     for (const field of ['file', 'title', 'origin', 'from_phase', 'from_date']) {
-      if (!isFilled(it[field])) throw new Error(`render triage-offer: item ${i + 1} is missing "${field}"`);
+      if (!isFilled(it[field])) throw new Error(`render mail-offer: item ${i + 1} is missing "${field}"`);
     }
-    if (byFile.has(it.file)) throw new Error(`render triage-offer: duplicate item for "${it.file}"`);
+    if (byFile.has(it.file)) throw new Error(`render mail-offer: duplicate item for "${it.file}"`);
     byFile.set(it.file, it);
   });
   if (byFile.size !== files.length || files.some((f) => !byFile.has(f))) {
-    throw new Error(`render triage-offer: payload items must cover the queue exactly (queue: ${files.join(', ')})`);
+    throw new Error(`render mail-offer: payload items must cover the mailbox exactly (mailbox: ${files.join(', ')})`);
   }
-  // The queue is a flat set of concerns from any number of topics, so
+  // The mailbox is a flat set of messages from any number of topics, so
   // provenance belongs per row — the `↳` note — rather than folded into the
-  // header. Every row is pending by definition: a handled concern's file
-  // leaves the queue.
+  // header. Every row is pending by definition: a handled message's file
+  // leaves the mailbox.
   const agenda = worklist({
-    heading: { label: 'Triage queue', noun: 'concern' },
+    heading: { label: 'Mailbox', noun: 'message' },
     items: files.map((f) => {
       const it = /** @type {NonNullable<ReturnType<typeof byFile.get>>} */ (byFile.get(f));
       return { title: it.title, note: `From ${it.origin} · ${it.from_phase} · ${it.from_date}` };
@@ -3942,66 +3942,66 @@ function triageOffer(cwd, { dotpath, file }) {
     walked: true,
   });
   return [
-    section('DISPLAY: triage agenda', emitAs('markdown'), agenda),
+    section('DISPLAY: mail agenda', emitAs('markdown'), agenda),
     section(
-      'MENU: triage offer',
+      'MENU: mail offer',
       MENU_INSTRUCTION,
       menu('Work through them now?', [
         cmdOption('y', 'yes', 'Surface and discuss them one at a time'),
-        cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The queue must be empty before this topic can conclude"),
+        cmdOption('l', 'later', "Carry on with the session; I'll offer again at the next pause. The mailbox must be empty before this topic can conclude"),
       ]),
     ),
   ].join('\n');
 }
 
-// triage-announce — the fresh-sitting notice over a non-empty queue: one
+// mail-announce — the fresh-sitting notice over a non-empty mailbox: one
 // count-only line, no agenda — the session opens on its own material and
-// the queue is offered at its first genuine break.
+// the mailbox is offered at its first genuine break.
 
 /**
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
-function triageAnnounce(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-announce');
-  const { files } = triageQueue(cwd, workUnit, phase, topic);
-  if (!files.length) throw new Error(`render triage-announce: the ${topic} ${phase} triage queue is empty — nothing to announce`);
+function mailAnnounce(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
+  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  if (!files.length) throw new Error(`render mail-announce: the ${topic} ${phase} mailbox is empty — nothing to announce`);
   const line = files.length === 1
-    ? "1 rerouted concern from another topic waits in this topic's triage queue — I'll raise it once the session finds its footing."
-    : `${files.length} rerouted concerns from other topics wait in this topic's triage queue — I'll raise them once the session finds its footing.`;
-  return section('DISPLAY: triage announce', CONTINUE_INSTRUCTION, callout(line));
+    ? "1 message from another topic waits in this topic's mailbox — I'll raise it once the session finds its footing."
+    : `${files.length} messages from other topics wait in this topic's mailbox — I'll raise them once the session finds its footing.`;
+  return section('DISPLAY: mail announce', CONTINUE_INSTRUCTION, callout(line));
 }
 
-// triage-block — the conclusion blocker over a non-empty queue. Count comes
-// from the live queue; the awaiting-word follows the phase.
+// mail-block — the conclusion blocker over a non-empty mailbox. Count comes
+// from the live mailbox; the awaiting-word follows the phase.
 
 /**
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
-function triageBlock(cwd, { dotpath }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'triage-block');
-  const { files } = triageQueue(cwd, workUnit, phase, topic);
-  if (!files.length) throw new Error(`render triage-block: the ${topic} ${phase} triage queue is empty — nothing blocks conclusion`);
+function mailBlock(cwd, { dotpath }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
+  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  if (!files.length) throw new Error(`render mail-block: the ${topic} ${phase} mailbox is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
   return [
     section(
-      'DISPLAY: triage block',
+      'DISPLAY: mail block',
       emitAs('properties'),
-      `⚑ Triage queue not empty — ${files.length} rerouted concern${files.length === 1 ? '' : 's'} awaiting ${doing}`,
+      `⚑ Mailbox not empty — ${files.length} message${files.length === 1 ? '' : 's'} awaiting ${doing}`,
     ),
     section(
-      'DISPLAY: triage block guidance',
+      'DISPLAY: mail block guidance',
       emitAs('markdown'),
       '> Returning to the session to surface them before concluding.',
     ),
   ].join('\n');
 }
 
-// requeue-offer — the wrong-side gate over one queued concern: the raise
+// forward-offer — the wrong-side gate over one message: the raise
 // found the entry owed the topic's other phase-side, and the move is the
 // user's call. The reason line is judgment content and arrives in the
 // payload; the destination is the pair's other phase, computed, never asked
@@ -4012,26 +4012,26 @@ function triageBlock(cwd, { dotpath }) {
  * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function requeueOffer(cwd, { dotpath, file }) {
-  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'requeue-offer');
+function forwardOffer(cwd, { dotpath, file }) {
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'forward-offer');
   if (phase !== 'research' && phase !== 'discussion') {
-    throw new Error(`render requeue-offer: a concern moves within the research/discussion pair only — got "${phase}"`);
+    throw new Error(`render forward-offer: a message moves within the research/discussion pair only — got "${phase}"`);
   }
-  if (!file) throw new Error('render requeue-offer: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'requeue-offer');
+  if (!file) throw new Error('render forward-offer: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'forward-offer');
   for (const field of ['file', 'title', 'reason']) {
-    if (!isFilled(p[field])) throw new Error(`render requeue-offer: "${field}" must be a non-empty string`);
+    if (!isFilled(p[field])) throw new Error(`render forward-offer: "${field}" must be a non-empty string`);
   }
-  const { files } = triageQueue(cwd, workUnit, phase, topic);
+  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
   if (!files.includes(p.file)) {
-    throw new Error(`render requeue-offer: "${p.file}" is not in the ${topic} ${phase} triage queue`);
+    throw new Error(`render forward-offer: "${p.file}" is not in the ${topic} ${phase} mailbox`);
   }
   const other = phase === 'research' ? 'discussion' : 'research';
   return section(
-    'MENU: requeue offer',
+    'MENU: forward offer',
     MENU_INSTRUCTION,
     menu(`**${p.title}** — ${p.reason}`, [
-      cmdOption('y', 'yes', `Move it to this topic's ${other} queue — raised when ${other} runs`),
+      cmdOption('y', 'yes', `Move it to this topic's ${other} mailbox — raised when ${other} runs`),
       cmdOption('d', 'discuss', 'Work it here now'),
     ], { question: `Move it to ${other}?` }),
   );
@@ -6007,24 +6007,24 @@ const SURFACES = {
   'validation-report': validationReport,
   'project-skills': projectSkills,
   'linters': linters,
-  'triage-announce': triageAnnounce,
-  'triage-offer': triageOffer,
-  'triage-block': triageBlock,
-  'requeue-offer': requeueOffer,
-  'reroute-offer': rerouteOffer,
+  'mail-announce': mailAnnounce,
+  'mail-offer': mailOffer,
+  'mail-block': mailBlock,
+  'forward-offer': forwardOffer,
+  'send-offer': sendOffer,
   'research-threads': researchThreadsSurface,
   'research-conclude-gate': researchConcludeGate,
   'deep-dive-offer': deepDiveOffer,
   'perspective-offer': perspectiveOffer,
   'in-flight-agents-gate': inFlightAgentsGate,
   'review-findings-gate': reviewFindingsGate,
-  'reroute-candidates': rerouteCandidates,
+  'send-candidates': sendCandidates,
   'off-topic-offer': offTopicOffer,
   'backlog-gate': backlogGate,
   'map-op-gate': mapOpGate,
   'candidate-gate': candidateGate,
   'dismissed-topics': dismissedTopics,
-  'triage-closed-target': triageClosedTarget,
+  'send-closed-target': sendClosedTarget,
   'conclude-gate': concludeGate,
   'closing-gate': closingGate,
   'defer-gate': deferGate,

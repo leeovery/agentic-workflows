@@ -79,7 +79,7 @@ describe('workflow-bridge discovery', () => {
   });
 
   it('a discussion paused on its research routes the bridge to the research — parked or in flight', () => {
-    for (const status of ['triaged', 'in-progress']) {
+    for (const status of ['unstarted', 'in-progress']) {
       createManifest(dir, 'ledger', {
         work_type: 'feature',
         phases: {

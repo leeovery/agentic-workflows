@@ -25,15 +25,15 @@ const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 
 // Discussion statuses the menu never counts: cancelled is closed, postponed
 // has left for the roadmap, promoted has left with its specification for a
-// cross-cutting unit, and triaged is a stub of parked rerouted concerns that
-// was never discussed.
-const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'triaged'];
+// cross-cutting unit, and unstarted is a stub holding messages that was
+// never discussed.
+const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'unstarted'];
 
 /**
  * @typedef {object} DiscoverySource
  * @property {string} name
  * @property {string} status              raw manifest value: incorporated | pending
- * @property {string} discussion_status   raw manifest value: completed | in-progress | triaged | … | unknown
+ * @property {string} discussion_status   raw manifest value: completed | in-progress | unstarted | … | unknown
  */
 
 /**

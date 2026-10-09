@@ -611,7 +611,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       /postpone is epic-only — "small" is a feature, whose topic is the work unit/);
   });
 
-  it('the roadmap owns it from there: cancel and reactivate refuse, triage lands, the field surface refuses a status write and a delete', () => {
+  it('the roadmap owns it from there: cancel and reactivate refuse, a send lands, the field surface refuses a status write and a delete', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     engineFails(['topic', 'cancel', 'mvp', 'discovery', 'ordering'],
       /"ordering" is postponed — the roadmap owns it; remove its item there to cancel it, or pull it forward first/);
@@ -629,9 +629,9 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
     engineFails(['manifest', 'delete', 'mvp.discussion.ordering', 'previous_status'],
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
-    // A concern for a topic that waits is mail that waits with it.
-    const parked = engineOk(['topic', 'triage', 'mvp', 'research', 'ordering']);
-    assert.strictEqual(parked.status, 'postponed', 'the triage leaves the hold alone');
+    // A message for a topic that waits is mail that waits with it.
+    const parked = engineOk(['topic', 'send', 'mvp', 'research', 'ordering']);
+    assert.strictEqual(parked.status, 'postponed', 'the send leaves the hold alone');
   });
 
   it('roadmap remove cancels the epic\'s row in the same transaction, one commit over both manifests', () => {

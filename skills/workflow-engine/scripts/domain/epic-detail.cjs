@@ -156,8 +156,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to  the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} triage_parked  rerouted concerns wait on the topic — a `triaged` stub in either phase, or queue files on disk beneath a started or reopened item
- * @property {{research: number, discussion: number}} triage_queued  the topic's queue depth per phase, counted from disk
+ * @property {boolean} mail_waiting  messages wait on the topic — an `unstarted` stub in either phase, or message files on disk beneath a started or reopened item
+ * @property {{research: number, discussion: number}} mail_queued  the topic's mailbox depth per phase, counted from disk
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
  * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
@@ -298,9 +298,9 @@ function discoveryUnits(manifest, discoveryMap) {
 
 /** The state tag a topic's cancel row carries — the map's own lifecycle label. @param {object} manifest @param {string} name @param {MapRow|undefined} row */
 function topicState(manifest, name, row) {
-  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.triage_parked, row.reconcile_pending, row.waits, row.promoted_to);
-  const { lifecycle, research_state, triage_parked, reconcile_pending } = computeTopicLifecycle(manifest, name);
-  return discoveryLifecycleLabel(lifecycle, null, research_state, triage_parked, reconcile_pending);
+  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.mail_waiting, row.reconcile_pending, row.waits, row.promoted_to);
+  const { lifecycle, research_state, mail_waiting, reconcile_pending } = computeTopicLifecycle(manifest, name);
+  return discoveryLifecycleLabel(lifecycle, null, research_state, mail_waiting, reconcile_pending);
 }
 
 /**

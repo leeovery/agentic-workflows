@@ -172,8 +172,8 @@ function baselineResumeLabel(detail) {
 }
 
 // A finalising unit's entry reads `Finalise …` — the continue skill it routes
-// to presents the completion gate. Concerns queued on the unit's topic cue
-// `triage waiting` after the tail, as the epic rows carry it.
+// to presents the completion gate. Messages waiting on the unit's topic cue
+// `mail waiting` after the tail, as the epic rows carry it.
 /** @param {WorkUnitEntry} unit @param {TypeSection['type']} type @returns {LabelParts} */
 function continueLabel(unit, type) {
   const t = titlecase(unit.name);
@@ -181,7 +181,7 @@ function continueLabel(unit, type) {
   return {
     head: `${unit.finalising ? 'Finalise' : 'Continue'} "${t}"`,
     tail: `${type}, ${unit.phase_label}`,
-    cue: (unit.triage_phases || []).length > 0 ? 'triage waiting' : undefined,
+    cue: (unit.mail_phases || []).length > 0 ? 'mail waiting' : undefined,
   };
 }
 

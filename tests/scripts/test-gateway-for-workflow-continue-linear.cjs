@@ -189,7 +189,7 @@ describe('workflow-continue-linear view', () => {
       'finalising: false',
       'completed_phases: discussion',
       'reconcile_pending: (none)',
-      'triage_waiting: (none)',
+      'mail_waiting: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',

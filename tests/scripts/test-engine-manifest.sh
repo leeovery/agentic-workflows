@@ -593,18 +593,18 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: triaged is legal on research and discussion only${NC}"
+echo -e "${YELLOW}Test: unstarted is legal on research and discussion only${NC}"
 setup_fixture
-create_wu triage-check feature "Triage"
-run_cli set triage-check.research.triage-check status triaged >/dev/null 2>&1
-run_cli set triage-check.discussion.triage-check status triaged >/dev/null 2>&1
+create_wu unstarted-check feature "Unstarted"
+run_cli set unstarted-check.research.unstarted-check status unstarted >/dev/null 2>&1
+run_cli set unstarted-check.discussion.unstarted-check status unstarted >/dev/null 2>&1
 
-research_status=$(run_cli_stdout get triage-check.research.triage-check status)
-disc_status=$(run_cli_stdout get triage-check.discussion.triage-check status)
+research_status=$(run_cli_stdout get unstarted-check.research.unstarted-check status)
+disc_status=$(run_cli_stdout get unstarted-check.discussion.unstarted-check status)
 
-assert_equals "$research_status" "triaged" "Research accepts triaged"
-assert_equals "$disc_status" "triaged" "Discussion accepts triaged"
-assert_exit_code 1 "Implementation rejects triaged" set triage-check.implementation.triage-check status triaged
+assert_equals "$research_status" "unstarted" "Research accepts unstarted"
+assert_equals "$disc_status" "unstarted" "Discussion accepts unstarted"
+assert_exit_code 1 "Implementation rejects unstarted" set unstarted-check.implementation.unstarted-check status unstarted
 
 echo ""
 

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the worklist — the one shape for a transient list the session
 // works through and throws away (the analysis and review synthesis cycles,
-// review-findings overviews, the surfacing batches, the triage agenda).
+// review-findings overviews, the surfacing batches, the mail agenda).
 // Emitted as markdown, never fenced:
 // the register needs strikethrough for decided rows and code-span state
 // tags, and a flat list has no indentation for a fence to protect.

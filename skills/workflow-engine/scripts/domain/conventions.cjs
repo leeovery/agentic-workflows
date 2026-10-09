@@ -123,9 +123,9 @@ function discoveryGlyph(tier) {
 // carries. One phrasing, every map render (epic dashboard, discovery session
 // map view). `researchState` is the topic's actual research-item status (null
 // when none exists — see computeTopicLifecycle's research_state): superseded
-// research is named as such, never as complete. `triageParked` (the map
-// row's triage_parked) appends a `triage waiting` cue on any lifecycle —
-// rerouted concerns wait on the topic, parked on a `triaged` stub or queued
+// research is named as such, never as complete. `mailWaiting` (the map
+// row's mail_waiting) appends a `mail waiting` cue on any lifecycle —
+// messages wait on the topic, parked on an `unstarted` stub or waiting
 // beneath a started or reopened item, and drain when its session next sits.
 // `reconcilePending` (computeTopicLifecycle's
 // reconcile_pending) appends an `input moved` cue the same way — a phase item
@@ -136,8 +136,8 @@ function discoveryGlyph(tier) {
 // released when the research lands or the experiment ends. `promotedTo` (the
 // map row's promoted_to) names the cross-cutting unit a decided topic's
 // discussion moved to with its specification.
-/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [triageParked] @param {boolean} [reconcilePending] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
-function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked, reconcilePending, waits, promotedTo) {
+/** @param {string} lifecycle @param {string|null} [routing] @param {string|null} [researchState] @param {boolean} [mailWaiting] @param {boolean} [reconcilePending] @param {import('./derivations.cjs').Wait[]} [waits] @param {string|null} [promotedTo] */
+function discoveryLifecycleLabel(lifecycle, routing, researchState, mailWaiting, reconcilePending, waits, promotedTo) {
   let label;
   switch (lifecycle) {
     case 'ready_for_discussion':
@@ -158,7 +158,7 @@ function discoveryLifecycleLabel(lifecycle, routing, researchState, triageParked
     if (waits.some((w) => w.kind === 'research')) label += ' · awaiting research';
     if (ids.length > 0) label += ` · awaiting ${ids.join(', ')}`;
   }
-  if (triageParked) label += ' · triage waiting';
+  if (mailWaiting) label += ' · mail waiting';
   if (reconcilePending) label += ' · input moved';
   return label;
 }

@@ -148,8 +148,8 @@ function beatQuietly(cwd, workUnit, phase, topic) {
 
 /**
  * The read verbs' beat: re-stamp a heartbeat this session already owns, and
- * only that. A read (`topic queue`, `agent scan`) is reachable for any topic
- * — a foreign topic's queue is legitimately checked from another session —
+ * only that. A read (`topic mailbox`, `agent scan`) is reachable for any topic
+ * — a foreign topic's mailbox is legitimately checked from another session —
  * so creating a hold here would manufacture a phantom, and stamping over a
  * peer's record would re-attribute a hold. Ownership was established by
  * the write-shaped verbs that are self-referential by construction (`topic
