@@ -12,7 +12,7 @@ it sends, drawing the record's line verbatim where it carries one, the
 handoff's; a row it cannot pair shows the answer alone. It changes only the drawing: the model reads Claude
 Code's framing, and ctrl+o shows the message in full.
 
-Each line it draws is kept in that folder,
+Each line it draws for a row the mod sent is kept in that folder,
 `~/.config/workflows/conversations/{session-id}/rows.json` (under
 `WORKFLOWS_CONFIG_DIR` where that is set, beside the workflows' system
 config), under the row's message id, so scrolling back and a resumed
@@ -25,3 +25,14 @@ folder the way the workflows' engine does. A conversation that
 does not run the workflows has no folder, nor does one in a process that names
 neither a home directory nor `WORKFLOWS_CONFIG_DIR`: there the mod writes
 nothing and draws the row as Claude Code does.
+
+It also draws the row of the note `workflow-gates` appends to a compaction —
+which Claude Code stores as an ordinary user row — as one dim line cut to the
+row's width: `⟳ Compacted · carrying on in fumi › discussion ›
+management-window`. It knows the row by the record the mod keeps in the
+conversation's folder as `compacted.json`, every note it handed up with the
+place it carries on in: a row whose text is a recorded note draws that
+place's line. It only reads the record — the gates mod is its one writer, and
+it keeps every note, so scrolling back and a resumed conversation draw the
+row the same way. A row that does not open as the engine's note costs no
+read, and ctrl+o shows the note in full.

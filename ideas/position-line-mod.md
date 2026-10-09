@@ -21,15 +21,17 @@ to the tmux labelling.
 
 ## Shape
 
-- **Source is the engine's own verbs, read off the argv.** The mod's
-  `tool.call` hook already intercepts every engine call for the gates. It
-  reads `engine session label {wu} {phase} {topic}` — the call every
-  process skill makes at Step 0 and discovery makes at its run step — and
-  pins `{wu} · {phase} · {topic}`, the topic collapsed when it equals the
-  work unit, exactly as the tmux label does. No new engine verb, no file.
-- **Task progress rides the same hook.** A `task start` response names the
-  task; the plan's count comes from the same place the task loop reads it.
-  Both are optional tails on the line, never the line itself.
+- **Source is the conversation's position.** The engine records where the
+  conversation is working as `position.json` in the conversation's folder —
+  written by `session label {wu} {phase} {topic}`, the call every process
+  skill makes at Step 0 and discovery makes at its run step, and by `task
+  start`, which adds the task in flight. The mod reads it after each engine
+  call that moves it, as the spinner does, and pins `{wu} · {phase} ·
+  {topic}`, the topic collapsed when it equals the work unit, exactly as the
+  tmux label does. No new engine verb.
+- **Task progress rides the same record.** The position names the task in
+  flight; the plan's count comes from the same place the task loop reads
+  it. Both are optional tails on the line, never the line itself.
 - **Leaving a place is never an event** (the session-label rule): the line
   changes only when the next place labels itself. `/clear` and `/resume`
   are `command.run` events the mod can watch to clear or restore it.
