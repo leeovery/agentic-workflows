@@ -39,7 +39,7 @@ const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
-const { roadmapState, hasRoadmapNode, validateKind, planRoadmapBatch } = require('./roadmap.cjs');
+const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
 const { discussionDeferGate } = require('./projections/discussion-map.cjs');
 const { latestReview } = require('./agent-state.cjs');
@@ -5485,9 +5485,9 @@ function horizonPick(cwd, _args) {
 
 // ` (new)` for a horizon an existing map does not hold yet; a never-born map
 // says its own birth instead.
-/** @param {ReturnType<typeof roadmapState>} state @param {string} horizon */
-function horizonFlag(state, horizon) {
-  return state.exists && !state.horizons.includes(horizon) ? ' (new)' : '';
+/** @param {{exists: boolean, horizons: string[]}} roadmap @param {string} horizon */
+function horizonFlag(roadmap, horizon) {
+  return roadmap.exists && !roadmap.horizons.includes(horizon) ? ' (new)' : '';
 }
 
 /**
@@ -5501,27 +5501,30 @@ function horizonFlag(state, horizon) {
 function inboxRoadmapGate(cwd, { file }) {
   if (!file) throw new Error('render inbox-roadmap-gate: --file <entries.json> is required');
   const entries = readJsonPayload(cwd, file, 'inbox-roadmap-gate');
-  /** @type {import('./roadmap.cjs').BatchEntry[]} */
-  let items;
+  /** @type {ReturnType<typeof planRoadmapBatch>} */
+  let plan;
   try {
     if (Array.isArray(entries) && entries.some((e) => !e || e.note === undefined)) {
       throw new Error('every entry names its inbox note');
     }
-    items = planRoadmapBatch(cwd, entries);
+    plan = planRoadmapBatch(cwd, entries);
   } catch (err) {
     throw new Error(`render inbox-roadmap-gate: ${err instanceof Error ? err.message : String(err)}`);
   }
+  const items = plan.entries;
   const horizon = items[0].horizon;
   if (items.some((item) => item.horizon !== horizon)) {
     throw new Error('render inbox-roadmap-gate: every entry goes under the one horizon');
   }
-  const state = roadmapState(cwd);
   const one = items.length === 1;
   const statement = [
-    `Putting ${one ? 'this' : 'these'} on the roadmap under "${horizon}"${horizonFlag(state, horizon)}, waiting until ${one ? 'it is' : 'each is'} pulled into work — ${one ? 'its note leaves' : 'their notes leave'} the inbox with ${one ? 'it' : 'them'}:`,
+    `Putting ${one ? 'this' : 'these'} on the roadmap under "${horizon}"${horizonFlag(plan, horizon)}, waiting until ${one ? 'it is' : 'each is'} pulled into work — ${one ? 'its note leaves' : 'their notes leave'} the inbox with ${one ? 'it' : 'them'}:`,
     '',
-    ...items.map((item) => `- **${titlecase(item.name)}**${item.kind === 'idea' ? '' : ` \`[${item.kind}]\``} — ${item.summary}`),
-    ...(state.exists ? [] : ['', `The roadmap is created with ${one ? 'it' : 'them'}.`]),
+    ...items.map((item) => {
+      const kind = markedKind(item.kind);
+      return `- **${titlecase(item.name)}**${kind ? ` \`[${kind}]\`` : ''} — ${item.summary}`;
+    }),
+    ...(plan.exists ? [] : ['', `The roadmap is created with ${one ? 'it' : 'them'}.`]),
   ].join('\n');
   return section('MENU: inbox roadmap gate', MENU_INSTRUCTION, menu(statement, [
     cmdOption('y', 'yes', `Put ${one ? 'it' : 'them'} on the roadmap`),
@@ -5545,7 +5548,8 @@ function parkGate(cwd, args) {
   if (state.items.some((r) => r.name === name)) {
     throw new Error(`render park-gate: "${name}" is already on the roadmap — edit it, or pick a different name`);
   }
-  const what = kind === 'idea' ? '' : `the ${kind} `;
+  const marked = markedKind(/** @type {import('./roadmap.cjs').RoadmapKind} */ (kind));
+  const what = marked ? `the ${marked} ` : '';
   const statement = [
     `Parking ${what}**${titlecase(name)}** — ${summary} — puts it on the roadmap under "${horizon}"${horizonFlag(state, horizon)}, waiting until it is pulled into work.`,
     ...(state.exists ? [] : ['The roadmap is created with it.']),

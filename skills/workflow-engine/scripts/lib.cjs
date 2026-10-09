@@ -98,6 +98,7 @@ module.exports = {
   },
   roadmap: {
     roadmapState: roadmapDomain.roadmapState,
+    becomesTopic: roadmapDomain.becomesTopic,
   },
   presence: {
     scanPresence: presence.scanPresence,

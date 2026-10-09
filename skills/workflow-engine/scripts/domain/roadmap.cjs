@@ -55,6 +55,27 @@ const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, INB
 
 const KINDS = /** @type {RoadmapKind[]} */ (Object.values(FOLDER_KIND));
 
+/**
+ * Whether an item becomes a topic when it meets an epic — an idea alone; a
+ * bug or a quick-fix rides with its unit as material, never a topic. The one
+ * predicate behind bind, pull-forward, absorb's re-aim, the add gate's
+ * delivery, and discovery's anti-twin flag.
+ * @param {{kind?: unknown}} item
+ * @returns {boolean}
+ */
+function becomesTopic(item) {
+  return item.kind === 'idea';
+}
+
+/**
+ * The kind a display names — none for an idea, the unmarked kind.
+ * @param {RoadmapKind} kind
+ * @returns {RoadmapKind|null}
+ */
+function markedKind(kind) {
+  return kind === 'idea' ? null : kind;
+}
+
 // A roadmap note as a source — relative to `.workflows/`, as every source is.
 const NOTE_SOURCE = /^\.roadmap\/notes\/(ideas|bugs|quickfixes)\/([^/]+\.md)$/;
 
@@ -194,16 +215,17 @@ function refuseJoined(item, name, verbPhrase) {
  * stored. `waiting` is the absence of a join; a join names a work unit whose
  * status answers the rest. `orphaned` is the honest fallback for a join the
  * revert should have cleared (a missing or cancelled unit) — surfaced, never
- * papered over. `pulled_to.topic` rides along for display; lifecycle
- * derives from the unit alone.
+ * papered over. `pulled_to.topic` rides along for display, and the unit's
+ * work type for the add gate (only an epic takes a topic); lifecycle derives
+ * from the unit alone.
  * @param {string} cwd
  * @param {Record<string, any>} item
- * @returns {{state: 'waiting'|'in-flight'|'shipped'|'orphaned', work_unit?: string, topic?: string}}
+ * @returns {{state: 'waiting'|'in-flight'|'shipped'|'orphaned', work_unit?: string, topic?: string, work_type?: string}}
  */
 function deriveItemState(cwd, item) {
   const join = itemJoin(item);
   if (!join) return { state: 'waiting' };
-  /** @type {{state: 'in-flight'|'shipped'|'orphaned', work_unit: string, topic?: string}} */
+  /** @type {{state: 'in-flight'|'shipped'|'orphaned', work_unit: string, topic?: string, work_type?: string}} */
   const base = { state: 'in-flight', work_unit: join.work_unit };
   if (typeof join.topic === 'string' && join.topic !== '') base.topic = join.topic;
   /** @type {any} */
@@ -213,6 +235,7 @@ function deriveItemState(cwd, item) {
   } catch {
     return { ...base, state: 'orphaned' };
   }
+  if (typeof unit.work_type === 'string') base.work_type = unit.work_type;
   if (unit.status === 'completed') return { ...base, state: 'shipped' };
   if (unit.status === 'cancelled') return { ...base, state: 'orphaned' };
   return base;
@@ -229,6 +252,7 @@ function deriveItemState(cwd, item) {
  * @property {'waiting'|'in-flight'|'shipped'|'orphaned'} state
  * @property {string} [work_unit]  the join's unit, when joined
  * @property {string} [topic]      the join's topic, when a pull-forward set one
+ * @property {string} [work_type]  the joined unit's work type, when its manifest reads
  */
 
 /**
@@ -349,6 +373,7 @@ function roadmapState(cwd) {
     };
     if (derived.work_unit !== undefined) row.work_unit = derived.work_unit;
     if (derived.topic !== undefined) row.topic = derived.topic;
+    if (derived.work_type !== undefined) row.work_type = derived.work_type;
     items.push(row);
   }
   const rank = (/** @type {RoadmapItemRow} */ row) => {
@@ -544,13 +569,14 @@ function resolveBatchEntry(e) {
   if (e.origin !== undefined || e.sources !== undefined) {
     throw new Error('a note sets the entry\'s origin and source — drop "origin" and "sources"');
   }
+  if (/\s/.test(note.file)) {
+    throw new Error(`the note "${note.given}" has a space in its file name — a note's name can't carry spaces; rename the file`);
+  }
   const source = `.roadmap/notes/${note.folder}/${note.file}`;
-  const origin = `inbox:${note.file.replace(/\.md$/, '')}`;
-  validateOrigin(origin);
   return {
     ...base,
     kind,
-    origin,
+    origin: `inbox:${note.file.replace(/\.md$/, '')}`,
     sources: [source],
     move: { from: note.given, to: `.workflows/${source}` },
   };
@@ -591,12 +617,16 @@ function planBatch(cwd, entries, items) {
 
 /**
  * The add-batch plan as a dry run against the roadmap as it stands — what
- * the inbox's confirm gate shows, refused exactly where the verb would be.
+ * the inbox's confirm gate shows, refused exactly where the verb would be —
+ * with the roadmap's existence and horizons, read from the same manifest.
  * @param {string} cwd @param {*} entries
- * @returns {BatchEntry[]}
+ * @returns {{entries: BatchEntry[], exists: boolean, horizons: string[]}}
  */
 function planRoadmapBatch(cwd, entries) {
-  return planBatch(cwd, entries, roadmapItems(readProjectManifest(cwd))).resolved;
+  const manifest = readProjectManifest(cwd);
+  const exists = hasRoadmapNode(manifest);
+  const horizons = exists && Array.isArray(manifest.roadmap.horizons) ? manifest.roadmap.horizons : [];
+  return { entries: planBatch(cwd, entries, roadmapItems(manifest)).resolved, exists, horizons };
 }
 
 /**
@@ -753,7 +783,8 @@ function removeRoadmapItem(cwd, name) {
   const preRoadmap = requireRoadmap(readProjectManifest(cwd));
   const preflight = roadmapItem(preRoadmap, name);
   refuseJoined(preflight, name, 'removing');
-  refuseTakenDestinations(cwd, noteArchiveMoves(cwd, preRoadmap.items, name));
+  const moves = noteArchiveMoves(cwd, preRoadmap.items, name);
+  refuseTakenDestinations(cwd, moves);
   const postponed = itemPostponedFrom(preflight);
   // The epic's row is cancelled before the item is deleted: a crash between
   // leaves a cancelled row and a removable item, never a live postponed row
@@ -766,8 +797,6 @@ function removeRoadmapItem(cwd, name) {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
     refuseJoined(item, name, 'removing');
-    const moves = noteArchiveMoves(cwd, roadmap.items, name);
-    refuseTakenDestinations(cwd, moves);
     delete roadmap.items[name];
     /** @type {RoadmapOpResult} */
     const out = { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
@@ -775,7 +804,6 @@ function removeRoadmapItem(cwd, name) {
     if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
     return { out, moves };
   }, { leaving: true });
-  const moves = result.notes_moved ?? [];
   return postponed
     ? commitRoadmap(cwd, result, `roadmap: remove ${name} — ${postponed.topic} cancelled in ${postponed.work_unit}`, { workUnit: postponed.work_unit, moves })
     : commitRoadmap(cwd, result, `roadmap: remove ${name}`, { moves });
@@ -1013,7 +1041,7 @@ function bindItem(cwd, name, { topic } = {}) {
     const item = roadmapItem(roadmap, name);
     const join = itemJoin(item);
     if (!join) throw new Error(`"${name}" is not joined to a work unit — pull it first`);
-    if (item.kind !== 'idea') {
+    if (!becomesTopic(item)) {
       throw new Error(`"${name}" is a ${item.kind} — it rides with the unit as material; only an idea binds to a topic`);
     }
     /** @type {any} */
@@ -1102,7 +1130,7 @@ function pullForwardItem(cwd, name, { into, routing, forceDismissed = false } = 
   if (!preItem || typeof preItem !== 'object') throw new Error(`no roadmap item "${name}"`);
   const preJoin = itemJoin(preItem);
   if (preJoin) throw new Error(`"${name}" is already joined to work unit "${preJoin.work_unit}" — pull-forward takes a waiting item`);
-  if (preItem.kind !== 'idea') {
+  if (!becomesTopic(preItem)) {
     throw new Error(`"${name}" is a ${preItem.kind} — an epic grows by topics, and pull-forward takes ideas only; start it with the pull (roadmap pull), as work of its own`);
   }
 
@@ -1299,7 +1327,7 @@ function carrySources(items, relocations, { deleted } = {}) {
 
 /**
  * @typedef {object} AbsorbedRoadmap
- * @property {string[]} reaimed  items whose joins now name the epic topic
+ * @property {string[]} reaimed  items whose joins now name the epic (an idea's, its topic too)
  * @property {{item: string, from: string, to: string}[]} rewritten  sources that followed the material
  * @property {{item: string, source: string}[]} dropped  sources deleted with the feature
  */
@@ -1307,7 +1335,9 @@ function carrySources(items, relocations, { deleted } = {}) {
 /**
  * Absorb's hop: an absorbed feature's material continues as an epic topic,
  * so the roadmap follows it there. Every join naming `fromUnit` is re-aimed
- * at `{work_unit: into, topic}` (the un-pull is cancel's move, never
+ * at the epic — an idea's at `{work_unit: into, topic}`, a bug's or a
+ * quick-fix's at `{work_unit: into}` alone, riding with the unit as material
+ * as it rode with the feature (the un-pull is cancel's move, never
  * absorb's — the work did not stop, it moved), and every source is carried
  * across the absorb's `relocations` — one under `fromUnit/` that nothing
  * moved going with the feature. Runs under the project lock, **no commit** —
@@ -1331,7 +1361,7 @@ function reaimAbsorbed(cwd, fromUnit, { into, topic, relocations }) {
       const item = /** @type {Record<string, any>} */ (raw);
       const join = itemJoin(item);
       if (join && join.work_unit === fromUnit) {
-        item.pulled_to = { work_unit: into, topic };
+        item.pulled_to = becomesTopic(item) ? { work_unit: into, topic } : { work_unit: into };
         reaimed.push(name);
       }
     }
@@ -1398,6 +1428,8 @@ function flagJoined(cwd, name) {
 }
 
 module.exports = {
+  becomesTopic,
+  markedKind,
   validateKind,
   planRoadmapBatch,
   roadmapState,

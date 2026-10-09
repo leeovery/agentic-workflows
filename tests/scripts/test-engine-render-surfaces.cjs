@@ -5311,8 +5311,41 @@ describe('roadmap surfaces', () => {
   it('roadmap-add-gate: refuses an unknown horizon and one with no delivery', () => {
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
     assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'ghost' }), /unknown horizon/);
-    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'v1' }), /no member of "v1" is in delivery/);
+    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'v1' }), /no member of "v1" is in an epic underway — a plain add needs no gate/);
     assert.throws(() => renderSurface(dir, 'roadmap-add-gate', {}), /--horizon is required/);
+  });
+
+  it('roadmap-add-gate: a horizon pulled into a bugfix, a quick-fix and a feature has no delivery — no unit of theirs takes a topic', () => {
+    writeRoadmap({
+      horizons: ['next'],
+      items: {
+        crash: { horizon: 'next', summary: 's', kind: 'bug', origin: 'harvest', pulled_to: { work_unit: 'crash' } },
+        typo: { horizon: 'next', summary: 's', kind: 'quick-fix', origin: 'harvest', pulled_to: { work_unit: 'typo' } },
+        views: { horizon: 'next', summary: 's', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'views' } },
+      },
+    }, {
+      crash: { work_type: 'bugfix', status: 'in-progress' },
+      typo: { work_type: 'quick-fix', status: 'in-progress' },
+      views: { work_type: 'feature', status: 'in-progress' },
+    });
+    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'next' }), /no member of "next" is in an epic underway/);
+  });
+
+  it('roadmap-add-gate: beside an epic, a member pulled into a bugfix is no delivery and keeps the horizon from reading wholly built', () => {
+    writeRoadmap({
+      horizons: ['next'],
+      items: {
+        ordering: { horizon: 'next', summary: 's', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp' } },
+        crash: { horizon: 'next', summary: 's', kind: 'bug', origin: 'harvest', pulled_to: { work_unit: 'crash' } },
+      },
+    }, {
+      mvp: { work_type: 'epic', status: 'in-progress' },
+      crash: { work_type: 'bugfix', status: 'in-progress' },
+    });
+    const out = renderSurface(dir, 'roadmap-add-gate', { horizon: 'next' });
+    assert.match(out, /^=== DATA [^\n]*===\nwork_units: mvp\n/, 'the bugfix is never a delivery unit');
+    assert.match(out, /"next" is partly being built\./);
+    assert.match(out, /\*\*`w\/waiting`\*\* +→ On the roadmap in "next", waiting\n/, 'the waiting row, nothing else waiting beside it');
   });
 
   it('horizon-pick: the horizons in map order, each with what waits in it, then the new row', () => {
@@ -5465,7 +5498,7 @@ describe('roadmap surfaces', () => {
     refused([{ ...item, note: '.workflows/.inbox/ideas/2026-09-09--gone.md' }], /render inbox-roadmap-gate: inbox file not found/);
     refused([{ ...item, kind: 'bug' }], /render inbox-roadmap-gate: entry 1 — "kind" is bug, but the note .* is a idea/);
     fs.writeFileSync(path.join(dir, '.workflows/.inbox/ideas/2026-03-04--dark mode.md'), '# x\n');
-    refused([{ ...item, note: '.workflows/.inbox/ideas/2026-03-04--dark mode.md' }], /render inbox-roadmap-gate: entry 1 — unknown origin "inbox:2026-03-04--dark mode"/);
+    refused([{ ...item, note: '.workflows/.inbox/ideas/2026-03-04--dark mode.md' }], /render inbox-roadmap-gate: entry 1 — the note "\.workflows\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
     fs.mkdirSync(path.join(dir, '.workflows/.roadmap/notes/ideas'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.workflows/.roadmap/notes/ideas/2026-03-01--dark-mode.md'), 'taken\n');
     refused([item], /render inbox-roadmap-gate: destination already exists/);

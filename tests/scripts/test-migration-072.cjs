@@ -227,19 +227,22 @@ describe('migration 072: every roadmap item has a kind, and its note lives on th
       assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
     });
 
-    it('leaves every other source alone — a live inbox path, a session log, another archive folder, a non-string', () => {
+    it('leaves every other source alone — a live inbox path, a session log, another archive folder, a nested path, a file that is not markdown, a non-string', () => {
       const sources = [
         '.inbox/ideas/2026-03-01--dark-mode.md',
         '.roadmap/sessions/session-001.md',
         '.inbox/.archived/other/2026-03-01--x.md',
         '.inbox/.archived/ideas/nested/2026-03-01--x.md',
+        '.inbox/.archived/ideas/2026-03-01--sketch.png',
         42,
       ];
       writeProject(roadmap({ odd: { horizon: 'later', summary: 'a', kind: 'idea', origin: 'harvest', sources } }));
+      write('.workflows/.inbox/.archived/ideas/2026-03-01--sketch.png');
 
       run();
 
       assert.deepStrictEqual(items().odd.sources, sources);
+      assert.ok(exists('.workflows/.inbox/.archived/ideas/2026-03-01--sketch.png'), 'only a markdown note moves');
       assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
     });
   });

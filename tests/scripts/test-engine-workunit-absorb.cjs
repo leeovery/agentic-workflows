@@ -747,7 +747,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   }
 
   it("a waiting item's discussion source names the moved discussion", () => {
-    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', origin: 'park:auth-flow', sources: ['auth-flow/discussion/auth-flow.md'] } });
+    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discussion/auth-flow.md'] } });
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual(res.roadmap_sources_rewritten, [
@@ -756,13 +756,13 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
     assert.strictEqual(res.roadmap_sources_dropped, undefined);
     assert.strictEqual(res.roadmap_reaimed, undefined, 'a waiting item has no join to re-aim');
     assert.deepStrictEqual(readProject().roadmap.items.sso,
-      { horizon: 'v1', summary: 'single sign-on', origin: 'park:auth-flow', sources: ['payments/discussion/auth.md'] });
+      { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['payments/discussion/auth.md'] });
     assertSourcesOnDisk();
   });
 
   it("a joined item's research and discussion sources follow, and its join is re-aimed as before", () => {
     setupRoadmap({ login: {
-      horizon: 'v1', summary: 'log in', origin: 'harvest',
+      horizon: 'v1', summary: 'log in', kind: 'idea', origin: 'harvest',
       sources: ['auth-flow/research/auth-flow.md', 'auth-flow/discussion/auth-flow.md'],
       pulled_to: { work_unit: 'auth-flow' },
     } });
@@ -775,10 +775,25 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
     assertSourcesOnDisk();
   });
 
+  it('a mixed feature: its idea\'s join takes the epic topic, its bug\'s and quick-fix\'s the epic alone — they ride as material, never topics', () => {
+    setupRoadmap({
+      login: { horizon: 'v1', summary: 'log in', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'auth-flow' } },
+      'token-leak': { horizon: 'v1', summary: 'a token leaks', kind: 'bug', origin: 'harvest', pulled_to: { work_unit: 'auth-flow' } },
+      typo: { horizon: 'v1', summary: 'a typo', kind: 'quick-fix', origin: 'harvest', pulled_to: { work_unit: 'auth-flow' } },
+    });
+    const res = engine(fix, ABSORB);
+
+    assert.deepStrictEqual(res.roadmap_reaimed, ['login', 'token-leak', 'typo']);
+    const items = readProject().roadmap.items;
+    assert.deepStrictEqual(items.login.pulled_to, { work_unit: 'payments', topic: 'auth' });
+    assert.deepStrictEqual(items['token-leak'].pulled_to, { work_unit: 'payments' });
+    assert.deepStrictEqual(items.typo.pulled_to, { work_unit: 'payments' });
+  });
+
   it('an import source takes the name the dedupe gave it; a seed and an experiment record follow theirs', () => {
     const feature = featureManifest();
     feature.phases.experiment = { items: { 'auth-flow': { status: 'in-progress', experiments: { E1: { slug: 'dup-rate', status: 'running' } } } } };
-    setupRoadmap({ webhooks: { horizon: 'v1', summary: 'webhooks', origin: 'harvest', sources: [
+    setupRoadmap({ webhooks: { horizon: 'v1', summary: 'webhooks', kind: 'idea', origin: 'harvest', sources: [
       'auth-flow/imports/notes.md',
       'auth-flow/seeds/seed.md',
       'auth-flow/experiment/auth-flow/E1-dup-rate/problem.md',
@@ -798,8 +813,8 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
 
   it('a source nothing moved goes with the feature — the sources field too, once empty', () => {
     setupRoadmap({
-      lone: { horizon: 'v1', summary: 'lone', origin: 'park:auth-flow', sources: ['auth-flow/discovery/sessions/session-001.md'] },
-      mixed: { horizon: 'v1', summary: 'mixed', origin: 'harvest', sources: [
+      lone: { horizon: 'v1', summary: 'lone', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discovery/sessions/session-001.md'] },
+      mixed: { horizon: 'v1', summary: 'mixed', kind: 'idea', origin: 'harvest', sources: [
         'auth-flow/discovery/sessions/session-001.md',
         '.roadmap/sessions/session-001.md',
         'auth-flow/discussion/auth-flow.md',
@@ -812,14 +827,14 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
       { item: 'mixed', source: 'auth-flow/discovery/sessions/session-001.md' },
     ]);
     const items = readProject().roadmap.items;
-    assert.deepStrictEqual(items.lone, { horizon: 'v1', summary: 'lone', origin: 'park:auth-flow' });
+    assert.deepStrictEqual(items.lone, { horizon: 'v1', summary: 'lone', kind: 'idea', origin: 'park:auth-flow' });
     assert.deepStrictEqual(items.mixed.sources, ['.roadmap/sessions/session-001.md', 'payments/discussion/auth.md']);
     assertSourcesOnDisk();
   });
 
   it("a source outside the feature is untouched — a sibling unit sharing the name's prefix included", () => {
     const outside = ['.roadmap/sessions/session-001.md', 'payments/research/exploration.md', 'auth-flow-v2/discussion/auth-flow-v2.md'];
-    setupRoadmap({ other: { horizon: 'v1', summary: 'other', origin: 'harvest', sources: outside } });
+    setupRoadmap({ other: { horizon: 'v1', summary: 'other', kind: 'idea', origin: 'harvest', sources: outside } });
     const before = readProject().roadmap;
     const res = engine(fix, ABSORB);
 
@@ -840,7 +855,7 @@ describe('engine workunit absorb — roadmap sources follow the material', () =>
   });
 
   it("the rewrite rides the absorb's one commit — the project manifest committed, nothing left dirty", () => {
-    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', origin: 'park:auth-flow', sources: ['auth-flow/discussion/auth-flow.md'] } });
+    setupRoadmap({ sso: { horizon: 'v1', summary: 'single sign-on', kind: 'idea', origin: 'park:auth-flow', sources: ['auth-flow/discussion/auth-flow.md'] } });
     const commits = Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim());
     engine(fix, ABSORB);
 

@@ -212,7 +212,7 @@ function mapView(workUnit, ...rest) {
     // bug or a quick-fix of the name is no twin: it never becomes a topic.
     const waitingOnRoadmap = new Set(
       engine.roadmap.roadmapState(cwd).items
-        .filter((i) => i.state === 'waiting' && i.kind === 'idea').map((i) => i.name),
+        .filter((i) => i.state === 'waiting' && engine.roadmap.becomesTopic(i)).map((i) => i.name),
     );
     dataLines.push(`proposed (${proposed.length}):`);
     for (const t of proposed) {

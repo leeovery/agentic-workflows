@@ -79,8 +79,8 @@ describe('roadmap projections: pull working set', () => {
       '  └─ 1. Menus — operators maintain',
       '',
       'v1',
-      '  └─ 2. Export Timeout [bug] — large exports of a whole year',
-      '        of orders time out before the file is ready to download',
+      '  └─ 2. Export Timeout [bug] — large exports of a whole year of',
+      '        orders time out before the file is ready to download',
       '',
     ].join('\n'));
   });
