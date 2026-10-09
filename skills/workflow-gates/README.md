@@ -197,12 +197,16 @@ the compaction that comes reuses it beneath the note.
 
 ## Working on it
 
-    npm run mod:types       # fetch the API declarations into types/ (gitignored)
-    npm run typecheck:mod   # tsc against those declarations
+    npm run typecheck:mod   # tsc against the declarations Claude Code laid
     npm run test:mod        # claude plugin test
 
-The declarations come from the Claude Code repository and are regenerable, so
-they are not committed. Fetch them before the first typecheck.
+Claude Code lays its own build's API declarations into a mod's
+`.claude-plugin/types/` whenever it loads the mod for development, with a
+`tsconfig.json` this mod's own extends; the folder ignores itself. Load the
+mods once in a session — `claude --plugin-dir skills/workflow-gates
+--plugin-dir skills/workflow-gates-rows` — before the first typecheck, and
+every load lays them afresh for the Claude Code running. `test:mod` needs
+none: it runs the suites against the installed Claude Code.
 
 The suites run on Claude Code 2.1.287 or newer, where mods are on by
 default.
