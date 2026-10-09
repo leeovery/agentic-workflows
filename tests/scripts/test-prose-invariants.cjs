@@ -156,14 +156,14 @@ describe('calls_include / calls_exclude', () => {
     // only inside the search pattern — and calls_exclude reported it as
     // run. Quotes are stripped on both sides of a match, so the argument
     // and the invocation look identical.
-    const rows = [bash('cd . && grep -rl "topic triage" .claude/skills')];
-    const [result] = invariants.check(rows, { calls_exclude: ['topic triage'] });
+    const rows = [bash('cd . && grep -rl "topic send" .claude/skills')];
+    const [result] = invariants.check(rows, { calls_exclude: ['topic send'] });
     assert.equal(result.ok, true, 'searching for a call is not running it');
   });
 
   it('still sees a real call in a statement alongside a search', () => {
-    const rows = [bash(`grep -n triage docs.md && ${ENGINE} topic triage pay discussion pay`)];
-    const [result] = invariants.check(rows, { calls_exclude: ['topic triage'] });
+    const rows = [bash(`grep -n send docs.md && ${ENGINE} topic send pay discussion pay`)];
+    const [result] = invariants.check(rows, { calls_exclude: ['topic send'] });
     assert.equal(result.ok, false, 'the engine call is still there to find');
   });
 

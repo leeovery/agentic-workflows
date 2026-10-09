@@ -673,16 +673,16 @@ describe('workflow-discovery format', () => {
     assert.match(out, /- ○ auth-flow \[fresh\] routing=research — oauth/);
   });
 
-  it('a parked stub row carries the triage=waiting cue', () => {
+  it('a parked stub row carries the mail=waiting cue', () => {
     createManifest(dir, 'payments', {
       work_type: 'epic',
       phases: {
-        discovery: { items: { parked: { routing: 'research', source: 'reroute:origin', summary: 'target' } } },
-        research: { items: { parked: { status: 'triaged' } } },
+        discovery: { items: { parked: { routing: 'research', source: 'message:origin', summary: 'target' } } },
+        research: { items: { parked: { status: 'unstarted' } } },
       },
     });
     const out = format(discover(dir, 'payments'));
-    assert.match(out, /- ○ parked \[fresh\] routing=research source=reroute:origin triage=waiting — target/);
+    assert.match(out, /- ○ parked \[fresh\] routing=research source=message:origin mail=waiting — target/);
   });
 
   it('omits source from map row when source=discovery', () => {
@@ -885,7 +885,7 @@ describe('workflow-discovery format', () => {
     ].join('\n'));
   });
 
-  it('carries no needs_sequencing line — sequencing is the epic dump\'s concern', () => {
+  it('carries no needs_sequencing line — sequencing is the epic dump\'s message', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     const out = format(discover(dir, 'payments'));
     assert.ok(!out.includes('needs_sequencing'));

@@ -35,7 +35,7 @@ function holderCopy(phase) {
 // the discussion entry gate read as one.
 /** @param {string} status  an outstanding research status */
 function researchWaitState(status) {
-  return status === 'triaged' ? 'parked — not yet started' : 'in flight';
+  return status === 'unstarted' ? 'parked — not yet started' : 'in flight';
 }
 
 /** @param {Wait[]} waits @returns {string[]} the evidence ids, derivation order */

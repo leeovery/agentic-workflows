@@ -35,8 +35,9 @@ const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadRefr
 const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, handleItem, unhandleItem } = require('./domain/discovery-map.cjs');
 const { sequenceBuildOrder } = require('./domain/build-order.cjs');
-const { startTopic, triageTopic, queueStatus, absorbConcern, requeueConcern, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
+const { startTopic, sendMessage, mailboxStatus, absorbMessage, forwardMessage, completeTopic, reopenTopic, staleSources, supersedeTopic, cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { incorporations } = require('./domain/specification.cjs');
+const { mailboxDir } = require('./domain/derivations.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
 const { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { initTasks, startTask, fixAttempt, completeTask, analysisCycle } = require('./domain/tasks.cjs');
@@ -183,11 +184,11 @@ Commands:
   discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
-  topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]
-  topic queue <work-unit> <phase> <topic>
+  topic send <work-unit> <phase> <topic> [--content <file> --slug <kebab> -m <message>]
+  topic mailbox <work-unit> <phase> <topic>
   topic incorporations <work-unit> <topic>
   topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
-  topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
+  topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>
   presence beat <work-unit> <phase> <topic>
   presence clear <work-unit> <phase> <topic>
   presence scan [work-unit]
@@ -255,7 +256,7 @@ Commands:
   commit --roadmap -m <message>
   commit --workflows -m <message>
   commit --migrations -m <message>
-  render resume-gate <wu.phase.topic> [--triage N] [--variant plan|review|scoping|session]  (session: bare <wu>)
+  render resume-gate <wu.phase.topic> [--mail N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
@@ -274,24 +275,24 @@ Commands:
   render project-skills   <wu.implementation.topic> --variant confirm|discovery|skipped [--file <payload.json>]
   render linters          <wu.implementation.topic> --variant confirm|discovery|skipped [--file <payload.json>]
   render convergence-diagnostic <wu.phase.topic> --file <payload.json>
-  render triage-announce  <wu.phase.topic>
-  render triage-offer     <wu.phase.topic> --file <payload.json>
-  render triage-block     <wu.phase.topic>
-  render requeue-offer    <wu.phase.topic> --file <payload.json>
-  render reroute-offer    <wu.phase.topic> --file <payload.json>
+  render mail-announce    <wu.phase.topic>
+  render mail-offer       <wu.phase.topic> --file <payload.json>
+  render mail-block       <wu.phase.topic>
+  render forward-offer    <wu.phase.topic> --file <payload.json>
+  render send-offer       <wu.phase.topic> --file <payload.json>
   render research-threads <wu.research.topic>
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render perspective-offer <wu.discussion.topic> --file <payload.json>
   render in-flight-agents-gate <wu.research|discussion.topic> --count N [--pause]
   render review-findings-gate <wu.discussion.topic>
-  render reroute-candidates <wu.phase.topic> --file <payload.json>
+  render send-candidates  <wu.phase.topic> --file <payload.json>
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
   render backlog-gate     <wu.phase.topic> --file <payload.json>
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
   render candidate-gate   <wu> --file <payload.json>
   render dismissed-topics <wu>
-  render triage-closed-target <wu.discovery.target>
+  render send-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
   render closing-gate     <wu.discussion.topic> --variant re-review|findings-owed|review-running|final-review|wrap-up
   render defer-gate       <wu.discussion.topic>
@@ -827,7 +828,7 @@ function runDiscoverySession(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// topic — phase-item transitions. start/triage/complete/reopen/supersede are
+// topic — phase-item transitions. start/send/complete/reopen/supersede are
 // manifest-side lifecycle bookkeeping (KB sync where the phase is indexed:
 // index on complete, remove on supersede; reopen syncs nothing —
 // warn-don't-block) with no git commit — the calling session's commit
@@ -838,21 +839,21 @@ function runDiscoverySession(call, argv) {
 // The JSON response reports what happened — no follow-up read needed.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
-// topic: `start` (opening it), `absorb` (folding a concern into its own
-// document), and `queue` (the findings check polls it every turn, so a turn
+// topic: `start` (opening it), `absorb` (folding a message into its own
+// document), and `mailbox` (the findings check polls it every turn, so a turn
 // with no writes still registers). `complete` is the release: the topic is
 // closed, so the slot it held opens at that moment rather than at some later
-// commit. `triage` never beats — delivery acts on the TARGET topic from the
+// commit. `send` never beats — delivery acts on the TARGET topic from the
 // origin's session, and a beat there would stamp the origin process onto a
-// topic it does not hold. Nor do `requeue`, `cancel`, `reactivate`,
+// topic it does not hold. Nor do `forward`, `cancel`, `reactivate`,
 // `supersede` or `reopen`: those are analysis and navigation actors reaching
 // across topics.
 // ---------------------------------------------------------------------------
 
-const TOPIC_COMMANDS = { start: startTopic, triage: triageTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
+const TOPIC_COMMANDS = { start: startTopic, complete: completeTopic, reopen: reopenTopic, cancel: cancelTopic, reactivate: reactivateTopic };
 
 // The self-referential verbs among those dispatched through TOPIC_COMMANDS;
-// `queue` and `absorb` beat at their own branches.
+// `mailbox` and `absorb` beat at their own branches.
 const TOPIC_BEATS = ['start'];
 
 // The verbs whose phase argument names a stage's unit, not a phase item.
@@ -1030,13 +1031,13 @@ function runTopic(call, argv) {
       respond(call, supersedeTopic(call.cwd, workUnit, phase, topic, { by: opts.by }));
       return;
     }
-    if (command === 'queue') {
+    if (command === 'mailbox') {
       const [workUnit, phase, topic] = rest;
       if (!workUnit || !phase || !topic || rest.length !== 3) {
-        throw new Error('Usage: engine topic queue <work-unit> <phase> <topic>');
+        throw new Error('Usage: engine topic mailbox <work-unit> <phase> <topic>');
       }
-      const status = queueStatus(call.cwd, workUnit, phase, topic);
-      // A read is reachable for any topic — a foreign queue is legitimately
+      const status = mailboxStatus(call.cwd, workUnit, phase, topic);
+      // A read is reachable for any topic — a foreign mailbox is legitimately
       // checked from another session — so it refreshes an owned hold only,
       // never creates one.
       refreshQuietly(call.cwd, workUnit, phase, topic);
@@ -1068,12 +1069,12 @@ function runTopic(call, argv) {
       if (!workUnit || !phase || !topic || pos.length !== 3 || !file || !message) {
         throw new Error('Usage: engine topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>');
       }
-      const absorbed = absorbConcern(call.cwd, workUnit, phase, topic, { file, message, subtopic });
+      const absorbed = absorbMessage(call.cwd, workUnit, phase, topic, { file, message, subtopic });
       beatQuietly(call.cwd, workUnit, phase, topic);
       respond(call, absorbed);
       return;
     }
-    if (command === 'requeue') {
+    if (command === 'forward') {
       /** @type {string[]} */ const pos = [];
       /** @type {string|undefined} */ let file;
       /** @type {string|undefined} */ let message;
@@ -1085,29 +1086,29 @@ function runTopic(call, argv) {
       }
       const [workUnit, fromPhase, toPhase, topic] = pos;
       if (!workUnit || !fromPhase || !toPhase || !topic || pos.length !== 4 || !file || !message) {
-        throw new Error('Usage: engine topic requeue <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>');
+        throw new Error('Usage: engine topic forward <work-unit> <from-phase> <to-phase> <topic> --file <NNN-slug.md> -m <message>');
       }
-      respond(call, requeueConcern(call.cwd, workUnit, fromPhase, toPhase, topic, { file, message }));
+      respond(call, forwardMessage(call.cwd, workUnit, fromPhase, toPhase, topic, { file, message }));
       return;
     }
-    if (command === 'triage') {
+    if (command === 'send') {
       /** @type {string[]} */ const pos = [];
-      /** @type {string|undefined} */ let concern;
+      /** @type {string|undefined} */ let content;
       /** @type {string|undefined} */ let slug;
       /** @type {string|undefined} */ let message;
       for (let i = 0; i < rest.length; i++) {
         const a = rest[i];
-        if (a === '--concern') concern = rest[++i];
+        if (a === '--content') content = rest[++i];
         else if (a === '--slug') slug = rest[++i];
         else if (a === '-m' || a === '--message') message = rest[++i];
         else pos.push(a);
       }
       const [workUnit, phase, topic] = pos;
-      const delivering = concern !== undefined || slug !== undefined || message !== undefined;
-      if (!workUnit || !phase || !topic || pos.length !== 3 || (delivering && !(concern && slug && message))) {
-        throw new Error('Usage: engine topic triage <work-unit> <phase> <topic> [--concern <file> --slug <kebab> -m <message>]');
+      const delivering = content !== undefined || slug !== undefined || message !== undefined;
+      if (!workUnit || !phase || !topic || pos.length !== 3 || (delivering && !(content && slug && message))) {
+        throw new Error('Usage: engine topic send <work-unit> <phase> <topic> [--content <file> --slug <kebab> -m <message>]');
       }
-      respond(call, triageTopic(call.cwd, workUnit, phase, topic, delivering ? { concernFile: concern, slug, message } : {}));
+      respond(call, sendMessage(call.cwd, workUnit, phase, topic, delivering ? { contentFile: content, slug, message } : {}));
       return;
     }
     if (command === 'postpone') {
@@ -1120,7 +1121,7 @@ function runTopic(call, argv) {
       return;
     }
     if (!Object.prototype.hasOwnProperty.call(TOPIC_COMMANDS, command)) {
-      throw new Error('Usage: engine topic <start|triage|complete|reopen|supersede|cancel|reactivate|postpone|queue|incorporations|absorb|requeue> <work-unit> <phase> <topic>');
+      throw new Error('Usage: engine topic <start|send|complete|reopen|supersede|cancel|reactivate|postpone|mailbox|incorporations|absorb|forward> <work-unit> <phase> <topic>');
     }
     const fn = TOPIC_COMMANDS[/** @type {keyof typeof TOPIC_COMMANDS} */ (command)];
     const [workUnit, phase, topic] = rest;
@@ -1592,13 +1593,13 @@ function runBoot(call) {
 
 // Per-phase artifact pathspecs for `commit --topic` — the paths a topic's
 // session writes, joined with the work-unit manifest at the call site. The
-// triage-legal phases carry their sidecar directory so a drain's deletions
+// mailbox phases carry the topic's mailbox so a drain's deletions
 // ride the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
-  research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, `.workflows/${wu}/research/.triage/${t}`],
+  research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, mailboxDir(wu, 'research', t)],
   experiment: (wu, t) => [`.workflows/${wu}/experiment/${t}`],
-  discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, `.workflows/${wu}/discussion/.triage/${t}`],
-  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`, `.workflows/${wu}/investigation/.triage/${t}`],
+  discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, mailboxDir(wu, 'discussion', t)],
+  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`, mailboxDir(wu, 'investigation', t)],
   specification: (wu, t) => [`.workflows/${wu}/specification/${t}`],
   planning: (wu, t) => [`.workflows/${wu}/planning/${t}`],
   implementation: (wu, t) => [`.workflows/${wu}/implementation/${t}`],

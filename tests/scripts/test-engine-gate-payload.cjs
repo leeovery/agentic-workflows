@@ -521,10 +521,10 @@ describe('gate payload — every gateway verb', () => {
   /**
    * One project holding every state the gateway menus draw from: an inbox
    * and an archive, a roadmap with items waiting, an epic whose discussion a
-   * peer holds while its research runs and a concern waits in its queue —
+   * peer holds while its research runs and a message waits in its mailbox —
    * beside a completed topic whose input moved, a cancelled topic, a topic
    * postponed to the roadmap and a blocked plan — an epic grouped into specifications, a unit of each
-   * linear type ready for its next phase, a feature with a concern queued,
+   * linear type ready for its next phase, a feature with a message waiting,
    * and closed units.
    * @param {string} dir
    */
@@ -568,7 +568,7 @@ describe('gate payload — every gateway verb', () => {
         planning: { items: { tmpl: { status: 'in-progress', external_dependencies: { billing: { description: 'the ledger', state: 'unresolved' } } } } },
       },
     });
-    createFile(dir, '.workflows/v1/discussion/.triage/auth/001.md', '# A concern\n');
+    createFile(dir, '.workflows/v1/discussion/.mailbox/auth/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
 
     createManifest(dir, 'v2', {
@@ -599,7 +599,7 @@ describe('gate payload — every gateway verb', () => {
     concluded('typo', 'quick-fix', 'scoping', 'implementation');
     concluded('logging', 'cross-cutting', 'discussion', 'specification');
     createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
-    createFile(dir, '.workflows/payments/discussion/.triage/payments/001.md', '# A concern\n');
+    createFile(dir, '.workflows/payments/discussion/.mailbox/payments/001.md', '# A message\n');
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'old-bug', { work_type: 'bugfix', status: 'cancelled' });
   }
@@ -704,24 +704,24 @@ describe('gate payload — a row built from parts', () => {
     let rows = [];
     const gate = collect(() => {
       rows = [
-        cmdOption('1', null, { head: 'Continue "Auth"', tail: 'research', cue: 'triage waiting', recommended: true }),
+        cmdOption('1', null, { head: 'Continue "Auth"', tail: 'research', cue: 'mail waiting', recommended: true }),
         cmdOption('2', null, { head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)' }),
-        cmdOption('3', null, { head: 'Start research for "Billing"', tail: 'triage waiting' }),
+        cmdOption('3', null, { head: 'Start research for "Billing"', tail: 'mail waiting' }),
         cmdOption('s', 'spec', { head: 'Analyze / regroup discussions' }),
       ];
       return menu('Pick one?', rows);
     });
 
     assert.deepStrictEqual(rows, [
-      '**`1`** → Continue "Auth" — *research* · triage waiting (recommended)',
+      '**`1`** → Continue "Auth" — *research* · mail waiting (recommended)',
       '**`2`** → ~~Continue "Auth" — *discussion* · input moved~~ · in session (last active 4m ago)',
-      '**`3`** → Start research for "Billing" — *triage waiting*',
+      '**`3`** → Start research for "Billing" — *mail waiting*',
       '**`s/spec`** → Analyze / regroup discussions',
     ]);
     assert.deepStrictEqual(gate.options, [
-      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: 'triage waiting', holder: null, detail: null, struck: false, recommended: true },
+      { key: '1', word: null, head: 'Continue "Auth"', tail: 'research', cue: 'mail waiting', holder: null, detail: null, struck: false, recommended: true },
       { key: '2', word: null, head: 'Continue "Auth"', tail: 'discussion', cue: 'input moved', holder: 'in session (last active 4m ago)', detail: null, struck: true, recommended: false },
-      { key: '3', word: null, head: 'Start research for "Billing"', tail: 'triage waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
+      { key: '3', word: null, head: 'Start research for "Billing"', tail: 'mail waiting', cue: null, holder: null, detail: null, struck: false, recommended: false },
       { key: 's', word: 'spec', head: 'Analyze / regroup discussions', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
     ]);
   });
@@ -740,7 +740,7 @@ describe('gate payload — a row built from parts', () => {
   });
 
   it('a cue notes a tail, so a row without one is refused', () => {
-    assert.throws(() => cmdOption('1', null, { head: 'Start research for "Billing"', cue: 'triage waiting' }), /a cue notes a tail/);
+    assert.throws(() => cmdOption('1', null, { head: 'Start research for "Billing"', cue: 'mail waiting' }), /a cue notes a tail/);
   });
 
   it('text the engine did not author passes as a head, whatever it contains, and states its text', () => {
@@ -855,7 +855,7 @@ describe('gate payload — the audit', () => {
       ['a cue stated as tail', (o) => { o.tail = 'discussion · input moved'; o.cue = null; }],
       ['a holder stated as tail', (o) => { o.tail = 'discussion · input moved · in session (last active 4m ago)'; o.cue = null; o.holder = null; }],
       ['a strike the row does not state', (o) => { o.struck = false; }],
-      ['a cue the row does not draw', (o) => { o.cue = 'triage waiting'; }],
+      ['a cue the row does not draw', (o) => { o.cue = 'mail waiting'; }],
     ];
     for (const [what, change] of drifts) {
       assert.throws(() => auditGate(tampered(out, change), what), /option parts are not what the menu's rows draw/, what);

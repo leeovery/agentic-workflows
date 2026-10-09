@@ -122,11 +122,11 @@ function assertFresh(manifest, name, verbPhrase) {
   );
   if (lifecycle === 'fresh' && phaseWork.length === 0) return;
   if (lifecycle === 'fresh') {
-    // All-triaged phase work is not history — it is parked rerouted concerns
-    // waiting to drain. Name that instead of the historical-anchor message.
-    if (phaseWork.every((it) => it.status === 'triaged')) {
+    // All-unstarted phase work is not history — it is messages waiting in
+    // the topic's mailbox to drain. Name that instead of the historical-anchor message.
+    if (phaseWork.every((it) => it.status === 'unstarted')) {
       throw new Error(
-        `"${name}" can't be ${verbPhrase} — rerouted concerns are parked in its triage; start the topic to drain them, or cancel from the epic menu`,
+        `"${name}" can't be ${verbPhrase} — messages wait in its mailbox; start the topic to drain them, or cancel from the epic menu`,
       );
     }
     throw new Error(
@@ -604,9 +604,9 @@ function handleItem(cwd, workUnit, name) {
       throw new Error(`"${name}" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first`);
     }
     const parked = ['research', 'discussion']
-      .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'triaged'));
+      .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'unstarted'));
     if (parked.length > 0) {
-      throw new Error(`"${name}" can't be closed as a dead end — rerouted concerns are parked in its ${parked.join(' and ')} triage; start the topic to drain them, or cancel the topic from the epic menu instead`);
+      throw new Error(`"${name}" can't be closed as a dead end — messages wait in its ${parked.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`);
     }
     item.handled = true;
 

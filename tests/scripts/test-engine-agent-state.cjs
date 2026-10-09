@@ -131,27 +131,27 @@ describe('engine agent — lifecycle store', () => {
       ['review-001', 'review-002', 'review-003', 'review-004', dive.id], 'the closed rows stay on disk, untouched');
   });
 
-  it('review dispatch refuses while the triage queue holds entries, clears when it drains', () => {
-    writeContent(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md', '### Parked\n');
+  it('review dispatch refuses while the mailbox holds entries, clears when it drains', () => {
+    writeContent(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
     const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error;
-    assert.match(err, /review dispatch blocked: 1 rerouted concern/);
+    assert.match(err, /review dispatch blocked: 1 message/);
     assert.match(err, /topic absorb/, 'the refusal names the recovery path');
     assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
-    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md'));
+    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md'));
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
-    assert.strictEqual(a.id, 'review-001', 'a drained queue dispatches normally');
+    assert.strictEqual(a.id, 'review-001', 'a drained mailbox dispatches normally');
   });
 
-  it('the triage guard holds review dispatches only — other kinds pass a full queue', () => {
-    writeContent(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md', '### Parked\n');
+  it('the mailbox guard holds review dispatches only — other kinds pass a full mailbox', () => {
+    writeContent(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
     const lens = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
     assert.strictEqual(lens.id, 'perspective-001-auth');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
     // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
-    // count as queued concerns — only what queueStatus itself would count.
-    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/001-parked.md'));
-    writeContent(dir, '.workflows/pay/discussion/.triage/alpha/.DS_Store', 'dirt');
-    fs.mkdirSync(path.join(dir, '.workflows/pay/discussion/.triage/alpha/nested.md'), { recursive: true });
+    // count as waiting messages — only what mailboxStatus itself would count.
+    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md'));
+    writeContent(dir, '.workflows/pay/discussion/.mailbox/alpha/.DS_Store', 'dirt');
+    fs.mkdirSync(path.join(dir, '.workflows/pay/discussion/.mailbox/alpha/nested.md'), { recursive: true });
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
   });
@@ -593,15 +593,15 @@ describe('engine agent — discussion review arming', () => {
       'a state outside the rank map would silently score 0');
   });
 
-  /** Queue one rerouted concern for discussion/auth. @param {string} name */
-  function queueConcern(name) {
-    writeContent(dir, `.workflows/pay/discussion/.triage/auth/${name}`,
+  /** Deliver one message to discussion/auth. @param {string} name */
+  function deliver(name) {
+    writeContent(dir, `.workflows/pay/discussion/.mailbox/auth/${name}`,
       '### Ground\n*From: peer · discussion · 2026-09-01*\nbody\n');
   }
 
-  it('a triage fold settles into the anchor — a drain-only sitting arms nothing', () => {
+  it('a message fold settles into the anchor — a drain-only sitting arms nothing', () => {
     completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    queueConcern('001-new-ground.md');
+    deliver('001-new-ground.md');
     writeMap({ tokens: 'exploring', 'new-ground': 'decided' });
     const res = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
       '--file', '001-new-ground.md', '--subtopic', 'new-ground',
@@ -616,7 +616,7 @@ describe('engine agent — discussion review arming', () => {
 
   it('organic movement beside a fold still arms', () => {
     completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    queueConcern('001-new-ground.md');
+    deliver('001-new-ground.md');
     writeMap({ tokens: 'exploring', 'new-ground': 'decided', tangent: 'pending' });
     engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
       '--file', '001-new-ground.md', '--subtopic', 'new-ground',
@@ -626,25 +626,25 @@ describe('engine agent — discussion review arming', () => {
   });
 
   it('a discussion absorb requires --subtopic; other phases refuse it', () => {
-    queueConcern('001-new-ground.md');
+    deliver('001-new-ground.md');
     assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
       '--file', '001-new-ground.md', '-m', 'x']).error,
       /a discussion fold names its ground/);
-    writeContent(dir, '.workflows/pay/research/.triage/auth/001-x.md', '### X\nbody\n');
+    writeContent(dir, '.workflows/pay/research/.mailbox/auth/001-x.md', '### X\nbody\n');
     assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'research', 'auth',
       '--file', '001-x.md', '--subtopic', 'x', '-m', 'x']).error,
       /not legal in research/);
   });
 
   it('the settle is tolerant — no anchor and unknown ground absorb anyway', () => {
-    queueConcern('001-new-ground.md');
+    deliver('001-new-ground.md');
     writeMap({ tokens: 'exploring', 'new-ground': 'decided' });
     const unanchored = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
       '--file', '001-new-ground.md', '--subtopic', 'new-ground', '-m', 'x']);
     assert.strictEqual(unanchored.arming_settled, false, 'no completed review, nothing to settle against');
     assert.match(unanchored.arming_note, /no anchored review/);
     completeCycle(runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']));
-    queueConcern('002-typo.md');
+    deliver('002-typo.md');
     const unknown = engineJson(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
       '--file', '002-typo.md', '--subtopic', 'not-a-subtopic', '-m', 'x']);
     assert.strictEqual(unknown.arming_settled, false);

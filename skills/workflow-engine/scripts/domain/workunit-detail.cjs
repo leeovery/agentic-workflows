@@ -20,7 +20,7 @@ const {
   phaseStatus,
   phaseItems,
   computeUnitPhaseState,
-  triagePhases,
+  mailPhases,
   ownNamedItems,
   inputMoved,
   movedFrom,
@@ -80,8 +80,8 @@ const WORK_UNIT_TYPES = {
  * @property {{phase: string, from: string|boolean}[]} [reconcile_phases]  completed phases whose item carries
  *                                     a reconcile flag — `from` is the flag value (the upstream
  *                                     phase that moved, or `true` for a brief flag)
- * @property {string[]} [triage_phases]  phases whose triage queue holds concerns for the unit's
- *                                     topics — the pipeline row's and menu's `triage waiting` cue
+ * @property {string[]} [mail_phases]  phases whose mailbox holds messages for the unit's
+ *                                     topics — the pipeline row's and menu's `mail waiting` cue
  * @property {number} [imports_count]  types with surfacesSeeds only
  * @property {number} [seeds_count]    types with surfacesSeeds only
  */
@@ -139,7 +139,7 @@ function phaseTargets(manifest, nextPhase) {
   const nextIdx = cfg.pipeline.indexOf(nextPhase);
   const own = ownNamedItems(manifest, nextPhase);
   const entered = own.find((i) => i.status === 'in-progress')
-    ?? own.find((i) => i.status === 'triaged')
+    ?? own.find((i) => i.status === 'unstarted')
     ?? own.find((i) => inputMoved(manifest, nextPhase, i));
   return {
     next: { phase: nextPhase, topic: entered ? entered.name : null },
@@ -181,8 +181,8 @@ function activeWorkUnit(cwd, name) {
   };
   const flagged = reconcilePhases(cfg, m);
   if (flagged.length > 0) unit.reconcile_phases = flagged;
-  const queued = triagePhases(path.join(cwd, '.workflows'), m);
-  if (queued.length > 0) unit.triage_phases = queued;
+  const waiting = mailPhases(path.join(cwd, '.workflows'), m);
+  if (waiting.length > 0) unit.mail_phases = waiting;
   if (cfg.surfacesSeeds) {
     unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;
     unit.seeds_count = Array.isArray(m.seeds) ? m.seeds.length : 0;

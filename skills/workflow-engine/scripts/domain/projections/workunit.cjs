@@ -57,11 +57,11 @@ function nextPhaseStarted(unit) {
   return unit.phase_label.endsWith('(in-progress)');
 }
 
-/** Pipeline rows: completed phases (an `· input moved` cue on flagged ones), the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped) — a `· triage waiting` cue on a phase whose queue holds concerns. @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
+/** Pipeline rows: completed phases (an `· input moved` cue on flagged ones), the next phase (in flight or ready), and any other phase in flight (a reopened phase mid-revisit is never dropped) — a `· mail waiting` cue on a phase whose mailbox holds messages. @param {WorkUnitTypeConfig} cfg @param {WorkUnitEntry} unit */
 function pipelineNodes(cfg, unit) {
   const flaggedPhases = new Set((unit.reconcile_phases || []).map((r) => r.phase));
-  const queuedPhases = new Set(unit.triage_phases || []);
-  const triageTag = (/** @type {string} */ phase, /** @type {string} */ tag) => (queuedPhases.has(phase) ? `${tag} · triage waiting` : tag);
+  const mailPhases = new Set(unit.mail_phases || []);
+  const mailTag = (/** @type {string} */ phase, /** @type {string} */ tag) => (mailPhases.has(phase) ? `${tag} · mail waiting` : tag);
   const nodes = [];
   for (const phase of cfg.pipeline) {
     if (unit.completed_phases.includes(phase)) {
@@ -74,10 +74,10 @@ function pipelineNodes(cfg, unit) {
       const started = nextPhaseStarted(unit) || (unit.in_progress_phases || []).includes(phase);
       nodes.push({
         title: title({ glyph: started ? '◐' : '→', label: titlecase(phase) }),
-        tag: triageTag(phase, started ? 'in-progress' : 'ready'),
+        tag: mailTag(phase, started ? 'in-progress' : 'ready'),
       });
     } else if ((unit.in_progress_phases || []).includes(phase)) {
-      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase) }), tag: triageTag(phase, 'in-progress') });
+      nodes.push({ title: title({ glyph: '◐', label: titlecase(phase) }), tag: mailTag(phase, 'in-progress') });
     }
   }
   return nodes;
@@ -153,7 +153,7 @@ function workUnitMenu(type, unit) {
 
   const rendered = gated
     ? menu(
-      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.triage_phases || []).length > 0 ? ' · triage waiting' : ''}.`,
+      `${unit.finalising ? 'Finalising' : 'Continuing'} "${titlecase(unit.name)}" — *${unit.phase_label}*${(unit.mail_phases || []).length > 0 ? ' · mail waiting' : ''}.`,
       options.map((k) => cmdOption(k.key, k.word, k.label)),
       { question: 'Proceed?' },
     )
@@ -180,7 +180,7 @@ function workUnitData(type, unit, menu) {
   lines.push(`finalising: ${unit.finalising === true}`);
   lines.push(`completed_phases: ${unit.completed_phases.join(', ') || '(none)'}`);
   lines.push(`reconcile_pending: ${(unit.reconcile_phases || []).map((r) => `${r.phase} (${r.from})`).join(', ') || '(none)'}`);
-  lines.push(`triage_waiting: ${(unit.triage_phases || []).join(', ') || '(none)'}`);
+  lines.push(`mail_waiting: ${(unit.mail_phases || []).join(', ') || '(none)'}`);
   lines.push(`revisit_available: ${menu.keys.some((k) => k.action === 'revisit')}`);
   if (cfg.surfacesSeeds) {
     lines.push(`seeds_count: ${unit.seeds_count || 0}`);
