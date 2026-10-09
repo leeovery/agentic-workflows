@@ -436,4 +436,4 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
   });
 }
 
-module.exports = { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment };
+module.exports = { createExperiment, advanceExperiment, approveExperiment, concludeExperiment, abandonExperiment, recordDir };

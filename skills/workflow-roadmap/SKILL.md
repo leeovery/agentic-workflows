@@ -37,7 +37,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
 2. **Read the state.** Run `node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state` and reason from its response: an `active_session` means a session is live — read its log (`.workflows/.roadmap/sessions/session-{active_session}.md`) in full to recover the exploration; no marker means the session had not started or already closed.
 3. **Check git state.** Run `git status` and `git log --oneline -10`. Commit messages reveal what has been completed.
-4. **Announce your position** to the user before continuing: state what step you believe you're at and what comes next. Wait for confirmation.
+4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, answer it; where the conversation was at a gate, put the gate back, fetched fresh; otherwise continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -45,7 +45,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 
 ## Step 1: Dispatch
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label roadmap

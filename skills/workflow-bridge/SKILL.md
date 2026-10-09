@@ -18,7 +18,7 @@ This skill receives positional arguments:
 - `$2` — **next_phase** (optional): the destination, where the caller already knows it — discovery sending a single-phase work type to its first phase. Held downstream as `{next_phase}`. Absent or the literal `none` otherwise.
 - `$3` — **outcome** (optional): the literal `paused` when the phase is leaving on a wait rather than concluding — the wait gate's or the spawn gate's `yes`, or a specification pausing on a gap it routed, with `$2` as `none`; the literal `cancelled` when the phase's topic was cancelled from inside its session and its receipt is already rendered, or `postponed` when it left for the roadmap the same way, both with `$2` as `none`. Held downstream as `{outcome}`. Absent means the phase completed.
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit}

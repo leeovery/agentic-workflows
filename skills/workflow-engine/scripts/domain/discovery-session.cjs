@@ -30,26 +30,37 @@ const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./com
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 
 /**
- * The next session number: highest on-disk `session-NNN.md` plus one, `1`
- * when no log (or no sessions directory) exists yet. Disk is the source —
- * no manifest field stores the counter, so legacy manifests need nothing.
+ * The highest-numbered `session-NNN.md` on disk — its number and its file
+ * name; null when no log (or no sessions directory) exists yet.
  * @param {string} sessionsDir absolute path
- * @returns {number}
+ * @returns {{number: number, file: string}|null}
  */
-function nextSessionNumber(sessionsDir) {
+function latestSessionLog(sessionsDir) {
   /** @type {string[]} */
   let files;
   try {
     files = fs.readdirSync(sessionsDir);
   } catch {
-    return 1;
+    return null;
   }
-  let max = 0;
+  /** @type {{number: number, file: string}|null} */
+  let latest = null;
   for (const f of files) {
     const m = f.match(/^session-(\d+)\.md$/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
+    if (m && (latest === null || parseInt(m[1], 10) > latest.number)) latest = { number: parseInt(m[1], 10), file: f };
   }
-  return max + 1;
+  return latest;
+}
+
+/**
+ * The next session number: the latest on disk plus one, `1` when there is
+ * none. Disk is the source — no manifest field stores the counter.
+ * @param {string} sessionsDir absolute path
+ * @returns {number}
+ */
+function nextSessionNumber(sessionsDir) {
+  const latest = latestSessionLog(sessionsDir);
+  return latest === null ? 1 : latest.number + 1;
 }
 
 /**
@@ -176,4 +187,4 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
   return result;
 }
 
-module.exports = { openDiscoverySession, closeDiscoverySession, nextSessionNumber };
+module.exports = { openDiscoverySession, closeDiscoverySession, latestSessionLog, nextSessionNumber };

@@ -36,7 +36,7 @@ Context refresh (compaction) summarizes the conversation, losing procedural deta
 2. **Read the manifest state.** `node .claude/skills/workflow-engine/scripts/engine.cjs manifest get project.baseline` — status and per-area statuses.
 3. **Read the session files.** The dossiers and agendas under `.workflows/.baseline/.state/` are the working documents; each agenda's per-question `**Status**` rows are the authoritative interview position.
 4. **Check git state.** `git status` and `git log --oneline -10` — baseline commits reveal what landed.
-5. **Announce your position** to the user before continuing: which step, which area, what remains. Wait for confirmation.
+5. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, answer it; where the conversation was at a gate, put the gate back, fetched fresh; otherwise continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -50,7 +50,7 @@ Do not guess at progress or continue from memory. The files on disk and git hist
 # **`■ Project Baseline`**
 ```
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label baseline

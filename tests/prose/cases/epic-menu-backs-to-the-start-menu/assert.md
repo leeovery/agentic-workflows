@@ -14,7 +14,8 @@ The prose should have taken this path:
    command option
 4. the menu resolves the pick itself — no soft gate and no in-session
    gate is fetched — and the back loads the start skill's start-menu
-   reference: the original session label put back, the start state
+   reference: the arrival recorded, with the label put back where the
+   user opted in, the start state
    read from its gateway, then the overview snapshot fetched and its
    title, display (`search-relevance` as the active work) and menu
    emitted verbatim — and the flow stops there for the user, where the

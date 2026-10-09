@@ -4,11 +4,11 @@
 
 ---
 
-Render the start menu from inside another place: the label restored, the state re-read, the menu served by the references the skill's own Step 1 serves it from.
+Render the start menu from inside another place: the arrival recorded, the state re-read, the menu served by the references the skill's own Step 1 serves it from.
 
-## A. Restore the Label
+## A. Arrive at the Start Menu
 
-Put the original tmux session name back — a no-op unless the user opted in and this session runs inside tmux:
+Record that this session is working nowhere — the call also puts the original tmux session name back where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session repair

@@ -63,6 +63,7 @@ const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/do
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
 const { openGate, drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
 const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
+const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/position.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
 
 // The epic specification menu's detail — the spec boundary's derived view.
@@ -347,7 +348,17 @@ class Sim {
     // it, so the transactions' indexing builds a store as a set-up project's does.
     fs.mkdirSync(path.join(this.dir, KNOWLEDGE_DIR), { recursive: true });
     fs.writeFileSync(path.join(this.dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
+    // The skills a conversation carries on in after a compaction, installed
+    // as a project installs them — kept out of git's sight, so no commit or
+    // dirt check ever meets them.
+    const skills = [...schema.VALID_PHASES.map((phase) => skillAt('unit', phase)), ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))];
+    for (const skill of /** @type {string[]} */ (skills)) {
+      fs.mkdirSync(path.join(this.dir, '.claude/skills', skill), { recursive: true });
+      fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(this.dir, '.claude/skills', skill, 'SKILL.md'));
+    }
+    fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), '.claude/skills/\n');
     this.step = 0;
+    this.conversations = 0;
     // Hermetic environment, as a delta from this process's — the engine runs
     // in-process and holds these keys for the call's duration: the system
     // config dir pins into the sandbox (the knowledge base reads it) and the
@@ -390,6 +401,15 @@ class Sim {
    */
   envOf(identity) {
     return identity ? { ...this.env, ...identity } : this.env;
+  }
+
+  /**
+   * A handoff the gate mod carries: the conversation is cleared and the work
+   * starts in a fresh one, in the same Claude process.
+   */
+  handOver() {
+    this.conversations += 1;
+    this.env = { ...this.env, CLAUDE_CODE_SESSION_ID: `sim-session-${this.conversations}` };
   }
 
   /**
@@ -535,31 +555,65 @@ function presenceRow(scan, phase, topic) {
   return scan.sessions.find((r) => r.phase === phase && r.topic === topic);
 }
 
+// What the sim's conversation re-reads to carry on from its position — the
+// one line of JSON `conversation position` answers, its DATA the same
+// message. A read: nothing to audit.
+function carryOn(sim, identity = null) {
+  const res = sim.engine(['conversation', 'position'], identity);
+  assert.strictEqual(res.code, 0, `conversation position failed\nstderr: ${res.stderr}`);
+  const marker = '=== POSITION (json for the gate mod — never display) ===\n';
+  const at = res.stdout.indexOf(marker);
+  assert.ok(at !== -1, `conversation position answered no POSITION section:\n${res.stdout}`);
+  const answer = JSON.parse(res.stdout.slice(at + marker.length).trim());
+  assert.ok(res.stdout.slice(0, at).endsWith(`${answer.text}\n`), 'the DATA section is the message the JSON carries');
+  return answer;
+}
+
 // Shared phase walk used by the linear pipelines: specification → planning →
 // implementation (→ review), with the bookkeeping each phase records.
 // Every place labels itself on arrival: a navigation skill, the bridge, the
 // roadmap, and the baseline label the place alone (`arrive`), and every
-// process skill's Step 0 refreshes the phase label before anything else
-// (`label`). The sim strips the tmux identity and pins an empty config dir,
-// so the call is the disabled or no-tmux no-op; what the sim pins is the
-// call sequence and that every name and phase literal the prose passes
-// validates.
+// phase skill's Step 0 records its place before anything else
+// (`handoffEntry`). The sim strips the tmux identity and pins an empty config
+// dir, so the call is the disabled or no-tmux no-op; what the sim pins is the
+// call sequence, that every name and phase literal the prose passes
+// validates, and the conversation's position each arrival records.
 function arrive(sim, name) {
   const res = sim.run(['session', 'label', name]);
   assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${name})`);
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
+  if (schema.PROJECT_IDENTITIES.includes(name)) {
+    assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', `workflow-${name}`, 'SKILL.md'), `the ${name} carries on in its own skill`);
+  } else {
+    assert.strictEqual(here.skill, null, 'a work unit\'s menu carries nothing on');
+    assert.match(here.text, /outside any phase, so there is nothing to carry on from\.$/);
+  }
 }
 
-// A phase is only ever entered from a place that labelled itself first — the
-// bridge, or the work unit's continue menu — so every phase start carries the
-// arrival label, then the phase skill's own.
-function label(sim, wu, phase, topic) {
-  arrive(sim, wu);
-  const res = sim.run(['session', 'label', wu, phase, topic]);
-  assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${phase})`);
-  // Boot's repair runs at every workflow-start; hermetic here for the same
-  // reason the label is.
+// The start menu, then a work unit's continue menu, as a conversation reaches
+// them: boot's repair (the start menu is no position), then the unit's own
+// label.
+function menuEntry(sim, wu) {
   const repair = sim.run(['session', 'repair']);
   assert.strictEqual(repair.repaired, false, 'session repair is a no-op in the sim');
+  assert.strictEqual(carryOn(sim).position, null, 'the start menu is no position');
+  arrive(sim, wu);
+}
+
+// A move into a phase hands off — a menu's pick and a conclusion through the
+// bridge alike: carried by the gate mod, the conversation is cleared and the
+// phase skill starts in a fresh one, whose first engine call is its label —
+// marking the conversation and recording the place, so a compaction there
+// carries on in the phase's skill.
+function handoffEntry(sim, wu, phase, topic) {
+  sim.handOver();
+  const res = sim.run(['session', 'label', wu, phase, topic]);
+  assert.strictEqual(res.labelled, false, `session label is a no-op in the sim (${phase})`);
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the phase skill records its place (${phase})`);
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase)), 'SKILL.md'),
+    `a compaction there carries on in the phase's skill (${phase})`);
 }
 
 // The words a shell makes of a route written into a command: split at spaces,
@@ -708,10 +762,10 @@ function workTheSet(sim, paths) {
 }
 
 function walkToLiveImplementation(sim, wu, topic) {
-  label(sim, wu, 'specification', topic);
+  handoffEntry(sim, wu, 'specification', topic);
   sim.run(['topic', 'start', wu, 'specification', topic]);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
-  label(sim, wu, 'planning', topic);
+  handoffEntry(sim, wu, 'planning', topic);
   sim.run(['topic', 'start', wu, 'planning', topic]);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`,
     'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
@@ -720,7 +774,7 @@ function walkToLiveImplementation(sim, wu, topic) {
   sim.run(['topic', 'complete', wu, 'planning', topic]);
   // Implementation is the one phase whose prose never issues `topic start`:
   // task init owns creation (implementation-process Step 0, created arm).
-  label(sim, wu, 'implementation', topic);
+  handoffEntry(sim, wu, 'implementation', topic);
   const init = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(init.mode, 'created', 'fresh implementation takes the created arm');
 }
@@ -729,9 +783,13 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   walkToLiveImplementation(sim, wu, topic);
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic, task: '1.1' },
+    'task start puts the task in flight on the position');
   // Phase boundary: the completion defers its flag, the consolidation pass
   // finds nothing, and the re-record closes the phase (consolidation-pass.md F).
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
+    'the task\'s completion takes it off');
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -746,7 +804,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // pending, then clears once every row incorporates.
   bridgeTo(sim, wu, 'specification');
   sim.render(['entry-gate', `${wu}.specification.${topic}`], { expect: 'empty' });
-  label(sim, wu, 'specification', topic);
+  handoffEntry(sim, wu, 'specification', topic);
   const status = sim.read(['manifest', 'get', `${wu}.specification.${topic}`, 'status']);
   if (status === 'in-progress') {
     sim.render(['phase-note', `${wu}.specification.${topic}`, '--verb', 'Resuming'], { expect: 'content' });
@@ -772,7 +830,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // which the plan's own birth closes — a plan under way reconciles instead.
   bridgeTo(sim, wu, 'planning');
   sim.render(['entry-gate', `${wu}.planning.${topic}`], { expect: 'empty' });
-  label(sim, wu, 'planning', topic);
+  handoffEntry(sim, wu, 'planning', topic);
   assert.strictEqual(sim.read(['manifest', 'get', `${wu}.planning.${topic}`, 'status']), '', 'no planning item — a first start');
   sim.render(['plan-context-gate', `${wu}.planning.${topic}`], { expect: 'content' });
   sim.run(['topic', 'start', wu, 'planning', topic]);
@@ -866,13 +924,17 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   bridgeTo(sim, wu, 'implementation');
   sim.render(['code-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
   sim.render(['entry-gate', `${wu}.implementation.${topic}`], { expect: 'empty' });
-  label(sim, wu, 'implementation', topic);
+  handoffEntry(sim, wu, 'implementation', topic);
   assert.strictEqual(sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'status']), '', 'no implementation item — a first start');
   const implInit = sim.run(['task', 'init', wu, topic]);
   assert.strictEqual(implInit.mode, 'created', 'fresh implementation takes the created arm');
   sim.run(['commit', wu, '-m', `impl(${wu}): start implementation`, '--topic', `implementation/${topic}`]);
   assert.strictEqual(sim.run(['task', 'start', wu, topic, `${topic}-1-1`]).do_banking, true,
     'the first plan task banks — the deposits below are made while its phase is still open');
+  const onTask = carryOn(sim);
+  assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, task: '1.1' });
+  assert.strictEqual(onTask.skill, path.join(sim.dir, '.claude/skills/workflow-implementation-process/SKILL.md'));
+  assert.match(onTask.text, new RegExp(`^The conversation was just compacted\\. This conversation is working in the implementation of .*, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\)\\.`));
   // The loop's two stops: an executor that comes back blocked or failed
   // (task-loop C), and the analysis loop's checkpoint over files
   // implementation never wrote.
@@ -937,7 +999,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   bridgeTo(sim, wu, 'review');
   sim.render(['code-gate', `${wu}.review.${topic}`], { expect: 'empty' });
   sim.render(['entry-gate', `${wu}.review.${topic}`], { expect: 'empty' });
-  label(sim, wu, 'review', topic);
+  handoffEntry(sim, wu, 'review', topic);
   assert.strictEqual(sim.read(['manifest', 'get', `${wu}.review.${topic}`, 'status']), '', 'no review item — a first start');
   sim.run(['topic', 'start', wu, 'review', topic]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
@@ -1012,7 +1074,7 @@ describe('pipeline simulation', () => {
 
     // First phase: discussion (topic = work unit for single-topic types).
     // The discussion fetches the research gate before any status read.
-    label(sim, wu, 'discussion', wu);
+    handoffEntry(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
@@ -1331,7 +1393,8 @@ describe('pipeline simulation', () => {
       assert.strictEqual(handoff(sim, route).args, `epic ${wu} ${topic}`);
       assert.strictEqual(epicPick(sim, wu, `start_${phase}`, topic).text, `Invoke \`${route}\`.`);
       assert.strictEqual(sim.read(['manifest', 'get', `${wu}.discovery.${topic}`, 'source']), 'direct-start');
-      label(sim, wu, phase, topic);
+      menuEntry(sim, wu);
+      handoffEntry(sim, wu, phase, topic);
       sim.run(['topic', 'start', wu, phase, topic]);
     }
   });
@@ -1357,7 +1420,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     walkDeliveryPhasesToImplementation(sim, wu, wu);
     bridgeTo(sim, wu, 'review');
-    label(sim, wu, 'review', wu);
+    handoffEntry(sim, wu, 'review', wu);
     sim.run(['topic', 'start', wu, 'review', wu]);
     // The fail arm (review-actions-loop G): the approved remediation is in
     // the plan, implementation re-opens, and the review hands off to it —
@@ -1378,7 +1441,8 @@ describe('pipeline simulation', () => {
     // the pause commits the session's work and hands off as a pause. The
     // gap routes into the first of the specification's sources.
     const pauseOnGap = (wu, sourcePhase, spec, [source, ...rest]) => {
-      label(sim, wu, 'specification', spec);
+      menuEntry(sim, wu);
+      handoffEntry(sim, wu, 'specification', spec);
       sim.run(['topic', 'start', wu, 'specification', spec]);
       sim.run(['manifest', 'set', `${wu}.specification.${spec}`,
         ...[source, ...rest].map((name) => `sources.${name}.status=incorporated`)]);
@@ -1440,7 +1504,8 @@ describe('pipeline simulation', () => {
     const toRecover = () => EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu))
       .split('\n').filter((line) => /summary=absent|description=absent/.test(line));
 
-    label(sim, wu, 'discussion', 'alpha');
+    menuEntry(sim, wu);
+    handoffEntry(sim, wu, 'discussion', 'alpha');
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
     sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'reroute:alpha', '--backfill', '--force-dismissed']);
@@ -1473,7 +1538,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'bugfix', '--description', 'Fix the crash', '--session-log-file', log]);
 
     handoff(sim, `/workflow-investigation-process bugfix ${wu}`);
-    label(sim, wu, 'investigation', wu);
+    handoffEntry(sim, wu, 'investigation', wu);
     sim.run(['topic', 'start', wu, 'investigation', wu]);
     sim.write(`.workflows/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
 
@@ -1574,7 +1639,7 @@ describe('pipeline simulation', () => {
     // Scoping (write-tasks): the spec commits BEFORE the baseline is captured,
     // so spec_commit always names a commit containing the specification.
     handoff(sim, `/workflow-scoping-process quick-fix ${wu}`);
-    label(sim, wu, 'scoping', wu);
+    handoffEntry(sim, wu, 'scoping', wu);
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
@@ -1673,7 +1738,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`r\/research`\*\* +→ Explore feasibility and options first, no/);
     handoff(sim, `/workflow-discussion-process cross-cutting ${wu}`);
-    label(sim, wu, 'discussion', wu);
+    handoffEntry(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
@@ -1737,6 +1802,14 @@ describe('pipeline simulation', () => {
     startNew(sim, 'epic');
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Payments overhaul', '--session-log-file', log]);
+    // The work-type commit opened the session; discovery's run step labels
+    // its place, and the conversation carries on from the open session's log.
+    assert.strictEqual(sim.run(['session', 'label', wu, 'discovery', wu]).labelled, false);
+    const shaping = carryOn(sim);
+    assert.deepStrictEqual(shaping.position, { name: wu, phase: 'discovery', topic: wu });
+    assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/workflow-discovery/SKILL.md'));
+    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.workflows/${wu}/discovery/sessions/session-001.md`)]);
+    assert.match(shaping.text, /^The conversation was just compacted\. This conversation is working in the discovery of the epic "overhaul"\. /);
 
     // Harvest: three topics in one batch, briefs pointed.
     const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
@@ -2106,22 +2179,22 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['conversation', 'end'], null, ending('sim-session')), { ok: true, recorded: true });
     assert.deepStrictEqual(sim.run(['conversation', 'end'], null, ending('plain-sess')), { ok: true, recorded: false });
     // Session labels, as every process skill's Step 0 issues them: an
-    // unrecorded opt-in answers a disabled no-op — even on a bad argument,
-    // since the enable check precedes validation; opted in (the choice
-    // lands on the project manifest, and the project's settings gain
-    // `session cleanup` beside the `presence cleanup` and `conversation end`
-    // every project's SessionEnd hook carries, plus a SessionStart `session resume`
-    // matched to resume, committed together) but outside tmux (the sim
-    // strips the identity) answers no-tmux; an unknown phase from an
-    // enabled call site refuses; a hand-stamped manifest false disables;
-    // the SessionEnd restore sweep answers with nothing to restore and the
-    // SessionStart resume — on stderr, its stdout being conversation
-    // context — with nothing to resume; opting out takes `session cleanup`
-    // and `session resume` back out and leaves the workflows' own.
+    // unrecorded opt-in answers a disabled no-op, and a bad argument refuses
+    // all the same — the place is checked before anything is labelled or
+    // recorded; opted in (the choice lands on the project manifest, and the
+    // project's settings gain `session cleanup` beside the `presence
+    // cleanup` and `conversation end` every project's SessionEnd hook
+    // carries, plus a SessionStart `session resume` matched to resume,
+    // committed together) but outside tmux (the sim strips the identity)
+    // answers no-tmux; an unknown phase refuses; a hand-stamped manifest
+    // false disables; the SessionEnd restore sweep answers with nothing to
+    // restore and the SessionStart resume — on stderr, its stdout being
+    // conversation context — with nothing to resume; opting out takes
+    // `session cleanup` and `session resume` back out and leaves the
+    // workflows' own.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
-    assert.deepStrictEqual(sim.run(['session', 'label', wu, 'deploying', 'alpha']),
-      { ok: true, labelled: false, reason: 'disabled' });
+    sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
     sim.run(['session', 'label-config', 'true']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'true');
     const hookVerbs = () => Object.fromEntries(
@@ -3527,7 +3600,7 @@ describe('pipeline simulation', () => {
 
     // Reopen after downstream exists: the spec keeps its state, derivations hold.
     sim.render(['entry-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
-    label(sim, wu, 'specification', wu);
+    handoffEntry(sim, wu, 'specification', wu);
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.specification.${wu}`, 'status']), '', 'no specification item — a first start');
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'reopen', wu, 'discussion', wu]);
@@ -3625,11 +3698,17 @@ describe('pipeline simulation', () => {
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
     // The genesis conversation: a product-road session opens before any item
     // or work unit exists, its cadence commit is --roadmap, and imports land
-    // at the product altitude. The skill labels the terminal `roadmap` before
-    // its mode dispatch, every mode.
+    // at the product altitude. The roadmap is reached from the start menu,
+    // whose boot repairs the label and marks the conversation; the skill
+    // labels the terminal `roadmap` before its mode dispatch, every mode.
+    sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
     const roadmapDraft = sim.write('.workflows/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
+    const session = carryOn(sim);
+    assert.strictEqual(session.skill, path.join(sim.dir, '.claude/skills/workflow-roadmap/SKILL.md'));
+    assert.deepStrictEqual(session.files, [path.join(sim.dir, '.workflows/.roadmap/sessions/session-001.md')],
+      'the roadmap carries on from its open session\'s log');
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
     sim.run(['roadmap', 'import', bridgeDoc]);
     sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
@@ -3792,6 +3871,7 @@ describe('pipeline simulation', () => {
   });
 
   it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
+    sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
     const genesis = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', genesis]);
@@ -4153,7 +4233,7 @@ describe('pipeline simulation', () => {
 
     // The reopen flags the unit's specification through the reverse join;
     // in flight, the discussion is the next route, by name.
-    label(sim, cc, 'discussion', 'tracing');
+    handoffEntry(sim, cc, 'discussion', 'tracing');
     const reopened = sim.run(['topic', 'reopen', cc, 'discussion', 'tracing']);
     assert.deepStrictEqual(reopened.reconcile_flagged, [{ phase: 'specification', topic: cc }]);
     assert.deepStrictEqual(reopened.sources_staled, [cc]);
@@ -4172,7 +4252,7 @@ describe('pipeline simulation', () => {
     // The specification's entry reconciles: reopened, its flag cleared, and
     // the source gate holding the re-conclusion until the stale row is
     // re-incorporated; then the pipeline's end completes the unit.
-    label(sim, cc, 'specification', cc);
+    handoffEntry(sim, cc, 'specification', cc);
     sim.render(['entry-gate', `${cc}.specification.${cc}`], { expect: 'empty' });
     sim.run(['topic', 'reopen', cc, 'specification', cc]);
     sim.run(['manifest', 'delete', `${cc}.specification.${cc}`, 'reconcile_needed']);
@@ -4190,7 +4270,8 @@ describe('pipeline simulation', () => {
 
     // The research session lands what the user shared mid-session — a binary
     // and a markdown source — stamped with its own origin, and links them.
-    label(sim, feat, 'research', feat);
+    menuEntry(sim, feat);
+    handoffEntry(sim, feat, 'research', feat);
     sim.run(['topic', 'start', feat, 'research', feat]);
     sim.write('shared/Dockset 05.PNG', 'png bytes\n');
     sim.write('shared/Onboarding.txt', 'the walkthrough\n');
@@ -4205,7 +4286,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', feat, 'research', feat]);
     sim.run(['commit', feat, '-m', `research(${feat}): complete`, '--topic', `research/${feat}`]);
 
-    label(sim, feat, 'discussion', feat);
+    handoffEntry(sim, feat, 'discussion', feat);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
     sim.write(`.workflows/${feat}/discussion/${feat}.md`,
       `# Discussion — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
@@ -4240,7 +4321,8 @@ describe('pipeline simulation', () => {
 
     // The spec links the material it rests on; promotion carries that import
     // into the cross-cutting unit and leaves the rest of the epic's behind.
-    label(sim, epic, 'specification', topic);
+    menuEntry(sim, epic);
+    handoffEntry(sim, epic, 'specification', topic);
     sim.run(['topic', 'start', epic, 'specification', topic]);
     sim.run(['manifest', 'set', `${epic}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
     sim.write(`.workflows/${epic}/specification/${topic}/specification.md`,
@@ -4892,9 +4974,16 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'archived-delete-gate', '--path', '.workflows/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
     sim.refuses(['render', 'archived-actions', '--path', '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
-    // The offer's yes hands off to the assessment, which labels itself.
+    // The offer's yes hands off to the assessment. Carried by the gate mod,
+    // the handoff clears into a fresh conversation, whose first engine call
+    // is the assessment's label: it marks the conversation and records the
+    // place, so the conversation carries on there.
     assert.strictEqual(handoff(sim, '/workflow-baseline').line, '→ Baseline');
+    sim.handOver();
+    assert.ok(!fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID)), 'no call has marked the fresh conversation');
     arrive(sim, 'baseline');
+    assert.ok(fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, 'workflow')), 'the label marked the fresh conversation');
+    assert.match(carryOn(sim).text, /^The conversation was just compacted\. This conversation is working in the project's baseline\./);
     sim.refuses(['baseline', 'record', 'bananas'], /one of native, skipped/);
     const verdict = sim.run(['baseline', 'record', 'native']);
     assert.match(verdict.committed, /^[0-9a-f]+$/, 'the verdict commits in the same call');
@@ -5360,10 +5449,12 @@ describe('pipeline simulation', () => {
     ]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
-    label(sim, wu, 'discussion', 'timing');
+    menuEntry(sim, wu);
+    handoffEntry(sim, wu, 'discussion', 'timing');
     sim.run(['topic', 'start', wu, 'discussion', 'timing']);
     sim.write(`.workflows/${wu}/discussion/timing.md`, '# Discussion — Timing\n');
-    label(sim, wu, 'research', 'layout');
+    menuEntry(sim, wu);
+    handoffEntry(sim, wu, 'research', 'layout');
     sim.run(['topic', 'start', wu, 'research', 'layout']);
     sim.write(`.workflows/${wu}/research/layout.md`, '# Research — Layout\n');
 
@@ -5441,7 +5532,8 @@ describe('pipeline simulation', () => {
     // map row, the state audited whole after the spawn transactions.
     assert.match(epicDashboard(wu, EPIC_GATEWAY.discover(sim.dir, wu)), /awaiting E1/);
 
-    label(sim, wu, 'experiment', 'timing');
+    menuEntry(sim, wu);
+    handoffEntry(sim, wu, 'experiment', 'timing');
     sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
     assert.match(sim.render(['experiment-register', `${wu}.experiment.timing`], { expect: 'content' }),
@@ -5568,7 +5660,8 @@ describe('pipeline simulation', () => {
   it('feature experiments: the waiting conversation routes to the laboratory and back', () => {
     const wu = 'render-path';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Rendering decisions', '--session-log-file', sessionLog(sim, wu)]);
-    label(sim, wu, 'discussion', wu);
+    menuEntry(sim, wu);
+    handoffEntry(sim, wu, 'discussion', wu);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
 
@@ -5585,7 +5678,7 @@ describe('pipeline simulation', () => {
     // which starts in a fresh context.
     assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
     bridgeTo(sim, wu, 'experiment');
-    label(sim, wu, 'experiment', wu);
+    handoffEntry(sim, wu, 'experiment', wu);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);

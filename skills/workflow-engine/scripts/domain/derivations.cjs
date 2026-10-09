@@ -1481,6 +1481,7 @@ module.exports = {
   cancelPlan,
   postponePlan,
   openExperiments,
+  openRecords,
   roadmapItems,
   itemJoin,
   itemPostponedFrom,

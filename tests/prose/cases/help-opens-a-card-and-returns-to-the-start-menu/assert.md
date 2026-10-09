@@ -20,8 +20,9 @@ The prose should have taken this path:
    its menu
 7. on `b` from the card, goes back to help and re-renders the home rather
    than recalling what was shown earlier in the conversation
-8. on `b` from the home, puts the original session label back and
-   re-renders the start menu in place — `pay` and its menu again, the
+8. on `b` from the home, records the arrival at the start menu — the
+   label put back where the user opted in — and re-renders the start
+   menu in place — `pay` and its menu again, the
    flow stopped there for the user
 
 Further claims:
