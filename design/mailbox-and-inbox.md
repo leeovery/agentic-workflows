@@ -121,7 +121,7 @@ where the backlog lives. Opened 2026-09-23 from Lee's dislike of
 | `topic absorb` | `topic absorb` (unchanged — the topic absorbs the message into its record) |
 | `topic requeue` | `topic forward` |
 | response keys `concern_path`, `triage_moved` | `message_path`, `mail_moved` |
-| computed `triage_phases`, `triage_queued`, `triage_parked` | `mail_phases`, `mail_queued`, `unstarted` (as the status it reads) |
+| computed `triage_phases`, `triage_queued`, `triage_parked` | `mail_phases`, `mail_queued`, `mail_waiting` (true for an unstarted item or any message waiting under a started one) |
 | `render triage-announce` / `triage-offer` / `triage-block` | `render mail-announce` / `mail-offer` / `mail-block` |
 | `render requeue-offer` | `render forward-offer` |
 | `render reroute-offer` / `reroute-candidates` | `render send-offer` / `send-candidates` |
@@ -158,7 +158,14 @@ a document is content, never state.
 - every discovery map item's `source`, split on commas, rewriting each
   `reroute:` segment to `message:`.
 
-Idempotent; reports one update per changed unit.
+Idempotent; reports one update per changed unit. Frozen migration 054's
+verification addendum still names `.triage/` for a straggler it could not
+parse, and addenda are performed after every migration has run — so an
+install behind at 054 would recover a straggler into a directory nothing
+reads. Where a research or discussion document still holds content under a
+Triage heading (an emptied `(none)` section never counts), 071 hands back
+an addendum of its own, read after 054's, pointing the move at the
+mailbox.
 
 ### Part two — the inbox and the roadmap
 
@@ -219,6 +226,19 @@ placement decides the home, whatever the kind.
 
 **Recognition at shaping.** A waiting roadmap item of any kind is matched;
 the "epic- or feature-shaped reads only" limit goes.
+
+**The names.** The engine and the prose meet on these:
+
+| Surface | Shape |
+| --- | --- |
+| `roadmap add` | `--kind <idea\|bug\|quick-fix>`, `idea` when omitted |
+| `roadmap add-batch` | an entry takes `kind`, and `note` — a live inbox path, in the form the inbox verbs take; with a note the entry's kind is the note's folder (a contradicting `kind` refused), its origin `inbox:{file stem}`, and its one source the note's new path; every note moves and every item lands under one commit, a clash refused before anything moves |
+| notes | `.workflows/.roadmap/notes/{ideas,bugs,quickfixes}/{file}` — `sources` name it as `.roadmap/notes/{folder}/{file}` |
+| `render inbox-roadmap-gate --file <payload>` | payload `{"horizon": "…", "items": [{"name", "kind", "summary"}]}`; the statement lists each item and the horizon (flagged new, the roadmap's birth said where there is none); rows `y/yes`, `n/no`, Comment; refused naming any item already on the roadmap |
+| the working set | `o/roadmap` beside `w/work` (key `o`: `r` is archive's); `w/work` for any set; `set_type` is `none`, `bugfix` or `quick-fix` — never `mixed` |
+| `roadmap state` rows, `pull-set` DATA | carry `kind` |
+| `roadmap remove` | a waiting item's roadmap note moves to `.workflows/.inbox/.archived/{folder}/` under the same commit |
+| `roadmap pull-forward` | refuses an item whose kind is not `idea`, naming the pull as the way to start it |
 
 **Migration 072 — the roadmap.** On the project manifest's roadmap node:
 every item without a `kind` gains `kind: idea` (every item to date is an
