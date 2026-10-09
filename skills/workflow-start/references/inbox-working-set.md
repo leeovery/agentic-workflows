@@ -203,13 +203,13 @@ That label is `{horizon}`.
 
 ## H. Confirm the Roadmap Items
 
-Compose one item per note in the set, from the note read at **A**:
+Read each note in the set in full with the Read tool, then compose one item per note:
 
 - `name` — the note's slug: its filename without the `YYYY-MM-DD--` date prefix and the `.md` extension, kebab-case.
 - `kind` — from its inbox folder: `ideas` → `idea`, `bugs` → `bug`, `quickfixes` → `quick-fix`.
 - `summary` — one line in the product's terms: an idea at capability grain (one capability the user would move around a roadmap as one thing), a bug or a quick-fix as the one fix it is.
 
-Write the payload to `.workflows/.cache/inbox-roadmap.json` with the Write tool, the items in set order:
+Write the payload to `.workflows/.cache/inbox/roadmap.json` with the Write tool, the items in set order:
 
 ```json
 { "horizon": "{horizon}", "items": [{ "name": "{name}", "kind": "{kind}", "summary": "{summary}" }] }
@@ -218,7 +218,7 @@ Write the payload to `.workflows/.cache/inbox-roadmap.json` with the Write tool,
 Render the confirm — it states every item and the horizon, flagged new when the map does not hold it and naming the roadmap's own birth when there is none. A refusal names an item already on the roadmap: derive another name for it from its note — more specific, never a numeric suffix — and render again.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox/roadmap.json
 ```
 
 Emit the call's MENU section verbatim per its marker.
@@ -243,7 +243,7 @@ The comment names what to change — an item's name or summary, or the horizon. 
 
 ## I. Land the Items
 
-Write the entries to `.workflows/.cache/inbox-roadmap-items.json` with the Write tool — one per item, in set order, `note` the item's inbox path:
+Write the entries to `.workflows/.cache/inbox/roadmap-items.json` with the Write tool — one per item, in set order, `note` the item's inbox path:
 
 ```json
 [{ "name": "{name}", "horizon": "{horizon}", "summary": "{summary}", "note": "{path}" }]
@@ -252,7 +252,7 @@ Write the entries to `.workflows/.cache/inbox-roadmap-items.json` with the Write
 Land them — the verb moves each note to the roadmap's notes, derives each item's kind, origin and source from its note, and self-commits, so no commit call follows:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox-roadmap-items.json
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox/roadmap-items.json
 ```
 
 #### If the response is `ok: false` refusing a name already on the roadmap
@@ -261,8 +261,14 @@ Nothing moved. Derive another name for that item as **H** does.
 
 → Return to **H. Confirm the Roadmap Items**.
 
+#### If the response is any other `ok: false`
+
+Nothing moved. Show the engine's error verbatim.
+
+→ Return to **A. Render the Working Set**.
+
 #### Otherwise
 
-Tell the user in one line what went where — the items and their horizon. The working set is now empty.
+Tell the user in one line how many items went onto the roadmap and under which horizon. The working set is now empty.
 
 → Return to caller.
