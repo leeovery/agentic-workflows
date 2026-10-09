@@ -118,7 +118,7 @@ record exactly like one the prose asked for — only the walk says which it
 was. So a claim that something was not done is answered by both together:
 the record for whether it happened, the walk for whose doing it was.
 
-## Five known differences between here and a live session
+## Six known differences between here and a live session
 
 An inline `` !`command` `` directive is substituted when a skill loads
 live. A walk reads the prose as a file, so the substitution never happens
@@ -172,6 +172,14 @@ dispatch it continues, is the prose's send made and correct behaviour —
 never a failed send, and never a reason for a fresh dispatch. And a
 dispatch or send the prose calls for that is absent from DISPATCHES is a
 missing step, however faithfully what stood in for it was applied.
+
+The sixth: the walker has neither SendUserMessage nor ToolSearch to load
+it. Where the prose delivers what a step shows with SendUserMessage, the
+walker writes it as text — the arm the framework's instructions give
+where the tool is unavailable. Text in place of a SendUserMessage call is
+correct behaviour: not a deviation, not a missing step, and not a
+marker. The delivery itself is never exercised, so a claim that rests on
+how a block reached the person is unprovable here.
 
 These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.
