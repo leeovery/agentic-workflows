@@ -122,8 +122,8 @@ describe('workflow-roadmap gateway: pull-set', () => {
     assert.ok(res.stdout.includes([
       '=== DISPLAY (emit verbatim as a text code block (```text fence)) ===',
       'v1',
-      '  └─ 1. Export Timeout [bug] — large exports of a whole year',
-      '        of orders time out before the file is ready to download',
+      '  └─ 1. Export Timeout [bug] — large exports of a whole year of',
+      '        orders time out before the file is ready to download',
       '',
     ].join('\n')), res.stdout);
   });

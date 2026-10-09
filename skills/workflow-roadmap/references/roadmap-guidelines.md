@@ -24,7 +24,7 @@ Items joined to work units are windows, not material:
 
 - A thread about a **waiting** item is this session's business — explore, re-sort, edit freely.
 - A thread about a **pulled, in-flight** item belongs to its work unit. When the session materially deepens its ground, record the exploration in the log and flag the join so the epic re-examines (`engine roadmap flag {name}`; a join the epic has not yet bound to a topic answers `committed: null` with a note — nothing lands, the epic reads the record fresh at its harvest; relay that in a line). Never treat the roadmap as the place to redirect in-flight work — re-bucketing or removing a pulled item is refused engine-side, and the recovery is the epic's cancel.
-- An idea added to a horizon with **any member in delivery** takes the routed confirm; a bug or a quick-fix takes a plain `roadmap add` wherever it goes — pull-forward takes ideas alone, and one wanted beside the delivery is pulled as its own work. While waiting members remain the menu is three-way; once the horizon is fully in delivery it is strict two-way — no waiting side-door into a release that is now an epic. Render it:
+- An idea added to a horizon with **any member pulled into an epic underway** takes the routed confirm; a bug or a quick-fix takes a plain `roadmap add` wherever it goes — pull-forward takes ideas alone, into an epic alone, and one wanted beside the delivery is pulled as its own work. While any member is not in such an epic the menu is three-way; once every member is, it is strict two-way — no waiting side-door into a release that is now an epic. Render it:
 
   ```bash
   node .claude/skills/workflow-engine/scripts/engine.cjs render roadmap-add-gate --horizon "{h}"

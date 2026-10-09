@@ -9,7 +9,7 @@
 // `roadmap.items`:
 //   - every item without a `kind` gains `kind: "idea"` — every item to date
 //     is an idea, the roadmap having refused the others;
-//   - every source under `.inbox/.archived/{folder}/{file}` — a note the
+//   - every source under `.inbox/.archived/{folder}/{file}.md` — a note the
 //     roadmap session archived, then pointed the item at — has its file moved
 //     to `.workflows/.roadmap/notes/{folder}/{file}` and the source rewritten
 //     `.roadmap/notes/{folder}/{file}`, whatever the item's state: a source is
@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const ARCHIVED_NOTE = /^\.inbox\/\.archived\/(ideas|bugs|quickfixes)\/([^/]+)$/;
+const ARCHIVED_NOTE = /^\.inbox\/\.archived\/(ideas|bugs|quickfixes)\/([^/]+\.md)$/;
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 function isObject(v) {
@@ -85,7 +85,7 @@ function relocate(projectDir, source) {
 module.exports = {
   id: '072',
   description: 'every roadmap item gains a kind; notes the roadmap pointed into the inbox archive move to the roadmap\'s own notes',
-  info: 'The roadmap now holds ideas, bugs and quick-fixes, each item carrying its kind, and an item\'s note lives in the roadmap\'s own notes rather than the inbox archive. On the project manifest\'s roadmap, this migration gives every item without a kind the kind "idea", and moves every note an item\'s sources name under .workflows/.inbox/.archived/{folder}/ to .workflows/.roadmap/notes/{folder}/ (the move staged in git), rewriting the source to match.',
+  info: 'The roadmap now holds ideas, bugs and quick-fixes, each item carrying its kind, and an item\'s note lives in the roadmap\'s own notes rather than the inbox archive. On the project manifest\'s roadmap, this migration gives every item without a kind the kind "idea", and moves every markdown note an item\'s sources name under .workflows/.inbox/.archived/{folder}/ to .workflows/.roadmap/notes/{folder}/ (the move staged in git), rewriting the source to match.',
   run({ projectDir, reportUpdate, reportSkip }) {
     const manifestPath = path.join(projectDir, '.workflows', 'manifest.json');
     let manifest;

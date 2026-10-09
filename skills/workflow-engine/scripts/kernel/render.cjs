@@ -47,25 +47,31 @@ function fillTo(head, fillChar, width) {
 
 // Greedy word-wrap `text` into segments no wider than `budget` columns. A word
 // longer than the budget is hard-split (so a long unbroken token can never
-// overflow the budget). Returns an array of segments with no trailing spaces.
-/** @param {string} text @param {number} budget @returns {string[]} */
-function wrap(text, budget) {
-  if (!Number.isInteger(budget) || budget < 1) {
-    throw new Error(`wrap: budget must be a positive integer (got ${budget})`);
+// overflow the budget). `restBudget` sets every line after the first, where
+// it differs. Returns an array of segments with no trailing spaces.
+/** @param {string} text @param {number} budget @param {number} [restBudget] @returns {string[]} */
+function wrap(text, budget, restBudget = budget) {
+  for (const b of [budget, restBudget]) {
+    if (!Number.isInteger(b) || b < 1) {
+      throw new Error(`wrap: budget must be a positive integer (got ${b})`);
+    }
   }
   const words = String(text).trim().split(/\s+/).filter(Boolean);
+  /** @type {string[]} */
   const lines = [];
+  const limit = () => (lines.length === 0 ? budget : restBudget);
   let line = '';
   for (let word of words) {
-    while (word.length > budget) {
+    while (word.length > limit()) {
       // Hard-split an oversized token across as many lines as needed.
       if (line) { lines.push(line); line = ''; }
-      lines.push(word.slice(0, budget));
-      word = word.slice(budget);
+      const cut = limit();
+      lines.push(word.slice(0, cut));
+      word = word.slice(cut);
     }
     if (!line) {
       line = word;
-    } else if (line.length + 1 + word.length <= budget) {
+    } else if (line.length + 1 + word.length <= limit()) {
       line += ' ' + word;
     } else {
       lines.push(line);
@@ -165,15 +171,16 @@ function tagReserve(nodes) {
 
 // A wrapped title: the first line under the branch glyph, continuations
 // under the child prefix — the title's own first column when `childIndent`
-// is the glyph width — and `hang` columns past it. One budget for every
-// line, measured against the longer (continuation) prefix so no line can
-// overflow; the tag reserve comes off it unless that would starve the title.
+// is the glyph width — and `hang` columns past it. Each line's budget is
+// measured against the child prefix (never shorter than the head, so no
+// line can overflow), the continuations' less their hang; the tag reserve
+// comes off both unless that would starve the title.
 /** @param {string} title @param {string} head @param {string} childPrefix @param {number} width @param {number} reserve @param {number} [hang] @returns {string[]} */
 function titleLines(title, head, childPrefix, width, reserve, hang = 0) {
+  const full = width - childPrefix.length;
+  const claim = full - hang - reserve >= MIN_TITLE_BUDGET ? reserve : 0;
+  const [first, ...rest] = wrap(title, full - claim, full - hang - claim);
   const continuation = childPrefix + ' '.repeat(hang);
-  const full = width - continuation.length;
-  const reserved = full - reserve;
-  const [first, ...rest] = wrap(title, reserved >= MIN_TITLE_BUDGET ? reserved : full);
   return [head + first, ...rest.map((seg) => continuation + seg)];
 }
 

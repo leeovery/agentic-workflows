@@ -320,7 +320,7 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.match(runFail(dir, batch([{ ...fresh, note: 42 }])).error, /entry 1 — "note" must be a live inbox path/);
     const spaced = '.workflows/.inbox/ideas/2026-03-04--dark mode.md';
     fs.writeFileSync(path.join(dir, spaced), 'a hand-dropped file\n');
-    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — unknown origin "inbox:2026-03-04--dark mode"/);
+    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — the note "\.workflows\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
     fs.mkdirSync(path.dirname(path.join(dir, IDEA_NOTE)), { recursive: true });
     fs.writeFileSync(path.join(dir, IDEA_NOTE), 'taken\n');
     assert.match(runFail(dir, batch([fresh])).error, /add-batch: destination already exists/);
