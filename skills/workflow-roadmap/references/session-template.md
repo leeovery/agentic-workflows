@@ -44,7 +44,7 @@ and rejected paths with why, the threads left open. Not verbatim.}
 - Renamed: {old} → {new} — {short reason}
 - Removed: {name} — {short reason}
 - Horizon {added|renamed|reordered|merged|split|removed}: {detail}
-- Groomed: {inbox slug} → {name} ({horizon})
+- Groomed: {inbox slug} → {name} [{kind:[idea|bug|quick-fix]}] ({horizon})
 - Flagged: {name} — {short reason}
 - Imported: {filename}
 

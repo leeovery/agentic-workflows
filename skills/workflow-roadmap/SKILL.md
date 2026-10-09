@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/workflow-roadmap/scripts/gateway.cjs), B
 
 # Product Roadmap
 
-The product layer above the work unit. Hold the product-altitude conversation, keep the roadmap — horizons of shaped-but-uncommitted items — and pull slices into delivery as fenced work units.
+The product layer above the work unit. Hold the product-altitude conversation, keep the roadmap — horizons of shaped-but-uncommitted items: ideas, bugs and quick-fixes — and pull slices into delivery as fenced work units.
 
 > **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
 
@@ -20,7 +20,7 @@ Three invocation modes, dispatched at Step 1:
 - **open** — from the `r/roadmap` start-menu row: show the map, then converse, pull, or return to the start menu.
 - **pull** — from a recognition offer: the user accepted pulling an existing waiting item, straight to the pull ceremony.
 
-**Stay in your lane**: shape the product and its staging — what exists, what's next, what waits. Capability-grain only: an item is whatever you'd move around a roadmap as one thing. Topic shaping, mechanism, and design decisions belong to the work units the pull creates; a pulled item's substance belongs to its epic. Right of a pull the work unit is authoritative — the map edits waiting items freely and only watches joined ones.
+**Stay in your lane**: shape the product and its staging — what exists, what's next, what waits. An idea is at capability grain — whatever you'd move around a roadmap as one thing; a bug or a quick-fix is one fix. Topic shaping, mechanism, and design decisions belong to the work units the pull creates; a pulled item's substance belongs to its work unit. Right of a pull the work unit is authoritative — the map edits waiting items freely and only watches joined ones.
 
 ---
 

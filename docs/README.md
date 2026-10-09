@@ -11,7 +11,7 @@ This is the book of the system for the person about to live inside it: what will
 
 The phases in order — the journey from a rough idea to landed, reviewed code. Each page covers what happens, what you are asked, what comes out, and why it works that way.
 
-- [The product roadmap](roadmap.md) — the layer above the work unit: hold the product conversation, stage capabilities in horizons you name, and pull slices into delivery when they earn it.
+- [The product roadmap](roadmap.md) — the layer above the work unit: hold the product conversation, stage ideas, bugs and quick-fixes in horizons you name, and pull slices into delivery when they earn it.
 - [Discovery](discovery.md) — the universal first phase: settle what the work is, shape it, and route it into the pipeline.
 - [Research and discussion](research-and-discussion.md) — explore the space, then argue it to a decision, with background agents challenging the work live.
 - [Experiments](experiments.md) — the laboratory those conversations borrow: when a number is about to bear a decision, a controlled measurement designed before it is run.
@@ -38,7 +38,7 @@ How the system works beneath the conversation — described, not as anything you
 
 ## Day to day
 
-- [Capture and the inbox](capture-and-inbox.md) — logging ideas, bugs, and quick-fixes without stopping, then triaging them into real work.
+- [Capture and the inbox](capture-and-inbox.md) — logging ideas, bugs, and quick-fixes without stopping, then triaging them: start now, put on the roadmap, or decline.
 - [Lifecycle operations](lifecycle-operations.md) — pivot, absorb, cancel, reactivate, postpone, and promote: reshaping work as your understanding of it changes.
 - [Configuration](configuration.md) — installing and updating, the settings that fill themselves in, and where each one lives.
 
