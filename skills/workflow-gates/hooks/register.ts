@@ -29,8 +29,10 @@
  * doing, the person's own values of both put back as it ends. A conversation
  * the engine has not marked keeps them untouched.
  *
- * It registers the compaction of a workflow conversation as well
- * (`compaction.ts`): Claude Code's own, the engine's note appended last.
+ * It registers the rest of what the mod does in a workflow conversation as
+ * well: the spinner saying the phase (`spinner.ts`), the guard on direct
+ * manifest edits (`guard.ts`), and the compaction — Claude Code's own, the
+ * engine's note appended last (`compaction.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
  * tab alone, from 2.1.287. Elsewhere — the VS Code extension, Claude Code on
@@ -48,6 +50,7 @@ import type {
 
 import { compaction } from './compaction.ts'
 import { MARKER, folderOf as folderNamed } from './folder.ts'
+import { guard } from './guard.ts'
 import {
   IDLE,
   NO_SENDS,
@@ -57,6 +60,7 @@ import {
   type Option,
   type Sends,
 } from './layout.ts'
+import { spinner } from './spinner.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -1136,5 +1140,7 @@ export const register: Register = on => {
     return next(e)
   }).catch(($, e, next) => next(e))
 
+  spinner(on)
+  guard(on)
   compaction(on)
 }
