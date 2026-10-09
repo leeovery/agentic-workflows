@@ -101,7 +101,7 @@ Plans write tasks to the format you choose behind one adapter contract: **Tick**
 
 ## The product roadmap
 
-Above the work units sits a product layer for the conversations that are not yet a piece of work: horizons you name in your own release language, capability-grain items with pointers back to the thinking, and a **pull** that births a work unit already fenced to the slice you chose. Ideas surfacing mid-work park there with one confirmed line ("that's a v2 thing"), a topic that belongs to a later release is postponed there whole, everything unpulled stays visibly waiting, and cancelling delivery hands the item straight back. [The product roadmap](docs/roadmap.md) has the full account.
+Above the work units sits a product layer for the conversations that are not yet a piece of work: horizons you name in your own release language, items with pointers back to the thinking — capabilities, and the bugs and quick-fixes competing with them for a release — and a **pull** that births a work unit already fenced to the slice you chose. Ideas surfacing mid-work park there with one confirmed line ("that's a v2 thing"), a topic that belongs to a later release is postponed there whole, everything unpulled stays visibly waiting, and cancelling delivery hands the item straight back. [The product roadmap](docs/roadmap.md) has the full account.
 
 ## When work changes shape
 

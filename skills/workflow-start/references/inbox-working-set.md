@@ -4,7 +4,7 @@
 
 ---
 
-Build and act on a set of inbox items. The caller holds the **working set** — one or more items, each with a type and inbox path. Every action applies to the whole set; `d/drop` is the only way to narrow it. `w/work` carries the set into discovery as combined seed material.
+Build and act on a set of inbox items. The caller holds the **working set** — one or more items, of any mix of types, each with its type and inbox path. Every action applies to the whole set; `d/drop` is the only way to narrow it. `w/work` carries the set into discovery as combined seed material; `o/roadmap` puts it on the roadmap under one horizon, each note moving with its item.
 
 ## A. Render the Working Set
 
@@ -22,21 +22,24 @@ node .claude/skills/workflow-start/scripts/gateway.cjs working-set {path} [{path
 
 The response carries demarcated sections:
 
-- **DATA** — reasoning surface: `set_uniform` / `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path  — title`. Reason from it; never display or restate it.
+- **DATA** — reasoning surface: `set_type`, `addable_count`, and the `SET` and `ADDABLE` tables — one line per item, `n  type  date  slug  → path  — title`. Reason from it; never display or restate it.
 - **TITLE** — the view's chrome heading. Emit verbatim per its marker, directly above the display.
 - **DISPLAY** — the set tree, summaries rendered beneath each item. Emit verbatim per its marker. Never redraw, reflow, or trim it.
-- **MENU** — the set menu. Emit verbatim per its marker. The `w/work` option renders only for a type-uniform set.
-- **`DISPLAY: blocker`** — present only on a mixed-type set. Emit directly after the display, verbatim per its marker.
+- **MENU** — the set menu. Emit verbatim per its marker.
 
-Emit the TITLE section, then the DISPLAY section, then the `DISPLAY: blocker` section when present, then the MENU section, each verbatim per its marker.
+Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 
-The user types a shorthand (`w`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting. `w/work` can only be chosen when the menu offered it (`set_uniform` is `true`).
+The user types a shorthand (`w`/`o`/`a`/`d`/`r`/`v`/`b`) **or** describes the action in their own words. Map the response to one branch below; a message that only asks about the set, naming no action, is `Ask`. When the phrasing also names items (*"add 2 and 4"*, *"drop the bug"*), carry that selection into the action so **B**/**C** apply it without re-prompting; when it names a horizon (*"put these under Later"*), carry that into **G**.
 
 #### If user chose `w/work`
 
 → Proceed to **F. Work the Set**.
+
+#### If user chose `o/roadmap`
+
+→ Proceed to **G. Choose the Horizon**.
 
 #### If user chose `a/add`
 
@@ -176,8 +179,90 @@ Read each item in the set and render its full content as markdown (not a code bl
 
 ## F. Work the Set
 
-Reached only for a type-uniform set — `w/work` is offered solely when `set_uniform` is `true`. The DATA `set_type` is the work-type pre-seed (all bugs → `bugfix`, all quick-fixes → `quick-fix`, all ideas → `none`).
+The DATA `set_type` is the work-type pre-seed, taken from the largest kind in the set: quick-fixes only → `quick-fix`; any bug and no idea → `bugfix`; any idea → `none`, where discovery decides the shape from the ideas and the bugs and quick-fixes ride along as seeds that never set or enlarge it.
 
 Build `inbox_seeds` — the set items' inbox paths, comma-joined.
 
 → Load **[route-to-discovery.md](route-to-discovery.md)** with work_type = `{set_type}`, inbox_seeds = `{inbox_seeds}`.
+
+## G. Choose the Horizon
+
+The whole set goes under one horizon.
+
+#### If the reply named a horizon
+
+That label is `{horizon}`.
+
+→ Proceed to **H. Confirm the Roadmap Items**.
+
+#### Otherwise
+
+→ Load **[choosing-a-horizon.md](../../workflow-shared/references/choosing-a-horizon.md)** and follow its instructions as written.
+
+→ On return, proceed to **H. Confirm the Roadmap Items**.
+
+## H. Confirm the Roadmap Items
+
+Compose one item per note in the set, from the note read at **A**:
+
+- `name` — the note's slug: its filename without the `YYYY-MM-DD--` date prefix and the `.md` extension, kebab-case.
+- `kind` — from its inbox folder: `ideas` → `idea`, `bugs` → `bug`, `quickfixes` → `quick-fix`.
+- `summary` — one line in the product's terms: an idea at capability grain (one capability the user would move around a roadmap as one thing), a bug or a quick-fix as the one fix it is.
+
+Write the payload to `.workflows/.cache/inbox-roadmap.json` with the Write tool, the items in set order:
+
+```json
+{ "horizon": "{horizon}", "items": [{ "name": "{name}", "kind": "{kind}", "summary": "{summary}" }] }
+```
+
+Render the confirm — it states every item and the horizon, flagged new when the map does not hold it and naming the roadmap's own birth when there is none. A refusal names an item already on the roadmap: derive another name for it from its note — more specific, never a numeric suffix — and render again.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-roadmap-gate --file .workflows/.cache/inbox-roadmap.json
+```
+
+Emit the call's MENU section verbatim per its marker.
+
+**STOP.** Wait for user response.
+
+**If `yes`:**
+
+→ Proceed to **I. Land the Items**.
+
+**If `no`:**
+
+Nothing is recorded; the set stands.
+
+→ Return to **A. Render the Working Set**.
+
+**If comment:**
+
+The comment names what to change — an item's name or summary, or the horizon. Take it as the instruction and compose the payload again; what it does not name stands.
+
+→ Return to **H. Confirm the Roadmap Items**.
+
+## I. Land the Items
+
+Write the entries to `.workflows/.cache/inbox-roadmap-items.json` with the Write tool — one per item, in set order, `note` the item's inbox path:
+
+```json
+[{ "name": "{name}", "horizon": "{horizon}", "summary": "{summary}", "note": "{path}" }]
+```
+
+Land them — the verb moves each note to the roadmap's notes, derives each item's kind, origin and source from its note, and self-commits, so no commit call follows:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add-batch --file .workflows/.cache/inbox-roadmap-items.json
+```
+
+#### If the response is `ok: false` refusing a name already on the roadmap
+
+Nothing moved. Derive another name for that item as **H** does.
+
+→ Return to **H. Confirm the Roadmap Items**.
+
+#### Otherwise
+
+Tell the user in one line what went where — the items and their horizon. The working set is now empty.
+
+→ Return to caller.
