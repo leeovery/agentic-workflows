@@ -11,6 +11,12 @@
 // phase item, every other status kept; each comma-separated reroute: segment
 // of a discovery map source rewritten message:, every other segment and its
 // spacing kept; the rest of the manifest in the engine's serialisation.
+// The mailbox-path addendum: handed back where a research or discussion
+// document holds a straggler — a triage section (heading plain or
+// malformed, any case) whose body carries anything but whitespace and a
+// lone "(none)", text after a "(none)" included — on a run that otherwise
+// skips too; nothing for an emptied section, an empty heading, a section
+// closed by the next heading, or a heading in another phase's document.
 // Completed and cancelled units alike, one update per changed unit,
 // skip/no-op, idempotency, and the guards: no .workflows/, a directory whose
 // manifest is absent, malformed or not an object, dot directories, and
@@ -274,6 +280,79 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
       assert.deepStrictEqual(read('ledger').phases.research.items.refunds, { status: 'cancelled', previous_status: 'unstarted' });
       assert.ok(exists('.workflows/ledger/research/.mailbox/refunds/001-currency.md'));
       assert.deepStrictEqual({ updates, skips }, { updates: 2, skips: 0 });
+    });
+  });
+
+  describe('the mailbox-path addendum', () => {
+    const doc = (rel, text) => write(`.workflows/payments/${rel}`, `# Doc\n\nBody.\n\n${text}\n`);
+
+    for (const [phase, heading] of [
+      ['research', '## Triage'],
+      ['discussion', '## Triage'],
+      ['discussion', '## Triage:'],
+      ['research', '##Triage'],
+      ['discussion', '## triage'],
+    ]) {
+      it(`hands it back for a ${phase} document whose "${heading}" section holds a parked entry`, () => {
+        writeUnit('payments', epic());
+        doc(`${phase}/billing.md`, `${heading}\n\n### Parked\nText.`);
+
+        const result = run();
+
+        assert.ok(result && typeof result.verify === 'string', JSON.stringify(result));
+        assert.ok(result.verify.includes('.workflows/{wu}/{phase}/.mailbox/{topic}/'), result.verify);
+        assert.ok(result.verify.includes('NNN-{slug}.md'), result.verify);
+        assert.ok(typeof MIGRATION.info === 'string' && MIGRATION.info.length > 0);
+      });
+    }
+
+    it('hands it back for stray text after a "(none)"', () => {
+      writeUnit('payments', epic());
+      doc('discussion/billing.md', '## Triage\n\n(none)\n\nRate limits need re-deciding against the batch signals.');
+
+      assert.ok(run()?.verify);
+    });
+
+    it('hands it back on a run that otherwise skips', () => {
+      writeUnit('payments', { name: 'payments', work_type: 'epic', status: 'in-progress', phases: {} });
+      doc('discussion/billing.md', '## Triage:\n\n### Parked\nText.');
+
+      const result = run();
+
+      assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
+      assert.ok(result && typeof result.verify === 'string');
+    });
+
+    it('hands back nothing for an emptied section — the "(none)" 054 leaves on a completed topic', () => {
+      writeUnit('payments', epic());
+      doc('discussion/billing.md', '## Triage\n\n(none)\n\n## Summary\n\nDecided.');
+      doc('research/billing.md', '## Triage\n\n  (none)  \n');
+
+      assert.strictEqual(run(), undefined);
+    });
+
+    it('hands back nothing for an empty heading, and for text that belongs to the next section', () => {
+      writeUnit('payments', epic());
+      doc('discussion/billing.md', '## Triage');
+      doc('research/billing.md', '## Triage\n\n# Appendix\n\nNot triage content.');
+
+      assert.strictEqual(run(), undefined);
+    });
+
+    it('hands back nothing where no research or discussion document carries a triage heading', () => {
+      writeUnit('payments', epic());
+      doc('research/billing.md', '## Findings\n\nThe triage of incidents is manual.');
+      doc('discussion/billing.md', '### Triage notes\n\nNot a section heading.');
+
+      assert.strictEqual(run(), undefined);
+    });
+
+    it('hands back nothing for a triage heading only in another phase\'s document', () => {
+      writeUnit('payments', epic());
+      doc('investigation/billing.md', '## Triage\n\n### Parked\nText.');
+      doc('specification/billing/specification.md', '## Triage\n\nText.');
+
+      assert.strictEqual(run(), undefined);
     });
   });
 
