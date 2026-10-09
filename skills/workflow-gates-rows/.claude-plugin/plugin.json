@@ -1,7 +1,7 @@
 {
   "name": "workflow-gates-rows",
   "version": "0.1.0",
-  "description": "Draws the transcript row of an answer the workflow-gates mod sent as the question it answered and the answer, instead of Claude Code's framing.",
+  "description": "Draws the transcript rows of what the workflow-gates mod sends — an answer as the question it answered and the answer, a handoff's continuation as where the work went — and a compaction's note as one dim line, instead of Claude Code's framing.",
   "author": {
     "name": "Lee Overy"
   }

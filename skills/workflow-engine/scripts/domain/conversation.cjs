@@ -14,9 +14,10 @@
 // ever share one:
 //
 //   workflow       the mark that the conversation runs the workflows, which
-//                  the gate mod reads to set the workflow harness — written
-//                  by every engine and gateway call that carries a session
-//                  id, run in a project whose `.workflows/` already exists
+//                  the gate mod reads to set the workflow harness and to
+//                  answer a compaction — written by every engine and gateway
+//                  call that carries a session id, run in a project whose
+//                  `.workflows/` already exists
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, the
@@ -24,8 +25,13 @@
 //                  what the tmux label's resume re-applies, and
 //                  `conversation position` names files for
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
-//   sent.json      what the mod last sent from a press (the mod's own)
-//   rows.json      each answer row the rows mod redrew, by message id (its own)
+//   sent.json      what the mod last sent from a press, or a handoff's
+//                  continuation with its line (the mod's own)
+//   compacted.json every note the mod appended to a compaction, with the
+//                  place it carries on in (the mod's own; the rows mod reads
+//                  it)
+//   rows.json      each row the rows mod redrew of what the mod sent, by
+//                  message id (its own)
 //
 // A folder goes at any project's boot once its transcript is gone: Claude
 // Code has deleted the conversation, so nothing can resume it, and whatever
