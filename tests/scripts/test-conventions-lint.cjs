@@ -652,12 +652,12 @@ function checkInertLoadChrome(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 13 — no templated menu or display in prose (CONVENTIONS' Engine
-// Output Sections). A menu or display fence carrying anything that varies —
-// a placeholder or an @if/@foreach directive — is the engine's to render.
-// Markers and signposts are chrome, out of scope; a static fence is fine.
-// The capture skills (`workflow-log-*`) are exempt: they are not workflow
-// skills, and deliberately structureless.
+// Check 13 — nothing a person sees from prose varies (CONVENTIONS' Engine
+// Output Sections). A fence headed by a rendering instruction — a menu, a
+// display, a marker, a signpost — carrying anything that varies (a braced
+// token or an @if/@foreach directive) is the engine's to render; a static
+// fence is fine. The capture skills (`workflow-log-*`) are exempt: they are
+// not workflow skills, and deliberately structureless.
 // ---------------------------------------------------------------------------
 
 // The capture skills, read from the folder directly under the corpus root's
@@ -668,26 +668,16 @@ function isCaptureSkill(file, root) {
 }
 
 /** @param {string[]} content */
-function isChrome(content) {
-  const isMarker = content.length === 1
-    && (/^(── |·· )/.test(content[0]) || /^(# )?\*\*`[■□▪] /.test(content[0]));
-  const isSignpost = content.some((l) => l.trim() !== '')
-    && content.every((l) => l.trim() === '' || l.startsWith('>'));
-  return isMarker || isSignpost;
-}
-
-/** @param {string[]} content */
-function isTemplatedDisplay(content) {
+function isTemplated(content) {
   const text = content.join('\n');
   // Any single-line braced token, deliberately wider than the placeholder
   // grammar: `{2 context lines}` varies as surely as `{topic}` does.
-  const templated = /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
-  return templated && !isChrome(content);
+  return /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
 }
 
-// The line of each templated menu/display fence's rendering instruction. An
+// The line of each templated rendered fence's rendering instruction. An
 // instruction quoted inside a fence is an example, never a render site.
-function templatedDisplaySites(file) {
+function templatedRenderSites(file) {
   const lines = readLines(file);
   const { blocks, inFence } = parseFences(lines);
   const blockAt = new Map(blocks.map((b) => [b.open, b]));
@@ -697,18 +687,18 @@ function templatedDisplaySites(file) {
     let j = i + 1;
     while (j < lines.length && lines[j].trim() === '') j++;
     const block = blockAt.get(j);
-    if (block && isTemplatedDisplay(block.lines.map((l) => l.text))) sites.push(i + 1);
+    if (block && isTemplated(block.lines.map((l) => l.text))) sites.push(i + 1);
   });
   return sites;
 }
 
-function checkNoTemplatedDisplays(files, root = REPO) {
+function checkNoTemplatedRenders(files, root = REPO) {
   return files
     .filter((file) => !isCaptureSkill(file, root))
-    .flatMap((file) => templatedDisplaySites(file).map((line) => ({
+    .flatMap((file) => templatedRenderSites(file).map((line) => ({
       file,
       line,
-      message: 'a templated menu or display in prose — render it from the engine (CONVENTIONS → Engine Output Sections)',
+      message: 'a templated fence rendered from prose — render it from the engine (CONVENTIONS → Engine Output Sections)',
     })));
 }
 
@@ -1139,7 +1129,7 @@ const CHECKS = [
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
   ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
-  ['13: no templated menu or display in prose', checkNoTemplatedDisplays],
+  ['13: nothing rendered from prose varies', checkNoTemplatedRenders],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
@@ -1625,18 +1615,18 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
   });
 });
 
-test('check 13 (no templated displays) — catches a templated fence outside any fence, skips static/marker/signpost and the capture skills', () => {
+test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences and the capture skills', () => {
   withTemp((dir) => {
-    const sites = (file) => checkNoTemplatedDisplays([file], dir).map((v) => v.line);
+    const sites = (file) => checkNoTemplatedRenders([file], dir).map((v) => v.line);
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
     const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n';
     const textInstr = '> *Output the next fenced block as a text code block (```text fence):*';
     const capture = `${textInstr}\n\n\`\`\`text\nLogged idea: {slug}\n\`\`\`\n`;
 
     const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
-    const v1 = checkNoTemplatedDisplays([fresh], dir);
+    const v1 = checkNoTemplatedRenders([fresh], dir);
     assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
-    assert.match(v1[0].message, /render it from the engine \(CONVENTIONS → Engine Output Sections\)/);
+    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine \(CONVENTIONS → Engine Output Sections\)/);
 
     const numbered = write(dir, 'skills/x/f.md', `1. Do the thing.\n4. ${textInstr}\n\n   \`\`\`text\n   Task {id} authored.\n   \`\`\`\n`);
     assert.deepStrictEqual(sites(numbered), [2], 'an instruction after a numbered marker is caught');
@@ -1646,8 +1636,6 @@ test('check 13 (no templated displays) — catches a templated fence outside any
 
     const outer = write(dir, 'skills/x/i.md', `${instr}\`\`\`\`markdown\n\`\`\`text\nStatic.\n\`\`\`\nTask {id} authored.\n\`\`\`\`\n`);
     assert.deepStrictEqual(sites(outer), [1], 'a four-backtick fence runs past the inner fence it holds');
-    assert.strictEqual(isChrome([]), false, 'an empty block is no signpost');
-    assert.strictEqual(isChrome(['']), false, 'a blank block is no signpost');
 
     assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
     assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
@@ -1657,13 +1645,18 @@ test('check 13 (no templated displays) — catches a templated fence outside any
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
     assert.deepStrictEqual(sites(statik), [], 'static menu is always fine');
 
-    const chrome = write(
-      dir,
-      'skills/x/d.md',
-      '> *Output the next fenced block as a code block:*\n\n```\n── Review (cycle {N}) ──────────────────────────\n```\n\n' +
-        instr + '```\n> Working on {topic} — questions about gaps\n> and contradictions follow.\n```\n'
-    );
-    assert.deepStrictEqual(sites(chrome), [], 'templated markers and signposts are chrome, out of scope');
+    const marker = write(dir, 'skills/x/d.md', instr + '```\n**`□ Consolidation Pass (phase {N})`**\n```\n\n' + instr + '```\n**`▪ Processing {source}`**\n```\n');
+    assert.deepStrictEqual(sites(marker), [1, 7], 'a step or sub-step marker naming anything that varies is caught');
+
+    const signpost = write(dir, 'skills/x/g.md', instr + '```\n> Working on {topic} — questions about gaps\n> and contradictions follow.\n```\n\n' +
+      instr + '```\n> @if(resumed) Picking it back up. @else Starting. @endif Lead wherever you want.\n```\n');
+    assert.deepStrictEqual(sites(signpost), [1, 8], 'a signpost carrying a placeholder or a directive is caught');
+
+    const nested = write(dir, 'skills/x/j.md', `1. Open the step.\n2. ${instr.trimEnd()}\n\n   \`\`\`\n   **\`□ Interviewing {area} ({n} of {total})\`**\n   \`\`\`\n\n3. ${instr.trimEnd()}\n\n   \`\`\`\n   > Applying {count} corrections.\n   \`\`\`\n`);
+    assert.deepStrictEqual(sites(nested), [2, 8], 'a templated marker or signpost under a list number is caught');
+
+    const staticChrome = write(dir, 'skills/x/k.md', instr + '```\n**`□ Document Review`**\n```\n\n' + instr + '```\n> Reconciling the session log against the conversation.\n```\n');
+    assert.deepStrictEqual(sites(staticChrome), [], 'a static marker and signpost stay authored in prose');
 
     const diffForm = write(
       dir,

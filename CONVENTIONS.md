@@ -69,7 +69,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 Every TITLE, DISPLAY and MENU marker's instruction opens `emit verbatim as ` and one of the four forms (see Rendering Instructions), then its behaviour clause where the surface gives one — `, directly above the menu`, `, then STOP for the user's response`, ` — do not stop; continue as the workflow instructs`; a moment the section waits for sits after the form (`… (```text fence) after the result summary — …`). The render sweep the engine suites run through `tests/scripts/gate-audit.cjs` fails any marker that opens otherwise.
 
-**Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand, and a menu or display carrying anything that varies (a name, a count, a status, a branch on state) renders from the engine; a hand-drawn display drifts where an engine render cannot. Lint check 13 refuses a placeholder or directive in a menu or display fence anywhere in skill prose; what prose still authors is static text and chrome (step markers, signposts). Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries). The capture skills (`workflow-log-*`) are exempt: they are not workflow skills, and stay deliberately structureless (see The Framework Load).
+**Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand, and anything a person sees from skill prose that varies (a name, a count, a status, a branch on state) renders from the engine, whether it is a display, a menu, a step or sub-step marker, or a signpost; a hand-drawn display drifts where an engine render cannot. What prose still authors is static: a marker, a signpost, an ask or a blocker whose every word is fixed. Lint check 13 reads each fence a rendering instruction heads and refuses one carrying a placeholder or a directive. Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries, the line a baseline area's interview opens on); a fact only the session holds, never a state the engine can read, travels as a flag (`--resumed`, a tally of what the session did). The capture skills (`workflow-log-*`) are exempt from the rule and the check: they are not workflow skills, and stay deliberately structureless (see The Framework Load).
 
 Section content is never redrawn, reflowed, trimmed, or re-derived — its marker says how it is emitted. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
@@ -119,7 +119,8 @@ Rules:
 - **No step numbers** — steps may be skipped based on conditionals and routing is non-linear. Names alone are sufficient
 - Loop iterations shown in parentheses: `(cycle N)`, `(N of M)`
 - Route-back uses `Returning to {Name}`
-- Emitted as markdown with its own rendering instruction. No trailing blank line — natural block separation provides enough spacing
+- A static marker is emitted as markdown with its own rendering instruction. No trailing blank line — natural block separation provides enough spacing
+- **A marker naming anything that varies is drawn by the engine** — a loop count, an item's name, a phase number — as the first line of one markdown section, its signpost beneath it (`engine render step-opening` serves the steps that have no surface of their own). The prose carries the fetch at the step boundary, never the marker
 
 Engine-drawn dividers inside a fenced DISPLAY block (the epic dashboard's `── STAGE ──` lines) are a different object: markdown cannot reach inside a fence, so they stay drawn, sized to the content they divide.
 
@@ -135,8 +136,8 @@ Rules:
 - Exactly this shape: `**` + backtick + `▪ ` + name + backtick + `**`
 - Named only — no numbering or lettered suffixes
 - Same loop/iteration conventions as step markers
-- Emitted as markdown with its own rendering instruction
-- **A marker heading an engine-rendered display is drawn by that surface**, as the first line of its section — never authored above the fetch, where the tool result would land between the marker and the display it heads. What the marker names travels in the payload like any other judgment content
+- A static marker is emitted as markdown with its own rendering instruction; one naming anything that varies is drawn by the engine, as a step marker is
+- **A marker heading an engine-rendered display is drawn by that surface**, as the first line of its section — never authored above the fetch, where the tool result would land between the marker and the display it heads. What the marker names the engine reads from state, or takes from the payload where it is judgment content
 
 ### Signpost Blockquotes
 
@@ -147,7 +148,8 @@ Guidance text rendered as markdown blockquotes. Used for phase entry context, pr
 ```
 
 Rules:
-- Rendered as markdown (use the markdown rendering instruction)
+- A static signpost is authored in prose and rendered as markdown (use the markdown rendering instruction)
+- **A signpost naming anything that varies is drawn by the engine** — a count, a name, a wording that turns on state — as a markdown blockquote section: beside the gate it heads where the step fetches one (`analysis-proceed-gate`, the legacy split's remove confirm), under the marker it follows where the marker varies too, on a surface of its family otherwise (`document-review`, `pause-note`)
 - **One authored line per paragraph** — never hand-wrap. The renderer reflows a long `>` line and carries the blockquote border across every soft-wrapped continuation, so the line is correct at any terminal width; a bare `>` line separates paragraphs
 - **Bold is available, with judgment** — it survives the wrap and renders understated inside a blockquote. Use it where an emphasis genuinely helps (`**Two decisions are owed** before this can close`), not as decoration
 - Lead phrases are freeform — no fixed vocabulary, chosen to fit the context
@@ -162,7 +164,7 @@ The `workflow-start` skill opens with an ASCII art banner (see skill file for ex
 
 ### Template Placeholders
 
-Placeholders mark what varies in a command block (the arguments of an engine call) and a model-instruction block (a template the session fills in and writes, a line it composes). The syntax is:
+Placeholders mark what varies in a command block (the arguments of an engine call) and a model-instruction block (a template the session fills in and writes to disk, a payload it composes, a line it says in its own words). No fence a rendering instruction heads carries one. The syntax is:
 
 ```
 {name}                                    — raw value, output as-is
@@ -177,15 +179,15 @@ Each part is optional — use only what's needed for clarity. In a model-instruc
 
 A placeholder never wraps across lines — long example text stays on one line inside its braces, where lint check 13 reads it.
 
-**A display or menu in skill prose never carries a placeholder or a directive.** Anything in it that varies is the engine's to render (see Engine Output Sections); lint check 13 refuses one.
+**Nothing rendered from skill prose carries a placeholder or a directive** — a display, a menu, a marker, a signpost, an ask. Anything in it that varies is the engine's to render (see Engine Output Sections); lint check 13 refuses one.
 
-**Conditional directives** pick between two wordings of a signpost line or a template line by state — signposts are chrome, outside check 13:
+**Conditional directives** pick between two wordings of a line in a template the session writes to disk, by state the session holds when it writes:
 
 ```
 @if(condition) truthy content @else falsy content @endif
 ```
 
-Example: `> @if(resumed) Picking the discussion back up where the map leaves it. @else Discussion starting. @endif You can lead wherever you want.`
+Example, from the discussion template's derivation marker: `Determined by {what determined the call}@if(from_review_finding) ({id} {finding})@endif.`
 
 ### List Display
 
