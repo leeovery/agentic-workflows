@@ -52,15 +52,13 @@ Where do you want to take it from here?
 
 #### Otherwise
 
-A fresh session over the map just rendered at Step 3. Where prior sessions exist, brief across the record first — the most recent log in full, older Conclusions one line each. Write the catch-up to `.workflows/.cache/roadmap/catch-up.json` with the Write tool — `{"recent": "…", "earlier": ["…"]}`: `recent` is 2–4 lines from the most recent log — the threads circled, what the user was leaning toward, what was still open; `earlier` is one line per older session from its Conclusion, left out where there is none — and render it:
+A fresh session over the map just rendered at Step 3. Where no prior sessions exist, skip the catch-up silently and open with the prompt below. Where they do, brief across the record first — the most recent log in full, older Conclusions one line each. Write the catch-up to `.workflows/.cache/roadmap/catch-up.json` with the Write tool — `{"recent": "…", "earlier": ["…"]}`: `recent` is 2–4 lines from the most recent log — the threads circled, what the user was leaning toward, what was still open; `earlier` is one line per older session from its Conclusion, left out where there is none — and render it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render catch-up --file .workflows/.cache/roadmap/catch-up.json
 ```
 
-Emit the call's DISPLAY section verbatim per its marker.
-
-Where no prior sessions exist, skip the catch-up silently. Then open:
+Emit the call's DISPLAY section verbatim per its marker. Then open:
 
 > *Output the next fenced block as markdown (not a code block):*
 
