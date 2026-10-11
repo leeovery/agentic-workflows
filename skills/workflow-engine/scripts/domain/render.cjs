@@ -537,6 +537,72 @@ function specReviewGate(cwd, { dotpath, variant }) {
 }
 
 // ---------------------------------------------------------------------------
+// review-loop — the one-line statements the planning and specification
+// review loops make between their gates. The cycle count is the item's
+// review_cycle; a stream's finding count is the findings summary its pass
+// rendered. The stream is the tracking stem's token, named per phase.
+// ---------------------------------------------------------------------------
+
+const REVIEW_LOOP_DOCUMENTS = { planning: 'Plan', specification: 'Specification' };
+/** @type {Record<string, Record<string, string>>} */
+const REVIEW_STREAMS = {
+  planning: { traceability: 'Traceability review', integrity: 'Integrity review' },
+  specification: { claims: 'Claims Verification', input: 'Input Review', 'gap-analysis': 'Gap Analysis' },
+};
+
+/** @typedef {{cwd: string, phase: string, dotpath: string, item: any, review?: string, file?: string}} ReviewLoopContext */
+
+/** @param {ReviewLoopContext} ctx @returns {number} */
+function openReviewCycle({ item, dotpath }) {
+  if (!Number.isInteger(item.review_cycle) || item.review_cycle < 1) {
+    throw new Error(`render review-loop: ${dotpath} has no review cycle open — review_cycle must be at least 1`);
+  }
+  return item.review_cycle;
+}
+
+/** @param {ReviewLoopContext} ctx @returns {string} */
+function reviewStream({ phase, review }) {
+  const streams = REVIEW_STREAMS[phase];
+  if (review === undefined || !Object.hasOwn(streams, review)) {
+    throw new Error(`render review-loop: --review must be one of ${Object.keys(streams).join(', ')} at a ${phase} address`);
+  }
+  return streams[review];
+}
+
+/** @type {Record<string, (ctx: ReviewLoopContext) => [string, string]>} */
+const REVIEW_LOOP_LINES = {
+  cycle: (ctx) => ['review cycle complete', `Review cycle ${openReviewCycle(ctx)} complete — findings applied. Running follow-up cycle.`],
+  churning: () => ['review churning', 'Findings are churning — concluding the review.'],
+  cap: () => ['review cycle cap', 'Cycle cap reached — concluding the review.'],
+  complete: (ctx) => ['review complete',
+    `${REVIEW_LOOP_DOCUMENTS[ctx.phase]} review complete — ${openReviewCycle(ctx)} cycle(s), all tracking files finalised.`],
+  clean: (ctx) => ['review stream clean', `${reviewStream(ctx)} complete — no findings.`],
+  processed: (ctx) => {
+    const stream = reviewStream(ctx);
+    if (!ctx.file) throw new Error('render review-loop: --variant processed needs --file <findings-summary.json> — the pass\'s summary is what it counts');
+    const { items } = readFindingsSummary(ctx.cwd, ctx.file, 'review-loop');
+    return ['review stream processed', `${stream} complete — ${items.length} findings processed.`];
+  },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string, review?: string, file?: string}} args
+ * @returns {string}
+ */
+function reviewLoop(cwd, { dotpath, variant, review, file }) {
+  if (variant === undefined || !Object.hasOwn(REVIEW_LOOP_LINES, variant)) {
+    throw new Error(`render review-loop: --variant must be one of ${Object.keys(REVIEW_LOOP_LINES).join(', ')}`);
+  }
+  const { manifest, phase, topic } = resolveAddress(cwd, dotpath, 'review-loop');
+  if (!Object.hasOwn(REVIEW_STREAMS, phase)) {
+    throw new Error(`render review-loop: address must be <work_unit>.planning|specification.<topic>, got phase "${phase}"`);
+  }
+  const [label, line] = REVIEW_LOOP_LINES[variant]({ cwd, phase, dotpath, item: itemOf(manifest, phase, topic) || {}, review, file });
+  return section(`DISPLAY: ${label}`, CONTINUE_INSTRUCTION, line);
+}
+
+// ---------------------------------------------------------------------------
 // convergence-diagnostic — the review/fix escalation diagnostic. The judgment
 // (trend classification, finding titles, root-cause hypotheses) rides as the
 // payload; the arithmetic (counts from the arrays, review growth) and the
@@ -1748,6 +1814,29 @@ function recommendedMenuRows(sides, atMostOne) {
 }
 
 /**
+ * The findings-summary payload, validated: the pass's overview renders it,
+ * and the pass's closing line counts it.
+ * @param {string} cwd @param {string} file @param {string} surface
+ * @returns {{review_label: string, items: {title: string, tag: string, summary: string, status?: string}[]}}
+ */
+function readFindingsSummary(cwd, file, surface) {
+  const p = readJsonPayload(cwd, file, surface);
+  if (!isFilled(p.review_label)) throw new Error(`render ${surface}: "review_label" must be a non-empty string`);
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error(`render ${surface}: "items" must be a non-empty array of {title, tag, summary}`);
+  }
+  p.items.forEach((/** @type {any} */ it, /** @type {number} */ i) => {
+    for (const field of ['title', 'tag', 'summary']) {
+      if (!isFilled(it[field])) throw new Error(`render ${surface}: item ${i + 1} is missing "${field}"`);
+    }
+    if (it.status !== undefined && !WORKLIST_STATUSES.includes(it.status)) {
+      throw new Error(`render ${surface}: item ${i + 1} carries unknown status "${it.status}" (expected ${WORKLIST_STATUSES.join('/')})`);
+    }
+  });
+  return p;
+}
+
+/**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string}} args
  * @returns {string}
@@ -1755,19 +1844,7 @@ function recommendedMenuRows(sides, atMostOne) {
 function findingsSummary(cwd, { dotpath, file }) {
   if (!file) throw new Error('render findings-summary: --file <payload.json> is required');
   resolveAddress(cwd, dotpath, 'findings-summary');
-  const p = readJsonPayload(cwd, file, 'findings-summary');
-  if (!isFilled(p.review_label)) throw new Error('render findings-summary: "review_label" must be a non-empty string');
-  if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error('render findings-summary: "items" must be a non-empty array of {title, tag, summary}');
-  }
-  p.items.forEach((it, i) => {
-    for (const field of ['title', 'tag', 'summary']) {
-      if (!isFilled(it[field])) throw new Error(`render findings-summary: item ${i + 1} is missing "${field}"`);
-    }
-    if (it.status !== undefined && !WORKLIST_STATUSES.includes(it.status)) {
-      throw new Error(`render findings-summary: item ${i + 1} carries unknown status "${it.status}" (expected ${WORKLIST_STATUSES.join('/')})`);
-    }
-  });
+  const p = readFindingsSummary(cwd, file, 'findings-summary');
   // Statuses come from the tracking file's resolutions — a re-entry over a
   // partially-processed review shows which findings are already settled.
   const body = worklist({
@@ -3712,6 +3789,13 @@ const ROUTED_CATEGORIES = ['source-defect', 'unsourced-decision'];
 // resolve-source-incoherence and refuses here by name.
 const FINDING_MOVES = ['settled', 'choice'];
 
+/** A finding's place in its walk — the heading it renders under. @param {any} p @param {string} surface */
+function checkFindingPosition(p, surface) {
+  if (!Number.isInteger(p.n) || p.n < 1) throw new Error(`render ${surface}: "n" must be a positive integer`);
+  if (!Number.isInteger(p.total) || p.total < p.n) throw new Error(`render ${surface}: "total" must be an integer ≥ "n"`);
+  if (!isFilled(p.title)) throw new Error(`render ${surface}: "title" must be a non-empty string`);
+}
+
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string, view?: string}} args
@@ -3723,9 +3807,7 @@ function finding(cwd, { dotpath, file, view }) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'finding');
   const p = readJsonPayload(cwd, file, 'finding');
 
-  if (!Number.isInteger(p.n) || p.n < 1) throw new Error('render finding: "n" must be a positive integer');
-  if (!Number.isInteger(p.total) || p.total < p.n) throw new Error('render finding: "total" must be an integer ≥ "n"');
-  if (!isFilled(p.title)) throw new Error('render finding: "title" must be a non-empty string');
+  checkFindingPosition(p, 'finding');
   if (!Array.isArray(p.meta) || p.meta.some((m) => !Array.isArray(m) || m.length !== 2 || !isFilled(m[0]) || !(typeof m[1] === 'number' || isFilled(m[1])))) {
     throw new Error('render finding: "meta" must be an array of [label, value] pairs');
   }
@@ -3881,6 +3963,37 @@ function findingSettled(p, head, item, { view, batched }) {
 
   parts.push(gateMenu(Boolean(p.content)));
   return parts.join('\n');
+}
+
+// finding-landed — the line a walked finding closes on once it lands at a
+// gate the user answered, read from the payload the finding rendered from:
+// a settled fix lands as presented, a choice lands the side it took, in the
+// session's one clause (`chosen`). At the specification a settled finding
+// lands through its finding-batch screen, so this line serves its choices.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function findingLanded(cwd, { dotpath, file }) {
+  if (!file) throw new Error('render finding-landed: --file <payload.json> is required');
+  const { phase } = resolveAddress(cwd, dotpath, 'finding-landed');
+  const p = readJsonPayload(cwd, file, 'finding-landed');
+  checkFindingPosition(p, 'finding-landed');
+  if (!FINDING_MOVES.includes(p.move)) {
+    throw new Error(`render finding-landed: "move" must be one of ${FINDING_MOVES.join('/')}`);
+  }
+  let outcome = 'fixed';
+  if (p.move === 'choice') {
+    if (!isFilled(p.chosen)) throw new Error('render finding-landed: a "choice" finding needs "chosen" — the side it took, in one clause');
+    outcome = p.chosen.trim().replace(/\.$/, '');
+  } else if (phase === SETTLED_BATCH_PHASE) {
+    throw new Error(`render finding-landed: a "settled" finding at the ${phase} phase lands through its finding-batch screen`);
+  } else if (p.chosen !== undefined) {
+    throw new Error('render finding-landed: a "settled" finding carries no "chosen" — it lands as presented');
+  }
+  return section('DISPLAY: finding landed', CONTINUE_INSTRUCTION, `Finding ${p.n} of ${p.total}: ${p.title} — ${outcome}.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -6076,9 +6189,11 @@ const SURFACES = {
   'finding-announce': findingAnnounce,
   'finding-batch': findingBatch,
   'finding': finding,
+  'finding-landed': findingLanded,
   'review-presentation': reviewPresentation,
   'review-gate': reviewGate,
   'spec-review-gate': specReviewGate,
+  'review-loop': reviewLoop,
   'spec-completion-gate': specCompletionGate,
   'convergence-diagnostic': convergenceDiagnostic,
   'carry-note-gate': carryNoteGate,

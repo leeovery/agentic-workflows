@@ -909,6 +909,31 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'the plan baseline survives as a number the growth diagnostic can read');
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
+  // The loop's own lines read the cycle the stamp above opened; a stream's
+  // pass closes over the summary it rendered, and a walked finding over the
+  // payload it rendered from.
+  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'cycle'], { expect: 'content' }),
+    /Review cycle 1 complete — findings applied\. Running follow-up cycle\./);
+  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'clean', '--review', 'integrity'], { expect: 'content' }),
+    /Integrity review complete — no findings\./);
+  sim.write('.workflows/.cache/scratch/plan-findings-summary.json', JSON.stringify({
+    review_label: 'Traceability Review',
+    items: [{ title: 'Missing retry bound', tag: 'missing', summary: 'No task bounds the retries.', status: 'approved' }],
+  }));
+  sim.render(['findings-summary', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-findings-summary.json'], { expect: 'content' });
+  sim.write('.workflows/.cache/scratch/plan-finding.json', JSON.stringify({
+    n: 1, total: 1, title: 'Missing Retry Bound', meta: [['Type', 'Missing from plan']], move: 'settled',
+    problem: 'Retries run unbounded.', proposal: 'The specification bounds them at four.',
+    diff: { current: [], proposed: ['Retries stop after four attempts.'] },
+  }));
+  sim.render(['finding', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-finding.json'], { expect: 'content' });
+  assert.match(sim.render(['finding-landed', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-finding.json'], { expect: 'content' }),
+    /Finding 1 of 1: Missing Retry Bound — fixed\./);
+  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'processed', '--review', 'traceability',
+    '--file', '.workflows/.cache/scratch/plan-findings-summary.json'], { expect: 'content' }),
+    /Traceability review complete — 1 findings processed\./);
+  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'complete'], { expect: 'content' }),
+    /Plan review complete — 1 cycle\(s\), all tracking files finalised\./);
   // The escalation diagnostic reads the plan's growth the way the spec loop
   // reads the construction's — same surface, the plan named as the document.
   sim.write('.workflows/.cache/scratch/plan-convergence.json', JSON.stringify({
@@ -2616,6 +2641,10 @@ describe('pipeline simulation', () => {
       /Continue with review\?/);
     assert.match(sim.render(['spec-review-gate', `${wu}.specification.unified`, '--variant', 'reloop'], { expect: 'content' }),
       /Run another review cycle\?/);
+    assert.match(sim.render(['review-loop', `${wu}.specification.unified`, '--variant', 'complete'], { expect: 'content' }),
+      /Specification review complete — 1 cycle\(s\), all tracking files finalised\./);
+    sim.refuses(['render', 'review-loop', `${wu}.review.unified`, '--variant', 'complete'],
+      /address must be <work_unit>\.planning\|specification\.<topic>/);
     assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'assessment'], { expect: 'content' }),
       /Confirm this assessment\?/);
     assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'signoff'], { expect: 'content' }),
@@ -2660,6 +2689,23 @@ describe('pipeline simulation', () => {
     const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
     assert.match(summary, /~~Missing Outcome field~~/, 'the resolved finding renders struck');
     assert.match(summary, /1 remaining/, 'the pending finding moves the remaining count');
+    assert.match(sim.render(['review-loop', `${wu}.specification.unified`, '--variant', 'processed', '--review', 'input',
+      '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' }),
+      /Input Review complete — 2 findings processed\./);
+    // A choice walks alone and closes on the side it took; the session's
+    // clause rides the payload the finding rendered from.
+    const choice = {
+      n: 2, total: 2, title: 'Declined Card Copy', meta: [['Category', 'gap']], move: 'choice',
+      problem: 'A declined shopper sees nothing.',
+      options: [{ summary: 'Show the bank\'s reason' }, { summary: 'Show a generic message', recommended: true }],
+    };
+    sim.write('.workflows/.cache/scratch/spec-choice.json', JSON.stringify(choice));
+    sim.render(['finding', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'], { expect: 'content' });
+    sim.refuses(['render', 'finding-landed', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'],
+      /a "choice" finding needs "chosen"/);
+    sim.write('.workflows/.cache/scratch/spec-choice.json', JSON.stringify({ ...choice, chosen: 'a generic message' }));
+    assert.match(sim.render(['finding-landed', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'], { expect: 'content' }),
+      /Finding 2 of 2: Declined Card Copy — a generic message\./);
     // The specification's calls batch on the settled lane — gated it asks
     // once for the screen and offers the flip; under auto the same screen
     // lands as a display, the one gate that never stops.

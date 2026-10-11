@@ -6,17 +6,17 @@
 
 Process findings from a review phase interactively with the user. The analysis phase writes findings to a tracking file. Read the tracking file, dispose every finding, then work the three moves in turn.
 
-**Review type**: `{review_type:[Claims Verification|Input Review|Gap Analysis]}` — set by the calling context (C, D, or E in spec-review.md); a caller that names a tracking file rather than a phase derives it, and the file's path, from the tracking stem (`review-claims-…` → Claims Verification, `review-input-…` → Input Review, `review-gap-analysis-…` → Gap Analysis).
+**Review type**: `{review_type:[claims|input|gap-analysis]}` — set by the calling context (C Claims Verification, D Input Review, or E Gap Analysis in spec-review.md); a caller that names a tracking file rather than a phase derives it, and the file's path, from the tracking stem (`review-claims-…` → `claims`, `review-input-…` → `input`, `review-gap-analysis-…` → `gap-analysis`).
 
 Check if the tracking file exists at the expected path.
 
 #### If no tracking file exists (no findings)
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-{review_type} complete — no findings.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant clean --review {review_type}
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 → Return to caller.
 
@@ -33,9 +33,10 @@ Read the tracking file's `## Findings` section and count the pending findings th
 Write the summary payload to `.workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json` with the Write tool — one item per finding from the tracking file:
 
 ```json
-{"review_label": "{review_type}", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary of the Problem}", "status": "…"}]}
+{"review_label": "…", "items": [{"title": "…", "tag": "…", "summary": "{1-2 line summary of the Problem}", "status": "…"}]}
 ```
 
+- `review_label` — the stream's name: `Claims Verification` (`claims`), `Input Review` (`input`), or `Gap Analysis` (`gap-analysis`).
 - `tag` — the Category's token: `enhancement` (Enhancement to existing topic), `new-topic` (New topic), `gap` (Gap/Ambiguity), `contradiction` (Contradiction), `duplication` (Duplication), `source-defect` (Source defect), `unsourced-decision` (Unsourced decision). The tracking file keeps the full phrase.
 - `status` — the finding's Resolution: `Approved`, `Adjusted`, or `Routed` → `approved`; `Declined` (older files write `Skipped` — read it as `Declined`) → `skipped`; `Pending` or unset → `pending`.
 
@@ -234,11 +235,13 @@ On return, land by what the reference did — the three outcomes **Landing a Set
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the choice settled}" --topic specification/{topic}
 ```
 
-> *Output the next fenced block as a text code block (```text fence):*
+Rewrite `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, adding `chosen` — the chosen option, one clause — then render the landed line:
 
-```text
-Finding {N} of {total}: {brief_title:(titlecase)} — {chosen option, one clause}.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-landed {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 → Return to **D. The Choices**.
 
@@ -291,10 +294,12 @@ Then update the tracking file — Resolution `Routed` with a note naming what la
 1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.
 
-> *Output the next fenced block as a text code block (```text fence):*
+Render the pass's closing line over the summary **A** wrote:
 
-```text
-{review_type} complete — {N} findings processed.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant processed --review {review_type} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 → Return to caller.
