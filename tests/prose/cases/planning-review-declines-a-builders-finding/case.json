@@ -68,7 +68,6 @@
       "tracking.review-traceability-tracking-c1",
       "render convergence-diagnostic",
       "render incoherence-gate",
-      "render spec-corrections",
       "topic reopen",
       "topic send",
       "restart planning",

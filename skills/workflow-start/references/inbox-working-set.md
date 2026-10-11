@@ -147,11 +147,7 @@ Archive every item in the working set out of the inbox — one command moves eac
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox archive {path} [{path} …]
 ```
 
-Build `archived_paths` — the response's `archived` paths, comma-joined. Fetch the receipt and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-archive-receipt --path {archived_paths}
-```
+Say `Archived {N} item(s) from the inbox.`, `{N}` the count of the response's `archived` paths.
 
 The working set is now empty.
 

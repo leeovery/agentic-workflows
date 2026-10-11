@@ -107,7 +107,6 @@
       "render incoherence-gate",
       "render correction-gate",
       "render plan-review-gate",
-      "render spec-corrections",
       "topic send",
       "topic reopen",
       "sources stale",

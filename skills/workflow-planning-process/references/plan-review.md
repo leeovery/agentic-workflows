@@ -149,21 +149,13 @@ From the second cycle onward the trend decides whether the loop runs again: a ch
 
 **If `review_cycle` is 1, or the analysis classified no `churning` trend:**
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.planning.{topic} --variant cycle
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Review cycle {N} complete — findings applied. Running follow-up cycle.`
 
 → Return to **A. Cycle Initialization**.
 
 **If `review_cycle` is 2, 3, or 4 and the analysis classified the trend as `churning`** (its diagnostic rendered above):
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.planning.{topic} --variant churning
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Findings are churning — concluding the review.`
 
 → Proceed to **F. Completion**.
 
@@ -171,11 +163,7 @@ Emit the call's DISPLAY section verbatim per its marker.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `planning-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.planning.{topic} --variant cap
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Cycle cap reached — concluding the review.`
 
 → On return, proceed to **F. Completion**.
 
@@ -220,10 +208,6 @@ Read `manifest get {work_unit}.planning.{topic} tracking`. If any entry is `in-p
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan review (cycle {N})" --topic planning/{topic}
    ```
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.planning.{topic} --variant complete
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Plan review complete — {N} cycle(s), all tracking files finalised.`
 
 → Return to caller.

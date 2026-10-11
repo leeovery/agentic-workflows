@@ -260,21 +260,17 @@ Commands:
   commit --migrations -m <message>
   render resume-gate <wu.phase.topic> [--mail N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
-  render plan-progress <wu.planning.topic> --variant designing|authoring|revising|authored|already-authored|phase-complete|construction-complete|concluded [--phase N] [--file <payload.json>] [--m N --total N --title STR]
+  render plan-progress <wu.planning.topic> --variant construction-complete|concluded
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
-  render finding-landed   <wu.phase.topic> --file <payload.json>
   render finding-announce <wu.phase.topic> --id <agent id> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json> [--first]
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
-  render review-loop      <wu.planning|specification.topic> --variant cycle|churning|cap|complete | --variant clean --review <stream> | --variant processed --review <stream> --file <payload.json>
   render spec-completion-gate <wu.specification.topic> --variant assessment --file <payload.json> | --variant signoff
-  render source-concern   <wu.specification.topic> --file <payload.json>
   render carry-note-gate  <wu.research.topic> --file <payload.json>
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
-  render trace-question   <wu.investigation.topic> --file <payload.json>
   render findings-signoff-gate <wu.investigation.topic>
   render fix-direction     <wu.investigation.topic> --file <payload.json>
   render validation-gate   <wu.investigation.topic> --variant root-cause
@@ -291,7 +287,6 @@ Commands:
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render perspective-offer <wu.discussion.topic> --file <payload.json>
-  render agent-line       <wu.phase.topic> --id <agent id> --variant dispatched|clean|deferred
   render in-flight-agents-gate <wu.research|discussion.topic> --count N [--pause]
   render review-findings-gate <wu.discussion.topic>
   render send-candidates  <wu.phase.topic> --file <payload.json>
@@ -310,14 +305,12 @@ Commands:
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
   render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
-  render pause-note       <wu.research|discussion.topic> --id <E{n}> | <wu.planning.topic> --landed <topic>
-  render summary-backfill-gate <wu> --variant batch|proposed|prompt|unsourced [--file <payload.json>] [--topic <name>]
+  render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
   render change-set-tree  <wu.review.topic>  (empty when the tree is clean outside .workflows/)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --file <payload.json> | --variant resolution
-  render task-graph-cycle <wu.planning.topic> --file <payload.json>
   render task-count-gate  <wu.planning.topic> --file <payload.json>
   render plan-context-gate <wu.planning.topic>
   render cross-cutting-gate --file <payload.json>
@@ -325,7 +318,6 @@ Commands:
   render plan-format-gate [--variant select --file <payload.json>]
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
   render scoping-questions <wu> --open <what,where,why,exclusions>
-  render spec-written     <wu>
   render complexity-gate  <wu> --file <payload.json>
   render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
@@ -342,9 +334,6 @@ Commands:
   render phase-paused      <wu> --phase <research|discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render step-opening      <wu.phase.topic> --step session|conclude|consolidation|do-now [--resumed]
-  render compliance-issues --file <payload.json>
-  render document-review   --variant session-log --corrections N | --variant document --gaps N --corrections N
-  render surfaced-context  --file <payload.json>
   render format-version-check --file <payload.json>
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)
@@ -360,8 +349,6 @@ Commands:
   render fix-gate          <wu.implementation.topic>
   render blocked-tasks     <wu.implementation.topic> --file <payload.json>
   render cycle-limit       <wu.implementation.topic>
-  render spec-corrections  --count <N>
-  render tasks-complete    <wu.implementation.topic> --count <N>
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
@@ -382,7 +369,6 @@ Commands:
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
   render inbox-content     --path <inbox path>[,<inbox path>…]
-  render inbox-archive-receipt --path <archived path>[,<archived path>…]
   render inbox-restore-receipt --path <live path>
   render inbox-delete-receipt --path <archived path>
   render completed-actions <wu>
@@ -398,7 +384,6 @@ Commands:
   render roadmap-shape-gate
   render shape-gate
   render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json> | <wu.discussion.topic> --variant discussion
-  render catch-up --file <payload.json>
   render synthesis-gate
   render query-failure-gate --file <payload.json>
   render baseline-progress
@@ -423,7 +408,7 @@ Commands:
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
   render legacy-split-gate --variant themes|plan | --variant remove --theme <name>
-  render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing|skipped --source <name> | --variant complete --applied N --abandoned N --errored N
+  render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

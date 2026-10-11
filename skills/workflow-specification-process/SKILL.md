@@ -27,11 +27,7 @@ The source material is the specification item's `sources` — an epic grouping's
 
 **If source material seems incomplete or unclear:**
 
-Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/source-concern.json` with the Write tool — `{"concern": "{what is incomplete or unclear}"}`, one clause the ask's sentence carries after "I have the source material, but" — then fetch the ask and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render source-concern {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/source-concern.json
-```
+In your own words, say what in the source material is incomplete or unclear, and ask whether to proceed as-is or whether there is additional material to review.
 
 **STOP.** Wait for user response.
 

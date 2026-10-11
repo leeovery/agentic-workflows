@@ -142,11 +142,7 @@ Nothing lands. The notes stay as prose and stay unhandled — a later run re-pre
 
 Summarise conversationally — do not dump a diff. One short paragraph or a handful of bullets describing what was added, removed, or corrected and why.
 
-Then fetch the closing line — `{N}` the gaps captured, `{M}` the corrections applied — and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render document-review --variant document --gaps {N} --corrections {M}
-```
+Then say, as a blockquote, `Document review complete. {N} gap(s) captured, {M} correction(s) applied. Proceeding to the final compliance check.`
 
 → Return to caller.
 

@@ -92,11 +92,7 @@ The number counts the batch display's rows. That item's summary is already on th
 
 #### If a number naming any other row
 
-The number counts the batch display's rows. Fetch the prompt for that row's item and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant prompt --topic {item.name}
-```
+The number counts the batch display's rows. Ask for that row's item — say `New summary for "{item.name:(titlecase)}":`.
 
 **STOP.** Wait for user response.
 

@@ -1424,37 +1424,6 @@ describe('engine render task surfaces', () => {
     createManifest(dir, 'auth', { phases: within });
     assert.match(renderFails(['cycle-limit', 'auth.implementation.auth-flow']).error, /within the cycle limit/);
   });
-  it('tasks-complete closes the loop on the session\'s implemented count, held to what completed_tasks records', () => {
-    seedImplementation({ completed_tasks: ['auth-flow-1-1', 'auth-flow-1-2', 'auth-flow-2-1'] });
-    assert.strictEqual(
-      render(['tasks-complete', 'auth.implementation.auth-flow', '--count', '2']),
-      [
-        '=== DISPLAY: tasks complete (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
-        'All tasks complete. 2 tasks implemented.',
-        '',
-      ].join('\n'));
-    assert.match(render(['tasks-complete', 'auth.implementation.auth-flow', '--count', '1']), /^All tasks complete\. 1 task implemented\.$/m);
-    assert.match(render(['tasks-complete', 'auth.implementation.auth-flow', '--count', '0']), /^All tasks complete\. 0 tasks implemented\.$/m);
-    assert.match(renderFails(['tasks-complete', 'auth.implementation.auth-flow', '--count', '4']).error,
-      /--count 4 exceeds the 3 task\(s\) recorded in completed_tasks/);
-    assert.match(renderFails(['tasks-complete', 'auth.implementation.auth-flow', '--count', '-1']).error, /--count must be a whole number/);
-    assert.match(renderFails(['tasks-complete', 'auth.implementation.auth-flow']).error, /--count must be a whole number/);
-    assert.match(renderFails(['tasks-complete', 'auth.planning.auth-flow', '--count', '1']).error, /must be <work_unit>\.implementation\.<topic>/);
-  });
-
-  it('spec-corrections renders the one-line confirmation, plural by count, refusing below one', () => {
-    assert.strictEqual(
-      render(['spec-corrections', '--count', '1']),
-      [
-        '=== DISPLAY: spec corrections (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
-        '1 spec correction recorded.',
-        '',
-      ].join('\n'));
-    assert.match(render(['spec-corrections', '--count', '3']), /^3 spec corrections recorded\.$/m);
-    assert.match(renderFails(['spec-corrections', '--count', '0']).error, /at least 1/);
-    assert.match(renderFails(['spec-corrections', '--count', 'two']).error, /at least 1/);
-    assert.match(renderFails(['spec-corrections']).error, /at least 1/);
-  });
 });
 
 describe('engine task usage', () => {

@@ -43,7 +43,7 @@ This dispatch and every re-invocation of the grapher below run in the background
 
 ## B. Review and Approve
 
-Each branch below writes the grapher's report to `.workflows/.cache/{work_unit}/planning/{topic}/task-graph.json` with the Write tool before its render.
+The `no-changes` and `complete` branches write the grapher's report to `.workflows/.cache/{work_unit}/planning/{topic}/task-graph.json` with the Write tool before their render.
 
 #### If `STATUS` is `no-changes`
 
@@ -77,11 +77,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "pl
 
 #### If `STATUS` is `blocked`
 
-No changes were applied. Write the grapher's `CYCLES` chain as the payload — `{"cycle": "…"}` — then render and emit the call's DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-graph-cycle {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-graph.json
-```
+No changes were applied. In your own words, say the dependency analysis found a circular dependency, quote the grapher's `CYCLES` chain, and say it must be resolved before continuing — usually two tasks each assume the other is done first, so one is restructured or the dependency removed.
 
 **STOP.** Wait for user response.
 

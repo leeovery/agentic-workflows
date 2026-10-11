@@ -56,11 +56,7 @@ Any depth. A path the user offers — a screenshot of the failure, a log, an exp
 
 ## Asking the User
 
-Any depth. When blocked on something only the user knows — reproduction fails, expected behaviour is ambiguous, environment context is missing — ask directly rather than guessing or working around the gap. Write the payload to `.workflows/.cache/{work_unit}/investigation/{topic}/trace-question.json` with the Write tool — `{"question": "{the specific question, with what was tried and why it blocks the trace}"}`, paragraphs separated by `\n\n` — then fetch the ask and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render trace-question {work_unit}.investigation.{topic} --file .workflows/.cache/{work_unit}/investigation/{topic}/trace-question.json
-```
+Any depth. When blocked on something only the user knows — reproduction fails, expected behaviour is ambiguous, environment context is missing — ask directly rather than guessing or working around the gap. In your own words, ask the specific question, with what was tried and why it blocks the trace.
 
 **STOP.** Wait for user response.
 

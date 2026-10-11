@@ -60,11 +60,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "docs
 
 #### If changes were made
 
-Fetch the closing line — `{N}` the corrections applied — and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render document-review --variant session-log --corrections {N}
-```
+Say, as a blockquote, `Document review complete. {N} correction(s) applied to the session log.`
 
 → Return to caller.
 

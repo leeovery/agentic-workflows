@@ -76,7 +76,6 @@
       "render findings-summary",
       "render finding pay.planning.pay",
       "render incoherence-gate",
-      "render spec-corrections",
       "staging.author",
       "render author-task-gate",
       "topic send",

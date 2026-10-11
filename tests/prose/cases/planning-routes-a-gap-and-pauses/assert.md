@@ -92,7 +92,7 @@ Further claims:
 - the knowledge base is never written: no index call anywhere in the
   walk. Nothing was resolved, so nothing was re-served
 - exactly one task-designer dispatch fired. No amendment re-invocation
-  happened, no spec corrections line was rendered, and no phase
+  happened, no spec corrections line was said, and no phase
   designer or task author was dispatched
 - the four scripted answers were consumed by the resume choice, the
   phase-structure gate, the exchange, and the wait gate, in that order.

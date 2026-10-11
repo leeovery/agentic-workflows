@@ -22,8 +22,8 @@ const { TREE_WIDTH, titlecase, tag, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLi
 const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
-const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, tasksCompleteDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
@@ -57,7 +57,7 @@ const {
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
-const { registerState, threadsOf } = require('./research-threads.cjs');
+const { registerState } = require('./research-threads.cjs');
 const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
@@ -240,31 +240,31 @@ function resumeGate(cwd, args) {
  * Parse and validate the task-list payload: `{phase, phase_name, tasks[]}`,
  * each task `{name, summary, edge_cases?}`. Shape errors are loud and name
  * the field, so a malformed write self-corrects.
- * @param {string} cwd @param {string} file @param {string} [surface]
+ * @param {string} cwd @param {string} file
  * @returns {{phase: number, phase_name: string, tasks: {name: string, summary: string, edge_cases?: string[]}[]}}
  */
-function readTaskListPayload(cwd, file, surface = 'task-list') {
-  const parsed = readJsonPayload(cwd, file, surface);
+function readTaskListPayload(cwd, file) {
+  const parsed = readJsonPayload(cwd, file, 'task-list');
   if (Array.isArray(parsed)) {
-    throw new Error(`render ${surface}: payload must be an object {phase, phase_name, tasks}`);
+    throw new Error('render task-list: payload must be an object {phase, phase_name, tasks}');
   }
   if (!Number.isInteger(parsed.phase) || parsed.phase < 1) {
-    throw new Error(`render ${surface}: "phase" must be a positive integer`);
+    throw new Error('render task-list: "phase" must be a positive integer');
   }
   if (!isFilled(parsed.phase_name)) {
-    throw new Error(`render ${surface}: "phase_name" must be a non-empty string`);
+    throw new Error('render task-list: "phase_name" must be a non-empty string');
   }
   if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
-    throw new Error(`render ${surface}: "tasks" must be a non-empty array of {name, summary, edge_cases}`);
+    throw new Error('render task-list: "tasks" must be a non-empty array of {name, summary, edge_cases}');
   }
   for (const [i, t] of parsed.tasks.entries()) {
     for (const field of ['name', 'summary']) {
       if (!t || !isFilled(t[field])) {
-        throw new Error(`render ${surface}: task ${i + 1} is missing "${field}" (each task needs name, summary, optional edge_cases[])`);
+        throw new Error(`render task-list: task ${i + 1} is missing "${field}" (each task needs name, summary, optional edge_cases[])`);
       }
     }
     if (t.edge_cases !== undefined && (!Array.isArray(t.edge_cases) || t.edge_cases.some((e) => !isFilled(e)))) {
-      throw new Error(`render ${surface}: task ${i + 1} "edge_cases" must be an array of non-empty strings when present`);
+      throw new Error(`render task-list: task ${i + 1} "edge_cases" must be an array of non-empty strings when present`);
     }
   }
   return parsed;
@@ -332,14 +332,10 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
 }
 
 // ---------------------------------------------------------------------------
-// plan-progress — the lines plan construction says as it works: a phase's
-// tasks designed, authored, revised and written, a phase done, the plan
-// built, the plan concluded. Counts are read where the manifest holds them:
-// the phase's authoring rows (`staging.author-p{N}.tasks`) and the authored
-// tasks in `task_map`, whose `{topic}-{phase}-{task}` keys name each task's
-// phase. A phase's name is the planning file's, so it rides the payload the
-// flow already wrote for that phase — the phase-tree payload before the
-// phase has a task list, the task-list payload once it has one.
+// plan-progress — the lines plan construction says once every task is
+// written: the plan built, the plan concluded. Both count the authored tasks
+// in `task_map`, whose `{topic}-{phase}-{task}` keys name each task's phase —
+// a plan authored across sessions, so the manifest is what holds the count.
 // ---------------------------------------------------------------------------
 
 /** @param {number} n @returns {string} */
@@ -383,11 +379,6 @@ function authorRows(item, phase) {
   return tasks && typeof tasks === 'object' ? tasks : {};
 }
 
-/** @param {Record<string, string>} rows @returns {number} */
-function rejectedCount(rows) {
-  return Object.values(rows).filter((s) => s === 'rejected').length;
-}
-
 /** @param {string|undefined} phase @param {string} surface @returns {number} */
 function phaseFlag(phase, surface) {
   const n = parseInt(phase || '', 10);
@@ -395,96 +386,23 @@ function phaseFlag(phase, surface) {
   return n;
 }
 
-/** @typedef {{cwd: string, args: Record<string, string|undefined>, workUnit: string, topic: string, item: Record<string, any>}} ProgressContext */
-
-/** @type {Record<string, {name: string, form: 'text'|'markdown', line: (ctx: ProgressContext) => string}>} */
+/** @type {Record<string, {name: string, line: (workUnit: string, phases: number, tasks: number) => string}>} */
 const PLAN_PROGRESS = {
-  designing: {
-    name: 'DISPLAY: designing tasks',
-    form: 'markdown',
-    line: ({ cwd, args }) => {
-      const n = phaseFlag(args.phase, 'plan-progress');
-      if (!args.file) throw new Error('render plan-progress: --file <phase-tree payload> is required for designing');
-      const p = readJsonPayload(cwd, args.file, 'plan-progress');
-      const ph = Array.isArray(p.phases) ? p.phases[n - 1] : undefined;
-      if (!ph || !isFilled(ph.name)) throw new Error(`render plan-progress: the phase-tree payload names no phase ${n}`);
-      return `Taking Phase ${n}: ${ph.name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.`;
-    },
-  },
-  authoring: {
-    name: 'DISPLAY: authoring tasks',
-    form: 'text',
-    line: ({ cwd, args, item }) => {
-      const p = progressTaskList(cwd, args, 'authoring');
-      const rejected = rejectedCount(authorRows(item, p.phase));
-      return `Authoring ${taskCount(rejected || p.tasks.length)} for Phase ${p.phase}: ${p.phase_name}...`;
-    },
-  },
-  revising: {
-    name: 'DISPLAY: revising tasks',
-    form: 'text',
-    line: ({ args, item }) => {
-      const n = phaseFlag(args.phase, 'plan-progress');
-      const rejected = rejectedCount(authorRows(item, n));
-      if (rejected === 0) throw new Error(`render plan-progress: phase ${n} has no rejected authoring rows to revise`);
-      return `${rejected === 1 ? '1 task needs' : `${rejected} tasks need`} revision. Re-invoking author agent...`;
-    },
-  },
-  authored: {
-    name: 'DISPLAY: task authored',
-    form: 'text',
-    line: ({ args }) => {
-      const { m, total, title } = authorScalars(args, 'plan-progress');
-      return `Task ${m} of ${total}: ${title} — authored.`;
-    },
-  },
-  'already-authored': {
-    name: 'DISPLAY: phase already authored',
-    form: 'markdown',
-    line: ({ cwd, args }) => {
-      const p = progressTaskList(cwd, args, 'already-authored');
-      return `Phase ${p.phase}: ${p.phase_name} — all tasks already authored.`;
-    },
-  },
-  'phase-complete': {
-    name: 'DISPLAY: phase authored',
-    form: 'markdown',
-    line: ({ cwd, args, item, topic }) => {
-      const p = progressTaskList(cwd, args, 'phase-complete');
-      const authored = authoredByPhase(item, topic).get(p.phase) || 0;
-      if (authored === 0) throw new Error(`render plan-progress: phase ${p.phase} has no authored tasks in task_map`);
-      return `Phase ${p.phase}: ${p.phase_name} — complete (${taskCount(authored)} authored).`;
-    },
-  },
   'construction-complete': {
     name: 'DISPLAY: plan constructed',
-    form: 'markdown',
-    line: ({ item, topic }) => {
-      const { phases, tasks } = authoredPlan(item, topic, 'plan-progress');
-      return `All phases are complete. The plan has **${phases} phase${phases === 1 ? '' : 's'}** with **${taskCount(tasks)}** total.`;
-    },
+    line: (_workUnit, phases, tasks) => `All phases are complete. The plan has **${phases} phase${phases === 1 ? '' : 's'}** with **${taskCount(tasks)}** total.`,
   },
   concluded: {
     name: 'DISPLAY: plan concluded',
-    form: 'markdown',
-    line: ({ workUnit, item, topic }) => {
-      const { phases, tasks } = authoredPlan(item, topic, 'plan-progress');
-      return [
-        `Planning is complete for **${workUnit}**.`,
-        '',
-        `The plan contains **${phases} phase${phases === 1 ? '' : 's'}** with **${taskCount(tasks)}** total, reviewed for traceability against the specification and structural integrity.`,
-        '',
-        'Status has been marked as `completed`. The plan is ready for implementation.',
-      ].join('\n');
-    },
+    line: (workUnit, phases, tasks) => [
+      `Planning is complete for **${workUnit}**.`,
+      '',
+      `The plan contains **${phases} phase${phases === 1 ? '' : 's'}** with **${taskCount(tasks)}** total, reviewed for traceability against the specification and structural integrity.`,
+      '',
+      'Status has been marked as `completed`. The plan is ready for implementation.',
+    ].join('\n'),
   },
 };
-
-/** The phase's task-list payload a progress line reads its phase from. @param {string} cwd @param {Record<string, string|undefined>} args @param {string} variant */
-function progressTaskList(cwd, args, variant) {
-  if (!args.file) throw new Error(`render plan-progress: --file <task-list payload> is required for ${variant}`);
-  return readTaskListPayload(cwd, args.file, 'plan-progress');
-}
 
 /**
  * @param {string} cwd
@@ -497,8 +415,8 @@ function planProgress(cwd, args) {
     throw new Error(`render plan-progress: --variant must be one of ${Object.keys(PLAN_PROGRESS).join(', ')}, got "${args.variant}"`);
   }
   const { workUnit, manifest, topic } = resolvePlanning(cwd, args.dotpath, 'plan-progress');
-  const line = spec.line({ cwd, args, workUnit, topic, item: planningItem(manifest, topic) });
-  return section(spec.name, spec.form === 'text' ? CONTINUE_INSTRUCTION : CONTINUE_MARKDOWN_INSTRUCTION, line);
+  const { phases, tasks } = authoredPlan(planningItem(manifest, topic), topic, 'plan-progress');
+  return section(spec.name, CONTINUE_MARKDOWN_INSTRUCTION, spec.line(workUnit, phases, tasks));
 }
 
 // ---------------------------------------------------------------------------
@@ -698,72 +616,6 @@ function specReviewGate(cwd, { dotpath, variant }) {
 }
 
 // ---------------------------------------------------------------------------
-// review-loop — the one-line statements the planning and specification
-// review loops make between their gates. The cycle count is the item's
-// review_cycle; a stream's finding count is the findings summary its pass
-// rendered. The stream is the tracking stem's token, named per phase.
-// ---------------------------------------------------------------------------
-
-const REVIEW_LOOP_DOCUMENTS = { planning: 'Plan', specification: 'Specification' };
-/** @type {Record<string, Record<string, string>>} */
-const REVIEW_STREAMS = {
-  planning: { traceability: 'Traceability review', integrity: 'Integrity review' },
-  specification: { claims: 'Claims Verification', input: 'Input Review', 'gap-analysis': 'Gap Analysis' },
-};
-
-/** @typedef {{cwd: string, phase: string, dotpath: string, item: any, review?: string, file?: string}} ReviewLoopContext */
-
-/** @param {ReviewLoopContext} ctx @returns {number} */
-function openReviewCycle({ item, dotpath }) {
-  if (!Number.isInteger(item.review_cycle) || item.review_cycle < 1) {
-    throw new Error(`render review-loop: ${dotpath} has no review cycle open — review_cycle must be at least 1`);
-  }
-  return item.review_cycle;
-}
-
-/** @param {ReviewLoopContext} ctx @returns {string} */
-function reviewStream({ phase, review }) {
-  const streams = REVIEW_STREAMS[phase];
-  if (review === undefined || !Object.hasOwn(streams, review)) {
-    throw new Error(`render review-loop: --review must be one of ${Object.keys(streams).join(', ')} at a ${phase} address`);
-  }
-  return streams[review];
-}
-
-/** @type {Record<string, (ctx: ReviewLoopContext) => [string, string]>} */
-const REVIEW_LOOP_LINES = {
-  cycle: (ctx) => ['review cycle complete', `Review cycle ${openReviewCycle(ctx)} complete — findings applied. Running follow-up cycle.`],
-  churning: () => ['review churning', 'Findings are churning — concluding the review.'],
-  cap: () => ['review cycle cap', 'Cycle cap reached — concluding the review.'],
-  complete: (ctx) => ['review complete',
-    `${REVIEW_LOOP_DOCUMENTS[ctx.phase]} review complete — ${openReviewCycle(ctx)} cycle(s), all tracking files finalised.`],
-  clean: (ctx) => ['review stream clean', `${reviewStream(ctx)} complete — no findings.`],
-  processed: (ctx) => {
-    const stream = reviewStream(ctx);
-    if (!ctx.file) throw new Error('render review-loop: --variant processed needs --file <findings-summary.json> — the pass\'s summary is what it counts');
-    const { items } = readFindingsSummary(ctx.cwd, ctx.file, 'review-loop');
-    return ['review stream processed', `${stream} complete — ${items.length} findings processed.`];
-  },
-};
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, variant?: string, review?: string, file?: string}} args
- * @returns {string}
- */
-function reviewLoop(cwd, { dotpath, variant, review, file }) {
-  if (variant === undefined || !Object.hasOwn(REVIEW_LOOP_LINES, variant)) {
-    throw new Error(`render review-loop: --variant must be one of ${Object.keys(REVIEW_LOOP_LINES).join(', ')}`);
-  }
-  const { manifest, phase, topic } = resolveAddress(cwd, dotpath, 'review-loop');
-  if (!Object.hasOwn(REVIEW_STREAMS, phase)) {
-    throw new Error(`render review-loop: address must be <work_unit>.planning|specification.<topic>, got phase "${phase}"`);
-  }
-  const [label, line] = REVIEW_LOOP_LINES[variant]({ cwd, phase, dotpath, item: itemOf(manifest, phase, topic) || {}, review, file });
-  return section(`DISPLAY: ${label}`, CONTINUE_INSTRUCTION, line);
-}
-
-// ---------------------------------------------------------------------------
 // convergence-diagnostic — the review/fix escalation diagnostic. The judgment
 // (trend classification, finding titles, root-cause hypotheses) rides as the
 // payload; the arithmetic (counts from the arrays, review growth) and the
@@ -940,30 +792,6 @@ function specCompletionGate(cwd, { dotpath, variant, file }) {
     cmdOption('y', 'yes', 'Conclude specification and mark as completed'),
     promptOption('Comment', 'Add context before concluding'),
   ], { question: 'Ready to conclude?' }));
-}
-
-// ---------------------------------------------------------------------------
-// source-concern — the specification's ask when its source material reads
-// incomplete or unclear. The concern is the session's reading of the sources,
-// a clause the sentence carries, so it rides a payload {concern}.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function sourceConcern(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render source-concern: --file <payload.json> is required');
-  const { phase } = resolveAddress(cwd, dotpath, 'source-concern');
-  if (phase !== 'specification') {
-    throw new Error(`render source-concern: address must be <work_unit>.specification.<topic>, got phase "${phase}"`);
-  }
-  const { concern } = readJsonPayload(cwd, file, 'source-concern');
-  if (!isFilled(concern)) throw new Error('render source-concern: "concern" must be a non-empty string');
-  if (/\n/.test(concern)) throw new Error('render source-concern: "concern" must be a single line — a clause of the ask\'s sentence');
-  return section('DISPLAY: source concern', emitAs('markdown', STOP_CLAUSE),
-    `I have the source material, but ${concern.trim()}. Should I proceed as-is, or is there additional material I should review?`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1201,31 +1029,6 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
       promptOption('Steer', 'Tell me what to look at instead, or what this changes'),
     ], { question: 'Continue as planned?' })),
   ].join('\n');
-}
-
-// ---------------------------------------------------------------------------
-// trace-question — the analysis's ask when it is blocked on something only
-// the user knows. The question — with what was tried and why it blocks the
-// trace — is the session's, so it rides a payload {question}; a blank line
-// in it separates paragraphs, each emitted as one line for the renderer to
-// reflow.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function traceQuestion(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render trace-question: --file <payload.json> is required');
-  const { phase } = resolveAddress(cwd, dotpath, 'trace-question');
-  if (phase !== 'investigation') {
-    throw new Error(`render trace-question: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
-  }
-  const { question } = readJsonPayload(cwd, file, 'trace-question');
-  if (!isFilled(question)) throw new Error('render trace-question: "question" must be a non-empty string');
-  const paragraphs = question.trim().split(/\n\s*\n/).map((p) => p.trim().split(/\s*\n\s*/).join(' '));
-  return section('DISPLAY: trace question', emitAs('markdown', STOP_CLAUSE), paragraphs.join('\n\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -2101,29 +1904,6 @@ function recommendedMenuRows(sides, atMostOne) {
 }
 
 /**
- * The findings-summary payload, validated: the pass's overview renders it,
- * and the pass's closing line counts it.
- * @param {string} cwd @param {string} file @param {string} surface
- * @returns {{review_label: string, items: {title: string, tag: string, summary: string, status?: string}[]}}
- */
-function readFindingsSummary(cwd, file, surface) {
-  const p = readJsonPayload(cwd, file, surface);
-  if (!isFilled(p.review_label)) throw new Error(`render ${surface}: "review_label" must be a non-empty string`);
-  if (!Array.isArray(p.items) || p.items.length === 0) {
-    throw new Error(`render ${surface}: "items" must be a non-empty array of {title, tag, summary}`);
-  }
-  p.items.forEach((/** @type {any} */ it, /** @type {number} */ i) => {
-    for (const field of ['title', 'tag', 'summary']) {
-      if (!isFilled(it[field])) throw new Error(`render ${surface}: item ${i + 1} is missing "${field}"`);
-    }
-    if (it.status !== undefined && !WORKLIST_STATUSES.includes(it.status)) {
-      throw new Error(`render ${surface}: item ${i + 1} carries unknown status "${it.status}" (expected ${WORKLIST_STATUSES.join('/')})`);
-    }
-  });
-  return p;
-}
-
-/**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string}} args
  * @returns {string}
@@ -2131,7 +1911,19 @@ function readFindingsSummary(cwd, file, surface) {
 function findingsSummary(cwd, { dotpath, file }) {
   if (!file) throw new Error('render findings-summary: --file <payload.json> is required');
   resolveAddress(cwd, dotpath, 'findings-summary');
-  const p = readFindingsSummary(cwd, file, 'findings-summary');
+  const p = readJsonPayload(cwd, file, 'findings-summary');
+  if (!isFilled(p.review_label)) throw new Error('render findings-summary: "review_label" must be a non-empty string');
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    throw new Error('render findings-summary: "items" must be a non-empty array of {title, tag, summary}');
+  }
+  p.items.forEach((/** @type {any} */ it, /** @type {number} */ i) => {
+    for (const field of ['title', 'tag', 'summary']) {
+      if (!isFilled(it[field])) throw new Error(`render findings-summary: item ${i + 1} is missing "${field}"`);
+    }
+    if (it.status !== undefined && !WORKLIST_STATUSES.includes(it.status)) {
+      throw new Error(`render findings-summary: item ${i + 1} carries unknown status "${it.status}" (expected ${WORKLIST_STATUSES.join('/')})`);
+    }
+  });
   // Statuses come from the tracking file's resolutions — a re-entry over a
   // partially-processed review shows which findings are already settled.
   const body = worklist({
@@ -2473,93 +2265,6 @@ function perspectiveOffer(cwd, { dotpath, file }) {
     ],
     { question: 'Want to explore both lenses?' },
   ));
-}
-
-// agent-line — the one-line notes a background agent's lifecycle earns in
-// the conversation, each read off the agent store row the flow names:
-// `dispatched` as a deep dive leaves (the register thread it digs, by the
-// row's label) or a perspective pair does (its set's lenses, by label, in
-// the order given); `clean` as a review or synthesis comes back with
-// nothing new; `deferred` as one comes back mid-thread and waits for the
-// next pause. Each refuses a row in a state its calling prose never
-// renders it from.
-
-/** @typedef {ReturnType<typeof agentRows>[number]} AgentRow */
-
-// The kinds the surfacing protocol raises — the two that come back with a
-// report the user hears about.
-const SURFACED_KINDS = ['review', 'synthesis'];
-
-/** The full stop a sentence ending on `text` still needs — none where the text closes on its own mark. @param {string} text */
-function fullStop(text) {
-  return /[.?!]$/.test(text) ? '' : '.';
-}
-
-/** @param {AgentRow} row @param {string} status @param {string} why */
-function requireAgentStatus(row, status, why) {
-  if (row.status !== status) {
-    throw new Error(`render agent-line: "${row.id}" is ${row.status}, not ${status} — ${why}`);
-  }
-}
-
-/** @param {AgentRow} row @param {string} variant */
-function requireSurfacedKind(row, variant) {
-  if (!SURFACED_KINDS.includes(row.kind)) {
-    throw new Error(`render agent-line: a ${row.kind} has no ${variant} line — the ${SURFACED_KINDS.join(' and ')} reports do`);
-  }
-}
-
-/** @type {Record<string, (row: AgentRow, rows: AgentRow[], manifest: object, topic: string) => string>} */
-const AGENT_LINES = {
-  dispatched: (row, rows, manifest, topic) => {
-    requireAgentStatus(row, 'in-flight', 'the line follows the dispatch');
-    if (row.kind === 'deep-dive') {
-      const thread = threadsOf(manifest, topic)[row.label ?? ''];
-      if (!thread) throw new Error(`render agent-line: no thread "${row.label}" on ${topic}'s register — a deep dive digs a register thread`);
-      return section('DISPLAY: agent dispatched', CONTINUE_INSTRUCTION,
-        `Deep dive dispatched on "${thread.question}"${fullStop(thread.question)} It folds in when it lands.`);
-    }
-    if (row.kind === 'perspective') {
-      const lenses = rows.filter((r) => r.kind === 'perspective' && r.set === row.set).map((r) => titlecase(r.label ?? ''));
-      return section('DISPLAY: agent dispatched', CONTINUE_INSTRUCTION, [
-        `Dispatched ${lenses.length} perspective agents: ${lenses.join(', ')}.`,
-        'Results will be surfaced when available.',
-      ].join('\n'));
-    }
-    throw new Error(`render agent-line: a ${row.kind} has no dispatched line — a deep dive and a perspective pair do`);
-  },
-  clean: (row) => {
-    requireSurfacedKind(row, 'clean');
-    if (row.status !== 'incorporated' || row.findings.length > 0) {
-      throw new Error(`render agent-line: "${row.id}" is not a clean return — the line follows its \`agent ack --clean\``);
-    }
-    return section('DISPLAY: agent returned', CONTINUE_INSTRUCTION,
-      `Background ${row.kind} returned — nothing new beyond what we've already covered.`);
-  },
-  deferred: (row) => {
-    requireSurfacedKind(row, 'deferred');
-    requireAgentStatus(row, 'acknowledged', 'the line follows the first read');
-    if (row.announced) throw new Error(`render agent-line: "${row.id}" is already announced — the user knows it is waiting`);
-    return section('DISPLAY: agent deferred', CONTINUE_MARKDOWN_INSTRUCTION,
-      `*(Background ${row.kind} just returned — I'll raise it when we pause.)*`);
-  },
-};
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, id?: string, variant?: string}} args
- * @returns {string}
- */
-function agentLine(cwd, { dotpath, id, variant }) {
-  if (variant === undefined || !Object.hasOwn(AGENT_LINES, variant)) {
-    throw new Error(`render agent-line: --variant must be one of ${Object.keys(AGENT_LINES).join(', ')}, got "${variant ?? ''}"`);
-  }
-  if (!isFilled(id)) throw new Error('render agent-line: --id <agent id> is required');
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'agent-line');
-  const rows = agentRows(cwd, workUnit, phase, topic);
-  const row = rows.find((r) => r.id === id);
-  if (!row) throw new Error(`render agent-line: no agent "${id}" for ${phase}/${topic}`);
-  return AGENT_LINES[variant](row, rows, manifest, topic);
 }
 
 // in-flight-agents-gate — the wait-or-leave gate a session takes when
@@ -3410,45 +3115,17 @@ function waitGateSurface(cwd, { dotpath }) {
   return blocking.length === 0 ? '' : waitGate(phase, topic, blocking, manifest.work_type === 'epic');
 }
 
-// pause-note — the line a session leaves on as it pauses through the bridge,
-// naming what it waits on. A conversation pausing over its spawn names the
-// experiment it queued (`--id`, refused unless the item waits on it); a plan
-// pausing over a routed gap names the topic whose mailbox took it
-// (`--landed`, as the send answered it — the landing may have renamed it).
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, id?: string, landed?: string}} args
- * @returns {string}
- */
-function pauseNoteSurface(cwd, { dotpath, id, landed }) {
-  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'pause-note', [...EXPERIMENT_SPAWN_PHASES, 'planning'], 'the pausing item itself');
-  let line;
-  if (phase === 'planning') {
-    if (!isFilled(landed)) throw new Error('render pause-note: --landed is required — the topic whose mailbox took the gap');
-    line = `Paused with the gap in ${landed}'s mailbox — planning resumes once ${landed} has decided it and the specification has been brought into line.`;
-  } else {
-    if (!isFilled(id)) throw new Error('render pause-note: --id is required (E1, E2, …)');
-    if (!awaitedExperiments(manifest, phase, topic).includes(id)) {
-      throw new Error(`render pause-note: ${phase} "${topic}" holds no evidence wait on ${id} — the pause follows the recorded spawn (experiment create)`);
-    }
-    line = `Paused with ${id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands.`;
-  }
-  return section('DISPLAY: pause note', CONTINUE_MARKDOWN_INSTRUCTION, `> ${line}`);
-}
-
 // summary-backfill-gate — the epic's provenance recovery. The topics it
 // recovers are the map's rows missing a summary or a description, read from
 // the manifest in map order; the summaries drafted for the rows missing one
 // are judgment content and ride a payload keyed by topic. batch = the
 // proposed summaries above the accept gate, proposed = the same display
-// alone (the edit loop's re-render), prompt = the ask for one drafted
-// line's replacement, unsourced = the topics no source file could be
-// drafted from, named by payload.
+// alone (the edit loop's re-render), unsourced = the topics no source file
+// could be drafted from, named by payload.
 
 const { buildDiscoveryMap } = require('./derivations.cjs');
 
-const SUMMARY_BACKFILL_VARIANTS = ['batch', 'proposed', 'prompt', 'unsourced'];
+const SUMMARY_BACKFILL_VARIANTS = ['batch', 'proposed', 'unsourced'];
 
 /** @param {string} cwd @param {string} workUnit @param {object} manifest @returns {import('./derivations.cjs').DiscoveryMapRow[]} */
 function backfillRows(cwd, workUnit, manifest) {
@@ -3506,29 +3183,18 @@ function proposedSummaries(rows, drafted, instruction) {
   return section('DISPLAY: proposed summaries', instruction, lines.join('\n'));
 }
 
-/** The ask for one drafted line's replacement. @param {import('./derivations.cjs').DiscoveryMapRow[]} rows @param {string|undefined} topic @returns {string} */
-function summaryPrompt(rows, topic) {
-  const row = rows.find((r) => r.name === topic);
-  if (!row) throw new Error(`render summary-backfill-gate: --topic must name a topic the batch proposes, got "${topic ?? ''}"`);
-  if (row.summary_present) {
-    throw new Error(`render summary-backfill-gate: "${topic}" already has its summary on the map — only a drafted line is edited here`);
-  }
-  return section('DISPLAY: summary prompt', emitAs('markdown', STOP_CLAUSE), `New summary for "${titlecase(row.name)}":`);
-}
-
 /**
  * @param {string} cwd
- * @param {{dotpath: string, variant?: string, file?: string, topic?: string}} args
+ * @param {{dotpath: string, variant?: string, file?: string}} args
  * @returns {string}
  */
-function summaryBackfillGate(cwd, { dotpath, variant, file, topic }) {
+function summaryBackfillGate(cwd, { dotpath, variant, file }) {
   if (variant === undefined || !SUMMARY_BACKFILL_VARIANTS.includes(variant)) {
     throw new Error(`render summary-backfill-gate: --variant must be one of ${SUMMARY_BACKFILL_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
   }
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
   if (variant === 'unsourced') return unsourcedGate(cwd, file);
   const rows = backfillRows(cwd, workUnit, manifest);
-  if (variant === 'prompt') return summaryPrompt(rows, topic);
   const drafted = draftedSummaries(cwd, file, rows);
   if (variant === 'proposed') return proposedSummaries(rows, drafted, CONTINUE_INSTRUCTION);
   return [
@@ -3904,30 +3570,6 @@ function dependencyApprovalGate(cwd, { dotpath, variant, file }) {
   ].join('\n');
 }
 
-// task-graph-cycle — the grapher's third outcome: a circular dependency, so
-// nothing was applied and there is nothing to approve. The cycle is the
-// grapher's report, so it rides the payload; the user's direction answers
-// it, free-form.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function taskGraphCycle(cwd, { dotpath, file }) {
-  resolvePlanning(cwd, dotpath, 'task-graph-cycle');
-  if (!file) throw new Error('render task-graph-cycle: --file <payload.json> is required — the grapher\'s cycle');
-  const p = readJsonPayload(cwd, file, 'task-graph-cycle');
-  if (!isFilled(p.cycle)) throw new Error('render task-graph-cycle: "cycle" must be the grapher\'s cycle chain, a non-empty string');
-  return section('DISPLAY: task graph cycle', emitAs('markdown', STOP_CLAUSE), [
-    'The dependency analysis found a circular dependency:',
-    '',
-    p.cycle,
-    '',
-    'This must be resolved before continuing. The cycle usually means two tasks each assume the other is done first — one needs to be restructured or the dependency removed.',
-  ].join('\n'));
-}
-
 // task-count-gate — the authoring loop's stop when the detail file and the
 // task table still disagree after two attempts, beneath the two lists. Both
 // are markdown the engine never parses, so their internal ids ride the
@@ -4166,11 +3808,9 @@ function planReviewGate(cwd, { dotpath, variant }) {
   ], { question: 'Run another review round?' }));
 }
 
-// scoping-questions / spec-written — the quick-fix's context ask and the
-// confirmation its specification landed. The four questions are fixed; which
-// of them the carrier leaves open is the session's read, named by key, and
-// the ask keeps their order whatever order the keys arrive in. The written
-// specification's path is the layout's.
+// scoping-questions — the quick-fix's context ask. The four questions are
+// fixed; which of them the carrier leaves open is the session's read, named
+// by key, and the ask keeps their order whatever order the keys arrive in.
 
 const SCOPING_QUESTIONS = {
   what: 'What exactly is being changed? (pattern, syntax, API)',
@@ -4180,14 +3820,14 @@ const SCOPING_QUESTIONS = {
 };
 
 /**
- * A quick-fix work unit at a bare address — the scoping surfaces serve it alone.
- * @param {string} cwd @param {string} dotpath @param {string} surface
+ * A quick-fix work unit at a bare address — scoping is the quick-fix's own.
+ * @param {string} cwd @param {string} dotpath
  * @returns {string} the work unit
  */
-function resolveQuickFix(cwd, dotpath, surface) {
-  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, surface);
+function resolveQuickFix(cwd, dotpath) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'scoping-questions');
   if (manifest.work_type !== 'quick-fix') {
-    throw new Error(`render ${surface}: "${workUnit}" is a ${manifest.work_type} — scoping is the quick-fix's own`);
+    throw new Error(`render scoping-questions: "${workUnit}" is a ${manifest.work_type} — scoping is the quick-fix's own`);
   }
   return workUnit;
 }
@@ -4198,7 +3838,7 @@ function resolveQuickFix(cwd, dotpath, surface) {
  * @returns {string}
  */
 function scopingQuestions(cwd, { dotpath, open }) {
-  const workUnit = resolveQuickFix(cwd, dotpath, 'scoping-questions');
+  const workUnit = resolveQuickFix(cwd, dotpath);
   const keys = String(open || '').split(',').map((s) => s.trim()).filter(Boolean);
   const known = /** @type {(keyof typeof SCOPING_QUESTIONS)[]} */ (Object.keys(SCOPING_QUESTIONS));
   if (keys.length === 0) {
@@ -4215,20 +3855,6 @@ function scopingQuestions(cwd, { dotpath, open }) {
     '',
     ...known.filter((k) => keys.includes(k)).map((k) => `- ${SCOPING_QUESTIONS[k]}`),
   ].join('\n'));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function specWritten(cwd, { dotpath }) {
-  const workUnit = resolveQuickFix(cwd, dotpath, 'spec-written');
-  const file = `.workflows/${workUnit}/specification/${workUnit}/specification.md`;
-  if (!fs.existsSync(path.join(cwd, file))) {
-    throw new Error(`render spec-written: ${file} does not exist — the specification has not been written`);
-  }
-  return section('DISPLAY: spec written', CONTINUE_INSTRUCTION, `Specification written: ${file}`);
 }
 
 // complexity-gate / first-phase-gate — the two stops of scoping's complexity
@@ -4604,13 +4230,6 @@ const ROUTED_CATEGORIES = ['source-defect', 'unsourced-decision'];
 // resolve-source-incoherence and refuses here by name.
 const FINDING_MOVES = ['settled', 'choice'];
 
-/** A finding's place in its walk — the heading it renders under. @param {any} p @param {string} surface */
-function checkFindingPosition(p, surface) {
-  if (!Number.isInteger(p.n) || p.n < 1) throw new Error(`render ${surface}: "n" must be a positive integer`);
-  if (!Number.isInteger(p.total) || p.total < p.n) throw new Error(`render ${surface}: "total" must be an integer ≥ "n"`);
-  if (!isFilled(p.title)) throw new Error(`render ${surface}: "title" must be a non-empty string`);
-}
-
 /**
  * @param {string} cwd
  * @param {{dotpath: string, file?: string, view?: string}} args
@@ -4622,7 +4241,9 @@ function finding(cwd, { dotpath, file, view }) {
   const { phase, topic, manifest } = resolveAddress(cwd, dotpath, 'finding');
   const p = readJsonPayload(cwd, file, 'finding');
 
-  checkFindingPosition(p, 'finding');
+  if (!Number.isInteger(p.n) || p.n < 1) throw new Error('render finding: "n" must be a positive integer');
+  if (!Number.isInteger(p.total) || p.total < p.n) throw new Error('render finding: "total" must be an integer ≥ "n"');
+  if (!isFilled(p.title)) throw new Error('render finding: "title" must be a non-empty string');
   if (!Array.isArray(p.meta) || p.meta.some((m) => !Array.isArray(m) || m.length !== 2 || !isFilled(m[0]) || !(typeof m[1] === 'number' || isFilled(m[1])))) {
     throw new Error('render finding: "meta" must be an array of [label, value] pairs');
   }
@@ -4778,37 +4399,6 @@ function findingSettled(p, head, item, { view, batched }) {
 
   parts.push(gateMenu(Boolean(p.content)));
   return parts.join('\n');
-}
-
-// finding-landed — the line a walked finding closes on once it lands at a
-// gate the user answered, read from the payload the finding rendered from:
-// a settled fix lands as presented, a choice lands the side it took, in the
-// session's one clause (`chosen`). At the specification a settled finding
-// lands through its finding-batch screen, so this line serves its choices.
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
- * @returns {string}
- */
-function findingLanded(cwd, { dotpath, file }) {
-  if (!file) throw new Error('render finding-landed: --file <payload.json> is required');
-  const { phase } = resolveAddress(cwd, dotpath, 'finding-landed');
-  const p = readJsonPayload(cwd, file, 'finding-landed');
-  checkFindingPosition(p, 'finding-landed');
-  if (!FINDING_MOVES.includes(p.move)) {
-    throw new Error(`render finding-landed: "move" must be one of ${FINDING_MOVES.join('/')}`);
-  }
-  let outcome = 'fixed';
-  if (p.move === 'choice') {
-    if (!isFilled(p.chosen)) throw new Error('render finding-landed: a "choice" finding needs "chosen" — the side it took, in one clause');
-    outcome = p.chosen.trim().replace(/\.$/, '');
-  } else if (phase === SETTLED_BATCH_PHASE) {
-    throw new Error(`render finding-landed: a "settled" finding at the ${phase} phase lands through its finding-batch screen`);
-  } else if (p.chosen !== undefined) {
-    throw new Error('render finding-landed: a "settled" finding carries no "chosen" — it lands as presented');
-  }
-  return section('DISPLAY: finding landed', CONTINUE_INSTRUCTION, `Finding ${p.n} of ${p.total}: ${p.title} — ${outcome}.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -5513,79 +5103,6 @@ function stepOpeningSurface(cwd, { dotpath, step, resumed }) {
 }
 
 // ---------------------------------------------------------------------------
-// compliance-issues — the heading the compliance self-check shows over the
-// significant issues it surfaces before a phase concludes, counted from the
-// payload's list: each issue's one-line name is the session's judgment.
-// Project-level, so every phase and the roadmap share it.
-// ---------------------------------------------------------------------------
-
-/** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
-function complianceIssues(cwd, { file }) {
-  if (!file) throw new Error('render compliance-issues: --file <payload.json> is required');
-  const { issues } = readJsonPayload(cwd, file, 'compliance-issues');
-  if (!Array.isArray(issues) || issues.length === 0) {
-    throw new Error('render compliance-issues: "issues" must be a non-empty array — one line naming each significant issue');
-  }
-  issues.forEach((issue, i) => {
-    if (!isFilled(issue)) throw new Error(`render compliance-issues: issues[${i}] must be a non-empty string`);
-  });
-  return section('DISPLAY: compliance issues', CONTINUE_INSTRUCTION,
-    `Compliance Check — Issues Found\n\n${issues.length} issue(s) detected during self-check.`);
-}
-
-// ---------------------------------------------------------------------------
-// document-review — the closing line of a document review that changed the
-// record, from the counts the review tallied. session-log = a discovery or
-// roadmap session log, reconciled by correction alone, so a change is at
-// least one; document = a research or discussion file, whose review also
-// captures gaps before the compliance check runs — and whose routing of
-// misdirected notes changes the file with neither, so both counts may be 0.
-// Project-level: the counts are the whole of what it renders.
-// ---------------------------------------------------------------------------
-
-/** @type {Record<string, (args: Record<string, string|undefined>) => string>} */
-const DOCUMENT_REVIEW_LINES = {
-  'session-log': ({ corrections }) => {
-    const n = countFlag(corrections, 'document-review', 'corrections');
-    if (n === 0) throw new Error('render document-review: --corrections must be at least 1 — a review that changed nothing closes on its own line');
-    return `Document review complete. ${n} correction(s) applied to the session log.`;
-  },
-  document: ({ gaps, corrections }) => {
-    const g = countFlag(gaps, 'document-review', 'gaps');
-    const m = countFlag(corrections, 'document-review', 'corrections');
-    return `Document review complete. ${g} gap(s) captured, ${m} correction(s) applied. Proceeding to the final compliance check.`;
-  },
-};
-
-const DOCUMENT_REVIEW_VARIANTS = Object.keys(DOCUMENT_REVIEW_LINES);
-
-/** @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
-function documentReview(_cwd, args) {
-  const { variant } = args;
-  if (variant === undefined || !DOCUMENT_REVIEW_VARIANTS.includes(variant)) {
-    throw new Error(`render document-review: --variant must be one of ${DOCUMENT_REVIEW_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
-  }
-  return section('DISPLAY: document review', CONTINUE_MARKDOWN_INSTRUCTION, `> ${DOCUMENT_REVIEW_LINES[variant](args)}`);
-}
-
-// ---------------------------------------------------------------------------
-// surfaced-context — the acknowledgment a phase's contextual query shows when
-// the knowledge base surfaced prior work: the fixed opening, then the one
-// line the session wrote naming the most relevant piece.
-// ---------------------------------------------------------------------------
-
-/** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
-function surfacedContext(cwd, { file }) {
-  if (!file) throw new Error('render surfaced-context: --file <payload.json> is required');
-  const { line } = readJsonPayload(cwd, file, 'surfaced-context');
-  if (!isFilled(line) || line.includes('\n')) {
-    throw new Error('render surfaced-context: "line" must be one non-empty line naming the most relevant piece');
-  }
-  return section('DISPLAY: surfaced context', CONTINUE_MARKDOWN_INSTRUCTION,
-    `> Surfaced prior context from the knowledge base — incorporating into this phase. ${line.trim()}`);
-}
-
-// ---------------------------------------------------------------------------
 // format-version-check — the stop where a plan format's tool is missing or
 // older than the format requires. Every value is read from the format's own
 // declaration and the tool's own output, so all of it rides the payload, the
@@ -6191,38 +5708,6 @@ function cycleLimit(cwd, args) {
 }
 
 /**
- * The spec-correction confirmation. Address-free: the count is the session's
- * own (the corrigenda it just landed), never manifest state.
- * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function specCorrections(_cwd, args) {
-  const count = Number(args.count);
-  if (args.count === undefined || !Number.isInteger(count) || count < 1) {
-    throw new Error(`render spec-corrections: --count must be a whole number of at least 1, got ${JSON.stringify(args.count)}`);
-  }
-  return specCorrectionsDisplay(count);
-}
-
-/**
- * The task loop's close: the implemented count is the session's — a skipped
- * task is recorded in `completed_tasks` too — so it rides the call, held to
- * what the manifest has recorded.
- * @param {string} cwd @param {Record<string, string|undefined> & {dotpath: string}} args @returns {string}
- */
-function tasksComplete(cwd, args) {
-  const { item } = implementationItemAt(cwd, args.dotpath, 'tasks-complete');
-  const count = Number(args.count);
-  if (args.count === undefined || !Number.isInteger(count) || count < 0) {
-    throw new Error(`render tasks-complete: --count must be a whole number, got ${JSON.stringify(args.count)}`);
-  }
-  const recorded = Array.isArray(item.completed_tasks) ? item.completed_tasks.length : 0;
-  if (count > recorded) {
-    throw new Error(`render tasks-complete: --count ${count} exceeds the ${recorded} task(s) recorded in completed_tasks`);
-  }
-  return tasksCompleteDisplay(count);
-}
-
-/**
  * The blocked-tasks stop: the open tasks and what blocks each are the plan
  * format's state, read by the session through its reading.md, so they ride
  * a payload {tasks: [{id, name, blockers: [{id, status}]}]} — payload order
@@ -6598,19 +6083,6 @@ function inboxContentSurface(cwd, args) {
   }));
 }
 
-// inbox-archive-receipt — the receipt after `inbox archive`, over the
-// archived paths it answered: each must be in the archive now.
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
-function inboxArchiveReceiptSurface(cwd, args) {
-  const paths = inboxPathsArg(args.path, 'inbox-archive-receipt', 'the archived paths `inbox archive` answered, comma-joined');
-  try {
-    parseInboxPaths(cwd, paths, { archived: true });
-  } catch (err) {
-    throw new Error(`render inbox-archive-receipt: ${messageOf(err)}`);
-  }
-  return inboxArchiveReceipt(paths.length);
-}
-
 /**
  * The single-item receipts after the archived sub-view acts, over the path
  * the verb answered: a restore's item must be live again, and a delete's
@@ -6873,28 +6345,6 @@ function roadmapShapeGateSurface(_cwd, _args) {
   return section('MENU: roadmap shape gate', MENU_INSTRUCTION, roadmapShapeGate());
 }
 
-// catch-up — the briefing a re-entered shaping conversation opens on, in
-// discovery and on the roadmap alike: the thinking the recent session logs
-// hold, and the older sessions one line each under an "Earlier:" lead. All
-// of it is the session's synthesis of the logs, carried in a payload — the
-// engine never reads a log. The caller's own opener follows it.
-
-/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function catchUpSurface(cwd, { file }) {
-  if (!file) throw new Error('render catch-up: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'catch-up');
-  if (!isFilled(p.recent)) {
-    throw new Error('render catch-up: "recent" must be a non-empty string — the threads circled, the leaning, what was left open');
-  }
-  const earlier = p.earlier ?? [];
-  if (!Array.isArray(earlier) || !earlier.every((line) => isFilled(line) && !line.includes('\n'))) {
-    throw new Error('render catch-up: "earlier" must be a list of one-line strings — one per older session');
-  }
-  const body = ["Where we'd got to:", '', p.recent.trim()];
-  if (earlier.length > 0) body.push('', 'Earlier:', ...earlier.map((line) => `- ${line.trim()}`));
-  return section('DISPLAY: catch-up', CONTINUE_MARKDOWN_INSTRUCTION, body.join('\n'));
-}
-
 // opener — the first words of a conversation that starts on material,
 // ending on the question the turn stops for. The engine names what was read
 // from state; the sketch and the questions are the session's, carried in a
@@ -6905,6 +6355,11 @@ function catchUpSurface(cwd, { file }) {
 // core-problem question, its topic the address.
 
 const OPENER_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
+
+/** The full stop a sentence ending on `text` still needs — none where the text closes on its own mark. @param {string} text */
+function fullStop(text) {
+  return /[.?!]$/.test(text) ? '' : '.';
+}
 
 // What an opener names as read, largest shape first: each kind's article
 // and plural.
@@ -7205,31 +6660,18 @@ function legacySplitSources(cwd, { dotpath }) {
 }
 
 /**
- * A `--source` the scan still finds qualifying, refused otherwise.
- * @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args
- * @param {{what: string, why: string}} refusal  the source's part in the step, and why only a qualifying one
- * @returns {string}
+ * The sub-step opening on a source the split takes up — one the scan still
+ * finds qualifying, since the split works through those alone.
+ * @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string}
  */
-function qualifyingSource(cwd, { dotpath, source }, { what, why }) {
-  if (!isFilled(source)) throw new Error(`render legacy-split-display: --source is required — the source the split ${what}`);
+function legacySplitProcessing(cwd, { dotpath, source }) {
+  if (!isFilled(source)) throw new Error('render legacy-split-display: --source is required — the source the split takes up');
   const { workUnit, sources } = legacySplitScan(cwd, dotpath);
   if (!sources.qualifying_sources.includes(source)) {
-    throw new Error(`render legacy-split-display: "${source}" is not a qualifying source of "${workUnit}" — ${why}`);
+    throw new Error(`render legacy-split-display: "${source}" is not a qualifying source of "${workUnit}" — the split works through the qualifying sources alone`);
   }
-  return source;
-}
-
-/** The sub-step opening on a source the split takes up. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
-function legacySplitProcessing(cwd, args) {
-  const source = qualifyingSource(cwd, args, { what: 'takes up', why: 'the split works through the qualifying sources alone' });
   return section('DISPLAY: legacy split processing', CONTINUE_MARKDOWN_INSTRUCTION,
     `**\`▪ Processing ${source}\`**\n\n> Working on ${source}.md.`);
-}
-
-/** A qualifying source the split left as it stood. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
-function legacySplitSkipped(cwd, args) {
-  const source = qualifyingSource(cwd, args, { what: 'skipped', why: 'a skipped source stands unchanged' });
-  return section('DISPLAY: legacy split skipped', CONTINUE_INSTRUCTION, `Skipping ${source}. Source file and manifest unchanged.`);
 }
 
 /**
@@ -7258,7 +6700,7 @@ function legacySplitComplete(_cwd, args) {
 }
 
 /** @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
-const LEGACY_SPLIT_STATE_DISPLAYS = { sources: legacySplitSources, processing: legacySplitProcessing, skipped: legacySplitSkipped, complete: legacySplitComplete };
+const LEGACY_SPLIT_STATE_DISPLAYS = { sources: legacySplitSources, processing: legacySplitProcessing, complete: legacySplitComplete };
 
 /** validate.cjs's refusals. @param {Record<string, any>} p @returns {string} */
 function legacySplitErrors(p) {
@@ -7672,17 +7114,13 @@ const SURFACES = {
   'finding-announce': findingAnnounce,
   'finding-batch': findingBatch,
   'finding': finding,
-  'finding-landed': findingLanded,
   'review-presentation': reviewPresentation,
   'review-gate': reviewGate,
   'spec-review-gate': specReviewGate,
-  'review-loop': reviewLoop,
   'spec-completion-gate': specCompletionGate,
-  'source-concern': sourceConcern,
   'convergence-diagnostic': convergenceDiagnostic,
   'carry-note-gate': carryNoteGate,
   'hypothesis-board': hypothesisBoard,
-  'trace-question': traceQuestion,
   'findings-signoff-gate': findingsSignoffGate,
   'fix-direction': fixDirection,
   'validation-gate': validationGate,
@@ -7698,7 +7136,6 @@ const SURFACES = {
   'research-conclude-gate': researchConcludeGate,
   'deep-dive-offer': deepDiveOffer,
   'perspective-offer': perspectiveOffer,
-  'agent-line': agentLine,
   'in-flight-agents-gate': inFlightAgentsGate,
   'review-findings-gate': reviewFindingsGate,
   'send-candidates': sendCandidates,
@@ -7717,14 +7154,12 @@ const SURFACES = {
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
   'wait-gate': waitGateSurface,
-  'pause-note': pauseNoteSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,
   'change-set-tree': changeSetTree,
   'executor-block-gate': executorBlockGate,
   'dependency-approval-gate': dependencyApprovalGate,
-  'task-graph-cycle': taskGraphCycle,
   'task-count-gate': taskCountGate,
   'plan-context-gate': planContextGate,
   'cross-cutting-gate': crossCuttingGate,
@@ -7732,7 +7167,6 @@ const SURFACES = {
   'plan-format-gate': planFormatGate,
   'plan-review-gate': planReviewGate,
   'scoping-questions': scopingQuestions,
-  'spec-written': specWritten,
   'complexity-gate': complexityGate,
   'first-phase-gate': firstPhaseGate,
   'correction-gate': correctionGate,
@@ -7749,9 +7183,6 @@ const SURFACES = {
   'phase-paused': phasePausedSurface,
   'phase-note': phaseNote,
   'step-opening': stepOpeningSurface,
-  'compliance-issues': complianceIssues,
-  'document-review': documentReview,
-  'surfaced-context': surfacedContext,
   'format-version-check': formatVersionCheck,
   'entry-gate': entryGate,
   'direct-entry-gate': directEntryGate,
@@ -7767,8 +7198,6 @@ const SURFACES = {
   'fix-gate': fixGate,
   'blocked-tasks': blockedTasks,
   'cycle-limit': cycleLimit,
-  'spec-corrections': specCorrections,
-  'tasks-complete': tasksComplete,
   'cycle-gate': cycleGate,
   'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
@@ -7786,7 +7215,6 @@ const SURFACES = {
   'archived-actions': archivedActionsSurface,
   'archived-delete-gate': archivedDeleteGateSurface,
   'inbox-content': inboxContentSurface,
-  'inbox-archive-receipt': inboxArchiveReceiptSurface,
   'inbox-restore-receipt': inboxRestoreReceiptSurface,
   'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'completed-actions': completedActionsSurface,
@@ -7802,7 +7230,6 @@ const SURFACES = {
   'roadmap-shape-gate': roadmapShapeGateSurface,
   'shape-gate': shapeGateSurface,
   'opener': openerSurface,
-  'catch-up': catchUpSurface,
   'synthesis-gate': synthesisGateSurface,
   'query-failure-gate': queryFailureGateSurface,
   'baseline-progress': baselineProgressSurface,

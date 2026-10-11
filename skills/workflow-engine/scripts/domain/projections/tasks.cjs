@@ -12,9 +12,6 @@
 //   render blocked-tasks → DISPLAY: blocked tasks + MENU: blocked tasks (the
 //                          blocked-task list is plan-format state the engine
 //                          never reads, so it rides the session's payload)
-//   render tasks-complete → DISPLAY: tasks complete (the implemented count is
-//                          the session's — the manifest records a skipped
-//                          task as completed)
 //   render task-gate     → MENU: task gate       (task_gate_mode gated)
 //                          DISPLAY: task gate auto-approved (auto or bounded)
 //   render fix-gate      → MENU: fix gate        (gated or threshold reached;
@@ -151,33 +148,6 @@ function cycleLimitDisplay(total, limit) {
   );
 }
 
-/**
- * The one-line confirmation that a pass corrected the specification — the
- * count is the session's (it landed the corrigenda), so it rides the call.
- * @param {number} count
- * @returns {string}
- */
-function specCorrectionsDisplay(count) {
-  return section(
-    'DISPLAY: spec corrections',
-    CONTINUE_INSTRUCTION,
-    `${count} spec correction${count === 1 ? '' : 's'} recorded.`,
-  );
-}
-
-/**
- * The task loop's close, once no task remains open.
- * @param {number} implemented
- * @returns {string}
- */
-function tasksCompleteDisplay(implemented) {
-  return section(
-    'DISPLAY: tasks complete',
-    CONTINUE_INSTRUCTION,
-    `All tasks complete. ${implemented} ${implemented === 1 ? 'task' : 'tasks'} implemented.`,
-  );
-}
-
 /** The analysis cycle-limit gate menu. Static by design. @returns {string} */
 function cycleGateMenu() {
   return section(
@@ -190,4 +160,4 @@ function cycleGateMenu() {
   );
 }
 
-module.exports = { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, tasksCompleteDisplay, cycleGateMenu };
+module.exports = { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, cycleGateMenu };
