@@ -11,6 +11,9 @@
 /** The file the engine marks a conversation that runs the workflows with. */
 export const MARKER = 'workflow'
 
+/** The file the engine keeps the conversation's position in. */
+export const POSITION = 'position.json'
+
 /**
  * The folder of the conversation `id`, from the process's
  * `WORKFLOWS_CONFIG_DIR` and `HOME`; null where they name neither directory.
