@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.14] - 2026-10-11
+
+✨ Added
+- Gate mod now compacts workflow conversations with a note appended — Claude re-reads the skill and the topic's documents, then carries on without a recap.
+- After a `/compact`, the mod sends a short continuation so work resumes without typing anything.
+- The spinner names the phase you're in — `Discussing`, `Specifying`, `Implementing task 2.3`, `Shaping` — instead of Claude Code's random word.
+- Claude is blocked from editing workflow manifests directly — it's pointed to `engine manifest` instead.
+- New `engine conversation position` command reports what a conversation should re-read to carry on from where it was working.
+- A compaction's note shows as one dim line (`⟳ Compacted · carrying on in …`) rather than a prompt you never typed.
+
+🔧 Changed
+- The conversation's position is now recorded on every `session label` call, whether or not tmux labels are on, and the task in flight is tracked during implementation.
+- After a context refresh, phase skills carry on from where they were with no recap or "announce your position" wait.
+- The handoff toast stays up for eight seconds.
+- Mod type-checking uses the declarations Claude Code lays when it loads a mod, replacing the `mod:types` fetch.
+
+🐛 Fixed
+- Session boot and `session repair` now drop the start menu's stale position even when tmux labels are off.
+
 ## [0.8.13] - 2026-10-09
 
 🔧 Changed
