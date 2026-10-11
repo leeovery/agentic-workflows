@@ -3,20 +3,30 @@
 //
 // Tests for migration 071: triage-queue-to-mailbox (.cjs)
 //
-// Against real git: each phase's .triage/ renamed .mailbox/ — a tracked one
-// moved with git (the rename staged, an untracked file inside carried along
-// untracked, nothing committed), an untracked one and one outside a
-// repository renamed on disk. The manifest: `triaged`
+// Against real git: every file under each phase's .triage/ moved to the same
+// place under .mailbox/ and both sides staged with nothing committed — a
+// tracked file gone from disk staged as removed, an untracked one staged as
+// added — and the emptied .triage/ removed; outside a repository, moved on
+// disk alone. A mailbox already there: a different topic's merged beside,
+// the same topic's taking each message whose number it holds at one above
+// its highest, in name order, slug kept; a file that is no message, whose
+// name is taken, left behind. The manifest: `triaged`
 // rewritten `unstarted` in status and the stashed previous_status of every
 // phase item, every other status kept; each comma-separated reroute: segment
 // of a discovery map source rewritten message:, every other segment and its
 // spacing kept; the rest of the manifest in the engine's serialisation.
+// The send records: each "Rerouted to {topic} triage ({date})" in a
+// research or discussion document rewritten "Sent to {topic}'s mailbox
+// ({date})", in place on its line, the punctuation after it kept, written on disk and never staged; a
+// near-miss and another phase's document left alone.
 // The mailbox-path addendum: handed back where a research or discussion
 // document holds a straggler — a triage section (heading plain or
 // malformed, any case) whose body carries anything but whitespace and a
 // lone "(none)", text after a "(none)" included — on a run that otherwise
-// skips too; nothing for an emptied section, an empty heading, a section
-// closed by the next heading, or a heading in another phase's document.
+// skips too, stating the recovery into the mailbox and that nothing goes
+// into a .triage/ directory; nothing for an emptied section, an empty
+// heading, a section closed by the next heading, or a heading in another
+// phase's document.
 // Completed and cancelled units alike, one update per changed unit,
 // skip/no-op, idempotency, and the guards: no .workflows/, a directory whose
 // manifest is absent, malformed or not an object, dot directories, and
@@ -96,7 +106,10 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   describe('the directories', () => {
-    it('moves a tracked .triage/ with git — the rename staged, the files at the new path, nothing committed', () => {
+    /** @param {string} rel @returns {string[]} */
+    const listing = (rel) => fs.readdirSync(path.join(dir, rel)).sort();
+
+    it('moves a tracked .triage/ — the rename staged, the files at the new path, nothing committed', () => {
       writeUnit('payments', epic());
       write('.workflows/payments/research/.triage/refunds/001-currency.md', 'currency\n');
       write('.workflows/payments/discussion/.triage/billing/001-tax.md', 'tax\n');
@@ -119,7 +132,7 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
       assert.strictEqual(head(), before, 'a migration never commits');
     });
 
-    it('carries an untracked file inside a tracked .triage/ along, still untracked', () => {
+    it('stages an untracked file inside a tracked .triage/ as added at its new path', () => {
       writeUnit('payments', epic());
       write('.workflows/payments/discussion/.triage/billing/001-tax.md');
       commitAll();
@@ -128,11 +141,14 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
       run();
 
       assert.strictEqual(readText('.workflows/payments/discussion/.mailbox/billing/002-vat.md'), 'not yet committed\n');
-      assert.deepStrictEqual(untracked(), ['.workflows/payments/discussion/.mailbox/billing/002-vat.md']);
-      assert.ok(staged().includes('R100\t.workflows/payments/discussion/.triage/billing/001-tax.md\t.workflows/payments/discussion/.mailbox/billing/001-tax.md'));
+      assert.deepStrictEqual(untracked(), []);
+      assert.deepStrictEqual(staged(), [
+        'A\t.workflows/payments/discussion/.mailbox/billing/002-vat.md',
+        'R100\t.workflows/payments/discussion/.triage/billing/001-tax.md\t.workflows/payments/discussion/.mailbox/billing/001-tax.md',
+      ]);
     });
 
-    it('renames an untracked .triage/ on disk and stages nothing for it', () => {
+    it('moves an untracked .triage/ and stages its files as added', () => {
       writeUnit('payments', { name: 'payments', work_type: 'feature', status: 'in-progress', phases: {} });
       commitAll();
       write('.workflows/payments/discussion/.triage/payments/001-tax.md');
@@ -141,20 +157,93 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
 
       assert.strictEqual(exists('.workflows/payments/discussion/.triage'), false);
       assert.ok(exists('.workflows/payments/discussion/.mailbox/payments/001-tax.md'));
-      assert.deepStrictEqual(staged(), []);
+      assert.deepStrictEqual(staged(), ['A\t.workflows/payments/discussion/.mailbox/payments/001-tax.md']);
       assert.deepStrictEqual({ updates, skips }, { updates: 1, skips: 0 });
     });
 
-    it('renames on disk outside a repository', () => {
-      cleanupFixture(dir);
-      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-071-plain-'));
+    it('moves the rest and stages the removal where a tracked file is already gone from disk', () => {
       writeUnit('payments', epic());
-      write('.workflows/payments/research/.triage/refunds/001-currency.md');
+      write('.workflows/payments/discussion/.triage/billing/001-tax.md', 'tax\n');
+      write('.workflows/payments/discussion/.triage/billing/002-vat.md', 'vat\n');
+      commitAll();
+      fs.rmSync(path.join(dir, '.workflows/payments/discussion/.triage/billing/001-tax.md'));
+
+      run();
+
+      assert.strictEqual(exists('.workflows/payments/discussion/.triage'), false);
+      assert.deepStrictEqual(listing('.workflows/payments/discussion/.mailbox/billing'), ['002-vat.md']);
+      assert.deepStrictEqual(staged(), [
+        'D\t.workflows/payments/discussion/.triage/billing/001-tax.md',
+        'R100\t.workflows/payments/discussion/.triage/billing/002-vat.md\t.workflows/payments/discussion/.mailbox/billing/002-vat.md',
+      ]);
+    });
+
+    it('joins a mailbox the topic already has — a taken number renumbered one above the highest, in name order, slug kept, nothing nested', () => {
+      writeUnit('payments', epic());
+      write('.workflows/payments/discussion/.mailbox/billing/002-new.md', 'new\n');
+      write('.workflows/payments/discussion/.triage/billing/003-fee.md', 'fee\n');
+      write('.workflows/payments/discussion/.triage/billing/001-tax.md', 'tax\n');
+      write('.workflows/payments/discussion/.triage/billing/002-vat.md', 'vat\n');
+      commitAll();
+
+      run();
+
+      assert.strictEqual(exists('.workflows/payments/discussion/.triage'), false);
+      assert.deepStrictEqual(listing('.workflows/payments/discussion/.mailbox'), ['billing']);
+      const mailbox = '.workflows/payments/discussion/.mailbox/billing';
+      assert.deepStrictEqual(listing(mailbox), ['001-tax.md', '002-new.md', '003-vat.md', '004-fee.md']);
+      assert.deepStrictEqual(
+        ['001-tax.md', '002-new.md', '003-vat.md', '004-fee.md'].map((f) => readText(`${mailbox}/${f}`)),
+        ['tax\n', 'new\n', 'vat\n', 'fee\n'],
+      );
+      assert.deepStrictEqual(staged(), [
+        `R100\t.workflows/payments/discussion/.triage/billing/001-tax.md\t${mailbox}/001-tax.md`,
+        `R100\t.workflows/payments/discussion/.triage/billing/002-vat.md\t${mailbox}/003-vat.md`,
+        `R100\t.workflows/payments/discussion/.triage/billing/003-fee.md\t${mailbox}/004-fee.md`,
+      ]);
+    });
+
+    it('merges into a mailbox holding another topic\'s messages', () => {
+      writeUnit('payments', epic());
+      write('.workflows/payments/research/.mailbox/billing/001-ledger.md', 'ledger\n');
+      write('.workflows/payments/research/.triage/refunds/001-currency.md', 'currency\n');
+      commitAll();
 
       run();
 
       assert.strictEqual(exists('.workflows/payments/research/.triage'), false);
-      assert.ok(exists('.workflows/payments/research/.mailbox/refunds/001-currency.md'));
+      assert.deepStrictEqual(listing('.workflows/payments/research/.mailbox'), ['billing', 'refunds']);
+      assert.strictEqual(readText('.workflows/payments/research/.mailbox/billing/001-ledger.md'), 'ledger\n');
+      assert.strictEqual(readText('.workflows/payments/research/.mailbox/refunds/001-currency.md'), 'currency\n');
+    });
+
+    it('moves a file that is no message under its own name, and leaves one whose name is taken behind', () => {
+      writeUnit('payments', epic());
+      write('.workflows/payments/discussion/.mailbox/billing/notes.txt', 'mailbox notes\n');
+      write('.workflows/payments/discussion/.triage/billing/notes.txt', 'queue notes\n');
+      write('.workflows/payments/discussion/.triage/billing/draft.txt', 'draft\n');
+      write('.workflows/payments/discussion/.triage/billing/001-tax.md', 'tax\n');
+
+      run();
+
+      assert.deepStrictEqual(listing('.workflows/payments/discussion/.mailbox/billing'), ['001-tax.md', 'draft.txt', 'notes.txt']);
+      assert.strictEqual(readText('.workflows/payments/discussion/.mailbox/billing/notes.txt'), 'mailbox notes\n');
+      assert.deepStrictEqual(listing('.workflows/payments/discussion/.triage/billing'), ['notes.txt']);
+      assert.strictEqual(readText('.workflows/payments/discussion/.triage/billing/notes.txt'), 'queue notes\n');
+    });
+
+    it('moves on disk outside a repository, a taken number renumbered there too', () => {
+      cleanupFixture(dir);
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-071-plain-'));
+      writeUnit('payments', epic());
+      write('.workflows/payments/research/.mailbox/refunds/001-fx.md', 'fx\n');
+      write('.workflows/payments/research/.triage/refunds/001-currency.md', 'currency\n');
+
+      run();
+
+      assert.strictEqual(exists('.workflows/payments/research/.triage'), false);
+      assert.deepStrictEqual(listing('.workflows/payments/research/.mailbox/refunds'), ['001-fx.md', '002-currency.md']);
+      assert.strictEqual(readText('.workflows/payments/research/.mailbox/refunds/002-currency.md'), 'currency\n');
       assert.strictEqual(updates, 1);
     });
 
@@ -283,6 +372,68 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
     });
   });
 
+  describe('the send records', () => {
+    const SENT = [
+      '- **Hidden-note discoverability.** Rerouted to management-window triage (2026-08-10).',
+      '*Rerouted to `engine-architecture` triage (2026-09-06).* Then more prose.',
+      '~~Rerouted to note-model triage (2026-08-06).~~ Answered since.',
+      '**Rerouted to build-and-release triage (2026-08-20)**, whose brief owns the update UX.',
+    ];
+    const NEAR_MISSES = [
+      'Rerouted to `note-window` discussion triage (2026-09-17), which reopened that topic.',
+      'Rerouted to billing triage.',
+      'Rerouted to billing triage (see above).',
+      'rerouted to billing triage (2026-08-10).',
+      'Rerouted to space-homing (research, 2026-08-03).',
+    ];
+    const document = (lines) => `# Billing\n\n${lines.join('\n\n')}\n`;
+
+    it('rewrites each exact record in a research or discussion document in place, every near-miss left alone', () => {
+      writeUnit('payments', { name: 'payments', work_type: 'epic', status: 'in-progress', phases: {} });
+      write('.workflows/payments/discussion/billing.md', document([...SENT, ...NEAR_MISSES]));
+      write('.workflows/payments/research/refunds.md', document([SENT[0]]));
+
+      run();
+
+      assert.strictEqual(readText('.workflows/payments/discussion/billing.md'), document([
+        "- **Hidden-note discoverability.** Sent to management-window's mailbox (2026-08-10).",
+        "*Sent to `engine-architecture`'s mailbox (2026-09-06).* Then more prose.",
+        "~~Sent to note-model's mailbox (2026-08-06).~~ Answered since.",
+        "**Sent to build-and-release's mailbox (2026-08-20)**, whose brief owns the update UX.",
+        ...NEAR_MISSES,
+      ]));
+      assert.strictEqual(readText('.workflows/payments/research/refunds.md'), document([
+        "- **Hidden-note discoverability.** Sent to management-window's mailbox (2026-08-10).",
+      ]));
+      assert.deepStrictEqual({ updates, skips }, { updates: 1, skips: 0 });
+    });
+
+    it('writes the rewrite on disk and stages nothing for it', () => {
+      writeUnit('payments', { name: 'payments', work_type: 'epic', status: 'in-progress', phases: {} });
+      write('.workflows/payments/discussion/billing.md', document([SENT[0]]));
+      commitAll();
+
+      run();
+
+      assert.match(readText('.workflows/payments/discussion/billing.md'), /Sent to management-window's mailbox/);
+      assert.deepStrictEqual(staged(), []);
+    });
+
+    it('leaves a document that holds only near-misses, and another phase\'s document, alone', () => {
+      writeUnit('payments', { name: 'payments', work_type: 'epic', status: 'in-progress', phases: {} });
+      write('.workflows/payments/discussion/billing.md', document(NEAR_MISSES));
+      write('.workflows/payments/investigation/billing.md', document([SENT[0]]));
+      write('.workflows/payments/specification/billing/specification.md', document([SENT[0]]));
+
+      run();
+
+      assert.strictEqual(readText('.workflows/payments/discussion/billing.md'), document(NEAR_MISSES));
+      assert.strictEqual(readText('.workflows/payments/investigation/billing.md'), document([SENT[0]]));
+      assert.strictEqual(readText('.workflows/payments/specification/billing/specification.md'), document([SENT[0]]));
+      assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
+    });
+  });
+
   describe('the mailbox-path addendum', () => {
     const doc = (rel, text) => write(`.workflows/payments/${rel}`, `# Doc\n\nBody.\n\n${text}\n`);
 
@@ -302,6 +453,7 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
         assert.ok(result && typeof result.verify === 'string', JSON.stringify(result));
         assert.ok(result.verify.includes('.workflows/{wu}/{phase}/.mailbox/{topic}/'), result.verify);
         assert.ok(result.verify.includes('NNN-{slug}.md'), result.verify);
+        assert.ok(result.verify.includes('Nothing goes into a .triage/ directory, whatever an earlier check in this start-up says'), result.verify);
         assert.ok(typeof MIGRATION.info === 'string' && MIGRATION.info.length > 0);
       });
     }
@@ -383,10 +535,14 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
 
     it('is idempotent — a second run skips and changes nothing', () => {
       writeUnit('payments', epic());
+      write('.workflows/payments/research/.mailbox/refunds/001-fx.md');
       write('.workflows/payments/research/.triage/refunds/001-currency.md');
+      write('.workflows/payments/discussion/billing.md', '# Billing\n\nRerouted to refunds triage (2026-08-10).\n');
       commitAll();
       run();
       const manifest = fs.readFileSync(manifestPath('payments'), 'utf8');
+      const mailbox = fs.readdirSync(path.join(dir, '.workflows/payments/research/.mailbox/refunds')).sort();
+      const document = readText('.workflows/payments/discussion/billing.md');
       const index = staged();
       updates = 0;
       skips = 0;
@@ -395,6 +551,10 @@ describe('migration 071: the triage queue becomes the mailbox', () => {
 
       assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
       assert.strictEqual(fs.readFileSync(manifestPath('payments'), 'utf8'), manifest);
+      assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows/payments/research/.mailbox/refunds')).sort(), mailbox);
+      assert.deepStrictEqual(mailbox, ['001-fx.md', '002-currency.md']);
+      assert.strictEqual(readText('.workflows/payments/discussion/billing.md'), document);
+      assert.strictEqual(document, "# Billing\n\nSent to refunds's mailbox (2026-08-10).\n");
       assert.deepStrictEqual(staged(), index);
     });
 
