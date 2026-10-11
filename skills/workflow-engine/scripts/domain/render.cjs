@@ -1047,7 +1047,8 @@ function hypothesisBoard(cwd, { dotpath, file, variant }) {
 // trace-question — the analysis's ask when it is blocked on something only
 // the user knows. The question — with what was tried and why it blocks the
 // trace — is the session's, so it rides a payload {question}; a blank line
-// in it separates paragraphs.
+// in it separates paragraphs, each emitted as one line for the renderer to
+// reflow.
 // ---------------------------------------------------------------------------
 
 /**
@@ -1063,8 +1064,8 @@ function traceQuestion(cwd, { dotpath, file }) {
   }
   const { question } = readJsonPayload(cwd, file, 'trace-question');
   if (!isFilled(question)) throw new Error('render trace-question: "question" must be a non-empty string');
-  const paragraphs = question.trim().split(/\n\s*\n/).map((p) => indentedBody([p], { indent: '' }).join('\n'));
-  return section('DISPLAY: trace question', emitAs('text', STOP_CLAUSE), paragraphs.join('\n\n'));
+  const paragraphs = question.trim().split(/\n\s*\n/).map((p) => p.trim().split(/\s*\n\s*/).join(' '));
+  return section('DISPLAY: trace question', emitAs('markdown', STOP_CLAUSE), paragraphs.join('\n\n'));
 }
 
 // ---------------------------------------------------------------------------

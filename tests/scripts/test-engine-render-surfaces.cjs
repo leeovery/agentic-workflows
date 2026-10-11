@@ -3129,14 +3129,12 @@ describe('render trace-question', () => {
     dotpath: 'hooks.investigation.hooks', file: writePayload(dir, 'trace-question.json', payload),
   });
 
-  it('renders the question as a text code block that ends the turn, each paragraph wrapped at the display width', () => {
+  it('renders the question as markdown that ends the turn, each paragraph one unwrapped line', () => {
     assert.strictEqual(ask({
-      question: 'Does the failure need a webhook retry to reproduce? I replayed the payload against a clean queue and the handler succeeded every time.\n\nWithout the retry path the trace has nowhere left to go.',
+      question: 'Does the failure need a webhook retry to reproduce? I replayed the payload against a clean queue\nand the handler succeeded every time.\n\nWithout the retry path the trace has nowhere left to go.',
     }), [
-      "=== DISPLAY: trace question (emit verbatim as a text code block (```text fence), then STOP for the user's response) ===",
-      'Does the failure need a webhook retry to reproduce? I replayed',
-      'the payload against a clean queue and the handler succeeded every',
-      'time.',
+      "=== DISPLAY: trace question (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      'Does the failure need a webhook retry to reproduce? I replayed the payload against a clean queue and the handler succeeded every time.',
       '',
       'Without the retry path the trace has nowhere left to go.',
       '',
