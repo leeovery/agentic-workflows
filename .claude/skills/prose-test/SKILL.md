@@ -31,7 +31,7 @@ First clear the verdicts an earlier run recorded for these cases, so the
 collation never reads a stale one:
 `node tests/prose/run.cjs verdicts --reset <case ids…>`.
 
-Cases are independent — dispatch up to 4 concurrently, each a
+Cases are independent — dispatch up to 20 concurrently, each a
 **prose-orchestrator** agent whose prompt is the case id and the
 instruction to run it end to end.
 
