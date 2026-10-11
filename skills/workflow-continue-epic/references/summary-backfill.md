@@ -25,13 +25,13 @@ The caller passes:
 
 For each item in `items_to_recover`:
 
+- Set `item.needs_summary` from the row's `summary=absent` and `item.needs_description` from `description=absent` so section **D** writes only the newly-drafted fields.
 - If `routing` is `research`: read `.workflows/{work_unit}/research/{item.name}.md`
 - If `routing` is `discussion`: read `.workflows/{work_unit}/discussion/{item.name}.md`
 - If the file is missing or empty (rare — the topic exists in the manifest but the file is gone), record `derived_summary: null` and `derived_description: null` and a note `(source file missing)` for that item
 
 For each readable file:
 
-- Set `item.needs_summary` from the row's `summary=absent` and `item.needs_description` from `description=absent` so section **D** writes only the newly-drafted fields.
 - If `item.needs_summary`, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the file's headings and opening paragraphs as the primary signal. Attach as `item.derived_summary`.
 - If `item.needs_description`, derive a paragraph or two of richer context — what the topic covers, why it surfaced, key dimensions. Use the file's body content (not just headings). Attach as `item.derived_description`.
 - If a field is already populated, leave its current value in place and skip derivation for that field.
@@ -100,7 +100,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-g
 
 **STOP.** Wait for user response.
 
-Set the item's entry in `summaries.json` to the user's response, then fetch the batch display alone and emit its DISPLAY section verbatim per its marker — the prompt at the top of this section takes the next answer:
+Set `item.derived_summary` and the item's entry in `summaries.json` to the user's response, and where `item.needs_description` is true and `item.derived_description` is null, set `item.derived_description` to a description drawn from it. Then fetch the batch display alone and emit its DISPLAY section verbatim per its marker — the prompt at the top of this section takes the next answer:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant proposed --file .workflows/.cache/{work_unit}/discovery/summaries.json
