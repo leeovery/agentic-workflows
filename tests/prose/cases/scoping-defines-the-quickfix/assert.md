@@ -1,6 +1,6 @@
 The prose should have taken this path:
 
-1. the skill refreshes the session label and checks for a
+1. the skill records where the session is working and checks for a
    specification on disk: none exists, so the pass starts fresh — no
    scoping or plan status is read, no phase note renders, and no resume
    choice is put to the user

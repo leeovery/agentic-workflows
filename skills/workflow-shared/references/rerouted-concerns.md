@@ -22,7 +22,7 @@ List the topic's triage queue — a fresh read at every consult, never a count c
 node .claude/skills/workflow-engine/scripts/engine.cjs topic queue {work_unit} {phase} {topic}
 ```
 
-Route on the response and the session's state — first match wins. The opt-in and the live concern are conversation state: a context refresh loses both — re-offer, never re-assume.
+Route on the response and the session's state — first match wins.
 
 #### If `count` is `0`
 
@@ -44,7 +44,7 @@ The previous concern's absorb is the natural break.
 
 #### If this is the session's first consult
 
-**If the sitting resumed existing work** (the artifact predates this session — a resume or reopen; after a context refresh, treat the sitting as resumed):
+**If the sitting resumed existing work** (the artifact predates this session — a resume or reopen):
 
 Queued concerns may bear on the ground the session is about to build on: the offer precedes any session output — render it now, before the first question or thread.
 

@@ -46,9 +46,9 @@ What do you want to dig into first?
 
 → Proceed to **B. Session Loop**.
 
-#### If a resume was selected at Step 6, or — with an empty map — a context refresh recovered a pre-synthesis session (the session log holds Exploration)
+#### If a resume was selected at Step 6
 
-The session is picked up from disk — either the user chose `continue` at resume detection, or a context refresh recovered a discovery session that was confirmed but not yet synthesised (e.g. a new epic whose in-memory `macro_continuation` was lost). A continuing epic whose map has items is **not** this branch — prior session logs alone don't make a resume; fall through to the populated-map branch, which reads them via continuity-load after the map anchor. The active session log on disk is the working state — the highest-numbered `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, whose number is `session_number`. Read it to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
+The session is picked up from disk — the user chose `continue` at resume detection. A continuing epic whose map has items is **not** this branch — prior session logs alone don't make a resume; fall through to the populated-map branch, which reads them via continuity-load after the map anchor. The active session log on disk is the working state — the highest-numbered `.workflows/{work_unit}/discovery/sessions/session-NNN.md`, whose number is `session_number`. Read it to load **Exploration**, **Edits**, and any partially-filled **Topics Identified** into context.
 
 Brief across the prior sessions, then ask where to pick up:
 

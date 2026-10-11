@@ -26,7 +26,9 @@
 // vector fill that fell short are warnings, never blocks.
 //
 // Boot is also where the conversation folders are tidied, whichever project
-// the conversations ran in: one goes once its transcript is gone.
+// the conversations ran in: one goes once its transcript is gone. The start
+// menu is no position, so the calling conversation's own goes first, before
+// the migrations — a boot that fails leaves none.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -40,6 +42,7 @@ const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/set
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
+const { dropPosition } = require('./position.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
@@ -215,6 +218,7 @@ function trimReport(stdout) {
  * @returns {BootResult}
  */
 function boot(cwd) {
+  dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
   const mig = spawnSync('node', [MIGRATE_CJS], { cwd, encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error

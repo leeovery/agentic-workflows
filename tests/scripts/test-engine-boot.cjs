@@ -1390,6 +1390,36 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
+  it('drops the calling conversation\'s own position, labels off, and leaves another\'s — the start menu is no position', () => {
+    recordChoice(false);
+    const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
+    try {
+      const as = (id) => ({ WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
+      const positionOf = (id) => path.join(config, 'conversations', id, 'position.json');
+      for (const id of ['sess-1', 'sess-2']) runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], as(id));
+      assert.ok(fs.existsSync(positionOf('sess-1')) && fs.existsSync(positionOf('sess-2')));
+      assert.strictEqual(bootWith({ env: as('sess-1') }).label_repaired, false);
+      assert.ok(!fs.existsSync(positionOf('sess-1')), 'boot took the calling conversation\'s own off');
+      assert.ok(fs.existsSync(positionOf('sess-2')), 'and left another\'s');
+    } finally {
+      fs.rmSync(config, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it('drops the calling conversation\'s own position before its migrations run — a boot that fails leaves none', () => {
+    const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
+    try {
+      const as = { WORKFLOWS_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
+      const position = path.join(config, 'conversations', 'sess-1', 'position.json');
+      runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], as);
+      assert.ok(fs.existsSync(position));
+      assert.match(runEngineFails(stubbed, fix.project, ['boot'], { ...as, STUB_MIGRATE_MODE: 'fail' }).error, /migrate\.cjs failed/);
+      assert.ok(!fs.existsSync(position), 'the failed boot left no position');
+    } finally {
+      fs.rmSync(config, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
   it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end` — committed confined, and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();

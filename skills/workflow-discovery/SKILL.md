@@ -40,9 +40,9 @@ Load **[framework.md](../workflow-shared/references/framework.md)** and follow i
 Context refresh (compaction) summarizes the conversation, losing procedural detail. When you detect a context refresh has occurred — the conversation feels abruptly shorter, you lack memory of recent steps, or a summary precedes this message — follow this recovery protocol:
 
 1. **Re-read this skill file completely, then re-load [framework.md](../workflow-shared/references/framework.md).** Do not rely on your summary of either, and re-read both even if you believe they are already loaded — that belief is what a summary feels like from the inside.
-2. **Determine whether the work unit was persisted yet.** Pre-confirmation new-mode shaping is ephemeral — nothing is on disk. If no manifest exists for the work in hand, the conversation had not yet reached the confirm-trigger; treat the shaping as lost and re-open with the user. If a manifest exists, the confirm-trigger fired — read the active session log (highest-numbered `.workflows/{work_unit}/discovery/sessions/session-*.md`) and the manifest to recover state; the session loop's re-open then reads the recent prior session logs too for continuity (see [continuity-load.md](references/continuity-load.md)), so re-entry resumes the conversation rather than restarting from the map. For an epic whose discovery map is still empty while its session log holds Exploration, you were mid-discovery — confirmed but not yet synthesised — so resume at the session loop; its open picks up from the log rather than cold-opening.
+2. **Determine whether the work unit was persisted yet.** Pre-confirmation new-mode shaping lives in the conversation alone — nothing is on disk. If no manifest exists for the work in hand, the conversation had not yet reached the confirm-trigger, and the shaping carries on from the conversation. If a manifest exists, the confirm-trigger fired — read the active session log (highest-numbered `.workflows/{work_unit}/discovery/sessions/session-*.md`) and the manifest to recover state.
 3. **Check git state.** Run `git status` and `git log --oneline -10`. Commit messages reveal what has been completed.
-4. **Announce your position** to the user before continuing: state what step you believe you're at and what comes next. Wait for confirmation.
+4. **Carry on from where the conversation was**, as if the break never happened — no recap and no announcement. Where the person's message is waiting, take it at the step it arrived at, unless it only asks to carry on. Otherwise, where the conversation was at a gate, put the gate back, fetched fresh; elsewhere continue the step it was on.
 
 Do not guess at progress or continue from memory. The files on disk and git history are authoritative — your recollection is not.
 
@@ -150,7 +150,7 @@ Load **[resume-detection.md](references/resume-detection.md)** and follow its in
 
 ## Step 7: Run Discovery
 
-Refresh the tmux session label — a no-op unless the user opted in and this session runs inside tmux:
+Record where this session is working — the call also labels the tmux session where the user opted in:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs session label {work_unit} discovery {work_unit}
