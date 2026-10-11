@@ -1,0 +1,38 @@
+{
+  "roadmap": {
+    "horizons": [
+      "next"
+    ],
+    "items": {
+      "scheduled-pickup": {
+        "horizon": "next",
+        "summary": "customers choose a pickup time when they order",
+        "kind": "idea",
+        "origin": "inbox:2026-01-01--scheduled-pickup",
+        "sources": [
+          ".roadmap/notes/ideas/2026-01-01--scheduled-pickup.md"
+        ],
+        "pulled_to": {
+          "work_unit": "pickup-times"
+        }
+      },
+      "pickup-time-shown-in-utc": {
+        "horizon": "next",
+        "summary": "the pickup time a customer is shown reads in UTC, not local time",
+        "kind": "bug",
+        "origin": "inbox:2026-01-01--pickup-time-shown-in-utc",
+        "sources": [
+          ".roadmap/notes/bugs/2026-01-01--pickup-time-shown-in-utc.md"
+        ],
+        "pulled_to": {
+          "work_unit": "pickup-times"
+        }
+      }
+    }
+  },
+  "work_units": {
+    "pickup-times": {
+      "work_type": "epic"
+    }
+  }
+}

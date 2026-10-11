@@ -40,7 +40,8 @@
       "render horizon-pick",
       "write:.workflows/.cache/inbox-roadmap.json",
       "render inbox-roadmap-gate",
-      "roadmap add-batch"
+      "roadmap add-batch",
+      "workflow-start/scripts/gateway.cjs inbox"
     ],
     "calls_exclude": [
       "inbox archive",

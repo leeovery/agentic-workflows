@@ -1,0 +1,12 @@
+{
+  "name": "pickup-times",
+  "work_type": "epic",
+  "status": "in-progress",
+  "created": "2026-01-01",
+  "description": "Customers choose when to collect their order, and every time they see is the restaurant's own",
+  "phases": {
+    "discovery": {
+      "active_session": "001"
+    }
+  }
+}

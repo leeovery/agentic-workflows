@@ -1,5 +1,5 @@
 {
-  "origin": "the backlogging door is new prose, and the route it exists for is the one the words do not settle: \"backlog that for later\" places nothing, so `A. Which Backlog` may not decide on the user's behalf. This walks the ambiguity gate from a plan mid-construction — the payload written to the cache, the two backlogs put to the user, the inbox taken, the capture skill run and its file committed — and the interrupted gate handed back with the plan untouched and no roadmap ever born",
+  "origin": "the backlogging door is new prose, and the route it exists for is the one the words do not settle: \"backlog that for later\" places nothing, so `A. Where It Waits` may not decide on the user's behalf. This walks the ambiguity gate from a plan mid-construction — the payload written to the cache, the two backlogs put to the user, the inbox taken, the capture skill run and its file committed — and the interrupted gate handed back with the plan untouched and no roadmap ever born",
   "entry": "workflow-planning-process",
   "world": "claims",
   "files": [
@@ -43,6 +43,7 @@
     ],
     "calls_in_order": [
       "render phase-tree pay.planning.pay",
+      "roadmap state",
       "write:.workflows/.cache/pay/planning/pay/backlog.json",
       "render backlog-gate pay.planning.pay",
       "write:.workflows/.inbox/ideas/",
@@ -52,7 +53,6 @@
       "render park-gate",
       "render horizon-pick",
       "roadmap add",
-      "roadmap state",
       "workflow-roadmap/scripts/gateway.cjs",
       "approvals.tasks.p1",
       "topic complete pay planning",

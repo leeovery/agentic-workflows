@@ -1,0 +1,52 @@
+{
+  "origin": "grooming an inbox item onto the map inside a roadmap session had no coverage, and its add gate is where a walk slips: an idea aimed at a horizon with a member in delivery takes the add gate first, and its waiting arm must land the idea through `roadmap add-batch` with its note — a plain `roadmap add` would put the item on the map and leave the note behind in the inbox",
+  "entry": "workflow-roadmap",
+  "world": "claims",
+  "files": [
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-roadmap/references/roadmap-guidelines.md",
+    "skills/workflow-discovery/references/discovery-guidelines.md",
+    "skills/workflow-shared/references/devils-advocate.md",
+    "skills/workflow-roadmap/references/session-loop.md",
+    "skills/workflow-roadmap/references/session-template.md"
+  ],
+  "answers": [
+    "c — talk about the product",
+    "There's a gift cards idea sitting in my inbox — bring it onto the map, under mvp.",
+    "w — leave it waiting beside the other mvp items"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "render roadmap-add-gate --horizon mvp",
+      "roadmap session open",
+      "roadmap add-batch --file .workflows/.cache/roadmap/inbox-items.json",
+      "commit --roadmap"
+    ],
+    "calls_in_order": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "render roadmap-add-gate --horizon mvp",
+      "write:.workflows/.cache/roadmap/inbox-items.json",
+      "roadmap add-batch --file .workflows/.cache/roadmap/inbox-items.json",
+      "commit --roadmap"
+    ],
+    "calls_exclude": [
+      "roadmap add ",
+      "roadmap pull-forward",
+      "roadmap pull ",
+      "inbox archive",
+      "commit --inbox",
+      "workunit create",
+      "roadmap session close",
+      "workflow-roadmap/scripts/gateway.cjs proposal",
+      "topic start"
+    ]
+  }
+}

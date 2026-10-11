@@ -29,11 +29,13 @@ The prose should have taken this path:
    `## Backlogging` section routes to backlogging.md with work_unit
    `pay`, topic `pay`, phase `implementation`; the pending gate is
    left to re-present on return
-7. **A. Which Backlog** reads the user's own words and finds a horizon
-   named in them, so the park is the route. The ambiguity gate is
-   never written and never rendered — the home was never in question —
-   and the horizon step is never entered, because the horizon is
-   already the user's. No roadmap state is read to get there
+7. **A. Where It Waits** reads the map's horizons first — there is no
+   roadmap, so there are none — then the user's own words, and finds a
+   horizon named in them, so the park is the route. The ambiguity gate
+   is never written and never rendered — where it waits was never in
+   question — and the horizon step is never entered, because the
+   horizon is already the user's: the roadmap state is read once, by
+   **A**, and no horizon pick renders
 8. **C. Park** derives a kebab-case name, a one-line summary at
    capability grain — the shopper's saved card, not this task's
    mechanics — and the kind `idea`, since saved cards are a
@@ -91,6 +93,6 @@ The end world's claims:
 - exactly one executor dispatch and one reviewer dispatch fired, both
   stubbed, both for pay-1-1
 - the stops the user met were the two setup skip-again questions, the
-  task gate, and the park confirm. They were never asked which
-  backlog, never shown a list of horizons, and never asked to approve
+  task gate, and the park confirm. They were never asked where it
+  should wait, never shown a list of horizons, and never asked to approve
   the task a second time

@@ -30,7 +30,8 @@ The prose should have taken this path:
    and no work unit is created
 8. the user is told in one line that two items went onto the roadmap
    under `v1`; the working set is empty, so the flow returns to the
-   inbox view, which now has nothing in it, and on to the start menu,
+   inbox view, which is read again from the engine — never redrawn from
+   memory — and now has nothing in it, and on to the start menu,
    which renders again and waits. The walk stops there
 
 Further claims:

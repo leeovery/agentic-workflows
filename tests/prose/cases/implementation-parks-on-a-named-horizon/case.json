@@ -1,5 +1,5 @@
 {
-  "origin": "the backlogging door is new prose, and its shortest route had no coverage: the user's words name a horizon, so `A. Which Backlog` goes straight to the park — no ambiguity gate, no horizon pick. This walks that route from an implementation session's first task gate over a project with no roadmap at all, where the confirm says the roadmap is created with the item and one verb births map, horizon and item together, then hands the interrupted gate back",
+  "origin": "the backlogging door is new prose, and its shortest route had no coverage: the user's words name a horizon, so `A. Where It Waits` goes straight to the park — no ambiguity gate, no horizon pick. This walks that route from an implementation session's first task gate over a project with no roadmap at all, where the confirm says the roadmap is created with the item and one verb births map, horizon and item together, then hands the interrupted gate back",
   "entry": "workflow-implementation-process",
   "world": "claims",
   "files": [
@@ -61,6 +61,7 @@
     ],
     "calls_in_order": [
       "render task-gate pay.implementation.pay",
+      "roadmap state",
       "render park-gate",
       "roadmap add",
       "render task-gate pay.implementation.pay"
@@ -68,7 +69,6 @@
     "calls_exclude": [
       "render backlog-gate",
       "render horizon-pick",
-      "roadmap state",
       "roadmap session open",
       "workflow-roadmap/scripts/gateway.cjs",
       "commit --inbox",

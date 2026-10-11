@@ -27,10 +27,11 @@ The prose should have taken this path:
    section routes to backlogging.md with work_unit `pay`, topic `pay`,
    phase `specification`; the pending gate is left to re-present on
    return
-6. **A. Which Backlog** reads the user's own words: they place the
-   idea on the roadmap but name no horizon. The home is settled, so
-   the ambiguity gate is never written and never rendered — the
-   horizon is what is open
+6. **A. Where It Waits** reads the map's horizons first, then the
+   user's own words: they place the idea on the roadmap but name no
+   horizon — "the roadmap" is no label among them. Where it waits is
+   settled, so the ambiguity gate is never written and never rendered —
+   the horizon is what is open
 7. **B. The Horizon** reads the roadmap state. `horizons` is
    non-empty, so the horizon is picked rather than asked for: the pick
    renders the map's horizons in their order as numbered rows, each
@@ -97,4 +98,5 @@ The end world's claims:
 - the five scripted answers were consumed by the resume choice, the
   aside, the horizon pick, the park confirm, and the readiness
   question, in that order. The
-  user was never asked which backlog and never asked to name a horizon
+  user was never asked where it should wait and never asked to name a
+  horizon
