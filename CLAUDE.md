@@ -37,7 +37,7 @@ Improvement ideas live in `ideas/`, indexed by `ideas/INDEX.md`. The index holds
 
 ## Design Docs
 
-`design/` holds each programme's design record. An in-flight design is rewritten in place as rulings change — pure design, no amendment history. **A concluded design doc is frozen: never edit it from a later change.** A change that alters shipped behaviour describes itself in its own PR and in `docs/` — never in CLAUDE.md, and never by annotating or rewriting the earlier record.
+`design/` holds each programme's design record. An in-flight design is rewritten in place as rulings change — pure design, no amendment history. **A concluded design doc is frozen: never edit it from a later change.** A change that alters shipped behaviour describes itself in its own PR and in `docs/` — never in CLAUDE.md, and never by annotating or rewriting the earlier record. CLAUDE.md's map is the exception: a change that adds, renames or removes what it names — a path, a skill, a phase, a gate — updates it (The System, Tests).
 
 ## The System
 
@@ -51,7 +51,7 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 4. **Discussion** (`workflow-discussion-process`) — decide, guided by a Discussion Map; topics send each other messages through mailboxes.
 5. **Investigation** (`workflow-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
 6. **Scoping** (`workflow-scoping-process`) — quick-fix: context, spec and plan in one pass.
-7. **Specification** (`workflow-specification-process`) — turn concluded discussions into a standalone spec; an epic groups its discussions into specifications at the epic menu.
+7. **Specification** (`workflow-specification-process`) — turn concluded discussions (a bugfix's investigation) into a standalone spec; an epic groups its discussions into specifications at the epic menu.
 8. **Planning** (`workflow-planning-process`) — phases, tasks and acceptance criteria; the code's mechanism stays the implementer's.
 9. **Implementation** (`workflow-implementation-process`) — execute the plan by TDD (a verification workflow for a quick-fix).
 10. **Review** (`workflow-review-process`) — verify the delivered change-set against the plan and the specification.
@@ -112,7 +112,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### State
 
-Workflow state is engine-owned (CONVENTIONS.md, State Ownership). Never hand-write a manifest: outside a migration (see Migrations), reads and writes go through `engine manifest`, whose reference is `skills/workflow-engine/references/commands.md`.
+Workflow state is engine-owned (CONVENTIONS.md, State Ownership). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/workflow-engine/references/commands.md`.
 
 ## Adding New Output Formats
 
@@ -135,7 +135,7 @@ Migrations keep existing projects' `.workflows/` in step with the current design
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
 - **A released migration is never touched** — not edited, not deleted; a correction is a new migration.
 - **A migration may stage in git and never commits** — the migration commit, on the user's yes at the migration gate, records it.
-- **Migrations must not use `engine manifest`** — they read and write `manifest.json` directly; the field surface validates against today's schema.
+- **Migrations must not use `engine manifest`** — they read and write `manifest.json` directly; the field surface validates against today's schema, and a migration is a point-in-time snapshot.
 - **The paths the workflows own are `OWNED_PATHS`** (`skills/workflow-engine/scripts/domain/commit.cjs`); a path a migration writes that the list does not hold joins it in the same change.
 - **Every migration has a test suite.**
 

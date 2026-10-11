@@ -213,11 +213,12 @@ unstubbed. The stub boundary is a scope decision, not a convenience.
 ## Assertion
 
 Claims code can settle belong in `case.json`'s `invariants` —
-`engine_before_write`, `calls_include`, `calls_exclude`, `calls_in_order`
-(whose `write:<path>` token stands for the path's first recorded write,
-and `dispatch:<agent>` / `send:<agent>` for that agent's next held
-dispatch or send), and `dispatches`. They run before the asserter, and
-its verdict cannot overturn theirs; `lib/invariants.cjs` states each.
+`engine_before_write` (declared only where the walk writes),
+`calls_include`, `calls_exclude`, `calls_in_order` (whose `write:<path>`
+token stands for the path's first recorded write, and `dispatch:<agent>`
+/ `send:<agent>` for that agent's next held dispatch or send), and
+`dispatches`. They run before the asserter, and its verdict cannot
+overturn theirs; `lib/invariants.cjs` states each.
 
 Code computes the factual delta between the acted world and the expected
 world; the asserting agent classifies every difference as volatile
@@ -240,23 +241,20 @@ rebuild records its hash, a drift records nothing — and rebuilds fan out
 over a thread pool a core short of the machine (`lib/verify-pool.cjs`).
 Only `/prose-test` spends tokens.
 
-When an engine change moves a world, regenerate it with
-`node tests/prose/run.cjs snap <case-id>` and land the snapshot diff in
-the same PR; never hand-edit a snapshot.
-
-## Running walks
-
-Walks run on command, through `/prose-test`, never as part of a routine
-gate. Each orchestrator records its verdict in the gitignored verdict
-store (`node tests/prose/run.cjs verdict <case-id> --file <path>`,
-`lib/verdicts.cjs`) before it hands back, and the skill collates from the
-store. Every review finding lands twice: the fix, and the case that would
-have caught it. At the end of a PR that touches skill prose, run
-`node tests/prose/run.cjs select --diff main` and suggest the cases it
-names.
-
 Snapshots exclude `.git/`, `.workflows/.knowledge/` (checkout-local — the
 world builder sets it up afresh, never committed) and `.claude/skills|agents/` (copied into live
 worlds, never part of a world's own state), and store `.gitignore` files
 as `_gitignore.fixture` so the product-written `.workflows/.gitignore`
 cannot ignore snapshot content out of this repo.
+
+A rebuild that drifts means a world moved: CLAUDE.md's Prose tests rules
+say how a world is regenerated.
+
+## Running walks
+
+Walks run through `/prose-test`; when to run them, and what a change owes
+the corpus, are CLAUDE.md's Prose tests rules. Each orchestrator records
+its verdict in the gitignored verdict store
+(`node tests/prose/run.cjs verdict <case-id> --file <path>`,
+`lib/verdicts.cjs`) before it hands back, and the skill collates from the
+store.

@@ -68,26 +68,19 @@ node tests/scripts/knowledge-eval.cjs --pin
 ## Writing a migration
 
 Migrations bring an existing project's `.workflows/` forward to the
-current design; `engine boot` runs them at `/workflow-start`. The
-orchestrator's header (`skills/workflow-migrate/scripts/migrate.cjs`)
-states the module contract — `id`, `description`, `run`, the report
-callbacks, the optional verification addendum and notice.
+current design; `engine boot` runs them at `/workflow-start`. The rules
+every migration keeps are CLAUDE.md's (Migrations). The orchestrator's
+header (`skills/workflow-migrate/scripts/migrate.cjs`) states the module
+contract — `id`, `description`, `run`, the report callbacks, the optional
+verification addendum and notice.
 
 - A new migration is
   `skills/workflow-migrate/scripts/migrations/NNN-description.cjs`, the
   next number after the highest. The `*.sh` files are the frozen fleet:
   nothing new is written in bash.
-- It reads and writes `manifest.json` directly, never through `engine
-  manifest` — the field surface validates against today's schema, and a
-  migration is a point-in-time snapshot.
-- It may stage its changes and never commits; the migration commit, on
-  the user's yes at `/workflow-start`, records them.
-- A project path it writes that `OWNED_PATHS`
-  (`skills/workflow-engine/scripts/domain/commit.cjs`) does not hold yet
-  joins the list in the same change. Migration 066, which edits the
-  user's own Claude Code settings, is the one migration that writes
-  outside the project; its verification addendum names the change, since
-  the review diff cannot show it.
+- Migration 066, which edits the user's own Claude Code settings, is the
+  one migration that writes outside the project; its verification
+  addendum names the change, since the review diff cannot show it.
 - Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
   `package.json`'s `test` script. Like its siblings it drives `run()`
   against a temp `projectDir` with counting `reportUpdate`/`reportSkip`
@@ -97,9 +90,10 @@ callbacks, the optional verification addendum and notice.
 ## Prose tests
 
 `tests/prose/` walks the skill prose with real agents against real
-project states. Walks cost tokens, so they run on command via the
-`/prose-test` skill rather than as part of a gate. `npm test` covers only
-the token-free perimeter: corpus validation and snapshot rebuilds.
+project states, through the `/prose-test` skill; when walks run, and what
+a change owes the corpus, are CLAUDE.md's rules (Prose tests). `npm test`
+covers only the token-free perimeter: corpus validation and snapshot
+rebuilds.
 
 **Prerequisite that will otherwise waste your afternoon:** the walker
 records what it did through a `PostToolUse` hook declared in its own
@@ -128,13 +122,10 @@ it, so an old checkout will look set up and quietly not be.
   `.claude/agents/*.md` and immediately testing will exercise the old
   definition. Reload plugins, or restart, before trusting a result.
 - **Snapshot drift is expected after an engine change.** A red
-  `prose-test snapshots` suite means a world moved. Regenerate with
-  `node tests/prose/run.cjs snap <case-id>` and land the snapshot diff in
-  the same PR as the change that moved it. Never hand-edit a snapshot.
+  `prose-test snapshots` suite means a world moved; CLAUDE.md (Prose
+  tests) says how it is regenerated.
 - **`CHANGELOG.md` is generated.** Never edit it by hand.
-- **Released migrations are frozen.** Fix forward with a new numbered
-  `.cjs` migration rather than editing or deleting one that has run on
-  real installs.
+- **Released migrations are frozen** — CLAUDE.md (Migrations).
 
 ## Conventions
 
