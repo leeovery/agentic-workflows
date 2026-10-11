@@ -87,7 +87,7 @@ Render the pick over `blocking_topics`:
 node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant pick --blocking {blocking_topics}
 ```
 
-**If only one dependency in the blocking list:**
+#### If only one dependency is in the blocking list
 
 Emit the call's DISPLAY section verbatim per its marker.
 
@@ -95,7 +95,7 @@ Set `selected_topic` = that dependency's topic.
 
 → Proceed to **D. Mark as Satisfied**.
 
-**If multiple dependencies in the blocking list:**
+#### If several dependencies are in the blocking list
 
 Emit the call's MENU section verbatim per its marker.
 
