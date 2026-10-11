@@ -3910,7 +3910,7 @@ describe('register', () => {
     await clock.settle()
 
     expect(askedOf(calls)).toEqual(CARRIED)
-    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: undefined }])
+    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: 8_000 }])
     expect(submitted).toEqual([CONTINUATION])
     expect(sentIn(files, AFTER_CLEAR)).toEqual({ answer: CONTINUATION, line: WHERE })
     expect(files.has(sentAt('s0')), 'the conversation it left records nothing').toBe(false)
@@ -4014,7 +4014,7 @@ describe('register', () => {
     expect(submitted).toEqual([CONTINUATION])
     expect(filled).toEqual([CONTINUATION])
     expect(files.get(sentAt(AFTER_CLEAR))).toBe('null')
-    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: undefined }])
+    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: 8_000 }])
   })
 
   test('a send that fails waits in the prompt box for Enter all the same', async ($, on) => {
@@ -4026,7 +4026,7 @@ describe('register', () => {
     await clock.settle()
 
     expect(filled).toEqual([CONTINUATION])
-    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: undefined }])
+    expect(toasts).toEqual([{ text: `Handed off ${WHERE}`, timeoutMs: 8_000 }])
   })
 
   test('a continuation neither sent nor taken by the prompt box stays on screen in a toast for the person to send, never the toast that says it went', async ($, on) => {
