@@ -1,6 +1,6 @@
 # Start Menu
 
-*Reference for **[workflow-start](../SKILL.md)** — loaded by the back of the roadmap, the baseline, help and the continue menus.*
+*Reference for **[workflow-start](../SKILL.md)** — loaded by the back of the roadmap, the baseline, help and the continue menus, of the laboratory's record picker on a single-topic unit, and of the code-session gate outside an epic.*
 
 ---
 

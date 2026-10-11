@@ -1,7 +1,7 @@
 ---
 name: workflow-review-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/), Bash(ls .workflows/), Bash(git log), Bash(git status)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(mkdir -p .workflows/), Bash(ls .workflows/), Bash(git log), Bash(git status)
 ---
 
 # Review Process
@@ -84,7 +84,7 @@ The user calls the topic off — they say to cancel, or the conversation agrees 
 
 ### Step 0.1: Code Slot
 
-Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with phase = `review`.
+Load **[code-session-gate.md](../workflow-shared/references/code-session-gate.md)** with work_type = `{work_type}`, work_unit = `{work_unit}`, topic = `{topic}`, phase = `review`.
 
 → On return, proceed to **Step 0.2**.
 
