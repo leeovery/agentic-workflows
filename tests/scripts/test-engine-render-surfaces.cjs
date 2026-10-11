@@ -2114,14 +2114,22 @@ describe('render finding-announce', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the opt-in gate — statement, glyphed question, y/l options', () => {
-    const file = writePayload(dir, 'ann.json', {
-      agent_type: 'review',
-      count: 16,
-      shape: '3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere',
-    });
-    const out = renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file });
-    assert.strictEqual(out, [
+  const agents = require('../../skills/workflow-engine/scripts/domain/agent-state.cjs');
+  const announce = (id, file) => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', id, file });
+  // A dispatched agent's report lands and the scan promotes it; the ack, when
+  // given its findings, reads it.
+  const landed = (opts, findings) => {
+    const row = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', opts);
+    fs.writeFileSync(path.join(dir, row.file), '# Report\n');
+    agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
+    if (findings) agents.ackAgent(dir, 'pay', 'discussion', 'checkout', row.id, { findings });
+    return row.id;
+  };
+  const shape = () => writePayload(dir, 'ann.json', { shape: '3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere' });
+
+  it('renders the opt-in gate — the row\'s kind and finding count, the payload\'s lane split, glyphed question, y/l options', () => {
+    const id = landed({ kind: 'review' }, Array.from({ length: 16 }, (_, i) => `F${i + 1}`));
+    assert.strictEqual(announce(id, shape()), [
       '=== MENU: finding announce (emit verbatim as markdown (not a code block)) ===',
       DOTS,
       'Background review returned — 16 finding(s): 3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere.',
@@ -2135,16 +2143,30 @@ describe('render finding-announce', () => {
     ].join('\n'));
   });
 
-  it('refuses a missing or malformed payload field by name', () => {
-    const noShape = writePayload(dir, 'n1.json', { agent_type: 'review', count: 2 });
-    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: noShape }),
-      /"shape" must be a non-empty string/);
-    const badCount = writePayload(dir, 'n2.json', { agent_type: 'review', count: 0, shape: '2 need a call' });
-    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: badCount }),
-      /"count" must be a positive integer/);
-    const noType = writePayload(dir, 'n3.json', { count: 2, shape: '2 need a call' });
-    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: noType }),
-      /"agent_type" must be a non-empty string/);
+  it('names a synthesis by its kind', () => {
+    const { agents: pair } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['ship-now', 'strategic-timing'] });
+    for (const lens of pair) fs.writeFileSync(path.join(dir, lens.file), '# Case\n');
+    agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
+    const id = landed({ kind: 'synthesis', set: '001' }, ['T1', 'T2']);
+    assert.match(announce(id, shape()), /^Background synthesis returned — 2 finding\(s\): /m);
+  });
+
+  it('refuses a row not yet read, one with findings already surfaced, and an id the store does not hold', () => {
+    const unread = landed({ kind: 'review' });
+    assert.throws(() => announce(unread, shape()),
+      /render finding-announce: "review-001" is pending — the announce follows the first read, before any finding surfaces/);
+    agents.ackAgent(dir, 'pay', 'discussion', 'checkout', unread, { findings: ['F1', 'F2'] });
+    agents.surfaceFinding(dir, 'pay', 'discussion', 'checkout', unread, 'F1');
+    assert.throws(() => announce(unread, shape()),
+      /"review-001" is acknowledged with findings already surfaced — the announce follows the first read/);
+    assert.throws(() => announce('review-009', shape()), /render finding-announce: no agent "review-009" for discussion\/checkout/);
+  });
+
+  it('refuses a missing id, a missing payload, and an empty shape by name', () => {
+    const id = landed({ kind: 'review' }, ['F1']);
+    assert.throws(() => announce(undefined, shape()), /render finding-announce: --id <agent id> is required/);
+    assert.throws(() => announce(id, undefined), /render finding-announce: --file <payload\.json> is required/);
+    assert.throws(() => announce(id, writePayload(dir, 'n1.json', {})), /"shape" must be a non-empty string/);
   });
 });
 

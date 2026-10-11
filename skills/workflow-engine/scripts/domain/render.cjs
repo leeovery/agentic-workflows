@@ -3879,25 +3879,30 @@ function specConfirmGate(cwd, { dotpath, single, unify }) {
 
 // finding-announce — the surfacing protocol's opt-in gate: a background
 // agent's return announced as a count and a lane shape, never a preview.
-// The chrome is fixed; the payload carries only judgment content (the
-// agent type and the lane-split clause).
+// The agent's kind and its finding count are the acknowledged row's own,
+// read off the agent store; the payload carries only the lane-split clause.
+// A row not yet read, or one the user has already opted into, never renders.
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
+ * @param {{dotpath: string, id?: string, file?: string}} args
  * @returns {string}
  */
-function findingAnnounce(cwd, { dotpath, file }) {
+function findingAnnounce(cwd, { dotpath, id, file }) {
+  if (!isFilled(id)) throw new Error('render finding-announce: --id <agent id> is required');
   if (!file) throw new Error('render finding-announce: --file <payload.json> is required');
-  resolveAddress(cwd, dotpath, 'finding-announce');
+  const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'finding-announce');
+  const row = agentRows(cwd, workUnit, phase, topic).find((r) => r.id === id);
+  if (!row) throw new Error(`render finding-announce: no agent "${id}" for ${phase}/${topic}`);
+  if (row.status !== 'acknowledged' || row.surfaced.length > 0) {
+    throw new Error(`render finding-announce: "${id}" is ${row.status}${row.surfaced.length > 0 ? ' with findings already surfaced' : ''} — the announce follows the first read, before any finding surfaces`);
+  }
   const p = readJsonPayload(cwd, file, 'finding-announce');
-  if (!isFilled(p.agent_type)) throw new Error('render finding-announce: "agent_type" must be a non-empty string');
-  if (!Number.isInteger(p.count) || p.count < 1) throw new Error('render finding-announce: "count" must be a positive integer');
   if (!isFilled(p.shape)) throw new Error('render finding-announce: "shape" must be a non-empty string — the lane split in one clause');
   return section(
     'MENU: finding announce',
     emitAs('markdown'),
-    menu(`Background ${p.agent_type} returned — ${p.count} finding(s): ${p.shape}.`, [
+    menu(`Background ${row.kind} returned — ${row.findings.length} finding(s): ${p.shape}.`, [
       cmdOption('y', 'yes', 'Start on them'),
       cmdOption('l', 'later', "Keep pulling on the current thread, I'll raise them at the next pause"),
     ], { question: 'Work through them now?' }),

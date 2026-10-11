@@ -263,7 +263,7 @@ Commands:
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
   render finding-landed   <wu.phase.topic> --file <payload.json>
-  render finding-announce <wu.phase.topic> --file <payload.json>
+  render finding-announce <wu.phase.topic> --id <agent id> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]

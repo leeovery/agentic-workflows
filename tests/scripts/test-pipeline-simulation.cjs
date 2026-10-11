@@ -2028,17 +2028,17 @@ describe('pipeline simulation', () => {
     const rev1 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
     sim.write(rev1.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
-    // The surfacing protocol's opt-in gate renders from a judgment payload.
-    sim.write('.workflows/.cache/scratch/announce.json',
-      JSON.stringify({ agent_type: 'review', count: 1, shape: '1 needs a call' }));
-    assert.match(
-      sim.render(['finding-announce', `${wu}.discussion.beta`, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
-      /Work through them now\?/, 'the announce gate renders from the payload');
     // The conclusion's drain offer reads the acknowledged row's own count and
     // refuses every other state — pending before the ack, incorporated after
     // the last finding surfaces.
     sim.refuses(['render', 'review-findings-gate', `${wu}.discussion.beta`], /"review-001" is pending/);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--findings', 'F1']);
+    // The surfacing protocol's opt-in gate: the kind and the count off the
+    // acknowledged row, the lane split from the judgment payload.
+    sim.write('.workflows/.cache/scratch/announce.json', JSON.stringify({ shape: '1 needs a call' }));
+    assert.match(
+      sim.render(['finding-announce', `${wu}.discussion.beta`, '--id', rev1.id, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
+      /Background review returned — 1 finding\(s\): 1 needs a call\./, 'the announce gate reads the row and the payload');
     assert.match(sim.render(['review-findings-gate', `${wu}.discussion.beta`], { expect: 'content' }),
       /The review left 1 finding still to walk\./, 'the drain offer counts the row\'s unsurfaced findings');
     sim.run(['agent', 'surface', wu, 'discussion', 'beta', rev1.id, 'F1']);
@@ -2062,6 +2062,7 @@ describe('pipeline simulation', () => {
     sim.write(revFinal.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
+    sim.render(['agent-line', `${wu}.discussion.beta`, '--id', revFinal.id, '--variant', 'clean'], { expect: 'content' });
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
