@@ -73,13 +73,13 @@ Re-classify before anything renders, in the one permitted direction (core rule 5
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
-The engine incorporates the row. No menu needed — append this single line at the end of your current turn, above the gate where one is waiting on the user:
+The engine incorporates the row. No menu needed — a single line tells the user it came back with nothing new, at the end of your current turn, above the gate where one is waiting on the user. Fetch it there:
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Background {agent_type} returned — nothing new beyond what we've already covered.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant clean
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 → Return to caller.
 
@@ -103,13 +103,13 @@ Consult the natural-breaks checklist. Route on the row's `announced` flag.
 
 **If `announced` is `false`:**
 
-Append this one-line parenthetical at the end of your current turn, above the gate where one is waiting on the user, then record it:
+A one-line parenthetical tells the user the report is waiting for the next pause, at the end of your current turn, above the gate where one is waiting on the user. Fetch it there:
 
-> *Output the next fenced block as markdown (not a code block):*
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant deferred
+```
 
-```
-*(Background {agent_type} just returned — I'll raise it when we pause.)*
-```
+Emit the call's DISPLAY section verbatim per its marker, then record it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}

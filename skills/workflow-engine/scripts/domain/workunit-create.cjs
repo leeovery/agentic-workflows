@@ -30,7 +30,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { parseInboxPaths } = require('./inbox.cjs');
+const { parseInboxPaths, SEED_SOURCES } = require('./inbox.cjs');
 const {
   normaliseBasename,
   dedupe,
@@ -47,9 +47,6 @@ const {
   VALID_PHASES,
   RESERVED_WORK_UNIT_NAMES,
 } = require('../kernel/manifest-schema.cjs');
-
-/** Seed provenance tag per inbox folder. */
-const SEED_SOURCES = { ideas: 'inbox:idea', bugs: 'inbox:bug', quickfixes: 'inbox:quickfix' };
 
 /**
  * Refuse an illegal work-unit name — dots and slashes break manifest
@@ -180,7 +177,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       fs.renameSync(path.join(cwd, move.item.given), path.join(seedsDir, move.dest));
       pushEntry(manifest, 'seeds', {
         path: `seeds/${move.dest}`,
-        source: SEED_SOURCES[/** @type {keyof typeof SEED_SOURCES} */ (move.item.folder)],
+        source: SEED_SOURCES[move.item.folder],
         seeded_at: isoNow(),
       });
     }
@@ -226,7 +223,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
     imports: importMoves.map((move) => ({ path: `imports/${move.dest}` })),
     seeds: seedMoves.map((move) => ({
       path: `seeds/${move.dest}`,
-      source: SEED_SOURCES[/** @type {keyof typeof SEED_SOURCES} */ (move.item.folder)],
+      source: SEED_SOURCES[move.item.folder],
     })),
     skipped_imports: skippedImports,
     session_log: `.workflows/${workUnit}/discovery/sessions/session-001.md`,

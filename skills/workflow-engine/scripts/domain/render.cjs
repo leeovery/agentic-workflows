@@ -25,7 +25,7 @@ const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, 
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems } = require('./inbox-set.cjs');
-const { parseInboxPaths } = require('./inbox.cjs');
+const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
@@ -45,7 +45,7 @@ const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = req
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
 const { discussionDeferGate } = require('./projections/discussion-map.cjs');
-const { latestReview } = require('./agent-state.cjs');
+const { agentRows, latestReview } = require('./agent-state.cjs');
 const {
   roadmapMapView,
   roadmapAddGate,
@@ -56,7 +56,7 @@ const {
 const { revisitPhasesSection } = require('./projections/workunit.cjs');
 const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
 const { researchThreads } = require('./projections/research-threads.cjs');
-const { registerState } = require('./research-threads.cjs');
+const { registerState, threadsOf } = require('./research-threads.cjs');
 const { waitGate, phasePaused, owedWaits, owedSources, researchWaitState } = require('./projections/wait.cjs');
 const { compareExperimentIds, isParentExperimentId, DERIVED_PHASES, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, WAITING_PHASES, PAUSING_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { WORK_UNIT_TYPES, typeConfig: workUnitTypeConfig, phaseTargets } = require('./workunit-detail.cjs');
@@ -2261,6 +2261,93 @@ function perspectiveOffer(cwd, { dotpath, file }) {
     ],
     { question: 'Want to explore both lenses?' },
   ));
+}
+
+// agent-line — the one-line notes a background agent's lifecycle earns in
+// the conversation, each read off the agent store row the flow names:
+// `dispatched` as a deep dive leaves (the register thread it digs, by the
+// row's label) or a perspective pair does (its set's lenses, by label, in
+// the order given); `clean` as a review or synthesis comes back with
+// nothing new; `deferred` as one comes back mid-thread and waits for the
+// next pause. Each refuses a row in a state its calling prose never
+// renders it from.
+
+/** @typedef {ReturnType<typeof agentRows>[number]} AgentRow */
+
+// The kinds the surfacing protocol raises — the two that come back with a
+// report the user hears about.
+const SURFACED_KINDS = ['review', 'synthesis'];
+
+/** The full stop a sentence ending on `text` still needs — none where the text closes on its own mark. @param {string} text */
+function fullStop(text) {
+  return /[.?!]$/.test(text) ? '' : '.';
+}
+
+/** @param {AgentRow} row @param {string} status @param {string} why */
+function requireAgentStatus(row, status, why) {
+  if (row.status !== status) {
+    throw new Error(`render agent-line: "${row.id}" is ${row.status}, not ${status} — ${why}`);
+  }
+}
+
+/** @param {AgentRow} row @param {string} variant */
+function requireSurfacedKind(row, variant) {
+  if (!SURFACED_KINDS.includes(row.kind)) {
+    throw new Error(`render agent-line: a ${row.kind} has no ${variant} line — the ${SURFACED_KINDS.join(' and ')} reports do`);
+  }
+}
+
+/** @type {Record<string, (row: AgentRow, rows: AgentRow[], manifest: object, topic: string) => string>} */
+const AGENT_LINES = {
+  dispatched: (row, rows, manifest, topic) => {
+    requireAgentStatus(row, 'in-flight', 'the line follows the dispatch');
+    if (row.kind === 'deep-dive') {
+      const thread = threadsOf(manifest, topic)[row.label ?? ''];
+      if (!thread) throw new Error(`render agent-line: no thread "${row.label}" on ${topic}'s register — a deep dive digs a register thread`);
+      return section('DISPLAY: agent dispatched', CONTINUE_INSTRUCTION,
+        `Deep dive dispatched on "${thread.question}"${fullStop(thread.question)} It folds in when it lands.`);
+    }
+    if (row.kind === 'perspective') {
+      const lenses = rows.filter((r) => r.kind === 'perspective' && r.set === row.set).map((r) => titlecase(r.label ?? ''));
+      return section('DISPLAY: agent dispatched', CONTINUE_INSTRUCTION, [
+        `Dispatched ${lenses.length} perspective agents: ${lenses.join(', ')}.`,
+        'Results will be surfaced when available.',
+      ].join('\n'));
+    }
+    throw new Error(`render agent-line: a ${row.kind} has no dispatched line — a deep dive and a perspective pair do`);
+  },
+  clean: (row) => {
+    requireSurfacedKind(row, 'clean');
+    if (row.status !== 'incorporated' || row.findings.length > 0) {
+      throw new Error(`render agent-line: "${row.id}" is not a clean return — the line follows its \`agent ack --clean\``);
+    }
+    return section('DISPLAY: agent returned', CONTINUE_INSTRUCTION,
+      `Background ${row.kind} returned — nothing new beyond what we've already covered.`);
+  },
+  deferred: (row) => {
+    requireSurfacedKind(row, 'deferred');
+    requireAgentStatus(row, 'acknowledged', 'the line follows the first read');
+    if (row.announced) throw new Error(`render agent-line: "${row.id}" is already announced — the user knows it is waiting`);
+    return section('DISPLAY: agent deferred', CONTINUE_MARKDOWN_INSTRUCTION,
+      `*(Background ${row.kind} just returned — I'll raise it when we pause.)*`);
+  },
+};
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, id?: string, variant?: string}} args
+ * @returns {string}
+ */
+function agentLine(cwd, { dotpath, id, variant }) {
+  if (variant === undefined || !Object.hasOwn(AGENT_LINES, variant)) {
+    throw new Error(`render agent-line: --variant must be one of ${Object.keys(AGENT_LINES).join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (!isFilled(id)) throw new Error('render agent-line: --id <agent id> is required');
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'agent-line');
+  const rows = agentRows(cwd, workUnit, phase, topic);
+  const row = rows.find((r) => r.id === id);
+  if (!row) throw new Error(`render agent-line: no agent "${id}" for ${phase}/${topic}`);
+  return AGENT_LINES[variant](row, rows, manifest, topic);
 }
 
 // in-flight-agents-gate — the wait-or-leave gate a session takes when
@@ -5957,6 +6044,136 @@ function roadmapShapeGateSurface(_cwd, _args) {
   return section('MENU: roadmap shape gate', MENU_INSTRUCTION, roadmapShapeGate());
 }
 
+// catch-up — the briefing a re-entered shaping conversation opens on, in
+// discovery and on the roadmap alike: the thinking the recent session logs
+// hold, and the older sessions one line each under an "Earlier:" lead. All
+// of it is the session's synthesis of the logs, carried in a payload — the
+// engine never reads a log. The caller's own opener follows it.
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function catchUpSurface(cwd, { file }) {
+  if (!file) throw new Error('render catch-up: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'catch-up');
+  if (!isFilled(p.recent)) {
+    throw new Error('render catch-up: "recent" must be a non-empty string — the threads circled, the leaning, what was left open');
+  }
+  const earlier = p.earlier ?? [];
+  if (!Array.isArray(earlier) || !earlier.every((line) => isFilled(line) && !line.includes('\n'))) {
+    throw new Error('render catch-up: "earlier" must be a list of one-line strings — one per older session');
+  }
+  const body = ["Where we'd got to:", '', p.recent.trim()];
+  if (earlier.length > 0) body.push('', 'Earlier:', ...earlier.map((line) => `- ${line.trim()}`));
+  return section('DISPLAY: catch-up', CONTINUE_MARKDOWN_INSTRUCTION, body.join('\n'));
+}
+
+// opener — the first words of a conversation that starts on material,
+// ending on the question the turn stops for. The engine names what was read
+// from state; the sketch and the questions are the session's, carried in a
+// payload. `inbox`: discovery over a working set of inbox items before any
+// work unit exists, the items named by kind (`--path`, comma-joined, the
+// shape the inbox seeds take). `seeded`: an epic's first session over the
+// seeds and imports its manifest holds. `discussion`: a fresh discussion's
+// core-problem question, its topic the address.
+
+const OPENER_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
+
+// What an opener names as read, largest shape first: each kind's article
+// and plural.
+/** @type {Record<string, {article: string, plural: string}>} */
+const READ_NOUNS = {
+  idea: { article: 'an', plural: 'ideas' },
+  bug: { article: 'a', plural: 'bugs' },
+  'quick-fix': { article: 'a', plural: 'quick-fixes' },
+  import: { article: 'an', plural: 'imports' },
+};
+
+/** "a", "a and b", "a, b and c". @param {string[]} parts */
+function listPhrase(parts) {
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * What was read, named by kind and counted where several — "bug",
+ * "3 ideas", "2 ideas and a bug", "idea and 2 imports". The first kind's
+ * lone item takes no article: "your" is its determiner.
+ * @param {string[]} kinds
+ */
+function readPhrase(kinds) {
+  const counted = Object.keys(READ_NOUNS)
+    .map((kind) => ({ kind, n: kinds.filter((k) => k === kind).length }))
+    .filter(({ n }) => n > 0);
+  return listPhrase(counted.map(({ kind, n }, i) => {
+    if (n > 1) return `${n} ${READ_NOUNS[kind].plural}`;
+    return i === 0 ? kind : `${READ_NOUNS[kind].article} ${kind}`;
+  }));
+}
+
+/** The payload's sketch and its question field. @param {string} cwd @param {string|undefined} file @param {string} field */
+function openerPayload(cwd, file, field) {
+  if (!file) throw new Error('render opener: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'opener');
+  for (const key of ['sketch', field]) {
+    if (!isFilled(p[key])) throw new Error(`render opener: "${key}" must be a non-empty string`);
+  }
+  return { sketch: p.sketch.trim(), [field]: p[field].trim() };
+}
+
+/** @param {string} read @param {string} sketch @param {string} ask */
+function shapeOpener(read, sketch, ask) {
+  return section('DISPLAY: opener', OPENER_INSTRUCTION, [`${read}. Here's the shape I'm picking up:`, '', sketch, '', ask].join('\n'));
+}
+
+/** @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
+const OPENERS = {
+  inbox: (cwd, { dotpath, path: given, file }) => {
+    if (dotpath !== undefined) throw new Error('render opener: --variant inbox takes no address — no work unit exists yet');
+    const paths = inboxPathsArg(given, 'opener', 'the inbox seeds read, comma-joined');
+    let items;
+    try {
+      items = parseInboxPaths(cwd, paths, { archived: false });
+    } catch (err) {
+      throw new Error(`render opener: ${messageOf(err)}`);
+    }
+    const p = openerPayload(cwd, file, 'question');
+    return shapeOpener(
+      `I've read your ${readPhrase(items.map((item) => FOLDER_KIND[item.folder]))}`,
+      p.sketch,
+      `${p.question} If you have any related notes, screenshots, or files, share the path(s) and I'll read them too.`,
+    );
+  },
+  seeded: (cwd, { dotpath, file }) => {
+    const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'opener');
+    const seeds = Array.isArray(manifest.seeds) ? manifest.seeds : [];
+    const imports = Array.isArray(manifest.imports) ? manifest.imports : [];
+    if (seeds.length === 0 && imports.length === 0) {
+      throw new Error(`render opener: "${workUnit}" holds no seeds or imports — the seeded opener reads what they describe`);
+    }
+    const p = openerPayload(cwd, file, 'questions');
+    return shapeOpener(
+      `Read your ${readPhrase([...seeds.map((seed) => seedKind(seed.source)), ...imports.map(() => 'import')])}`,
+      p.sketch,
+      `Before we name topics, let's pull on a few things — ${p.questions}${fullStop(p.questions)}`,
+    );
+  },
+  discussion: (cwd, { dotpath }) => {
+    const { phase, topic } = resolveAddress(cwd, dotpath, 'opener');
+    if (phase !== 'discussion') {
+      throw new Error(`render opener: --variant discussion takes <work_unit>.discussion.<topic>, got phase "${phase}"`);
+    }
+    return section('DISPLAY: opener', OPENER_INSTRUCTION,
+      [`New discussion: ${topic}`, '', "What's the core problem or decision we need to work through?"].join('\n'));
+  },
+};
+
+/** @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
+function openerSurface(cwd, args) {
+  const { variant } = args;
+  if (variant === undefined || !Object.hasOwn(OPENERS, variant)) {
+    throw new Error(`render opener: --variant must be one of ${Object.keys(OPENERS).join(', ')}, got "${variant ?? ''}"`);
+  }
+  return OPENERS[variant](cwd, args);
+}
+
 // The cross-flow static gates — adopted engine-side as their files were
 // touched (menus are engine-rendered, static sets included). Wording is
 // the gates' own; each is fetched at the exact point it displays.
@@ -6448,6 +6665,7 @@ const SURFACES = {
   'research-conclude-gate': researchConcludeGate,
   'deep-dive-offer': deepDiveOffer,
   'perspective-offer': perspectiveOffer,
+  'agent-line': agentLine,
   'in-flight-agents-gate': inFlightAgentsGate,
   'review-findings-gate': reviewFindingsGate,
   'send-candidates': sendCandidates,
@@ -6539,6 +6757,8 @@ const SURFACES = {
   'roadmap-parks-gate': roadmapParksGateSurface,
   'roadmap-shape-gate': roadmapShapeGateSurface,
   'shape-gate': shapeGateSurface,
+  'opener': openerSurface,
+  'catch-up': catchUpSurface,
   'synthesis-gate': synthesisGateSurface,
   'query-failure-gate': queryFailureGateSurface,
   'baseline-progress': baselineProgressSurface,

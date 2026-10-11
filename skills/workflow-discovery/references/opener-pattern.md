@@ -36,17 +36,13 @@ Render the opener matching what the caller told us.
 
 #### If inbox seeds were read
 
-Name the seeds by kind, each counted where there are several, and give one combined sketch across them. Where ideas are among them, the sketch is the ideas' shape, the bugs and quick-fixes in it as material.
+Give one combined sketch across the seeds — where ideas are among them, the sketch is the ideas' shape, the bugs and quick-fixes in it as material — and a targeted opening question that pulls on the shape. Write both to `.workflows/.cache/discovery-opener.json` with the Write tool — `{"sketch": "…", "question": "…"}`, the sketch one line. The opener names the seeds by kind and invites related files itself. Build `seed_paths` — `inbox_seeds`, comma-joined — and render it:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render opener --variant inbox --path {seed_paths} --file .workflows/.cache/discovery-opener.json
 ```
-I've read your {the seeds by kind, each counted when several — e.g. "bug", "3 ideas", "2 ideas and a bug"}. Here's the shape I'm picking up:
 
-{one-line sketch — a single combined picture across the item(s)}
-
-{Targeted opening question that pulls on the shape.} If you have any related notes, screenshots, or files, share the path(s) and I'll read them too.
-```
+Emit the call's DISPLAY section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

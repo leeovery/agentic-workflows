@@ -344,17 +344,26 @@ function reviewArming(cwd, workUnit, topic) {
 }
 
 /**
- * A discussion topic's latest review row, read without side effects — the
- * highest-numbered `review` row in scan order, in scan's public shape, or
- * null when no review has been dispatched. A render reads it to word a
- * gate; nothing is promoted or saved.
+ * A topic's rows in scan's public shape, read without side effects — in the
+ * order they were dispatched, so a pair keeps the order its labels were
+ * given in. A render reads them to word a line or a gate; nothing is
+ * promoted or saved.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
+ */
+function agentRows(cwd, workUnit, phase, topic) {
+  return phaseRows(phase, loadState(cwd, workUnit, phase, topic)).map(publicRow);
+}
+
+/**
+ * A discussion topic's latest review row — the highest-numbered `review`
+ * row in scan order, or null when no review has been dispatched.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  */
 function latestReview(cwd, workUnit, topic) {
-  const rows = Object.values(loadState(cwd, workUnit, 'discussion', topic).agents)
+  const rows = agentRows(cwd, workUnit, 'discussion', topic)
     .filter((r) => r.kind === 'review')
     .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
-  return rows.length ? publicRow(rows[rows.length - 1]) : null;
+  return rows.length ? rows[rows.length - 1] : null;
 }
 
 /**
@@ -698,6 +707,7 @@ module.exports = {
   incorporateAgent,
   completedReviewCycles,
   reviewArming,
+  agentRows,
   latestReview,
   settleFoldedSubtopic,
 };

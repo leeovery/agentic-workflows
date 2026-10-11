@@ -32,15 +32,13 @@ Clear `genesis_continuation` — the transition is spent; any later pass through
 
 #### If `active_session` was set at Step 3 (an open session resumed)
 
-The log at `.workflows/.roadmap/sessions/session-{session_number}.md` is the working state — read it in full. Then brief across the record before re-opening: read the most recent prior session log in full too (the `SESSIONS` table from the home snapshot lists them; older sessions contribute their `## Conclusion` line only), and synthesise a short catch-up — the threads being circled, what the user was leaning toward, what was left open.
+The log at `.workflows/.roadmap/sessions/session-{session_number}.md` is the working state — read it in full. Then brief across the record before re-opening: read the most recent prior session log in full too (the `SESSIONS` table from the home snapshot lists them; older sessions contribute their `## Conclusion` line only), and synthesise a short catch-up. Write it to `.workflows/.cache/roadmap/catch-up.json` with the Write tool — `{"recent": "…"}`, 2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open — and render it:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render catch-up --file .workflows/.cache/roadmap/catch-up.json
 ```
-Where we'd got to:
 
-{2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open}
-```
+Emit the call's DISPLAY section verbatim per its marker.
 
 > *Output the next fenced block as markdown (not a code block):*
 
@@ -54,7 +52,7 @@ Where do you want to take it from here?
 
 #### Otherwise
 
-A fresh session over the map just rendered at Step 3. Where prior sessions exist, brief across the record first — the most recent log in full, older Conclusions one line each — and emit the catch-up as the resume branch's `Where we'd got to:` block above; where none do, skip it silently. Then open:
+A fresh session over the map just rendered at Step 3. Where prior sessions exist, brief across the record first — the most recent log in full, older Conclusions one line each — and render the catch-up as the resume branch above does; where none do, skip it silently. Then open:
 
 > *Output the next fenced block as markdown (not a code block):*
 
