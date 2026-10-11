@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.15] - 2026-10-11
+
+✨ Added
+- Roadmap items now carry a kind (idea, bug or quick-fix), so bugs and quick-fixes can wait under a horizon beside the features they compete with.
+- Inbox triage can put a set of notes on the roadmap under one horizon — each note moves with its item, with a confirm gate before anything is written.
+- Starting work from the roadmap or inbox now takes any mix of kinds — quick-fixes alone become a quick-fix, bugs without an idea a bugfix, and ideas an epic or feature, with bugs riding along as material.
+- Pulling bugs or quick-fixes from the roadmap hands straight into investigation or scoping.
+- Migration 071 moves existing triage queues into mailboxes, and migration 072 gives every roadmap item a kind and relocates archived notes into the roadmap's own notes.
+
+🔧 Changed
+- The per-topic "triage queue" is now a mailbox and its queued "concerns" are messages — topics send, receive and forward them, and the cue reads "mail waiting".
+- The backlog prompt now asks where something should wait — the roadmap for what you've decided to do, the inbox for what you haven't — and every park names its kind.
+- Roadmap refusals now name each pulled item's actual way back to waiting, and a flag that reaches no topic says so instead of silently doing nothing.
+- Pull-forward and topic binding take ideas only, since a bug or quick-fix is never a topic.
+- Removing a waiting roadmap item sends its note to the inbox archive, so the archive holds declined items only.
+- Add-to-horizon gate only appears when a horizon has members in an epic underway, and is silent otherwise.
+- Docs, glossary, walkthrough screens and design notes updated for mailbox and inbox-to-roadmap triage vocabulary.
+
+🐛 Fixed
+- Inbox notes moving to or from the roadmap are rolled back cleanly if a move fails, so no note is ever left unaccounted for.
+
 ## [0.8.14] - 2026-10-11
 
 ✨ Added
