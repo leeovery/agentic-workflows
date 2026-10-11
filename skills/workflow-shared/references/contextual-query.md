@@ -55,12 +55,10 @@ No prior context found. Proceed to the next step silently — no delay, no user 
 
 → Load **[knowledge-usage.md](knowledge-usage.md)** for **C. Reading the results** and follow its instructions, weighing each result against the current topic. Most results are context — one or two may be directly relevant.
 
-Briefly acknowledge surfaced context to the user before the main session starts:
+Briefly acknowledge surfaced context to the user before the main session starts. Write one short line naming the most relevant piece to `.workflows/.cache/{work_unit}/{phase}/{topic}/surfaced-context.json` with the Write tool — `{"line": "auth-flow decided on UUID identity (spec, 2026-03-15)."}`, `{phase}` the calling phase — then fetch the acknowledgment and emit its DISPLAY section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Surfaced prior context from the knowledge base — incorporating into this phase. {One short line naming the most relevant piece, e.g. "auth-flow decided on UUID identity (spec, 2026-03-15)."}
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render surfaced-context --file .workflows/.cache/{work_unit}/{phase}/{topic}/surfaced-context.json
 ```
 
 Carry the context forward into the phase. Do not dump the full result list to the user — summarise only if the user asks, or if a result materially changes how this phase should start.

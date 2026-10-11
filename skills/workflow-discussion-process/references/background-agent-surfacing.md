@@ -11,7 +11,7 @@ This reference defines how to surface findings from background agents. Findings 
 - `agent_type` — `review` | `synthesis` — human-readable name used in user-facing messages, and the row kind this invocation surfaces
 - `work_unit`, `phase`, `topic` — the agent store address
 
-**Lane declaration** — the calling reference's **Lanes** section, already in context, owns this phase's lane semantics: the walked lane's name and heading, and what approving each batch lane does. A caller with no **Lanes** section is all-walk; its raises render under `Needs A Decision`. A batched lane the declaration doesn't carry is walked — a report can only batch what its caller knows how to land.
+**Lane declaration** — the calling reference's **Lanes** section, already in context, owns this phase's lane semantics: the walked lane's name, and what approving each batch lane does. A caller with no **Lanes** section is all-walk. A batched lane the declaration doesn't carry is walked — a report can only batch what its caller knows how to land.
 
 ## The Core Rules
 
@@ -332,12 +332,12 @@ This section runs once per invocation and then exits. It never waits in-protocol
 
 4. Raise it in the current turn, then stop — one raise per turn. The raise proposes and never lands: whatever its firmness, nothing is documented until the user has replied, and the next finding waits until this one's outcome is documented — the write-up turn picks it up (below).
 
-When this row's `surfaced` list holds no walked finding yet, the raise opens with the walked lane's declared heading as sub-step chrome, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
+When this row's `surfaced` list holds no walked finding yet, the raise opens with the walk's heading as sub-step chrome, so the shift out of the batches is visible. A walk already under way — including one resumed from an earlier session — opens with its bridge instead, never a repeated heading:
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-**`▪ {lane_heading}`**
+**`▪ Needs A Decision`**
 ```
 
 After this, control belongs to the conversation. The user will engage (or reject, or redirect) naturally. Handle their response as normal discussion — not as protocol-driven routing. Their reply calibrates what comes next: the depth the opener held back — the report's full case, the derivation, the costs — enters as responses, each piece when the direction on the table calls for it. A reply that shows the problem didn't land is re-grounded simpler — a different analogy, a smaller example — never the same explanation again, louder. A finding's outcome is an engagement decision point: before it is documented, follow **G. Sibling consult at cross-topic decision points** in **[knowledge-usage.md](../../workflow-shared/references/knowledge-usage.md)** — both its triggers apply here. An engagement ends resolved or rejected (**Rejecting a raise** below). A resolution is documented and committed, the commit subject carrying `({id} {finding})`, e.g. `(review-003 F2)`; a rejection writes nothing *into the artifact*, so no commit of its own carries it — a dismissal's manifest push rides the session's next topic-scoped commit. Either close is a natural break: re-enter **A. Check for Results** in the same turn, so the next raise follows while the context is warm. When the raise was the row's last — its surface response said nothing remains — there is no re-entry to make: the closing turn closes the drain as **D**'s drained exit prescribes.

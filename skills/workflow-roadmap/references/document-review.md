@@ -60,10 +60,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --roadmap -m "docs
 
 #### If changes were made
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the closing line — `{N}` the corrections applied — and emit its DISPLAY section verbatim per its marker:
 
-```
-> Document review complete. {N} correction(s) applied to the session log.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render document-review --variant session-log --corrections {N}
 ```
 
 → Return to caller.

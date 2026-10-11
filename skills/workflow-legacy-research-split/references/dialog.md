@@ -14,18 +14,10 @@ Drive the per-source iteration: read source, identify themes, early sanity gate,
 
 #### Otherwise
 
-Pop the next name from `remaining`. Set `current_source = name`.
+Pop the next name from `remaining`. Set `current_source = name`, then fetch its opening and emit the DISPLAY section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-**`▪ Processing {current_source}`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Working on {current_source}.md.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display {work_unit} --variant processing --source {current_source}
 ```
 
 → Proceed to **B. Read Source**.
@@ -368,18 +360,10 @@ User specifies `kebab_name`, summary, description, and the content for the new c
 
 ## P. Remove a Theme
 
-User specifies `theme_name`. Confirm before destructive removal:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Removing "{theme_name}" drops its drafted content — gone unless another theme has already reabsorbed it.
-```
-
-Fetch the gate and emit its `MENU: legacy split remove gate` section verbatim per its marker:
+User specifies `theme_name`. Confirm before destructive removal — fetch the gate, what the removal drops above the confirm, and emit its DISPLAY and MENU sections, each verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove --theme {theme_name}
 ```
 
 **STOP.** Wait for user response.

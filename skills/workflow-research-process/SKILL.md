@@ -185,16 +185,10 @@ Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)*
 
 ## Step 6: Research Session
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the session's opening — `--resumed` where `resumed` is `true` — and emit its DISPLAY section verbatim per its marker:
 
-```
-**`□ Research Session`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> @if(resumed) Picking the research back up where it left off. @else Starting the research session. @endif This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.research.{topic} --step session [--resumed]
 ```
 
 Load **[route-session.md](references/route-session.md)** and follow its instructions as written.

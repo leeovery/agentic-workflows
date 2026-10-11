@@ -296,16 +296,10 @@ Load **[compliance-check.md](../workflow-shared/references/compliance-check.md)*
 
 ## Step 8: Assess Cross-Cutting & Conclude
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the step's opening and emit its DISPLAY section verbatim per its marker:
 
-```
-**`□ Conclude`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Wrapping up. Final assessment, sign-off, and @if(work_type is cross-cutting) closure — the pipeline completes here @else handover to the planning phase @endif.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.specification.{topic} --step conclude
 ```
 
 Load **[spec-completion.md](references/spec-completion.md)** and follow its instructions as written.

@@ -2492,7 +2492,8 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'analyze_discussions'], /unknown --action "analyze_discussions"/);
     sim.refuses(['handoff', '/workflow-specification-process', 'epic', wu], /^an epic enters specification at a topic$/);
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: analyze$/m);
-    sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
+    assert.match(sim.render(['analysis-proceed-gate', wu], { expect: 'content' }),
+      /^=== DISPLAY: analysis prompt [^\n]*\n> Your discussions will be analyzed for natural groupings[\s\S]*Proceed with analysis\?/);
     // Every row landed with its summary and no description: the batch shows
     // each summary it keeps, and no line of it is edited here.
     const summaries = sim.write(`.workflows/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
@@ -3641,6 +3642,11 @@ describe('pipeline simulation', () => {
     // The pause is the plan's, in the plan's voice.
     assert.match(sim.render(['wait-gate', `${wu}.planning.billing`], { expect: 'content' }),
       /⚑ Conclusion blocked — this plan awaits its specification[\s\S]*Keep planning here/);
+    // A yes leaves on the pause's line, naming the source whose mailbox
+    // took the gap — refused for a name the specification does not source.
+    assert.match(sim.render(['pause-note', `${wu}.planning.billing`, '--landed', 'billing'], { expect: 'content' }),
+      /> Paused with the gap in billing's mailbox — planning resumes once billing has decided it/);
+    sim.refuses(['render', 'pause-note', `${wu}.planning.billing`, '--landed', 'nowhere'], /"nowhere" is not a source of specification "billing"/);
     assert.match(arriveAtEpicMenu(sim, wu, 'planning', 'paused'),
       /Planning paused for "Holdplan" — "Billing" awaits its specification/);
     const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
@@ -5282,7 +5288,8 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /--model does not belong to the retry variant/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);
-    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove'], { expect: 'content' }), /Remove the theme\?[\s\S]*Remove the theme and drop its content/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove', '--theme', 'caching'], { expect: 'content' }), /> Removing "caching" drops its drafted content[\s\S]*Remove the theme\?[\s\S]*Remove the theme and drop its content/);
+    sim.refuses(['render', 'legacy-split-gate', '--variant', 'remove'], /--theme is required with --variant remove/);
     sim.refuses(['render', 'legacy-split-gate'], /--variant must be one of themes, plan, remove/);
     sim.refuses(['render', 'legacy-split-gate', '--variant', 'apply'], /got "apply"/);
     // The split's three displays over their payloads: the candidate list at
@@ -5305,6 +5312,13 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.workflows/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.workflows/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
+    // The split's conclusion is the session's tallies, rendered under its
+    // step marker — the aborted apply leading whatever else happened.
+    assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '1', '--abandoned', '0', '--errored', '1'], { expect: 'content' }),
+      /□ Legacy Split Complete[\s\S]*> 1 source file\(s\) aborted mid-apply; 1 decomposed; 0 skipped\./);
+    assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '0', '--abandoned', '0', '--errored', '0'], { expect: 'content' }),
+      /> No legacy source files needed decomposition\./);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'complete', '--applied', '1'], /--abandoned must be a non-negative integer/);
     // The archived sub-view's gates resolve the selected item by its store
     // path — the title on the label is the file's own; a missing path, a live
     // path, and a path the store does not hold each refuse.
@@ -5343,6 +5357,10 @@ describe('pipeline simulation', () => {
       areas: [{ name: 'overview', detail: 'What the product is' }, { name: 'dispatcher', detail: 'The downstream push' }],
     }));
     assert.match(sim.render(['baseline-scope-gate', '--file', '.workflows/.cache/scratch/baseline-scope.json'], { expect: 'content' }), /Assess these areas\?/);
+    // Each area's interview opens on its marker, counted across the areas.
+    const areaOpening = sim.write('.workflows/.cache/baseline/area.json', { area: 'overview', summary: 'What the product is and who it serves.' });
+    assert.match(sim.render(['baseline-area', '--file', areaOpening], { expect: 'content' }),
+      /□ Interviewing Overview \(1 of 2\)[\s\S]*> What the product is and who it serves\. Answer in your own words/);
     sim.write('.workflows/.cache/scratch/baseline-round.json', JSON.stringify({
       area: 'dispatcher',
       questions: [{ text: 'Why polling over webhooks?', candidates: ['Decoupling from a flaky downstream'] }],
@@ -5357,6 +5375,10 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
     sim.run(['commit', '--workflows', '-m', 'baseline(overview): document the overview baseline']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
+    sim.write('.workflows/.cache/baseline/area.json', { area: 'dispatcher', summary: 'The downstream push.' });
+    assert.match(sim.render(['baseline-area', '--file', '.workflows/.cache/baseline/area.json'], { expect: 'content' }), /□ Interviewing Dispatcher \(2 of 2\)/);
+    sim.write('.workflows/.cache/baseline/area.json', { area: 'overview', summary: 'Again.' });
+    sim.refuses(['render', 'baseline-area', '--file', '.workflows/.cache/baseline/area.json'], /area "overview" is "completed", not researched/);
     assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
     assert.match(sim.render(['baseline-paused'], { expect: 'content' }), /Paused — 1 of 2/);
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'completed']);
@@ -5823,6 +5845,10 @@ describe('pipeline simulation', () => {
       /Work E1 now\?/);
     sim.refuses(['render', 'experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E9'],
       /holds no evidence wait on E9/);
+    // A yes that leaves pauses on the line naming what it queued.
+    assert.match(sim.render(['pause-note', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' }),
+      /> Paused with E1 queued — the closing ceremony is skipped/);
+    sim.refuses(['render', 'pause-note', `${wu}.discussion.timing`, '--id', 'E9'], /holds no evidence wait on E9/);
 
     // A research spawn locks identically — the phases are symmetric — and
     // numbers the series onward.

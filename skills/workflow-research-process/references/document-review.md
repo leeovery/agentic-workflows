@@ -128,10 +128,10 @@ Adjust the target, landing phase, or message content per the user's feedback; th
 
 Summarise conversationally — do not dump a diff. One short paragraph or a handful of bullets describing what was added, removed, or corrected and why.
 
-> *Output the next fenced block as markdown (not a code block):*
+Then fetch the closing line — `{N}` the gaps captured, `{M}` the corrections applied — and emit its DISPLAY section verbatim per its marker:
 
-```
-> Document review complete. {N} gap(s) captured, {M} correction(s) applied. Proceeding to the final compliance check.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render document-review --variant document --gaps {N} --corrections {M}
 ```
 
 → Return to caller.

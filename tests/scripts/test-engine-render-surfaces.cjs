@@ -664,6 +664,47 @@ describe('experiment spawn gate + wait gate — the conversation\'s two pauses',
   });
 });
 
+describe('pause-note — the line a session leaves on as it pauses through the bridge', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => { teardown(dir); });
+
+  const MARKER = '=== DISPLAY: pause note (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
+
+  it('a conversation pausing over its spawn names the experiment it queued', () => {
+    writeManifest(dir, 'lab', { phases: { discussion: { items: { timing: { status: 'in-progress', awaiting_experiments: ['E1', 'E2'] } } } } });
+    assert.strictEqual(renderSurface(dir, 'pause-note', { dotpath: 'lab.discussion.timing', id: 'E2' }), [
+      MARKER,
+      '> Paused with E2 queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands.',
+      '',
+    ].join('\n'));
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'lab.discussion.timing' }), /render pause-note: --id is required \(E1, E2, …\)/);
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'lab.discussion.timing', id: 'E9' }),
+      /discussion "timing" holds no evidence wait on E9 — the pause follows the recorded spawn/);
+  });
+
+  it('a plan pausing over a routed gap names the source whose mailbox took it', () => {
+    writeManifest(dir, 'pay', { phases: {
+      specification: { items: { checkout: { status: 'completed', sources: { payments: { status: 'incorporated' }, refunds: { status: 'incorporated' } } } } },
+      planning: { items: { checkout: { status: 'in-progress' } } },
+    } });
+    assert.strictEqual(renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout', landed: 'refunds' }), [
+      MARKER,
+      "> Paused with the gap in refunds's mailbox — planning resumes once refunds has decided it and the specification has been brought into line.",
+      '',
+    ].join('\n'));
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout' }), /--landed is required — the source whose mailbox took the gap/);
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout', landed: 'billing' }),
+      /"billing" is not a source of specification "checkout" — the gap lands in a source's mailbox/);
+  });
+
+  it('refuses an address outside the pausing phases', () => {
+    writeManifest(dir, 'pay', {});
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.specification.checkout', landed: 'x' }),
+      /address must be <work_unit>\.<research\|discussion\|planning>\.<topic>/);
+  });
+});
+
 describe('wait-gate — the blocked-conclusion gate over every wait', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -4965,6 +5006,68 @@ describe('render phase-note', () => {
   });
 });
 
+describe('render step-opening', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const MARKER = '=== DISPLAY: step opening (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
+  const opening = (name, signpost) => [MARKER, `**\`□ ${name}\`**`, '', `> ${signpost}`, ''].join('\n');
+
+  it('session: the research and discussion sessions open fresh, or picked back up where --resumed', () => {
+    writeManifest(dir, 'pay', {});
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth', step: 'session' }), opening('Research Session',
+      "Starting the research session. This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage."));
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth', step: 'session', resumed: '1' }), opening('Research Session',
+      "Picking the research back up where it left off. This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage."));
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.discussion.auth', step: 'session' }), opening('Discussion Session',
+      "Discussion starting. I'll track our conversation on a Discussion Map. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go."));
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.discussion.auth', step: 'session', resumed: '1' }), opening('Discussion Session',
+      "Picking the discussion back up where the map leaves it. You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go."));
+  });
+
+  it('conclude: a cross-cutting specification closes the pipeline, every other hands over to planning — read from the work type', () => {
+    writeManifest(dir, 'pay', {});
+    writeManifest(dir, 'caching', { work_type: 'cross-cutting' });
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.specification.checkout', step: 'conclude' }),
+      opening('Conclude', 'Wrapping up. Final assessment, sign-off, and handover to the planning phase.'));
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'caching.specification.caching', step: 'conclude' }),
+      opening('Conclude', 'Wrapping up. Final assessment, sign-off, and closure — the pipeline completes here.'));
+  });
+
+  it('consolidation: the pass names the phase in flight, read from the implementation item', () => {
+    writeManifest(dir, 'pay', { phases: { implementation: { items: { checkout: { status: 'in-progress', current_phase: 2 } } } } });
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.implementation.checkout', step: 'consolidation' }), opening('Consolidation Pass (phase 2)',
+      "Phase 2's tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way."));
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.implementation.other', step: 'consolidation' }),
+      /implementation "other" records no current_phase — the pass runs at a phase boundary/);
+  });
+
+  it('do-now: counts the do-now actions the review synthesis wrote, the noun following the count', () => {
+    writeManifest(dir, 'pay', {});
+    const actions = (list) => writePayload(dir, '.workflows/.cache/pay/review/checkout/actions.json', { verdict: 'pass', actions: list });
+    actions([{ id: 'A1', route: 'do-now' }, { id: 'A2', route: 'replan' }, { id: 'A3', route: 'do-now' }]);
+    assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }), opening('Apply Do-Now',
+      'Applying 2 contained corrections — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.'));
+    actions([{ id: 'A1', route: 'do-now' }]);
+    assert.match(renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }), /> Applying 1 contained correction — /);
+    actions([{ id: 'A1', route: 'out-of-scope' }]);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }),
+      /actions\.json holds no do-now action — the step opens only over work to apply/);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.review.other', step: 'do-now' }),
+      /\.workflows\/\.cache\/pay\/review\/other\/actions\.json is missing or not valid JSON — the do-now step follows the review synthesis/);
+  });
+
+  it('refuses a missing or unknown step, and a step outside its phase', () => {
+    writeManifest(dir, 'pay', {});
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth' }),
+      /--step must be one of session, conclude, consolidation, do-now, got ""/);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.research.auth', step: 'wrap' }), /got "wrap"/);
+    assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.planning.auth', step: 'session' }),
+      /the session step opens in research or discussion, got phase "planning"/);
+  });
+});
+
 describe('render compliance-issues', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -4987,6 +5090,82 @@ describe('render compliance-issues', () => {
     assert.throws(() => renderSurface(dir, 'compliance-issues', { file: issues({ issues: [] }) }), /"issues" must be a non-empty array/);
     assert.throws(() => renderSurface(dir, 'compliance-issues', { file: issues({ issues: ['a', '  '] }) }),
       /render compliance-issues: issues\[1\] must be a non-empty string/);
+  });
+});
+
+describe('render document-review', () => {
+  const MARKER = '=== DISPLAY: document review (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
+
+  it('session-log: the corrections a discovery or roadmap review applied to its log', () => {
+    assert.strictEqual(renderSurface('/tmp', 'document-review', { variant: 'session-log', corrections: '3' }),
+      `${MARKER}\n> Document review complete. 3 correction(s) applied to the session log.\n`);
+  });
+
+  it('document: the gaps captured and corrections applied, then the compliance check it proceeds to — either count may be 0', () => {
+    assert.strictEqual(renderSurface('/tmp', 'document-review', { variant: 'document', gaps: '2', corrections: '0' }),
+      `${MARKER}\n> Document review complete. 2 gap(s) captured, 0 correction(s) applied. Proceeding to the final compliance check.\n`);
+  });
+
+  it('refuses an unknown variant, a count missing or not a whole number, and a review that changed nothing', () => {
+    assert.throws(() => renderSurface('/tmp', 'document-review', {}), /--variant must be one of session-log, document, got ""/);
+    assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'session-log' }), /--corrections must be a non-negative integer, got ""/);
+    assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'document', corrections: '1' }), /--gaps must be a non-negative integer/);
+    assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'document', gaps: 'two', corrections: '1' }), /--gaps must be a non-negative integer, got "two"/);
+    assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'session-log', corrections: '0' }),
+      /--corrections must be at least 1 — a review that changed nothing closes on its own line/);
+    assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'document', gaps: '0', corrections: '0' }),
+      /--gaps and --corrections cannot both be 0/);
+  });
+});
+
+describe('render surfaced-context', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const payload = (obj) => writePayload(dir, '.workflows/.cache/pay/research/auth/surfaced-context.json', obj);
+
+  it('the fixed acknowledgment, then the line the session wrote', () => {
+    assert.strictEqual(renderSurface(dir, 'surfaced-context', { file: payload({ line: 'auth-flow decided on UUID identity (spec, 2026-03-15).' }) }), [
+      '=== DISPLAY: surfaced context (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '> Surfaced prior context from the knowledge base — incorporating into this phase. auth-flow decided on UUID identity (spec, 2026-03-15).',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses no payload, and a line missing, blank, or running past one line', () => {
+    assert.throws(() => renderSurface(dir, 'surfaced-context', {}), /--file <payload\.json> is required/);
+    for (const bad of [{}, { line: '  ' }, { line: 'one\ntwo' }]) {
+      assert.throws(() => renderSurface(dir, 'surfaced-context', { file: payload(bad) }), /"line" must be one non-empty line naming the most relevant piece/);
+    }
+  });
+});
+
+describe('render format-version-check', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const found = { tool: 'acme', installed: '0.2.1', format: 'some-format', required: '>=0.3.*', update_instructions: 'the format\'s about.md' };
+  const payload = (obj) => writePayload(dir, '.workflows/.cache/pay/planning/checkout/format-version.json', obj);
+
+  it('the red blocker, then the guidance naming the tool, both versions and the format the payload carries — waiting on the user', () => {
+    assert.strictEqual(renderSurface(dir, 'format-version-check', { file: payload(found) }), [
+      '=== DISPLAY: version blocker (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ The installed tool does not meet the version this plan format requires',
+      '',
+      "=== DISPLAY: version guidance (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      "> acme 0.2.1 is installed; the some-format format requires `>=0.3.*`. See the format's about.md to update.",
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses no payload and any field missing or blank, by name', () => {
+    assert.throws(() => renderSurface(dir, 'format-version-check', {}), /--file <payload\.json> is required/);
+    for (const field of ['tool', 'installed', 'format', 'required', 'update_instructions']) {
+      assert.throws(() => renderSurface(dir, 'format-version-check', { file: payload({ ...found, [field]: ' ' }) }),
+        new RegExp(`render format-version-check: "${field}" must be a non-empty string`));
+    }
   });
 });
 
@@ -5552,7 +5731,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-graph-cycle, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, compliance-issues, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, pause-note, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, change-set-tree, executor-block-gate, dependency-approval-gate, task-graph-cycle, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, step-opening, compliance-issues, document-review, surfaced-context, format-version-check, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-area, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -6125,6 +6304,31 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'fresh', areas: [] }) }), /non-empty array/);
     assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'fresh', areas: [{ name: 'api.v2', detail: 'x' }] }) }), /kebab-case/);
     assert.throws(() => renderSurface(dir, 'baseline-scope-gate', { file: bad({ mode: 'fresh', areas: [{ name: 'ok-area', detail: ' ' }] }) }), /missing "detail"/);
+  });
+
+  it('baseline-area: the area\'s step marker counted across every area, the documented ones first, then the session\'s line and the answer guidance', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', boundaries: 'completed', 'job-dispatcher': 'researched', glossary: 'researched' } });
+    const file = writePayload(dir, '.workflows/.cache/baseline/area.json', { area: 'job-dispatcher', summary: 'How work reaches the workers, and why it polls.' });
+    assert.strictEqual(renderSurface(dir, 'baseline-area', { file }), [
+      '=== DISPLAY: baseline area (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '**`□ Interviewing Job Dispatcher (3 of 4)`**',
+      '',
+      '> How work reaches the workers, and why it polls. Answer in your own words, pick a candidate, or say "don\'t know" — an unanswered question is recorded as open, never guessed at.',
+      '',
+    ].join('\n'));
+  });
+
+  it('baseline-area: refuses no payload, an unknown or unresearched area, and a summary missing or past one line', () => {
+    writeBaseline({ status: 'in-progress', areas: { overview: 'completed', dispatcher: 'researched' } });
+    const area = (obj) => writePayload(dir, '.workflows/.cache/baseline/area.json', obj);
+    assert.throws(() => renderSurface(dir, 'baseline-area', {}), /render baseline-area: --file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'baseline-area', { file: area({ area: 'ghost', summary: 'x' }) }), /unknown area "ghost"/);
+    assert.throws(() => renderSurface(dir, 'baseline-area', { file: area({ area: 'overview', summary: 'x' }) }),
+      /area "overview" is "completed", not researched — the interview opens on a researched area/);
+    for (const summary of [undefined, ' ', 'one\ntwo']) {
+      assert.throws(() => renderSurface(dir, 'baseline-area', { file: area({ area: 'dispatcher', summary }) }),
+        /"summary" must be one non-empty line — what the area covers and what the questions are after/);
+    }
   });
 
   it('baseline-round: numbers questions, letters candidates, closes on the any-mix line', () => {
@@ -7221,8 +7425,11 @@ describe('render — the adopted cross-flow static gates', () => {
     assert.throws(() => renderSurface(dir, 'query-failure-gate', { file: blank }), /"error" must be the query's error output, a non-empty string/);
   });
 
-  it('legacy-split-gate: three dialog gates keyed by what each asks; the remove confirm asks on its diamond line', () => {
-    assert.strictEqual(renderSurface(dir, 'legacy-split-gate', { variant: 'remove' }), [
+  it('legacy-split-gate: three dialog gates keyed by what each asks; the remove confirm says what the removal drops, then asks on its diamond line', () => {
+    assert.strictEqual(renderSurface(dir, 'legacy-split-gate', { variant: 'remove', theme: 'caching' }), [
+      '=== DISPLAY: legacy split removal (emit verbatim as markdown (not a code block)) ===',
+      '> Removing "caching" drops its drafted content — gone unless another theme has already reabsorbed it.',
+      '',
       "=== MENU: legacy split remove gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Remove the theme?`**',
@@ -7248,6 +7455,8 @@ describe('render — the adopted cross-flow static gates', () => {
 
     assert.throws(() => renderSurface(dir, 'legacy-split-gate', {}), /--variant must be one of themes, plan, remove, got ""/);
     assert.throws(() => renderSurface(dir, 'legacy-split-gate', { variant: 'apply' }), /--variant must be one of themes, plan, remove, got "apply"/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-gate', { variant: 'remove' }), /--theme is required with --variant remove — the theme the removal drops/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-gate', { variant: 'remove', theme: ' ' }), /--theme is required/);
   });
 });
 
@@ -7546,8 +7755,8 @@ describe('render legacy-split-display', () => {
 
   it('refuses a missing or unknown variant, a missing or absent file, and a payload short of its variant\'s fields', () => {
     const bad = (name, variant, obj) => () => renderSurface(dir, 'legacy-split-display', { variant, file: writePayload(dir, name, obj) });
-    assert.throws(() => renderSurface(dir, 'legacy-split-display', {}), /--variant must be one of sources, skipped, candidates, plan, errors, apply, got ""/);
-    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'themes' }), /--variant must be one of sources, skipped, candidates, plan, errors, apply, got "themes"/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', {}), /--variant must be one of sources, processing, skipped, complete, candidates, plan, errors, apply, got ""/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'themes' }), /--variant must be one of sources, processing, skipped, complete, candidates, plan, errors, apply, got "themes"/);
     assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file: 'nope.json' }), /payload file not found: nope\.json/);
     assert.throws(bad('s.json', 'candidates', { themes }), /"source" must be a non-empty string/);
@@ -7638,6 +7847,45 @@ describe('render legacy-split-display', () => {
       'Skipping auth. Source file and manifest unchanged.',
       '',
     ].join('\n'));
+  });
+
+  it('processing: the sub-step a qualifying source opens on, and the signpost beneath it', () => {
+    legacyEpic();
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'processing', source: 'auth' }), [
+      '=== DISPLAY: legacy split processing (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '**`▪ Processing auth`**',
+      '',
+      '> Working on auth.md.',
+      '',
+    ].join('\n'));
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'processing' }), /--source is required — the source the split takes up/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'processing', source: 'parked' }),
+      /"parked" is not a qualifying source of "pay" — the split works through the qualifying sources alone/);
+  });
+
+  describe('complete: the split\'s conclusion from the session\'s tallies, under its step marker', () => {
+    const complete = (applied, abandoned, errored) => renderSurface(dir, 'legacy-split-display', {
+      variant: 'complete', applied: String(applied), abandoned: String(abandoned), errored: String(errored),
+    });
+    const MARKER = '=== DISPLAY: legacy split complete (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
+    const closing = (line) => [MARKER, '**`□ Legacy Split Complete`**', '', `> ${line}`, ''].join('\n');
+
+    it('an aborted apply leads, whatever else the split did', () => {
+      assert.strictEqual(complete(2, 1, 1), closing('1 source file(s) aborted mid-apply; 2 decomposed; 1 skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /workflow-start.'));
+    });
+
+    it('nothing done, everything decomposed, a mix, and everything skipped each close on their own line', () => {
+      assert.strictEqual(complete(0, 0, 0), closing('No legacy source files needed decomposition.'));
+      assert.strictEqual(complete(3, 0, 0), closing('Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.'));
+      assert.strictEqual(complete(2, 1, 0), closing('2 source file(s) decomposed; 1 skipped. Skipped files remain on the map and can be revisited next time you open the epic via /workflow-start.'));
+      assert.strictEqual(complete(0, 2, 0), closing('No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /workflow-start.'));
+    });
+
+    it('refuses a tally missing, negative, or not a whole number, by name', () => {
+      assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'complete', abandoned: '0', errored: '0' }), /--applied must be a non-negative integer, got ""/);
+      assert.throws(() => complete(1, -1, 0), /--abandoned must be a non-negative integer, got "-1"/);
+      assert.throws(() => complete(1, 0, 1.5), /--errored must be a non-negative integer, got "1\.5"/);
+    });
   });
 
   it('sources and skipped refuse a non-bare address and an unknown unit; skipped refuses no source and one the scan does not find qualifying', () => {
@@ -9191,8 +9439,11 @@ describe('render — the adopted phase gates', () => {
       /address must be <work_unit>\.specification\.<topic>, got phase "discussion"/);
   });
 
-  it('analysis-proceed-gate: the bare y/n consent before the grouping analysis', () => {
+  it('analysis-proceed-gate: the signpost, then the bare y/n consent before the grouping analysis', () => {
     assert.strictEqual(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'pay' }), [
+      '=== DISPLAY: analysis prompt (emit verbatim as markdown (not a code block)) ===',
+      '> Your discussions will be analyzed for natural groupings, each one a proposed specification you can start when ready. Results are cached and reused until discussions change.',
+      '',
       "=== MENU: analysis proceed gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
       '**`◆ Proceed with analysis?`**',
@@ -9205,6 +9456,50 @@ describe('render — the adopted phase gates', () => {
       /address must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'ghost' }),
       /work unit "ghost" not found/);
+  });
+
+  it('analysis-proceed-gate: says first that the analysis is outdated where the discussions moved since it ran, and only then', () => {
+    writeManifest(dir, 'moved', { phases: { discussion: { analysis_cache: { checksum: 'from-before', generated: '2026-01-01' }, items: { auth: { status: 'completed' } } } } });
+    writePayload(dir, '.workflows/moved/discussion/auth.md', '# Auth\n');
+    assert.match(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'moved' }),
+      /\n> Analysis outdated — discussions have changed since the last grouping analysis\. Your discussions will be analyzed for natural groupings/);
+    writeManifest(dir, 'never', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
+    writePayload(dir, '.workflows/never/discussion/auth.md', '# Auth\n');
+    assert.match(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'never' }), /\n> Your discussions will be analyzed/,
+      'no analysis yet is not an outdated one');
+  });
+});
+
+describe('render change-set-tree', () => {
+  const { setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeManifest(dir, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => cleanupFixture(dir));
+
+  it('is empty while the tree is clean outside .workflows/ — the review\'s own artifacts sit uncommitted there', () => {
+    writePayload(dir, '.workflows/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
+    assert.strictEqual(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }), '');
+  });
+
+  it('names every modified or untracked path outside .workflows/ in the terminal blocker', () => {
+    writePayload(dir, 'src/probe.js', 'x\n');
+    writePayload(dir, 'notes.txt', 'y\n');
+    assert.strictEqual(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }), [
+      '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ The change-set verification left the working tree dirty outside .workflows/',
+      '',
+      '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
+      '> The pass must leave the tree as it found it — these paths are modified or untracked: `notes.txt`, `src/`. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses an address outside the review', () => {
+    assert.throws(() => renderSurface(dir, 'change-set-tree', { dotpath: 'pay.implementation.checkout' }),
+      /address must be <work_unit>\.<review>\.<topic>/);
   });
 });
 

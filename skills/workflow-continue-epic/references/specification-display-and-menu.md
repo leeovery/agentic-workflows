@@ -102,17 +102,13 @@ node .claude/skills/workflow-continue-epic/scripts/gateway.cjs spec-view {work_u
 
 Emit the TITLE section, then the DISPLAY section, each verbatim per its marker.
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> @if(cache_status is stale) Analysis outdated — discussions have changed since the last grouping analysis. @endif Your discussions will be analyzed for natural groupings, each one a proposed specification you can start when ready. Results are cached and reused until discussions change.
-```
+Fetch the gate and the signpost above it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render analysis-proceed-gate {work_unit}
 ```
 
-Emit the call's MENU section verbatim per its marker.
+Emit the call's DISPLAY and MENU sections, each verbatim per its marker.
 
 **STOP.** Wait for user response.
 

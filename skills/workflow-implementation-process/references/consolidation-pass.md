@@ -10,16 +10,10 @@ One pass per phase, bounded by construction: a finder sweeps the phase's combine
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidation_gate_mode
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the pass's opening and emit its DISPLAY section verbatim per its marker:
 
-```
-**`□ Consolidation Pass (phase {N})`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Phase {N}'s tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.implementation.{topic} --step consolidation
 ```
 
 Resume guards — read the durable state (each print is empty when the field is absent; the review item's `staging` carries the review walk's approval rows, read here for **B**), then check in order, first match wins:
