@@ -69,7 +69,7 @@ Skills that render state via an engine/adapter call (e.g. `gateway.cjs view {wor
 
 Every TITLE, DISPLAY and MENU marker's instruction opens `emit verbatim as ` and one of the four forms (see Rendering Instructions), then its behaviour clause where the surface gives one — `, directly above the menu`, `, then STOP for the user's response`, ` — do not stop; continue as the workflow instructs`; a moment the section waits for sits after the form (`… (```text fence) after the result summary — …`). The render sweep the engine suites run through `tests/scripts/gate-audit.cjs` fails any marker that opens otherwise.
 
-**Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand; a hand-drawn display drifts where an engine render cannot. Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries).
+**Displays are engine-rendered.** Prose never draws layout — trees, columns, wrapping — by hand, and a menu or display carrying anything that varies (a name, a count, a status, a branch on state) renders from the engine; a hand-drawn display drifts where an engine render cannot. Lint check 13 refuses a placeholder or directive in a menu or display fence anywhere in skill prose; what prose still authors is static text and chrome (step markers, signposts). Judgment-authored content that must appear inside a display travels to the engine as a payload file (the planning task list, the working-set summaries). The capture skills (`workflow-log-*`) are exempt: they are not workflow skills, and stay deliberately structureless (see The Framework Load).
 
 Section content is never redrawn, reflowed, trimmed, or re-derived — its marker says how it is emitted. Routing uses the `ACTIONS` entry's `action`/`route` values, never label text.
 
@@ -162,7 +162,7 @@ The `workflow-start` skill opens with an ASCII art banner (see skill file for ex
 
 ### Template Placeholders
 
-Skill files use placeholders in fenced block templates. The syntax is:
+Placeholders mark what varies in a command block (the arguments of an engine call) and a model-instruction block (a template the session fills in and writes, a line it composes). The syntax is:
 
 ```
 {name}                                    — raw value, output as-is
@@ -173,31 +173,19 @@ Skill files use placeholders in fenced block templates. The syntax is:
 
 Casing hints: `titlecase`, `lowercase`, `kebabcase`. No hint means output the raw value.
 
-A placeholder never wraps across lines — long example text stays on one line inside its braces. The conventions lint's templated-fence ratchet classifies single-line placeholders only, so a wrapped one silently evades the pin count.
+Each part is optional — use only what's needed for clarity. In a model-instruction block, the anonymous enumeration shorthand `{option1|option2}` is acceptable where a name adds nothing.
 
-Each part is optional — use only what's needed for clarity.
+A placeholder never wraps across lines — long example text stays on one line inside its braces, where lint check 13 reads it.
 
-**Conditional directives** for branches that render differently based on state:
+**A display or menu in skill prose never carries a placeholder or a directive.** Anything in it that varies is the engine's to render (see Engine Output Sections); lint check 13 refuses one.
+
+**Conditional directives** pick between two wordings of a signpost line or a template line by state — signposts are chrome, outside check 13:
 
 ```
 @if(condition) truthy content @else falsy content @endif
 ```
 
-Example: `@if(has_discussion) {topic}.md [{status:[in-progress|completed]}] @else [no discussion] @endif`
-
-**Loop directives** for iterating over collections:
-
-```
-@foreach(item in collection)
-  • {item.name} ({item.status})
-@endforeach
-```
-
-Example with filter: `@foreach(inv in investigations.files where status is in-progress)`
-
-**When to use placeholders:** structural templates (tree displays, status blocks) where each field has a clear source.
-
-In model-instruction fenced blocks (not user-facing templates), the anonymous enumeration shorthand `{option1|option2}` is acceptable where a name adds nothing.
+Example: `> @if(resumed) Picking the discussion back up where the map leaves it. @else Discussion starting. @endif You can lead wherever you want.`
 
 ### List Display
 
@@ -214,24 +202,26 @@ Two fenced styles, chosen by whether items have sub-detail. A transient list the
   • data-model
 ```
 
-**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — the header sits flush left, rows indent two columns beneath it, no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item** — engine trees whose rows carry bodies draw it as a gutter-only `│` line so the rail never breaks. Rows with bodies spell state and provenance as trailing `↳` lines beneath the body (`↳ From gap-analysis`, `↳ Discussing · in session (last active 2m ago)`) rather than a tag column — except a register whose glyph carries the state and whose tag carries provenance (the research thread register: `○ ◐ ● ◌` + `[origin]`), which keeps the column and hangs a `↳` note only beneath the rows that have one. A row whose title is a sentence rather than a label wraps under its own first column instead of clamping (`renderTree`'s `wrapTitles`), the tag column reserved out of the wrap. For numbered lists, show one full entry then `2. ...` to indicate repetition.
+**Tree (`└─`)** — items with child data: descriptions, statuses, sources, blocking reasons, or any detail that belongs to the parent item. Branch glyphs are positional: `├─` for non-final children, `└─` for the last child only. A tree hangs directly off its heading line — the header sits flush left, rows indent two columns beneath it, no blank line between the header and the first row; the `├─` head is what reads as attachment. Depth is recursive — child items can have their own branches. **Blank line between each top-level item** — engine trees whose rows carry bodies draw it as a gutter-only `│` line so the rail never breaks. Rows with bodies spell state and provenance as trailing `↳` lines beneath the body (`↳ From gap-analysis`, `↳ Discussing · in session (last active 2m ago)`) rather than a tag column — except a register whose glyph carries the state and whose tag carries provenance (the research thread register: `○ ◐ ● ◌` + `[origin]`), which keeps the column and hangs a `↳` note only beneath the rows that have one. A row whose title is a sentence rather than a label wraps under its own first column instead of clamping (`renderTree`'s `wrapTitles`), the tag column reserved out of the wrap.
 
 ```
-1. {topic:(titlecase)}
-   ├─ Plan: @if(has_plan) {plan_status:[in-progress|completed]} @else [no plan] @endif
-   └─ Spec: {spec_status:[in-progress|completed]}
+1. Auth Flow
+   ├─ Plan: in-progress
+   └─ Spec: completed
 
-2. ...
+2. Data Model
+   ├─ Plan: [no plan]
+   └─ Spec: in-progress
 ```
 
 Richer hierarchies nest naturally:
 
 ```
-1. {topic:(titlecase)}
-   ├─ Spec: {spec_status:[in-progress|completed]} ({extraction_summary})
+1. Billing
+   ├─ Spec: in-progress (1 of 2 extracted)
    └─ Discussions:
-      ├─ {discussion} [{status:[extracted|pending]}]
-      └─ ...
+      ├─ invoicing [extracted]
+      └─ refunds [pending]
 ```
 
 Unnumbered trees follow the same structure:
@@ -295,7 +285,7 @@ Advisory and gating messages inside code blocks use a `⚑` prefix to visually s
   before they can be included in a specification.
 ```
 
-**Blocked states render red — advisory callouts stay plain.** A message meaning *you cannot proceed* (a terminal entry blocker, a conclusion blocked on an unmet condition) emits in its own properties code block (```properties fence): the `⚑` first token renders turquoise, everything after it red, and `properties` is the one highlighter that never tokenises English, so the message stays uniform whatever words it contains. One logical line, flag at column zero, no hard wrapping — a wrapped continuation would restart the per-line colouring mid-sentence, while the renderer's own soft-wrap keeps it intact. Guidance (what to do about it) travels separately as a markdown signpost beneath the fence, where it reflows. Red also marks the system's strongest advisory — a gate whose default is refusal and whose override requires stated knowledge the machine cannot have (the code-session gate: "only proceed if you know that session is no longer working"). Those two uses are the whole of it: a warning or suggestion the user may act on or ignore is not a blocked state, and keeps the plain form above, so red stays rare enough to mean something. Engine blockers build through `blocker()` in `domain/render.cjs`; prose-authored blockers mirror the same shape.
+**Blocked states render red — advisory callouts stay plain.** A message meaning *you cannot proceed* (a terminal entry blocker, a conclusion blocked on an unmet condition) emits in its own properties code block (```properties fence): the `⚑` first token renders turquoise, everything after it red, and `properties` is the one highlighter that never tokenises English, so the message stays uniform whatever words it contains. One logical line, flag at column zero, no hard wrapping — a wrapped continuation would restart the per-line colouring mid-sentence, while the renderer's own soft-wrap keeps it intact. Guidance (what to do about it) travels separately as a markdown signpost beneath the fence, where it reflows. Red also marks the system's strongest advisory — a gate whose default is refusal and whose override requires stated knowledge the machine cannot have (the code-session gate: "only proceed if you know that session is no longer working"). Those two uses are the whole of it: a warning or suggestion the user may act on or ignore is not a blocked state, and keeps the plain form above, so red stays rare enough to mean something. Engine blockers build through `blocker()` in `domain/render.cjs`. A prose-authored blocker takes the same shape and is static text; one naming anything that varies is the engine's.
 
 ### Content Dividers & Frames
 
@@ -361,7 +351,7 @@ Engine-side the split is `menu(label, options, { question })` — the statement 
 
 **Option lines are bare, not bulleted, and the arrow is the separator**: `**`k/word`** → Label`. Arrows align into one column across the whole menu — pad with spaces *outside* the closing `**`, measured against the widest key in the block **as rendered** (blank lines inside the menu don't reset the column). Rendered, not authored: `**` and backticks are markup the renderer consumes, so a command option's head measures its `k/word` alone and a prompt option's its bare label — counting the authored characters instead lands a mixed block two columns out. A label may still carry ` — sub-detail` after its opening verb — **metadata tails render italic**: `— *feature, ready for specification*`, `— *research completed*`. The italics mark the tail as metadata against the plain label; alert cues (`· input moved`, `blocked by …`) and `(recommended)` markers stay plain so they read as flags, not state. Long labels wrap at the detected display width with continuations aligned under the label column (`surfaces.cjs`), so the key column and the label column never bleed into one another: continuation indents are non-breaking spaces (the worklist rule), and a span open at the break closes at the line end and reopens on the continuation, keeping every emitted line self-contained markdown.
 
-**Menus are engine-rendered, never authored in prose — static option sets included.** Build the options in code (`workflow-engine/scripts/domain/projections/surfaces.cjs`) and serve them through a render surface or a gateway section; the prose carries only the fetch and the verbatim emission, and the conventions lint (check 3) refuses a menu anywhere in skill prose. One renderer means one alignment rule and one register, and a menu can grow a conditional row without a prose rewrite — a new `engine render` verb is cheap and has precedents throughout the catalogue. **Touching a file adopts its displays**: a change to a file that still carries a hand-drawn list or display migrates it to the engine in the same change, wording preserved — the corpus converges file by file, never in one sweep. A mechanical edit inside an existing fenced command — a flag, an argument, a path — does not count as touching the file; prose-level editing does. (The formatting rules in this section describe what the engine emits.)
+**Menus are engine-rendered, never authored in prose — static option sets included.** Build the options in code (`workflow-engine/scripts/domain/projections/surfaces.cjs`) and serve them through a render surface or a gateway section; the prose carries only the fetch and the verbatim emission, and the conventions lint (check 3) refuses a menu anywhere in skill prose. One renderer means one alignment rule and one register, and a menu can grow a conditional row without a prose rewrite — a new `engine render` verb is cheap and has precedents throughout the catalogue. Displays follow the same rule (see Engine Output Sections → Displays are engine-rendered). (The formatting rules in this section describe what the engine emits.)
 
 **Ordering — command options first, prompt option last.** Mixed menus list all command options before the (single) prompt option. The command set reads as a discrete vocabulary first; the prompt option then sits at the end as the "or respond naturally" tail.
 
@@ -427,10 +417,10 @@ Sister patterns: `**Name them** → Tell me which to re-add`; `**Adjust** → Te
 
 ### Auto-Select
 
-When only one actionable item exists:
+When only one actionable item exists, the surface at that step draws the auto-select line (`autoSelectLine` in `surfaces.cjs`) in place of a menu:
 
 ```
-Automatically proceeding with "{topic:(titlecase)}".
+Automatically proceeding with "Auth Flow".
 ```
 
 ### Block / Terminal Messages
@@ -447,7 +437,7 @@ When a phase can't proceed — the phase title, the blocking fact in the red reg
 
 > The planning phase requires a completed specification.
 
-Engine entry gates emit this shape as two sections (`DISPLAY: entry blocker` + `DISPLAY: blocker guidance`); prose-authored terminal messages mirror it by hand.
+Engine entry gates emit this shape as two sections (`DISPLAY: entry blocker` + `DISPLAY: blocker guidance`), built by `blocker()`. A prose-authored terminal message takes the same shape and is static text; one naming anything that varies is the engine's.
 
 ### Bullet Characters
 
@@ -691,14 +681,10 @@ Per-item approval gates can offer `a/auto` to let the user bypass repeated STOP 
 
 **Manifest tracking**: Gate modes are stored in the manifest via `engine manifest` (`gated`, `auto`, or `bounded`) — every gate, no exceptions. This ensures they survive context refresh.
 
-**Behavior when `auto` or `bounded`**: Content is always rendered above the gate check (so every mode sees identical output). Either auto mode proceeds without a STOP gate. Use a rendering instruction + text code block for the one-line announcement:
+**Behavior when `auto` or `bounded`**: Content is always rendered above the gate check (so every mode sees identical output). Either auto mode proceeds without a STOP gate, and the gate's own surface renders the auto branch's one-line announcement in place of its menu — `task-gate`, `proposed-task --gate auto`, `author-task-gate --phase` — so the branch shows an artifact rather than passing in silence:
 
 ```
-> *Output the next fenced block as a text code block (```text fence):*
-
-\```text
-Task {M} of {total}: {Task Name} — authored. Logging to plan.
-\```
+Task approved [auto]. Committing and moving to the next task.
 ```
 
 **Lifecycle**:
@@ -708,7 +694,7 @@ Task {M} of {total}: {Task Name} — authored. Logging to plan.
 - Reset: each phase skill resets its gates to `gated` at session start — fresh invocation or resume. Either opt-in is session-scoped, never carried across sessions
 - Context refresh: read gate modes from manifest and preserve (a refresh continues the same session — no reset)
 
-**Menu option format**: Add between the primary action and secondary options — the bounded row beside it where the gate has a bound:
+**Menu option format**: The gate's surface places the row between the primary action and secondary options — the bounded row beside it where the gate has a bound:
 ```
 **`a/auto`**    → Approve this and all remaining {items} automatically
 **`b/bounded`** → Approve this and the remaining {items} in this {bound} automatically
