@@ -102,7 +102,7 @@ Nothing sent.
 
 **Otherwise:**
 
-The message is in `{landed_topic}`'s `{landing_phase}` mailbox — the delivery committed itself. This session's own record is unchanged — sending takes the point away from this topic, it doesn't mark it — with one exception: a research `grown-thread` send takes its register rows with it, `research-threads remove {work_unit} {topic} {child}` for each child and then `research-threads remove {work_unit} {topic} {slug}`, and the file's note names where the question went.
+The message is in `{landed_topic}`'s `{landing_phase}` mailbox — the delivery committed itself. This session's own record is unchanged — sending takes the point away from this topic, it doesn't mark it, so no line in the file records the send, now or when the session next writes — with one exception: a research `grown-thread` send takes its register rows with it, `research-threads remove {work_unit} {topic} {child}` for each child and then `research-threads remove {work_unit} {topic} {slug}`, and the file's note names where the question went.
 
 **If the response carried `reconcile_flagged` or `sources_staled`:** also tell the user what the delivery flagged — on a research landing, `{landed_topic}`'s discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion landing, the specification(s) named in `sources_staled`, whose extraction of `{landed_topic}` is now stale.
 

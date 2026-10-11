@@ -72,7 +72,6 @@ What we chose, why, the deciding factor, trade-offs accepted, confidence level.
 
 ### Open Threads
 - Anything deliberately deferred or left for future discussion
-- Messages sent to other topics (with links)
 
 ### Current State
 - What's resolved
