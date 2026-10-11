@@ -112,7 +112,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### State
 
-Workflow state is engine-owned (CONVENTIONS.md, State Ownership). Never hand-write a manifest: every read and write goes through `engine manifest`, whose reference is `skills/workflow-engine/references/commands.md`.
+Workflow state is engine-owned (CONVENTIONS.md, State Ownership). Never hand-write a manifest: outside a migration (see Migrations), reads and writes go through `engine manifest`, whose reference is `skills/workflow-engine/references/commands.md`.
 
 ## Adding New Output Formats
 
