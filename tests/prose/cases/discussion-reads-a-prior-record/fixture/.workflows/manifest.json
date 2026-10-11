@@ -15,6 +15,7 @@
       "synonym-handling": {
         "horizon": "v2",
         "summary": "Replace the hand-maintained synonym and misspelling list.",
+        "kind": "idea",
         "origin": "postpone:search-relevance",
         "postponed_from": {
           "work_unit": "search-relevance",

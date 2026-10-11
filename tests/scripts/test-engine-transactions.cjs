@@ -9,6 +9,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
+const { moveFiles } = require('../../skills/workflow-engine/scripts/domain/inbox.cjs');
 
 const { git, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
 
@@ -2159,6 +2160,21 @@ describe('engine inbox archive / restore / delete', () => {
     assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '2');
   });
 
+  it('a set whose move throws midway puts back what moved — every file where it was, nothing committed', () => {
+    // A file where the archive's bugs folder belongs: the idea moves, the bug cannot.
+    writeFile(dir, '.workflows/.inbox/.archived/bugs', 'in the way\n');
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    engineFails(dir, [
+      'inbox', 'archive',
+      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.workflows/.inbox/bugs/2026-06-02--login-loop.md',
+    ]);
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/bugs/2026-06-02--login-loop.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
   it('restores an archived item back to its live folder', () => {
     engine(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']);
     const res = engine(dir, ['inbox', 'restore', '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
@@ -2229,6 +2245,70 @@ describe('engine inbox archive / restore / delete', () => {
     assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
+  });
+});
+
+describe('inbox moveFiles rollback', () => {
+  let dir;
+  let realRename;
+  const A = { from: 'in/a.md', to: 'out/a.md' };
+  const B = { from: 'in/b.md', to: 'out/b.md' };
+  const C = { from: 'in/c.md', to: 'out/c.md' };
+  beforeEach(() => {
+    dir = setupGitFixture();
+    for (const name of ['a', 'b', 'c']) writeFile(dir, `in/${name}.md`, `# ${name}\n`);
+    realRename = fs.renameSync;
+  });
+  afterEach(() => {
+    fs.renameSync = realRename;
+    cleanupFixture(dir);
+  });
+
+  // Fails every rename whose source ends with one of `failing`, recording
+  // each rename attempted.
+  function failRenames(failing) {
+    const attempted = [];
+    fs.renameSync = (from, to) => {
+      const rel = path.relative(dir, String(from));
+      attempted.push(rel);
+      const hit = failing.find((f) => rel === f);
+      if (hit) throw new Error(`cannot rename ${hit}`);
+      return realRename(from, to);
+    };
+    return attempted;
+  }
+
+  const at = (rel) => fs.existsSync(path.join(dir, rel));
+
+  it('the second of three moves throws and its reversal throws too: the original error surfaces, the stranded file attached', () => {
+    const attempted = failRenames(['in/b.md', 'out/a.md']);
+    let caught;
+    try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
+    assert.ok(caught instanceof Error);
+    assert.match(caught.message, /^cannot rename in\/b\.md — and a file could not be put back: "out\/a\.md" \(belongs at "in\/a\.md"\)$/);
+    assert.deepStrictEqual(caught.stranded.map(({ from, to }) => ({ from, to })), [A]);
+    assert.match(caught.stranded[0].error.message, /cannot rename out\/a\.md/);
+    assert.deepStrictEqual(attempted, ['in/a.md', 'in/b.md', 'out/a.md'], 'c never moved; a\'s reversal was attempted');
+    assert.ok(at('out/a.md') && at('in/b.md') && at('in/c.md'));
+  });
+
+  it('a reversal that throws never stops the ones after it', () => {
+    const attempted = failRenames(['in/c.md', 'out/b.md']);
+    let caught;
+    try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
+    assert.match(caught.message, /^cannot rename in\/c\.md — and a file could not be put back: "out\/b\.md"/);
+    assert.deepStrictEqual(attempted.slice(3), ['out/b.md', 'out/a.md'], 'both reversals attempted, latest first');
+    assert.ok(at('in/a.md'), 'the reversal after the failing one put a back');
+    assert.ok(at('out/b.md') && at('in/c.md'));
+  });
+
+  it('a clean rollback rethrows the original error untouched', () => {
+    failRenames(['in/c.md']);
+    let caught;
+    try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
+    assert.strictEqual(caught.message, 'cannot rename in/c.md');
+    assert.strictEqual(caught.stranded, undefined);
+    assert.ok(at('in/a.md') && at('in/b.md') && at('in/c.md'));
   });
 });
 

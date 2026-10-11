@@ -226,7 +226,7 @@ Commands:
   walkthrough record <walked|skipped>
   handoff <skill|/skill> [args …]
   roadmap state
-  roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]
+  roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]
   roadmap add-batch --file <items.json>
   roadmap edit <name> --summary <text>
   roadmap rename <old> <new>
@@ -362,12 +362,15 @@ Commands:
   render plan-topics       <wu>
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
+  render inbox-content     --path <inbox path>[,<inbox path>…]
+  render inbox-archive-receipt --path <archived path>[,<archived path>…]
   render completed-actions <wu>
   render revisit-phases    <wu>
   render roadmap-view
   render roadmap-add-gate --horizon <name>
   render horizon-pick
-  render park-gate --name <kebab> --horizon <h> --summary <text> [--source <path>]
+  render park-gate --name <kebab> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--source <path>]
+  render inbox-roadmap-gate --file <entries.json>
   render roadmap-session-receipt [--warn]
   render roadmap-harvest-gate
   render roadmap-parks-gate
@@ -1348,11 +1351,12 @@ function runWalkthrough(call, argv) {
 
 // ---------------------------------------------------------------------------
 // roadmap — the product-roadmap layer on the project manifest
-// (domain/roadmap.cjs): horizons + capability-grain items, lifecycle by
-// join. Every mutation is one transaction under the project lock with its
-// own pathspec commit of the project manifest — no work-unit cadence covers
-// it, and a park fired mid-session must be durable immediately. `state` is
-// the derived read every consumer shares.
+// (domain/roadmap.cjs): horizons + items — ideas at capability grain, a bug
+// or a quick-fix one fix each — lifecycle by join. Every mutation is one
+// transaction under the project lock with its own pathspec commit of the
+// project manifest — no work-unit cadence covers it, and a park fired
+// mid-session must be durable immediately. `state` is the derived read every
+// consumer shares.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1436,11 +1440,12 @@ function runRoadmap(call, argv) {
       // Strict positional count: an unquoted summary would spill into
       // positionals and silently truncate the text — refuse instead.
       if (positional.length !== 1) {
-        throw new Error('Usage: engine roadmap add <name> --horizon <h> --summary <text> [--origin <tag>] [--source <path> …]');
+        throw new Error('Usage: engine roadmap add <name> --horizon <h> --summary <text> [--kind <idea|bug|quick-fix>] [--origin <tag>] [--source <path> …]');
       }
       respond(call, roadmap.addRoadmapItem(cwd, positional[0], {
         horizon: opts.horizon,
         summary: opts.summary,
+        kind: opts.kind,
         origin: opts.origin,
         sources: lists.source || [],
       }));
@@ -1820,7 +1825,7 @@ function runCommit(call, argv) {
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
-      const specs = stageableSpecs(cwd, [roadmapSession.ROADMAP_DIR, '.workflows/manifest.json']);
+      const specs = stageableSpecs(cwd, [roadmap.ROADMAP_DIR, '.workflows/manifest.json']);
       if (specs.length === 0) {
         respond(call, { committed: null, note: 'nothing to commit' });
         return;

@@ -211,7 +211,7 @@ describe('start projections: menu', () => {
       '**`b/bugfix`**        → Start new bugfix',
       '**`q/quick-fix`**     → Start new quick-fix',
       '**`c/cross-cutting`** → Start new cross-cutting concern',
-      '**`i/inbox`**         → View the inbox and start from an item',
+      '**`i/inbox`**         → View the inbox and triage its items',
       '**`v/view`**          → View completed & cancelled work units',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
       '**`h/help`**          → How the workflows work',
@@ -350,7 +350,7 @@ describe('start projections: empty state', () => {
       '',
     ].join('\n'));
     const menu = emptyMenu(detail);
-    assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and start from an item \(1 item\)/.test(menu.rendered));
+    assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and triage its items \(1 item\)/.test(menu.rendered));
     assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
     assert.deepStrictEqual(
       menu.keys.map((k) => k.action).slice(6),
@@ -361,7 +361,7 @@ describe('start projections: empty state', () => {
   it('pluralises the inbox option label', () => {
     createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
     createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
-    assert.ok(emptyMenu(startDetail(dir)).rendered.includes('start from an item (2 items)'));
+    assert.ok(emptyMenu(startDetail(dir)).rendered.includes('triage its items (2 items)'));
   });
 });
 
@@ -402,8 +402,8 @@ describe('start projections: inbox pickup', () => {
       DOTS,
       '**`◆ What would you like to do?`**',
       '',
-      '**`1–3`**        → Select item(s) to work on (comma-separated for',
-      `${NB(13)}several)`,
+      '**`1–3`**        → Triage item(s) — archive, put on the roadmap, or',
+      `${NB(13)}start work (comma-separated for several)`,
       '**`a/archived`** → View archived items (restore or delete)',
       '**`b/back`**     → Return',
     ].join('\n'));
@@ -416,7 +416,8 @@ describe('start projections: inbox pickup', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**      → Select the item to work on',
+      '**`1`**      → Triage the item — archive it, put it on the roadmap, or',
+      `${NB(9)}start work`,
       '**`b/back`** → Return',
     ].join('\n'));
   });
@@ -524,7 +525,7 @@ describe('start projections: working set', () => {
     createFile(d, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
   }
 
-  it('uniform bug set: offers work, maps the bugfix pre-seed, and carries no gate sections', () => {
+  it('bug set: offers work and the roadmap row, and maps the bugfix pre-seed', () => {
     seedInbox(dir);
     const ws = workingSetDetail(dir, [
       '.workflows/.inbox/bugs/2026-06-01--login-timeout.md',
@@ -533,7 +534,6 @@ describe('start projections: working set', () => {
     const v = workingSetView(ws);
     assert.strictEqual(v.data, [
       'set_count: 2',
-      'set_uniform: true',
       'set_type: bugfix',
       'addable_count: 1',
       'SET (n  type  date  slug  → path  — title):',
@@ -557,6 +557,7 @@ describe('start projections: working set', () => {
       '**`◆ What would you like to do?`**',
       '',
       '**`w/work`**    → Proceed to discovery with this set',
+      '**`o/roadmap`** → Move the set out of the inbox onto the roadmap',
       '**`a/add`**     → Add another inbox item to the set',
       '**`d/drop`**    → Drop item(s) from the set (keeps them in the inbox)',
       '**`r/archive`** → Archive the whole set out of the inbox',
@@ -564,7 +565,7 @@ describe('start projections: working set', () => {
       '**`b/back`**    → Return to the inbox list',
       '**Ask**       → Ask about the set',
     ].join('\n'));
-    assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
+    assert.deepStrictEqual(Object.keys(v), ['data', 'title', 'display', 'menu'], 'the snapshot carries no other section');
     assert.strictEqual(workingSetAddGate(ws), [
       "=== MENU: add gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
@@ -590,17 +591,31 @@ describe('start projections: working set', () => {
     ].join('\n'));
   });
 
-  it('mixed set: no work option, set_type mixed', () => {
+  it('a mixed set takes the largest shape in it: any idea leaves the type to discovery, work and the roadmap offered', () => {
     seedInbox(dir);
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
     const ws = workingSetDetail(dir, [
       '.workflows/.inbox/bugs/2026-06-01--login-timeout.md',
+      '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md',
       '.workflows/.inbox/ideas/2026-06-03--smart-retry.md',
     ]);
-    assert.strictEqual(ws.uniform, false);
-    assert.strictEqual(ws.set_type, 'mixed');
+    assert.strictEqual(ws.set_type, 'none');
+    assert.strictEqual('uniform' in ws, false);
     const v = workingSetView(ws);
-    assert.ok(!v.menu.includes('`w/work`'));
-    assert.ok(v.data.includes('set_uniform: false'));
+    assert.ok(v.menu.includes('`w/work`'));
+    assert.ok(v.menu.includes('`o/roadmap`'));
+    assert.ok(v.data.includes('set_type: none'));
+    assert.ok(!v.data.includes('set_uniform'));
+  });
+
+  it('a bug among quick-fixes and no idea makes a bugfix — the quick-fixes never set the type', () => {
+    seedInbox(dir);
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
+    const ws = workingSetDetail(dir, [
+      '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md',
+      '.workflows/.inbox/bugs/2026-06-02--crash-on-save.md',
+    ]);
+    assert.strictEqual(ws.set_type, 'bugfix');
   });
 
   it('idea set maps the none pre-seed; a fully-selected inbox refuses the add gate', () => {
@@ -609,14 +624,17 @@ describe('start projections: working set', () => {
     assert.strictEqual(ws.set_type, 'none');
     const v = workingSetView(ws);
     assert.ok(v.data.includes('addable_count: 0'));
-    assert.strictEqual(v.sections, '', 'the snapshot carries no gate sections');
     assert.throws(() => workingSetAddGate(ws), /nothing addable/);
     assert.ok(workingSetDropGate(ws).includes('**`1`**      → Smart Retry — *idea*'));
   });
 
-  it('quick-fix set maps the quick-fix pre-seed', () => {
+  it('quick-fixes alone map the quick-fix pre-seed', () => {
     createFile(dir, '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
-    const ws = workingSetDetail(dir, ['.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md']);
+    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-05--bump-deps.md', '# Bump Deps\n');
+    const ws = workingSetDetail(dir, [
+      '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md',
+      '.workflows/.inbox/quickfixes/2026-06-05--bump-deps.md',
+    ]);
     assert.strictEqual(ws.set_type, 'quick-fix');
   });
 

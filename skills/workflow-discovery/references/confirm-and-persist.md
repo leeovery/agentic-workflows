@@ -65,7 +65,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs roadmap pull-forward {nam
 
 A refusal naming a previously dismissed topic is the user's earlier removal speaking — the gate's confirmation was the deliberate re-add, so re-run with `--force-dismissed`.
 
-**Binds** — the harvest's closing move for items pulled into this epic before it had a map. Read the roadmap state (`engine roadmap state`); for every item whose row names this work unit with **no `topic`**, bind it to the confirmed topic its ground crystallised as — usually the same-named one; when its ground split across several topics, the one carrying its identity:
+**Binds** — the harvest's closing move for ideas pulled into this epic before it had a map. Read the roadmap state (`engine roadmap state`); for every item of kind `idea` whose row names this work unit with **no `topic`**, bind it to the confirmed topic its ground crystallised as — usually the same-named one; when its ground split across several topics, the one carrying its identity:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap bind {item} --topic {topic}

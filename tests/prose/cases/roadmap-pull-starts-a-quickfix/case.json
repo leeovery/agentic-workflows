@@ -1,0 +1,64 @@
+{
+  "origin": "the pull's quick-fix shape had no coverage — a set holding only quick-fixes takes the smallest shape by the rule, never a judged feature or epic; the unit is created a quick-fix with each note carried whole into its first session log, and the bridge hands it to its scoping",
+  "entry": "workflow-roadmap",
+  "world": "claims",
+  "files": [
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-roadmap/references/pull.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md",
+    "skills/workflow-bridge/SKILL.md",
+    "skills/workflow-bridge/references/discovery-continuation.md",
+    "skills/workflow-shared/references/handing-off.md"
+  ],
+  "answers": [
+    "p — start work on waiting items",
+    "1, 2 — the two storefront fixes",
+    "y — that's right, and call it storefront-polish"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs pull-set",
+      "render roadmap-shape-gate",
+      "workunit create storefront-polish quick-fix",
+      "--session-log-file .workflows/.cache/storefront-polish/discovery/session-001.md",
+      "roadmap pull",
+      "--into storefront-polish",
+      "render roadmap-view",
+      "manifest get storefront-polish work_type",
+      "handoff /workflow-scoping-process quick-fix storefront-polish"
+    ],
+    "calls_in_order": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs pull-set",
+      "render roadmap-shape-gate",
+      "write:.workflows/.cache/storefront-polish/discovery/session-001.md",
+      "workunit create storefront-polish quick-fix",
+      "roadmap pull",
+      "render roadmap-view",
+      "manifest get storefront-polish work_type",
+      "handoff /workflow-scoping-process quick-fix storefront-polish"
+    ],
+    "calls_exclude": [
+      "workunit create storefront-polish bugfix",
+      "workunit create storefront-polish feature",
+      "workunit create storefront-polish epic",
+      "roadmap pull-forward",
+      "roadmap session open",
+      "render name-gate",
+      "workflow-bridge/scripts/gateway.cjs",
+      "workflow-discovery/scripts/gateway.cjs",
+      "handoff /workflow-investigation-process",
+      "handoff /workflow-discussion-process",
+      "topic start"
+    ]
+  }
+}

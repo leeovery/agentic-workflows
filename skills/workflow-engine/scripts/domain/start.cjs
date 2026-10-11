@@ -16,6 +16,7 @@ const path = require('path');
 const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { baselineState } = require('./baseline.cjs');
 const { roadmapState } = require('./roadmap.cjs');
+const { INBOX, ARCHIVED } = require('./inbox.cjs');
 const {
   phaseItems,
   computeUnitPhaseState,
@@ -188,9 +189,8 @@ function scanInboxDir(baseDir) {
  * @returns {InboxDetail}
  */
 function discoverInbox(cwd) {
-  const inboxDir = path.join(cwd, '.workflows', '.inbox');
-  const inbox = scanInboxDir(inboxDir);
-  return { ...inbox, archived: scanInboxDir(path.join(inboxDir, '.archived')) };
+  const inbox = scanInboxDir(path.join(cwd, INBOX));
+  return { ...inbox, archived: scanInboxDir(path.join(cwd, ARCHIVED)) };
 }
 
 /**

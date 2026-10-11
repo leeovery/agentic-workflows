@@ -25,15 +25,16 @@ The prose should have taken this path:
    capability aside. The planning skill's standing `## Backlogging`
    section routes to backlogging.md with work_unit `pay`, topic `pay`,
    phase `planning`; the pending gate is left to re-present on return
-6. **A. Which Backlog** reads the user's own words and finds them
-   open: "backlog that for later" places the idea nowhere. Only the
-   user can say which backlog, so nothing is decided — the idea's
-   short title is written to
+6. **A. Where It Waits** reads the map's horizons first — there is no
+   roadmap, so there are none, and "later" is no horizon's name — then
+   the user's own words, and finds them open: "backlog that for later"
+   places the idea nowhere. Only the user can say where it waits, so
+   nothing is decided — the idea's short title is written as the
+   payload's `title` to
    `.workflows/.cache/pay/planning/pay/backlog.json` with the Write
    tool and the gate is rendered at this topic's own address, its menu
-   emitted verbatim. The walk **STOPS**. No roadmap state is read and
-   no horizon is asked for: the home is the question, and it is the
-   user's to answer
+   emitted verbatim. The walk **STOPS**. No horizon is asked for: where
+   it waits is the question, and it is the user's to answer
 7. the third scripted answer takes the inbox, so **D. Capture** runs.
    Nothing is broken and nothing is a small mechanical change, so the
    idea skill is the match: `/workflow-log-idea` is invoked, and it

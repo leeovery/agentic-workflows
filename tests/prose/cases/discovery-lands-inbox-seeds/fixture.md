@@ -11,8 +11,8 @@ capture skill writes (H1 title, flowing prose):
   view on login; explicitly framed as related to the first.
 
 The two ideas deliberately describe one coherent feature so the
-working set is type-uniform and the shaping conversation has a single
-honest reading: one feature, not two, and not an epic. No archived
+shaping conversation has a single honest reading: one feature, not
+two, and not an epic. No archived
 items exist.
 
 The user picked both ideas from the start menu's inbox and worked them

@@ -271,6 +271,11 @@ function absorbContinuationMenu(feature, epic) {
   );
 }
 
+/** The inbox archive's receipt — how many items left the inbox. @param {number} count @returns {string} */
+function inboxArchiveReceipt(count) {
+  return confirmation(`Archived ${count} item${count === 1 ? '' : 's'} from the inbox.`);
+}
+
 /**
  * Session close (discovery and roadmap alike) — the indexing advisory; the
  * session is closed and committed either way. Empty without `--warn`.
@@ -283,4 +288,4 @@ function sessionReceipt({ warn = false } = {}) {
     : '';
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt };

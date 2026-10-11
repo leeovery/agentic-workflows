@@ -68,6 +68,10 @@ engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, map_mo
 // domain: discovery-session queries
 engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)
 
+// domain: the product roadmap (roadmap.cjs — lifecycle by join, never stored)
+engine.roadmap.roadmapState(cwd)                  // → { exists, horizons, items, totals, active_session, session_logs, next_session_number, imports } — each item's kind and its state from its join (waiting / in-flight / shipped / orphaned); a never-born roadmap reads exists:false. The roadmap gateway's views and discovery's anti-twin read
+engine.roadmap.becomesTopic(item)                 // → whether the item becomes a topic when it meets an epic — an idea alone; a bug or a quick-fix rides as material. Discovery's anti-twin flag keys on it
+
 // domain: session presence
 engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict
 engine.presence.scanProject(cwd)                  // → the same row shape and `held` total but no `held_sources`, with `scope: "project"` in place of `work_unit` and `work_unit` per row
@@ -80,7 +84,7 @@ engine.presence.fmtAge(seconds)                   // → a row's age as `40s` / 
 engine.detail.epicDetail(cwd, manifest)           // → EpicDetail (the one structured object per epic)
 engine.detail.startDetail(cwd)                    // → StartDetail (all work units by type + inbox + closed counts)
 engine.detail.combinedInbox(scan, { archived })   // → PickupItem[] (one inbox scan combined, date-ordered, numbered)
-engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: uniformity, pre-seed type, addable items)
+engine.detail.workingSetDetail(cwd, paths)        // → WorkingSetDetail (held selection: the work-type pre-seed, addable items)
 engine.detail.manageDetail(cwd, wu)               // → ManageDetail (lifecycle-action availability), or null
 engine.detail.activeWorkUnit(cwd, wu)             // → { type, unit: WorkUnitEntry } — one single-topic unit in progress (feature | bugfix | quick-fix | cross-cutting), its type read from its manifest; null otherwise
 engine.detail.phaseTargets(manifest, nextPhase)   // → { next, revisit } — the {phase, topic} each single-topic route enters: the next phase and the revisit candidates (completed phases before nextPhase, pipeline-filtered); topic names the phase's item where its items carry names of their own (a promoted unit's moved discussions), null otherwise
@@ -107,7 +111,7 @@ engine.project.emptyOverview(detail)              // → empty-state overview bl
 engine.project.emptyMenu(detail)                  // → { keys, rendered } — empty-state start menu
 engine.project.inboxPickupView(items, hasArchived)// → { data, display, menu } — inbox pickup snapshot bodies; { data, display } when the inbox is empty
 engine.project.archivedView(items)                // → { data, menu } — the archived pick menu; { data, display } when nothing is archived
-engine.project.workingSetView(ws)                 // → { data, title, display, menu, sections } — set tree, menu, mixed-type blocker
+engine.project.workingSetView(ws, summaries)      // → { data, title, display, menu } — set tree and menu
 engine.project.workingSetAddGate(ws)              // → MENU: add gate, the addable items as its rows — the gateway working-set-add-gate verb
 engine.project.workingSetDropGate(ws)             // → MENU: drop gate, the set's items as its rows — the gateway working-set-drop-gate verb
 engine.project.manageListView(detail)             // → { data, menu, rows } — manage selection snapshot, the units as the menu's rows

@@ -12,14 +12,14 @@ The skills are organised into tiers, each with a narrow role, so that a given mo
 
 | Tier | Its job |
 |---|---|
-| **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, and routes you everywhere else. |
+| **Entry** | The single thing you type — `/workflow-start`. It boots the system, shows you all your work, triages the inbox — starting a note now, putting it on the roadmap, or declining it — and routes you everywhere else. |
 | **First phase** | Discovery. Shapes brand-new work, settles its type, and persists it. |
 | **Navigation** | The dashboards — an epic's, and one the single-topic types share. They show a work unit's current state, hand the work off to whichever phase you pick, and lead back to the start menu. |
 | **Processing** | The phases themselves, where the actual work happens: the conversations, the documents, the loops. Each checks that it can start — the record it builds on is settled, no other session is writing code in the checkout — then picks up where its last session left off, or begins. |
 | **Bridge** | Decides where the work goes when a phase ends, and hands it off. |
 | **Capture** | Lightweight [inbox logging](capture-and-inbox.md), sitting outside the pipeline entirely. |
 | **Baseline** | The brownfield assessment — project-level, outside the pipeline, reached from the start menus. |
-| **Roadmap** | The product layer above the work unit — project-level conversations, horizons of shaped-but-uncommitted items, and the pull that births work units fenced to a slice. |
+| **Roadmap** | The product layer above the work unit — project-level conversations, horizons of decided-but-unstarted ideas, bugs and quick-fixes, and the pull that births work units fenced to a slice. |
 | **Help** | How the workflows work — the eight-screen walkthrough, the reference cards, and the glossary every answer is written from. Project-level, outside the pipeline, reached from the start menus. |
 | **Shared** | Protocols loaded by many skills at once — conventions, self-checks, break detection — so they behave identically wherever they apply. |
 
@@ -41,4 +41,4 @@ For an epic there is no single "next phase," so the hand-off returns you to the 
 
 ## Where everything lives
 
-All of it lands as ordinary files in your repository, versioned alongside your code. Each work unit gets its own folder, and within it each phase writes its documents in a predictable place — the discovery session logs and topic briefs, the research and discussion files, the experiment records with their frozen designs and reports, the investigation, the specification, the plan, the implementation record, the review report — beside the promoted note the work grew from and the reference material it pulled in. Because everything is committed as it goes, with plain, conventional messages, your git history doubles as the workflow's own journal. That is not incidental: the recovery behaviour built into every phase leans on it. When a session needs to work out where it was, it re-reads its instructions, reads the files, and checks the history — because the files and the history are authoritative, and recollection is not.
+All of it lands as ordinary files in your repository, versioned alongside your code. Each work unit gets its own folder, and within it each phase writes its documents in a predictable place — the discovery session logs and topic briefs, the research and discussion files, the experiment records with their frozen designs and reports, the investigation, the specification, the plan, the implementation record, the review report — beside the inbox note the work grew from and the reference material it pulled in. Because everything is committed as it goes, with plain, conventional messages, your git history doubles as the workflow's own journal. That is not incidental: the recovery behaviour built into every phase leans on it. When a session needs to work out where it was, it re-reads its instructions, reads the files, and checks the history — because the files and the history are authoritative, and recollection is not.

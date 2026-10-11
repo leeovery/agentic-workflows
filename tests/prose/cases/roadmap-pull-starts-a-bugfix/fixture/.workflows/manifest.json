@@ -1,0 +1,34 @@
+{
+  "roadmap": {
+    "horizons": [
+      "next",
+      "later"
+    ],
+    "items": {
+      "tip-charged-twice": {
+        "horizon": "next",
+        "summary": "a tip is charged twice once the basket is edited after choosing it",
+        "kind": "bug",
+        "origin": "inbox:2026-01-01--tip-charged-twice",
+        "sources": [
+          ".roadmap/notes/bugs/2026-01-01--tip-charged-twice.md"
+        ]
+      },
+      "receipt-omits-the-tip": {
+        "horizon": "next",
+        "summary": "the emailed receipt's total leaves out the tip",
+        "kind": "bug",
+        "origin": "inbox:2026-01-01--receipt-omits-the-tip",
+        "sources": [
+          ".roadmap/notes/bugs/2026-01-01--receipt-omits-the-tip.md"
+        ]
+      },
+      "loyalty": {
+        "horizon": "later",
+        "summary": "repeat-customer rewards to drive reorders",
+        "kind": "idea",
+        "origin": "harvest"
+      }
+    }
+  }
+}

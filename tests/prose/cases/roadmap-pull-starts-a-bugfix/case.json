@@ -1,0 +1,55 @@
+{
+  "origin": "the pull had no bugfix shape — a set of bugs pulled from the roadmap takes the largest shape among its kinds, a bugfix by the rule rather than a judged epic or feature; the unit is created as a bugfix with each bug's note carried whole into its first session log, and handed to its investigation",
+  "entry": "workflow-roadmap",
+  "world": "claims",
+  "files": [
+    "skills/workflow-roadmap/SKILL.md",
+    "skills/workflow-shared/references/framework.md",
+    "skills/workflow-shared/references/instructions.md",
+    "skills/workflow-shared/references/casing-conventions.md",
+    "skills/workflow-shared/references/voice.md",
+    "skills/workflow-shared/references/altitude.md",
+    "skills/workflow-shared/references/ask-or-decide.md",
+    "skills/workflow-roadmap/references/pull.md",
+    "skills/workflow-discovery/references/name-resolution.md",
+    "skills/workflow-discovery/references/template.md"
+  ],
+  "answers": [
+    "p — start work on waiting items",
+    "1, 2 — both tip bugs",
+    "y — that's right, and call it tip-charges"
+  ],
+  "invariants": {
+    "engine_before_write": true,
+    "calls_include": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs pull-set",
+      "render roadmap-shape-gate",
+      "workunit create tip-charges bugfix",
+      "--session-log-file .workflows/.cache/tip-charges/discovery/session-001.md",
+      "roadmap pull",
+      "--into tip-charges",
+      "render roadmap-view"
+    ],
+    "calls_in_order": [
+      "workflow-roadmap/scripts/gateway.cjs view",
+      "workflow-roadmap/scripts/gateway.cjs pull-set",
+      "render roadmap-shape-gate",
+      "write:.workflows/.cache/tip-charges/discovery/session-001.md",
+      "workunit create tip-charges bugfix",
+      "roadmap pull",
+      "render roadmap-view"
+    ],
+    "calls_exclude": [
+      "workunit create tip-charges feature",
+      "workunit create tip-charges epic",
+      "roadmap pull-forward",
+      "roadmap session open",
+      "render name-gate",
+      "engine.cjs handoff",
+      "workflow-bridge/scripts",
+      "workflow-discovery/scripts/gateway.cjs",
+      "topic start"
+    ]
+  }
+}

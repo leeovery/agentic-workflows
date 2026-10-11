@@ -699,7 +699,6 @@ const RATCHET_PINS = {
   'skills/workflow-specification-process/references/spec-completion.md': 2,
   'skills/workflow-specification-process/references/spec-review.md': 2,
   'skills/workflow-start/references/inbox-archived.md': 3,
-  'skills/workflow-start/references/inbox-working-set.md': 2,
   'skills/workflow-start/references/knowledge-gate.md': 1,
   'skills/workflow-start/references/view-plan.md': 2,
 };

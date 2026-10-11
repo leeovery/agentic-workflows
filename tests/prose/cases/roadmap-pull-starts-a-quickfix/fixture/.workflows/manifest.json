@@ -1,0 +1,34 @@
+{
+  "roadmap": {
+    "horizons": [
+      "next",
+      "later"
+    ],
+    "items": {
+      "order-email-subject-names-the-restaurant": {
+        "horizon": "next",
+        "summary": "the order confirmation email's subject names the restaurant",
+        "kind": "quick-fix",
+        "origin": "inbox:2026-01-01--order-email-subject-names-the-restaurant",
+        "sources": [
+          ".roadmap/notes/quickfixes/2026-01-01--order-email-subject-names-the-restaurant.md"
+        ]
+      },
+      "footer-shows-last-year": {
+        "horizon": "next",
+        "summary": "the storefront footer shows the current year, not 2025",
+        "kind": "quick-fix",
+        "origin": "inbox:2026-01-01--footer-shows-last-year",
+        "sources": [
+          ".roadmap/notes/quickfixes/2026-01-01--footer-shows-last-year.md"
+        ]
+      },
+      "loyalty": {
+        "horizon": "later",
+        "summary": "repeat-customer rewards to drive reorders",
+        "kind": "idea",
+        "origin": "harvest"
+      }
+    }
+  }
+}

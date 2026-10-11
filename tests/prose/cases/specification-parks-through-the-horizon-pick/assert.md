@@ -27,10 +27,11 @@ The prose should have taken this path:
    section routes to backlogging.md with work_unit `pay`, topic `pay`,
    phase `specification`; the pending gate is left to re-present on
    return
-6. **A. Which Backlog** reads the user's own words: they place the
-   idea on the roadmap but name no horizon. The home is settled, so
-   the ambiguity gate is never written and never rendered — the
-   horizon is what is open
+6. **A. Where It Waits** reads the map's horizons first, then the
+   user's own words: they place the idea on the roadmap but name no
+   horizon — "the roadmap" is no label among them. Where it waits is
+   settled, so the ambiguity gate is never written and never rendered —
+   the horizon is what is open
 7. **B. The Horizon** reads the roadmap state. `horizons` is
    non-empty, so the horizon is picked rather than asked for: the pick
    renders the map's horizons in their order as numbered rows, each
@@ -39,18 +40,19 @@ The prose should have taken this path:
    arm belongs to a map that does not exist
 8. the third scripted answer is a number, and it resolves to the
    second horizon — `v2`
-9. **C. Park** derives a kebab-case name and a one-line summary at
+9. **C. Park** derives a kebab-case name, a one-line summary at
    capability grain — an operator refunding a paid order, not this
-   specification's mechanics — and takes the source from the phase
+   specification's mechanics — and the kind `idea`, since refunds are
+   a capability, nothing broken; and takes the source from the phase
    table: specification points at the specification, so the source is
    `pay/specification/pay/specification.md`
-10. the confirm renders through the engine carrying the name, `v2`,
-    the summary and that source. The map already holds `v2`, so the
-    horizon carries no `(new)` flag and the statement says nothing
-    about the roadmap being created — it exists. The walk **STOPS**
+10. the confirm renders through the engine carrying the name, the
+    kind, `v2`, the summary and that source. The map already holds
+    `v2`, so the horizon carries no `(new)` flag and the statement
+    says nothing about the roadmap being created — it exists. The walk **STOPS**
 11. on the fourth scripted answer the park is one engine call:
-    `roadmap add {name} --horizon "v2" --summary "…" --origin park:pay
-    --source pay/specification/pay/specification.md`. The verb
+    `roadmap add {name} --kind idea --horizon "v2" --summary "…"
+    --origin park:pay --source pay/specification/pay/specification.md`. The verb
     validates, adds the item under the existing horizon, and commits
     the project manifest itself — no commit call follows it, no
     horizon is created, and the roadmap skill is never invoked
@@ -73,7 +75,7 @@ The end world's claims:
 - the roadmap holds the same two horizons it started with, `v1` then
   `v2`, in that order. No third horizon was created
 - one new item sits under `v2`: a kebab-case capability name for the
-  operator refund, `origin: park:pay`, a summary that reads as the
+  operator refund, `kind: idea`, `origin: park:pay`, a summary that reads as the
   capability rather than as this session's business, and
   `pay/specification/pay/specification.md` as its one source. It
   carries no `pulled_to` — it is waiting, joined to nothing
@@ -96,4 +98,5 @@ The end world's claims:
 - the five scripted answers were consumed by the resume choice, the
   aside, the horizon pick, the park confirm, and the readiness
   question, in that order. The
-  user was never asked which backlog and never asked to name a horizon
+  user was never asked where it should wait and never asked to name a
+  horizon

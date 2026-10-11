@@ -88,6 +88,8 @@ Write the phase-tree payload to `.workflows/.cache/{work_unit}/planning/{topic}/
 {"phases": [{"name": "…", "detail": [["Goal", "…"], ["Criteria", "…"]]}]}
 ```
 
+Use the Write tool for the payload — never a shell heredoc or redirect.
+
 Render and emit each section verbatim per its marker:
 
 ```bash
