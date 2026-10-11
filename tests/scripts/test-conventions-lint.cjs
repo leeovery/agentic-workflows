@@ -24,6 +24,10 @@ const REPO = path.resolve(__dirname, '..', '..');
 const DOT = '·'; // MIDDLE DOT (U+00B7)
 const MENU_FRAME = Array(12).fill(DOT).join(' '); // "· · · · · · · · · · · ·"
 const FENCE = /^\s*(?:\d+\.\s+)?```/; // a fence delimiter, a numbered list item's included
+const FENCE_RUN = /^\s*(?:\d+\.\s+)?(`{3,})(.*)$/; // its backtick run and what follows
+// A rendering instruction's opening, a numbered list item's included — checks
+// 13 and 24 recognise the instruction by this one prefix.
+const RENDER_INSTRUCTION_HEAD = /^\s*(?:\d+\.\s+)?> \*Output the next fenced block as /;
 const ZERO_OUTPUT_RULE =
   '> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.';
 
@@ -71,21 +75,25 @@ function rel(file) {
 // Parse fenced code blocks. Returns { blocks, inFence } where `blocks` is an
 // array of { open, close, lines: [{ n, text }] } and `inFence` is a boolean
 // array indexed by 0-based line number (true inside a fence, excluding the
-// ``` delimiter lines themselves).
+// ``` delimiter lines themselves). A fence closes on a bare run of at least
+// as many backticks as opened it, so a ```` fence holds ``` lines as content.
 function parseFences(lines) {
   const blocks = [];
   const inFence = new Array(lines.length).fill(false);
   let open = -1;
+  let run = 0;
   let content = [];
   for (let i = 0; i < lines.length; i++) {
-    if (FENCE.test(lines[i])) {
-      if (open === -1) {
-        open = i;
-        content = [];
-      } else {
-        blocks.push({ open, close: i, lines: content });
-        open = -1;
-      }
+    const fence = FENCE_RUN.exec(lines[i]);
+    if (fence && open === -1) {
+      open = i;
+      run = fence[1].length;
+      content = [];
+      continue;
+    }
+    if (fence && fence[1].length >= run && fence[2].trim() === '') {
+      blocks.push({ open, close: i, lines: content });
+      open = -1;
       continue;
     }
     if (open !== -1) {
@@ -652,45 +660,51 @@ function checkInertLoadChrome(files) {
 // skills, and deliberately structureless.
 // ---------------------------------------------------------------------------
 
-// Any instruction form, at a line's start or after a list marker — an
-// instruction this misses exempts its fence from the check.
-const RENDERED_FENCE = /^\s*(?:(?:\d+\.|[-*+])\s+)?> \*Output the next fenced block as /;
-
-function isCaptureSkill(file) {
-  const parts = file.split(path.sep);
-  const idx = parts.lastIndexOf('skills');
-  return idx !== -1 && /^workflow-log-/.test(parts[idx + 1] || '');
+// The capture skills, read from the folder directly under the corpus root's
+// `skills/`.
+function isCaptureSkill(file, root) {
+  const [top, skill = ''] = path.relative(root, file).split(path.sep);
+  return top === 'skills' && skill.startsWith('workflow-log-');
 }
 
-// The line of each templated menu/display fence's rendering instruction.
+/** @param {string[]} content */
+function isChrome(content) {
+  const isMarker = content.length === 1
+    && (/^(── |·· )/.test(content[0]) || /^(# )?\*\*`[■□▪] /.test(content[0]));
+  const isSignpost = content.some((l) => l.trim() !== '')
+    && content.every((l) => l.trim() === '' || l.startsWith('>'));
+  return isMarker || isSignpost;
+}
+
+/** @param {string[]} content */
+function isTemplatedDisplay(content) {
+  const text = content.join('\n');
+  // Any single-line braced token, deliberately wider than the placeholder
+  // grammar: `{2 context lines}` varies as surely as `{topic}` does.
+  const templated = /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
+  return templated && !isChrome(content);
+}
+
+// The line of each templated menu/display fence's rendering instruction. An
+// instruction quoted inside a fence is an example, never a render site.
 function templatedDisplaySites(file) {
   const lines = readLines(file);
+  const { blocks, inFence } = parseFences(lines);
+  const blockAt = new Map(blocks.map((b) => [b.open, b]));
   const sites = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (!RENDERED_FENCE.test(lines[i])) continue;
+  lines.forEach((line, i) => {
+    if (inFence[i] || !RENDER_INSTRUCTION_HEAD.test(line)) return;
     let j = i + 1;
     while (j < lines.length && lines[j].trim() === '') j++;
-    if (j >= lines.length || !FENCE.test(lines[j])) continue;
-    const start = j + 1;
-    let k = start;
-    while (k < lines.length && !FENCE.test(lines[k])) k++;
-    const content = lines.slice(start, k);
-    const text = content.join('\n');
-    const isMarker = content.length === 1
-      && (/^(── |·· )/.test(content[0]) || /^(# )?\*\*`[■□▪] /.test(content[0]));
-    const isSignpost = content.every((l) => l.trim() === '' || l.startsWith('>'));
-    // Any single-line braced token, deliberately wider than the placeholder
-    // grammar: `{2 context lines}` varies as surely as `{topic}` does.
-    const templated = /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
-    if (!isMarker && !isSignpost && templated) sites.push(i + 1);
-    i = k;
-  }
+    const block = blockAt.get(j);
+    if (block && isTemplatedDisplay(block.lines.map((l) => l.text))) sites.push(i + 1);
+  });
   return sites;
 }
 
-function checkNoTemplatedDisplays(files) {
+function checkNoTemplatedDisplays(files, root = REPO) {
   return files
-    .filter((file) => !isCaptureSkill(file))
+    .filter((file) => !isCaptureSkill(file, root))
     .flatMap((file) => templatedDisplaySites(file).map((line) => ({
       file,
       line,
@@ -893,7 +907,7 @@ function checkQuestionsSetGatesAside(files) {
 // ---------------------------------------------------------------------------
 
 const RENDER_FORMS = Object.values(FORMS).map((form) => [form, /```(\w+) fence/.exec(form)?.[1] ?? '']);
-const RENDER_INSTRUCTION = /^\s*(?:\d+\.\s+)?> \*Output the next fenced block as (.*):\*$/;
+const RENDER_INSTRUCTION = new RegExp(`${RENDER_INSTRUCTION_HEAD.source}(.*):\\*$`);
 const FENCE_OPENER = /^\s*(?:\d+\.\s+)?```(\S*)\s*$/;
 
 function checkRenderForms(files) {
@@ -1611,31 +1625,37 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
   });
 });
 
-test('check 13 (no templated displays) — catches a templated fence at any nesting, skips static/marker/signpost and the capture skills', () => {
+test('check 13 (no templated displays) — catches a templated fence outside any fence, skips static/marker/signpost and the capture skills', () => {
   withTemp((dir) => {
+    const sites = (file) => checkNoTemplatedDisplays([file], dir).map((v) => v.line);
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
     const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n';
     const textInstr = '> *Output the next fenced block as a text code block (```text fence):*';
+    const capture = `${textInstr}\n\n\`\`\`text\nLogged idea: {slug}\n\`\`\`\n`;
 
     const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
-    const v1 = checkNoTemplatedDisplays([fresh]);
+    const v1 = checkNoTemplatedDisplays([fresh], dir);
     assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
     assert.match(v1[0].message, /render it from the engine \(CONVENTIONS → Engine Output Sections\)/);
 
     const numbered = write(dir, 'skills/x/f.md', `1. Do the thing.\n4. ${textInstr}\n\n   \`\`\`text\n   Task {id} authored.\n   \`\`\`\n`);
-    assert.deepStrictEqual(checkNoTemplatedDisplays([numbered]).map((v) => v.line), [2], 'an instruction after a numbered marker is caught');
+    assert.deepStrictEqual(sites(numbered), [2], 'an instruction after a numbered marker is caught');
 
-    const bulleted = write(dir, 'skills/x/g.md', `- ${textInstr}\n\n  \`\`\`text\n  Logged {slug}\n  \`\`\`\n`);
-    assert.strictEqual(checkNoTemplatedDisplays([bulleted]).length, 1, 'an instruction after a bullet marker is caught');
+    const quoted = write(dir, 'skills/x/h.md', `\`\`\`markdown\n${textInstr}\n\`\`\`\n\nRender the {surface} surface.\n\n\`\`\`bash\nengine render x\n\`\`\`\n`);
+    assert.deepStrictEqual(sites(quoted), [], "an instruction quoted inside a fence is an example — the example's closing fence opens no display");
 
-    const capture = `${textInstr}\n\n\`\`\`text\nLogged idea: {slug}\n\`\`\`\n`;
-    const exempt = write(dir, 'skills/workflow-log-idea/SKILL.md', capture);
-    assert.strictEqual(checkNoTemplatedDisplays([exempt]).length, 0, 'the capture skills are exempt');
-    const nearName = write(dir, 'skills/workflow-login/SKILL.md', capture);
-    assert.strictEqual(checkNoTemplatedDisplays([nearName]).length, 1, 'the exemption is the capture skills alone');
+    const outer = write(dir, 'skills/x/i.md', `${instr}\`\`\`\`markdown\n\`\`\`text\nStatic.\n\`\`\`\nTask {id} authored.\n\`\`\`\`\n`);
+    assert.deepStrictEqual(sites(outer), [1], 'a four-backtick fence runs past the inner fence it holds');
+    assert.strictEqual(isChrome([]), false, 'an empty block is no signpost');
+    assert.strictEqual(isChrome(['']), false, 'a blank block is no signpost');
+
+    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
+    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
+    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/workflow-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
+    assert.deepStrictEqual(sites(write(dir, 'skills/workflow-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
 
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
-    assert.strictEqual(checkNoTemplatedDisplays([statik]).length, 0, 'static menu is always fine');
+    assert.deepStrictEqual(sites(statik), [], 'static menu is always fine');
 
     const chrome = write(
       dir,
@@ -1643,14 +1663,14 @@ test('check 13 (no templated displays) — catches a templated fence at any nest
       '> *Output the next fenced block as a code block:*\n\n```\n── Review (cycle {N}) ──────────────────────────\n```\n\n' +
         instr + '```\n> Working on {topic} — questions about gaps\n> and contradictions follow.\n```\n'
     );
-    assert.strictEqual(checkNoTemplatedDisplays([chrome]).length, 0, 'templated markers and signposts are chrome, out of scope');
+    assert.deepStrictEqual(sites(chrome), [], 'templated markers and signposts are chrome, out of scope');
 
     const diffForm = write(
       dir,
       'skills/x/e.md',
       '> *Output the next fenced block as a ` ```diff ` code block:*\n\n```diff\n {context}\n-{removed lines}\n+{new lines}\n```\n'
     );
-    assert.strictEqual(checkNoTemplatedDisplays([diffForm]).length, 1, 'any instruction form is inside the check');
+    assert.deepStrictEqual(sites(diffForm), [1], 'any instruction form is inside the check');
   });
 });
 
