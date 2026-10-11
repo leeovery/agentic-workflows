@@ -315,12 +315,13 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       /cannot strip the session hooks: .*not valid JSON/);
   });
 
-  it('a world carries every skill but the gate mod', function () {
+  it('a world carries every skill but the gate mod, and none of the declarations Claude Code lays into a mod for development', function () {
     if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
     const dir = worlds.buildWorld(NATIVE_CASE);
     try {
       assert.ok(fs.existsSync(path.join(dir, '.claude/skills/workflow-start/SKILL.md')), 'the skills are there');
       assert.ok(!fs.existsSync(path.join(dir, MOD_DIR)), 'the mod is not');
+      assert.ok(!fs.existsSync(path.join(dir, '.claude/skills/workflow-gates-rows/.claude-plugin/types')), 'the rows mod\'s laid declarations are not');
     } finally {
       worlds.destroyWorld(dir);
     }
