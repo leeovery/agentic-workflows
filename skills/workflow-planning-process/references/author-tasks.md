@@ -47,10 +47,10 @@ Invoke `workflow-planning-task-author` with these file paths:
 
 The agent writes all tasks to the task detail file and returns.
 
-> *Output the next fenced block as a text code block (```text fence):*
+Fetch the authoring line — the phase's name rides `task-list-phase-{N}.json`, the payload the phase's task list was presented from — and emit the call's DISPLAY section verbatim per its marker:
 
-```text
-Authoring {count} tasks for Phase {N}: {Phase Name}...
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant authoring --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
 ```
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task author agent has been dispatched for phase {N}.`
@@ -101,20 +101,17 @@ A defect the author still reports after one re-run is left to the review walk, w
 
 #### If `mismatch` after 2 agent invocations
 
-> *Output the next fenced block as a text code block (```text fence):*
+Write the two lists of internal ids to `.workflows/.cache/{work_unit}/planning/{topic}/task-count.json` with the Write tool — `table` the ids in the planning file's task table for this phase, `detail` the ids found in the task detail file:
 
-```text
-Task count mismatch persists after 2 authoring attempts.
-
-Planning file task table: {N} tasks — {internal IDs from the table}
-Task detail file:         {M} tasks — {internal IDs found in the file}
+```json
+{"table": ["{internal_id}", "…"], "detail": ["{internal_id}", "…"]}
 ```
+
+Render and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render task-count-gate {work_unit}.planning.{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs render task-count-gate {work_unit}.planning.{topic} --file .workflows/.cache/{work_unit}/planning/{topic}/task-count.json
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 
@@ -138,24 +135,19 @@ Register the phase's authoring state. Read the subtree first (`node .claude/skil
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id}=pending …
 ```
 
-Check `author_gate_mode` via `engine manifest`:
+Check the gate mode — the engine reads `author_gate_mode`, answering the phase's auto-approval line under `auto` and nothing while the gate is gated:
+
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.planning.{topic} author_gate_mode
+node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --phase {N}
 ```
 
-#### If `author_gate_mode` is `auto`
+#### If the response carried `DISPLAY: author tasks auto-approved`
 
-Approve every `pending` row in one batched write — skip the call entirely when none are `pending` (an all-approved crash resume): `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id}=approved …`.
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Phase {N}: {count} tasks authored. Auto-approved. Writing to plan.
-```
+Approve every `pending` row in one batched write — skip the call entirely when none are `pending` (an all-approved crash resume): `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} staging.author-p{N}.tasks.{internal_id}=approved …`. Then emit the call's DISPLAY section verbatim per its marker.
 
 → Proceed to **G. Write to Plan**.
 
-#### If `author_gate_mode` is `gated`
+#### If the output is empty
 
 → Proceed to **E. Approval Loop**.
 
@@ -179,18 +171,10 @@ Skip — **F. Revision Check** sweeps it into the amendment.
 
 #### If the row is `pending`
 
-Present the full task content:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-{task detail from task detail file}
-```
-
-Render the gate and emit the section verbatim per its marker:
+Write the task's full content, as the task detail file holds it, to `.workflows/.cache/{work_unit}/planning/{topic}/author-task.json` with the Write tool — `{"content": "…"}` — then render the task and its gate, and emit each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --m {M} --total {total} --title "{Task Name}"
+node .claude/skills/workflow-engine/scripts/engine.cjs render author-task-gate {work_unit}.planning.{topic} --m {M} --total {total} --title "{Task Name}" --file .workflows/.cache/{work_unit}/planning/{topic}/author-task.json
 ```
 
 **STOP.** Wait for user response.
@@ -247,11 +231,11 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 
 #### If rejected tasks exist
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-{count} tasks need revision. Re-invoking author agent...
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant revising --phase {N}
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 → Return to **B. Invoke the Agent** for an amendment run.
 
@@ -277,12 +261,10 @@ For each approved task in the task detail file, in order (crash-resume guard: a 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): author task {internal_id} ({task name})" --plan {topic}
    ```
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Task {M} of {total}: {Task Name} — authored.
-```
+5. Fetch the task's authored line and emit the call's DISPLAY section verbatim per its marker:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant authored --m {M} --total {total} --title "{Task Name}"
+   ```
 
 Repeat for each task.
 

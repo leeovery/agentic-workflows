@@ -187,32 +187,11 @@ No external dependencies for this topic. No reverse resolutions needed.
 
 ## G. Present Summary
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-External Dependencies
-
-@foreach(dep in external_dependencies)
-  {dep_topic:(titlecase)} ({state})
-@if(state is resolved)
-  └─ {internal_id}
-@endif
-
-@endforeach
-@if(reverse_resolutions)
-
-Reverse resolutions:
-@foreach(resolution in reverse_resolutions)
-  {other_topic:(titlecase)} → {topic:(titlecase)}:{internal_id}
-@endforeach
-@endif
-```
+Render the plan's external dependencies and the reverse resolutions onto its tasks, and emit each section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render dependency-approval-gate {work_unit}.planning.{topic} --variant resolution
 ```
-
-Emit the call's MENU section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

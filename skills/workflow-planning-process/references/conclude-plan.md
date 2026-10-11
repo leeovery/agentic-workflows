@@ -86,17 +86,10 @@ Answer from the record the session already holds — the plan and the specificat
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete plan" --topic planning/{topic}
    ```
-4. **Present completion summary**:
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-Planning is complete for **{work_unit}**.
-
-The plan contains **{N} phases** with **{M} tasks** total, reviewed for traceability against the specification and structural integrity.
-
-Status has been marked as `completed`. The plan is ready for implementation.
-```
+4. **Present completion summary** — fetch it and emit the call's DISPLAY section verbatim per its marker:
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant concluded
+   ```
 
 5. **Pipeline continuation**:
 

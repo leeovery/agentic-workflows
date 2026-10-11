@@ -70,7 +70,8 @@ Expected path:
 13. validation passes again; nothing is left to settle, so the flow
     reaches the gate check: the staging subtree is read, found absent,
     and both task rows are registered `pending` in one batched write.
-    `author_gate_mode` reads `gated`, so the approval loop runs
+    The author gate's phase check reads `author_gate_mode` as `gated`
+    and answers empty, so the approval loop runs
 14. the first task is presented in full from the detail file and its
     gate is rendered through the engine at position 1 of 2. The walk
     **STOPS**. The user takes auto: this task and the remaining pending
@@ -92,7 +93,8 @@ Further claims:
   attach task's Do and Acceptance Criteria, and the first
   version's bound-less attach task survives nowhere on disk
 - no task reached its gate before the corrigendum landed: the author
-  gate is rendered once, after the second authoring run. A gate
+  gate is rendered only after the second authoring run — its phase
+  check, then the first task's gate, each once. A gate
   rendered before the specification commit means the user approved
   content authored against a record known to be wrong
 - the specification's Client Call Bounds section now states the attach

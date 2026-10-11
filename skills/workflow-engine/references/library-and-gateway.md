@@ -117,7 +117,7 @@ engine.project.workingSetDropGate(ws)             // → MENU: drop gate, the se
 engine.project.manageListView(detail)             // → { data, menu, rows } — manage selection snapshot, the units as the menu's rows
 engine.project.manageUnitView(md)                 // → { data, menu } — the action menu
 engine.project.absorbTargetMenu(md)               // → MENU: absorb target — the render absorb-target surface
-engine.project.planTopicsMenu(md)                 // → MENU: plan topics — the render plan-topics surface
+engine.project.planTopicsPick(md)                 // → DISPLAY: plan topic auto-select for one plan, MENU: plan topics for several — the render plan-topics surface
 engine.project.completedView(detail)              // → { data, menu, rows } — completed & cancelled pick menu; { data, display, rows } when nothing is closed
 engine.project.workUnitStatus(type, unit)         // → status display block (box + pipeline tree)
 engine.project.workUnitMenu(type, unit)           // → { keys, rendered } — proceed/revisit gate; '' rendered when nothing to revisit

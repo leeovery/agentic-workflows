@@ -880,16 +880,43 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.doesNotMatch(gateAlone, /DISPLAY: phase tree/);
 
   // Approvals and authoring decisions are manifest state, vocabulary-guarded.
+  // Construction says where it is as it goes (plan-progress): the phase's
+  // name rides the payload the flow already wrote for it, the counts are the
+  // planning item's.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'designing', '--phase', '1', '--file', phaseTree], { expect: 'content' }),
+    /Taking Phase 1: Foundation and breaking it into tasks/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
+  const taskList = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-list-phase-1.json`,
+    { phase: 1, phase_name: 'Foundation', tasks: [{ name: 'Land the core', summary: 'the one task' }] });
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'authoring', '--file', taskList], { expect: 'content' }),
+    /Authoring 1 task for Phase 1: Foundation\.\.\./);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
+  // The gate-mode check over the phase answers empty while gated; each task
+  // then shows its detail above its gate.
+  sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--phase', '1'], { expect: 'empty' });
+  const authorTask = sim.write(`.workflows/.cache/${wu}/planning/${topic}/author-task.json`, { content: '### Task 1: Land the core' });
+  assert.match(sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--m', '1', '--total', '1', '--title', 'Land the core', '--file', authorTask], { expect: 'content' }),
+    /=== DISPLAY: authored task[\s\S]*=== MENU: author task gate/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'revising', '--phase', '1'], { expect: 'content' }),
+    /1 task needs revision/);
   // The amendment resets a rejected row to pending only after the rewrite
   // validates (author-tasks C) — the mismatch that never settles stops at its
-  // own gate first.
-  sim.render(['task-count-gate', `${wu}.planning.${topic}`], { expect: 'content' });
+  // own gate first, beneath the two lists that disagree.
+  const counts = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-count.json`, { table: [`${topic}-1-1`], detail: [] });
+  assert.match(sim.render(['task-count-gate', `${wu}.planning.${topic}`, '--file', counts], { expect: 'content' }),
+    /Task detail file: {9}0 tasks — none[\s\S]*=== MENU: task count gate/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
+  // Under auto the check answers the phase's line instead, and the rows are
+  // approved together.
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'author_gate_mode', 'auto']);
+  assert.match(sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--phase', '1'], { expect: 'content' }),
+    /Phase 1: 1 task authored\. Auto-approved\. Writing to plan\./);
+  sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'author_gate_mode', 'gated']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'authored', '--m', '1', '--total', '1', '--title', 'Land the core'], { expect: 'content' }),
+    /Task 1 of 1: Land the core — authored\./);
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
   // Guarded containers refuse the writes no prose ever makes — wholesale, pushed, or non-canonically spelt.
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, 'staging', '{}'], /guarded state container/);
@@ -897,11 +924,24 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.refuses(['manifest', 'set', `${wu}.planning`, `items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"items" is the topic tree/);
   sim.refuses(['manifest', 'set', wu, `phases.planning.items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"phases" is the phase tree/);
   sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'already-authored', '--file', taskList], { expect: 'content' }),
+    /Phase 1: Foundation — all tasks already authored\./);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'phase-complete', '--file', taskList], { expect: 'content' }),
+    /Phase 1: Foundation — complete \(1 task authored\)\./);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'construction-complete'], { expect: 'content' }),
+    /The plan has \*\*1 phase\*\* with \*\*1 task\*\* total\./);
 
-  // The graph approval, then the review loop's two gates and the conclusion's
-  // consent — each fetched where the flow displays it.
-  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph'], { expect: 'content' });
-  sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph'], { expect: 'content' });
+  // The graph approval — the grapher's report beneath it, or its cycle with
+  // nothing to approve — then the review loop's two gates and the
+  // conclusion's consent, each fetched where the flow displays it.
+  const graph = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-graph.json`, {
+    notes: 'One task — nothing to order.', dependencies: [], priorities: [], cycle: `${topic}-1-1 → ${topic}-1-1`,
+  });
+  assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph', '--file', graph], { expect: 'content' }),
+    /I've analyzed all 1 task and the natural execution order is already correct[\s\S]*=== MENU: dependency approval gate/);
+  assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph', '--file', graph], { expect: 'content' }),
+    /\*\*Dependencies\*\* \(0 relationships\):/);
+  assert.doesNotMatch(sim.render(['task-graph-cycle', `${wu}.planning.${topic}`, '--file', graph], { expect: 'content' }), /=== MENU/);
   // Review opens: the cycle and the plan's word baseline land in one write,
   // the way plan-review stamps them.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle=1', 'review_baseline_words=63929']);
@@ -956,6 +996,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
 
   sim.run(['commit', wu, '-m', `plan(${wu}): author`, '--plan', topic]);
   sim.run(['topic', 'complete', wu, 'planning', topic]);
+  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'concluded'], { expect: 'content' }),
+    /Planning is complete for \*\*[^*]+\*\*\.[\s\S]*\*\*1 phase\*\* with \*\*1 task\*\* total/);
 
   // Implementation — no `topic start` in prose; task init creates. The
   // code-slot read comes first: nothing else in this sim holds implementation

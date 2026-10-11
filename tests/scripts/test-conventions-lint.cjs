@@ -669,18 +669,11 @@ const RATCHET_PINS = {
   'skills/workflow-log-bug/SKILL.md': 1,
   'skills/workflow-log-idea/SKILL.md': 1,
   'skills/workflow-log-quickfix/SKILL.md': 1,
-  'skills/workflow-planning-process/references/analyze-task-graph.md': 3,
-  'skills/workflow-planning-process/references/author-tasks.md': 6,
-  'skills/workflow-planning-process/references/conclude-plan.md': 1,
-  'skills/workflow-planning-process/references/define-tasks.md': 1,
   'skills/workflow-planning-process/references/output-formats/linear/authoring.md': 1,
-  'skills/workflow-planning-process/references/plan-construction.md': 3,
-  'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
   'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/compliance-check.md': 1,
   'skills/workflow-start/references/inbox-archived.md': 3,
   'skills/workflow-start/references/knowledge-gate.md': 1,
-  'skills/workflow-start/references/view-plan.md': 2,
 };
 
 // Count a file's templated menu/display fences: a rendering-instruction line,

@@ -55,7 +55,7 @@
       "--sweep",
       "render spec-corrections --count 1",
       "staging.author-p1.tasks.",
-      "manifest get pay.planning.pay author_gate_mode",
+      "render author-task-gate pay.planning.pay --phase 1",
       "render author-task-gate pay.planning.pay",
       "author_gate_mode=auto",
       "task_map.pay-1-1",
