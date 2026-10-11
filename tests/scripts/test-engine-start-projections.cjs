@@ -211,7 +211,7 @@ describe('start projections: menu', () => {
       '**`b/bugfix`**        → Start new bugfix',
       '**`q/quick-fix`**     → Start new quick-fix',
       '**`c/cross-cutting`** → Start new cross-cutting concern',
-      '**`i/inbox`**         → View the inbox and start from an item',
+      '**`i/inbox`**         → View the inbox and triage its items',
       '**`v/view`**          → View completed & cancelled work units',
       '**`m/manage`**        → Manage a work unit\'s lifecycle',
       '**`h/help`**          → How the workflows work',
@@ -350,7 +350,7 @@ describe('start projections: empty state', () => {
       '',
     ].join('\n'));
     const menu = emptyMenu(detail);
-    assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and start from an item \(1 item\)/.test(menu.rendered));
+    assert.ok(/\*\*`i\/inbox`\*\* +→ View the inbox and triage its items \(1 item\)/.test(menu.rendered));
     assert.ok(/\*\*`v\/view`\*\* +→ View completed & cancelled work units/.test(menu.rendered));
     assert.deepStrictEqual(
       menu.keys.map((k) => k.action).slice(6),
@@ -361,7 +361,7 @@ describe('start projections: empty state', () => {
   it('pluralises the inbox option label', () => {
     createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
     createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
-    assert.ok(emptyMenu(startDetail(dir)).rendered.includes('start from an item (2 items)'));
+    assert.ok(emptyMenu(startDetail(dir)).rendered.includes('triage its items (2 items)'));
   });
 });
 

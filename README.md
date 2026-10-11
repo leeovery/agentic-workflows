@@ -72,7 +72,7 @@ Inbox
 1       → Continue "Api Rate Limiting" — feature, specification (in-progress)
 2       → Continue "Payments Overhaul" — epic
 s/start → Start something new
-i/inbox → View the inbox and start from an item
+i/inbox → View the inbox and triage its items
 ```
 
 In the terminal the chrome is coloured — the title blue and underlined, the keys and the `◆` highlighted, the metadata tails italic. One screen, not four blocks.

@@ -226,7 +226,7 @@ function startMenu(detail) {
     { key: 'c', word: 'cross-cutting', action: 'start_new', pre_seed: 'cross-cutting', route: null, label: 'Start new cross-cutting concern' },
   );
   if (detail.state.has_inbox) {
-    options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: 'View the inbox and start from an item' });
+    options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: 'View the inbox and triage its items' });
   }
   if (detail.completed_count > 0 || detail.cancelled_count > 0) {
     options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
@@ -311,7 +311,7 @@ function emptyMenu(detail) {
   );
   if (detail.state.has_inbox) {
     const n = detail.state.inbox_count;
-    options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: `View the inbox and start from an item (${n} item${n === 1 ? '' : 's'})` });
+    options.push({ key: 'i', word: 'inbox', action: 'view_inbox', route: null, label: `View the inbox and triage its items (${n} item${n === 1 ? '' : 's'})` });
   }
   if (detail.completed_count > 0 || detail.cancelled_count > 0) {
     options.push({ key: 'v', word: 'view', action: 'view_completed', route: null, label: 'View completed & cancelled work units' });
