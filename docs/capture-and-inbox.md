@@ -10,7 +10,7 @@ What makes capture lightweight is as much what it refuses to do as what it does.
 
 Each note lands in the inbox, a holding area that sits entirely outside the pipeline, sorted by kind into ideas, bugs, and quick-fixes.
 
-The inbox is one of two places to put something aside, and the somedays are its half: things that get picked up when they get picked up. The other is the [roadmap](roadmap.md), for what you place in the near term — "that's a v2 thing", "on the roadmap under Next". Your own words decide it, from inside any phase, and where they leave it open — "backlog that" — you are asked which of the two rather than guessed at.
+The inbox is one of two places to put something aside, and it holds what you have not decided on yet — "log it", "maybe", "not sure" — for you to triage later. The other is the [roadmap](roadmap.md), for what you have decided to do, waiting under a horizon — "that's a v2 thing", "on the roadmap under Next", even "someday". Your own words decide it, from inside any phase, and where they leave it open — "backlog that" — you are asked where it should wait rather than guessed at.
 
 ## Triaging the inbox
 

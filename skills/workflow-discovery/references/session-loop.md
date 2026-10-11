@@ -148,7 +148,7 @@ No fixed cadence — follow the conversation, not a checklist. **The loop is the
      node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "discovery({work_unit}): park {name} — session-{session_number:03d}" --discovery
      ```
 
-     A thought about an item already **pulled into in-flight work** is that work's business, not a park — when this session materially deepened its ground, flag the join instead (`engine roadmap flag {name}`). An unplaced tangent stays the inbox's (the scope-down in the detection core). Surfaced material parks; a topic already on the map postpones instead — the edit operation above.
+     A thought about an item already **pulled into in-flight work** is that work's business, not a park — when this session materially deepened its ground, flag the join instead (`engine roadmap flag {name}`; a flag that reaches nothing answers with a note saying so — relay it). An undecided tangent stays the inbox's (the scope-down in the detection core). Surfaced material parks; a topic already on the map postpones instead — the edit operation above.
    - **A roadmap idea pulled forward** — *"actually, bring loyalty into this epic"* (a waiting bug or quick-fix is never pulled forward; it is pulled as its own work). One composed transaction lands it as a map topic (source `roadmap`) and writes its join — or, over a topic this epic postponed, restores that row instead of creating a second one, `--routing` naming nothing there; record it under **Edits** (`Pulled forward: {name}`):
 
      ```bash

@@ -16,7 +16,7 @@ Read the recognition indexes silently for the detection core's **J** (skip eithe
 
 #### If `inbox_seeds` is non-empty
 
-Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The set's largest kind already pre-seeded `work_type` (quick-fixes only → quick-fix, any bug and no idea → bugfix, any idea → none); the seeds are still confirmed like any other pick.
+Read every inbox file in `inbox_seeds`. They are the work's *origin* — pre-captured thoughts that become this work unit. Use them to shape the opening: sketch what you picked up — across all of them when there are several — then ask a targeted question that elicits a shape signal. Do not dump them back verbatim — synthesise. The set already pre-seeded `work_type`, read per the detection core's **Inbox seeds**; the seeds are still confirmed like any other pick.
 
 With a single seed, hold its filename for the name derivation at the confirm-trigger (the filename-slug becomes the name). With several, the name is derived from the conversation instead.
 

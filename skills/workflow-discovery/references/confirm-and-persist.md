@@ -71,7 +71,7 @@ A refusal naming a previously dismissed topic is the user's earlier removal spea
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap bind {item} --topic {topic}
 ```
 
-A harvest that renamed a bound item's topic re-runs the bind — re-binding re-aims the join. A pulled bug or quick-fix is never bound: it rode in as material for the topics it bears on.
+A harvest that renamed a bound item's topic re-runs the bind — re-binding re-aims the join.
 
 → Proceed to **B. Write Topics Identified**.
 

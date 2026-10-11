@@ -8,31 +8,35 @@ The caller provides `work_unit`, `topic`, and `phase` (the session's own). The u
 
 From inside a phase the park is one verb. The roadmap skill is the product session and is never invoked here.
 
-## A. Which Backlog
+## A. Where It Waits
 
-Two backlogs, and the user's own words usually name one: the roadmap holds what they place, the inbox what they leave unplaced.
+The roadmap holds what the user has decided to do, waiting under a horizon; the inbox holds what is not decided yet. Their own words usually say which, and a word can be a horizon's name, so read the map's horizons first:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap state
+```
 
 #### If the words name a horizon
 
-A label already on the map, or a new one in their own words — "under Next", "that's a v2 thing".
+A label in `horizons`, or a new one in their own words — "under Next", "that's a v2 thing".
 
 → Proceed to **C. Park**.
 
 #### If the words place it without naming a horizon
 
-"next", "after this", "on the roadmap".
+"next", "after this", "on the roadmap", "someday".
 
 → Proceed to **B. The Horizon**.
 
-#### If the words leave it unplaced
+#### If the words leave it undecided
 
-"inbox", "log it", "someday", "maybe never".
+"inbox", "log it", "maybe", "not sure", "maybe never".
 
 → Proceed to **D. Capture**.
 
 #### Otherwise
 
-The instruction says put it aside and no more — "backlog it", "later", "not now". Only the user can say which backlog, so ask. Write `{"idea": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, then render the gate:
+The instruction says put it aside and no more — "backlog it", "later", "not now", none of them a label in `horizons` (a horizon called Later makes "later" a placement under the first branch). Only the user can say where it waits, so ask. Write `{"title": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, then render the gate:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json

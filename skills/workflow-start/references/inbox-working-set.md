@@ -169,7 +169,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-content --pa
 
 ## F. Work the Set
 
-The DATA `set_type` is the work-type pre-seed, taken from the largest kind in the set: quick-fixes only → `quick-fix`; any bug and no idea → `bugfix`; any idea → `none`, where discovery decides the shape from the ideas and the bugs and quick-fixes ride along as seeds that never set or enlarge it.
+The DATA `set_type` is the set's work-type pre-seed; discovery's detection core confirms it, and judges the shape where it is `none`.
 
 Build `inbox_seeds` — the set items' inbox paths, comma-joined.
 

@@ -24,10 +24,10 @@ Capture the point via the `workflow-log-idea` skill so it lands in the inbox for
 
 **If `roadmap`:**
 
-Confirm the horizon in conversation (propose from the user's own staging words when they placed it; ask when they didn't), then park — the roadmap is born at the first park, and the verb validates and self-commits:
+Confirm the horizon in conversation (propose from the user's own staging words when they placed it; ask when they didn't), then park it as its `{kind}` — `bug` for something broken, `quick-fix` for a small mechanical change, `idea` for anything else, an idea at capability grain. The roadmap is born at the first park, and the verb validates and self-commits:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discussion/{topic}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/discussion/{topic}.md
 ```
 
 Note the park in the Summary so the discussion records where the point went.

@@ -6,10 +6,10 @@
 
 The caller provides `work_unit`, `topic`, `phase` (`research` or `discussion` — the session's own phase), the `point` with its discussed context, and `reason` — `off-topic` (the default when omitted: a point this session judged not its own) or `grown-thread` (a thread grown inside this topic that has earned a topic of its own — on `research`, its register `slug` comes with it). Either way the point's home on an epic is a sibling topic, existing or new. Offer to send it, resolve the target yourself, and send it where it belongs.
 
-**If the point is a staged product capability** — the user placed it beyond this epic (*"that's a v2 thing"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic. A surfaced capability parks; a topic already on the map postpones instead — the postponing door. Park it (born at the first park; the verb validates and self-commits), note it in the session's running record, and continue — capture-weight, never shaping:
+**If the point is staged beyond this epic** — the user placed it there (*"that's a v2 thing"*, *"fix that after launch"*), or your proposed placement is confirmed in conversation: its home is the roadmap, not a sibling topic, whatever its kind. A surfaced point parks; a topic already on the map postpones instead — the postponing door. Park it as its `{kind}` — `bug` for something broken, `quick-fix` for a small mechanical change, `idea` for anything else, an idea at capability grain. The roadmap is born at the first park, and the verb validates and self-commits. Note the park in the session's running record and continue — capture-weight, never shaping:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
+node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{one-liner}" --origin park:{work_unit} --source {work_unit}/{phase}/{topic}.md
 ```
 
 → Return to caller for **B. Session Loop**.

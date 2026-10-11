@@ -160,7 +160,7 @@ Research that concluded with nothing to carry forward under its own name. The to
 Where thoughts are put down without stopping: ideas, bugs and quick-fixes captured in a line ("log that as an idea"), waiting until decided. Triaging it from workflow start works a set of any mix: archive it, put it on the roadmap, or start work on it now.
 
 **backlog**:
-Putting something aside from any conversation, whichever phase you are in. It covers both homes: a park onto the roadmap when you place it, an inbox note when you don't — and you are asked which one when your words leave it open. The roadmap's backlog is whichever horizon you name for it, such as Backlog or Later.
+Putting something aside from any conversation, whichever phase you are in. It covers both homes: a park onto the roadmap when you have decided to do it, an inbox note when you haven't yet — and you are asked where it should wait when your words leave it open. The roadmap's backlog is whichever horizon you name for it, such as Backlog or Later.
 
 **seed**:
 The inbox note a piece of work was started from, moved into the work as its permanent record of origin.
