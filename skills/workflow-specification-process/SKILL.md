@@ -27,10 +27,10 @@ The source material is the specification item's `sources` — an epic grouping's
 
 **If source material seems incomplete or unclear:**
 
-> *Output the next fenced block as markdown (not a code block):*
+Write the payload to `.workflows/.cache/{work_unit}/specification/{topic}/source-concern.json` with the Write tool — `{"concern": "{what is incomplete or unclear}"}`, one clause the ask's sentence carries after "I have the source material, but" — then fetch the ask and emit its DISPLAY section verbatim per its marker:
 
-```
-I have the source material, but {concern}. Should I proceed as-is, or is there additional material I should review?
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render source-concern {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/source-concern.json
 ```
 
 **STOP.** Wait for user response.

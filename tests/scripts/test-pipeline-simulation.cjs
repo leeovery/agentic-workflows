@@ -983,13 +983,16 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   const blockGate = sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'blocked', '--file', sides], { expect: 'content' });
   assert.match(blockGate, /\*\*`1`\*\*\s+→ Keep the cancellation, return the payment \(recommended\)/, 'the recommended side renders first');
   sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'failed'], { expect: 'content' });
-  sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
   // Code has no layout to derive a scope from — this is the one commit whose
   // paths Claude names.
   sim.write(`src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
   sim.write(`src/${topic}-untouched.js`, '// a file this task did not write\n');
+  // The analysis loop's checkpoint reads the dirty code from git: nothing an
+  // `impl(…):` commit touched yet, so both files are unexpected and the gate stands.
+  assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
+    /implementation_files \(0\):\nunexpected_files \(1\):\n {2}src\/\n[\s\S]*- src\/ \(untracked\)[\s\S]*MENU: checkpoint files gate/);
   const codeCommit = sim.run(['commit', '--paths', `src/${topic}.js`, '-m', `feat(${topic}): the task`,
     '--for', wu, `implementation/${topic}`]);
   assert.deepStrictEqual(codeCommit.left_dirty, [`src/${topic}-untouched.js`],
@@ -1026,6 +1029,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'false',
     'nothing for the backstop to delete');
   sim.refuses(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank'], /not found/);
+  // The task loop's close counts the tasks implemented, held to what was recorded.
+  assert.match(sim.render(['tasks-complete', `${wu}.implementation.${topic}`, '--count', '1'], { expect: 'content' }),
+    /All tasks complete\. 1 task implemented\./);
   sim.render(['conclude-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
@@ -1601,6 +1607,12 @@ describe('pipeline simulation', () => {
     const closed = sim.run(['agent', 'incorporate', wu, 'investigation', wu, val.id]);
     assert.strictEqual(closed.status, 'incorporated');
 
+    // Blocked on something only the user knows, the trace asks from a payload.
+    const traceAsk = sim.write(`.workflows/.cache/${wu}/investigation/${wu}/trace-question.json`,
+      { question: 'Does the crash need a cold start to reproduce?' });
+    assert.match(sim.render(['trace-question', `${wu}.investigation.${wu}`, '--file', traceAsk], { expect: 'content' }),
+      /DISPLAY: trace question[^\n]*\nDoes the crash need a cold start to reproduce\?/);
+
     // The findings sign-off (findings-signoff B) is read from the
     // investigation file, and the gate refuses a topic that has none.
     assert.match(sim.render(['findings-signoff-gate', `${wu}.investigation.${wu}`], { expect: 'content' }),
@@ -1691,7 +1703,11 @@ describe('pipeline simulation', () => {
     // so spec_commit always names a commit containing the specification.
     handoff(sim, `/workflow-scoping-process quick-fix ${wu}`);
     handoffEntry(sim, wu, 'scoping', wu);
+    assert.match(sim.render(['scoping-questions', wu, '--open', 'where,exclusions'], { expect: 'content' }),
+      /Scoping: Typo\n\nA few questions to scope this change:\n\n- Where in the codebase\?/);
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
+    assert.match(sim.render(['spec-written', wu], { expect: 'content' }),
+      new RegExp(`Specification written: \\.workflows/${wu}/specification/${wu}/specification\\.md`));
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, '# Plan\n');
@@ -2489,6 +2505,8 @@ describe('pipeline simulation', () => {
     // afresh — and a superseded one drops out of the read.
     for (const { topic } of sim.run(['topic', 'incorporations', wu, 'unified']).incorporations) {
       sim.run(['topic', 'supersede', wu, 'specification', topic, '--by', 'unified']);
+      assert.match(sim.render(['topic-receipt', `${wu}.specification.${topic}`, '--verb', 'supersede', '--warn'], { expect: 'content' }),
+        /⚑ Knowledge removal warning\n {4}The spec is superseded\./);
     }
     assert.strictEqual(sim.manifest(wu).phases.specification.items.alpha.superseded_by, 'unified');
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'unified']).incorporations, []);
@@ -2521,8 +2539,11 @@ describe('pipeline simulation', () => {
     // approval over the resolutions the plan recorded.
     assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'blocking',
       '--blocking', 'alpha'], { expect: 'content' }), /Alpha\n {2}├─ Needs alpha shipped\n {2}└─ No plan exists[\s\S]*MENU: blocking dependencies gate/);
+    // One blocking dependency leaves nothing to pick; leaving to implement it is the terminal blocker.
     assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'pick',
-      '--blocking', 'alpha'], { expect: 'content' }), /\*\*`1`\*\* → Alpha — Needs alpha shipped/);
+      '--blocking', 'alpha'], { expect: 'content' }), /DISPLAY: auto-select[^\n]*\nAutomatically proceeding with "Alpha"\./);
+    assert.match(sim.render(['external-dependency-gate', `${wu}.planning.unified`, '--variant', 'exit',
+      '--blocking', 'alpha'], { expect: 'content' }), /⚑ "Unified" is blocked until these dependencies are resolved/);
     sim.render(['dependency-approval-gate', `${wu}.planning.unified`, '--variant', 'resolution'], { expect: 'content' });
     const epicDetailNow = () => EPIC_GATEWAY.discover(sim.dir, wu);
     const menuNow = () => require(path.join(ROOT, 'skills/workflow-engine/scripts/lib.cjs')).project.epicMenu(wu, epicDetailNow());
@@ -2645,8 +2666,16 @@ describe('pipeline simulation', () => {
       /Specification review complete — 1 cycle\(s\), all tracking files finalised\./);
     sim.refuses(['render', 'review-loop', `${wu}.review.unified`, '--variant', 'complete'],
       /address must be <work_unit>\.planning\|specification\.<topic>/);
-    assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'assessment'], { expect: 'content' }),
-      /Confirm this assessment\?/);
+    // The specification's ask over unclear sources, and the epic's
+    // cross-cutting assessment above its confirm, each from a judgment payload.
+    const concern = sim.write(`.workflows/.cache/${wu}/specification/unified/source-concern.json`,
+      { concern: 'the beta discussion never settles retries' });
+    assert.match(sim.render(['source-concern', `${wu}.specification.unified`, '--file', concern], { expect: 'content' }),
+      /I have the source material, but the beta discussion never settles retries\. Should I proceed as-is/);
+    const assessment = sim.write(`.workflows/.cache/${wu}/specification/unified/assessment.json`,
+      { cross_cutting: false, rationale: 'It builds the unified pipeline.' });
+    assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'assessment', '--file', assessment], { expect: 'content' }),
+      /This specification is directly plannable[\s\S]*Confirm this assessment\?/);
     assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'signoff'], { expect: 'content' }),
       /Ready to conclude\?/);
     sim.refuses(['render', 'spec-review-gate', `${wu}.review.unified`, '--variant', 'reloop'],
@@ -4615,8 +4644,10 @@ describe('pipeline simulation', () => {
     // Gates are fetched at their own stage — the task verbs answer with pure JSON.
     assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: task gate/, 'gated task gate renders its menu');
-    assert.match(sim.render(['blocked-tasks'], { expect: 'content' }),
-      /MENU: blocked tasks/, 'blocked-tasks stop renders its menu');
+    const blockedPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/blocked-tasks.json`,
+      { tasks: [{ id: `${wu}-1-2`, name: 'Expire idle sessions', blockers: [{ id: `${wu}-1-1`, status: 'in-progress' }] }] });
+    assert.match(sim.render(['blocked-tasks', `${wu}.implementation.${wu}`, '--file', blockedPayload], { expect: 'content' }),
+      /1 task is still open[\s\S]*MENU: blocked tasks/, 'blocked-tasks stop renders the open tasks above its menu');
     const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
       { findings: [{ title: 'Loose end', severity: 'minor' }] });
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);

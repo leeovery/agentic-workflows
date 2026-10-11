@@ -344,6 +344,39 @@ describe('topic-receipt — the postpone verb', () => {
   });
 });
 
+describe('topic-receipt — the supersede verb', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        specification: { items: { old: { status: 'superseded', superseded_by: 'unified' }, unified: { status: 'completed' } } },
+        discussion: { items: { old: { status: 'completed' } } },
+      },
+    });
+  });
+  afterEach(() => { teardown(dir); });
+
+  it('renders the knowledge removal advisory over a superseded specification, empty without --warn', () => {
+    assert.strictEqual(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.old', verb: 'supersede' }), '');
+    assert.strictEqual(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.old', verb: 'supersede', warn: '1' }), [
+      '=== DISPLAY: kb warning (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '  ⚑ Knowledge removal warning',
+      '    The spec is superseded. The next start removes its chunks from the knowledge base.',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a specification the supersede has not reached, and any other phase', () => {
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.unified', verb: 'supersede', warn: '1' }),
+      /"unified" is not superseded — the supersede has not run/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.ghost', verb: 'supersede' }),
+      /"ghost" is not superseded — the supersede has not run/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.old', verb: 'supersede' }),
+      /--verb supersede addresses a specification — <work_unit>\.specification\.<spec>, got phase "discussion"/);
+  });
+});
+
 describe('topic-receipt — the restore verb', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -410,7 +443,7 @@ describe('topic-receipt — the unit addresses', () => {
       /--verb reactivate addresses a unit — <work_unit>\.discovery\.<topic> or <work_unit>\.specification\.<spec>, got phase "research"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'cancel' }), /no topic "ghost"/);
     assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.specification.ghost', verb: 'cancel' }), /no specification item "ghost"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, cancel, reactivate, postpone, or restore/);
+    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be complete, supersede, cancel, reactivate, postpone, or restore/);
   });
 
   it('complete keeps its phase-item address', () => {
@@ -2797,12 +2830,52 @@ describe('render spec-completion-gate', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('assessment variant renders the confirm menu', () => {
-    const out = renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'assessment' });
-    assert.ok(out.includes('=== MENU: spec assessment gate'));
-    assert.ok(out.includes('**`◆ Confirm this assessment?`**'));
-    assert.ok(/\*\*`y\/yes`\*\* +→ Confirm assessment/.test(out));
-    assert.ok(/\*\*Comment\*\* +→ Suggest a different classification/.test(out));
+  const ASSESSMENT_MENU = [
+    "=== MENU: spec assessment gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+    DOTS,
+    '**`◆ Confirm this assessment?`**',
+    '',
+    '**`y/yes`**   → Confirm assessment',
+    '**Comment** → Suggest a different classification',
+    '',
+  ];
+  const assess = (payload) => renderSurface(dir, 'spec-completion-gate', {
+    dotpath: 'pay.specification.portal', variant: 'assessment', file: writePayload(dir, 'assessment.json', payload),
+  });
+
+  it('assessment variant renders a cross-cutting verdict and its wrapped rationale above the confirm menu', () => {
+    assert.strictEqual(assess({
+      cross_cutting: true,
+      rationale: 'It defines a caching strategy that will inform how multiple features handle data retrieval, rather than being a standalone piece of functionality to build.',
+    }), [
+      '=== DISPLAY: cross-cutting assessment (emit verbatim as a text code block (```text fence)) ===',
+      'Cross-Cutting Assessment',
+      '',
+      'This specification appears to be cross-cutting.',
+      '',
+      'It defines a caching strategy that will inform how multiple',
+      'features handle data retrieval, rather than being a standalone',
+      'piece of functionality to build.',
+      '',
+      ...ASSESSMENT_MENU,
+    ].join('\n'));
+  });
+
+  it('assessment variant renders the directly plannable verdict', () => {
+    const out = assess({ cross_cutting: false, rationale: 'It builds the refund endpoint.' });
+    assert.match(out, /^Cross-Cutting Assessment\n\nThis specification is directly plannable — no cross-cutting promotion needed\.\n\nIt builds the refund endpoint\.\n$/m);
+    assert.ok(out.endsWith(ASSESSMENT_MENU.join('\n')));
+  });
+
+  it('assessment variant refuses a missing payload, a verdict that is not a boolean, and an empty rationale; signoff takes no payload', () => {
+    assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'assessment' }),
+      /--variant assessment takes --file <payload\.json>/);
+    assert.throws(() => assess({ cross_cutting: 'yes', rationale: 'r' }), /"cross_cutting" must be true or false/);
+    assert.throws(() => assess({ rationale: 'r' }), /"cross_cutting" must be true or false/);
+    assert.throws(() => assess({ cross_cutting: true, rationale: '  ' }), /"rationale" must be a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'spec-completion-gate', {
+      dotpath: 'pay.specification.portal', variant: 'signoff', file: writePayload(dir, 'assessment.json', { cross_cutting: true, rationale: 'r' }),
+    }), /--variant signoff takes no --file/);
   });
 
   it('signoff variant renders the conclude consent', () => {
@@ -2818,6 +2891,36 @@ describe('render spec-completion-gate', () => {
     assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.specification.portal', variant: 'sign-off' }), /--variant must be "assessment" or "signoff"/);
     writeManifest(dir, 'pay', { phases: { discussion: { items: { portal: { status: 'in-progress' } } } } });
     assert.throws(() => renderSurface(dir, 'spec-completion-gate', { dotpath: 'pay.discussion.portal', variant: 'signoff' }), /address must be <work_unit>\.specification\.<topic>/);
+  });
+});
+
+describe('render source-concern', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { specification: { items: { portal: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+  const concern = (payload) => renderSurface(dir, 'source-concern', {
+    dotpath: 'pay.specification.portal', file: writePayload(dir, 'source-concern.json', payload),
+  });
+
+  it('carries the concern inside the fixed ask, a markdown sentence that ends the turn', () => {
+    assert.strictEqual(concern({ concern: 'the refund discussion never settles partial refunds' }), [
+      "=== DISPLAY: source concern (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      'I have the source material, but the refund discussion never settles partial refunds. Should I proceed as-is, or is there additional material I should review?',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing payload, an empty or multi-line concern, and a non-specification address', () => {
+    assert.throws(() => renderSurface(dir, 'source-concern', { dotpath: 'pay.specification.portal' }), /--file <payload\.json> is required/);
+    assert.throws(() => concern({ concern: ' ' }), /"concern" must be a non-empty string/);
+    assert.throws(() => concern({}), /"concern" must be a non-empty string/);
+    assert.throws(() => concern({ concern: 'one\ntwo' }), /"concern" must be a single line/);
+    assert.throws(() => renderSurface(dir, 'source-concern', {
+      dotpath: 'pay.discussion.portal', file: writePayload(dir, 'source-concern.json', { concern: 'x' }),
+    }), /address must be <work_unit>\.specification\.<topic>, got phase "discussion"/);
   });
 });
 
@@ -3012,6 +3115,41 @@ describe('render hypothesis-board', () => {
     assert.throws(() => render('plan', { hypotheses: [confirmed], trace_lines: ['t'], depth: 'deep', depth_reasoning: 'x' }), /"depth" must be one of straight-through\/check-ins/);
     assert.throws(() => render('resume', { hypotheses: [confirmed], depth: 'check-ins' }), /"remaining" must be a non-empty string/);
     assert.throws(() => render('pivot', { hypotheses: [confirmed], trace_lines: ['t'] }), /"changed" must be a non-empty string/);
+  });
+});
+
+describe('render trace-question', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { phases: { investigation: { items: { hooks: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+  const ask = (payload) => renderSurface(dir, 'trace-question', {
+    dotpath: 'hooks.investigation.hooks', file: writePayload(dir, 'trace-question.json', payload),
+  });
+
+  it('renders the question as a text code block that ends the turn, each paragraph wrapped at the display width', () => {
+    assert.strictEqual(ask({
+      question: 'Does the failure need a webhook retry to reproduce? I replayed the payload against a clean queue and the handler succeeded every time.\n\nWithout the retry path the trace has nowhere left to go.',
+    }), [
+      "=== DISPLAY: trace question (emit verbatim as a text code block (```text fence), then STOP for the user's response) ===",
+      'Does the failure need a webhook retry to reproduce? I replayed',
+      'the payload against a clean queue and the handler succeeded every',
+      'time.',
+      '',
+      'Without the retry path the trace has nowhere left to go.',
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a missing payload, an empty question and a non-investigation address', () => {
+    assert.throws(() => renderSurface(dir, 'trace-question', { dotpath: 'hooks.investigation.hooks' }), /--file <payload\.json> is required/);
+    assert.throws(() => ask({ question: '' }), /"question" must be a non-empty string/);
+    assert.throws(() => ask({}), /"question" must be a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'trace-question', {
+      dotpath: 'hooks.discussion.hooks', file: writePayload(dir, 'trace-question.json', { question: 'q' }),
+    }), /address must be <work_unit>\.investigation\.<topic>, got phase "discussion"/);
   });
 });
 
@@ -5208,7 +5346,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -7642,8 +7780,31 @@ describe('render — the adopted phase gates', () => {
     ].join('\n'));
   });
 
+  it('external-dependency-gate: a set of one leaves nothing to pick — the pick proceeds with it', () => {
+    assert.strictEqual(renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'pick', blocking: 'data-model',
+    }), [
+      '=== DISPLAY: auto-select (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      'Automatically proceeding with "Data Model".',
+      '',
+    ].join('\n'));
+  });
+
+  it('external-dependency-gate: the exit is the terminal blocker over the plan', () => {
+    assert.strictEqual(renderSurface(dir, 'external-dependency-gate', {
+      dotpath: 'pay.planning.checkout', variant: 'exit', blocking: 'data-model,auth-flow',
+    }), [
+      '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
+      '⚑ "Checkout" is blocked until these dependencies are resolved',
+      '',
+      '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
+      '> Use /workflow-start to navigate to the blocking work.',
+      '',
+    ].join('\n'));
+  });
+
   it('external-dependency-gate: refuses a foreign name, an empty set, a dependency that does not block and a non-planning address', () => {
-    for (const variant of ['blocking', 'pick']) {
+    for (const variant of ['blocking', 'pick', 'exit']) {
       assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant }),
         /--blocking <topic,topic,…> is required/);
     }
@@ -7653,7 +7814,7 @@ describe('render — the adopted phase gates', () => {
     assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.implementation.checkout', variant: 'blocking' }),
       /address must be <work_unit>\.planning\.<topic>, got phase "implementation"/);
     assert.throws(() => renderSurface(dir, 'external-dependency-gate', { dotpath: 'pay.planning.checkout', variant: 'nope' }),
-      /--variant must be "blocking" or "pick"/);
+      /--variant must be "blocking", "pick" or "exit", got "nope"/);
     writeManifest(dir, 'pay', {
       phases: {
         planning: {
@@ -7677,16 +7838,76 @@ describe('render — the adopted phase gates', () => {
     }), /"reports" is resolved but names no internal_id/);
   });
 
-  it('checkpoint-files-gate: the analysis loop\'s static stop', () => {
-    const checkpoint = renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' });
-    assert.match(checkpoint, /MENU: checkpoint files gate/);
-    assert.match(checkpoint, /`◆ Include unexpected files in the checkpoint commit\?`/);
-    assert.match(unwrap(checkpoint), /\*\*`y\/yes`\*\*\s+→ Include all/);
-    assert.match(unwrap(checkpoint), /\*\*`s\/skip`\*\*\s+→ Exclude unexpected files, commit only implementation files/);
-    assert.match(unwrap(checkpoint), /\*\*Comment\*\* → Specify which to include/);
+  describe('checkpoint-files-gate: the dirty code read from git', () => {
+    const { git } = require('./engine-harness.cjs');
+    const write = (rel, text) => {
+      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+      fs.writeFileSync(path.join(dir, rel), text);
+    };
+    const commit = (message, ...paths) => {
+      git(dir, ['add', '--', ...paths]);
+      git(dir, ['commit', '-q', '-m', message]);
+    };
+    beforeEach(() => {
+      git(dir, ['init', '-q', '-b', 'main']);
+      git(dir, ['config', 'user.email', 'test@example.com']);
+      git(dir, ['config', 'user.name', 'Test']);
+      git(dir, ['config', 'commit.gpgsign', 'false']);
+      write('src/cart.js', '1');
+      write('src/billing file.js', '1');
+      write('README.md', '1');
+      commit('impl(pay): Tcheckout-1-1 — the cart', 'src/cart.js', 'src/billing file.js');
+      commit('docs: impl(pay): named mid-subject, not a task commit', 'README.md');
+    });
+    const checkpoint = () => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.implementation.checkout' });
 
-    assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout' }),
-      /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+    it('names both sets in DATA, lists the unexpected files with their state, and asks what the commit carries', () => {
+      write('src/cart.js', '2');
+      write('src/billing file.js', '2');
+      write('README.md', '2');
+      write('scratch/notes.txt', 'x');
+      write('.workflows/pay/implementation/checkout/notes.md', 'x');
+      assert.strictEqual(checkpoint(), [
+        '=== DATA (reason from this — never display or parse the sections below) ===',
+        'implementation_files (2):',
+        '  src/billing file.js',
+        '  src/cart.js',
+        'unexpected_files (2):',
+        '  README.md',
+        '  scratch/',
+        '',
+        '=== DISPLAY: unexpected files (emit verbatim as a text code block (```text fence)) ===',
+        'Pre-analysis checkpoint — unexpected files detected:',
+        '- README.md (modified)',
+        '- scratch/ (untracked)',
+        '',
+        "=== MENU: checkpoint files gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+        DOTS,
+        '**`◆ Include unexpected files in the checkpoint commit?`**',
+        '',
+        '**`y/yes`**   → Include all',
+        '**`s/skip`**  → Exclude unexpected files, commit only implementation',
+        `${NB(10)}files`,
+        '**Comment** → Specify which to include',
+        '',
+      ].join('\n'));
+    });
+
+    it('with nothing unexpected, the DATA alone — no display, no gate', () => {
+      write('src/cart.js', '2');
+      assert.strictEqual(checkpoint(), [
+        '=== DATA (reason from this — never display or parse the sections below) ===',
+        'implementation_files (1):',
+        '  src/cart.js',
+        'unexpected_files (0):',
+        '',
+      ].join('\n'));
+    });
+
+    it('refuses a non-implementation address', () => {
+      assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout' }),
+        /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+    });
   });
 
   it('executor-block-gate: a block renders the fork\'s sides recommended-first, a failure offers the retry', () => {
@@ -8079,6 +8300,57 @@ describe('render cross-cutting-references', () => {
     });
     assert.throws(() => renderSurface(dir, 'cross-cutting-references', { file }),
       /"cache-policy" is not a cross-cutting work unit with a completed specification/);
+  });
+});
+
+describe('render scoping-questions / spec-written', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'support-email', { work_type: 'quick-fix' });
+    writeManifest(dir, 'billing', { work_type: 'feature' });
+  });
+  afterEach(() => teardown(dir));
+
+  it('asks the four scoping questions in their fixed order, an ask that ends the turn', () => {
+    assert.strictEqual(renderSurface(dir, 'scoping-questions', { dotpath: 'support-email', open: 'exclusions,why,where,what' }), [
+      "=== DISPLAY: scoping questions (emit verbatim as a text code block (```text fence), then STOP for the user's response) ===",
+      'Scoping: Support Email',
+      '',
+      'A few questions to scope this change:',
+      '',
+      '- What exactly is being changed? (pattern, syntax, API)',
+      '- Where in the codebase? (files, directories, packages)',
+      '- Why? (deprecation, consistency, modernisation)',
+      '- Any exceptions or areas to exclude?',
+      '',
+    ].join('\n'));
+  });
+
+  it('asks only the questions the carrier leaves open', () => {
+    const out = renderSurface(dir, 'scoping-questions', { dotpath: 'support-email', open: 'where, exclusions' });
+    assert.match(out, /A few questions to scope this change:\n\n- Where in the codebase\? \(files, directories, packages\)\n- Any exceptions or areas to exclude\?\n$/);
+    assert.doesNotMatch(out, /What exactly|Why\?/);
+  });
+
+  it('scoping-questions refuses no open question, an unknown key, and a unit that is not a quick-fix', () => {
+    assert.throws(() => renderSurface(dir, 'scoping-questions', { dotpath: 'support-email' }), /--open <what,where,why,exclusions> is required/);
+    assert.throws(() => renderSurface(dir, 'scoping-questions', { dotpath: 'support-email', open: ' , ' }), /--open <what,where,why,exclusions> is required/);
+    assert.throws(() => renderSurface(dir, 'scoping-questions', { dotpath: 'support-email', open: 'what,how' }), /unknown question "how" — one of what, where, why, exclusions/);
+    assert.throws(() => renderSurface(dir, 'scoping-questions', { dotpath: 'billing', open: 'what' }), /"billing" is a feature — scoping is the quick-fix's own/);
+    assert.throws(() => renderSurface(dir, 'scoping-questions', { dotpath: 'support-email.scoping.support-email', open: 'what' }), /address must be a bare <work_unit>/);
+  });
+
+  it('spec-written confirms the specification the layout places, once it is on disk', () => {
+    assert.throws(() => renderSurface(dir, 'spec-written', { dotpath: 'support-email' }),
+      /\.workflows\/support-email\/specification\/support-email\/specification\.md does not exist — the specification has not been written/);
+    writePayload(dir, '.workflows/support-email/specification/support-email/specification.md', '# Specification: Support Email\n');
+    assert.strictEqual(renderSurface(dir, 'spec-written', { dotpath: 'support-email' }), [
+      '=== DISPLAY: spec written (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      'Specification written: .workflows/support-email/specification/support-email/specification.md',
+      '',
+    ].join('\n'));
+    assert.throws(() => renderSurface(dir, 'spec-written', { dotpath: 'billing' }), /"billing" is a feature — scoping is the quick-fix's own/);
   });
 });
 

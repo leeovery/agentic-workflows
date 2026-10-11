@@ -20,28 +20,10 @@ Before asking for sign-off, assess whether this specification defines cross-cutt
 - Can be planned with phases, tasks, acceptance criteria
 - Results in a standalone implementation
 
-Present your assessment to the user:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Cross-Cutting Assessment
-
-@if(cross_cutting)
-This specification appears to be cross-cutting.
-@else
-This specification is directly plannable — no cross-cutting promotion needed.
-@endif
-
-{Brief rationale — e.g., "It defines a caching strategy that will inform how
-multiple features handle data retrieval, rather than being a standalone piece
-of functionality to build."}
-```
-
-Fetch the gate and emit its section verbatim per its marker:
+Write your assessment to `.workflows/.cache/{work_unit}/specification/{topic}/assessment.json` with the Write tool — `{"cross_cutting": {true|false}, "rationale": "{brief rationale}"}`, the rationale a sentence or two (e.g. "It defines a caching strategy that will inform how multiple features handle data retrieval, rather than being a standalone piece of functionality to build.") — then fetch the assessment and its gate, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant assessment
+node .claude/skills/workflow-engine/scripts/engine.cjs render spec-completion-gate {work_unit}.specification.{topic} --variant assessment --file .workflows/.cache/{work_unit}/specification/{topic}/assessment.json
 ```
 
 **STOP.** Wait for user response.
@@ -164,14 +146,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs topic incorporations {wor
    node .claude/skills/workflow-engine/scripts/engine.cjs topic supersede {work_unit} specification {incorporated} --by {topic}
    ```
 
-   If the JSON response's `warnings` is non-empty, display them but do not block — the supersession is already recorded:
+   When the JSON response's `warnings` is non-empty, fetch and emit the `DISPLAY: kb warning` section verbatim per its marker — the warning never blocks; the supersession is already recorded:
 
-   > *Output the next fenced block as a text code block (```text fence):*
-
-   ```text
-   ⚑ Knowledge removal warning
-     {warning}
-     The spec is superseded. The next start removes its chunks from the knowledge base.
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs render topic-receipt {work_unit}.specification.{incorporated} --verb supersede --warn
    ```
 
 2. Inform the user which specifications were superseded
