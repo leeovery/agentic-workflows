@@ -124,7 +124,7 @@ it, so an old checkout will look set up and quietly not be.
 - **Snapshot drift is expected after an engine change.** A red
   `prose-test snapshots` suite means a world moved; CLAUDE.md (Prose
   tests) says how it is regenerated.
-- **`CHANGELOG.md` is generated.** Never edit it by hand.
+- **`CHANGELOG.md` is generated** — CLAUDE.md (Changelog).
 - **Released migrations are frozen** — CLAUDE.md (Migrations).
 
 ## Conventions
