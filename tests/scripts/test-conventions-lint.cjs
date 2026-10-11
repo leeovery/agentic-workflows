@@ -652,12 +652,14 @@ function checkInertLoadChrome(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 13 — nothing a person sees from prose varies (CONVENTIONS' Engine
-// Output Sections). A fence headed by a rendering instruction — a menu, a
-// display, a marker, a signpost — carrying anything that varies (a braced
-// token or an @if/@foreach directive) is the engine's to render; a static
-// fence is fine. The capture skills (`workflow-log-*`) are exempt: they are
-// not workflow skills, and deliberately structureless.
+// Check 13 — a fenced block prose authors is static (CONVENTIONS' Engine
+// Output Sections). A fence headed by a rendering instruction — a display, a
+// marker, a signpost, an ask — carrying anything that varies (a braced token
+// or an @if/@foreach directive) is refused: what has a shape of its own or
+// reads state renders from the engine, and a plain line naming values the
+// conversation holds is Claude's own, said inline, never fenced. The capture
+// skills (`workflow-log-*`) are exempt: they are not workflow skills, and
+// deliberately structureless.
 // ---------------------------------------------------------------------------
 
 // The capture skills, read from the folder directly under the corpus root's
