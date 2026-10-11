@@ -298,7 +298,7 @@ Commands:
   render off-topic-offer  <wu.phase.topic> --file <payload.json> [--variant discussion]
   render backlog-gate     <wu.phase.topic> --file <payload.json>
   render map-op-gate      <wu> --op edit-summary|edit-description|remove|rename|reroute|close|reopen --file <payload.json>
-  render candidate-gate   <wu> --file <payload.json>
+  render candidate-gate   <wu> --file <payload.json> | <wu> --variant announce
   render dismissed-topics <wu>
   render send-closed-target <wu.discovery.target>
   render conclude-gate    <wu.phase.topic>   (discussion|investigation|implementation|planning)
@@ -310,7 +310,7 @@ Commands:
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
   render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
-  render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
+  render summary-backfill-gate <wu> --variant batch|proposed|prompt|unsourced [--file <payload.json>] [--topic <name>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
@@ -339,6 +339,7 @@ Commands:
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <research|discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
+  render compliance-issues --file <payload.json>
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
@@ -376,6 +377,8 @@ Commands:
   render archived-delete-gate --path <archived path>
   render inbox-content     --path <inbox path>[,<inbox path>…]
   render inbox-archive-receipt --path <archived path>[,<archived path>…]
+  render inbox-restore-receipt --path <live path>
+  render inbox-delete-receipt --path <archived path>
   render completed-actions <wu>
   render revisit-phases    <wu>
   render roadmap-view
@@ -413,7 +416,7 @@ Commands:
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
   render legacy-split-gate --variant themes|plan|remove
-  render legacy-split-display --variant candidates|plan|errors --file <payload.json>
+  render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant skipped --source <name>
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)

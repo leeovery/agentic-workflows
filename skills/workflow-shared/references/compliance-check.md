@@ -49,14 +49,16 @@ Self-correct where possible (e.g., make a missing commit now). No need to surfac
 
 Issues are significant when they affect artifacts, code, manifest state, tracking files, or require the user to understand what happened before proceeding. Examples: a skipped step that produced incomplete artifacts, manifest state that doesn't reflect actual progress, code that doesn't match what the plan or specification called for, multiple steps executed out of order.
 
-Surface to the user:
+Surface to the user. Write the issues to `.workflows/.cache/compliance-check.json` with the Write tool — one line naming each significant issue:
 
-> *Output the next fenced block as a text code block (```text fence):*
+```json
+{"issues": ["…"]}
+```
 
-```text
-Compliance Check — Issues Found
+Fetch the heading and emit its DISPLAY section verbatim per its marker:
 
-{number} issue(s) detected during self-check.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render compliance-issues --file .workflows/.cache/compliance-check.json
 ```
 
 For each issue, explain:

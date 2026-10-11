@@ -282,6 +282,16 @@ function inboxArchiveReceipt(count) {
   return confirmation(`Archived ${count} item${count === 1 ? '' : 's'} from the inbox.`);
 }
 
+/** The archived item's restore receipt. @param {string} title @returns {string} */
+function inboxRestoreReceipt(title) {
+  return confirmation(`Restored "${title}" to the inbox.`);
+}
+
+/** The archived item's delete receipt. @param {string} title @returns {string} */
+function inboxDeleteReceipt(title) {
+  return confirmation(`Deleted "${title}".`);
+}
+
 /**
  * Session close (discovery and roadmap alike) — the indexing advisory; the
  * session is closed and committed either way. Empty without `--warn`.
@@ -294,4 +304,4 @@ function sessionReceipt({ warn = false } = {}) {
     : '';
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt };

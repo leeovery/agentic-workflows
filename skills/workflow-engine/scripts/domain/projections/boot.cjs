@@ -76,13 +76,43 @@ function configurationName({ provider, model }) {
   return provider ? [provider, model].filter(Boolean).join(' · ') : 'keyword-only';
 }
 
+// Where a provider's missing key is stored without touching the chat: the
+// commands to run in the terminal, each with what it does beneath it.
+/** @param {string} command @param {string} note @returns {string[]} */
+function keyCommand(command, note) {
+  return [`  ${command}`, ...wrapWithPrefix(note, { width: displayWidth(), prefix: '      ' })];
+}
+
+const KEY_ONLY_NOTE = 'Private prompt, input hidden. Stored at ~/.config/workflows/credentials.json (mode 0600).';
+
+/** @type {Record<string, () => string[]>} */
+const KEY_INSTRUCTIONS = {
+  openai: () => [
+    ...wrapWithPrefix('No OpenAI API key was found. Store one without it touching this chat — run ONE of these in your terminal, then come back:', { width: displayWidth() }),
+    '',
+    ...keyCommand(`${WIZARD_COMMAND} --key-only`, KEY_ONLY_NOTE),
+    '',
+    ...keyCommand('export OPENAI_API_KEY=<your key>   # note: inline export lands in shell history — --key-only avoids that',
+      'Shell environment — takes precedence over the stored key.'),
+  ],
+  'openai-compatible': () => [
+    ...wrapWithPrefix('The endpoint requires an API key. Store one without it touching this chat — run this in your terminal, then come back:', { width: displayWidth() }),
+    '',
+    ...keyCommand(`${WIZARD_COMMAND} --key-only --provider openai-compatible`, KEY_ONLY_NOTE),
+  ],
+};
+
+const KEY_PROVIDERS = Object.keys(KEY_INSTRUCTIONS);
+
 // The knowledge gate's menus, keyed by what each asks: reuse = adopt the
 // system configuration (its yes row names it — provider · model, or
 // keyword-only), deviate = the per-project alternatives to it, mode = the
 // search-mode pick with no system configuration to lean on, retry = the
-// re-run after the key is stored, wizard = the wait while the terminal
-// wizard runs (its display names the command).
-/** @type {Record<string, (config: {provider?: string, model?: string}) => {question: string, options: string[], display?: string[]}>} */
+// re-run once the provider's missing key is stored (its display says how,
+// with the guidance against pasting the key between it and the menu),
+// wizard = the wait while the terminal wizard runs (its display names the
+// command).
+/** @type {Record<string, (config: {provider?: string, model?: string}) => {question: string, options: string[], display?: string[], displayInstruction?: string}>} */
 const KNOWLEDGE_GATES = {
   reuse: ({ provider, model }) => ({
     question: 'Use the existing configuration for this project?',
@@ -108,7 +138,9 @@ const KNOWLEDGE_GATES = {
       cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead'),
     ],
   }),
-  retry: () => ({
+  retry: ({ provider }) => ({
+    display: KEY_INSTRUCTIONS[/** @type {string} */ (provider)](),
+    displayInstruction: emitAs('text'),
     question: 'Ready to retry?',
     options: [
       cmdOption('y', 'yes', 'The key is stored — re-run the setup'),
@@ -136,7 +168,7 @@ const KNOWLEDGE_GATE_VARIANTS = Object.keys(KNOWLEDGE_GATES);
  * One of the knowledge gate's menus, beneath the display a variant carries.
  * `config` is the system configuration the reuse variant offers — the
  * provider, with its model when the configuration names one; neither for
- * keyword-only.
+ * keyword-only — or the provider whose key the retry variant asks for.
  * @param {string} variant @param {{provider?: string, model?: string}} [config]
  * @returns {string}
  */
@@ -144,7 +176,7 @@ function knowledgeGate(variant, config = {}) {
   const gate = KNOWLEDGE_GATES[variant](config);
   const gateMenu = section(`MENU: knowledge ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options, { question: gate.question }));
   if (!gate.display) return gateMenu;
-  return [section(`DISPLAY: knowledge ${variant}`, ABOVE_MENU_INSTRUCTION, gate.display.join('\n')), gateMenu].join('\n');
+  return [section(`DISPLAY: knowledge ${variant}`, gate.displayInstruction ?? ABOVE_MENU_INSTRUCTION, gate.display.join('\n')), gateMenu].join('\n');
 }
 
 /**
@@ -157,4 +189,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS };
+module.exports = { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

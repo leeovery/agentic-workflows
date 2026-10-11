@@ -579,11 +579,40 @@ function rerouteItem(cwd, workUnit, name, routing) {
   });
 }
 
+// The way back a closed lifecycle names, shared by both marker ops.
+/** @type {Record<string, string>} */
+const MARKER_CLOSED_PHRASES = {
+  cancelled: "it's cancelled; reactivate it from the epic menu first",
+  postponed: "it's postponed; pull it forward from the roadmap first",
+};
+
+/**
+ * Why a marker op — close as dead end, or reopen — cannot land on a map
+ * item, or null when it can: the phrase the refusal ends on, the one source
+ * the transactions and the map-operation gate read.
+ * @param {string} cwd @param {object} manifest @param {'close'|'reopen'} op @param {string} name
+ * @returns {string|null}
+ */
+function markerRefusal(cwd, manifest, op, name) {
+  const { lifecycle } = computeTopicLifecycle(manifest, name);
+  if (Object.hasOwn(MARKER_CLOSED_PHRASES, lifecycle)) return MARKER_CLOSED_PHRASES[lifecycle];
+  if (op === 'reopen') return lifecycle === 'handled' ? null : "it isn't closed as a dead end, so there's nothing to reopen";
+  if (lifecycle === 'handled') return "it's already closed";
+  const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(cwd, manifest.name, phase, name) > 0);
+  return waiting.length > 0
+    ? `messages wait in its ${waiting.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`
+    : null;
+}
+
+/** What a marker op is called in its refusal. @type {Record<'close'|'reopen', string>} */
+const MARKER_VERBS = { close: 'closed as a dead end', reopen: 'reopened' };
+
 /**
  * Set `handled: true` on a map item — the topic stays on the map as
  * historical anchor but stops prompting for a next action and no longer
  * counts against convergence. Allowed from any lifecycle except
- * already-handled or cancelled. No git commit.
+ * already-handled, cancelled or postponed, and never while messages wait in
+ * its mailbox. No git commit.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} name
@@ -593,20 +622,8 @@ function handleItem(cwd, workUnit, name) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = mapItem(manifest, name);
-    const { lifecycle } = computeTopicLifecycle(manifest, name);
-    if (lifecycle === 'handled') {
-      throw new Error(`"${name}" can't be closed as a dead end — it's already closed`);
-    }
-    if (lifecycle === 'cancelled') {
-      throw new Error(`"${name}" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first`);
-    }
-    if (lifecycle === 'postponed') {
-      throw new Error(`"${name}" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first`);
-    }
-    const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(cwd, workUnit, phase, name) > 0);
-    if (waiting.length > 0) {
-      throw new Error(`"${name}" can't be closed as a dead end — messages wait in its ${waiting.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`);
-    }
+    const refusal = markerRefusal(cwd, manifest, 'close', name);
+    if (refusal) throw new Error(`"${name}" can't be ${MARKER_VERBS.close} — ${refusal}`);
     item.handled = true;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -628,16 +645,8 @@ function unhandleItem(cwd, workUnit, name) {
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = mapItem(manifest, name);
-    const { lifecycle } = computeTopicLifecycle(manifest, name);
-    if (lifecycle === 'cancelled') {
-      throw new Error(`"${name}" can't be reopened — it's cancelled; reactivate it from the epic menu first`);
-    }
-    if (lifecycle === 'postponed') {
-      throw new Error(`"${name}" can't be reopened — it's postponed; pull it forward from the roadmap first`);
-    }
-    if (lifecycle !== 'handled') {
-      throw new Error(`"${name}" can't be reopened — it isn't closed as a dead end, so there's nothing to reopen`);
-    }
+    const refusal = markerRefusal(cwd, manifest, 'reopen', name);
+    if (refusal) throw new Error(`"${name}" can't be ${MARKER_VERBS.reopen} — ${refusal}`);
     delete item.handled;
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
@@ -646,4 +655,4 @@ function unhandleItem(cwd, workUnit, name) {
   });
 }
 
-module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem };
+module.exports = { sequenceMap, addItem, addItemsBatch, editItem, removeItem, renameItem, rerouteItem, setPrior, handleItem, unhandleItem, markerRefusal, MARKER_VERBS };

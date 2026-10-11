@@ -21,6 +21,12 @@ The staging file is `.workflows/{work_unit}/.state/discovery-gap-analysis-candid
 
 Read the staging file (candidate content) and the gate state: `manifest get {work_unit}.discovery analysis_staging.discovery-gap-analysis`. Count the candidates whose `status` is `pending` — call it `K`.
 
+Fetch the announcement — the pending count, or that there is nothing new to review — and emit its DISPLAY section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render candidate-gate {work_unit} --variant announce
+```
+
 #### If `K` is `0`
 
 Nothing to review (the analysis staged nothing, every candidate was pre-resolved at stage time, or all were already approved/skipped on a prior pass).
@@ -31,21 +37,9 @@ A processed gate's state is spent — approved candidates live on the map, skipp
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.discovery analysis_staging.discovery-gap-analysis
 ```
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Nothing new to review.
-```
-
 → Return to caller.
 
 #### If `K` is `1` or more
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Gap analysis surfaced {K} candidate topic(s).
-```
 
 → Proceed to **B. Gate Each Candidate**.
 

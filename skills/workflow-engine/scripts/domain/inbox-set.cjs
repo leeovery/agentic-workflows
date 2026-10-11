@@ -4,13 +4,18 @@
 // Domain ring: inbox pickup collation — the combined, date-ordered item list
 // the pickup and archived sub-views number, the working-set detail (the
 // selection the pickup carries toward discovery), and one archived item by
-// its store path (the gates the archived sub-view fetches over it). Pure over
-// the project's `.workflows/.inbox/` tree plus the caller-held paths: same
-// files, same paths, same answer. Path validation comes from domain/inbox —
+// its store path (the gates the archived sub-view fetches over it), and the
+// receipts' items after a restore or a delete. Pure over the project's
+// `.workflows/.inbox/` tree plus the caller-held paths — and git, for an item
+// deleted out of the tree: same files, same paths, same answer. Path
+// validation comes from domain/inbox —
 // the same layout rules the inbox transactions enforce.
 // ---------------------------------------------------------------------------
 
-const { discoverInbox } = require('./start.cjs');
+const fs = require('fs');
+const path = require('path');
+const { tryGit } = require('../kernel/git.cjs');
+const { discoverInbox, titleOf } = require('./start.cjs');
 const { parseInboxPath, archivedDir, INBOX, ARCHIVED, FOLDER_KIND } = require('./inbox.cjs');
 
 /**
@@ -141,6 +146,44 @@ function archivedItem(cwd, given) {
 }
 
 /**
+ * One live inbox item by its path — what `inbox restore` put back.
+ * @param {string} cwd
+ * @param {string} given  project-relative live inbox path
+ * @returns {PickupItem}
+ */
+function liveItem(cwd, given) {
+  return storeItem(combinedInbox(discoverInbox(cwd)), given, false);
+}
+
+/**
+ * The content git last held at a path the tree no longer has: HEAD's while
+ * the deletion is only staged, else the parent of the commit that deleted it.
+ * @param {string} cwd @param {string} rel @returns {string|null}
+ */
+function deletedContent(cwd, rel) {
+  const staged = tryGit(cwd, ['show', `HEAD:${rel}`]);
+  if (staged !== null) return staged;
+  const deletion = (tryGit(cwd, ['log', '-1', '--format=%H', '--diff-filter=D', '--', rel]) || '').trim();
+  return deletion ? tryGit(cwd, ['show', `${deletion}^:${rel}`]) : null;
+}
+
+/**
+ * The title of an archived item `inbox delete` removed — the file is gone,
+ * so git's last copy of it is read. Loud on a path the archive still holds,
+ * or one git holds no copy of.
+ * @param {string} cwd
+ * @param {string} given  project-relative archived inbox path
+ * @returns {string}
+ */
+function deletedItemTitle(cwd, given) {
+  const parsed = parseInboxPath(given, { archived: true });
+  if (fs.existsSync(path.join(cwd, parsed.given))) throw new Error(`still in the archived store, so nothing was deleted: "${given}"`);
+  const content = deletedContent(cwd, parsed.given);
+  if (content === null) throw new Error(`git holds no deleted file at "${given}"`);
+  return titleOf(content) || parsed.slug;
+}
+
+/**
  * Inbox items by their paths, live or archived — each path read for the
  * store it names, in the order given. Loud on a path outside both stores, or
  * one nothing sits at.
@@ -157,4 +200,4 @@ function inboxItems(cwd, paths) {
   });
 }
 
-module.exports = { combinedInbox, workingSetDetail, archivedItem, inboxItems };
+module.exports = { combinedInbox, workingSetDetail, archivedItem, liveItem, deletedItemTitle, inboxItems };

@@ -116,7 +116,7 @@ The official Linear MCP server does not support deletion. Ask the user to delete
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-The Linear project {project:(titlecase)} needs to be deleted before restarting. Please delete it in the Linear UI (Project Settings → Delete project), then confirm so I can proceed.
+The Linear project for this plan needs to be deleted before restarting. Please delete it in the Linear UI (Project Settings → Delete project), then confirm so I can proceed.
 ```
 
 **STOP.** Wait for user response.

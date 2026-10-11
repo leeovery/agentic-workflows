@@ -1624,7 +1624,9 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(toRecover().map((line) => line.match(/^ {2}- \S+ (\S+) /)[1]), ['beta']);
     // The stub has no file to draft from: the batch, then the unsourced gate,
     // whose provide row lands the person's summary.
-    sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file',
+      sim.write(`.workflows/.cache/${wu}/discovery/summaries.json`, { summaries: { beta: null } })], { expect: 'content' }),
+    /1\. Beta {2}\(discussion\)\n {7}\(source file missing — please provide\)[\s\S]*Accept these summaries\?/);
     sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file',
       sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
     sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/backfill-ops.json`,
@@ -2491,7 +2493,13 @@ describe('pipeline simulation', () => {
     sim.refuses(['handoff', '/workflow-specification-process', 'epic', wu], /^an epic enters specification at a topic$/);
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: analyze$/m);
     sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
-    sim.render(['summary-backfill-gate', wu, '--variant', 'batch'], { expect: 'content' });
+    // Every row landed with its summary and no description: the batch shows
+    // each summary it keeps, and no line of it is edited here.
+    const summaries = sim.write(`.workflows/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file', summaries], { expect: 'content' }),
+      /Proposed summaries for 4 topic\(s\):[\s\S]*3\. Delta {2}\(research\)\n {7}Delta summary {2}\(already populated\)/);
+    assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'proposed', '--file', summaries], { expect: 'content' }), /Delta summary/);
+    sim.refuses(['render', 'summary-backfill-gate', wu, '--variant', 'prompt', '--topic', 'delta'], /already has its summary on the map/);
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
@@ -2876,6 +2884,8 @@ describe('pipeline simulation', () => {
       'analysis_staging.discovery-gap-analysis.gate_mode=gated',
       'analysis_staging.discovery-gap-analysis.candidates.epsilon.status=pending',
       'analysis_staging.discovery-gap-analysis.candidates.zeta.status=pending']);
+    assert.match(sim.render(['candidate-gate', wu, '--variant', 'announce'], { expect: 'content' }),
+      /Gap analysis surfaced 2 candidate topic\(s\)\./, 'the walk opens on the pending count');
     // The gate itself renders from the staged subtree — gated mode answers
     // with the menu, and a candidate the manifest no longer marks pending
     // never renders at all.
@@ -2904,6 +2914,7 @@ describe('pipeline simulation', () => {
     ].join('\n'));
     sim.run(['manifest', 'delete', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']);
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis']).trim(), 'false');
+    assert.match(sim.render(['candidate-gate', wu, '--variant', 'announce'], { expect: 'content' }), /Nothing new to review\./);
 
     // The epic menu's banner and completion offer render at every state.
     sim.render(['phase-completed', wu, '--phase', 'specification'], { expect: 'content' });
@@ -3919,8 +3930,9 @@ describe('pipeline simulation', () => {
     const removed = sim.run(['roadmap', 'remove', 'footer-typo']);
     const archived = '.workflows/.inbox/.archived/quickfixes/2026-02-04--footer-typo.md';
     assert.deepStrictEqual(removed.notes_moved, [{ from: '.workflows/.roadmap/notes/quickfixes/2026-02-04--footer-typo.md', to: archived }]);
-    sim.run(['inbox', 'restore', archived]);
+    const restored = sim.run(['inbox', 'restore', archived]);
     assert.ok(fs.existsSync(path.join(sim.dir, inbox.typo)), 'the declined note is back in the inbox');
+    assert.match(sim.render(['inbox-restore-receipt', '--path', restored.restored[0]], { expect: 'content' }), /^Restored ".+" to the inbox\.$/m);
   });
 
   it('roadmap: JIT birth, harvest batch, horizon restructuring, lifecycle by join, pulled-item guards', () => {
@@ -5260,12 +5272,14 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse'], { expect: 'content' }), /keyword-only/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'retry'], { expect: 'content' }), /Ready to retry\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai'], { expect: 'content' }), /No OpenAI API key was found[\s\S]*Ready to retry\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai-compatible'], { expect: 'content' }), /The endpoint requires an API key[\s\S]*Ready to retry\?/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry'], /the retry variant needs --provider openai\|openai-compatible/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' }), /engine\.cjs knowledge setup[\s\S]*Has the wizard completed\?/);
     sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);
-    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /belong to the reuse variant/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /--model does not belong to the retry variant/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'remove'], { expect: 'content' }), /Remove the theme\?[\s\S]*Remove the theme and drop its content/);
@@ -5284,6 +5298,10 @@ describe('pipeline simulation', () => {
       new RegExp(`Plan for auth\\.md:[\\s\\S]*└─ Cache: \\.workflows/\\.cache/${wu}/legacy-split/auth/auth\\.md[\\s\\S]*renamed to auth-superseded-<datetime>\\.md`));
     assert.match(splitDisplay('errors', { source: 'auth', errors: ["theme 'auth' has empty summary"] }),
       /Validation failed for auth:[\s\S]*• theme 'auth' has empty summary/);
+    assert.match(splitDisplay('apply', { source: 'auth', result: { ok: true, applied: { themes: 2 }, kb_warnings: ['knowledge remove failed'] } }),
+      /Applied auth: 2 new file\(s\)\.[\s\S]*> - knowledge remove failed/);
+    assert.match(splitDisplay('apply', { source: 'auth', result: { ok: false, stage: 'git_commit', error: 'hook failed', recovery_hint: 'commit by hand' } }),
+      /Apply failed for auth at stage "git_commit":\n {2}hook failed\n\nRecovery: commit by hand/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.workflows/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.workflows/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
