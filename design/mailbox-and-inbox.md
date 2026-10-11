@@ -100,8 +100,10 @@ where the backlog lives. Opened 2026-09-23 from Lee's dislike of
 - **R10 — Only an idea becomes a topic.** An epic grows by topics, and a
   topic is a thing to decide. Pull-forward into an in-flight epic takes
   ideas alone — a bug wanted with it is pulled as its own bugfix — and a
-  bug or quick-fix that reaches an epic with ideas rides with the unit as
-  material, never bound to a topic.
+  bug or quick-fix that reaches an epic with ideas — pulled with it, or
+  seeded with it from the inbox — rides with the unit as material, never
+  bound to a topic. It stays with the epic: it ships with it, and returns
+  to waiting only if that whole work unit is cancelled.
 
 ## The settled shape
 
@@ -118,12 +120,12 @@ where the backlog lives. Opened 2026-09-23 from Lee's dislike of
 | `.workflows/{wu}/{phase}/.triage/{topic}/NNN-{slug}.md` | `.workflows/{wu}/{phase}/.mailbox/{topic}/NNN-{slug}.md` |
 | phase-item status `triaged` | `unstarted` |
 | discovery map `source` tag `reroute:{origin}` | `message:{origin}` |
-| `topic triage … --concern <file>` | `topic send … --content <file>` (`-m` stays the commit message) |
+| `topic triage … --concern <file>` | `topic send … --content <file>` (`-m` stays the commit message); the bare form, which parked an item with nothing in its mailbox, goes — a send always carries its message |
 | `topic queue` | `topic mailbox` |
 | `topic absorb` | `topic absorb` (unchanged — the topic absorbs the message into its record) |
 | `topic requeue` | `topic forward` |
 | response keys `concern_path`, `triage_moved` | `message_path`, `mail_moved` |
-| computed `triage_phases`, `triage_queued`, `triage_parked` | `mail_phases`, `mail_queued`, `mail_waiting` (true for an unstarted item or any message waiting under a started one) |
+| computed `triage_phases`, `triage_queued`, `triage_parked` | `mail_phases`, `mail_queued`, `mail_waiting` (true wherever the topic's mailbox holds a message, whatever its items' status — read from the mailbox alone, so the cue, the off-map rows and the dead-end refusal agree) |
 | `render triage-announce` / `triage-offer` / `triage-block` | `render mail-announce` / `mail-offer` / `mail-block` |
 | `render requeue-offer` | `render forward-offer` |
 | `render reroute-offer` / `reroute-candidates` | `render send-offer` / `send-candidates` |
@@ -141,33 +143,44 @@ where the backlog lives. Opened 2026-09-23 from Lee's dislike of
 Engine function and type names follow the map (`triageTopic` →
 `sendMessage`, `absorbConcern` → `absorbMessage`, `requeueConcern` →
 `forwardMessage`, `TRIAGE_PHASES` → `MAILBOX_PHASES`, and so on). The
-five sites that build a mailbox path by hand become one helper.
+five sites that build a mailbox path by hand become one helper, and every
+read of a mailbox's contents goes through one reader beside it.
 
 **Out of scope, by name.** `discovery-map reroute` and `render map-op-gate
 --op reroute` change a map row's routing — a different act that keeps its
 word. `workunit absorb` folds a feature into an epic. "Concern" in its
 other senses stays: a cross-cutting concern, review and complexity
 concerns, concern areas. Frozen migrations 052 and 054 and every concluded
-design doc are never touched. Documents already written keep their text:
-a document is content, never state.
+design doc are never touched. Documents already written keep their text —
+a document is content, never state — but for the send record, which the
+document review reads to tell a handled note from a stranded one.
 
 **Migration 071 — the mailbox.** Over every work unit, whatever its status:
 
-- `{phase}/.triage/` renamed to `{phase}/.mailbox/` (staged; the migration
-  commit records it);
+- every file under `{phase}/.triage/` moved to the same place under
+  `{phase}/.mailbox/`, the emptied `.triage/` removed, and the move staged
+  with `git add -A` (the migration commit records it). A mailbox may
+  already hold messages — a session on the updated engine can send one
+  before any start-up runs 071 — so a message whose number is taken there
+  takes the next one the send would give, its slug kept; a tracked file
+  already gone from disk is staged as removed, never a reason to stop the
+  boot;
 - every phase item's `status` and `previous_status` reading `triaged`
   rewritten to `unstarted`;
 - every discovery map item's `source`, split on commas, rewriting each
-  `reroute:` segment to `message:`.
+  `reroute:` segment to `message:`;
+- in every research and discussion document, each send record `Rerouted
+  to {topic} triage ({date})` rewritten `Sent to {topic}'s mailbox
+  ({date})` where it sits in its line — the record the document review
+  recognises.
 
 Idempotent; reports one update per changed unit. Frozen migration 054's
 verification addendum still names `.triage/` for a straggler it could not
-parse, and addenda are performed after every migration has run — so an
-install behind at 054 would recover a straggler into a directory nothing
-reads. Where a research or discussion document still holds content under a
+parse. Where a research or discussion document still holds content under a
 Triage heading (an emptied `(none)` section never counts), 071 hands back
-an addendum of its own, read after 054's, pointing the move at the
-mailbox.
+an addendum of its own stating the whole recovery into the mailbox, so it
+stands whether or not 054's fires in the same boot, and saying that nothing
+goes into a `.triage/` directory.
 
 ### Part two — the inbox and the roadmap
 
@@ -211,6 +224,16 @@ the add gate offers delivery only into an epic underway, and discovery's
 anti-twin flag counts waiting ideas alone. A postponed topic's re-waited
 item is therefore always an idea.
 
+**The way back is the join's.** A pulled item's remove or move refusal
+names the one way back its join has: a join to a topic returns when that
+topic is cancelled or postponed; a bug or quick-fix riding an epic, and a
+join into a feature, bugfix or quick-fix, return only on that work unit's
+cancel. A roadmap flag reaches only a topic's live research or discussion;
+where there is none — a riding bug, a linear unit, a topic past them — it
+says nothing reached the work, and the roadmap session keeps the thought
+in its own log. Making a flag reach a bugfix or quick-fix needs phases
+that read flags; that is logged as an idea.
+
 **Start now from the inbox.** `w/work` is offered for any set. The
 work-type pre-seed follows R6: ideas present → `none`, and discovery
 decides from the ideas, the bugs and quick-fixes riding as seeds that
@@ -221,8 +244,8 @@ core read a mixed seed set as R6 reads it; every seed still moves into
 
 **The pull.** The shape step applies R6 over the pulled set: a quick-fix
 or bugfix shape is set by the rule, a feature or epic judged and
-confirmed as today. The shape gate's statement names a bug folded into a
-feature or epic (R7). Read the record (C) reads every source in full, a
+confirmed as today. Claude's read above the shape gate names a bug folded
+into a feature or epic (R7). Read the record (C) reads every source in full, a
 note among them, and the backfill (D) carries each note whole into
 Exploration — it is short, and it is the work's origin. Route (F) gains
 the two shapes: a bugfix to `/workflow-bridge {wu} discovery
@@ -234,13 +257,24 @@ and the shape gate's adjust row stop saying "epic or feature".
 note moves the note to `.workflows/.inbox/.archived/{folder}/` in the same
 transaction — declined, restorable from the archive.
 
-**Putting something aside mid-session.** The backlogging door is
-unchanged in routing: placed words park on the roadmap, unplaced words
-capture to the inbox, ambiguity asks. The park now carries a kind: a bug
-or a quick-fix placed by the person parks as that kind (one fix, not a
-capability), and the park gate states it. Discovery's scope-down and the
-roadmap guidelines lose "bugs and quick-fixes never touch the roadmap":
-placement decides the home, whatever the kind.
+**Putting something aside mid-session.** The backlogging door routes on
+the decision: the roadmap holds what the person has decided to do, waiting
+under a horizon ("next", a named horizon, "someday"); the inbox holds what
+is not decided yet ("log it", "maybe", "not sure"). Words that only say
+"put it aside" ask, and a word that is a horizon's name is that horizon.
+The gate asks "Where should it wait?" over a `title`, its rows saying what
+each place means. The park now carries a kind: a bug or a quick-fix parks
+as that kind (one fix, not a capability), every park door — backlogging,
+the off-topic flows, discovery's scope-down — names it, and the park gate
+states it. Discovery's scope-down and the roadmap guidelines lose "bugs and
+quick-fixes never touch the roadmap": the decision decides the home,
+whatever the kind.
+
+**Adding to a horizon being built.** An idea's add on the roadmap always
+fetches the add gate, which renders nothing unless a member of the horizon
+is in an epic underway; an idea groomed from the inbox lands through
+`add-batch` with its note on every arm, so the note never stays behind. A
+bug or quick-fix is a plain add.
 
 **Recognition at shaping.** A waiting roadmap item of any kind is matched;
 the "epic- or feature-shaped reads only" limit goes.
@@ -255,7 +289,10 @@ the "epic- or feature-shaped reads only" limit goes.
 | `render inbox-roadmap-gate --file <entries.json>` | add-batch's own file, `[{"name","horizon","summary","note"}]`, one horizon; add-batch's validation run dry — a name on the roadmap or repeated, an illegal name or horizon, a dead note, a taken destination, a file name with a space all refused, nothing moved; each kind shown from its note's folder; the horizon flagged new, the roadmap's birth said where there is none; rows `y/yes`, `n/no`, Comment |
 | scratch | `.workflows/.cache/inbox-roadmap.json` at the cache root — a folder named `inbox` would be a work unit's cache home |
 | `roadmap bind` | refuses a bug or a quick-fix |
-| `roadmap-add-gate`, `roadmap state` rows | delivery offered only into an epic underway; state rows carry the joined unit's `work_type` |
+| `roadmap-add-gate`, `roadmap state` rows | delivery offered only into an epic underway, and nothing rendered where no member is in one; state rows carry the joined unit's `work_type` |
+| `render backlog-gate` | payload `{"title"}`; asks "Where should it wait?" — the roadmap for what is decided, the inbox for what is not |
+| `roadmap remove` / `move` refusals, `roadmap flag` | the refusal names the join's own way back; a flag that reaches nothing says `nothing reached "{wu}"` |
+| `render inbox-content`, `render inbox-archive-receipt` | the working set's full-content view and archive receipt, drawn by the engine |
 | the working set | `o/roadmap` beside `w/work` (key `o`: `r` is archive's); `w/work` for any set; `set_type` is `none`, `bugfix` or `quick-fix` — never `mixed` |
 | `roadmap state` rows, `pull-set` DATA | carry `kind` |
 | `roadmap remove` | a waiting item's roadmap note moves to `.workflows/.inbox/.archived/{folder}/` under the same commit |
@@ -324,7 +361,7 @@ state, since a source is a pointer.
 | `domain/transitions.cjs` | the mailbox verbs renamed per the map; `unstarted` everywhere `triaged` was handled; one mailbox-path helper |
 | `domain/derivations.cjs`, `specification.cjs`, `discovery-map.cjs`, `agent-state.cjs`, `workunit-absorb.cjs`, `workunit-detail.cjs`, `epic-detail.cjs`, `conventions.cjs` | status sets, computed fields, cue text, error strings per the map |
 | `kernel/manifest-schema.cjs` | `triaged` → `unstarted` in the research, discussion and investigation vocabularies |
-| `domain/render.cjs`, `projections/*` | the surfaces renamed, their strings rewritten; the legend's `unstarted` line; kind on roadmap rows; the inbox working set's roadmap row and the mixed-set rule; the confirm gate for moving inbox items onto the roadmap; the shape gate's R6/R7 statement |
+| `domain/render.cjs`, `projections/*` | the surfaces renamed, their strings rewritten; the legend's `unstarted` line; kind on roadmap rows; the inbox working set's roadmap row and the mixed-set rule; the confirm gate for moving inbox items onto the roadmap; the shape gate's R6 rows; the backlog gate's rows; the add gate empty on a pass; the working set's content view and archive receipt |
 | `domain/roadmap.cjs` | `kind` (validated, required), `--kind` on add and add-batch, the inbox-to-roadmap move transaction, remove archiving a note |
 | `domain/inbox-set.cjs` | the R6 pre-seed over a mixed set |
 | `engine.cjs`, `references/commands.md` | usage and catalogue for every renamed or new verb, flag and surface |
@@ -378,3 +415,13 @@ Two PRs stacked, this design standalone and merged last.
   a later postpone on the clash (the refusal names it; a rename
   recovers); two ideas bound to one topic re-wait only the first on a
   postpone — older than this design.
+- 2026-10-11 — Lee ruled on the review's questions: the put-aside gate
+  routes on the decision — the inbox not decided yet, the roadmap decided,
+  "someday" on the roadmap; a bug or quick-fix riding an epic stays with
+  it, its refusal and flag saying so (R10); the rename takes the touch
+  rule's exemption, and the remaining hand-drawn displays are their own
+  piece of work once this lands. The review's fixes settled: 071 moves
+  files into a mailbox that may already exist and rewrites the send
+  record; `mail_waiting` reads the mailbox alone; a send always carries its
+  message; every park names its kind; an idea's add always fetches the add
+  gate.
