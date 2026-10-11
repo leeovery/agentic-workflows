@@ -630,7 +630,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     engineFails(['manifest', 'delete', 'mvp.discussion.ordering', 'previous_status'],
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
     // A message for a topic that waits is mail that waits with it.
-    const parked = engineOk(['topic', 'send', 'mvp', 'research', 'ordering']);
+    fs.mkdirSync(path.join(dir, '.workflows/.cache/scratch'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.workflows/.cache/scratch/message.md'), '### Ordering\n\nA question for later.\n');
+    const parked = engineOk(['topic', 'send', 'mvp', 'research', 'ordering',
+      '--content', '.workflows/.cache/scratch/message.md', '--slug', 'a-question', '-m', 'send a-question']);
     assert.strictEqual(parked.status, 'postponed', 'the send leaves the hold alone');
   });
 

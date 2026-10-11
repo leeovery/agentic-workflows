@@ -1470,6 +1470,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
         discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
+    createFile(dir, '.workflows/v1/discussion/.mailbox/parked/001-question.md', '### question\n');
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent mail=waiting\n'), out);
   });
@@ -2261,7 +2262,7 @@ describe('workflow-continue-epic specification discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { parked: { status: 'unstarted' } } } },
     });
-    createFile(dir, '.workflows/overhaul/discussion/parked.md', '# Discussion: Parked\n\n## Triage\n\n### Message\nBody.\n');
+    createFile(dir, '.workflows/overhaul/discussion/.mailbox/parked/001-message.md', '### Message\nBody.\n');
     const r = specificationDiscovery(dir, 'overhaul');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');

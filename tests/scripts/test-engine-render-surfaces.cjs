@@ -2373,25 +2373,25 @@ describe('render mailbox surfaces', () => {
   });
   afterEach(() => teardown(dir));
 
-  function writeQueue(topic, files) {
-    const qdir = path.join(dir, '.workflows', 'wu', 'discussion', '.mailbox', topic);
-    fs.mkdirSync(qdir, { recursive: true });
-    for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(qdir, f), body);
+  function writeMailbox(topic, files) {
+    const mailbox = path.join(dir, '.workflows', 'wu', 'discussion', '.mailbox', topic);
+    fs.mkdirSync(mailbox, { recursive: true });
+    for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(mailbox, f), body);
   }
 
   it('mail-announce derives the count with verb agreement, refusing an empty mailbox', () => {
     assert.throws(() => renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing to announce/);
-    writeQueue('measurement', { '001-a.md': 'x' });
+    writeMailbox('measurement', { '001-a.md': 'x' });
     const one = renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' });
     assert.ok(one.startsWith('=== DISPLAY: mail announce (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ==='), one);
     assert.ok(one.includes('1 message from another topic waits'), one);
-    writeQueue('measurement', { '002-b.md': 'y' });
+    writeMailbox('measurement', { '002-b.md': 'y' });
     const two = renderSurface(dir, 'mail-announce', { dotpath: 'wu.discussion.measurement' });
     assert.ok(two.includes('2 messages from other topics wait'), two);
   });
 
   it('mail-offer renders the agenda in mailbox order and the yes/later menu', () => {
-    writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
+    writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '002-tracking.md', title: 'Expansion tracking', origin: 'synonyms', from_phase: 'discussion', from_date: '2026-08-02' },
       { file: '001-metrics.md', title: 'Offline metrics', origin: 'ranking', from_phase: 'discussion', from_date: '2026-08-01' },
@@ -2413,7 +2413,7 @@ describe('render mailbox surfaces', () => {
   });
 
   it('mail-offer wraps a sentence-length title under itself, with the note beneath', () => {
-    writeQueue('measurement', { '001-metrics.md': 'a' });
+    writeMailbox('measurement', { '001-metrics.md': 'a' });
     const file = writePayload(dir, 'offer.json', { items: [
       { file: '001-metrics.md', title: 'A preset binding persists until broken — three revisions to the positioning model', origin: 'note-model', from_phase: 'discussion', from_date: '2026-07-30' },
     ] });
@@ -2437,7 +2437,7 @@ describe('render mailbox surfaces', () => {
       { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
     ] });
     assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file }), /mailbox is empty — nothing to offer/);
-    writeQueue('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
+    writeMailbox('measurement', { '001-metrics.md': 'a', '002-tracking.md': 'b' });
     assert.throws(() => renderSurface(dir, 'mail-offer', { dotpath: 'wu.discussion.measurement', file }), /payload items must cover the mailbox exactly/);
     const wrong = writePayload(dir, 'wrong.json', { items: [
       { file: '001-metrics.md', title: 'T', origin: 'o', from_phase: 'discussion', from_date: 'd' },
@@ -2449,7 +2449,7 @@ describe('render mailbox surfaces', () => {
   });
 
   it('forward-offer renders the statement, the diamond question naming the other phase, and the yes/discuss menu', () => {
-    writeQueue('measurement', { '001-a-decision-owed.md': 'x' });
+    writeMailbox('measurement', { '001-a-decision-owed.md': 'x' });
     const file = writePayload(dir, 'rq.json', {
       file: '001-a-decision-owed.md', title: 'A decision owed', reason: 'it asks this topic to decide, not to find out.',
     });
@@ -2469,7 +2469,7 @@ describe('render mailbox surfaces', () => {
   });
 
   it('forward-offer refuses a missing payload field, a file the mailbox lacks, and a phase outside the pair', () => {
-    writeQueue('measurement', { '001-a.md': 'x' });
+    writeMailbox('measurement', { '001-a.md': 'x' });
     assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement' }), /--file <payload\.json> is required/);
     const missing = writePayload(dir, 'missing.json', { file: '001-a.md', title: 'T' });
     assert.throws(() => renderSurface(dir, 'forward-offer', { dotpath: 'wu.discussion.measurement', file: missing }), /"reason" must be a non-empty string/);
@@ -2481,7 +2481,7 @@ describe('render mailbox surfaces', () => {
 
   it('mail-block derives the count and the phase word, refusing an empty mailbox', () => {
     assert.throws(() => renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' }), /mailbox is empty — nothing blocks conclusion/);
-    writeQueue('measurement', { '001-a.md': 'x' });
+    writeMailbox('measurement', { '001-a.md': 'x' });
     const out = renderSurface(dir, 'mail-block', { dotpath: 'wu.discussion.measurement' });
     assert.ok(out.startsWith([
       '=== DISPLAY: mail block (emit verbatim as a properties code block (```properties fence)) ===',
@@ -3889,6 +3889,7 @@ describe('render proposed-task', () => {
     const held = renderSurface(dir, 'incoherence-gate', { dotpath: 'pay.implementation.portal', file: docOnly, variant: 'held-doc' });
     assert.ok(held.includes('MENU: incoherence held doc'));
     assert.ok(held.includes('**`◆ How do you want to continue?`**'));
+    assert.ok(/\*\*`n\/next`\*\* +→ Send the resolution to its mailbox and carry on here/.test(unwrap(held)), held);
     assert.ok(/\*\*`s\/stop`\*\* +→ Stop here/.test(held));
     assert.ok(unwrap(held).includes('"synonym-handling" is open in another session, so the fix belongs there; this topic waits for it.'),
       `no holder found at render time — the gate names no age: ${held}`);

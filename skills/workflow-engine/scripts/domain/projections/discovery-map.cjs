@@ -24,7 +24,7 @@ const { TREE_WIDTH, treeHeader, titlecase, title, stateNote, discoveryGlyph, dis
  * @property {string|null} [research_state]  the research item's raw status, null when none exists
  * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
  * @property {string|null} [promoted_to]  the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} [mail_waiting]  messages wait on the topic — an unstarted stub, or message files beneath a started or reopened item
+ * @property {boolean} [mail_waiting]  messages wait in the topic's research or discussion mailbox, whatever the item's status
  * @property {boolean} [reconcile_pending]  a phase item beneath the row carries a live reconcile flag
  * @property {import('../derivations.cjs').Wait[]} [waits]  the live waits of the topic's in-progress phase items
  * @property {string|null} [summary]

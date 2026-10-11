@@ -658,35 +658,35 @@ describe('engine workunit absorb — mailboxes follow their documents', () => {
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   /** Feature-relative message file → content: two messages waiting on the discussion (numbering gapped by an earlier drain), one on the research. */
-  const QUEUED = {
+  const MESSAGES = {
     'discussion/.mailbox/auth-flow/001-token-rotation.md': '### Token rotation\n*From: billing · discussion · 2026-06-03*\n\nRotate on every refresh.\n',
     'discussion/.mailbox/auth-flow/003-lockout-window.md': '### Lockout window\n*From: billing · discussion · 2026-06-05*\n\nHow long a lockout holds.\n',
     'research/.mailbox/auth-flow/002-vendor-limits.md': '### Vendor limits\n*From: billing · research · 2026-06-04*\n\nWhat the vendor rate-limits.\n',
   };
 
-  function setupQueued() {
+  function setupWithMessages() {
     fix = setupFixture();
-    for (const [rel, content] of Object.entries(QUEUED)) writeFile(fix.project, `.workflows/auth-flow/${rel}`, content);
+    for (const [rel, content] of Object.entries(MESSAGES)) writeFile(fix.project, `.workflows/auth-flow/${rel}`, content);
     git(fix.project, ['add', '-A']);
     git(fix.project, ['commit', '-q', '-m', 'waiting messages']);
   }
 
   it('moves each mailbox under the topic, names and contents intact, and the engine reads it there', () => {
-    setupQueued();
+    setupWithMessages();
     const res = engine(fix, ABSORB);
 
     assert.deepStrictEqual(res.mail_moved, [
       { phase: 'discussion', path: 'discussion/.mailbox/auth', count: 2 },
       { phase: 'research', path: 'research/.mailbox/auth', count: 1 },
     ]);
-    for (const [rel, content] of Object.entries(QUEUED)) {
+    for (const [rel, content] of Object.entries(MESSAGES)) {
       const landed = rel.replace('/.mailbox/auth-flow/', '/.mailbox/auth/');
       assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments', landed), 'utf8'), content, `moved intact: ${landed}`);
     }
     assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/auth-flow')), 'the feature directory is gone');
 
-    const discussionQueue = engine(fix, ['topic', 'mailbox', 'payments', 'discussion', 'auth']);
-    assert.deepStrictEqual(discussionQueue.files, [
+    const discussionMailbox = engine(fix, ['topic', 'mailbox', 'payments', 'discussion', 'auth']);
+    assert.deepStrictEqual(discussionMailbox.files, [
       '.workflows/payments/discussion/.mailbox/auth/001-token-rotation.md',
       '.workflows/payments/discussion/.mailbox/auth/003-lockout-window.md',
     ]);
@@ -695,13 +695,13 @@ describe('engine workunit absorb — mailboxes follow their documents', () => {
   });
 
   it("the moves ride the absorb's one commit — nothing left dirty", () => {
-    setupQueued();
+    setupWithMessages();
     const commits = Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim());
     engine(fix, ABSORB);
 
     assert.strictEqual(Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim()), commits + 1);
     const staged = git(fix.project, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n');
-    for (const rel of Object.keys(QUEUED)) {
+    for (const rel of Object.keys(MESSAGES)) {
       assert.ok(staged.includes(`.workflows/auth-flow/${rel}`), `deletion staged: ${rel}`);
       assert.ok(staged.includes(`.workflows/payments/${rel.replace('/.mailbox/auth-flow/', '/.mailbox/auth/')}`), `landing staged: ${rel}`);
     }

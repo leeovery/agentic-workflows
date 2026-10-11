@@ -28,8 +28,30 @@ const NB = (n) => '\u00a0'.repeat(n);
 // which hand-builds a detail to reach states a manifest can't (a start entry
 // surviving while its gate is closed).
 
+// A send never parks a stub without its message: the fixture lays one in the
+// mailbox of every `unstarted` item, and takes it back when a later manifest
+// in the same test drops the stub.
+const STUB_MESSAGE = '000-parked.md';
+
+/** @param {string} dir @param {string} name @param {any} manifest */
+function layStubMessages(dir, name, manifest) {
+  for (const phase of ['research', 'discussion']) {
+    const root = path.join(dir, '.workflows', name, phase, '.mailbox');
+    for (const topic of fs.existsSync(root) ? fs.readdirSync(root) : []) {
+      fs.rmSync(path.join(root, topic, STUB_MESSAGE), { force: true });
+    }
+    const items = (manifest.phases && manifest.phases[phase] && manifest.phases[phase].items) || {};
+    for (const [topic, item] of Object.entries(items)) {
+      if (item.status !== 'unstarted') continue;
+      fs.mkdirSync(path.join(root, topic), { recursive: true });
+      fs.writeFileSync(path.join(root, topic, STUB_MESSAGE), '### parked\n');
+    }
+  }
+}
+
 /** Build a detail from a manifest in a temp fixture dir. */
 function detailFor(dir, name, manifest) {
+  layStubMessages(dir, name, manifest);
   createManifest(dir, name, manifest);
   return discover(dir, name);
 }
@@ -1415,6 +1437,17 @@ describe('epic projections: selection sub-views', () => {
     assert.strictEqual(epicPostponeMenu(away).display, 'No postponable topics.\n');
   });
 
+  it('cancel-menu: a topic off the map cues the messages waiting beneath its started item, as a map row does', () => {
+    const mailbox = path.join(dir, '.workflows', 'quiz-competition-v1', 'research', '.mailbox', 'menu-admin');
+    fs.mkdirSync(mailbox, { recursive: true });
+    fs.writeFileSync(path.join(mailbox, '001-cost-model.md'), '### cost model\n');
+    const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
+      work_type: 'epic',
+      phases: { research: { items: { 'menu-admin': { status: 'in-progress' } } } },
+    }));
+    assert.ok(view.display.includes('  └─ 1. Menu Admin [researching · mail waiting]'), view.display);
+  });
+
   it('cancel-menu: an unstarted stub is cancellable with the topic, cued as parked', () => {
     const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
       work_type: 'epic',
@@ -2153,10 +2186,10 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   // reopens it to in-progress and leaves no stub behind, so the message files
   // themselves are the signal — and their drain retires it.
   const deliver = (phase, ...files) => {
-    const qdir = path.join(dir, '.workflows', 'v1', phase, '.mailbox', 'billing');
-    fs.mkdirSync(qdir, { recursive: true });
-    for (const f of files) fs.writeFileSync(path.join(qdir, f), `### ${f}\n`);
-    return qdir;
+    const mailbox = path.join(dir, '.workflows', 'v1', phase, '.mailbox', 'billing');
+    fs.mkdirSync(mailbox, { recursive: true });
+    for (const f of files) fs.writeFileSync(path.join(mailbox, f), `### ${f}\n`);
+    return mailbox;
   };
   // A long cue wraps onto continuation lines indented past the ↳ — join them.
   const cueOf = (d, presence) => epicDashboard('v1', d, { presence }).match(/( *)↳ [^\n]*(?:\n\1 +[^\n]*)*/)[0].trim().replace(/\n\s+/g, ' ');
@@ -2189,18 +2222,14 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
     assert.strictEqual(cueOf(d), '↳ Research complete · ready for discussion · mail waiting');
   });
 
-  it('the drain retires the cue — an empty mailbox directory is no wait; a stub with an empty directory still is', () => {
-    const qdir = deliver('discussion', '001-escalation-path.md');
-    fs.rmSync(path.join(qdir, '001-escalation-path.md'));
+  it('the drain retires the cue — an empty mailbox directory is no wait', () => {
+    const mailbox = deliver('discussion', '001-escalation-path.md');
+    fs.rmSync(path.join(mailbox, '001-escalation-path.md'));
     const d = billing({ status: 'completed' }, { status: 'in-progress' });
     assert.strictEqual(drawLabel(epicMenu('v1', d).keys[0].label), 'Continue "Billing" — *discussion*');
     assert.strictEqual(cueOf(d), '↳ Discussing');
     assert.strictEqual(d.discovery_map[0].mail_waiting, false);
     assert.deepStrictEqual(d.discovery_map[0].mail_queued, { research: 0, discussion: 0 });
-    // The bare `topic send` parks a stub without a file — the status alone keeps the cue.
-    const stub = billing(undefined, { status: 'unstarted' });
-    assert.strictEqual(stub.discovery_map[0].mail_waiting, true);
-    assert.strictEqual(drawLabel(epicMenu('v1', stub).keys[0].label), 'Start discussion for "Billing" — *mail waiting*');
   });
 
   // A blocked item carries no menu row — unless a live session holds it, when

@@ -7,8 +7,9 @@
 // derivations may require reads; never the reverse.
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
-const { fileExists, filesChecksum, countFiles, listFiles } = require('./reads.cjs');
+const { fileExists, filesChecksum, listFiles } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 function phaseStatus(manifest, phase) {
@@ -1132,16 +1133,13 @@ function computeNeedsSequencing(mapItems) {
 // `research_state` rides along on every result — the research item's raw
 // status (null when no research item exists), so labels can be derived from
 // the actual per-phase state (a handled topic without research, superseded
-// research) rather than assumed from the lifecycle alone. `mail_waiting`
-// rides along the same way: true when either phase item is an `unstarted`
-// stub (messages waiting, no session yet). It is a rider, not a lifecycle
-// — an unstarted stub renders as `fresh` by fall-through, and the rider survives
-// on every branch (a `discussing` topic can still hold a parked research
-// stub — the research is then the row's own next action, and the discussion
-// is held until it lands). `reconcile_pending`
-// is the third rider: either phase item carries a live reconcile flag, so
-// the map row can cue `input moved` — with a map, phase-item rows never
-// render for research/discussion, making this the topic's only surface.
+// research) rather than assumed from the lifecycle alone. An `unstarted`
+// stub (messages waiting, no session yet) renders as `fresh` by fall-through.
+// `reconcile_pending` is the second rider, surviving on every branch: either
+// phase item carries a live reconcile flag, so the map row can cue `input
+// moved` — with a map, phase-item rows never render for research/discussion,
+// making this the topic's only surface. Whether mail waits is a fact about
+// the mailbox on disk, never the manifest — `mailQueued` reads it.
 function computeTopicLifecycle(manifest, topicName) {
   const discovery = phaseItems(manifest, 'discovery').find(i => i.name === topicName);
   const research = phaseItems(manifest, 'research').find(i => i.name === topicName);
@@ -1149,7 +1147,6 @@ function computeTopicLifecycle(manifest, topicName) {
 
   const rs = research ? research.status ?? null : null;
   const ds = discussion ? discussion.status : null;
-  const mail_waiting = rs === 'unstarted' || ds === 'unstarted';
   // Terminal items keep their flag inertly (reactivation restores it live);
   // cueing them would light `input moved` where no phase's start can clear it.
   const flagLive = (/** @type {{status?: string, reconcile_needed?: unknown}|undefined} */ it) =>
@@ -1163,13 +1160,13 @@ function computeTopicLifecycle(manifest, topicName) {
   // dead-ended one is terminal with no next action. Read only the item's own
   // fields — never inspect siblings or provenance.
   if (discovery && discovery.cancelled === true) {
-    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, reconcile_pending };
   }
   if (discovery && discovery.postponed === true) {
-    return { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: rs, discussion_state: ds, reconcile_pending };
   }
   if (discovery && discovery.handled === true) {
-    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: rs, discussion_state: ds, reconcile_pending };
   }
 
   // A promoted discussion concluded and moved on with its specification to a
@@ -1179,19 +1176,19 @@ function computeTopicLifecycle(manifest, topicName) {
     // Reopened research beneath a decided discussion — a message landing
     // judged research-side. The topic is back in research; the discussion's
     // reconcile flag carries the downstream consequence.
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, reconcile_pending };
   }
   if (decided) {
-    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: rs, discussion_state: ds, reconcile_pending };
   }
   if (ds === 'in-progress') {
-    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: rs, discussion_state: ds, reconcile_pending };
   }
   if (rs === 'completed') {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, discussion_state: ds, reconcile_pending };
   }
   if (rs === 'in-progress') {
-    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: rs, discussion_state: ds, reconcile_pending };
   }
   // Every attempted phase item is terminal and at least one is cancelled:
   // the topic is cancelled-tier — the reading a manifest cancelled per phase
@@ -1206,20 +1203,20 @@ function computeTopicLifecycle(manifest, topicName) {
   // out of cancelled-tier via the every() check, falling through to fresh.
   const attempted = [rs, ds].filter((s) => s != null);
   if (attempted.includes('cancelled') && attempted.every((s) => TERMINAL_STATUSES.includes(s))) {
-    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: rs, discussion_state: ds, reconcile_pending };
   }
   // The same reading for the postpone, one rank down: the cancel is the
   // stronger closure, so a unit holding both reads cancelled.
   if (attempted.includes('postponed') && attempted.every((s) => TERMINAL_STATUSES.includes(s))) {
-    return { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: rs, discussion_state: ds, reconcile_pending };
   }
   // Superseded research with no discussion: the topic's research lineage is
   // closed but a discussion path remains open. Render as ready-for-discussion
   // — the next available action is to discuss.
   if (rs === 'superseded' && !ds) {
-    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+    return { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: rs, discussion_state: ds, reconcile_pending };
   }
-  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, discussion_state: ds, mail_waiting, reconcile_pending };
+  return { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: rs, discussion_state: ds, reconcile_pending };
 }
 
 // The lifecycles a topic leaves the board under — no row, no action, and
@@ -1340,24 +1337,47 @@ function mailboxDir(workUnit, phase, topic) {
   return `.workflows/${workUnit}/${phase}/.mailbox/${topic}`;
 }
 
-// A topic's mailbox, counted from disk. The cue means "messages wait
-// here", and that is a fact about the mailbox directory, not the item's
-// status: a landing on a concluded topic reopens it to `in-progress`, leaving
-// no `unstarted` stub to read, and the drain deletes message files, so an
-// empty directory is the released signal with nothing to clear.
-/** @param {string} workflowsDir @param {object} manifest @param {string} phase @param {string} topic @returns {number} */
-function mailboxDepth(workflowsDir, manifest, phase, topic) {
-  if (typeof manifest.name !== 'string') return 0;
-  return countFiles(path.join(path.dirname(workflowsDir), mailboxDir(manifest.name, phase, topic)), '.md');
+/**
+ * A topic's messages: the mailbox's `.md` file names in the order the drain
+ * takes them, `[]` when no mailbox exists. The one reader of a mailbox's
+ * contents.
+ * @param {string} cwd  project root
+ * @param {string} workUnit @param {string} phase @param {string} topic
+ * @returns {string[]}
+ */
+function mailboxFiles(cwd, workUnit, phase, topic) {
+  /** @type {fs.Dirent[]} */
+  let entries;
+  try {
+    entries = fs.readdirSync(path.join(cwd, mailboxDir(workUnit, phase, topic)), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.filter((e) => e.isFile() && e.name.endsWith('.md')).map((e) => e.name).sort();
+}
+
+// A topic's mailbox depth. The cue means "messages wait here", and that is a
+// fact about the mailbox directory, not the item's status: a landing on a
+// concluded topic reopens it to `in-progress`, and the drain deletes message
+// files, so an empty directory is the released signal with nothing to clear.
+/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @returns {number} */
+function mailboxDepth(cwd, workUnit, phase, topic) {
+  return mailboxFiles(cwd, workUnit, phase, topic).length;
 }
 
 // The epic map row's depths — the two conversation phases a map row joins.
-/** @param {string} workflowsDir @param {object} manifest @param {string} topic @returns {{research: number, discussion: number}} */
-function mailQueued(workflowsDir, manifest, topic) {
+/** @param {string} cwd @param {string} workUnit @param {string} topic @returns {{research: number, discussion: number}} */
+function mailQueued(cwd, workUnit, topic) {
   return {
-    research: mailboxDepth(workflowsDir, manifest, 'research', topic),
-    discussion: mailboxDepth(workflowsDir, manifest, 'discussion', topic),
+    research: mailboxDepth(cwd, workUnit, 'research', topic),
+    discussion: mailboxDepth(cwd, workUnit, 'discussion', topic),
   };
+}
+
+// The `mail waiting` cue: messages wait in either of the topic's mailboxes.
+/** @param {{research: number, discussion: number}} queued @returns {boolean} */
+function mailWaiting(queued) {
+  return queued.research + queued.discussion > 0;
 }
 
 /**
@@ -1378,13 +1398,13 @@ function ownNamedItems(manifest, phase) {
  * rows' and the continue dashboard's cue — any mailbox phase owning one,
  * on the unit's name or, where the phase's items carry names of their own, on
  * any of them.
- * @param {string} workflowsDir @param {object} manifest @returns {string[]}
+ * @param {string} cwd  project root @param {object} manifest @returns {string[]}
  */
-function mailPhases(workflowsDir, manifest) {
+function mailPhases(cwd, manifest) {
   return MAILBOX_PHASES.filter((phase) => {
     const own = ownNamedItems(manifest, phase);
     const topics = own.length > 0 ? own.map((i) => i.name) : [manifest.name];
-    return topics.some((topic) => mailboxDepth(workflowsDir, manifest, phase, topic) > 0);
+    return topics.some((topic) => mailboxDepth(cwd, manifest.name, phase, topic) > 0);
   });
 }
 
@@ -1405,7 +1425,7 @@ function mailPhases(workflowsDir, manifest) {
  * @property {string|null} research_state
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to       the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} mail_waiting       messages wait on the topic — an `unstarted` stub in either phase, or message files on disk beneath a started or reopened item
+ * @property {boolean} mail_waiting       messages wait in the topic's research or discussion mailbox, whatever the item's status
  * @property {{research: number, discussion: number}} mail_queued  the topic's mailbox depth per phase, counted from disk
  * @property {boolean} reconcile_pending   a phase item beneath the row carries a live reconcile flag
  * @property {Wait[]} waits               the live waits of the topic's in-progress research and discussion items (empty when none)
@@ -1431,8 +1451,8 @@ function mailPhases(workflowsDir, manifest) {
 function buildDiscoveryMap(manifest, workflowsDir) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
-    const { lifecycle, tier, current_phase, research_state, discussion_state, mail_waiting: unstartedStub, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
-    const mail_queued = mailQueued(workflowsDir, manifest, item.name);
+    const { lifecycle, tier, current_phase, research_state, discussion_state, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
+    const mail_queued = mailQueued(path.dirname(workflowsDir), manifest.name, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     const discussion = discussion_state === 'promoted' ? itemOf(manifest, 'discussion', item.name) : undefined;
@@ -1452,7 +1472,7 @@ function buildDiscoveryMap(manifest, workflowsDir) {
       research_state,
       discussion_state,
       promoted_to: discussion && typeof discussion.promoted_to === 'string' ? discussion.promoted_to : null,
-      mail_waiting: unstartedStub || mail_queued.research > 0 || mail_queued.discussion > 0,
+      mail_waiting: mailWaiting(mail_queued),
       mail_queued,
       reconcile_pending,
       waits: topicWaits(manifest, item.name),
@@ -1531,6 +1551,10 @@ module.exports = {
   ownNamedItems,
   MAILBOX_PHASES,
   mailboxDir,
+  mailboxFiles,
+  mailboxDepth,
+  mailQueued,
+  mailWaiting,
   mailPhases,
   TIER_RANK,
 };

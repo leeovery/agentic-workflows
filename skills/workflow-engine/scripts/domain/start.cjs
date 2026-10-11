@@ -200,7 +200,6 @@ function discoverInbox(cwd) {
  */
 function startDetail(cwd) {
   const manifests = loadActiveManifests(cwd);
-  const workflowsDir = path.join(cwd, '.workflows');
   /** @type {WorkUnitEntry[]} */
   const epics = [];
   /** @type {WorkUnitEntry[]} */
@@ -224,7 +223,7 @@ function startDetail(cwd) {
     // Single-topic types cue messages waiting on the unit's own topics; an
     // epic's row carries no phase state — its dashboard cues per topic.
     if (m.work_type !== 'epic') {
-      const waiting = mailPhases(workflowsDir, m);
+      const waiting = mailPhases(cwd, m);
       if (waiting.length > 0) unit.mail_phases = waiting;
     }
 

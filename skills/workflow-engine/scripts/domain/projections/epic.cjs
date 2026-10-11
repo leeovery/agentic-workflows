@@ -588,15 +588,12 @@ function startVerbLabel(n, srcFlagged) {
 
 // A row's mail tail speaks for its own phase's mailbox — a research row
 // never carries the discussion mailbox's cue, nor a discussion row the
-// research's. The mailbox is read per phase: an `unstarted` stub, or files landed
-// beneath a started or reopened item (the row's mail_queued, counted from
-// disk).
+// research's (the row's mail_queued, counted from disk per phase).
 /** @param {string} workUnit @param {MapRow} row @param {string} action @returns {MenuKey} */
 function discoveryEntry(workUnit, row, action) {
   const phase = ACTION_PHASE[/** @type {keyof typeof ACTION_PHASE} */ (action)];
-  const state = phase === 'research' ? row.research_state : row.discussion_state;
   const queued = phase === 'research' ? row.mail_queued.research : row.mail_queued.discussion;
-  const mailWaiting = state === 'unstarted' || queued > 0;
+  const mailWaiting = queued > 0;
   return {
     key: '',
     action,

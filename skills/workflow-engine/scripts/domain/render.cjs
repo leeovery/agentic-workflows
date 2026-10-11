@@ -61,7 +61,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxDir,
+  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
@@ -1473,7 +1473,7 @@ function incoherenceGate(cwd, args) {
   return section('MENU: incoherence held doc', MENU_INSTRUCTION, menu(
     `${overAuto ? `${AUTO_OVERRIDE_LINE}\n\n` : ''}"${p.doc}" is open in another session${lastActive} so the fix belongs there; this topic waits for it.`,
     [
-      cmdOption('n', 'next', 'Queue the resolution and carry on here'),
+      cmdOption('n', 'next', 'Send the resolution to its mailbox and carry on here'),
       cmdOption('s', 'stop', 'Stop here; re-enter after that session lands it'),
     ],
     { question: 'How do you want to continue?' },
@@ -3883,22 +3883,9 @@ function findingSettled(p, head, item, { view, batched }) {
 
 // ---------------------------------------------------------------------------
 // Mailbox surfaces — the mailbox is engine-owned layout, so these
-// surfaces list it directly; entry content never populates a render from a
+// surfaces read it from disk; entry content never populates a render from a
 // parse — per-entry agenda values arrive as a judgment payload.
 // ---------------------------------------------------------------------------
-
-/**
- * List a topic's mailbox: sorted engine-numbered basenames.
- * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
- * @returns {{dir: string, files: string[]}}
- */
-function mailboxFiles(cwd, workUnit, phase, topic) {
-  const dir = path.join(cwd, mailboxDir(workUnit, phase, topic));
-  return {
-    dir,
-    files: fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort() : [],
-  };
-}
 
 // mail-offer — the offer gate over a non-empty mailbox: the agenda (count
 // and order from the live mailbox, per-entry lines from the caller's payload,
@@ -3914,7 +3901,7 @@ function mailOffer(cwd, { dotpath, file }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
   if (!file) throw new Error('render mail-offer: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'mail-offer');
-  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(cwd, workUnit, phase, topic);
   if (!files.length) throw new Error(`render mail-offer: the ${topic} ${phase} mailbox is empty — nothing to offer`);
   if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
   /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
@@ -3965,7 +3952,7 @@ function mailOffer(cwd, { dotpath, file }) {
  */
 function mailAnnounce(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
-  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(cwd, workUnit, phase, topic);
   if (!files.length) throw new Error(`render mail-announce: the ${topic} ${phase} mailbox is empty — nothing to announce`);
   const line = files.length === 1
     ? "1 message from another topic waits in this topic's mailbox — I'll raise it once the session finds its footing."
@@ -3983,7 +3970,7 @@ function mailAnnounce(cwd, { dotpath }) {
  */
 function mailBlock(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
-  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(cwd, workUnit, phase, topic);
   if (!files.length) throw new Error(`render mail-block: the ${topic} ${phase} mailbox is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
@@ -4022,7 +4009,7 @@ function forwardOffer(cwd, { dotpath, file }) {
   for (const field of ['file', 'title', 'reason']) {
     if (!isFilled(p[field])) throw new Error(`render forward-offer: "${field}" must be a non-empty string`);
   }
-  const { files } = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(cwd, workUnit, phase, topic);
   if (!files.includes(p.file)) {
     throw new Error(`render forward-offer: "${p.file}" is not in the ${topic} ${phase} mailbox`);
   }

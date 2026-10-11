@@ -13,7 +13,6 @@
 // duplicated here.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
 const { loadManifest } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const {
@@ -181,7 +180,7 @@ function activeWorkUnit(cwd, name) {
   };
   const flagged = reconcilePhases(cfg, m);
   if (flagged.length > 0) unit.reconcile_phases = flagged;
-  const waiting = mailPhases(path.join(cwd, '.workflows'), m);
+  const waiting = mailPhases(cwd, m);
   if (waiting.length > 0) unit.mail_phases = waiting;
   if (cfg.surfacesSeeds) {
     unit.imports_count = Array.isArray(m.imports) ? m.imports.length : 0;

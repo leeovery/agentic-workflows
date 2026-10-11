@@ -185,7 +185,7 @@ Commands:
   discovery-session open  <work-unit> --session-log-file <path>
   discovery-session close <work-unit> -m <message>
   topic start <work-unit> <phase> <topic>
-  topic send <work-unit> <phase> <topic> [--content <file> --slug <kebab> -m <message>]
+  topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>
   topic mailbox <work-unit> <phase> <topic>
   topic incorporations <work-unit> <topic>
   topic absorb <work-unit> <phase> <topic> --file <NNN-slug.md> [--subtopic <name>] -m <message>
@@ -1118,11 +1118,10 @@ function runTopic(call, argv) {
         else pos.push(a);
       }
       const [workUnit, phase, topic] = pos;
-      const delivering = content !== undefined || slug !== undefined || message !== undefined;
-      if (!workUnit || !phase || !topic || pos.length !== 3 || (delivering && !(content && slug && message))) {
-        throw new Error('Usage: engine topic send <work-unit> <phase> <topic> [--content <file> --slug <kebab> -m <message>]');
+      if (!workUnit || !phase || !topic || pos.length !== 3 || !content || !slug || !message) {
+        throw new Error('Usage: engine topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>');
       }
-      respond(call, sendMessage(call.cwd, workUnit, phase, topic, delivering ? { contentFile: content, slug, message } : {}));
+      respond(call, sendMessage(call.cwd, workUnit, phase, topic, { contentFile: content, slug, message }));
       return;
     }
     if (command === 'postpone') {

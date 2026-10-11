@@ -681,6 +681,7 @@ describe('workflow-discovery format', () => {
         research: { items: { parked: { status: 'unstarted' } } },
       },
     });
+    createFile(dir, '.workflows/payments/research/.mailbox/parked/001-question.md', '### question\n');
     const out = format(discover(dir, 'payments'));
     assert.match(out, /- ○ parked \[fresh\] routing=research source=message:origin mail=waiting — target/);
   });

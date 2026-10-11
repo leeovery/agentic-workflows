@@ -35,7 +35,7 @@ const {
   awaitedExperiments, waits, settleItemStatus,
   sourceRows, sourceRow, openSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, unitItems, discoveryUnitExists, unitLocks, lockingSpecsPhrase, promotedRefusal, deliveryStarted,
   specIncorporations, cancelPlan, postponePlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
-  MAILBOX_PHASES, mailboxDir,
+  MAILBOX_PHASES, mailboxDir, mailboxFiles,
 } = require('./derivations.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -291,12 +291,12 @@ function startTopic(cwd, workUnit, phase, topic) {
  * @property {boolean} created     true when the phase item was created as `unstarted`
  * @property {string|null} status_before  the item's status before the call (null when created)
  * @property {boolean} [reopened]  set when a completed item was reopened to receive the message
- * @property {string} [message_path]  delivery form: the installed message file, project-relative
- * @property {boolean} [reconcile_flagged]  delivery form: the landing flagged downstream item(s) for reconciliation
- * @property {string[]} [sources_staled]  delivery form: spec items whose source row for this discussion flipped `incorporated` → `stale`
- * @property {string|null} [committed]  delivery form: short commit sha, or null
- * @property {string} [note]       delivery form: set when committed is null
- * @property {string[]} [warnings] delivery form: the tail commit's failure detail
+ * @property {string} message_path  the installed message file, project-relative
+ * @property {boolean} [reconcile_flagged]  the landing flagged downstream item(s) for reconciliation
+ * @property {string[]} [sources_staled]  spec items whose source row for this discussion flipped `incorporated` → `stale`
+ * @property {string|null} [committed]  short commit sha, or null
+ * @property {string} [note]       set when committed is null
+ * @property {string[]} [warnings] the tail commit's failure detail
  */
 
 /**
@@ -312,21 +312,14 @@ function assertLegalTopicName(topic) {
 
 /**
  * The next message number in a topic's mailbox: highest `NNN-` prefix
- * plus one, `1` for a missing or empty directory.
- * @param {string} dirAbs
+ * plus one, `1` for a missing or empty mailbox.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  * @returns {number}
  */
-function nextMessageNumber(dirAbs) {
-  /** @type {string[]} */
-  let files;
-  try {
-    files = fs.readdirSync(dirAbs);
-  } catch {
-    return 1;
-  }
+function nextMessageNumber(cwd, workUnit, phase, topic) {
   let max = 0;
-  for (const f of files) {
-    const m = f.match(/^(\d{3})-.+\.md$/);
+  for (const f of mailboxFiles(cwd, workUnit, phase, topic)) {
+    const m = f.match(/^(\d{3})-/);
     if (m) max = Math.max(max, parseInt(m[1], 10));
   }
   return max + 1;
@@ -525,45 +518,40 @@ function assertSendTargetOpen(manifest, topic) {
 }
 
 /**
- * Send a message to a topic (parking semantics per `parkMessageItem`).
- * Legal only in phases whose schema vocabulary contains `unstarted`. No git
- * commit in the bare form — the calling flow commits the artefact append
- * alongside; the delivery form (`--content`) installs the message file in
- * the topic's mailbox and commits action-scoped.
+ * Send a message to a topic: park the target item (`parkMessageItem`),
+ * install the message as the next numbered file in the topic's mailbox,
+ * consume the scratch file, and commit action-scoped. Legal only in phases
+ * whose schema vocabulary contains `unstarted`.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} phase
  * @param {string} topic
+ * @param {{contentFile: string, slug: string, message: string}} opts
  * @returns {TopicSendResult}
  */
-function sendMessage(cwd, workUnit, phase, topic, opts = {}) {
+function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }) {
   assertLegalWrite(phase, 'unstarted');
-  const { contentFile, slug, message } = opts;
-  const delivering = contentFile !== undefined;
-
   assertLegalTopicName(topic);
-
-  /** @type {string|null} */
-  let content = null;
-  if (delivering) {
-    if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
-      throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
-    }
-    if (!message) throw new Error('topic send --content requires -m <message>');
-    // The scratch is consumed after delivery — confine it to the cache so a
-    // mis-passed path can never read (and delete) a live artifact.
-    const scratchAbs = path.resolve(cwd, /** @type {string} */ (contentFile));
-    const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
-    if (!scratchAbs.startsWith(cacheRoot)) {
-      throw new Error(`--content must point inside .workflows/.cache/ — got "${contentFile}"`);
-    }
-    try {
-      content = fs.readFileSync(scratchAbs, 'utf8');
-    } catch {
-      throw new Error(`message file not found: ${contentFile}`);
-    }
-    if (content.trim() === '') throw new Error(`message file is empty: ${contentFile}`);
+  if (!contentFile) throw new Error('topic send requires --content <file>');
+  if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+    throw new Error(`--slug must be kebab-case, got "${slug ?? ''}"`);
   }
+  if (!message) throw new Error('topic send requires -m <message>');
+  // The scratch is consumed after delivery — confine it to the cache so a
+  // mis-passed path can never read (and delete) a live artifact.
+  const scratchAbs = path.resolve(cwd, contentFile);
+  const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
+  if (!scratchAbs.startsWith(cacheRoot)) {
+    throw new Error(`--content must point inside .workflows/.cache/ — got "${contentFile}"`);
+  }
+  /** @type {string} */
+  let content;
+  try {
+    content = fs.readFileSync(scratchAbs, 'utf8');
+  } catch {
+    throw new Error(`message file not found: ${contentFile}`);
+  }
+  if (content.trim() === '') throw new Error(`message file is empty: ${contentFile}`);
 
   /** @type {TopicSendResult} */
   const result = withWorkUnitLock(cwd, workUnit, () => {
@@ -574,67 +562,48 @@ function sendMessage(cwd, workUnit, phase, topic, opts = {}) {
 
     assertSendTargetOpen(manifest, topic);
     const park = parkMessageItem(items, phase, topic);
-    let dirty = park.dirty;
+    // A landing reopens the ground the downstream phase stands on — flag it
+    // for reconciliation the next time it is entered. Staleness begins at
+    // landing, not at the topic's later re-conclusion.
+    const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
+
+    // Install the message in the topic's mailbox — a fresh engine-numbered
+    // file per message, so concurrent deliveries can never collide or lose
+    // an entry.
+    const dirRel = mailboxDir(workUnit, phase, topic);
+    fs.mkdirSync(path.join(cwd, dirRel), { recursive: true });
+    const n = String(nextMessageNumber(cwd, workUnit, phase, topic)).padStart(3, '0');
+    const rel = `${dirRel}/${n}-${slug}.md`;
+    fs.writeFileSync(path.join(cwd, rel), content.endsWith('\n') ? content : content + '\n');
+
     /** @type {TopicSendResult} */
-    const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before };
+    const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before, message_path: rel };
     if (park.reopened) base.reopened = true;
+    if (fd.flagged.length > 0) base.reconcile_flagged = true;
+    if (fd.staled.length > 0) base.sources_staled = fd.staled;
 
-    if (delivering || base.reopened === true) {
-      // A landing reopens the ground the downstream phase stands on — flag it
-      // for reconciliation the next time it is entered. Staleness begins at
-      // landing, not at the topic's later re-conclusion. The bare form hops
-      // only when it reopened a completed item — the same onset reopen has —
-      // so no completed→in-progress transition ever skips the hop.
-      const fd = flagDownstream(manifest, manifest.work_type, phase, topic);
-      if (fd.flagged.length > 0) {
-        base.reconcile_flagged = true;
-        dirty = true;
-      }
-      if (fd.staled.length > 0) {
-        base.sources_staled = fd.staled;
-        dirty = true;
-      }
-    }
-
-    if (delivering) {
-      // Install the message in the topic's mailbox — a fresh
-      // engine-numbered file per message, so concurrent deliveries can
-      // never collide or lose an entry.
-      const dirRel = mailboxDir(workUnit, phase, topic);
-      const dirAbs = path.join(cwd, dirRel);
-      fs.mkdirSync(dirAbs, { recursive: true });
-      const n = String(nextMessageNumber(dirAbs)).padStart(3, '0');
-      const rel = `${dirRel}/${n}-${slug}.md`;
-      const body = /** @type {string} */ (content);
-      fs.writeFileSync(path.join(cwd, rel), body.endsWith('\n') ? body : body + '\n');
-      base.message_path = rel;
-    }
-
-    if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
+    if (park.dirty || fd.flagged.length > 0 || fd.staled.length > 0) saveWorkUnitManifest(cwd, workUnit, manifest);
     return base;
   });
 
-  if (delivering) {
-    try { fs.unlinkSync(path.resolve(cwd, /** @type {string} */ (contentFile))); } catch { /* scratch already gone */ }
-    /** @type {string[]} */
-    const warnings = [];
-    const outcome = commitTailPathspec(
-      cwd,
-      [`.workflows/${workUnit}/manifest.json`, /** @type {string} */ (result.message_path)],
-      /** @type {string} */ (message),
-      warnings,
-    );
-    result.committed = outcome.committed;
-    result.warnings = warnings;
-    noteCommitOutcome(result, outcome);
-    if (outcome.failed) {
-      // `--sweep` on the retry for the same reason the delivery itself never
-      // beats: the origin's session is committing into the TARGET topic, and
-      // a heartbeat there would manufacture a hold no session is holding.
-      result.note = `commit pending — state saved; retry with: engine commit ${workUnit} --topic ${phase}/${topic} --sweep -m "<message>"`;
-    }
+  try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
+  /** @type {string[]} */
+  const warnings = [];
+  const outcome = commitTailPathspec(
+    cwd,
+    [`.workflows/${workUnit}/manifest.json`, result.message_path],
+    message,
+    warnings,
+  );
+  result.committed = outcome.committed;
+  result.warnings = warnings;
+  noteCommitOutcome(result, outcome);
+  if (outcome.failed) {
+    // `--sweep` on the retry for the same reason the delivery itself never
+    // beats: the origin's session is committing into the TARGET topic, and
+    // a heartbeat there would manufacture a hold no session is holding.
+    result.note = `commit pending — state saved; retry with: engine commit ${workUnit} --topic ${phase}/${topic} --sweep -m "<message>"`;
   }
-
   return result;
 }
 
@@ -666,15 +635,7 @@ function mailboxStatus(cwd, workUnit, phase, topic) {
     throw new Error(`no work unit directory: .workflows/${workUnit}`);
   }
   const dirRel = mailboxDir(workUnit, phase, topic);
-  /** @type {fs.Dirent[]} */
-  let entries = [];
-  try {
-    entries = fs.readdirSync(path.join(cwd, dirRel), { withFileTypes: true });
-  } catch { /* no mailbox yet — empty */ }
-  const files = entries
-    .filter((e) => e.isFile() && e.name.endsWith('.md'))
-    .map((e) => `${dirRel}/${e.name}`)
-    .sort();
+  const files = mailboxFiles(cwd, workUnit, phase, topic).map((name) => `${dirRel}/${name}`);
   return { work_unit: workUnit, phase, topic, count: files.length, files };
 }
 
@@ -692,7 +653,7 @@ function mailboxStatus(cwd, workUnit, phase, topic) {
  */
 
 /**
- * Absorb one message — the mirror of `send`'s delivery form:
+ * Absorb one message — the mirror of `send`:
  * delete its message file and commit the fold action-scoped (the phase
  * artifact, this deletion, the work-unit manifest) under the caller's
  * message. The response answers `remaining` so the caller routes
@@ -851,7 +812,7 @@ function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
     const destDirRel = mailboxDir(workUnit, toPhase, topic);
     const destDirAbs = path.join(cwd, destDirRel);
     fs.mkdirSync(destDirAbs, { recursive: true });
-    const n = String(nextMessageNumber(destDirAbs)).padStart(3, '0');
+    const n = String(nextMessageNumber(cwd, workUnit, toPhase, topic)).padStart(3, '0');
     const destRel = `${destDirRel}/${n}-${slug}.md`;
     fs.renameSync(path.join(cwd, sourceRel), path.join(cwd, destRel));
     base.message_path = destRel;

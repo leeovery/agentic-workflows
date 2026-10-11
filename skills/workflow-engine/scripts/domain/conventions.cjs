@@ -125,8 +125,8 @@ function discoveryGlyph(tier) {
 // when none exists — see computeTopicLifecycle's research_state): superseded
 // research is named as such, never as complete. `mailWaiting` (the map
 // row's mail_waiting) appends a `mail waiting` cue on any lifecycle —
-// messages wait on the topic, parked on an `unstarted` stub or waiting
-// beneath a started or reopened item, and drain when its session next sits.
+// messages wait in the topic's mailbox, whatever its items' status, and
+// drain when its session next sits.
 // `reconcilePending` (computeTopicLifecycle's
 // reconcile_pending) appends an `input moved` cue the same way — a phase item
 // beneath the row carries a live reconcile flag its phase's start will clear.

@@ -26,7 +26,7 @@ const io = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { subtopicStatuses } = require('./discussion-map.cjs');
-const { mailboxDir } = require('./derivations.cjs');
+const { mailboxDepth } = require('./derivations.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -401,11 +401,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     /** @type {Record<string, string> | null} */
     let mapSnapshot = null;
     if (kind === 'review' && phase === 'discussion') {
-      let waiting = 0;
-      try {
-        waiting = fs.readdirSync(path.join(cwd, mailboxDir(workUnit, phase, topic)), { withFileTypes: true })
-          .filter((e) => e.isFile() && e.name.endsWith('.md')).length;
-      } catch { /* no mailbox — clear */ }
+      const waiting = mailboxDepth(cwd, workUnit, phase, topic);
       if (waiting > 0) {
         throw new Error(`review dispatch blocked: ${waiting} message(s) wait in the ${phase}/${topic} mailbox — absorb them (topic absorb) before dispatching a review`);
       }

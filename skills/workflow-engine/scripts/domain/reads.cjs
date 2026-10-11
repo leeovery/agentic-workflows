@@ -39,10 +39,6 @@ function listDirs(dir) {
   }
 }
 
-function countFiles(dir, ext) {
-  return listFiles(dir, ext).length;
-}
-
 function filesChecksum(paths) {
   if (!paths || paths.length === 0) return null;
   const hash = crypto.createHash('md5');
@@ -107,7 +103,6 @@ function loadAllManifests(cwd) {
 module.exports = {
   listFiles,
   listDirs,
-  countFiles,
   fileExists,
   loadManifest,
   filesChecksum,

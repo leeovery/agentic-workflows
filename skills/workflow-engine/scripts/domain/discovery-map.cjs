@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
-const { computeTopicLifecycle, phaseItems, lifecyclePhrase, CLOSED_LIFECYCLES } = require('./derivations.cjs');
+const { computeTopicLifecycle, phaseItems, lifecyclePhrase, CLOSED_LIFECYCLES, mailboxDepth } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -603,10 +603,9 @@ function handleItem(cwd, workUnit, name) {
     if (lifecycle === 'postponed') {
       throw new Error(`"${name}" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first`);
     }
-    const parked = ['research', 'discussion']
-      .filter((phase) => phaseItems(manifest, phase).some((it) => it.name === name && it.status === 'unstarted'));
-    if (parked.length > 0) {
-      throw new Error(`"${name}" can't be closed as a dead end — messages wait in its ${parked.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`);
+    const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(cwd, workUnit, phase, name) > 0);
+    if (waiting.length > 0) {
+      throw new Error(`"${name}" can't be closed as a dead end — messages wait in its ${waiting.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`);
     }
     item.handled = true;
 
