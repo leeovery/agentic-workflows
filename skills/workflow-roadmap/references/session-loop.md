@@ -54,7 +54,7 @@ Where do you want to take it from here?
 
 #### Otherwise
 
-A fresh session over the map just rendered at Step 3. Brief across the record first when prior sessions exist (most recent log in full, older Conclusions one line each — as the resume branch does), skipping silently when none do. Then open:
+A fresh session over the map just rendered at Step 3. Where prior sessions exist, brief across the record first — the most recent log in full, older Conclusions one line each — and emit the catch-up as the resume branch's `Where we'd got to:` block above; where none do, skip it silently. Then open:
 
 > *Output the next fenced block as markdown (not a code block):*
 

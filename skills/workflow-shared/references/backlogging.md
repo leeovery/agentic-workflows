@@ -74,7 +74,7 @@ Emit the call's MENU section verbatim per its marker.
 
 A source is recorded only once it is on disk. Before this session's record exists (a scoping or specification session before its first write, a planning session before `planning.md`), the park carries none: both calls below leave `[--source {source}]` out.
 
-**The confirm** — it states the item, its kind and its summary, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source where there is one. A refusal means the name is already on the roadmap: derive another and render again.
+**The confirm** — it states the item and its summary, marking a bug or a quick-fix as one, the horizon (flagged new when the map does not hold it), the roadmap's own birth when there is none, and the source where there is one. A refusal means the name is already on the roadmap: derive another and render again.
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render park-gate --name {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" [--source {source}]
@@ -92,7 +92,7 @@ Park it — the verb validates, births the map and any new horizon, and self-com
 node .claude/skills/workflow-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
 ```
 
-Note the park where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing. The other phases keep none: the item's own origin and source are its provenance. Tell the user in one line what was parked and where.
+Tell the user in one line what was parked and where, then note the park where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing. The other phases keep none: the item's own origin and source are its provenance.
 
 → Return to caller.
 
@@ -116,6 +116,6 @@ It goes to the inbox as a note, unconfirmed as every capture is. Invoke the matc
 node .claude/skills/workflow-engine/scripts/engine.cjs commit --inbox -m "workflow(inbox): capture {slug}"
 ```
 
-Note it where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing; the other phases keep none. Tell the user in one line that it is in the inbox.
+Tell the user in one line that it is in the inbox, then note it where the phase keeps a running record — the discussion's Summary, the file a research or investigation session is writing; the other phases keep none.
 
 → Return to caller.
