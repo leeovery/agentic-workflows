@@ -700,7 +700,7 @@ function checkNoTemplatedRenders(files, root = REPO) {
     .flatMap((file) => templatedRenderSites(file).map((line) => ({
       file,
       line,
-      message: 'a templated fence rendered from prose — render it from the engine (CONVENTIONS → Engine Output Sections)',
+      message: "a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line (CONVENTIONS → What the engine renders)",
     })));
 }
 
@@ -1628,7 +1628,7 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
     const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
     const v1 = checkNoTemplatedRenders([fresh], dir);
     assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
-    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine \(CONVENTIONS → Engine Output Sections\)/);
+    assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line \(CONVENTIONS → What the engine renders\)/);
 
     const numbered = write(dir, 'skills/x/f.md', `1. Do the thing.\n4. ${textInstr}\n\n   \`\`\`text\n   Task {id} authored.\n   \`\`\`\n`);
     assert.deepStrictEqual(sites(numbered), [2], 'an instruction after a numbered marker is caught');

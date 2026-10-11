@@ -120,7 +120,7 @@ Rules:
 - Loop iterations shown in parentheses: `(cycle N)`, `(N of M)`
 - Route-back uses `Returning to {Name}`
 - A static marker over a static signpost is emitted as markdown with its own rendering instruction. No trailing blank line — natural block separation provides enough spacing
-- **A marker naming anything that varies is drawn by the engine** — a loop count, an item's name, a phase number: the marker's shape is fixed — as the first line of one markdown section, its signpost beneath it; so is a static marker whose signpost turns on state the engine reads (`engine render step-opening` serves the steps that have no surface of their own). The prose carries the fetch at the step boundary, never the marker
+- **A marker naming anything that varies is drawn by the engine**, its shape being fixed — a loop count, an item's name, a phase number — as the first line of one markdown section, its signpost beneath it; so is a static marker whose signpost turns on state the engine reads (`engine render step-opening` serves the steps that have no surface of their own). The prose carries the fetch at the step boundary, never the marker
 
 Engine-drawn dividers inside a fenced DISPLAY block (the epic dashboard's `── STAGE ──` lines) are a different object: markdown cannot reach inside a fence, so they stay drawn, sized to the content they divide.
 
