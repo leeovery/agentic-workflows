@@ -36,7 +36,7 @@ A label in `horizons`, or a new one in their own words — "under Next", "that's
 
 #### Otherwise
 
-The instruction says put it aside and no more — "backlog it", "later", "not now", none of them a label in `horizons` (a horizon called Later makes "later" a placement under the first branch). Only the user can say where it waits, so ask. Write `{"title": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, then render the gate:
+The instruction says put it aside and no more — "backlog it", "later", "not now", none of them a label in `horizons` (a horizon called Later makes "later" a placement under the first branch). Only the user can say where it waits, so ask. Write `{"title": "…"}` — its short title — to `.workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json` with the Write tool, never a shell heredoc or redirect, then render the gate:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/backlog.json
