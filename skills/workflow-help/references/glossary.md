@@ -151,14 +151,6 @@ An epic's view: the three stages as bands, the topics and their state beneath th
 **build order**:
 A suggested sequence over an epic's specifications for planning and building. Advisory: stepping ahead of it warns and never blocks.
 
-**mailbox**:
-Where a topic receives messages from the other topics of its epic. The topic's next session raises each one, and the topic cannot conclude while one waits; the menus show it as *mail waiting*.
-_Avoid_: triage queue, queue
-
-**message**:
-Something one topic's conversation found that belongs to another topic, sent to that topic's mailbox with everything worked out about it.
-_Avoid_: concern, reroute, triage (as a verb), spawn
-
 **dead end**:
 Research that concluded with nothing to carry forward under its own name. The topic stays on the map as the record that it was explored.
 
@@ -200,3 +192,11 @@ The cue on a topic another session is working right now. Awareness only: it neve
 
 **code session**:
 The one session per checkout allowed to be writing code at a time, since implementation and review change the same tree.
+
+**mailbox**:
+Where a discussion, investigation or research receives messages, whatever the kind of work: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot conclude while one waits; the menus show it as *mail waiting*.
+_Avoid_: triage queue, queue
+
+**message**:
+Something a session found that belongs to another discussion, investigation or research — a point for another topic of the same epic, or a question a later phase needs decided — sent to its mailbox with everything worked out about it.
+_Avoid_: concern, reroute, spawn

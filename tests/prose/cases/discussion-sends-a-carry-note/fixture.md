@@ -9,7 +9,7 @@ from the nightly batch aggregates, daily refresh, a Sibling check line
 in the decision. But the decision needs something from the sibling: the
 nightly job must also emit reformulation-and-click pair aggregates,
 which its decided schema (click and purchase counts only) does not
-cover. Instead of rerouting that correction at the moment it was known,
+cover. Instead of sending that correction at the moment it was known,
 the session stranded it as a carry-note in Summary → Open Threads and
 walked away without concluding. The subtopic is decided on the map; the
 mailbox is empty; behavioural-ranking's file and manifest item are

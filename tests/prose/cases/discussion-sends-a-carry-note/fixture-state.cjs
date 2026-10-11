@@ -4,7 +4,7 @@
 // earlier sitting (batch nightly aggregation, click and purchase
 // counts, no live stream). Synonym-handling's session then decided its
 // expansion source against that batch-only world — but instead of
-// rerouting the correction it owes the sibling (the aggregation job
+// sending the sibling the correction it owes (the aggregation job
 // must also emit reformulation-and-click *pair* aggregates), the
 // session stranded it as a carry-note in Summary → Open Threads and
 // walked away without concluding. The next session opens cold to wrap

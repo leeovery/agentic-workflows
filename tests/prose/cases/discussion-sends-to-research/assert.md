@@ -62,6 +62,6 @@ Further claims:
 - synonym-handling's document records the result-caching decision;
   the click-window worry is never there as explored content — no
   options weighed, no answer reached, nothing the target topic would
-  need to re-derive. Rerouting leaves this session's record unchanged:
+  need to re-derive. Sending leaves this session's record unchanged:
   the send's record is its commit, and a document that carries no
   line about it is the expected shape
