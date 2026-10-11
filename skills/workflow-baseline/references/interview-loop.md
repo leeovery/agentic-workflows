@@ -48,7 +48,7 @@ Every area is `completed`.
 
 #### Otherwise
 
-Write the area's opening to `.workflows/.cache/baseline/area.json` with the Write tool — `{"area": "{area}", "summary": "{one line: what this area covers and what the questions are after}"}` — then fetch it and emit its `DISPLAY: baseline area` section verbatim per its marker:
+Write the area's opening to `.workflows/.cache/baseline/area.json` with the Write tool — `{"area": "{area}", "summary": "{one line: what this area covers and what the questions are after}"}` — then fetch the opening and emit its `DISPLAY: baseline area` section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render baseline-area --file .workflows/.cache/baseline/area.json

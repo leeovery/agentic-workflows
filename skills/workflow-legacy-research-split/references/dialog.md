@@ -360,7 +360,7 @@ User specifies `kebab_name`, summary, description, and the content for the new c
 
 ## P. Remove a Theme
 
-User specifies `theme_name`. Confirm before destructive removal — fetch the gate, what the removal drops above the confirm, and emit its DISPLAY and MENU sections, each verbatim per its marker:
+User specifies `theme_name`. Confirm before destructive removal — fetch the gate — what the removal drops above the confirm — and emit its DISPLAY and MENU sections, each verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-gate --variant remove --theme {theme_name}

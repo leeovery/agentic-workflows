@@ -5576,14 +5576,16 @@ function surfacedContext(cwd, { file }) {
 }
 
 // ---------------------------------------------------------------------------
-// format-version-check — the stop where a plan format's tool is older than
-// the format requires. Every value is read from the format's own declaration
-// and the tool's own output, so all of it rides the payload, the format's
-// name among it: the engine names no format. The guidance waits on the user,
-// who updates the tool and says so; the check then runs again.
+// format-version-check — the stop where a plan format's tool is missing or
+// older than the format requires. Every value is read from the format's own
+// declaration and the tool's own output, so all of it rides the payload, the
+// format's name among it: the engine names no format. A missing tool has no
+// installed version, so the payload leaves `installed` out. The guidance
+// waits on the user, who installs or updates the tool and says so; the check
+// then runs again.
 // ---------------------------------------------------------------------------
 
-const FORMAT_VERSION_FIELDS = ['tool', 'installed', 'format', 'required', 'update_instructions'];
+const FORMAT_VERSION_FIELDS = ['tool', 'format', 'required', 'update_instructions'];
 
 /** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
 function formatVersionCheck(cwd, { file }) {
@@ -5592,10 +5594,18 @@ function formatVersionCheck(cwd, { file }) {
   for (const field of FORMAT_VERSION_FIELDS) {
     if (!isFilled(p[field])) throw new Error(`render format-version-check: "${field}" must be a non-empty string`);
   }
+  const missing = p.installed === undefined || p.installed === null;
+  if (!missing && !isFilled(p.installed)) {
+    throw new Error('render format-version-check: "installed" must be a non-empty string, or left out where the tool is not installed');
+  }
+  const [blocker, guidance] = missing
+    ? ['⚑ The tool this plan format requires is not installed',
+      `> ${p.tool} is not installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to install.`]
+    : ['⚑ The installed tool does not meet the version this plan format requires',
+      `> ${p.tool} ${p.installed} is installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to update.`];
   return [
-    section('DISPLAY: version blocker', emitAs('properties'), '⚑ The installed tool does not meet the version this plan format requires'),
-    section('DISPLAY: version guidance', emitAs('markdown', STOP_CLAUSE),
-      `> ${p.tool} ${p.installed} is installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to update.`),
+    section('DISPLAY: version blocker', emitAs('properties'), blocker),
+    section('DISPLAY: version guidance', emitAs('markdown', STOP_CLAUSE), guidance),
   ].join('\n');
 }
 

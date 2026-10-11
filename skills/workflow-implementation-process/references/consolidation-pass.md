@@ -345,7 +345,11 @@ Close the phase:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank
    ```
-2. **Mark the boundary** — skip the push when `consolidated_phases` already contains `{N}`:
+2. **Mark the boundary** — read `consolidated_phases` (empty when the field is absent):
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidated_phases
+   ```
+   Skip the push when it already contains `{N}`; otherwise push it:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {N}
    ```

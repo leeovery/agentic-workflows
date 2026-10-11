@@ -5161,12 +5161,29 @@ describe('render format-version-check', () => {
     ].join('\n'));
   });
 
-  it('refuses no payload and any field missing or blank, by name', () => {
+  it('a tool not installed — `installed` absent or null — reads as missing and asks for an install', () => {
+    const absent = { ...found };
+    delete absent.installed;
+    for (const missing of [absent, { ...found, installed: null }]) {
+      assert.strictEqual(renderSurface(dir, 'format-version-check', { file: payload(missing) }), [
+        '=== DISPLAY: version blocker (emit verbatim as a properties code block (```properties fence)) ===',
+        '⚑ The tool this plan format requires is not installed',
+        '',
+        "=== DISPLAY: version guidance (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+        "> acme is not installed; the some-format format requires `>=0.3.*`. See the format's about.md to install.",
+        '',
+      ].join('\n'));
+    }
+  });
+
+  it('refuses no payload, any required field missing or blank, and a blank installed version, by name', () => {
     assert.throws(() => renderSurface(dir, 'format-version-check', {}), /--file <payload\.json> is required/);
-    for (const field of ['tool', 'installed', 'format', 'required', 'update_instructions']) {
+    for (const field of ['tool', 'format', 'required', 'update_instructions']) {
       assert.throws(() => renderSurface(dir, 'format-version-check', { file: payload({ ...found, [field]: ' ' }) }),
         new RegExp(`render format-version-check: "${field}" must be a non-empty string`));
     }
+    assert.throws(() => renderSurface(dir, 'format-version-check', { file: payload({ ...found, installed: ' ' }) }),
+      /render format-version-check: "installed" must be a non-empty string, or left out where the tool is not installed/);
   });
 });
 

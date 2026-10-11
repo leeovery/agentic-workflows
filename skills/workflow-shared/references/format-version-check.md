@@ -22,7 +22,7 @@ Read the **Version** section of the format's **[about.md](../../workflow-plannin
 
 ## B. Compare
 
-Run the declared command and take the installed version from its output. The check passes when the installed version satisfies the requirement.
+Run the declared command and take the installed version from its output; where the command fails because the tool is not installed, there is no installed version. The check passes when the installed version satisfies the requirement.
 
 #### If the check passes
 
@@ -30,7 +30,7 @@ Run the declared command and take the installed version from its output. The che
 
 #### Otherwise
 
-Write what the check found to `.workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json` with the Write tool — `{"tool": "{tool}", "installed": "{installed version}", "format": "{format}", "required": "{required version}", "update_instructions": "{where the update instructions live}"}` — then fetch the blocker and emit both sections verbatim per their markers:
+Write what the check found to `.workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json` with the Write tool — `{"tool": "{tool}", "installed": "{installed version}", "format": "{format}", "required": "{required version}", "update_instructions": "{where the update instructions live}"}`, leaving `installed` out where the command failed — then fetch the blocker and emit both sections verbatim per their markers:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render format-version-check --file .workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json
