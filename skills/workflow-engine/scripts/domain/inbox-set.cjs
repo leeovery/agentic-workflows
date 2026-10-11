@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------------------
 
 const { discoverInbox } = require('./start.cjs');
-const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
+const { parseInboxPath, archivedDir, INBOX, ARCHIVED, FOLDER_KIND } = require('./inbox.cjs');
 
 /**
  * @typedef {object} PickupItem
@@ -41,7 +41,7 @@ const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
  */
 function folderItems(scan, folder, archived) {
   const rows = folder === 'ideas' ? scan.ideas : folder === 'bugs' ? scan.bugs : scan.quickfixes;
-  const base = archived ? '.workflows/.inbox/.archived' : '.workflows/.inbox';
+  const dir = archived ? archivedDir(folder) : `${INBOX}/${folder}`;
   return rows.map((r) => ({
     n: 0,
     type: FOLDER_KIND[folder],
@@ -49,7 +49,7 @@ function folderItems(scan, folder, archived) {
     date: r.date,
     slug: r.slug,
     title: r.title,
-    path: `${base}/${folder}/${r.file}`,
+    path: `${dir}/${r.file}`,
   }));
 }
 
@@ -140,4 +140,21 @@ function archivedItem(cwd, given) {
   return storeItem(combinedInbox(discoverInbox(cwd).archived, { archived: true }), given, true);
 }
 
-module.exports = { combinedInbox, workingSetDetail, archivedItem };
+/**
+ * Inbox items by their paths, live or archived — each path read for the
+ * store it names, in the order given. Loud on a path outside both stores, or
+ * one nothing sits at.
+ * @param {string} cwd
+ * @param {string[]} paths  project-relative inbox paths
+ * @returns {PickupItem[]}
+ */
+function inboxItems(cwd, paths) {
+  const scan = discoverInbox(cwd);
+  const stores = { live: combinedInbox(scan), archived: combinedInbox(scan.archived, { archived: true }) };
+  return paths.map((given) => {
+    const archived = given.startsWith(`${ARCHIVED}/`);
+    return storeItem(archived ? stores.archived : stores.live, given, archived);
+  });
+}
+
+module.exports = { combinedInbox, workingSetDetail, archivedItem, inboxItems };

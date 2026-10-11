@@ -362,6 +362,8 @@ Commands:
   render plan-topics       <wu>
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
+  render inbox-content     --path <inbox path>[,<inbox path>…]
+  render inbox-archive-receipt --path <archived path>[,<archived path>…]
   render completed-actions <wu>
   render revisit-phases    <wu>
   render roadmap-view
@@ -1349,11 +1351,12 @@ function runWalkthrough(call, argv) {
 
 // ---------------------------------------------------------------------------
 // roadmap — the product-roadmap layer on the project manifest
-// (domain/roadmap.cjs): horizons + capability-grain items, lifecycle by
-// join. Every mutation is one transaction under the project lock with its
-// own pathspec commit of the project manifest — no work-unit cadence covers
-// it, and a park fired mid-session must be durable immediately. `state` is
-// the derived read every consumer shares.
+// (domain/roadmap.cjs): horizons + items — ideas at capability grain, a bug
+// or a quick-fix one fix each — lifecycle by join. Every mutation is one
+// transaction under the project lock with its own pathspec commit of the
+// project manifest — no work-unit cadence covers it, and a park fired
+// mid-session must be durable immediately. `state` is the derived read every
+// consumer shares.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1822,7 +1825,7 @@ function runCommit(call, argv) {
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
-      const specs = stageableSpecs(cwd, [roadmapSession.ROADMAP_DIR, '.workflows/manifest.json']);
+      const specs = stageableSpecs(cwd, [roadmap.ROADMAP_DIR, '.workflows/manifest.json']);
       if (specs.length === 0) {
         respond(call, { committed: null, note: 'nothing to commit' });
         return;

@@ -3753,7 +3753,7 @@ describe('pipeline simulation', () => {
     ];
     const batch = sim.write('.workflows/.cache/inbox-roadmap.json', entries);
     const gate = sim.render(['inbox-roadmap-gate', '--file', batch], { expect: 'content' });
-    assert.match(gate, /MENU: inbox roadmap gate[\s\S]*\*\*Export Timeout\*\* `\[bug\]`[\s\S]*The roadmap is created with them\./);
+    assert.match(gate, /MENU: inbox roadmap gate[\s\S]*\*\*Export Timeout\*\* \[bug\][\s\S]*The roadmap is created with them\./);
     const added = sim.run(['roadmap', 'add-batch', '--file', batch]);
     assert.deepStrictEqual(added.added.map((a) => a.kind), ['idea', 'bug', 'bug', 'quick-fix']);
     for (const note of notes) {
@@ -4026,7 +4026,7 @@ describe('pipeline simulation', () => {
     // The words left the home open, so the door stops at the gate rather
     // than deciding for the person.
     const payload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/backlog.json`,
-      { idea: "a CSV export of the day's orders" });
+      { title: "a CSV export of the day's orders" });
     assert.match(sim.render(['backlog-gate', `${wu}.implementation.${wu}`, '--file', payload], { expect: 'content' }),
       /Setting \*\*a CSV export of the day's orders\*\* aside\.[\s\S]*`r\/roadmap`[\s\S]*`i\/inbox`/);
 
@@ -4087,11 +4087,12 @@ describe('pipeline simulation', () => {
     sim.run(['roadmap', 'pull', 'ordering', '--into', 'mvp']);
   });
 
-  it('roadmap: absorb re-aims a feature-held join at the epic topic — never an orphan — and its sources follow the files', () => {
+  it('roadmap: absorb re-aims a feature\'s joins at the epic — its idea at the topic, its bug riding with the unit — never an orphan, and its sources follow the files', () => {
     sim.run(['roadmap', 'add', 'loyalty', '--horizon', 'v1', '--summary', 'repeat-customer rewards']);
+    sim.run(['roadmap', 'add', 'points-lost', '--horizon', 'v1', '--summary', 'points vanish on a refund', '--kind', 'bug']);
     const flog = sessionLog(sim, 'loyalty-feat');
-    sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty', '--session-log-file', flog]);
-    sim.run(['roadmap', 'pull', 'loyalty', '--into', 'loyalty-feat']);
+    sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty, and the points a refund loses', '--session-log-file', flog]);
+    sim.run(['roadmap', 'pull', 'loyalty', 'points-lost', '--into', 'loyalty-feat']);
     sim.run(['topic', 'start', 'loyalty-feat', 'discussion', 'loyalty-feat']);
     sim.write('.workflows/loyalty-feat/discussion/loyalty-feat.md', '# Loyalty discussion\n');
     // The feature discussion parks a tangent off its own record — the
@@ -4102,7 +4103,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', 'platform', 'epic', '--description', 'Platform', '--session-log-file', elog]);
 
     const res = sim.run(['workunit', 'absorb', 'loyalty-feat', '--into', 'platform', '--topic', 'loyalty']);
-    assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty']);
+    assert.deepStrictEqual(res.roadmap_reaimed, ['loyalty', 'points-lost']);
     assert.deepStrictEqual(res.roadmap_sources_rewritten, [
       { item: 'gift-cards', from: 'loyalty-feat/discussion/loyalty-feat.md', to: 'platform/discussion/loyalty.md' },
     ]);
@@ -4112,12 +4113,92 @@ describe('pipeline simulation', () => {
     assert.strictEqual(row.state, 'in-flight');
     assert.strictEqual(row.work_unit, 'platform');
     assert.strictEqual(row.topic, 'loyalty');
+    // Only an idea becomes a topic: the bug rode with the feature, and rides
+    // with the epic now — joined to the unit, never to the topic.
+    const bug = state.items.find((i) => i.name === 'points-lost');
+    assert.deepStrictEqual([bug.state, bug.work_unit, bug.topic], ['in-flight', 'platform', undefined]);
+    assert.strictEqual(sim.manifest('platform').phases.discovery.items['points-lost'], undefined, 'no topic of its own');
 
-    // The re-aimed join keeps the cancel-revert hop live at its new home.
+    // The re-aimed join keeps the cancel-revert hop live at its new home;
+    // the topic's cancel leaves the riding bug with the epic.
     const cancelled = sim.run(['topic', 'cancel', 'platform', 'discovery', 'loyalty']);
     assert.deepStrictEqual(cancelled.roadmap_reverted, ['loyalty']);
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'loyalty').state, 'waiting');
+    assert.strictEqual(state.items.find((i) => i.name === 'points-lost').state, 'in-flight');
+    sim.refuses(['roadmap', 'remove', 'points-lost'],
+      /it rides with "platform", and it goes back to waiting only if that work is cancelled/);
+  });
+
+  it('roadmap: an epic pulled with an idea and a bug — the harvest binds the idea alone, and the bug rides with the epic until the whole of it is cancelled', () => {
+    sim.run(['session', 'repair']);
+    arrive(sim, 'roadmap');
+    sim.run(['roadmap', 'add', 'guest-checkout', '--horizon', 'launch', '--summary', 'guests buy without an account']);
+    sim.run(['roadmap', 'add', 'cart-drops-items', '--horizon', 'launch', '--summary', 'the cart drops items on a refresh', '--kind', 'bug']);
+
+    // The pull: the shape confirmed, the unit created over its backfilled
+    // first session, the items joined, the roadmap shown with the joins.
+    sim.render(['roadmap-shape-gate'], { expect: 'content' });
+    const backfill = sim.write('.workflows/.cache/launch/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
+    sim.run(['workunit', 'create', 'launch', 'epic', '--description', 'Guest checkout, and the cart bug it exposes', '--session-log-file', backfill]);
+    assert.deepStrictEqual(sim.run(['roadmap', 'pull', 'guest-checkout', 'cart-drops-items', '--into', 'launch']).remainder, { launch: 0 });
+    assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Cart Drops Items\n.*↳ Bug · in flight: launch/);
+
+    // The epic's discovery carries the conversation on, and its harvest
+    // lands the idea as a topic — the bug is material for it, never a topic.
+    assert.strictEqual(sim.run(['session', 'label', 'launch', 'discovery', 'launch']).labelled, false);
+    sim.run(['discovery-map', 'add-batch', 'launch', '--file', sim.write('.workflows/.cache/launch/discovery/topics.json', [
+      { name: 'guest-checkout', routing: 'discussion', summary: 'Guests buy without an account' },
+    ])]);
+    // The binds: every idea joined to the unit with no topic. The bug, joined
+    // the same way, is never one of them — and the verb refuses it.
+    const unbound = sim.run(['roadmap', 'state']).items.filter((i) => i.work_unit === 'launch' && i.topic === undefined);
+    assert.deepStrictEqual(unbound.map((i) => [i.name, i.kind]), [['guest-checkout', 'idea'], ['cart-drops-items', 'bug']]);
+    sim.run(['roadmap', 'bind', 'guest-checkout', '--topic', 'guest-checkout']);
+    sim.refuses(['roadmap', 'bind', 'cart-drops-items', '--topic', 'guest-checkout'], /only an idea binds to a topic/);
+    sim.run(['discovery-session', 'close', 'launch', '-m', 'discovery(launch): shape the map']);
+
+    let state = sim.run(['roadmap', 'state']);
+    const row = (/** @type {string} */ name) => state.items.find((i) => i.name === name);
+    assert.deepStrictEqual([row('guest-checkout').work_unit, row('guest-checkout').topic], ['launch', 'guest-checkout']);
+    assert.deepStrictEqual([row('cart-drops-items').work_unit, row('cart-drops-items').topic], ['launch', undefined]);
+
+    // A roadmap thought about the riding bug reaches nothing — and says so.
+    const flag = sim.run(['roadmap', 'flag', 'cart-drops-items']);
+    assert.deepStrictEqual([flag.flagged, flag.committed, flag.note], [[], null, 'nothing reached "launch" — it has no topic there to flag']);
+
+    // The bug stays with the epic: the topic's cancel returns the idea alone,
+    // and only the whole epic's cancel returns the bug.
+    assert.deepStrictEqual(sim.run(['topic', 'cancel', 'launch', 'discovery', 'guest-checkout']).roadmap_reverted, ['guest-checkout']);
+    sim.refuses(['roadmap', 'remove', 'cart-drops-items'],
+      /it rides with "launch", and it goes back to waiting only if that work is cancelled/);
+    assert.deepStrictEqual(sim.run(['workunit', 'cancel', 'launch']).roadmap_reverted, ['cart-drops-items']);
+    state = sim.run(['roadmap', 'state']);
+    assert.strictEqual(row('cart-drops-items').state, 'waiting');
+  });
+
+  it('roadmap: quick-fixes pulled alone start a quick-fix, which the bridge hands to its scoping', () => {
+    sim.run(['roadmap', 'add', 'footer-typo', '--horizon', 'polish', '--summary', 'the footer misspells the product', '--kind', 'quick-fix']);
+    sim.run(['roadmap', 'add', 'stale-copyright', '--horizon', 'polish', '--summary', 'the copyright year is stale', '--kind', 'quick-fix']);
+    sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
+
+    sim.render(['roadmap-shape-gate'], { expect: 'content' });
+    const backfill = sim.write('.workflows/.cache/footer-fixes/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
+    sim.run(['workunit', 'create', 'footer-fixes', 'quick-fix', '--description', 'The footer\'s copy fixes', '--session-log-file', backfill]);
+    assert.deepStrictEqual(sim.run(['roadmap', 'pull', 'footer-typo', 'stale-copyright', '--into', 'footer-fixes']).remainder,
+      { polish: 1 }, 'the idea stays waiting');
+    sim.render(['roadmap-view'], { expect: 'content' });
+    assert.strictEqual(sim.manifest('footer-fixes').work_type, 'quick-fix');
+
+    // The bridge, invoked in place, labels the unit and hands it to scoping.
+    arrive(sim, 'footer-fixes');
+    bridgeTo(sim, 'footer-fixes', 'scoping');
+    handoffEntry(sim, 'footer-fixes', 'scoping', 'footer-fixes');
+    const state = sim.run(['roadmap', 'state']);
+    assert.deepStrictEqual(state.items.filter((i) => i.state === 'in-flight').map((i) => [i.name, i.kind, i.work_unit]),
+      [['footer-typo', 'quick-fix', 'footer-fixes'], ['stale-copyright', 'quick-fix', 'footer-fixes']]);
+    sim.refuses(['roadmap', 'remove', 'footer-typo'],
+      /it is part of "footer-fixes", and it goes back to waiting only if that work is cancelled/);
   });
 
   it('pivot: a feature with a discussion becomes an epic and its topic keeps working', () => {

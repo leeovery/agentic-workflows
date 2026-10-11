@@ -402,8 +402,8 @@ describe('start projections: inbox pickup', () => {
       DOTS,
       '**`◆ What would you like to do?`**',
       '',
-      '**`1–3`**        → Select item(s) to work on (comma-separated for',
-      `${NB(13)}several)`,
+      '**`1–3`**        → Triage item(s) — archive, put on the roadmap, or',
+      `${NB(13)}start work (comma-separated for several)`,
       '**`a/archived`** → View archived items (restore or delete)',
       '**`b/back`**     → Return',
     ].join('\n'));
@@ -416,7 +416,8 @@ describe('start projections: inbox pickup', () => {
       '· · · · · · · · · · · ·',
       '**`◆ What would you like to do?`**',
       '',
-      '**`1`**      → Select the item to work on',
+      '**`1`**      → Triage the item — archive it, put it on the roadmap, or',
+      `${NB(9)}start work`,
       '**`b/back`** → Return',
     ].join('\n'));
   });

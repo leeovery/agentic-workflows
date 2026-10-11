@@ -18,7 +18,7 @@
 const { box, renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { combinedInbox } = require('../inbox-set.cjs');
-const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { menuFrame: dotMenu, menu, cmdOption, bareOption, promptOption, rangeOption, actionsTable, section: labelled, MENU_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 
 /** @typedef {import('../start.cjs').StartDetail} StartDetail */
@@ -395,8 +395,8 @@ function inboxPickupView(items, hasArchived) {
   if (items.length === 0) return { data, display: 'No inbox items.\n' };
 
   const options = [items.length === 1
-    ? cmdOption('1', null, 'Select the item to work on')
-    : rangeOption(1, items.length, 'Select item(s) to work on (comma-separated for several)')];
+    ? cmdOption('1', null, 'Triage the item — archive it, put it on the roadmap, or start work')
+    : rangeOption(1, items.length, 'Triage item(s) — archive, put on the roadmap, or start work (comma-separated for several)')];
   if (hasArchived) options.push(cmdOption('a', 'archived', 'View archived items (restore or delete)'));
   options.push(cmdOption('b', 'back', 'Return'));
 
@@ -445,6 +445,18 @@ function archivedActions(item) {
       cmdOption('b', 'back', 'Return to the archived list'),
     ], { question: 'What would you like to do with it?' }),
   );
+}
+
+/**
+ * Inbox items in full, served by `render inbox-content` — each opens on its
+ * italic type-and-date line, its divider, then its own content as written,
+ * whose heading is its visible title. Markdown, so that content renders.
+ * @param {{item: PickupItem, body: string}[]} entries
+ * @returns {string}
+ */
+function inboxContent(entries) {
+  const blocks = entries.map(({ item, body }) => [`*[${item.type}] — ${item.date}*`, ...(body ? ['', body] : [])].join('\n'));
+  return labelled('DISPLAY: inbox content', CONTINUE_MARKDOWN_INSTRUCTION, blocks.join('\n\n'));
 }
 
 /**
@@ -776,6 +788,7 @@ module.exports = {
   archivedView,
   archivedActions,
   archivedDeleteGate,
+  inboxContent,
   workingSetView,
   workingSetAddGate,
   workingSetDropGate,

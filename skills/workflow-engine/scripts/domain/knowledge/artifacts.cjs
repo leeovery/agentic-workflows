@@ -20,7 +20,7 @@ const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
  * the owner requires the knowledge base itself.
  * @returns {string}
  */
-const roadmapDir = () => require('../roadmap-session.cjs').ROADMAP_DIR;
+const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
 
 /**
  * Phases whose completed artifact is indexed, with the artifact path per

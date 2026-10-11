@@ -337,7 +337,7 @@ describe('gate payload — a gateway menu', () => {
         { key: 'b', word: 'back', head: 'Return', tail: null, cue: null, holder: null, detail: null, struck: false, recommended: false },
       ],
       typed: [
-        { label: '1–2', description: 'Select item(s) to work on (comma-separated for several)', detail: null },
+        { label: '1–2', description: 'Triage item(s) — archive, put on the roadmap, or start work (comma-separated for several)', detail: null },
       ],
     });
   });

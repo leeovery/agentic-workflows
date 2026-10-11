@@ -16,7 +16,7 @@
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, treeHeader, titlecase, title, stateNote } = require('../conventions.cjs');
 const { menu, menuFrame, cmdOption, rangeOption, promptOption } = require('./surfaces.cjs');
-const { markedKind } = require('../roadmap.cjs');
+const { markedKind, DEFAULT_KIND } = require('../roadmap.cjs');
 
 /** @typedef {import('../roadmap.cjs').RoadmapItemRow} RoadmapItemRow */
 /** @typedef {ReturnType<import('../roadmap.cjs').roadmapState>} RoadmapState */
@@ -120,7 +120,6 @@ function roadmapMapView(state) {
  * @property {string} name
  * @property {string} horizon
  * @property {string} summary  one line, from the exploration
- * @property {import('../roadmap.cjs').RoadmapKind} [kind]  idea when absent
  */
 
 /**
@@ -146,7 +145,7 @@ function roadmapProposalView(state, proposed) {
     if (!horizons.includes(p.horizon)) horizons.push(p.horizon);
   }
   const rows = proposed.map((p) => /** @type {RoadmapItemRow} */ ({
-    name: p.name, horizon: p.horizon, summary: p.summary, kind: p.kind ?? 'idea', origin: 'harvest', sources: [], state: 'waiting',
+    name: p.name, horizon: p.horizon, summary: p.summary, kind: DEFAULT_KIND, origin: 'harvest', sources: [], state: 'waiting',
   }));
 
   parts.push(`${hasExisting ? 'New this session' : 'Proposed items'} (${proposed.length})`);
@@ -220,17 +219,17 @@ function roadmapPullSetView(state) {
  * menu (into the epic / another horizon — no waiting side-door into a
  * release that is now an epic); any other member — waiting, or pulled
  * elsewhere — keeps the three-way (waiting beside them is how a release is
- * composed). `units` names the epics the delivery row pulls into.
+ * composed). `units` names the epics the delivery row pulls into. A horizon
+ * with no member in an epic underway — a new one among them — is a plain
+ * add, and has no gate: null.
  * @param {RoadmapState} state @param {string} horizon
- * @returns {{units: string[], menu: string}}
+ * @returns {{units: string[], menu: string}|null}
  */
 function roadmapAddGate(state, horizon) {
   const members = state.items.filter((r) => r.horizon === horizon);
   const inEpic = members.filter((r) => r.state === 'in-flight' && r.work_type === 'epic');
   const waiting = members.filter((r) => r.state === 'waiting');
-  if (inEpic.length === 0) {
-    throw new Error(`roadmapAddGate: no member of "${horizon}" is in an epic underway — a plain add needs no gate`);
-  }
+  if (inEpic.length === 0) return null;
   const units = [...new Set(inEpic.map((r) => /** @type {string} */ (r.work_unit)))];
   const deliveryLabel = units.length === 1
     ? `Into the work underway — a new topic in "${units[0]}"`

@@ -79,8 +79,8 @@ describe('roadmap projections: pull working set', () => {
       '  └─ 1. Menus — operators maintain',
       '',
       'v1',
-      '  └─ 2. Export Timeout [bug] — large exports of a whole year of',
-      '        orders time out before the file is ready to download',
+      '  └─ 2. Export Timeout [bug] — large exports of a whole year',
+      '        of orders time out before the file is ready to download',
       '',
     ].join('\n'));
   });
@@ -131,13 +131,11 @@ describe('roadmap projections: map view', () => {
     assert.match(out, /Menus\n.*operators maintain\n.*↳ Waiting/);
   });
 
-  it('marks a bug row in a harvest proposal, proposed or existing; a proposed row with no kind is an idea', () => {
+  it('a harvest proposal\'s rows are ideas, unmarked; an existing bug row beneath keeps its mark', () => {
     const out = roadmapProposalView(state([FIXES[0]]), [
       { name: 'gift-cards', horizon: 'v1', summary: 'stored value' },
-      { name: 'slow-search', horizon: 'v1', summary: 'search lags', kind: 'bug' },
     ]);
     assert.match(out, /Gift Cards\n.*stored value\n.*↳ Waiting/);
-    assert.match(out, /Slow Search\n.*search lags\n.*↳ Bug · waiting/);
     assert.match(out, /Login Crash\n.*sign-in crashes\n.*↳ Bug · waiting/);
   });
 });

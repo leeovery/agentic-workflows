@@ -5073,7 +5073,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -5309,11 +5309,23 @@ describe('roadmap surfaces', () => {
     assert.match(out, /"the long-awaited mobile launch" is being built right now\.\n\n\*\*`◆ Where does this go\?`\*\*/);
   });
 
-  it('roadmap-add-gate: refuses an unknown horizon and one with no delivery', () => {
+  it('roadmap-add-gate: empty where the add passes — a horizon with no delivery, a horizon not yet born, a roadmap not yet born', () => {
+    assert.strictEqual(renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' }), '', 'no roadmap yet');
     writeRoadmap(TWO_HORIZONS, { mvp: { work_type: 'epic', status: 'in-progress' } });
-    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'ghost' }), /unknown horizon/);
-    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'v1' }), /no member of "v1" is in an epic underway — a plain add needs no gate/);
+    assert.strictEqual(renderSurface(dir, 'roadmap-add-gate', { horizon: 'v1' }), '', 'nothing of v1 is in an epic');
+    assert.strictEqual(renderSurface(dir, 'roadmap-add-gate', { horizon: 'later' }), '', 'a horizon the add would create');
     assert.throws(() => renderSurface(dir, 'roadmap-add-gate', {}), /--horizon is required/);
+  });
+
+  it('roadmap-add-gate: empty over a horizon whose epic has shipped — finished work takes no topic', () => {
+    writeRoadmap({
+      horizons: ['mvp'],
+      items: {
+        ordering: { horizon: 'mvp', summary: 's', kind: 'idea', origin: 'harvest', pulled_to: { work_unit: 'mvp', topic: 'ordering' } },
+        menus: { horizon: 'mvp', summary: 's', kind: 'idea', origin: 'harvest' },
+      },
+    }, { mvp: { work_type: 'epic', status: 'completed' } });
+    assert.strictEqual(renderSurface(dir, 'roadmap-add-gate', { horizon: 'mvp' }), '');
   });
 
   it('roadmap-add-gate: a horizon pulled into a bugfix, a quick-fix and a feature has no delivery — no unit of theirs takes a topic', () => {
@@ -5329,7 +5341,7 @@ describe('roadmap surfaces', () => {
       typo: { work_type: 'quick-fix', status: 'in-progress' },
       views: { work_type: 'feature', status: 'in-progress' },
     });
-    assert.throws(() => renderSurface(dir, 'roadmap-add-gate', { horizon: 'next' }), /no member of "next" is in an epic underway/);
+    assert.strictEqual(renderSurface(dir, 'roadmap-add-gate', { horizon: 'next' }), '');
   });
 
   it('roadmap-add-gate: beside an epic, a member pulled into a bugfix is no delivery and keeps the horizon from reading wholly built', () => {
@@ -5453,9 +5465,9 @@ describe('roadmap surfaces', () => {
       '· · · · · · · · · · · ·',
       'Putting these on the roadmap under "v1", waiting until each is pulled into work — their notes leave the inbox with them:',
       '',
-      '- **Login Crash** `[bug]` — sign-in crashes',
+      '- **Login Crash** [bug] — sign-in crashes',
       '- **Dark Mode** — a dark theme',
-      '- **Footer Typo** `[quick-fix]` — the footer typo',
+      '- **Footer Typo** [quick-fix] — the footer typo',
       '',
       '**`◆ Put them on the roadmap?`**',
       '',
@@ -6415,6 +6427,79 @@ describe('render off-topic-offer', () => {
   });
 });
 
+describe('render inbox-content and inbox-archive-receipt', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const IDEA = '.workflows/.inbox/ideas/2026-06-01--smart-retry.md';
+  const BUG = '.workflows/.inbox/.archived/bugs/2026-06-02--login-loop.md';
+  const write = (rel, text) => {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), text);
+  };
+  const CONTENT_MARKER = `=== DISPLAY: inbox content (emit verbatim as markdown (not a code block)${CONTINUE_CLAUSE}) ===`;
+
+  it('shows each item in full, in the order given — its type-and-date line, then its content as written, frontmatter skipped', () => {
+    write(IDEA, '---\nsource: chat\n---\n\n# Smart Retry\n\nRetry failed payments **twice**.\n\n');
+    write(BUG, '# Login Loop\n\n- signs out\n- signs back in\n');
+    const out = renderSurface(dir, 'inbox-content', { dotpath: undefined, path: `${BUG},${IDEA}` });
+    assert.strictEqual(out, [
+      CONTENT_MARKER,
+      '*[bug] — 2026-06-02*',
+      '',
+      '# Login Loop',
+      '',
+      '- signs out',
+      '- signs back in',
+      '',
+      '*[idea] — 2026-06-01*',
+      '',
+      '# Smart Retry',
+      '',
+      'Retry failed payments **twice**.',
+      '',
+    ].join('\n'));
+  });
+
+  it('shows a lone type-and-date line for an item with nothing beneath its frontmatter', () => {
+    write(IDEA, '---\nsource: chat\n---\n');
+    assert.strictEqual(renderSurface(dir, 'inbox-content', { dotpath: undefined, path: IDEA }),
+      `${CONTENT_MARKER}\n*[idea] — 2026-06-01*\n`);
+  });
+
+  it('inbox-content refuses no path, a path outside the inbox, and one nothing sits at', () => {
+    write(IDEA, '# Smart Retry\n');
+    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined }),
+      /render inbox-content: --path is required — the inbox items to show, comma-joined/);
+    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined, path: `${IDEA},.workflows/pay/manifest.json` }),
+      /render inbox-content: not a live inbox path/);
+    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined, path: '.workflows/.inbox/bugs/2026-06-09--ghost.md' }),
+      /render inbox-content: not in the live inbox: ".workflows\/.inbox\/bugs\/2026-06-09--ghost.md"/);
+  });
+
+  it('inbox-archive-receipt counts the archived items, one and several', () => {
+    write(BUG, '# Login Loop\n');
+    const marker = '=== DISPLAY: confirmation (emit verbatim as a text code block (```text fence) after the response) ===';
+    assert.strictEqual(renderSurface(dir, 'inbox-archive-receipt', { dotpath: undefined, path: BUG }),
+      `${marker}\nArchived 1 item from the inbox.\n`);
+    const second = '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md';
+    write(second, '# Smart Retry\n');
+    assert.strictEqual(renderSurface(dir, 'inbox-archive-receipt', { dotpath: undefined, path: `${BUG},${second}` }),
+      `${marker}\nArchived 2 items from the inbox.\n`);
+  });
+
+  it('inbox-archive-receipt refuses no path, a live path, and an archived path nothing sits at — the archive is the state it receipts', () => {
+    write(IDEA, '# Smart Retry\n');
+    assert.throws(() => renderSurface(dir, 'inbox-archive-receipt', { dotpath: undefined }),
+      /render inbox-archive-receipt: --path is required/);
+    assert.throws(() => renderSurface(dir, 'inbox-archive-receipt', { dotpath: undefined, path: IDEA }),
+      /render inbox-archive-receipt: not an archived inbox path/);
+    assert.throws(() => renderSurface(dir, 'inbox-archive-receipt', { dotpath: undefined, path: BUG }),
+      /render inbox-archive-receipt: inbox file not found/);
+  });
+});
+
 describe('render backlog-gate', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -6425,38 +6510,40 @@ describe('render backlog-gate', () => {
     phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
   });
 
-  it('names the idea and offers the two backlogs', () => {
+  it('names what is set aside and offers the two places it can wait', () => {
     live();
-    const file = writePayload(dir, 'b.json', { idea: "a CSV export of the day's orders" });
+    const file = writePayload(dir, 'b.json', { title: "a CSV export of the day's orders" });
     const out = renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file });
     assert.strictEqual(out, [
       "=== MENU: backlog gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       "Setting **a CSV export of the day's orders** aside.",
       '',
-      '**`◆ Which backlog?`**',
+      '**`◆ Where should it wait?`**',
       '',
-      '**`r/roadmap`** → The product roadmap — next, or soon after this work',
-      '**`i/inbox`**   → The inbox — someday, picked up when it is picked up',
+      "**`r/roadmap`** → On the roadmap — you've decided to do it; it waits",
+      `${NB(12)}under a horizon`,
+      "**`i/inbox`**   → In the inbox — not decided yet; you'll triage it",
+      `${NB(12)}later`,
       '',
     ].join('\n'));
   });
 
-  it('refuses a missing payload, a missing idea, and an empty one', () => {
+  it('refuses a missing payload, a missing title, and an empty one', () => {
     live();
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay' }),
       /render backlog-gate: --file <payload\.json> is required/);
-    const absent = writePayload(dir, 'a.json', { title: 'wrong key' });
+    const absent = writePayload(dir, 'a.json', { idea: 'the old key' });
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file: absent }),
-      /render backlog-gate: "idea" must be a non-empty string/);
-    const blank = writePayload(dir, 'e.json', { idea: '   ' });
+      /render backlog-gate: "title" must be a non-empty string/);
+    const blank = writePayload(dir, 'e.json', { title: '   ' });
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation.pay', file: blank }),
-      /render backlog-gate: "idea" must be a non-empty string/);
+      /render backlog-gate: "title" must be a non-empty string/);
   });
 
   it('refuses a dead address', () => {
     live();
-    const file = writePayload(dir, 'b.json', { idea: 'gift cards' });
+    const file = writePayload(dir, 'b.json', { title: 'gift cards' });
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'ghost.implementation.ghost', file }),
       /render backlog-gate: work unit "ghost" not found/);
     assert.throws(() => renderSurface(dir, 'backlog-gate', { dotpath: 'pay.implementation', file }),

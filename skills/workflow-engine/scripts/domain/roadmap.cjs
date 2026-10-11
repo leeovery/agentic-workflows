@@ -16,10 +16,11 @@
 // Authority splits at the pull (design/product-roadmap.md, decision 25):
 // left of it the map is loose — un-pulled items take every edit; right of it
 // the work unit is authoritative — re-bucketing or removing a pulled item is
-// refused here (the delivery decision routes through the epic-side cancel,
-// whose revert returns the item to waiting). Horizon-level restructuring
-// (rename/reorder/merge/split) stays open at any join state: it relabels the
-// release, it never un-commits work (decision 28).
+// refused here (the delivery decision is the work's: an idea bound to an epic
+// topic goes back to waiting when that topic is cancelled or postponed, any
+// other join only when its whole work unit is cancelled). Horizon-level
+// restructuring (rename/reorder/merge/split) stays open at any join state: it
+// relabels the release, it never un-commits work (decision 28).
 //
 // Every mutation is one transaction under the project-manifest lock plus its
 // own pathspec-confined tail commit of `.workflows/manifest.json`: no
@@ -49,17 +50,25 @@ const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
-const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, INBOX, FOLDER_KIND } = require('./inbox.cjs');
+const { messageOf } = require('../kernel/call.cjs');
+const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, undoMoves, archivedDir, FOLDER_KIND } = require('./inbox.cjs');
 
 /** @typedef {import('./inbox.cjs').ItemKind} RoadmapKind */
 
 const KINDS = /** @type {RoadmapKind[]} */ (Object.values(FOLDER_KIND));
 
+/** The kind an item takes where nothing names one. */
+const DEFAULT_KIND = /** @type {RoadmapKind} */ ('idea');
+
+const ROADMAP_DIR = '.workflows/.roadmap';
+const SESSIONS_DIR = `${ROADMAP_DIR}/sessions`;
+const NOTES_DIR = `${ROADMAP_DIR}/notes`;
+
 /**
  * Whether an item becomes a topic when it meets an epic — an idea alone; a
  * bug or a quick-fix rides with its unit as material, never a topic. The one
- * predicate behind bind, pull-forward, absorb's re-aim, the add gate's
- * delivery, and discovery's anti-twin flag.
+ * predicate behind bind, pull-forward, absorb's re-aim, and discovery's
+ * anti-twin flag (its gateway, through the library).
  * @param {{kind?: unknown}} item
  * @returns {boolean}
  */
@@ -68,16 +77,49 @@ function becomesTopic(item) {
 }
 
 /**
- * The kind a display names — none for an idea, the unmarked kind.
+ * The kind a display names — none for the default kind, the one a reader
+ * assumes.
  * @param {RoadmapKind} kind
  * @returns {RoadmapKind|null}
  */
 function markedKind(kind) {
-  return kind === 'idea' ? null : kind;
+  return kind === DEFAULT_KIND ? null : kind;
 }
 
-// A roadmap note as a source — relative to `.workflows/`, as every source is.
-const NOTE_SOURCE = /^\.roadmap\/notes\/(ideas|bugs|quickfixes)\/([^/]+\.md)$/;
+/**
+ * Where an inbox note lives once its item is on the roadmap,
+ * project-relative — the inbox's folder and file name kept.
+ * @param {string} folder @param {string} file
+ * @returns {string}
+ */
+function notePath(folder, file) {
+  return `${NOTES_DIR}/${folder}/${file}`;
+}
+
+/**
+ * A project-relative path as a source — relative to `.workflows/`, as every
+ * source is.
+ * @param {string} projectPath
+ * @returns {string}
+ */
+function asSource(projectPath) {
+  return path.posix.relative('.workflows', projectPath);
+}
+
+/**
+ * The note a source names — its inbox folder and file — or null for a source
+ * that is not a roadmap note.
+ * @param {unknown} source
+ * @returns {{folder: string, file: string}|null}
+ */
+function noteOfSource(source) {
+  const prefix = `${asSource(NOTES_DIR)}/`;
+  if (typeof source !== 'string' || !source.startsWith(prefix)) return null;
+  const [folder, file, ...deeper] = source.slice(prefix.length).split('/');
+  const isNote = deeper.length === 0 && Object.keys(FOLDER_KIND).includes(folder)
+    && typeof file === 'string' && file.length > '.md'.length && file.endsWith('.md');
+  return isNote ? { folder, file } : null;
+}
 
 // Item provenance vocabulary (design decision 19): how the item landed.
 // `harvest` (a product/epic harvest sort), `park:{origin}` (the mid-flow
@@ -198,16 +240,31 @@ function roadmapItem(roadmap, name) {
 
 /**
  * Refuse a delivery-falsifying op on a pulled item — the cancel-revert hop's
- * mirror. The error names the join and points at the recovery path.
- * @param {Record<string, any>} item @param {string} name @param {string} verbPhrase
+ * mirror. The error names the join and the way the item goes back to waiting
+ * from where it stands (see joinedRefusal).
+ * @param {string} cwd @param {Record<string, any>} item @param {string} name @param {string} verbPhrase
  */
-function refuseJoined(item, name, verbPhrase) {
-  const join = itemJoin(item);
-  if (join) {
-    throw new Error(
-      `"${name}" is joined to work unit "${join.work_unit}" — ${verbPhrase} a pulled item is a delivery decision; cancel it from the epic menu and the revert returns it to waiting`,
-    );
-  }
+function refuseJoined(cwd, item, name, verbPhrase) {
+  const joined = deriveItemState(cwd, item);
+  if (joined.state !== 'waiting') throw new Error(`"${name}" ${joinedRefusal(joined, verbPhrase)}`);
+}
+
+/**
+ * What a refusal over a joined item says. A topic's join reverts when the
+ * topic is cancelled or postponed; any other join — a bug or a quick-fix
+ * riding with an epic, an idea not yet bound, anything pulled into a unit of
+ * another type — only when its whole work unit is (revertJoins' callers). A
+ * shipped item is its release's record, and an orphaned join has no revert
+ * left to run.
+ * @param {ReturnType<typeof deriveItemState>} joined @param {string} verbPhrase
+ * @returns {string}
+ */
+function joinedRefusal({ state, work_unit: wu, topic, work_type: workType }, verbPhrase) {
+  if (state === 'orphaned') return `is joined to work unit "${wu}", which is missing or cancelled — the join is orphaned`;
+  if (state === 'shipped') return `shipped with work unit "${wu}" — it stays on the roadmap as the record of what its release was`;
+  const lead = `is joined to work unit "${wu}" — ${verbPhrase} a pulled item is a delivery decision;`;
+  if (topic !== undefined) return `${lead} cancel or postpone its topic "${topic}" in "${wu}" and it goes back to waiting`;
+  return `${lead} it ${workType === 'epic' ? 'rides with' : 'is part of'} "${wu}", and it goes back to waiting only if that work is cancelled`;
 }
 
 /**
@@ -216,8 +273,8 @@ function refuseJoined(item, name, verbPhrase) {
  * status answers the rest. `orphaned` is the honest fallback for a join the
  * revert should have cleared (a missing or cancelled unit) — surfaced, never
  * papered over. `pulled_to.topic` rides along for display, and the unit's
- * work type for the add gate (only an epic takes a topic); lifecycle derives
- * from the unit alone.
+ * work type for the add gate (only an epic takes a topic) and the
+ * joined-item refusal; lifecycle derives from the unit alone.
  * @param {string} cwd
  * @param {Record<string, any>} item
  * @returns {{state: 'waiting'|'in-flight'|'shipped'|'orphaned', work_unit?: string, topic?: string, work_type?: string}}
@@ -308,7 +365,7 @@ function deriveItemState(cwd, item) {
  * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string, origin: string}[]}}
  */
 function roadmapState(cwd) {
-  const sessionsDir = path.join(cwd, '.workflows', '.roadmap', 'sessions');
+  const sessionsDir = path.join(cwd, SESSIONS_DIR);
   /** @type {{number: number, path: string}[]} */
   let sessionLogs = [];
   try {
@@ -317,7 +374,7 @@ function roadmapState(cwd) {
       .sort()
       .map((f) => ({
         number: parseInt(/** @type {RegExpMatchArray} */ (f.match(/^session-(\d+)\.md$/))[1], 10),
-        path: path.posix.join('.workflows', '.roadmap', 'sessions', f),
+        path: `${SESSIONS_DIR}/${f}`,
       }));
   } catch {
     sessionLogs = [];
@@ -415,7 +472,9 @@ function transactProject(cwd, fn) {
  * names it, and one leaving (`leaving`) moves before the manifest lets it
  * go: an interruption between the two leaves an item naming a note still in
  * the inbox, never a note nothing names. Whichever half throws, the other is
- * undone — files put back, or the manifest restored as it was read.
+ * undone — every file put back, or the manifest restored as it was read —
+ * and the error that started the rollback is the one rethrown, any reversal
+ * that failed named on it.
  * @template T
  * @param {string} cwd
  * @param {(manifest: Record<string, any>) => {out: T, moves: {from: string, to: string}[]}} fn
@@ -432,20 +491,44 @@ function transactProjectAndMove(cwd, fn, { leaving = false } = {}) {
       try {
         writeProjectManifestAtomic(cwd, manifest);
       } catch (err) {
-        moveFiles(cwd, moves.map(({ from, to }) => ({ from: to, to: from })).reverse());
-        throw err;
+        throw undoMoves(cwd, moves, err);
       }
     } else {
       writeProjectManifestAtomic(cwd, manifest);
       try {
         moveFiles(cwd, moves);
       } catch (err) {
-        writeProjectManifestAtomic(cwd, before);
-        throw err;
+        throw withUndoFailure(err, restoreProjectManifest(cwd, before));
       }
     }
     return out;
   });
+}
+
+/**
+ * Write the project manifest back as it was read. Answers what could not be
+ * undone, or null.
+ * @param {string} cwd @param {Record<string, any>} before
+ * @returns {string|null}
+ */
+function restoreProjectManifest(cwd, before) {
+  try {
+    writeProjectManifestAtomic(cwd, before);
+    return null;
+  } catch (err) {
+    return `the project manifest could not be restored: ${messageOf(err)}`;
+  }
+}
+
+/**
+ * The error a rollback rethrows: the failure that started it, with any
+ * reversal that failed named after it, never in its place.
+ * @param {unknown} err @param {string|null} failure
+ * @returns {unknown}
+ */
+function withUndoFailure(err, failure) {
+  if (failure !== null && err instanceof Error) err.message += ` — and ${failure}`;
+  return err;
 }
 
 /**
@@ -499,7 +582,7 @@ function ensureHorizon(roadmap, horizon, position) {
  * @param {{horizon?: string, summary?: string, kind?: string, origin?: string, sources?: string[]}} [fields]
  * @returns {RoadmapOpResult}
  */
-function addRoadmapItem(cwd, name, { horizon, summary, kind = 'idea', origin = 'harvest', sources = [] } = {}) {
+function addRoadmapItem(cwd, name, { horizon, summary, kind = DEFAULT_KIND, origin = 'harvest', sources = [] } = {}) {
   assertLegalName('item', name);
   if (typeof horizon !== 'string' || horizon === '') throw new Error('--horizon is required');
   assertLegalName('horizon', horizon);
@@ -558,7 +641,7 @@ function resolveBatchEntry(e) {
   if (e.note === undefined) {
     if (e.origin !== undefined) validateOrigin(e.origin);
     if (e.sources !== undefined) validateSources(e.sources);
-    return { ...base, kind: e.kind ?? 'idea', origin: e.origin ?? 'harvest', sources: e.sources ?? [] };
+    return { ...base, kind: e.kind ?? DEFAULT_KIND, origin: e.origin ?? 'harvest', sources: e.sources ?? [] };
   }
   if (typeof e.note !== 'string') throw new Error('"note" must be a live inbox path');
   const note = parseInboxPath(e.note, { archived: false });
@@ -572,13 +655,13 @@ function resolveBatchEntry(e) {
   if (/\s/.test(note.file)) {
     throw new Error(`the note "${note.given}" has a space in its file name — a note's name can't carry spaces; rename the file`);
   }
-  const source = `.roadmap/notes/${note.folder}/${note.file}`;
+  const home = notePath(note.folder, note.file);
   return {
     ...base,
     kind,
     origin: `inbox:${note.file.replace(/\.md$/, '')}`,
-    sources: [source],
-    move: { from: note.given, to: `.workflows/${source}` },
+    sources: [asSource(home)],
+    move: { from: note.given, to: home },
   };
 }
 
@@ -600,7 +683,7 @@ function planBatch(cwd, entries, items) {
     try {
       return resolveBatchEntry(e);
     } catch (err) {
-      throw new Error(`entry ${i + 1} — ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`entry ${i + 1} — ${messageOf(err)}`);
     }
   });
   const names = resolved.map((e) => e.name);
@@ -646,7 +729,7 @@ function addRoadmapItemsBatch(cwd, entries) {
     try {
       plan = planBatch(cwd, entries, roadmapItems(manifest));
     } catch (err) {
-      throw new Error(`add-batch: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`add-batch: ${messageOf(err)}`);
     }
     const { resolved, moves } = plan;
     const roadmap = ensureRoadmap(manifest);
@@ -726,7 +809,7 @@ function renameRoadmapItem(cwd, oldName, newName) {
 
 /**
  * Re-bucket an item into another horizon (JIT-created when missing). Refused
- * on a pulled item — that is "stop building this", the epic's decision.
+ * on a pulled item — that is "stop building this", the work's decision.
  * Self-commits.
  * @param {string} cwd @param {string} name @param {string} horizon
  * @returns {RoadmapOpResult}
@@ -736,7 +819,7 @@ function moveRoadmapItem(cwd, name, horizon) {
   const result = transactProject(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
-    refuseJoined(item, name, 're-bucketing');
+    refuseJoined(cwd, item, name, 're-bucketing');
     if (item.horizon === horizon) throw new Error(`"${name}" is already in "${horizon}"`);
     const horizonCreated = ensureHorizon(roadmap, horizon);
     const from = item.horizon;
@@ -762,15 +845,16 @@ function noteArchiveMoves(cwd, items, name) {
     .filter(([other, item]) => other !== name && item && typeof item === 'object')
     .flatMap(([, item]) => sources(item.sources)));
   return sources(items[name].sources).flatMap((/** @type {*} */ source) => {
-    const match = typeof source === 'string' ? NOTE_SOURCE.exec(source) : null;
-    if (!match || named.has(source) || !fs.existsSync(path.join(cwd, '.workflows', source))) return [];
-    return [{ from: `.workflows/${source}`, to: `${INBOX}/.archived/${match[1]}/${match[2]}` }];
+    const note = noteOfSource(source);
+    if (!note || named.has(source)) return [];
+    const from = notePath(note.folder, note.file);
+    return fs.existsSync(path.join(cwd, from)) ? [{ from, to: `${archivedDir(note.folder)}/${note.file}` }] : [];
   });
 }
 
 /**
- * Delete an item. Refused on a pulled item (the epic-side cancel is the
- * path; its revert returns the item first). Its roadmap note goes to the
+ * Delete an item. Refused on a pulled item, naming the way it goes back to
+ * waiting (refuseJoined) — removable once it has. Its roadmap note goes to the
  * inbox archive in the same transaction — declined, restorable. An item a
  * postpone put here takes the epic's row with it — "actually never" has one
  * door, so the marker and every stashed item flip to cancelled in the same
@@ -782,7 +866,7 @@ function noteArchiveMoves(cwd, items, name) {
 function removeRoadmapItem(cwd, name) {
   const preRoadmap = requireRoadmap(readProjectManifest(cwd));
   const preflight = roadmapItem(preRoadmap, name);
-  refuseJoined(preflight, name, 'removing');
+  refuseJoined(cwd, preflight, name, 'removing');
   const moves = noteArchiveMoves(cwd, preRoadmap.items, name);
   refuseTakenDestinations(cwd, moves);
   const postponed = itemPostponedFrom(preflight);
@@ -796,7 +880,7 @@ function removeRoadmapItem(cwd, name) {
   const result = transactProjectAndMove(cwd, (manifest) => {
     const roadmap = requireRoadmap(manifest);
     const item = roadmapItem(roadmap, name);
-    refuseJoined(item, name, 'removing');
+    refuseJoined(cwd, item, name, 'removing');
     delete roadmap.items[name];
     /** @type {RoadmapOpResult} */
     const out = { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
@@ -1255,7 +1339,7 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
     }
     const bornHorizon = ensureHorizon(roadmap, horizon);
     if (!target.joined) {
-      roadmap.items[target.name] = { horizon, summary, kind: 'idea', origin: `postpone:${workUnit}` };
+      roadmap.items[target.name] = { horizon, summary, kind: DEFAULT_KIND, origin: `postpone:${workUnit}` };
     }
     const item = roadmap.items[target.name];
     if (target.joined) {
@@ -1381,8 +1465,11 @@ function reaimAbsorbed(cwd, fromUnit, { into, topic, relocations }) {
  * semantics across the roadmap boundary: terminal items skipped, an
  * existing flag never clobbered, a signal never a rewrite. What counts as
  * "materially deepened" is the calling flow's judgment; this records it.
- * A join with no topic (or no live phase item) flags nothing — the epic
- * reads the record fresh at its harvest. Self-commits (the epic's manifest).
+ * Where it flags nothing — a join with no topic (a bug or a quick-fix riding
+ * with an epic, an idea not yet bound, anything pulled into a unit of another
+ * type), or a topic with nothing live left to flag — nothing reached the
+ * work, and the response says so plainly (`committed: null`, the note naming
+ * why). Self-commits (the epic's manifest).
  * @param {string} cwd @param {string} name
  * @returns {RoadmapOpResult}
  */
@@ -1394,6 +1481,7 @@ function flagJoined(cwd, name) {
 
   /** @type {{phase: string, topic: string}[]} */
   const flagged = [];
+  let alreadyFlagged = 0;
   if (join.topic !== undefined) {
     const topic = join.topic;
     withWorkUnitLock(cwd, join.work_unit, () => {
@@ -1403,7 +1491,10 @@ function flagJoined(cwd, name) {
         const phaseItem = items[topic];
         if (!phaseItem || typeof phaseItem !== 'object') continue;
         if (TERMINAL_STATUSES.includes(phaseItem.status)) continue;
-        if (phaseItem.reconcile_needed !== undefined) continue;
+        if (phaseItem.reconcile_needed !== undefined) {
+          alreadyFlagged++;
+          continue;
+        }
         phaseItem.reconcile_needed = 'roadmap';
         flagged.push({ phase, topic });
       }
@@ -1414,7 +1505,7 @@ function flagJoined(cwd, name) {
   /** @type {RoadmapOpResult} */
   const result = { op: 'flag', name, work_unit: join.work_unit, flagged };
   if (flagged.length === 0) {
-    result.note = 'no live phase item to flag — the epic reads the record fresh at its harvest';
+    result.note = flagMiss(join, alreadyFlagged);
     result.committed = null;
     return result;
   }
@@ -1427,7 +1518,22 @@ function flagJoined(cwd, name) {
   return result;
 }
 
+/**
+ * The note a flag that flagged nothing carries: that nothing reached the
+ * work, and why.
+ * @param {{work_unit: string, topic?: string}} join @param {number} alreadyFlagged  live items an earlier flag holds
+ * @returns {string}
+ */
+function flagMiss(join, alreadyFlagged) {
+  const why = join.topic === undefined ? 'it has no topic there to flag'
+    : alreadyFlagged > 0 ? `every live research or discussion of topic "${join.topic}" already carries a flag`
+      : `topic "${join.topic}" has no live research or discussion to flag`;
+  return `nothing reached "${join.work_unit}" — ${why}`;
+}
+
 module.exports = {
+  ROADMAP_DIR,
+  DEFAULT_KIND,
   becomesTopic,
   markedKind,
   validateKind,

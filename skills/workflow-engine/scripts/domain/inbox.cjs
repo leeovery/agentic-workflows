@@ -17,7 +17,13 @@ const { removeFiles } = require('../kernel/git.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 
 const INBOX = '.workflows/.inbox';
+const ARCHIVED = `${INBOX}/.archived`;
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
+
+/** Where a folder's declined items wait. @param {string} folder @returns {string} project-relative */
+function archivedDir(folder) {
+  return `${ARCHIVED}/${folder}`;
+}
 
 /** @typedef {'idea'|'bug'|'quick-fix'} ItemKind */
 
@@ -46,18 +52,15 @@ function parseInboxPath(given, { archived }) {
     throw new Error(`inbox paths must be project-relative without "..": "${given}"`);
   }
   const segs = norm.split(path.sep);
-  const expected = archived
-    ? `${INBOX}/.archived/{${FOLDERS.join('|')}}/{file}.md`
-    : `${INBOX}/{${FOLDERS.join('|')}}/{file}.md`;
-  const depth = archived ? 5 : 4;
+  const root = archived ? ARCHIVED : INBOX;
+  const depth = root.split('/').length + 2;
   const ok =
     segs.length === depth &&
-    segs[0] === '.workflows' &&
-    segs[1] === '.inbox' &&
-    (!archived || segs[2] === '.archived') &&
+    segs.slice(0, depth - 2).join('/') === root &&
     FOLDERS.includes(segs[depth - 2]) &&
     segs[depth - 1].endsWith('.md');
   if (!ok) {
+    const expected = `${root}/{${FOLDERS.join('|')}}/{file}.md`;
     throw new Error(`not ${archived ? 'an archived' : 'a live'} inbox path (expected ${expected}): "${given}"`);
   }
   const file = segs[depth - 1];
@@ -112,9 +115,16 @@ function refuseTakenDestinations(cwd, moves) {
 }
 
 /**
+ * @typedef {object} StrandedMove
+ * @property {string} from  where the file belongs
+ * @property {string} to    where it was left
+ * @property {unknown} error  why it could not be put back
+ */
+
+/**
  * Move each file to its destination, creating the destination's directory.
  * All or nothing: a move that throws puts every file already moved back
- * where it was, then rethrows.
+ * (`undoMoves`), then rethrows that move's error.
  * @param {string} cwd @param {{from: string, to: string}[]} moves project-relative
  */
 function moveFiles(cwd, moves) {
@@ -127,9 +137,37 @@ function moveFiles(cwd, moves) {
       done.push(move);
     }
   } catch (err) {
-    for (const { from, to } of done.reverse()) fs.renameSync(path.join(cwd, to), path.join(cwd, from));
-    throw err;
+    throw undoMoves(cwd, done, err);
   }
+}
+
+/**
+ * Put moved files back where they were, last moved first, every reversal
+ * attempted. Any that fail ride `err` as `stranded` and are named in its
+ * message, so the first failure is never lost. Returns `err`.
+ * @param {string} cwd @param {{from: string, to: string}[]} done project-relative, as moved
+ * @param {unknown} err the failure that called for the undo
+ * @returns {unknown}
+ */
+function undoMoves(cwd, done, err) {
+  /** @type {StrandedMove[]} */
+  const stranded = [];
+  for (const move of [...done].reverse()) {
+    try {
+      fs.renameSync(path.join(cwd, move.to), path.join(cwd, move.from));
+    } catch (error) {
+      stranded.push({ ...move, error });
+    }
+  }
+  if (stranded.length > 0 && err instanceof Error) attachStranded(err, stranded);
+  return err;
+}
+
+/** @param {Error & {stranded?: StrandedMove[]}} err @param {StrandedMove[]} stranded */
+function attachStranded(err, stranded) {
+  const named = stranded.map((s) => `"${s.to}" (belongs at "${s.from}")`).join(', ');
+  err.message += ` — and ${stranded.length === 1 ? 'a file' : `${stranded.length} files`} could not be put back: ${named}`;
+  err.stranded = stranded;
 }
 
 /**
@@ -165,7 +203,7 @@ function moveAndCommit(cwd, items, destDir, verb) {
  */
 function archiveItems(cwd, paths) {
   const items = parseInboxPaths(cwd, paths, { archived: false });
-  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => `${INBOX}/.archived/${i.folder}`, 'archive');
+  const { moved, ...rest } = moveAndCommit(cwd, items, (i) => archivedDir(i.folder), 'archive');
   return { archived: moved, ...rest };
 }
 
@@ -215,6 +253,9 @@ module.exports = {
   parseInboxPaths,
   refuseTakenDestinations,
   moveFiles,
+  undoMoves,
+  archivedDir,
   INBOX,
+  ARCHIVED,
   FOLDER_KIND,
 };

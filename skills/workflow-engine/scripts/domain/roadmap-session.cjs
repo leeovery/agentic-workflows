@@ -35,9 +35,7 @@ const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { planImports, copyImports, importEntry, isIndexableImport, assertLandableSources } = require('./import-landing.cjs');
-const { ensureRoadmap } = require('./roadmap.cjs');
-
-const ROADMAP_DIR = '.workflows/.roadmap';
+const { ensureRoadmap, ROADMAP_DIR } = require('./roadmap.cjs');
 
 /** A roadmap transaction's commit scope: the roadmap dir and the project manifest. */
 const ROADMAP_SCOPE = [ROADMAP_DIR, PROJECT_MANIFEST_SPEC];
@@ -199,4 +197,4 @@ function importRoadmapFiles(cwd, paths) {
   return result;
 }
 
-module.exports = { openRoadmapSession, closeRoadmapSession, importRoadmapFiles, ROADMAP_DIR };
+module.exports = { openRoadmapSession, closeRoadmapSession, importRoadmapFiles };

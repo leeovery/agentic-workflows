@@ -6,7 +6,9 @@
 // joined-item guards, horizon restructuring, and the derived state read.
 // One landing guard is driven directly instead: a peer taking a name
 // between a postpone's plan and its write is a race no CLI sequence can
-// reach, and the guard is the reason it can never become an overwrite.
+// reach, and the guard is the reason it can never become an overwrite. The
+// rollbacks are reached by failing a rename in process — the disk fault no
+// CLI sequence can stage.
 
 require('./hermetic-env.cjs');
 
@@ -361,6 +363,91 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.strictEqual(projectManifestText(dir), before);
   });
 
+  describe('a rollback rethrows the failure that started it, every reversal attempted', () => {
+    const ARCHIVED_IDEA = '.workflows/.inbox/.archived/ideas/2026-03-01--dark-mode.md';
+    const ARCHIVED_BUG = '.workflows/.inbox/.archived/bugs/2026-03-02--login-crash.md';
+    const manifestPath = () => path.join(dir, '.workflows', 'manifest.json');
+    const both = [
+      { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA },
+      { name: 'login-crash', horizon: 'later', summary: 's', note: BUG },
+    ];
+
+    /**
+     * Fail each rename `fails` names a reason for — a note's move or the
+     * project manifest's atomic write, the two halves a transaction undoes
+     * between — every other rename going through.
+     * @param {import('node:test').TestContext} t
+     * @param {(from: string, to: string) => string|null} fails
+     */
+    const failRenames = (t, fails) => {
+      const rename = fs.renameSync;
+      t.mock.method(fs, 'renameSync', (/** @type {string} */ from, /** @type {string} */ to) => {
+        const reason = fails(String(from), String(to));
+        if (reason) throw new Error(reason);
+        return rename(from, to);
+      });
+    };
+
+    it('coming on: a manifest write that fails is the error, and nothing moves', (t) => {
+      const before = projectManifestText(dir);
+      failRenames(t, (_from, to) => (to === manifestPath() ? 'the manifest would not write' : null));
+      assert.strictEqual(runFail(dir, batch(both)).error, 'the manifest would not write');
+      assert.ok(exists(IDEA) && exists(BUG));
+      assert.strictEqual(projectManifestText(dir), before);
+    });
+
+    it('coming on: a move that fails puts every note back and restores the manifest, the move\'s error rethrown', (t) => {
+      const before = projectManifestText(dir);
+      failRenames(t, (_from, to) => (to.endsWith(BUG_NOTE) ? 'the bug note would not move' : null));
+      assert.strictEqual(runFail(dir, batch(both)).error, 'the bug note would not move');
+      assert.ok(exists(IDEA) && exists(BUG), 'both notes are back in the inbox');
+      assert.strictEqual(exists(IDEA_NOTE), false);
+      assert.strictEqual(projectManifestText(dir), before);
+    });
+
+    it('coming on: a restore that fails too follows the move\'s error, never replaces it — every note still put back', (t) => {
+      let manifestWrites = 0;
+      failRenames(t, (_from, to) => {
+        if (to.endsWith(BUG_NOTE)) return 'the bug note would not move';
+        return to === manifestPath() && ++manifestWrites === 2 ? 'the manifest would not restore' : null;
+      });
+      assert.strictEqual(runFail(dir, batch(both)).error,
+        'the bug note would not move — and the project manifest could not be restored: the manifest would not restore');
+      assert.ok(exists(IDEA) && exists(BUG), 'both notes are back in the inbox');
+      assert.deepStrictEqual(Object.keys(readProject(dir).roadmap.items), ['dark-mode', 'login-crash'],
+        'the manifest names notes still in the inbox — never a note nothing names');
+    });
+
+    it('leaving: a manifest write that fails puts every note back on the roadmap, its error rethrown', (t) => {
+      runOk(dir, batch(both));
+      const before = projectManifestText(dir);
+      failRenames(t, (_from, to) => (to === manifestPath() ? 'the manifest would not write' : null));
+      assert.strictEqual(runFail(dir, ['remove', 'dark-mode']).error, 'the manifest would not write');
+      assert.ok(exists(IDEA_NOTE), 'the note is back on the roadmap');
+      assert.strictEqual(exists(ARCHIVED_IDEA), false);
+      assert.strictEqual(projectManifestText(dir), before);
+    });
+
+    it('leaving: a note that will not go back is named after the write\'s error, and the rest still go back', (t) => {
+      runOk(dir, batch(both));
+      // One item naming both notes, so one remove moves the two.
+      const manifest = readProject(dir);
+      manifest.roadmap.items['dark-mode'].sources.push('.roadmap/notes/bugs/2026-03-02--login-crash.md');
+      delete manifest.roadmap.items['login-crash'];
+      fs.writeFileSync(manifestPath(), JSON.stringify(manifest, null, 2));
+      const before = projectManifestText(dir);
+      failRenames(t, (_from, to) => {
+        if (to === manifestPath()) return 'the manifest would not write';
+        return to.endsWith(BUG_NOTE) ? 'the bug note would not go back' : null;
+      });
+      assert.strictEqual(runFail(dir, ['remove', 'dark-mode']).error,
+        `the manifest would not write — and a file could not be put back: "${ARCHIVED_BUG}" (belongs at "${BUG_NOTE}")`);
+      assert.ok(exists(IDEA_NOTE), 'the idea note, put back after the bug note failed');
+      assert.ok(exists(ARCHIVED_BUG), 'the bug note stays where the failed put-back left it');
+      assert.strictEqual(projectManifestText(dir), before);
+    });
+  });
+
   it('remove of a waiting item sends its roadmap note to the inbox archive under the same commit', () => {
     runOk(dir, batch([{ name: 'login-crash', horizon: 'later', summary: 's', note: BUG }]));
     const res = runOk(dir, ['remove', 'login-crash']);
@@ -451,14 +538,38 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
     assert.match(runFail(dir, ['move', 'loyalty', '--horizon', 'v2']).error, /already in "v2"/);
   });
 
-  it('refuses re-bucketing and removing a pulled item, naming the join and the recovery', () => {
+  it('refuses re-bucketing and removing an item riding with an epic — no topic there — naming the whole work\'s cancel as its one way back', () => {
     const before = projectManifestText(dir);
-    const moveErr = runFail(dir, ['move', 'ordering', '--horizon', 'v1']).error;
-    assert.match(moveErr, /joined to work unit "mvp"/);
-    assert.match(moveErr, /delivery decision/);
-    assert.match(moveErr, /revert returns it to waiting/);
-    assert.match(runFail(dir, ['remove', 'ordering']).error, /joined to work unit "mvp"/);
+    assert.strictEqual(runFail(dir, ['move', 'ordering', '--horizon', 'v1']).error,
+      '"ordering" is joined to work unit "mvp" — re-bucketing a pulled item is a delivery decision; it rides with "mvp", and it goes back to waiting only if that work is cancelled');
+    assert.strictEqual(runFail(dir, ['remove', 'ordering']).error,
+      '"ordering" is joined to work unit "mvp" — removing a pulled item is a delivery decision; it rides with "mvp", and it goes back to waiting only if that work is cancelled');
     assert.strictEqual(projectManifestText(dir), before);
+
+    ok(dir, ['workunit', 'cancel', 'mvp']);
+    assert.strictEqual(runOk(dir, ['remove', 'ordering']).op, 'remove', 'back to waiting, it removes');
+  });
+
+  it('a join to an epic topic names the topic\'s cancel or postpone as its way back', () => {
+    joinItem(dir, 'ordering', 'mvp', 'ordering');
+    assert.strictEqual(runFail(dir, ['remove', 'ordering']).error,
+      '"ordering" is joined to work unit "mvp" — removing a pulled item is a delivery decision; cancel or postpone its topic "ordering" in "mvp" and it goes back to waiting');
+  });
+
+  it('a join into a unit of another type is part of that work, back to waiting only if it is cancelled', () => {
+    createManifest(dir, 'login-crash', { work_type: 'bugfix', status: 'in-progress' });
+    joinItem(dir, 'loyalty', 'login-crash');
+    assert.strictEqual(runFail(dir, ['move', 'loyalty', '--horizon', 'mvp']).error,
+      '"loyalty" is joined to work unit "login-crash" — re-bucketing a pulled item is a delivery decision; it is part of "login-crash", and it goes back to waiting only if that work is cancelled');
+  });
+
+  it('a shipped item stays as its release\'s record, and an orphaned join says so — neither promises a way back', () => {
+    createManifest(dir, 'mvp', { work_type: 'epic', status: 'completed' });
+    assert.strictEqual(runFail(dir, ['remove', 'ordering']).error,
+      '"ordering" shipped with work unit "mvp" — it stays on the roadmap as the record of what its release was');
+    joinItem(dir, 'loyalty', 'ghost');
+    assert.strictEqual(runFail(dir, ['move', 'loyalty', '--horizon', 'mvp']).error,
+      '"loyalty" is joined to work unit "ghost", which is missing or cancelled — the join is orphaned');
   });
 
   it('remove deletes a waiting item outright — no dismissed list', () => {
@@ -880,6 +991,35 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
   });
 
+  it('roadmap remove of a re-waited item brought from the inbox declines its note and cancels the epic\'s row, one commit over both manifests and the note', () => {
+    const inboxNote = '.workflows/.inbox/ideas/2026-03-01--guest-ordering.md';
+    const roadmapNote = '.workflows/.roadmap/notes/ideas/2026-03-01--guest-ordering.md';
+    const archived = '.workflows/.inbox/.archived/ideas/2026-03-01--guest-ordering.md';
+    fs.mkdirSync(path.dirname(path.join(dir, inboxNote)), { recursive: true });
+    fs.writeFileSync(path.join(dir, inboxNote), '# Guest ordering\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', 'inbox']);
+    fs.writeFileSync(path.join(dir, 'batch.json'), JSON.stringify([{ name: 'guest-ordering', horizon: 'mvp', summary: 'customers order', note: inboxNote }]));
+    runOk(dir, ['add-batch', '--file', 'batch.json']);
+    runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
+    runOk(dir, ['bind', 'guest-ordering', '--topic', 'ordering']);
+    assert.strictEqual(engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'later']).roadmap.reverted_join, true);
+    assert.ok(readProject(dir).roadmap.items['guest-ordering'].sources.includes('.roadmap/notes/ideas/2026-03-01--guest-ordering.md'));
+
+    const res = runOk(dir, ['remove', 'guest-ordering']);
+    assert.deepStrictEqual(res.notes_moved, [{ from: roadmapNote, to: archived }]);
+    assert.deepStrictEqual(res.epic_row_cancelled, { work_unit: 'mvp', topic: 'ordering' });
+    assert.strictEqual(fs.existsSync(path.join(dir, roadmapNote)), false);
+    assert.ok(fs.existsSync(path.join(dir, archived)), 'the note is declined to the inbox archive');
+    assert.ok(fs.existsSync(path.join(dir, '.workflows/mvp/research/ordering.md')), 'the topic\'s own files are its epic\'s, never archived');
+    assert.strictEqual(epic().phases.discovery.items.ordering.cancelled, true);
+    assert.strictEqual(readProject(dir).roadmap.items['guest-ordering'], undefined);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove guest-ordering — ordering cancelled in mvp');
+    assert.deepStrictEqual(git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
+      'M\t.workflows/manifest.json', 'M\t.workflows/mvp/manifest.json', `R100\t${roadmapNote}\t${archived}`,
+    ]);
+  });
+
   it('roadmap remove over a topic that holds no postpone refuses — the join is stale, not a cancel to make', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
     // The epic's row came back by some other hand; the item still names it.
@@ -1099,15 +1239,40 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
     assert.strictEqual('reconcile_needed' in manifest.phases.research.items.ordering, false, 'terminal item skipped');
 
     // Never clobbered: a second flag finds the existing one and writes nothing.
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
     const again = runOk(dir, ['flag', 'ordering']);
     assert.deepStrictEqual(again.flagged, []);
-    assert.match(again.note, /no live phase item to flag/);
+    assert.strictEqual(again.committed, null);
+    assert.strictEqual(again.note, 'nothing reached "mvp" — every live research or discussion of topic "ordering" already carries a flag');
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
-  it('a wu-level join (no topic yet) flags nothing — the harvest reads fresh', () => {
+  it('a topic whose research and discussion are all terminal: nothing reached the work, and the note says why', () => {
+    const p = path.join(dir, '.workflows', 'mvp', 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
+    manifest.phases.discussion.items.ordering.status = 'cancelled';
+    fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
+    const before = fs.readFileSync(p, 'utf8');
+    const res = runOk(dir, ['flag', 'ordering']);
+    assert.deepStrictEqual(res.flagged, []);
+    assert.strictEqual(res.committed, null);
+    assert.strictEqual(res.note, 'nothing reached "mvp" — topic "ordering" has no live research or discussion to flag');
+    assert.strictEqual(fs.readFileSync(p, 'utf8'), before);
+  });
+
+  it('a join with no topic — one riding with an epic, or one into a unit of another type — reaches nothing, and says so', () => {
     const res = runOk(dir, ['flag', 'menus']);
     assert.deepStrictEqual(res.flagged, []);
     assert.strictEqual(res.committed, null);
+    assert.strictEqual(res.note, 'nothing reached "mvp" — it has no topic there to flag');
+
+    runOk(dir, ['add', 'login-crash', '--horizon', 'mvp', '--summary', 's', '--kind', 'bug']);
+    createManifest(dir, 'login-crash', { work_type: 'bugfix', status: 'in-progress', phases: {
+      investigation: { items: { 'login-crash': { status: 'in-progress' } } },
+    } });
+    runOk(dir, ['pull', 'login-crash', '--into', 'login-crash']);
+    assert.strictEqual(runOk(dir, ['flag', 'login-crash']).note, 'nothing reached "login-crash" — it has no topic there to flag');
+
     assert.match(runFail(dir, ['flag', 'ghost']).error, /no roadmap item "ghost"/);
     runOk(dir, ['add', 'waiting-one', '--horizon', 'v2', '--summary', 's']);
     assert.match(runFail(dir, ['flag', 'waiting-one']).error, /not joined/);

@@ -68,6 +68,10 @@ engine.agents.reviewArming(cwd, wu, topic)        // → { armed, cycles, map_mo
 // domain: discovery-session queries
 engine.session.nextSessionNumber(sessionsDir)     // → next session-NNN number from the on-disk logs (1 when none)
 
+// domain: the product roadmap (roadmap.cjs — lifecycle by join, never stored)
+engine.roadmap.roadmapState(cwd)                  // → { exists, horizons, items, totals, active_session, session_logs, next_session_number, imports } — each item's kind and its state from its join (waiting / in-flight / shipped / orphaned); a never-born roadmap reads exists:false. The roadmap gateway's views and discovery's anti-twin read
+engine.roadmap.becomesTopic(item)                 // → whether the item becomes a topic when it meets an epic — an idea alone; a bug or a quick-fix rides as material. Discovery's anti-twin flag keys on it
+
 // domain: session presence
 engine.presence.scanPresence(cwd, wu)             // → { work_unit, held, held_sources, sessions[] } — one work unit's heartbeats; a row's `age_seconds` is "last active", never a verdict
 engine.presence.scanProject(cwd)                  // → the same row shape and `held` total but no `held_sources`, with `scope: "project"` in place of `work_unit` and `work_unit` per row

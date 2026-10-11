@@ -5,16 +5,18 @@
 //
 // The project manifest's roadmap items: every item without a kind gains
 // "idea", a kind already set kept. Against real git, every source under
-// .inbox/.archived/{folder}/ has its file moved to .roadmap/notes/{folder}/
-// — a tracked file with git (the rename staged, nothing committed), an
-// untracked one and one outside a repository on disk — and the source
-// rewritten, a waiting, a pulled and a postponed item alike; two items
-// sharing a note move it once and both point at its new home; a file already
-// at its new home rewrites the source alone; a missing file, and one at both
-// places, leaves the source as it is; every other source, field and item is
-// kept. One update for the changed roadmap, skip/no-op, idempotency, and the
-// guards: no project manifest, a malformed one, no roadmap node, no items,
-// and shapes that are not objects.
+// .inbox/.archived/{folder}/ has its file moved on disk to
+// .roadmap/notes/{folder}/ and, inside a repository, both places staged — a
+// tracked note's rename, an untracked one's addition, a tracked note already
+// gone from the archive its removal, nothing committed; outside a repository
+// on disk alone — and the source rewritten, a waiting, a pulled and a
+// postponed item alike; two items sharing a note move it once and both point
+// at its new home; a file already at its new home rewrites the source; a
+// missing file, tracked or not, and one at both places, leaves the source as
+// it is and stages nothing; a git failure is loud; every other source, field
+// and item is kept. One update for the changed roadmap, skip/no-op,
+// idempotency, and the guards: no project manifest, a malformed one, no
+// roadmap node, no items, and shapes that are not objects.
 //
 
 require('./hermetic-env.cjs');
@@ -128,7 +130,7 @@ describe('migration 072: every roadmap item has a kind, and its note lives on th
       assert.deepStrictEqual({ updates, skips }, { updates: 1, skips: 0 });
     });
 
-    it('moves an untracked note on disk and stages nothing for it', () => {
+    it('moves an untracked note on disk and stages it as added at its new home', () => {
       writeProject(roadmap({
         crash: { horizon: 'later', summary: 'login crash', kind: 'idea', origin: 'harvest', sources: ['.inbox/.archived/bugs/2026-03-02--crash.md'] },
       }));
@@ -140,7 +142,47 @@ describe('migration 072: every roadmap item has a kind, and its note lives on th
       assert.ok(exists('.workflows/.roadmap/notes/bugs/2026-03-02--crash.md'));
       assert.strictEqual(exists('.workflows/.inbox/.archived/bugs/2026-03-02--crash.md'), false);
       assert.deepStrictEqual(items().crash.sources, ['.roadmap/notes/bugs/2026-03-02--crash.md']);
+      assert.deepStrictEqual(staged(), ['A\t.workflows/.roadmap/notes/bugs/2026-03-02--crash.md']);
+    });
+
+    it('stages the removal of a tracked note gone from the archive whose file already sits at its new home', () => {
+      writeProject(roadmap({
+        'dark-mode': { horizon: 'later', summary: 'a', kind: 'idea', origin: 'harvest', sources: ['.inbox/.archived/ideas/2026-03-01--dark-mode.md'] },
+      }));
+      write(ARCHIVED, 'moved by hand\n');
+      commitAll();
+      fs.rmSync(path.join(dir, ARCHIVED));
+      write(NOTE, 'moved by hand\n');
+
+      run();
+
+      assert.deepStrictEqual(items()['dark-mode'].sources, ['.roadmap/notes/ideas/2026-03-01--dark-mode.md']);
+      assert.deepStrictEqual(staged(), [`R100\t${ARCHIVED}\t${NOTE}`]);
+    });
+
+    it('leaves a tracked note gone from disk, at neither place, as it is — nothing staged', () => {
+      const source = '.inbox/.archived/ideas/2026-03-01--dark-mode.md';
+      writeProject(roadmap({ 'dark-mode': { horizon: 'later', summary: 'a', kind: 'idea', origin: 'harvest', sources: [source] } }));
+      write(ARCHIVED);
+      commitAll();
+      fs.rmSync(path.join(dir, ARCHIVED));
+
+      run();
+
+      assert.deepStrictEqual(items()['dark-mode'].sources, [source]);
       assert.deepStrictEqual(staged(), []);
+      assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
+    });
+
+    it('is loud where git fails to stage the move, never reading it as untracked', () => {
+      writeProject(roadmap({
+        'dark-mode': { horizon: 'later', summary: 'a', kind: 'idea', origin: 'harvest', sources: ['.inbox/.archived/ideas/2026-03-01--dark-mode.md'] },
+      }));
+      write(ARCHIVED);
+      commitAll();
+      fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+
+      assert.throws(() => run(), /git add failed: .*index\.lock/);
     });
 
     it('moves on disk outside a repository', () => {

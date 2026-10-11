@@ -147,10 +147,10 @@ Archive every item in the working set out of the inbox — one command moves eac
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox archive {path} [{path} …]
 ```
 
-> *Output the next fenced block as a text code block (```text fence):*
+Build `archived_paths` — the response's `archived` paths, comma-joined. Fetch the receipt and emit its DISPLAY section verbatim per its marker:
 
-```text
-Archived {count} item{s} from the inbox.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-archive-receipt --path {archived_paths}
 ```
 
 The working set is now empty.
@@ -159,21 +159,11 @@ The working set is now empty.
 
 ## E. View Full Content
 
-Read each item in the set and render its full content as markdown (not a code block), so the items' own headings and formatting render properly.
+Build `set_paths` — the set items' inbox paths, comma-joined, in set order. Fetch every item in full and emit the call's DISPLAY section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-content --path {set_paths}
 ```
-@foreach(item in working_set)
-*[{item.type}] — {item.date}*
-
-{item.full_content}
-
-@endforeach
-```
-
-- Emit each item's file content as-is — its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
-- The italic type line above each item's content is its divider — nothing else separates items.
 
 → Return to **A. Render the Working Set**.
 
