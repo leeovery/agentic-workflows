@@ -7,8 +7,8 @@ The prose should have taken this path:
    topic already has its carrier, so no source is read and nothing is
    gathered
 2. beneath the note, with the file found, the resume surface carries on
-   — the thread register rendered, the triage queue read (empty, so no
-   triage warning), then the continue-or-restart gate, with no second
+   — the thread register rendered, the mailbox read (empty, so no
+   mail warning), then the continue-or-restart gate, with no second
    heading of its own — and the user continues
 3. initialisation is skipped; the walk passes through file strategy and
    the research guidelines, addresses the knowledge base once as a
@@ -16,13 +16,13 @@ The prose should have taken this path:
    so results come back and one line acknowledges the surfaced context —
    and enters the session step, which routes an epic to its own session
    wrapper
-4. the session loop's triage check no-ops on an empty queue; no dive has
+4. the session loop's mailbox check no-ops on an empty mailbox; no dive has
    ever been dispatched, so nothing is folded
 5. the session takes up one of the open threads and the user sends a
    **different** topic to a later release. The session does not read
-   that as an idea to put aside, a thread to park, a reroute, or
+   that as an idea to put aside, a thread to park, a send, or
    anything about the topic it is in: no backlog gate, no park gate, no
-   off-topic reroute, no thread set `parked`, no conclude gate, and the
+   off-topic send, no thread set `parked`, no conclude gate, and the
    synonym research is never completed
 6. the postpone door resolves the unit from the name the user gave, not
    from the session's own topic — the work type is read from the

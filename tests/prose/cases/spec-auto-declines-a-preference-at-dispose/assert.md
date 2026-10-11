@@ -133,8 +133,7 @@ Also true:
   retry ceiling. Nothing of the refund window or the confirmation's
   wording is written into it
 - no incoherence gate renders: the pick's landing enters the flow at
-  its landing step, so nothing classifies, nothing routes to a triage
-  queue, and no source is reopened. The declined finding is not a
+  its landing step, so nothing classifies, nothing routes to a mailbox, and no source is reopened. The declined finding is not a
   route either — no measurement or sibling artifact pins the wording,
   so it belongs to no source document
 - the discussion item never leaves `completed`, and the specification

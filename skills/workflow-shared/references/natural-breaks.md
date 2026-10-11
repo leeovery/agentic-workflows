@@ -1,10 +1,10 @@
 # Natural Breaks
 
-*Shared reference. Loaded by `rerouted-concerns.md` (the triage check) and discussion's `background-agent-surfacing.md` (the findings surfacing).*
+*Shared reference. Loaded by `reading-the-mailbox.md` (the mailbox check) and discussion's `background-agent-surfacing.md` (the findings surfacing).*
 
 ---
 
-Natural breaks are points in the conversation where introducing something new won't derail the current thread. Use this checklist when deciding whether to raise what is waiting — a background agent's return, a queued concern — or bring up deferred items.
+Natural breaks are points in the conversation where introducing something new won't derail the current thread. Use this checklist when deciding whether to raise what is waiting — a background agent's return, a waiting message — or bring up deferred items.
 
 This is guidance, not hard-enforced. Err toward NOT interrupting when uncertain — deferring one turn is cheap, interrupting an active thread is expensive.
 
@@ -31,10 +31,10 @@ Any of these means defer:
 - You are mid-synthesis or mid-summary and haven't closed out the current point
 - The current exchange is the first turn of a newly started subtopic or thread — momentum belongs there, not to a new announcement
 - The user just raised a new concern that you haven't yet engaged with
-- The user picked `later` on an announce or offer menu (background-agent findings, the triage queue) in their most recent turn — treat the next few turns as continuation, not a fresh break. Re-raising the menu on the very next turn would ignore their deferral. Wait until the conversation has genuinely moved on before re-raising.
+- The user picked `later` on an announce or offer menu (background-agent findings, the mailbox) in their most recent turn — treat the next few turns as continuation, not a fresh break. Re-raising the menu on the very next turn would ignore their deferral. Wait until the conversation has genuinely moved on before re-raising.
 
 ## C. When Uncertain
 
-Default to NOT interrupting. What is waiting persists — the agent store row, the triage queue — and the session loop's next iteration reconsiders the same question.
+Default to NOT interrupting. What is waiting persists — the agent store row, the mailbox — and the session loop's next iteration reconsiders the same question.
 
 → Return to caller.

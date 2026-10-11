@@ -4,7 +4,7 @@
 // end and the register holding a mix: the brief's harness question and
 // the slice-regression thread both learned, the user's label-freshness
 // question still open, and a human-raters idea parked with its reason.
-// No deep dive is in flight and the store is empty; the triage queue is
+// No deep dive is in flight and the store is empty; the mailbox is
 // empty; no experiment exists for the topic. Open is a fine way to
 // conclude — this is the world the conclude gate hands off.
 

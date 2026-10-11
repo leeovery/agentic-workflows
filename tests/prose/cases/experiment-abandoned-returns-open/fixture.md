@@ -11,7 +11,7 @@ the item — the discussion has not been reopened since, so the flag is
 still standing and the webhook-timing point is still undecided, its
 awaiting note still in the document.
 
-No review has ever run, the triage queue is empty, and no other
+No review has ever run, the mailbox is empty, and no other
 session is mid-flight. The context was cleared at the pause — this
 session opens cold at the discussion skill with its two arguments and
 what is on disk.

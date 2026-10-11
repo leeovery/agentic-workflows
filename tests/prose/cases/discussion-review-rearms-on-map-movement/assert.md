@@ -10,7 +10,7 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue; the
+4. the session loop's mailbox check no-ops on an empty mailbox; the
    check-for-results scan finds only the incorporated review row —
    nothing to surface
 5. the user settles failed-payment retries — three attempts,

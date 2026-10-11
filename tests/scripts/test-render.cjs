@@ -394,20 +394,20 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('handled', null, null), 'dead end');
   });
 
-  it('discoveryLifecycleLabel appends the triage waiting cue when parked', () => {
-    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', 'triaged', true), 'fresh · routed to research · triage waiting');
-    assert.strictEqual(discoveryLifecycleLabel('fresh', null, null, true), 'fresh · triage waiting');
+  it('discoveryLifecycleLabel appends the mail waiting cue when parked', () => {
+    assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', 'unstarted', true), 'fresh · routed to research · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('fresh', null, null, true), 'fresh · mail waiting');
     // The cue survives on non-fresh rows — a parked cross-phase stub stays visible.
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'triaged', true), 'discussing · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'unstarted', true), 'discussing · mail waiting');
     // Composite labels keep their own tail before the cue.
-    assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'completed', true), 'research complete · ready for discussion · triage waiting');
-    assert.strictEqual(discoveryLifecycleLabel('researching', 'research', 'in-progress', true), 'researching · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('ready_for_discussion', null, 'completed', true), 'research complete · ready for discussion · mail waiting');
+    assert.strictEqual(discoveryLifecycleLabel('researching', 'research', 'in-progress', true), 'researching · mail waiting');
   });
 
   it('discoveryLifecycleLabel appends the input moved cue when a reconcile flag is pending', () => {
     assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, true), 'decided · input moved');
-    // Both riders compose, triage first.
-    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, true, true), 'decided · triage waiting · input moved');
+    // Both riders compose, mail first.
+    assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, true, true), 'decided · mail waiting · input moved');
     assert.strictEqual(discoveryLifecycleLabel('decided', 'discussion', null, false, false), 'decided');
   });
 
@@ -415,13 +415,13 @@ describe('conventions (domain composition layer)', () => {
     const e = (id) => ({ kind: 'experiment', id });
     const research = { kind: 'research', status: 'in-progress' };
     assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, [e('E1')]), 'discussing · awaiting E1');
-    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'triaged', true, false, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · triage waiting');
+    assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'unstarted', true, false, [e('E1'), e('E2')]), 'discussing · awaiting E1, E2 · mail waiting');
     assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'in-progress', false, false, [research]), 'discussing · awaiting research');
     assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', 'in-progress', false, true, [research, e('E1')]), 'discussing · awaiting research · awaiting E1 · input moved');
     assert.strictEqual(discoveryLifecycleLabel('discussing', 'discussion', null, false, false, []), 'discussing');
   });
 
-  it('discoveryLifecycleLabel renders no cue when triageParked is false or omitted', () => {
+  it('discoveryLifecycleLabel renders no cue when mailWaiting is false or omitted', () => {
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null, false), 'fresh · routed to research');
     assert.strictEqual(discoveryLifecycleLabel('fresh', 'research', null), 'fresh · routed to research');
   });

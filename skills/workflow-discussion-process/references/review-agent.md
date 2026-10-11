@@ -4,9 +4,9 @@
 
 ---
 
-These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — the loop's own and any a loaded reference makes mid-session, a triage absorb included — not optional, not deferred.
+These instructions are loaded into context at the start of the discussion session. A review agent reads the discussion file with a clean slate in the background, identifying gaps, shallow coverage, and missing edge cases. The dispatch check is mandatory after every commit (session loop step 5) — the loop's own and any a loaded reference makes mid-session, a mailbox absorb included — not optional, not deferred.
 
-**If the user explicitly asks for a review:** their request is the trigger — the movement backoff and the content conditions don't apply, and the dispatch carries `--final`. The safety boxes still hold — prior reviews drained, both queues empty, the closing gates neither next nor underway: a review is stale on arrival over any of them, whoever asked — at the close it is the gates' to offer. Document and commit anything the conversation has settled first — the agent reads the file, not the room — and clear what blocks (drain the review, absorb the queue), then:
+**If the user explicitly asks for a review:** their request is the trigger — the movement backoff and the content conditions don't apply, and the dispatch carries `--final`. The safety boxes still hold — prior reviews drained, the mailbox and the calls queue empty, the closing gates neither next nor underway: a review is stale on arrival over any of them, whoever asked — at the close it is the gates' to offer. Document and commit anything the conversation has settled first — the agent reads the file, not the room — and clear what blocks (drain the review, absorb the mailbox), then:
 
 → Proceed to **A. Dispatch**.
 
@@ -15,8 +15,8 @@ These instructions are loaded into context at the start of the discussion sessio
 - □ Meaningful content committed? (a decision documented, a question explored, options analysed — not a typo fix or reformatting; a commit whose subject carries a `review-` or `synthesis-` drain marker — e.g. `(review-003 F2)` — doesn't tick this box, nor does one carrying a `(deferral)` marker: the concluding flow's deferral write is bookkeeping, and a review dispatched on it would be in flight before the closing gates it delays)
 - □ All prior reviews drained? (run `agent scan` now — no `review` row in flight, pending, or acknowledged, or no review row exists yet; an in-flight row an earlier session dispatched is dead, not running — incorporate it and count it drained)
 - □ Not the first commit? (the discussion needs enough content to review)
-- □ Review armed? (`review_arming.armed` is `true` on that scan — the engine's movement backoff: a review arms only once the Discussion Map has moved enough since the last one. Triage folds never count — each absorb settles its concern's ground into the anchor, so a sitting that only drained the queue stays quiet and its review duty falls to the closing gates. When quiet, `reason` names the moves owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
-- □ Triage queue empty? (`topic queue` shows `count: 0` — the session loop's triage check reads it each iteration; a queued rerouted concern is a pending change to this document, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the queue empties re-fires the check)
+- □ Review armed? (`review_arming.armed` is `true` on that scan — the engine's movement backoff: a review arms only once the Discussion Map has moved enough since the last one. Mailbox folds never count — each absorb settles its message's ground into the anchor, so a sitting that only drained the mailbox stays quiet and its review duty falls to the closing gates. When quiet, `reason` names the moves owed, and the topic's next review comes from map movement, an explicit user request, or the concluding flow's `--final` pass)
+- □ Mailbox empty? (`topic mailbox` shows `count: 0` — the session loop's mailbox check reads it each iteration; a waiting message is a pending change to this document, so a review dispatched over it is stale on arrival; self-healing like the drain block — the first meaningful commit after the mailbox empties re-fires the check)
 - □ Calls queue empty? (`.workflows/.cache/{work_unit}/discussion/{topic}/calls-queue.json` absent or drained — a queued settled call is a pending change to this document, stale-on-arrival and self-healing the same way)
 - □ The closing gates neither next nor underway? (a wrap-up signal, this commit's own `discussion-map set` answering `all_decided: true`, or a ceremony the loop's check will resume, hands review duty to the closing gates — their final review covers the closing commit; a dispatch now lands `pending` at classification and forces a drain detour)
 
@@ -41,9 +41,9 @@ At natural conversational breaks, check for completed results.
 The surfacing protocol reads this declaration when presenting this phase's findings.
 
 - `ask` — the walked lane. Raises render under the heading `Needs A Decision`.
-- `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[rerouted-concerns.md](../../workflow-shared/references/rerouted-concerns.md)**; never the template's revision shape. The confirmation says amended, never removed.
+- `apply` — approving lands each fix as a pure correction: amend the affected sites in place, each amendment a dated note naming the decision that determines it, striking or rewriting the stale text as each site needs — the shape in **D. Fold** in **[reading-the-mailbox.md](../../workflow-shared/references/reading-the-mailbox.md)**; never the template's revision shape. The confirmation says amended, never removed.
 - `decide` — approving documents each call as a decision: write it into the subtopic that owns it — the template's full structure where the subtopic has no section yet, a dated revision entry where a decided block exists — with the Decision block carrying the template's derivation marker (**Settled by derivation** — what determined it, the finding id). When no subtopic on the Discussion Map owns the call, add one and set it `decided` in the same move (`discussion-map add`, then `discussion-map set … decided`).
-- `route` — approving delivers each finding to its owning topic through the shared triage landing.
+- `route` — approving sends each finding to its owning topic's mailbox.
 
 ## A. Dispatch
 
@@ -53,7 +53,7 @@ Record the dispatch — the engine allocates the id and answers with the content
 node .claude/skills/workflow-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind review [--final]
 ```
 
-**If the response is `ok: false`:** a peer session moved the ground between the check and the dispatch — a concern landed in the triage queue, or its own review re-anchored the movement gate. Surface the engine's error verbatim — the refusal names what owns the close — and continue with the session loop; the next check re-evaluates.
+**If the response is `ok: false`:** a peer session moved the ground between the check and the dispatch — a message arrived in the mailbox, or its own review re-anchored the movement gate. Surface the engine's error verbatim — the refusal names what owns the close — and continue with the session loop; the next check re-evaluates.
 
 **Otherwise:**
 

@@ -19,7 +19,7 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/review-agent.md",
@@ -40,7 +40,7 @@
       "manifest get search-relevance.research.behavioural-ranking status",
       "manifest delete search-relevance.discussion.behavioural-ranking reconcile_needed",
       "render resume-gate search-relevance.discussion.behavioural-ranking",
-      "topic queue search-relevance discussion behavioural-ranking"
+      "topic mailbox search-relevance discussion behavioural-ranking"
     ],
     "calls_in_order": [
       "render entry-gate search-relevance.discussion.behavioural-ranking",
@@ -55,7 +55,7 @@
       "topic complete",
       "topic reopen",
       "topic start",
-      "topic triage",
+      "topic send",
       "topic absorb",
       "discussion-map add",
       "discussion-map set",

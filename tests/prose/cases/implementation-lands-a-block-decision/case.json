@@ -98,7 +98,7 @@
       "render incoherence-gate",
       "render fix-gate",
       "task fix-attempt",
-      "topic triage",
+      "topic send",
       "sources stale",
       "topic reopen",
       "topic start pay discussion",

@@ -14,7 +14,7 @@ considered as a check on the clicks, is parked with its reason on the
 row: no budget for raters this year.
 
 No deep dive has ever been dispatched on the topic and the store is
-empty; the triage queue is empty; no experiment exists; the other two
+empty; the mailbox is empty; no experiment exists; the other two
 topics have not started, and no other session is mid-flight. The
 context was cleared at the phase boundary — this session opens cold at
 the research skill with its three arguments and what is on disk.

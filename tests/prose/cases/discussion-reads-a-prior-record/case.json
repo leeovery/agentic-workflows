@@ -1,5 +1,5 @@
 {
-  "origin": "topic-postpone design R6 — a topic pulled into a different epic arrives as a fresh topic pointing at the record it left behind, and nothing walked what its first phase does with that pointer: reading the prior epic's brief, discussion and undelivered concerns in full without moving, draining or absorbing any of them, seeding this topic's own document from what it found, and taking the concern that still stands as one of that record's open questions — a pending subtopic on this topic's map — rather than as mail to raise and deliver",
+  "origin": "topic-postpone design R6 — a topic pulled into a different epic arrives as a fresh topic pointing at the record it left behind, and nothing walked what its first phase does with that pointer: reading the prior epic's brief, discussion and undelivered messages in full without moving, draining or absorbing any of them, seeding this topic's own document from what it found, and taking the message that still stands as one of that record's open questions — a pending subtopic on this topic's map — rather than as mail to raise and deliver",
   "entry": "workflow-discussion-process",
   "world": "claims",
   "files": [
@@ -25,7 +25,7 @@
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/review-agent.md",
     "skills/workflow-discussion-process/references/perspective-agents.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md"
   ],
   "invariants": {
@@ -38,7 +38,7 @@
       "topic start managed-search discussion synonym-handling",
       "discussion-map add managed-search synonym-handling",
       "discussion(managed-search): initialize synonym-handling discussion",
-      "topic queue managed-search discussion synonym-handling"
+      "topic mailbox managed-search discussion synonym-handling"
     ],
     "calls_in_order": [
       "manifest get managed-search.discovery.synonym-handling brief_path",
@@ -49,20 +49,20 @@
       "write:.workflows/managed-search/discussion/synonym-handling.md",
       "discussion-map add managed-search synonym-handling",
       "discussion(managed-search): initialize synonym-handling discussion",
-      "topic queue managed-search discussion synonym-handling"
+      "topic mailbox managed-search discussion synonym-handling"
     ],
     "calls_exclude": [
-      "topic queue search-relevance",
+      "topic mailbox search-relevance",
       "topic absorb",
-      "topic requeue",
-      "topic triage",
+      "topic forward",
+      "topic send",
       "topic reopen",
       "topic complete",
       "topic postpone",
       "topic cancel",
-      "render triage-offer",
-      "render triage-announce",
-      "render requeue-offer",
+      "render mail-offer",
+      "render mail-announce",
+      "render forward-offer",
       "roadmap",
       "discovery-map",
       "engine.cjs knowledge index",

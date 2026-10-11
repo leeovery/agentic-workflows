@@ -232,7 +232,7 @@ describe('workunit projections: status display', () => {
     ].join('\n'));
   });
 
-  it('feature: a reopened discussion with concerns queued cues the pipeline row, the proceed gate, and DATA', () => {
+  it('feature: a reopened discussion with messages waiting cues the pipeline row, the proceed gate, and DATA', () => {
     createManifest(dir, 'auth-flow', {
       phases: {
         research: { items: { 'auth-flow': { status: 'completed' } } },
@@ -240,18 +240,18 @@ describe('workunit projections: status display', () => {
         specification: { items: { 'auth-flow': { status: 'completed', reconcile_needed: 'discussion' } } },
       },
     });
-    createFile(dir, '.workflows/auth-flow/discussion/.triage/auth-flow/001-retry-semantics.md', '### Retry semantics\n');
+    createFile(dir, '.workflows/auth-flow/discussion/.mailbox/auth-flow/001-retry-semantics.md', '### Retry semantics\n');
     const unit = unitOf(dir, 'feature', 'auth-flow');
-    assert.deepStrictEqual(unit.triage_phases, ['discussion']);
-    assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · triage waiting\]/);
+    assert.deepStrictEqual(unit.mail_phases, ['discussion']);
+    assert.match(workUnitStatus('feature', unit), /◐ Discussion +\[in-progress · mail waiting\]/);
     assert.match(workUnitStatus('feature', unit), /✓ Specification +\[completed · input moved\]/);
     const menu = workUnitMenu('feature', unit);
-    assert.ok(menu.rendered.includes('Continuing "Auth Flow" — *discussion (in-progress)* · triage waiting.'), menu.rendered);
-    assert.ok(workUnitData('feature', unit, menu).includes('\ntriage_waiting: discussion\n'));
+    assert.ok(menu.rendered.includes('Continuing "Auth Flow" — *discussion (in-progress)* · mail waiting.'), menu.rendered);
+    assert.ok(workUnitData('feature', unit, menu).includes('\nmail_waiting: discussion\n'));
     // The drain retires it.
-    fs.rmSync(path.join(dir, '.workflows/auth-flow/discussion/.triage/auth-flow/001-retry-semantics.md'));
+    fs.rmSync(path.join(dir, '.workflows/auth-flow/discussion/.mailbox/auth-flow/001-retry-semantics.md'));
     const drained = unitOf(dir, 'feature', 'auth-flow');
-    assert.strictEqual(drained.triage_phases, undefined);
+    assert.strictEqual(drained.mail_phases, undefined);
     assert.match(workUnitStatus('feature', drained), /◐ Discussion +\[in-progress\]/);
   });
 
@@ -566,20 +566,20 @@ describe('workunit projections: a promoted unit routes to its moved discussions 
     assert.strictEqual(workUnitMenu('cross-cutting', unit).keys[0].route, '/workflow-discussion-process cross-cutting fees fee-rules');
   });
 
-  it('cues a concern queued on a moved discussion as triage waiting', () => {
-    assert.strictEqual(promoted().triage_phases, undefined);
-    createFile(dir, '.workflows/fees/discussion/.triage/fee-display/001-rounding.md', '# Rounding\n');
+  it('cues a message waiting on a moved discussion as mail waiting', () => {
+    assert.strictEqual(promoted().mail_phases, undefined);
+    createFile(dir, '.workflows/fees/discussion/.mailbox/fee-display/001-rounding.md', '# Rounding\n');
     const unit = unitOf(dir, 'cross-cutting', 'fees');
-    assert.deepStrictEqual(unit.triage_phases, ['discussion']);
+    assert.deepStrictEqual(unit.mail_phases, ['discussion']);
     assert.match(workUnitStatus('cross-cutting', unit), /Discussion +\[completed\]/);
-    assert.match(workUnitMenu('cross-cutting', unit).rendered, /· triage waiting\./);
+    assert.match(workUnitMenu('cross-cutting', unit).rendered, /· mail waiting\./);
   });
 
   it('continues into a parked stub by name where nothing is in flight in the phase', () => {
     createManifest(dir, 'fees', {
       work_type: 'cross-cutting',
       phases: {
-        research: { items: { 'fee-rules': { status: 'triaged' } } },
+        research: { items: { 'fee-rules': { status: 'unstarted' } } },
         discussion: { items: { 'fee-rules': { status: 'in-progress' }, 'fee-display': { status: 'completed' } } },
         specification: { items: { fees: { status: 'completed', sources: { 'fee-rules': { status: 'stale' }, 'fee-display': { status: 'incorporated' } } } } },
       },
@@ -651,7 +651,7 @@ describe('workunit projections: data body', () => {
       'finalising: false',
       'completed_phases: discussion',
       'reconcile_pending: (none)',
-      'triage_waiting: (none)',
+      'mail_waiting: (none)',
       'revisit_available: true',
       'seeds_count: 1',
       'imports_count: 0',
@@ -675,7 +675,7 @@ describe('workunit projections: data body', () => {
       'finalising: false',
       'completed_phases: (none)',
       'reconcile_pending: (none)',
-      'triage_waiting: (none)',
+      'mail_waiting: (none)',
       'revisit_available: false',
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  continue  login-crash  → /workflow-investigation-process bugfix login-crash',
@@ -701,7 +701,7 @@ describe('workunit projections: data body', () => {
       'finalising: true',
       'completed_phases: scoping, implementation, review',
       'reconcile_pending: (none)',
-      'triage_waiting: (none)',
+      'mail_waiting: (none)',
       'revisit_available: true',
       'ACTIONS (key  word  action  topic  → route):',
       '  y  yes  finalise  hotfix-logs  → (internal)',

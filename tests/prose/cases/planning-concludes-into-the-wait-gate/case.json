@@ -79,7 +79,7 @@
       "render spec-corrections",
       "staging.author",
       "render author-task-gate",
-      "topic triage",
+      "topic send",
       "topic reopen",
       "restart planning",
       "finding_gate_mode auto",

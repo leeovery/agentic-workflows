@@ -53,7 +53,7 @@
       "finding_gate_mode auto",
       "render incoherence-gate",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "sources stale",
       "workunit create"
     ],

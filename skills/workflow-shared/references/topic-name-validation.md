@@ -70,7 +70,7 @@ Set `result = "collision-active"`.
 
 Check whether `proposed_name` matches any entry in `dismissed` (case-sensitive).
 
-A dismissed-list match is **not** a rejection. User-explicit creations (reroute, discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by the gap analysis. The creating flow's `discovery-map add --force-dismissed` clears the entry at write time.
+A dismissed-list match is **not** a rejection. User-explicit creations (a message, a discovery session add, direct-entry) bypass the dismissed list — the list only blocks automatic re-adds by the gap analysis. The creating flow's `discovery-map add --force-dismissed` clears the entry at write time.
 
 #### If a match exists
 

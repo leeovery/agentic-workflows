@@ -63,7 +63,7 @@ Read the next unresolved finding's **Move** — it decides everything that follo
 
 → Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `review`, gap = `{what the specification asserts or omits, the evidence, what goes wrong for the product's user, and the finding it surfaced in}`.
 
-On return, dispose it by what the reference did. A landing — a corrigendum on the specification, or a decision landed in the source document and the specification re-aligned to it — is re-disposed against the corrected record: `settled` carrying what landed into the plan, or `choice` where the corrected record still leaves the fork. Work the plan must carry is `settled`, that work the Proposal. A gap the reference routed to the owning document's queue is not applied at all — Resolution `Routed`, the queue named in Notes; the plan is held until the record lands, and the walk moves on to its remaining findings. (`yes` at the reference's pause is terminal — the bridge takes the session out.)
+On return, dispose it by what the reference did. A landing — a corrigendum on the specification, or a decision landed in the source document and the specification re-aligned to it — is re-disposed against the corrected record: `settled` carrying what landed into the plan, or `choice` where the corrected record still leaves the fork. Work the plan must carry is `settled`, that work the Proposal. A gap the reference sent to the owning document's mailbox is not applied at all — Resolution `Routed`, the mailbox named in Notes; the plan is held until the record lands, and the walk moves on to its remaining findings. (`yes` at the reference's pause is terminal — the bridge takes the session out.)
 
 **Otherwise:** the record stands as the finding found it — continue.
 

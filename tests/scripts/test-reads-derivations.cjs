@@ -9,7 +9,7 @@ const path = require('path');
 const { setupFixture, cleanupFixture, createFile } = require('./discovery-test-utils.cjs');
 
 const {
-  fileExists, listFiles, listDirs, countFiles, filesChecksum,
+  fileExists, listFiles, listDirs, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
 } = require('../../skills/workflow-engine/scripts/domain/reads.cjs');
@@ -18,6 +18,7 @@ const {
   computeAnalysisCacheStatus, computeSourceProvenance,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, computeNeedsSequencing, buildDiscoveryMap,
+  mailboxDir, mailboxFiles, mailboxDepth, mailQueued, mailWaiting, mailPhases,
   awaitedExperiments, waits, topicWaits, OUTSTANDING_RESEARCH_STATUSES, outstandingResearch, outstandingResearchPhrase, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase,
   TIER_RANK,
   specIsStarted, specGroupsSources, lockingSpecs, unitLocks, unitLockNames, cancelPlan, proposedGroupings, specReactivateLocks, reactivateLockPhrases,
@@ -66,15 +67,6 @@ describe('reads + derivations', () => {
 
     it('returns empty for missing dir', () => {
       assert.deepStrictEqual(listDirs(path.join(dir, 'missing')), []);
-    });
-  });
-
-  describe('countFiles', () => {
-    it('counts matching files', () => {
-      createFile(dir, 'sub/a.md', '');
-      createFile(dir, 'sub/b.md', '');
-      createFile(dir, 'sub/c.txt', '');
-      assert.strictEqual(countFiles(path.join(dir, 'sub'), '.md'), 2);
     });
   });
 
@@ -291,27 +283,27 @@ describe('reads + derivations', () => {
       }, 'specification'), 'in-progress');
     });
 
-    it('returns null for a single triaged item — a stub is pre-live, not a reached phase', () => {
+    it('returns null for a single unstarted item — a stub is pre-live, not a reached phase', () => {
       assert.strictEqual(phaseStatus({
-        phases: { discussion: { items: { auth: { status: 'triaged' } } } },
+        phases: { discussion: { items: { auth: { status: 'unstarted' } } } },
       }, 'discussion'), null);
     });
 
-    it('returns null when every item is triaged', () => {
+    it('returns null when every item is unstarted', () => {
       assert.strictEqual(phaseStatus({
-        phases: { research: { items: { a: { status: 'triaged' }, b: { status: 'triaged' } } } },
+        phases: { research: { items: { a: { status: 'unstarted' }, b: { status: 'unstarted' } } } },
       }, 'research'), null);
     });
 
-    it('ignores triaged when aggregating — triaged + completed → completed', () => {
+    it('ignores unstarted when aggregating — unstarted + completed → completed', () => {
       assert.strictEqual(phaseStatus({
-        phases: { discussion: { items: { a: { status: 'triaged' }, b: { status: 'completed' } } } },
+        phases: { discussion: { items: { a: { status: 'unstarted' }, b: { status: 'completed' } } } },
       }, 'discussion'), 'completed');
     });
 
-    it('ignores triaged when aggregating — triaged + in-progress → in-progress', () => {
+    it('ignores unstarted when aggregating — unstarted + in-progress → in-progress', () => {
       assert.strictEqual(phaseStatus({
-        phases: { research: { items: { a: { status: 'triaged' }, b: { status: 'in-progress' } } } },
+        phases: { research: { items: { a: { status: 'unstarted' }, b: { status: 'in-progress' } } } },
       }, 'research'), 'in-progress');
     });
 
@@ -798,8 +790,8 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeSourceProvenance('research-split:kitchen-hardware'), 'from kitchen-hardware');
     });
 
-    it('unwraps reroute:{origin} to "from {origin}"', () => {
-      assert.strictEqual(computeSourceProvenance('reroute:auth-flow'), 'from auth-flow');
+    it('unwraps message:{origin} to "from {origin}"', () => {
+      assert.strictEqual(computeSourceProvenance('message:auth-flow'), 'from auth-flow');
     });
 
     it('handles comma-joined plain sources', () => {
@@ -1262,7 +1254,7 @@ describe('reads + derivations', () => {
     it('the lifecycle reads the marker first, and a map-less topic by its every-item fallback', () => {
       const m = manifest();
       assert.deepStrictEqual(computeTopicLifecycle(m, 'away'),
-        { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: null, discussion_state: 'postponed', triage_parked: false, reconcile_pending: false });
+        { lifecycle: 'postponed', tier: '⊖', current_phase: null, research_state: null, discussion_state: 'postponed', reconcile_pending: false });
       // The cancel outranks the postpone: a row holding both is off the board.
       m.phases.discovery.items.away.cancelled = true;
       assert.strictEqual(computeTopicLifecycle(m, 'away').lifecycle, 'cancelled');
@@ -1299,42 +1291,42 @@ describe('reads + derivations', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null, discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null, discussion_state: null, reconcile_pending: false });
     });
 
     it('returns researching when research item is in-progress', () => {
       const m = loadWithPhases('auth', { research: 'in-progress' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', discussion_state: null, reconcile_pending: false });
     });
 
     it('returns researching when reopened research sits beneath a completed discussion', () => {
       const m = loadWithPhases('auth', { research: 'in-progress', discussion: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', discussion_state: 'completed', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'researching', tier: '◐', current_phase: 'research', research_state: 'in-progress', discussion_state: 'completed', reconcile_pending: false });
     });
 
     it('returns ready_for_discussion when research is completed and no discussion item yet', () => {
       const m = loadWithPhases('auth', { research: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: 'completed', discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: 'completed', discussion_state: null, reconcile_pending: false });
     });
 
     it('returns discussing when discussion item is in-progress', () => {
       const m = loadWithPhases('auth', { discussion: 'in-progress' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: null, discussion_state: 'in-progress', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: null, discussion_state: 'in-progress', reconcile_pending: false });
     });
 
     it('returns decided when discussion item is completed', () => {
       const m = loadWithPhases('auth', { discussion: 'completed' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null, discussion_state: 'completed', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: null, discussion_state: 'completed', reconcile_pending: false });
     });
 
     it('returns decided when the discussion was promoted with its specification — concluded and moved on', () => {
       const m = loadWithPhases('auth', { research: 'completed', discussion: 'promoted' });
-      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: 'completed', discussion_state: 'promoted', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', research_state: 'completed', discussion_state: 'promoted', reconcile_pending: false });
       assert.strictEqual(computeNextAction('discussion', 'decided', 'completed'), null, 'nothing left to start on it');
       const reopened = loadWithPhases('auth', { research: 'in-progress', discussion: 'promoted' });
       assert.strictEqual(computeTopicLifecycle(reopened, 'auth').lifecycle, 'researching', 'research reopened beneath it reads as beneath a concluded one');
@@ -1347,7 +1339,7 @@ describe('reads + derivations', () => {
         discussion: { items: { auth: { status: 'in-progress' } } },
       } });
       const m = loadManifest(dir, 'alpha');
-      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'completed', discussion_state: 'in-progress', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'completed', discussion_state: 'in-progress', reconcile_pending: false });
       assert.strictEqual(computeTopicLifecycle(m, 'dead').lifecycle, 'cancelled', 'the cancel outranks the dead end');
       assert.strictEqual(computeTopicLifecycle(m, 'fresh').lifecycle, 'fresh', 'no marker, no cancel');
     });
@@ -1355,31 +1347,30 @@ describe('reads + derivations', () => {
     it('the legacy every-item reading stays: cancelled when BOTH research and discussion items are cancelled', () => {
       const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled', discussion_state: 'cancelled', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled', discussion_state: 'cancelled', reconcile_pending: false });
     });
 
     it('a single-attempt topic whose only item is cancelled renders cancelled — research-only', () => {
       const m = loadWithPhases('auth', { research: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled', discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'cancelled', discussion_state: null, reconcile_pending: false });
     });
 
     it('a single-attempt topic whose only item is cancelled renders cancelled — discussion-only', () => {
       const m = loadWithPhases('auth', { discussion: 'cancelled' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: null, discussion_state: 'cancelled', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: null, discussion_state: 'cancelled', reconcile_pending: false });
     });
 
     it('a terminal sibling never keeps a cancel from reading — superseded research beside a cancelled discussion is cancelled', () => {
       const m = loadWithPhases('auth', { research: 'superseded', discussion: 'cancelled' });
-      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'superseded', discussion_state: 'cancelled', triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'cancelled', tier: '⊘', current_phase: null, research_state: 'superseded', discussion_state: 'cancelled', reconcile_pending: false });
     });
 
-    it('a triaged sibling is not an attempt — a cancelled item beside it falls through to fresh, the stub cued', () => {
-      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'triaged' });
+    it('an unstarted sibling is not an attempt — a cancelled item beside it falls through to fresh', () => {
+      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'unstarted' });
       const r = computeTopicLifecycle(m, 'auth');
       assert.strictEqual(r.lifecycle, 'fresh');
-      assert.strictEqual(r.triage_parked, true);
     });
 
     it('one cancelled beside a live sibling renders by the live path — the alternate stays open', () => {
@@ -1395,7 +1386,7 @@ describe('reads + derivations', () => {
       // remains open and the lifecycle should reflect that.
       const m = loadWithPhases('auth', { research: 'superseded' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: 'superseded', discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'ready_for_discussion', tier: '→', current_phase: 'research', research_state: 'superseded', discussion_state: null, reconcile_pending: false });
     });
 
     it('discussion status wins over research status — decided overrides ready_for_discussion', () => {
@@ -1424,7 +1415,7 @@ describe('reads + derivations', () => {
     it('handled marker beats ready_for_discussion (research completed, no discussion)', () => {
       const m = loadWithHandled('umbrella', true, { research: 'completed' });
       const r = computeTopicLifecycle(m, 'umbrella');
-      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: 'completed', discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: 'completed', discussion_state: null, reconcile_pending: false });
     });
 
     it('handled marker beats decided (same-named discussion completed)', () => {
@@ -1467,13 +1458,13 @@ describe('reads + derivations', () => {
     it('handled without a research item reports research_state null', () => {
       const m = loadWithHandled('umbrella', true, {});
       const r = computeTopicLifecycle(m, 'umbrella');
-      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: null, discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: null, discussion_state: null, reconcile_pending: false });
     });
 
     it('handled with superseded research reports the superseded state', () => {
       const m = loadWithHandled('umbrella', true, { research: 'superseded' });
       const r = computeTopicLifecycle(m, 'umbrella');
-      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: 'superseded', discussion_state: null, triage_parked: false, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'handled', tier: '⊙', current_phase: null, research_state: 'superseded', discussion_state: null, reconcile_pending: false });
     });
 
     it('a reconcile flag on either phase item raises the reconcile_pending rider', () => {
@@ -1499,28 +1490,28 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeTopicLifecycle(m3, 'fees').reconcile_pending, false, 'cancelled flag stays dark');
     });
 
-    it('a triaged stub renders fresh with the triage_parked rider — research', () => {
-      const m = loadWithPhases('auth', { research: 'triaged' });
+    it('an unstarted stub renders fresh — research', () => {
+      const m = loadWithPhases('auth', { research: 'unstarted' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: 'triaged', discussion_state: null, triage_parked: true, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: 'unstarted', discussion_state: null, reconcile_pending: false });
     });
 
-    it('a triaged stub renders fresh with the triage_parked rider — discussion', () => {
-      const m = loadWithPhases('auth', { discussion: 'triaged' });
+    it('an unstarted stub renders fresh — discussion', () => {
+      const m = loadWithPhases('auth', { discussion: 'unstarted' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null, discussion_state: 'triaged', triage_parked: true, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: null, discussion_state: 'unstarted', reconcile_pending: false });
     });
 
-    it('the rider survives a live sibling — triaged research beside in-progress discussion', () => {
-      const m = loadWithPhases('auth', { research: 'triaged', discussion: 'in-progress' });
+    it('an unstarted research stub beside an in-progress discussion reads discussing', () => {
+      const m = loadWithPhases('auth', { research: 'unstarted', discussion: 'in-progress' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: 'triaged', discussion_state: 'in-progress', triage_parked: true, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'discussing', tier: '◐', current_phase: 'discussion', research_state: 'unstarted', discussion_state: 'in-progress', reconcile_pending: false });
     });
 
-    it('a triaged sibling keeps the topic out of cancelled-tier — cancelled research + triaged discussion', () => {
-      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'triaged' });
+    it('an unstarted sibling keeps the topic out of cancelled-tier — cancelled research + unstarted discussion', () => {
+      const m = loadWithPhases('auth', { research: 'cancelled', discussion: 'unstarted' });
       const r = computeTopicLifecycle(m, 'auth');
-      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: 'cancelled', discussion_state: 'triaged', triage_parked: true, reconcile_pending: false });
+      assert.deepStrictEqual(r, { lifecycle: 'fresh', tier: '○', current_phase: null, research_state: 'cancelled', discussion_state: 'unstarted', reconcile_pending: false });
     });
   });
 
@@ -1533,8 +1524,8 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeNextAction('discussion', 'fresh'), 'start_discussion');
       // Research parked on a topic that has no discussion yet leads whatever
       // the routing says — research feeds discussion.
-      assert.strictEqual(computeNextAction('discussion', 'fresh', 'triaged'), 'start_research');
-      assert.strictEqual(computeNextAction('research', 'fresh', 'triaged'), 'start_research');
+      assert.strictEqual(computeNextAction('discussion', 'fresh', 'unstarted'), 'start_research');
+      assert.strictEqual(computeNextAction('research', 'fresh', 'unstarted'), 'start_research');
       assert.strictEqual(computeNextAction('discussion', 'fresh', null), 'start_discussion');
       assert.strictEqual(computeNextAction(undefined, 'fresh'), 'start_discussion');
     });
@@ -1556,7 +1547,7 @@ describe('reads + derivations', () => {
       assert.strictEqual(computeNextAction('discussion', 'discussing', null), 'continue_discussion');
       // Research feeds discussion — the discussion is held until it lands.
       assert.strictEqual(computeNextAction('discussion', 'discussing', 'in-progress'), 'continue_research');
-      assert.strictEqual(computeNextAction('discussion', 'discussing', 'triaged'), 'start_research');
+      assert.strictEqual(computeNextAction('discussion', 'discussing', 'unstarted'), 'start_research');
       assert.strictEqual(computeNextAction('research', 'discussing', 'in-progress'), 'continue_research');
     });
 
@@ -1834,6 +1825,50 @@ describe('reads + derivations', () => {
     });
   });
 
+  describe('the mailbox — one reader, one meaning of mail waiting', () => {
+    const message = (wu, phase, topic, file) => createFile(dir, `${mailboxDir(wu, phase, topic)}/${file}`, '### m\n');
+
+    it('mailboxFiles lists the message files in drain order — .md files alone, [] for no mailbox', () => {
+      assert.deepStrictEqual(mailboxFiles(dir, 'pay', 'discussion', 'fees'), []);
+      message('pay', 'discussion', 'fees', '002-second.md');
+      message('pay', 'discussion', 'fees', '001-first.md');
+      message('pay', 'discussion', 'fees', 'notes.txt');
+      fs.mkdirSync(path.join(dir, mailboxDir('pay', 'discussion', 'fees'), '003-dir.md'));
+      assert.deepStrictEqual(mailboxFiles(dir, 'pay', 'discussion', 'fees'), ['001-first.md', '002-second.md']);
+      assert.strictEqual(mailboxDepth(dir, 'pay', 'discussion', 'fees'), 2);
+      assert.deepStrictEqual(mailQueued(dir, 'pay', 'fees'), { research: 0, discussion: 2 });
+    });
+
+    it('mail waits wherever either mailbox holds a message, and nowhere else', () => {
+      assert.strictEqual(mailWaiting({ research: 0, discussion: 0 }), false);
+      assert.strictEqual(mailWaiting({ research: 1, discussion: 0 }), true);
+      assert.strictEqual(mailWaiting({ research: 0, discussion: 3 }), true);
+    });
+
+    it('the map row reads mail waiting off the mailbox whatever the item\'s status — a started item with messages cues, a message-less stub does not', () => {
+      const m = {
+        name: 'pay', work_type: 'epic',
+        phases: {
+          discovery: { items: { fees: { routing: 'discussion' }, refunds: { routing: 'discussion' } } },
+          discussion: { items: { fees: { status: 'in-progress' }, refunds: { status: 'unstarted' } } },
+        },
+      };
+      message('pay', 'discussion', 'fees', '001-escalation.md');
+      const rows = buildDiscoveryMap(m, path.join(dir, '.workflows')).map;
+      const row = (name) => /** @type {any} */ (rows.find((r) => r.name === name));
+      assert.strictEqual(row('fees').mail_waiting, true);
+      assert.deepStrictEqual(row('fees').mail_queued, { research: 0, discussion: 1 });
+      assert.strictEqual(row('refunds').mail_waiting, false);
+    });
+
+    it('a single-topic unit\'s mail phases read the same mailboxes', () => {
+      const m = { name: 'pay', work_type: 'feature', phases: { discussion: { items: { pay: { status: 'in-progress' } } } } };
+      assert.deepStrictEqual(mailPhases(dir, m), []);
+      message('pay', 'discussion', 'pay', '001-escalation.md');
+      assert.deepStrictEqual(mailPhases(dir, m), ['discussion']);
+    });
+  });
+
   describe('the conversation actions — one vocabulary for the map, the guard, and the menu', () => {
     it('names the actions each conversation phase enters', () => {
       assert.deepStrictEqual(CONVERSATION_ACTIONS, {
@@ -1861,7 +1896,7 @@ describe('reads + derivations', () => {
 
     it('answers the status while in flight or parked; null once landed, closed, or never begun', () => {
       assert.strictEqual(outstandingResearch(unit({ status: 'in-progress' }), 'lab'), 'in-progress');
-      assert.strictEqual(outstandingResearch(unit({ status: 'triaged' }), 'lab'), 'triaged');
+      assert.strictEqual(outstandingResearch(unit({ status: 'unstarted' }), 'lab'), 'unstarted');
       for (const status of ['completed', 'cancelled', 'superseded']) {
         assert.strictEqual(outstandingResearch(unit({ status }), 'lab'), null, status);
       }
@@ -1870,13 +1905,13 @@ describe('reads + derivations', () => {
     });
 
     it('phrases where the research stands in the refusals\' voice', () => {
-      assert.strictEqual(outstandingResearchPhrase('triaged'), 'research is parked on it (triage waiting)');
+      assert.strictEqual(outstandingResearchPhrase('unstarted'), 'research is parked on it (mail waiting)');
       assert.strictEqual(outstandingResearchPhrase('in-progress'), 'research is in flight on it');
     });
   });
 
   describe('computeNextPhase — a linear unit routes to the research parked beneath its live discussion', () => {
-    it('a triaged research stub beneath an in-progress discussion is the next phase; landed research hands back', () => {
+    it('an unstarted research stub beneath an in-progress discussion is the next phase; landed research hands back', () => {
       const feature = (research) => ({
         name: 'feat', work_type: 'feature',
         phases: {
@@ -1884,7 +1919,7 @@ describe('reads + derivations', () => {
           discussion: { items: { feat: { status: 'in-progress' } } },
         },
       });
-      assert.deepStrictEqual(computeNextPhase(feature('triaged')),
+      assert.deepStrictEqual(computeNextPhase(feature('unstarted')),
         { next_phase: 'research', phase_label: 'research (parked — feeds the discussion)' });
       // Research in flight is live to the walk itself — the earliest in-flight phase.
       assert.deepStrictEqual(computeNextPhase(feature('in-progress')),
@@ -1992,12 +2027,12 @@ describe('reads + derivations', () => {
       },
     });
 
-    it('a discussion waits on its same-named research while it is in-progress or triaged', () => {
-      assert.deepStrictEqual(OUTSTANDING_RESEARCH_STATUSES, ['in-progress', 'triaged']);
+    it('a discussion waits on its same-named research while it is in-progress or unstarted', () => {
+      assert.deepStrictEqual(OUTSTANDING_RESEARCH_STATUSES, ['in-progress', 'unstarted']);
       assert.deepStrictEqual(waits(world({ status: 'in-progress' }, { status: 'in-progress' }), 'discussion', 'pay'),
         [{ kind: 'research', status: 'in-progress' }]);
-      assert.deepStrictEqual(waits(world({ status: 'triaged' }, { status: 'in-progress' }), 'discussion', 'pay'),
-        [{ kind: 'research', status: 'triaged' }]);
+      assert.deepStrictEqual(waits(world({ status: 'unstarted' }, { status: 'in-progress' }), 'discussion', 'pay'),
+        [{ kind: 'research', status: 'unstarted' }]);
     });
 
     it('landed, cancelled, superseded, or absent research holds nothing', () => {
@@ -2052,9 +2087,9 @@ describe('reads + derivations', () => {
     });
 
     it('topicWaits joins the in-progress holders alone — a completed discussion\'s outstanding research is its flag\'s business', () => {
-      assert.deepStrictEqual(topicWaits(world({ status: 'triaged' }, { status: 'in-progress' }), 'pay'),
-        [{ kind: 'research', status: 'triaged' }]);
-      assert.deepStrictEqual(topicWaits(world({ status: 'triaged' }, { status: 'completed', reconcile_needed: 'research' }), 'pay'), []);
+      assert.deepStrictEqual(topicWaits(world({ status: 'unstarted' }, { status: 'in-progress' }), 'pay'),
+        [{ kind: 'research', status: 'unstarted' }]);
+      assert.deepStrictEqual(topicWaits(world({ status: 'unstarted' }, { status: 'completed', reconcile_needed: 'research' }), 'pay'), []);
       assert.deepStrictEqual(topicWaits(world({ status: 'in-progress', awaiting_experiments: ['E1'] }, { status: 'cancelled' }), 'pay'),
         [{ kind: 'experiment', id: 'E1' }]);
     });

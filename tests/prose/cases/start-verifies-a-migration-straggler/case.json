@@ -1,5 +1,5 @@
 {
-  "origin": "the migration verification addenda had engine-level coverage only — nothing walked the judgment half: a boot whose migration converts nothing yet hands over checks, the Step 0.1 verify pass finding what exact-match code cannot (a malformed triage heading holding a real entry), the straggler recovered into the queue, and the recovery riding the migration commit through the confirm gate",
+  "origin": "the migration verification addenda had engine-level coverage only — nothing walked the judgment half: a boot whose migration converts nothing yet hands over checks, the Step 0.1 verify pass finding what exact-match code cannot (a malformed triage heading holding a real entry), the straggler recovered into the mailbox, and the recovery riding the migration commit through the confirm gate",
   "entry": "workflow-start",
   "world": "claims",
   "files": [
@@ -16,7 +16,7 @@
   "answers": [
     "y — yes"
   ],
-  "conduct": "The user boots into their project expecting the routine overview. Shown the migration summary describing a recovered parked concern, they read it, are satisfied, and continue. At the workflow overview menu they are done — they select nothing.",
+  "conduct": "The user boots into their project expecting the routine overview. Shown the migration summary describing a straggler recovered into the mailbox, they read it, are satisfied, and continue. At the workflow overview menu they are done — they select nothing.",
   "invariants": {
     "engine_before_write": true,
     "calls_include": [
@@ -27,7 +27,7 @@
     ],
     "calls_exclude": [
       "engine.cjs knowledge setup",
-      "topic triage",
+      "topic send",
       "topic start",
       "discussion-map",
       "engine.cjs knowledge index"

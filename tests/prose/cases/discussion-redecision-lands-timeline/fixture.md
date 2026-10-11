@@ -6,15 +6,15 @@ behaviour-driven expansion reading the live click-signal stream at
 query time — resting, uncited, on exactly the capability the other
 discussion ruled out.
 
-A later behavioural-ranking sitting spotted the conflict and rerouted
-it here. Triage reopened synonym-handling and installed the concern as
-one file in its triage queue under the title "Expansion Source" —
+A later behavioural-ranking sitting spotted the conflict and sent
+it here. The send reopened synonym-handling and installed the message as
+one file in its mailbox under the title "Expansion Source" —
 kebab-identical to the decided subtopic it challenges. The delivery's
 self-commit closed that session.
 
 Hours have passed. The context was cleared — this session opens cold at
 the discussion skill with nothing but the three arguments and
-what is on disk. The drain must fold the concern into the existing
+what is on disk. The drain must fold the message into the existing
 subtopic (the map add will refuse), re-arm the map, and the re-decision
 the session lands must go down as a dated timeline entry on the
 Decision block — the original prose wrapped, never rewritten.

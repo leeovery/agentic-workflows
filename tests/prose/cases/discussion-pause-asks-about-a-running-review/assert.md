@@ -10,13 +10,13 @@ The prose should have taken this path:
 3. initialisation is skipped: the walk lands at the guidelines,
    addresses the knowledge base once as a contextual query (empty
    store — the session proceeds silently), and enters the session step
-4. the session loop's triage check no-ops on an empty queue, the
+4. the session loop's mailbox check no-ops on an empty mailbox, the
    landed-input read finds no flag, and its check-for-results scans
    the store and finds it empty — nothing pending, nothing in flight,
    nothing to surface
 5. the user asks for a review of the document. Their request is the
    trigger: the movement backoff does not apply. Nothing settled is
-   waiting to be written, no earlier review exists, both queues are
+   waiting to be written, no earlier review exists, both mailboxes are
    empty, and the closing gates are neither next nor underway — so
    nothing blocks
 6. the session dispatches the review with `--final` — review-001 —

@@ -13,15 +13,15 @@ The prose should have taken this path:
 4. the postponed item has a record beyond its sources, and the read set
    comes from the address it carries — the epic and the topic it was
    there — not from the sources list. So the topic's brief, its concluded
-   discussion, and the concern still queued against it are all read in
-   full, including the queued concern that no `sources` entry names.
+   discussion, and the message still waiting against it are all read in
+   full, including the waiting message that no `sources` entry names.
    Every one of them is a read: nothing under the earlier epic is
-   written, moved, drained or absorbed, and its queue is never listed
+   written, moved, drained or absorbed, and its mailbox is never listed
    through the engine
 5. the backfill is authored from what was read: the new epic's
    session-001 carries the two pulled items' slice — what the earlier
-   epic settled about the expansion source, the question the queued
-   concern leaves open, and the query-understanding ground — with Seed
+   epic settled about the expansion source, the question the waiting
+   message leaves open, and the query-understanding ground — with Seed
    and Imports `(none)` and Map State `(empty — first session)`. The
    third item's material stays out: the fence is the pulled set, and the
    personalised-ranking ground is not in it
@@ -35,11 +35,11 @@ Further claims:
 - the prior record enters the backfill as ground the new epic will
   argue with, not as decisions it inherits: what `search-relevance`
   settled is recorded as where the thinking got to, and the open
-  question the concern leaves is carried as open
+  question the message leaves is carried as open
 - the earlier epic is untouched in every way. Its manifest still reads
   `synonym-handling` postponed with its stash intact, its discussion
-  file and brief are byte-identical, and the queue file is still in its
-  triage directory — the pull reads a record, it never moves one
+  file and brief are byte-identical, and the message file is still in its
+  mailbox directory — the pull reads a record, it never moves one
 - no topic is created anywhere: the pull fences a slice, it does not
   decompose it, so the new epic's map is empty and no research or
   discussion item exists on it

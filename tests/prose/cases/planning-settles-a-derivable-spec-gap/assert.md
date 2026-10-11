@@ -108,7 +108,7 @@ Further claims:
   the position at Phase 1 on the first task, all three gate modes
   `gated`, `review_cycle` still 0, and `spec_commit` untouched — the
   baseline is re-stamped only at conclusion
-- nothing reopened, nothing was triaged, no wait gate and no incoherence
+- nothing reopened, nothing was sent, no wait gate and no incoherence
   gate rendered, the discussion document is byte-identical to the
   fixture's, and no second work unit exists
 - cache payload files (phase tree, task list) are expected working

@@ -96,7 +96,7 @@ Also true:
   appears
 - the user is stopped exactly four times: the resume choice, the
   finding's one stop, the re-loop gate, and sign-off
-- no incoherence gate renders, nothing routes to a triage queue, and no
+- no incoherence gate renders, nothing routes to a mailbox, and no
   source is reopened; the discussion item never leaves `completed`, and
   the specification never pauses
 - cache and scratch files under `.workflows/.cache/` are expected

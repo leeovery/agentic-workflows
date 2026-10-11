@@ -14,7 +14,7 @@ Further claims:
 
 - the walk is a read: the discussion item stays `in-progress` and still
   carries `reconcile_needed: research`; the research stub still reads
-  `triaged`, its queue still holds `001-signal-density.md` with its
+  `unstarted`, its mailbox still holds `001-signal-density.md` with its
   content intact, and no research file exists; the map's two subtopics
   stay `decided`; nothing is committed
 - the session never reaches its resume detection or the discussion

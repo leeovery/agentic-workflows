@@ -1,11 +1,11 @@
 'use strict';
 
-// A rerouted challenge, landed: the seeded batch-vs-live-stream
+// A sent challenge, landed: the seeded batch-vs-live-stream
 // conflict (behavioural-ranking settled batch-only signal ingestion;
 // synonym-handling's expansion decision rests on a live click-signal
 // stream) was spotted in a later behavioural-ranking sitting and
-// rerouted into synonym-handling. `topic triage` reopened the completed
-// discussion and the concern sits in its Triage section under a title
+// sent into synonym-handling. `topic send` reopened the completed
+// discussion and the message sits in its mailbox under a title
 // whose kebab-case collides with the decided expansion-source subtopic
 // — the next session's drain must fold into the existing subtopic, not
 // add a new one. The delivery's self-commit closes the world with the
@@ -22,7 +22,7 @@ module.exports = {
     e.harvest(h);
     e.completeDiscussions(h);
 
-    h.write('.workflows/.cache/scratch/concern-scratch.md', [
+    h.write('.workflows/.cache/scratch/message-scratch.md', [
       '### Expansion Source',
       '*From: behavioural-ranking · discussion · 2026-01-01*',
       '',
@@ -38,9 +38,9 @@ module.exports = {
       'against the earlier decision.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'discussion', 'synonym-handling',
-      '--concern', '.workflows/.cache/scratch/concern-scratch.md', '--slug', 'expansion-source',
-      '-m', `discussion(${WU}/behavioural-ranking): reroute concern to synonym-handling`);
+    h.engine('topic', 'send', WU, 'discussion', 'synonym-handling',
+      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'expansion-source',
+      '-m', `discussion(${WU}/behavioural-ranking): send message to synonym-handling`);
     h.write(`.workflows/${WU}/discussion/synonym-handling.md`, [
       '# Discussion: Synonym Handling',
       '',

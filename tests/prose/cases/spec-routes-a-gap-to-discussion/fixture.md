@@ -16,6 +16,6 @@ topic given. Construction meets the conflict and raises it — but this
 user's answer breaks it open: neither documented side survives,
 because the ground under both was never actually explored. The
 exchange escalates to a genuine gap, which must be acknowledged (not
-chosen), landed in synonym-handling's triage queue, and the
+chosen), landed in synonym-handling's mailbox, and the
 specification paused with the session routed back to the epic menu —
 the discussion document itself never edited.

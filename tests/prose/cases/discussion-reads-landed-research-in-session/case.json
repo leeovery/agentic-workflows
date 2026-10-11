@@ -19,7 +19,7 @@
     "skills/workflow-discussion-process/references/template.md",
     "skills/workflow-shared/references/knowledge-usage.md",
     "skills/workflow-shared/references/contextual-query.md",
-    "skills/workflow-shared/references/rerouted-concerns.md",
+    "skills/workflow-shared/references/reading-the-mailbox.md",
     "skills/workflow-shared/references/landing-shared-files.md",
     "skills/workflow-discussion-process/references/discussion-session.md",
     "skills/workflow-discussion-process/references/review-agent.md",
@@ -33,7 +33,7 @@
     "c — continue"
   ],
   "stubs": {
-    "research-peer-relanding": "once, immediately after the session loop's first triage-queue read (node .claude/skills/workflow-engine/scripts/engine.cjs topic queue search-relevance discussion behavioural-ranking) — before any further engine call and before the session's first turn to the user — acting as a peer research session, not as this session: run node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen search-relevance research behavioural-ranking, write the stub content over .workflows/search-relevance/research/behavioural-ranking.md, then run node .claude/skills/workflow-engine/scripts/engine.cjs topic complete search-relevance research behavioural-ranking and node .claude/skills/workflow-engine/scripts/engine.cjs commit search-relevance --topic research/behavioural-ranking -m \"research(search-relevance/behavioural-ranking): fold the stability-line measurement\""
+    "research-peer-relanding": "once, immediately after the session loop's first mailbox read (node .claude/skills/workflow-engine/scripts/engine.cjs topic mailbox search-relevance discussion behavioural-ranking) — before any further engine call and before the session's first turn to the user — acting as a peer research session, not as this session: run node .claude/skills/workflow-engine/scripts/engine.cjs topic reopen search-relevance research behavioural-ranking, write the stub content over .workflows/search-relevance/research/behavioural-ranking.md, then run node .claude/skills/workflow-engine/scripts/engine.cjs topic complete search-relevance research behavioural-ranking and node .claude/skills/workflow-engine/scripts/engine.cjs commit search-relevance --topic research/behavioural-ranking -m \"research(search-relevance/behavioural-ranking): fold the stability-line measurement\""
   },
   "invariants": {
     "engine_before_write": true,
@@ -41,7 +41,7 @@
       "render entry-gate search-relevance.discussion.behavioural-ranking",
       "manifest get search-relevance.discussion.behavioural-ranking status",
       "render resume-gate search-relevance.discussion.behavioural-ranking",
-      "topic queue search-relevance discussion behavioural-ranking",
+      "topic mailbox search-relevance discussion behavioural-ranking",
       "topic reopen search-relevance research behavioural-ranking",
       "topic complete search-relevance research behavioural-ranking",
       "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
@@ -50,7 +50,7 @@
     ],
     "calls_in_order": [
       "render resume-gate search-relevance.discussion.behavioural-ranking",
-      "topic queue search-relevance discussion behavioural-ranking",
+      "topic mailbox search-relevance discussion behavioural-ranking",
       "topic reopen search-relevance research behavioural-ranking",
       "topic complete search-relevance research behavioural-ranking",
       "manifest get search-relevance.discussion.behavioural-ranking reconcile_needed",
@@ -62,7 +62,7 @@
       "topic complete search-relevance discussion",
       "topic reopen search-relevance discussion",
       "topic start",
-      "topic triage",
+      "topic send",
       "topic absorb",
       "discussion-map add",
       "discussion-map set",

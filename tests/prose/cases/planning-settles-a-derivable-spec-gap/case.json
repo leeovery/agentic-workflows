@@ -76,7 +76,7 @@
       "render incoherence-gate",
       "render wait-gate",
       "render conclude-gate",
-      "topic triage",
+      "topic send",
       "topic reopen",
       "topic start pay specification",
       "topic complete pay specification",

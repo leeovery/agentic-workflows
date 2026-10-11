@@ -99,8 +99,7 @@ Also true:
   written into it — the discussion already decides both, so those are
   the specification's alone
 - no incoherence gate renders: the pick's landing enters the flow at
-  its landing step, so nothing classifies, nothing routes to a triage
-  queue, and no source is reopened
+  its landing step, so nothing classifies, nothing routes to a mailbox, and no source is reopened
 - the discussion item never leaves `completed`, and the specification
   never pauses
 - the user is stopped exactly twice in the review: at the settled

@@ -6,7 +6,7 @@ the existing account support hosted card fields, so card details never
 touch our servers; what 3-D Secure adds to the checkout for the shop's
 markets; and whether a second gateway is worth pricing as a fallback for
 declines. Nothing has been dug: no deep dive has ever run on the topic,
-the store is empty, and the triage queue is empty.
+the store is empty, and the mailbox is empty.
 
 The file holds what the first sitting established: the account's
 tokenisation API keeps card numbers off our servers already, hosted

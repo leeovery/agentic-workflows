@@ -45,7 +45,7 @@ judgment-collection from completed relevance-measurement research:
   `.workflows/search-relevance/discussion/judgment-collection.md`
   holding a Context section that reflects the parent research's
   judgment-collection findings, with no decisions recorded yet; the
-  topic's triage queue is empty
+  topic's mailbox is empty
 - the manifest holding one discussion item, judgment-collection, in
   progress, its subtopics pending and recognisably drawn from the
   parent research's material; the relevance-measurement research item

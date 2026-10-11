@@ -57,18 +57,17 @@ The prose should have taken this path:
    re-fetched. **Nothing is written into the discussion document and no
    corrigendum is composed**
 10. the work type is `feature`, so there is no map to land a topic on and
-    the epic branch is never entered: the concern is written straight to
-    `.workflows/.cache/pay/implementation/pay/gap-concern.md` in the
-    triage entry shape — a short title, a `*From: pay · implementation ·
+    the epic branch is never entered: the message is written straight to
+    `.workflows/.cache/pay/implementation/pay/gap-message.md` in the
+    message shape — a short title, a `*From: pay · implementation ·
     {date}*` line, then what the work needs, the evidence, what was
     explored, and the task it stopped — and delivered in one
     self-committing transaction:
-    `topic triage pay discussion pay --concern … --slug … -m
+    `topic send pay discussion pay --content … --slug … -m
     "impl(pay): gap routed to pay"`
 11. the transaction is what moves the record, and the session writes none
     of it by hand: the discussion item reopens to `in-progress`, the
-    concern lands as the first numbered file in that topic's triage
-    queue, the specification's source row for the discussion flips to
+    message lands as the first numbered file in that topic's mailbox, the specification's source row for the discussion flips to
     `stale` and the specification item takes `reconcile_needed:
     discussion`, and the whole thing commits itself as `impl(pay): gap
     routed to pay`
@@ -80,7 +79,7 @@ The prose should have taken this path:
     either already committed by the transaction or sits in the gitignored
     cache, so the second call may answer that there was nothing to
     commit, and that is correct rather than a miss
-13. one line says the concern is queued on the discussion and
+13. one line says the message is waiting on the discussion and
     implementation resumes once it has decided, and the walk **STOPS
     THERE** — a terminal condition. Control never returns to the skill,
     Step 8 is never reached, and nothing further is fetched or rendered
@@ -95,7 +94,7 @@ Further claims:
   sides payload, and its rows are the numbered sides plus **Comment** —
   no retry row, no skip row, no stop row. A gate fetched with `--result
   failed` offers a retry, and a retry would carry the user's words into
-  a re-dispatch instead of into the queue
+  a re-dispatch instead of into the mailbox
 - `block-sides.json` holds two to four options with exactly one marked
   recommended, listed first, each summary the bold label of its option
   in the block — the payload and the composed Options are the same list
@@ -116,9 +115,9 @@ Further claims:
   task is neither completed nor skipped, and no code or test file was
   written
 - the discussion **document** is byte-identical to the fixture's — the
-  gap was queued, not decided — and the specification is byte-identical
+  gap was waiting, not decided — and the specification is byte-identical
   too: no corrigendum, no edit, no re-index of either
-- `.workflows/pay/discussion/.triage/pay/` holds exactly one concern
+- `.workflows/pay/discussion/.mailbox/pay/` holds exactly one message
   file, numbered by the engine, and its text names the task the block
   stopped
 - the discussion item reads `in-progress` and the specification item
@@ -126,5 +125,5 @@ Further claims:
   source row `stale`. A specification left unflagged is a way back that
   does not exist: nothing would tell the next session to reconcile
 - every gate mode is still `gated` — nothing opted into auto or bounded
-- the working tree is clean at the stop; the gap-concern scratch under
+- the working tree is clean at the stop; the gap-message scratch under
   `.workflows/.cache/` is expected residue and is gitignored

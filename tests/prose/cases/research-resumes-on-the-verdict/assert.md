@@ -25,7 +25,7 @@ The prose should have taken this path:
    as material for the discussion, never decided here — and the waiting
    note is answered beneath it — a dated entry carrying the number,
    the waiting line kept as the record of the wait
-5. the user wraps; the triage queue reads empty, the landed-evidence
+5. the user wraps; the mailbox reads empty, the landed-evidence
    read finds no flag (the advisory at the skill's start already
    cleared it), and the wait-gate fetch comes back empty — the release
    already happened, so no gate is emitted and nothing blocks
@@ -54,7 +54,7 @@ Further claims:
   is recorded as the research's own
 - the reconcile flag is gone and `awaiting_experiments` never
   reappears
-- nothing was rerouted, no agent dispatched, no map operation ran, and
+- nothing was sent, no agent dispatched, no map operation ran, and
   no thread was added to the register
 
 EXPECTED WORLD — the fixture plus: the research item `completed` with

@@ -2,13 +2,13 @@
 
 // Two epics and one topic that moved between them. `search-relevance`
 // concluded its synonym-handling discussion, then postponed the topic to
-// a `v2` horizon; a concern behavioural-ranking had for that decision
-// landed in its triage queue afterwards and waits there with it — mail
+// a `v2` horizon; a message behavioural-ranking had for that decision
+// landed in its mailbox afterwards and waits there with it — mail
 // for a topic that waits. A year on, `managed-search` pulls the waiting
 // item forward, and the engine stamps `prior` on the new map row.
 //
-// Nothing crossed: the brief, the concluded discussion, and the queued
-// concern are all still `search-relevance`'s, which is what makes the new
+// Nothing crossed: the brief, the concluded discussion, and the waiting
+// message are all still `search-relevance`'s, which is what makes the new
 // topic's initialisation a read rather than an inheritance.
 
 const e = require('../../mainlines/epic.cjs');
@@ -25,7 +25,7 @@ module.exports = {
 
     h.engine('topic', 'postpone', e.WU, 'synonym-handling', '--horizon', 'v2');
 
-    const scratch = `.workflows/.cache/${e.WU}/discussion/behavioural-ranking/concern-stream-that-will-not-exist.md`;
+    const scratch = `.workflows/.cache/${e.WU}/discussion/behavioural-ranking/message-stream-that-will-not-exist.md`;
     h.write(scratch, [
       '### Expansion reads a stream nobody will build',
       '*From: behavioural-ranking · discussion · 2026-01-08*',
@@ -64,9 +64,9 @@ module.exports = {
       'itself, which is settled and not in question.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', e.WU, 'discussion', 'synonym-handling',
-      '--concern', scratch, '--slug', 'stream-that-will-not-exist',
-      '-m', `discussion(${e.WU}/behavioural-ranking): reroute concern to synonym-handling`);
+    h.engine('topic', 'send', e.WU, 'discussion', 'synonym-handling',
+      '--content', scratch, '--slug', 'stream-that-will-not-exist',
+      '-m', `discussion(${e.WU}/behavioural-ranking): send message to synonym-handling`);
 
     const log = `.workflows/${NEXT}/discovery/sessions/session-001.md`;
     h.write(log, [

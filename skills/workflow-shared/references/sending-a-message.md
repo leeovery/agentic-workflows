@@ -1,0 +1,157 @@
+# Sending a Message
+
+*Shared reference. Loaded by `workflow-discussion-process` (off-topic points), `workflow-research-process` (topic awareness), and `workflow-specification-process`, `workflow-planning-process`, and `workflow-implementation-process` (gaps and resolutions sent to a source discussion) when something must be sent to a different topic.*
+
+---
+
+Sends a message to a target topic's **mailbox** — one engine-numbered file per message, installed and committed by the engine — so the target raises it when its phase next runs. Epic-only — single-topic work types (feature, bugfix, quick-fix) have no second topic to send to; their callers ignore the point, surface it to the inbox, or pivot to an epic, and never load this reference.
+
+The caller has already resolved and confirmed the target, and confirmed it is a **different** topic from the current one (a point that belongs to the current topic is normal subtopic or thread work, not a message). A specification, planning, or implementation sender is the exception: its target is a source discussion — a different phase item even when it shares the sender's own topic name. The delivery is a self-committing engine transaction — the message file and manifest land action-scoped under the send's commit message; the caller commits nothing for the delivery itself. (`topic reactivate` in **D** likewise commits itself.)
+
+## Parameters
+
+The caller provides these via context before loading:
+
+- `work_unit` — the epic. Always present.
+- `target` — the destination topic the message belongs to (an existing map name, or a new kebab-case name the caller derived).
+- `message` — the message as a short title, plus the full context discussed about it.
+- `origin` — the topic the message surfaced in (the current session's topic).
+- `phase` — the current session's phase, `research`, `discussion`, `specification`, `planning`, or `implementation`. Recorded in the entry.
+- `landing_phase` — where the message lands on the target, `research` or `discussion`: judged by the origin session per **Judging the Landing Phase** below, recommended and confirmed at the caller's gate. Any target state is legal — the delivery parks, leaves live work untouched, or reopens completed work as needed.
+- `date` — today's date.
+
+After return, the caller reads these from conversation memory:
+
+- `result` — `landed` (message delivered and committed by the engine) or `cancelled` (the send was dropped or blocked; nothing written).
+- `landed_topic` — the final target name (a new target may have been renamed during validation).
+
+## Judging the Landing Phase
+
+The message's nature decides, never the target: an open question needing exploration → `research`; a decision owed → `discussion`; a correction lands in the phase whose document records the material it corrects — `discussion` when the target has recorded nothing yet. The target's map `routing` and live state have no vote — a question landing on a discussion-routed topic still lands research-side.
+
+## Message Shape
+
+Each message is one mailbox file. Pin this exact content shape — the fold reads against it:
+
+```
+### {short title}
+*From: {origin} · {phase} · {date}*
+
+{the full context discussed about this message}
+```
+
+Carry **everything** worked out about the message — as many paragraphs as it takes. Do not summarise or trim: the target topic processes this entry from cold when it next runs, so it needs the whole context, not a one-line pointer. One paragraph or ten, write whatever conveys what was discussed. (In practice a point caught early carries little; that's fine too.)
+
+**One ask per file.** Depth is unbounded; width is one decision. When the worked-out material makes several asks of the target — points it could accept or reject independently — each ask is its own message: its own entry with its own title, delivered through **C** in turn under the one confirmed send, repeating whatever shared context each needs (every entry is read cold). A single ask with several consequences stays one file — the test is whether the target could take one part and refuse another, never paragraph count. The target raises mailbox entries one at a time; a bundled entry defeats that walk before it starts.
+
+## A. Resolve the Target
+
+Resolution is computed against the **live** state at landing time, never cached — a target created earlier in the same session must resolve correctly:
+
+```bash
+node .claude/skills/workflow-discovery/scripts/gateway.cjs {work_unit}
+```
+
+Find the row whose name is `{target}`.
+
+#### If no row matches
+
+The target is not on the map yet.
+
+→ Proceed to **B. New Target**.
+
+#### If the row's lifecycle is `handled` or `cancelled`
+
+The topic is closed — no future session will raise its mailbox, and concluded artefacts may exist beneath it. Record the row's lifecycle as `lifecycle`.
+
+→ Proceed to **D. Closed Target**.
+
+#### If the row's lifecycle is `postponed`
+
+The topic waits on the roadmap and the message waits with it — the delivery parks it and nothing is reopened. Tell the user in one line that it will be read when the topic returns.
+
+→ Proceed to **C. Send the Message**.
+
+#### Otherwise
+
+The landing phase is already judged and confirmed — `{landing_phase}` decides, not the target's live state. The delivery handles every item state (absent → parked; live → untouched; completed → reopened; postponed → parked, waiting with the topic), and a cancelled or dead-ended target refuses loudly with its recovery path.
+
+→ Proceed to **C. Send the Message**.
+
+## B. New Target
+
+Create the target via the shared topic-creation core, routed at the judged landing phase. The core writes the map item alone — the phase item is created as `unstarted` in **C**, never started:
+
+→ Load **[create-discovery-topic.md](create-discovery-topic.md)** with work_unit = `{work_unit}`, proposed_name = `{target}`, routing = `{landing_phase}`, source = `message:{origin}`. On return, `created_topic` holds the name the topic was written under — set `target` to it.
+
+→ On return, proceed to **C. Send the Message**.
+
+## C. Send the Message
+
+One engine transaction owns the whole delivery: `topic send` handles the item status (absent → created as `unstarted`, parked, not started; `unstarted` or `in-progress` → untouched; `completed` → reopened to `in-progress`), installs the message as the next numbered file in the target's mailbox, consumes the scratch file, and commits the delivery action-scoped (message file + manifest).
+
+1. Derive `slug` — kebab-case of the message's short title.
+2. Write the full entry (shape above) to `.workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md` with the Write tool.
+3. Deliver:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs topic send {work_unit} {landing_phase} {target} --content .workflows/.cache/{work_unit}/{phase}/{origin}/message-{slug}.md --slug {slug} -m "{phase}({work_unit}/{origin}): send message to {target}"
+   ```
+
+**If the response is `ok: false` naming the topic closed** — `is cancelled — reactivate it from the epic menu first` or `is closed as a dead end — reopen it in discovery first`: a peer closed the target since **A** read the map. Surface the engine's error verbatim and re-resolve against the live state — the closed-target gate takes over.
+
+→ Return to **A. Resolve the Target**.
+
+**If the response is `ok: false` for any other reason:**
+
+Surface the engine's error verbatim — it names the recovery path. Nothing has been written; set `result = cancelled`.
+
+→ Return to caller.
+
+**Otherwise:**
+
+Set `landed_topic = {target}` and `result = landed`. When the response carries `reconcile_flagged` or `sources_staled`, the delivery marked downstream work to reconcile — on a research-side landing, the target's discussion, live or decided (held at entry until the research lands, then reconciled against it — a live one already in session cannot conclude before then); on a discussion-side landing, the specification(s) sourcing the target, named in `sources_staled`, whose extracted rows are now `stale` (`sources_staled` can arrive alone when the spec already carried a flag). The caller's landing line should say which.
+
+→ Return to caller.
+
+## D. Closed Target
+
+Never stub over a concluded artefact, and never send a message no session will raise. Present the state and let the user decide — the surface derives which closed state the target is in and words the reopen row for it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render send-closed-target {work_unit}.discovery.{target}
+```
+
+Emit the call's MENU section verbatim per its marker.
+
+**STOP.** Wait for user response.
+
+**If `open`:**
+
+Reopen the topic — for `handled`:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {target}
+```
+
+For `cancelled` (an engine transaction — it commits itself) — reactivate the topic as one unit; every research and discussion item cancelled under its name returns with it:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs topic reactivate {work_unit} discovery {target}
+```
+
+If the response is `ok: false`, surface the engine's error verbatim and re-fetch the gate above — the message is still unsent. Otherwise re-resolve against the fresh state — the response's `restored` names what came back:
+
+→ Return to **A. Resolve the Target**.
+
+**If `elsewhere`:**
+
+Ask the user which topic the message should go to, set `target` to their answer, and re-resolve:
+
+→ Return to **A. Resolve the Target**.
+
+**If `drop`:**
+
+Nothing written. Set `result = cancelled`.
+
+→ Return to caller.

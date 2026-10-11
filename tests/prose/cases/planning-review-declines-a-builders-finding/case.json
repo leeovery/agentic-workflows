@@ -70,7 +70,7 @@
       "render incoherence-gate",
       "render spec-corrections",
       "topic reopen",
-      "topic triage",
+      "topic send",
       "restart planning",
       "workunit create",
       "engine.cjs knowledge index"

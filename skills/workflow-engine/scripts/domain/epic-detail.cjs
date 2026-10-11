@@ -20,6 +20,8 @@ const {
   computeAnalysisCacheStatus,
   buildDiscoveryMap,
   computeTopicLifecycle,
+  mailQueued,
+  mailWaiting,
   UNIT_PHASES,
   unitItems,
   liveUnitItems,
@@ -156,8 +158,8 @@ const EPIC_DETAIL_PHASES = ['discovery', ...WORK_TYPE_PIPELINES.epic];
  * @property {string|null} research_state  the research item's raw status, null when none exists
  * @property {string|null} discussion_state  the discussion item's raw status, null when none exists
  * @property {string|null} promoted_to  the cross-cutting unit a promoted discussion moved to, null otherwise
- * @property {boolean} triage_parked  rerouted concerns wait on the topic — a `triaged` stub in either phase, or queue files on disk beneath a started or reopened item
- * @property {{research: number, discussion: number}} triage_queued  the topic's queue depth per phase, counted from disk
+ * @property {boolean} mail_waiting  messages wait in the topic's research or discussion mailbox, whatever the item's status
+ * @property {{research: number, discussion: number}} mail_queued  the topic's mailbox depth per phase, counted from disk
  * @property {boolean} reconcile_pending  a phase item beneath the row carries a live reconcile flag
  * @property {import('./derivations.cjs').Wait[]} waits  the live waits of the topic's in-progress research and discussion items (empty when none)
  * @property {string|null} next_action
@@ -296,11 +298,11 @@ function discoveryUnits(manifest, discoveryMap) {
   ];
 }
 
-/** The state tag a topic's cancel row carries — the map's own lifecycle label. @param {object} manifest @param {string} name @param {MapRow|undefined} row */
-function topicState(manifest, name, row) {
-  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.triage_parked, row.reconcile_pending, row.waits, row.promoted_to);
-  const { lifecycle, research_state, triage_parked, reconcile_pending } = computeTopicLifecycle(manifest, name);
-  return discoveryLifecycleLabel(lifecycle, null, research_state, triage_parked, reconcile_pending);
+/** The state tag a topic's cancel row carries — the map's own lifecycle label. @param {string} cwd @param {object} manifest @param {string} name @param {MapRow|undefined} row */
+function topicState(cwd, manifest, name, row) {
+  if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.mail_waiting, row.reconcile_pending, row.waits, row.promoted_to);
+  const { lifecycle, research_state, reconcile_pending } = computeTopicLifecycle(manifest, name);
+  return discoveryLifecycleLabel(lifecycle, null, research_state, mailWaiting(mailQueued(cwd, manifest.name, name)), reconcile_pending);
 }
 
 /**
@@ -308,10 +310,10 @@ function topicState(manifest, name, row) {
  * started, non-terminal specification in build order — locked ones listed
  * with their reason, never omitted. A topic off the map with nothing live
  * beneath it has nothing a cancel could take and is left out.
- * @param {object} manifest @param {MapRow[]} discoveryMap @param {Record<string, any>[]} specItems  build-ordered
+ * @param {string} cwd @param {object} manifest @param {MapRow[]} discoveryMap @param {Record<string, any>[]} specItems  build-ordered
  * @returns {CancellableUnit[]}
  */
-function cancellableUnits(manifest, discoveryMap, specItems) {
+function cancellableUnits(cwd, manifest, discoveryMap, specItems) {
   /** @type {CancellableUnit[]} */
   const units = [];
   for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
@@ -321,7 +323,7 @@ function cancellableUnits(manifest, discoveryMap, specItems) {
     if (lifecycle === 'cancelled' || lifecycle === 'postponed') continue;
     if (!row && liveUnitItems(manifest, 'discovery', name).length === 0) continue;
     const locked = discoveryLockReason(manifest, name);
-    units.push({ name, stage: 'discovery', state: topicState(manifest, name, row), ...(locked ? { locked } : {}) });
+    units.push({ name, stage: 'discovery', state: topicState(cwd, manifest, name, row), ...(locked ? { locked } : {}) });
   }
   for (const s of specItems) {
     if (!specIsStarted(s)) continue;
@@ -360,10 +362,10 @@ function cancelledUnits(manifest, discoveryMap, specItems) {
  * cancelled, in map order — locked ones carrying the plan's first lock,
  * never omitted. The Discovery stage alone postpones: a topic past
  * specification is past "not yet".
- * @param {object} manifest @param {MapRow[]} discoveryMap @param {object|null} project
+ * @param {string} cwd @param {object} manifest @param {MapRow[]} discoveryMap @param {object|null} project
  * @returns {CancellableUnit[]}
  */
-function postponableUnits(manifest, discoveryMap, project) {
+function postponableUnits(cwd, manifest, discoveryMap, project) {
   /** @type {CancellableUnit[]} */
   const units = [];
   for (const { name, row } of discoveryUnits(manifest, discoveryMap)) {
@@ -371,7 +373,7 @@ function postponableUnits(manifest, discoveryMap, project) {
     if (lifecycle === 'cancelled' || lifecycle === 'postponed') continue;
     if (!row && liveUnitItems(manifest, 'discovery', name).length === 0) continue;
     const [lock] = postponePlan(manifest, name, project).locks;
-    units.push({ name, stage: 'discovery', state: topicState(manifest, name, row), ...(lock ? { locked: lock.reason } : {}) });
+    units.push({ name, stage: 'discovery', state: topicState(cwd, manifest, name, row), ...(lock ? { locked: lock.reason } : {}) });
   }
   return units;
 }
@@ -668,9 +670,9 @@ function epicDetail(cwd, manifest) {
     phases,
     in_progress: inProgressItems,
     completed: completedItems,
-    cancellable: cancellableUnits(manifest, discoveryMap, specItems),
+    cancellable: cancellableUnits(cwd, manifest, discoveryMap, specItems),
     cancelled: cancelledUnits(manifest, discoveryMap, specItems),
-    postponable: postponableUnits(manifest, discoveryMap, project),
+    postponable: postponableUnits(cwd, manifest, discoveryMap, project),
     postponed: postponedTopics(manifest, discoveryMap, project),
     next_phase_ready: nextPhaseReady,
     unaccounted_discussions: unaccountedDiscussions,

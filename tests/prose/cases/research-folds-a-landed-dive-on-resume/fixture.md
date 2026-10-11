@@ -17,7 +17,7 @@ config file, a weights table — with one answer to the brief's one
 question, an Opened list carrying one question the topic will carry and
 one measurement, and nothing has folded it.
 
-The triage queue is empty; no experiment exists; the other two topics
+The mailbox is empty; no experiment exists; the other two topics
 have not started, and no other session is mid-flight. The context was
 cleared at the phase boundary — this session opens cold at the research
 skill with its three arguments and what is on disk.

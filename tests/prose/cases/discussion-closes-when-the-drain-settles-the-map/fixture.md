@@ -18,7 +18,7 @@ found that the retry decision could not be built as recorded — the
 gateway forbids re-presenting a hard decline, and the discussion never
 weighed the soft/hard split — and routed the gap back through the
 linear work type's own delivery: the discussion was reopened and the
-concern installed as one file in its triage queue under the title
+message installed as one file in its mailbox under the title
 "Failed Payment Retries", kebab-identical to the decided subtopic it
 challenges. The specification paused in progress with its extraction
 flagged stale.

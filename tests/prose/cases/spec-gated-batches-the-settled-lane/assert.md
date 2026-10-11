@@ -145,8 +145,7 @@ Also true:
   resume choice, the screen, the screen again after the expansion,
   the re-loop prompt, and sign-off
 - no incoherence gate renders: the batch's landing enters the flow at
-  its landing step, so nothing classifies, nothing routes to a triage
-  queue, and no source is reopened
+  its landing step, so nothing classifies, nothing routes to a mailbox, and no source is reopened
 - the discussion item never leaves `completed`, and the specification
   never pauses
 - cache and scratch files under `.workflows/.cache/` are expected

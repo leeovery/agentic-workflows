@@ -47,15 +47,15 @@ const VALID_PHASE_STATUSES = {
   // topic left the epic for the roadmap whole, its status stashed, and the
   // pull is the way back. Only the two conversations postpone — a topic past
   // specification is past "not yet".
-  research:       ['triaged', 'in-progress', 'completed', 'superseded', 'cancelled', 'postponed'],
+  research:       ['unstarted', 'in-progress', 'completed', 'superseded', 'cancelled', 'postponed'],
   // Derived bookkeeping over the topic's experiment records: the spawn opens
   // the item, the last record's terminal transition closes it — the user
   // never starts or completes it by hand.
   experiment:     ['in-progress', 'completed'],
   // `promoted`: the discussion left the epic with the specification it
   // sources, into that specification's cross-cutting unit (`promoted_to`).
-  discussion:     ['triaged', 'in-progress', 'completed', 'cancelled', 'postponed', 'promoted'],
-  investigation:  ['triaged', 'in-progress', 'completed', 'cancelled'],
+  discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed', 'promoted'],
+  investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
   scoping:        ['in-progress', 'completed', 'cancelled'],
   specification:  ['proposed', 'in-progress', 'completed', 'superseded', 'promoted', 'cancelled'],
   planning:       ['in-progress', 'completed', 'cancelled'],
@@ -118,7 +118,7 @@ const VALID_THREAD_STATUSES = ['open', 'digging', 'learned', 'parked'];
 
 // Where a thread entered the register: the fixed sources, a deep dive's
 // store id (`deep-dive-NNN`, with or without its label suffix), or the name
-// of the topic that rerouted the question in — any name the map accepts
+// of the topic that sent the question in — any name the map accepts
 // (no slashes, no dots), one line with no surrounding whitespace, since the
 // origin renders as a tag. The dive prefix is pinned so a malformed id can
 // never pass as a topic name.

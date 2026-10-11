@@ -37,7 +37,7 @@ The prose should have taken this path:
    turn — with or without the user's own wrap-up; its wait-gate fetch
    comes back empty — nothing is owed, the release already happened,
    and no gate is emitted — every subtopic is settled, and the closing
-   gates run: the triage queue reads empty and the classification
+   gates run: the mailbox reads empty and the classification
    follows step 5: never-reviewed, so the mandatory final-review gate
    renders and the user says yes and the final review step dispatches
    with `--final` (the stub returns clean); or, where a review already

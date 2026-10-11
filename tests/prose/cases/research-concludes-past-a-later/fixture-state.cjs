@@ -1,10 +1,10 @@
 'use strict';
 
 // The harvested epic with the relevance-measurement research run to its
-// end and one concern waiting in its triage queue, rerouted in from a
+// end and one message waiting in its mailbox, sent in from a
 // sibling topic. The register holds a mix — two threads learned, one
 // open, one parked. No deep dive is in flight and the store is empty; no
-// experiment exists. The user will defer the queue once and then try to
+// experiment exists. The user will defer the mailbox once and then try to
 // conclude — the conclusion attempt is the break the deferral was waiting
 // for, and the offer must come back before the blocker holds.
 
@@ -121,9 +121,9 @@ module.exports = {
     h.engine('commit', WU, '--topic', `research/${TOPIC}`, '-m',
       `research(${WU}/${TOPIC}): slice regressions learned, human raters parked`);
 
-    // A sibling topic's session rerouted a question here — the queue holds
-    // it, engine-numbered, delivered by the self-committing triage verb.
-    const scratch = `.workflows/.cache/${WU}/discussion/query-expansion/concern-judgment-decay.md`;
+    // A sibling topic's session sent a question here — the mailbox holds
+    // it, engine-numbered, delivered by the self-committing send verb.
+    const scratch = `.workflows/.cache/${WU}/discussion/query-expansion/message-judgment-decay.md`;
     h.write(scratch, [
       '### Do click-derived judgments decay faster for expanded queries?',
       '*From: query-expansion · discussion · 2026-09-10*',
@@ -136,9 +136,9 @@ module.exports = {
       'question for the measurement research, not a decision for expansion.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'research', TOPIC,
-      '--concern', scratch,
+    h.engine('topic', 'send', WU, 'research', TOPIC,
+      '--content', scratch,
       '--slug', 'judgment-decay',
-      '-m', `discussion(${WU}/query-expansion): reroute concern to ${TOPIC}`);
+      '-m', `discussion(${WU}/query-expansion): send message to ${TOPIC}`);
   },
 };

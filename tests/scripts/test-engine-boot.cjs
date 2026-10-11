@@ -1874,6 +1874,19 @@ describe('engine boot verification addenda (real scripts)', () => {
     const second = runEngine(real, project, ['boot']);
     assert.deepStrictEqual(second.migrations.verify, []);
   });
+
+  it('hands back 054\'s check and then 071\'s, naming the mailbox, where one boot runs both over a straggler 054 cannot convert', () => {
+    writeFile(project, '.workflows/payments/discussion/alpha.md',
+      '# D\n\n## Triage:\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
+
+    const res = runEngine(real, project, ['boot']);
+
+    assert.strictEqual(res.ok, true);
+    const addenda = res.migrations.verify.filter((v) => v.id === '054' || v.id === '071');
+    assert.deepStrictEqual(addenda.map((v) => v.id), ['054', '071'], JSON.stringify(res.migrations.verify));
+    assert.ok(addenda[1].verify.includes('.workflows/{wu}/{phase}/.mailbox/{topic}/'), addenda[1].verify);
+    assert.ok(addenda[1].verify.includes('Nothing goes into a .triage/ directory'), addenda[1].verify);
+  });
 });
 
 describe('engine boot migration notices (real scripts)', () => {

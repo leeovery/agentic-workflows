@@ -9,7 +9,7 @@
 // which a bugfix's pipeline does not carry. The entry is authored
 // exhaustive on purpose, so what the raise holds back — the itemised
 // costs, the tuning numbers, the rejected zero-rating — is checkable
-// against what the queue holds, and it carries an unmeasured conversion
+// against what the mailbox holds, and it carries an unmeasured conversion
 // cost as bait for the measurement the bugfix cannot run.
 
 const m = require('../../mainlines/bugfix.cjs');
@@ -57,11 +57,11 @@ module.exports = {
     h.engine('commit', WU, '-m', `spec(${WU}): initialize specification`, '--topic', `specification/${WU}`);
 
     // The gap exit (resolve-source-incoherence.md, the non-epic branch):
-    // the entry in the pinned shape to the specification's cache scratch,
-    // delivered by the self-committing triage transaction — which reopens
-    // the investigation item and installs the queue file — then the pause
+    // the message in the pinned shape to the specification's cache scratch,
+    // delivered by the self-committing send transaction — which reopens
+    // the investigation item and installs the message file — then the pause
     // commit, an honest no-op over what the delivery already committed.
-    const scratch = `.workflows/.cache/${WU}/specification/${WU}/gap-concern.md`;
+    const scratch = `.workflows/.cache/${WU}/specification/${WU}/gap-message.md`;
     h.write(scratch, [
       '### Tax location when the order carries no address',
       `*From: ${WU} · specification · 2026-01-08*`,
@@ -139,18 +139,18 @@ module.exports = {
       'fall-through itself, already agreed.',
       '',
     ].join('\n'));
-    h.engine('topic', 'triage', WU, 'investigation', WU,
-      '--concern', scratch, '--slug', 'tax-location-without-an-address',
+    h.engine('topic', 'send', WU, 'investigation', WU,
+      '--content', scratch, '--slug', 'tax-location-without-an-address',
       '-m', `spec(${WU}): gap routed to ${WU}`);
     h.engine('commit', WU, '-m', `spec(${WU}): pause — gap routed to ${WU}`, '--topic', `specification/${WU}`);
 
-    // The delivery commit as the engine lands it — the concern file and
+    // The delivery commit as the engine lands it — the message file and
     // the manifest, nothing else — so the world's history carries the
     // landing that reopened the investigation.
     h.write('.world-history.json', JSON.stringify([
       { message: `spec(${WU}): gap routed to ${WU}`,
         files: [
-          `.workflows/${WU}/investigation/.triage/${WU}/001-tax-location-without-an-address.md`,
+          `.workflows/${WU}/investigation/.mailbox/${WU}/001-tax-location-without-an-address.md`,
           `.workflows/${WU}/manifest.json`,
         ] },
     ], null, 2));

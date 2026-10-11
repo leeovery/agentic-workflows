@@ -319,7 +319,7 @@ function checkRouting(files) {
 // Check 6b/15 — Cross-file section references: a bold lettered-section token
 // sharing a line with a reference-file link must name a heading that exists —
 // in the linked file (the cross-file read, e.g. "follow **E. Mid-Session
-// Check** in **[rerouted-concerns.md](…)**") or locally (a same-line unrelated
+// Check** in **[reading-the-mailbox.md](…)**") or locally (a same-line unrelated
 // link beside an intra-file route must never false-positive). A restructure
 // that shifts a target file's letters now fails here instead of rotting
 // silently; missing linked files are check 7's finding, not this one's.
