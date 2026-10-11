@@ -5126,7 +5126,10 @@ describe('pipeline simulation', () => {
       lane: 'apply',
       items: [{ title: 'a', detail: 'follows from the tier decision' }, { title: 'b', detail: 'retracted rationale, unstruck' }],
     }));
-    sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload], { expect: 'content' });
+    // A drain's first screen opens on its lane's marker; whether a screen is
+    // the first is the session's to know, so it passes the flag.
+    assert.match(sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload, '--first'], { expect: 'content' }),
+      /^\*\*`▪ No Decision Needed`\*\*$/m, 'the apply lane opens on its marker');
     // The decide lane carries the veto menu; a screen past the five-item cap
     // is refused whole — pagination is the prose's job, screens the engine's.
     const decidePayload = `.workflows/.cache/${wu}/discussion/beta/batch-decide.json`;
@@ -5134,8 +5137,9 @@ describe('pipeline simulation', () => {
       lane: 'decide',
       items: [{ title: 'd', detail: 'determined by the tier decision' }],
     }));
-    assert.match(sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', decidePayload], { expect: 'content' }),
-      /\*\*Discuss\*\*/, 'the decide menu carries the discuss route');
+    const decided = sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', decidePayload, '--first'], { expect: 'content' });
+    assert.match(decided, /\*\*Discuss\*\*/, 'the decide menu carries the discuss route');
+    assert.match(decided, /^\*\*`▪ Decided From the Record`\*\*$/m, 'the decide lane opens on its marker');
     sim.write(decidePayload, JSON.stringify({
       lane: 'decide',
       items: Array.from({ length: 6 }, (_, i) => ({ title: `d${i}`, detail: 'x' })),
@@ -5148,8 +5152,9 @@ describe('pipeline simulation', () => {
       lane: 'route',
       items: [{ title: 'c', target: 'alpha', detail: 'their subtopic owns the claim' }],
     }));
-    assert.match(sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', routePayload], { expect: 'content' }),
-      /\[→ alpha\]/, 'the destination rides the tag slot');
+    const routed = sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', routePayload, '--first'], { expect: 'content' });
+    assert.match(routed, /\[→ alpha\]/, 'the destination rides the tag slot');
+    assert.match(routed, /^\*\*`▪ Belongs Elsewhere`\*\*$/m, 'the route lane opens on its marker');
     sim.write(routePayload, JSON.stringify({ lane: 'route', items: [{ target: 'alpha', detail: 'd' }] }));
     sim.refuses(['render', 'finding-batch', `${wu}.discussion.beta`, '--file', routePayload], /item 1 is missing "title"/);
     const applied = sim.run(['agent', 'surface', wu, 'discussion', 'beta', laned.id, 'F1,F2']);
@@ -5171,14 +5176,18 @@ describe('pipeline simulation', () => {
         remaining,
         items: ids.slice(from, from + 5).map((f) => ({ title: f, detail: 'd' })),
       }));
-      return sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload], { expect: 'content' });
+      const opening = from === 0 ? ['--first'] : [];
+      return sim.render(['finding-batch', `${wu}.discussion.beta`, '--file', payload, ...opening], { expect: 'content' });
     };
     const first = screen(0, 6);
     assert.match(first, /`◆ Apply them\?`/, 'the screen asks its question');
+    assert.match(first, /`▪ No Decision Needed`/, 'the first screen opens on the marker');
     assert.match(first, /\(6 more after this\)/, 'screen one names the remainder');
     let row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(0, 5).join(',')]);
     assert.strictEqual(row.remaining.length, 6, 'first screen drains five');
-    assert.match(screen(5, 1), /\(1 more after this\)/, 'screen two names the remainder');
+    const second = screen(5, 1);
+    assert.match(second, /\(1 more after this\)/, 'screen two names the remainder');
+    assert.doesNotMatch(second, /▪/, 'a later screen carries no marker');
     row = sim.run(['agent', 'surface', wu, 'discussion', 'beta', paged.id, ids.slice(5, 10).join(',')]);
     assert.strictEqual(row.remaining.length, 1, 'second screen drains five more');
     const singleton = screen(10, 0);
