@@ -65,9 +65,9 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
+  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
-const { discoverySpec, specConfirmation, specificationDiscovery } = require('./specification.cjs');
+const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
@@ -3413,8 +3413,8 @@ function waitGateSurface(cwd, { dotpath }) {
 // pause-note — the line a session leaves on as it pauses through the bridge,
 // naming what it waits on. A conversation pausing over its spawn names the
 // experiment it queued (`--id`, refused unless the item waits on it); a plan
-// pausing over a routed gap names the source whose mailbox took it
-// (`--landed`, refused unless the plan's specification sources it).
+// pausing over a routed gap names the topic whose mailbox took it
+// (`--landed`, as the send answered it — the landing may have renamed it).
 
 /**
  * @param {string} cwd
@@ -3425,11 +3425,7 @@ function pauseNoteSurface(cwd, { dotpath, id, landed }) {
   const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'pause-note', [...EXPERIMENT_SPAWN_PHASES, 'planning'], 'the pausing item itself');
   let line;
   if (phase === 'planning') {
-    if (!isFilled(landed)) throw new Error('render pause-note: --landed is required — the source whose mailbox took the gap');
-    const sources = sourceRows((itemOf(manifest, 'specification', topic) || {}).sources).map(([name]) => name);
-    if (!sources.includes(landed)) {
-      throw new Error(`render pause-note: "${landed}" is not a source of specification "${topic}" — the gap lands in a source's mailbox`);
-    }
+    if (!isFilled(landed)) throw new Error('render pause-note: --landed is required — the topic whose mailbox took the gap');
     line = `Paused with the gap in ${landed}'s mailbox — planning resumes once ${landed} has decided it and the specification has been brought into line.`;
   } else {
     if (!isFilled(id)) throw new Error('render pause-note: --id is required (E1, E2, …)');
@@ -4344,8 +4340,9 @@ const ANALYSIS_PROMPT = 'Your discussions will be analyzed for natural groupings
  * @returns {string}
  */
 function analysisProceedGate(cwd, { dotpath }) {
-  const { workUnit } = resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
-  const stale = specificationDiscovery(cwd, workUnit).cache === 'stale';
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
+  const analysis = computeAnalysisCacheStatus(manifest, path.join(cwd, '.workflows'), 'grouping-analysis');
+  const stale = analysis.stamped && analysis.status !== 'valid';
   return [
     section('DISPLAY: analysis prompt', emitAs('markdown'), `> ${stale ? `${ANALYSIS_STALE} ` : ''}${ANALYSIS_PROMPT}`),
     section('MENU: analysis proceed gate', MENU_INSTRUCTION, menu('', yesNo(), { question: 'Proceed with analysis?' })),
@@ -5529,9 +5526,11 @@ function complianceIssues(cwd, { file }) {
 // ---------------------------------------------------------------------------
 // document-review — the closing line of a document review that changed the
 // record, from the counts the review tallied. session-log = a discovery or
-// roadmap session log, reconciled by correction alone; document = a research
-// or discussion file, whose review also captures gaps before the compliance
-// check runs. Project-level: the counts are the whole of what it renders.
+// roadmap session log, reconciled by correction alone, so a change is at
+// least one; document = a research or discussion file, whose review also
+// captures gaps before the compliance check runs — and whose routing of
+// misdirected notes changes the file with neither, so both counts may be 0.
+// Project-level: the counts are the whole of what it renders.
 // ---------------------------------------------------------------------------
 
 /** @type {Record<string, (args: Record<string, string|undefined>) => string>} */
@@ -5544,7 +5543,6 @@ const DOCUMENT_REVIEW_LINES = {
   document: ({ gaps, corrections }) => {
     const g = countFlag(gaps, 'document-review', 'gaps');
     const m = countFlag(corrections, 'document-review', 'corrections');
-    if (g + m === 0) throw new Error('render document-review: --gaps and --corrections cannot both be 0 — a review that changed nothing closes on its own line');
     return `Document review complete. ${g} gap(s) captured, ${m} correction(s) applied. Proceeding to the final compliance check.`;
   },
 };

@@ -257,7 +257,7 @@ Load **[gather-context.md](references/gather-context.md)** and follow its instru
 
 ## Step 3: Contextual Query
 
-Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** with work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`, and follow its instructions as written.
 
 → On return, proceed to **Step 4**.
 

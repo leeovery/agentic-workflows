@@ -804,6 +804,8 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
   assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
     'the task\'s completion takes it off');
+  assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
+    /□ Consolidation Pass \(phase 1\)[\s\S]*> Phase 1's tasks are done\./);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -837,6 +839,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   }
   sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
   sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
+  assert.match(sim.render(['step-opening', `${wu}.specification.${topic}`, '--step', 'conclude'], { expect: 'content' }),
+    /□ Conclude[\s\S]*> Wrapping up\. Final assessment, sign-off, and handover to the planning phase\./);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
   assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, topic]).incorporations, []);
 
@@ -1057,6 +1061,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // finder — marks the boundary, and the re-record closes the phase
   // (consolidation-pass.md F). Nothing crosses the boundary.
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
+  assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
+    /□ Consolidation Pass \(phase 1\)/, 'the pass opens on the phase in flight');
   assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'true',
     'the guard reads the field before the delete — an absent bank refuses the delete');
   sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
@@ -1097,9 +1103,23 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
   sim.write(`.workflows/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
   sim.write(`.workflows/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
+  // The verifiers leave the tree as they found it: the check reads git and
+  // answers empty, the review's own artifacts sitting under .workflows/.
+  sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'empty' });
+  // Prep's synthesis writes the action list the rest of the review reads.
+  sim.write(`.workflows/.cache/${wu}/review/${topic}/actions.json`, {
+    verdict: 'pass',
+    actions: [
+      { id: 'A1', route: 'do-now', ids: ['1-1-1'], files: [`src/${topic}.js`] },
+      { id: 'A2', route: 'do-now', ids: ['1-1-2'], files: [`src/${topic}.js`] },
+      { id: 'A3', route: 'out-of-scope', kind: 'quick-fix', ids: ['9-2-1'] },
+    ],
+  });
   sim.run(['commit', wu, '-m', `review(${wu}): verification and prep`, '--topic', `review/${topic}`]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
     '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
+  assert.match(sim.render(['step-opening', `${wu}.review.${topic}`, '--step', 'do-now'], { expect: 'content' }),
+    /□ Apply Do-Now[\s\S]*> Applying 2 contained corrections — /);
   // The apply lane writes code: in-scope, contained findings land in-session
   // as one commit, through the same declared-paths door the task loop uses —
   // beating the review topic, which is the code slot this session holds.
@@ -1165,6 +1185,8 @@ describe('pipeline simulation', () => {
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session'], { expect: 'content' }),
+      /□ Discussion Session[\s\S]*> Discussion starting\./);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     // The close's own consents render on the road to the conclude gate;
     // every variant carries its own wording, so a --reason is refused.
@@ -1263,6 +1285,8 @@ describe('pipeline simulation', () => {
     // The feature's continue menu proceeds to the research, handing off to it.
     assert.strictEqual(linearPick(sim, wu, 'continue').line, '→ Research · ledger');
     sim.run(['topic', 'start', wu, 'research', wu]);
+    assert.match(sim.render(['step-opening', `${wu}.research.${wu}`, '--step', 'session'], { expect: 'content' }),
+      /□ Research Session[\s\S]*> Starting the research session\./);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
@@ -1284,6 +1308,8 @@ describe('pipeline simulation', () => {
       /\nDiscussion paused for "Ledger"\.\n$/);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
+    assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session', '--resumed'], { expect: 'content' }),
+      /> Picking the discussion back up where the map leaves it\./, 'the session the research held picks back up');
     // The send's hop flagged the discussion: the session reads the landed
     // research and clears the flag (prose-owned — simulated here).
     sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
@@ -1899,6 +1925,8 @@ describe('pipeline simulation', () => {
     // knowledge query surfaces it, and the plan references it instead.
     sim.write(`.workflows/${cc}/specification/${cc}/specification.md`,
       `# Spec — ${cc}\n\n## Envelope\n\nEvery error leaves in one envelope: a code, a message, and a trace id.\n`);
+    assert.match(sim.render(['step-opening', `${cc}.specification.${cc}`, '--step', 'conclude'], { expect: 'content' }),
+      /> Wrapping up\. Final assessment, sign-off, and closure — the pipeline completes here\./, 'a cross-cutting specification is terminal');
     sim.run(['topic', 'complete', cc, 'specification', cc]);
     // cross-cutting-context D: the query filtered to completed cross-cutting
     // specifications finds it, and nothing of the unit's discussion.
@@ -3642,11 +3670,11 @@ describe('pipeline simulation', () => {
     // The pause is the plan's, in the plan's voice.
     assert.match(sim.render(['wait-gate', `${wu}.planning.billing`], { expect: 'content' }),
       /⚑ Conclusion blocked — this plan awaits its specification[\s\S]*Keep planning here/);
-    // A yes leaves on the pause's line, naming the source whose mailbox
-    // took the gap — refused for a name the specification does not source.
+    // A yes leaves on the pause's line, naming the topic whose mailbox
+    // took the gap.
     assert.match(sim.render(['pause-note', `${wu}.planning.billing`, '--landed', 'billing'], { expect: 'content' }),
       /> Paused with the gap in billing's mailbox — planning resumes once billing has decided it/);
-    sim.refuses(['render', 'pause-note', `${wu}.planning.billing`, '--landed', 'nowhere'], /"nowhere" is not a source of specification "billing"/);
+    sim.refuses(['render', 'pause-note', `${wu}.planning.billing`], /--landed is required/);
     assert.match(arriveAtEpicMenu(sim, wu, 'planning', 'paused'),
       /Planning paused for "Holdplan" — "Billing" awaits its specification/);
     const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys

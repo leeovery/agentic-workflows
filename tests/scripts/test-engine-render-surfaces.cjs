@@ -683,7 +683,7 @@ describe('pause-note — the line a session leaves on as it pauses through the b
       /discussion "timing" holds no evidence wait on E9 — the pause follows the recorded spawn/);
   });
 
-  it('a plan pausing over a routed gap names the source whose mailbox took it', () => {
+  it('a plan pausing over a routed gap names the topic whose mailbox took it, as the send answered it', () => {
     writeManifest(dir, 'pay', { phases: {
       specification: { items: { checkout: { status: 'completed', sources: { payments: { status: 'incorporated' }, refunds: { status: 'incorporated' } } } } },
       planning: { items: { checkout: { status: 'in-progress' } } },
@@ -693,9 +693,10 @@ describe('pause-note — the line a session leaves on as it pauses through the b
       "> Paused with the gap in refunds's mailbox — planning resumes once refunds has decided it and the specification has been brought into line.",
       '',
     ].join('\n'));
-    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout' }), /--landed is required — the source whose mailbox took the gap/);
-    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout', landed: 'billing' }),
-      /"billing" is not a source of specification "checkout" — the gap lands in a source's mailbox/);
+    assert.match(renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout', landed: 'refunds-v2' }),
+      /> Paused with the gap in refunds-v2's mailbox/, 'a landing that renamed the topic is named as the send answered it');
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout' }), /--landed is required — the topic whose mailbox took the gap/);
+    assert.throws(() => renderSurface(dir, 'pause-note', { dotpath: 'pay.planning.checkout', landed: ' ' }), /--landed is required/);
   });
 
   it('refuses an address outside the pausing phases', () => {
@@ -5101,20 +5102,20 @@ describe('render document-review', () => {
       `${MARKER}\n> Document review complete. 3 correction(s) applied to the session log.\n`);
   });
 
-  it('document: the gaps captured and corrections applied, then the compliance check it proceeds to — either count may be 0', () => {
+  it('document: the gaps captured and corrections applied, then the compliance check it proceeds to — either count or both may be 0, since routing a misdirected note changes the file with neither', () => {
     assert.strictEqual(renderSurface('/tmp', 'document-review', { variant: 'document', gaps: '2', corrections: '0' }),
       `${MARKER}\n> Document review complete. 2 gap(s) captured, 0 correction(s) applied. Proceeding to the final compliance check.\n`);
+    assert.strictEqual(renderSurface('/tmp', 'document-review', { variant: 'document', gaps: '0', corrections: '0' }),
+      `${MARKER}\n> Document review complete. 0 gap(s) captured, 0 correction(s) applied. Proceeding to the final compliance check.\n`);
   });
 
-  it('refuses an unknown variant, a count missing or not a whole number, and a review that changed nothing', () => {
+  it('refuses an unknown variant, a count missing or not a whole number, and a session log with no correction', () => {
     assert.throws(() => renderSurface('/tmp', 'document-review', {}), /--variant must be one of session-log, document, got ""/);
     assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'session-log' }), /--corrections must be a non-negative integer, got ""/);
     assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'document', corrections: '1' }), /--gaps must be a non-negative integer/);
     assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'document', gaps: 'two', corrections: '1' }), /--gaps must be a non-negative integer, got "two"/);
     assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'session-log', corrections: '0' }),
       /--corrections must be at least 1 — a review that changed nothing closes on its own line/);
-    assert.throws(() => renderSurface('/tmp', 'document-review', { variant: 'document', gaps: '0', corrections: '0' }),
-      /--gaps and --corrections cannot both be 0/);
   });
 });
 

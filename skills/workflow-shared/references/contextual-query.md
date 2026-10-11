@@ -4,6 +4,8 @@
 
 ---
 
+The caller provides `work_unit`, `topic`, and `phase` (the session's own).
+
 At the beginning of these phases, a focused query against the knowledge base catches prior work that might otherwise surface as a correction ten minutes into the session. One invocation, one interpretation step — if nothing comes back, proceed as normal.
 
 This is **not** a speculative dump. It is a focused check using the best context currently available. When the starting context offers multiple distinct angles (e.g. investigation has both symptoms and a subsystem name), batch them in a single invocation rather than running them serially.
@@ -55,7 +57,7 @@ No prior context found. Proceed to the next step silently — no delay, no user 
 
 → Load **[knowledge-usage.md](knowledge-usage.md)** for **C. Reading the results** and follow its instructions, weighing each result against the current topic. Most results are context — one or two may be directly relevant.
 
-Briefly acknowledge surfaced context to the user before the main session starts. Write one short line naming the most relevant piece to `.workflows/.cache/{work_unit}/{phase}/{topic}/surfaced-context.json` with the Write tool — `{"line": "auth-flow decided on UUID identity (spec, 2026-03-15)."}`, `{phase}` the calling phase — then fetch the acknowledgment and emit its DISPLAY section verbatim per its marker:
+Briefly acknowledge surfaced context to the user before the main session starts. Write one short line naming the most relevant piece to `.workflows/.cache/{work_unit}/{phase}/{topic}/surfaced-context.json` with the Write tool — `{"line": "auth-flow decided on UUID identity (spec, 2026-03-15)."}` — then fetch the acknowledgment and emit its DISPLAY section verbatim per its marker:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render surfaced-context --file .workflows/.cache/{work_unit}/{phase}/{topic}/surfaced-context.json

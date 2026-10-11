@@ -4,7 +4,7 @@
 
 ---
 
-The caller provides `format`.
+The caller provides `format`, and `work_unit`, `topic` and `phase` (the session's own).
 
 ## A. Read the Declaration
 
@@ -30,7 +30,7 @@ Run the declared command and take the installed version from its output. The che
 
 #### Otherwise
 
-Write what the check found to `.workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json` with the Write tool — `{"tool": "{tool}", "installed": "{installed version}", "format": "{format}", "required": "{required version}", "update_instructions": "{where the update instructions live}"}`, `{phase}` the calling phase — then fetch the blocker and emit both sections verbatim per their markers:
+Write what the check found to `.workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json` with the Write tool — `{"tool": "{tool}", "installed": "{installed version}", "format": "{format}", "required": "{required version}", "update_instructions": "{where the update instructions live}"}` — then fetch the blocker and emit both sections verbatim per their markers:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render format-version-check --file .workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json
