@@ -165,6 +165,36 @@ the workflow values back when the mod next follows it, whether
 A plain conversation in the same project keeps Claude Code's defaults and the
 person's own settings: the mod never touches either there.
 
+## How it compacts a workflow conversation
+
+Claude Code compacts a workflow conversation as it compacts any other — its
+summary, and the recent messages it keeps as they were, the person's waiting
+message among them — and the mod appends one message last: the engine's
+`conversation position` note. It says the conversation was just compacted and
+where it is working, the work unit named by its work type, then tells Claude
+to follow the skill's "Resuming After Context Refresh" steps before anything
+else — the skill and its framework re-read in full, then the topic's
+documents, each by its absolute path. Those steps end by carrying on from
+where the conversation was, as if the break never happened. A `/compact`
+starts no turn of its own, so after one the mod sends a short continuation
+once the command is done — into the prompt box for Enter where the send is
+dropped — and Claude follows the note without the person typing anything.
+Words typed after `/compact` go to Claude Code's summary as they always do.
+
+Claude Code stores the note as an ordinary user row and would draw it as a
+prompt the person typed. So the mod records every note it hands up in the
+conversation's folder as `compacted.json`, each with the place the engine
+names (`fumi › discussion › management-window`), and `workflow-gates-rows`
+draws the note's row from it as one dim line.
+
+It does so in a session that announced, in a conversation the engine has
+marked, in its main loop, at a position that names a skill. A subagent's
+transcript, a plain conversation, a work unit's menu or the start menu, a
+place no longer open, and an engine that cannot answer all compact as Claude
+Code does, with nothing appended; so does a compaction Claude Code skips. The
+compaction Claude Code computes ahead of time passes through untouched, and
+the compaction that comes reuses it beneath the note.
+
 ## Working on it
 
     npm run mod:types       # fetch the API declarations into types/ (gitignored)
