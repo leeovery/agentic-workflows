@@ -644,42 +644,30 @@ function checkInertLoadChrome(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 13 — Templated-fence ratchet (render-surfaces D4). A templated
-// menu/display fence in prose is a violation: state-derivable output renders
-// from the engine. The corpus's remaining sites — sanctioned judgment,
-// artefact echoes, chrome one-liners, and the not-yet-converted families —
-// are pinned per file below. Any drift fails: a NEW templated fence must
-// become an engine surface (or be pinned deliberately, with the PR saying
-// why); a converted site must shrink its pin, so the ratchet only tightens.
-// Markers and signposts are chrome, out of scope. Static fences (no
-// placeholders, no directives) are always fine.
+// Check 13 — no templated menu or display in prose (CONVENTIONS' Engine
+// Output Sections). A menu or display fence carrying anything that varies —
+// a placeholder or an @if/@foreach directive — is the engine's to render.
+// Markers and signposts are chrome, out of scope; a static fence is fine.
+// The capture skills (`workflow-log-*`) are exempt: they are not workflow
+// skills, and deliberately structureless.
 // ---------------------------------------------------------------------------
 
-// THE PINS ONLY EVER GO DOWN. A pin is a legacy-backlog marker, not a
-// budget: a new judgment-authored menu/display fence is the signal to build
-// an engine render surface, never to raise the pin. Raising one requires the
-// user's explicit sign-off, recorded in the PR — "the lint blocked me" is
-// the ratchet working, not a reason to adjust it.
-/** @type {Record<string, number>} */
-const RATCHET_PINS = {
-  'skills/workflow-log-bug/SKILL.md': 1,
-  'skills/workflow-log-idea/SKILL.md': 1,
-  'skills/workflow-log-quickfix/SKILL.md': 1,
-};
+// Any instruction form, at a line's start or after a list marker — an
+// instruction this misses exempts its fence from the check.
+const RENDERED_FENCE = /^\s*(?:(?:\d+\.|[-*+])\s+)?> \*Output the next fenced block as /;
 
-// Count a file's templated menu/display fences: a rendering-instruction line,
-// its following fence, marker/signpost kinds excluded, templated = placeholder
-// syntax or an @if/@foreach directive (the render-surfaces census scanner).
-// The trigger matches ANY instruction form ("as a code block", "as markdown",
-// "as a ` ```diff ` code block", future variants) — an instruction-form miss
-// would silently exempt that family from the ratchet.
-function countTemplatedSites(file) {
+function isCaptureSkill(file) {
+  const parts = file.split(path.sep);
+  const idx = parts.lastIndexOf('skills');
+  return idx !== -1 && /^workflow-log-/.test(parts[idx + 1] || '');
+}
+
+// The line of each templated menu/display fence's rendering instruction.
+function templatedDisplaySites(file) {
   const lines = readLines(file);
-  let n = 0;
+  const sites = [];
   for (let i = 0; i < lines.length; i++) {
-    // Leading whitespace allowed: instructions nested under list items are
-    // real render sites too (anchoring at column 0 hid three of them).
-    if (!/^\s*> \*Output the next fenced block as /.test(lines[i])) continue;
+    if (!RENDERED_FENCE.test(lines[i])) continue;
     let j = i + 1;
     while (j < lines.length && lines[j].trim() === '') j++;
     if (j >= lines.length || !FENCE.test(lines[j])) continue;
@@ -691,45 +679,23 @@ function countTemplatedSites(file) {
     const isMarker = content.length === 1
       && (/^(── |·· )/.test(content[0]) || /^(# )?\*\*`[■□▪] /.test(content[0]));
     const isSignpost = content.every((l) => l.trim() === '' || l.startsWith('>'));
-    // Templated = any single-line braced token or directive. Deliberately
-    // wider than the template-placeholder grammar: `{2 context lines}` and
-    // `{removed/changed lines}` are placeholders too, and a narrow class
-    // would let them slip the ratchet as "static".
+    // Any single-line braced token, deliberately wider than the placeholder
+    // grammar: `{2 context lines}` varies as surely as `{topic}` does.
     const templated = /\{[^{}\n]+\}/.test(text) || /@if|@foreach/.test(text);
-    if (!isMarker && !isSignpost && templated) n++;
+    if (!isMarker && !isSignpost && templated) sites.push(i + 1);
     i = k;
   }
-  return n;
+  return sites;
 }
 
-function checkTemplatedRatchet(files, pins = RATCHET_PINS) {
-  const out = [];
-  const seen = new Set();
-  for (const file of files) {
-    const key = rel(file);
-    const expected = pins[key] || 0;
-    const actual = countTemplatedSites(file);
-    seen.add(key);
-    if (actual > expected) {
-      out.push({
-        file,
-        line: 1,
-        message: `${actual} templated menu/display fence(s), ${expected} pinned — render new output from the engine (render-surfaces D4); a genuinely judgment-only site is pinned deliberately, with the PR saying why`,
-      });
-    } else if (actual < expected) {
-      out.push({
-        file,
-        line: 1,
-        message: `${actual} templated menu/display fence(s), ${expected} pinned — a site was converted; shrink its pin (the ratchet only tightens)`,
-      });
-    }
-  }
-  for (const key of Object.keys(pins)) {
-    if (!seen.has(key)) {
-      out.push({ file: path.join(REPO, key), line: 1, message: 'pinned file no longer exists — remove its pin' });
-    }
-  }
-  return out;
+function checkNoTemplatedDisplays(files) {
+  return files
+    .filter((file) => !isCaptureSkill(file))
+    .flatMap((file) => templatedDisplaySites(file).map((line) => ({
+      file,
+      line,
+      message: 'a templated menu or display in prose — render it from the engine (CONVENTIONS → Engine Output Sections)',
+    })));
 }
 
 // ---------------------------------------------------------------------------
@@ -1159,7 +1125,7 @@ const CHECKS = [
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
   ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
-  ['13: templated-fence ratchet (render-surfaces D4)', checkTemplatedRatchet],
+  ['13: no templated menu or display in prose', checkNoTemplatedDisplays],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
@@ -1645,28 +1611,31 @@ test('check 12 (inert load chrome) — catches unearned markers, skips interacti
   });
 });
 
-test('check 13 (templated-fence ratchet) — catches drift both ways, skips static/marker/signpost', () => {
+test('check 13 (no templated displays) — catches a templated fence at any nesting, skips static/marker/signpost and the capture skills', () => {
   withTemp((dir) => {
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
     const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n';
+    const textInstr = '> *Output the next fenced block as a text code block (```text fence):*';
 
-    const fresh = write(dir, 'skills/x/a.md', templatedMenu);
-    const v1 = checkTemplatedRatchet([fresh], {});
-    assert.strictEqual(v1.length, 1, 'unpinned templated fence must be caught');
-    assert.match(v1[0].message, /render new output from the engine/);
+    const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
+    const v1 = checkNoTemplatedDisplays([fresh]);
+    assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
+    assert.match(v1[0].message, /render it from the engine \(CONVENTIONS → Engine Output Sections\)/);
 
-    assert.strictEqual(checkTemplatedRatchet([fresh], { [rel(fresh)]: 1 }).length, 0, 'pinned site is sanctioned');
+    const numbered = write(dir, 'skills/x/f.md', `1. Do the thing.\n4. ${textInstr}\n\n   \`\`\`text\n   Task {id} authored.\n   \`\`\`\n`);
+    assert.deepStrictEqual(checkNoTemplatedDisplays([numbered]).map((v) => v.line), [2], 'an instruction after a numbered marker is caught');
 
-    const v2 = checkTemplatedRatchet([fresh], { [rel(fresh)]: 2 });
-    assert.strictEqual(v2.length, 1, 'stale over-pin must be caught');
-    assert.match(v2[0].message, /shrink its pin/);
+    const bulleted = write(dir, 'skills/x/g.md', `- ${textInstr}\n\n  \`\`\`text\n  Logged {slug}\n  \`\`\`\n`);
+    assert.strictEqual(checkNoTemplatedDisplays([bulleted]).length, 1, 'an instruction after a bullet marker is caught');
 
-    const v3 = checkTemplatedRatchet([fresh], { [rel(fresh)]: 1, 'skills/gone/b.md': 1 });
-    assert.strictEqual(v3.length, 1, 'pin for a deleted file must be caught');
-    assert.match(v3[0].message, /no longer exists/);
+    const capture = `${textInstr}\n\n\`\`\`text\nLogged idea: {slug}\n\`\`\`\n`;
+    const exempt = write(dir, 'skills/workflow-log-idea/SKILL.md', capture);
+    assert.strictEqual(checkNoTemplatedDisplays([exempt]).length, 0, 'the capture skills are exempt');
+    const nearName = write(dir, 'skills/workflow-login/SKILL.md', capture);
+    assert.strictEqual(checkNoTemplatedDisplays([nearName]).length, 1, 'the exemption is the capture skills alone');
 
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
-    assert.strictEqual(checkTemplatedRatchet([statik], {}).length, 0, 'static menu is always fine');
+    assert.strictEqual(checkNoTemplatedDisplays([statik]).length, 0, 'static menu is always fine');
 
     const chrome = write(
       dir,
@@ -1674,14 +1643,14 @@ test('check 13 (templated-fence ratchet) — catches drift both ways, skips stat
       '> *Output the next fenced block as a code block:*\n\n```\n── Review (cycle {N}) ──────────────────────────\n```\n\n' +
         instr + '```\n> Working on {topic} — questions about gaps\n> and contradictions follow.\n```\n'
     );
-    assert.strictEqual(checkTemplatedRatchet([chrome], {}).length, 0, 'templated markers and signposts are chrome, out of scope');
+    assert.strictEqual(checkNoTemplatedDisplays([chrome]).length, 0, 'templated markers and signposts are chrome, out of scope');
 
     const diffForm = write(
       dir,
       'skills/x/e.md',
       '> *Output the next fenced block as a ` ```diff ` code block:*\n\n```diff\n {context}\n-{removed lines}\n+{new lines}\n```\n'
     );
-    assert.strictEqual(checkTemplatedRatchet([diffForm], {}).length, 1, 'the diff-form instruction is inside the ratchet');
+    assert.strictEqual(checkNoTemplatedDisplays([diffForm]).length, 1, 'any instruction form is inside the check');
   });
 });
 
