@@ -11,9 +11,11 @@ not need **B** or **C**. When in doubt, dispatch it.
 
 ## A. Convention adherence
 
-Read **CLAUDE.md and CONVENTIONS.md in full** before reading the diff. They
-are dense, exact, and frequently updated; pattern-matching from sibling
-files has repeatedly shipped silently non-compliant work.
+Read **CLAUDE.md and CONVENTIONS.md in full** before reading the diff —
+CLAUDE.md for the standing rules of working on this repository,
+CONVENTIONS.md for skill authoring. CONVENTIONS.md is dense, exact, and
+frequently updated; pattern-matching from sibling files has repeatedly
+shipped silently non-compliant work.
 
 - Display and output conventions — visual hierarchy, phase titles, step and
   sub-step markers, signpost blockquotes, list display, status terms,
@@ -28,7 +30,7 @@ files has repeatedly shipped silently non-compliant work.
   where WHAT suffices, and no instruction, path, or distinction the agent
   needs removed in the name of brevity.
 - Presentation register, and the line between it and stored artifact prose.
-- Output format names appear **only** in the three sanctioned places named
+- Output format names appear **only** in the four sanctioned places named
   by CLAUDE.md. Anywhere else is a violation.
 - No convention invented for the occasion. This project is mature and
   usually already has one. Where a genuinely new pattern seems needed, that
@@ -101,8 +103,11 @@ A change lands in one place and is owed in several. Enumerate them.
 - Prose-test cases — `case.json` invariants, `act.md`, `assert.md`,
   fixtures and state files.
 - Migrations, where the change moves stored state.
-- README, CLAUDE.md, and CONVENTIONS.md, where the change alters what they
-  document. Documentation is owed where the user's primary action lives.
+- README, `docs/`, and CONVENTIONS.md, where the change alters what they
+  document; `commands.md` and the module headers where it alters an engine
+  contract. Documentation is owed where the user's primary action lives.
+  CLAUDE.md never describes system behaviour — a change that writes its
+  behaviour there is a finding.
 - Terminology consistent across all of the above, in both directions: the
   new term everywhere it is owed, and the old term nowhere.
 

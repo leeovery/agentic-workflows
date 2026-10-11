@@ -18,6 +18,10 @@
 // A suite whose transactions index sets its fixture's knowledge up
 // keyword-only: the store they build is real, what it holds is the
 // assertion, and no vector fill is ever launched.
+//
+// A suite spawns a process only where the process is the subject: the real
+// CLI's pipe and exit behaviour, a child that must run concurrently (a lock
+// race), a script that is not the engine.
 
 require('./hermetic-env.cjs');
 

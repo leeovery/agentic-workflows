@@ -814,6 +814,21 @@ Three mechanisms move a flow forward; never blur them:
 - **Invoking a skill** is a Skill tool call at a boundary within the work (phase end → bridge), between menus (start → a continue menu, anything → help), or on a move that carries a live conversation on (discovery into the roadmap's genesis or a recognition pull, the roadmap's epic pull into discovery). It adds the skill's instructions to the running context — **nothing is cleared**. Its arguments are positional, as the skill declares them (`$0`/`$1`/… — the phase skills a handoff lands on, the bridge): show the literal command — ``Invoke `/workflow-bridge {work_unit} {completed_phase}`.`` When an argument is conditional, resolve it in prose first — absence as the literal `none` where the receiving skill declares that convention — then show one literal command with every argument in place. The imperative is never put inside a fence — a fence is payload; an instruction buried there gets printed, not executed.
 - **Handing off** is a move into work: the skill it names starts the work afresh. A menu's pick into work hands off — start into discovery, the roadmap or the baseline, a continue menu into a phase — and so does every conclusion, the bridge deciding where its work goes; a move that carries a live conversation on is invoked instead. `workflow-shared/references/handing-off.md` carries every move, loaded with the move as the skill's slash command and its arguments (`with route = `/workflow-continue-epic {work_unit} {completed_phase} {outcome}``) — a route the engine built passes as it stands. The engine's `handoff` command checks the move; where the gate mod carries it, the conversation is cleared and the skill starts in the next one, and elsewhere it is invoked in place. Nothing passes but the skill and its arguments — what the next skill needs is on disk before the handoff. A site loads the reference and never branches on the answer itself. Within a phase, nothing clears.
 
+### Phase Skill Contract
+
+Every phase skill — `phaseSkill(phase)` in `workflow-engine/scripts/domain/handoff.cjs` names it — takes three positional arguments, no exceptions: `$0` work_type, `$1` work_unit, `$2` topic. Every phase is entered at a topic. An epic always names it — the handoff refuses an epic route without one, so a menu picks or names the topic before it hands off. A single-topic unit's topic is the work unit, so `$2` may be left off: `topic = $2 || $1`. Nothing else crosses: the phase reads its status — new, resume or reopen — and every input it needs from disk. A durable input (the seed, a topic's brief, a pulled-back topic's prior record, the discovery session log, completed research, a specification's sources) is read at initialisation or session setup, never relayed through a handoff.
+
+A phase skill's Step 0 runs its gates in one order, each sub-step present only where the phase has it:
+
+1. The code gate, where code is written or checked — implementation and review (`workflow-shared/references/code-session-gate.md`).
+2. The entry gate (`render entry-gate`) — discussion, specification, planning, implementation and review; the experiment's series check stands in its place.
+3. An epic implementation's dependency check (`check-dependencies.md`).
+4. The map row for an epic topic — research and discussion (`workflow-shared/references/ensure-discovery-item.md`).
+5. `engine session label {work_unit} {phase} {topic}`.
+6. One status branch merged with resume detection: a new item initialises, `in-progress` resumes, `completed` is reopened and resumes, and a postponed, cancelled, superseded or promoted item stops. The phase note (`render phase-note … --verb Resuming|Reopening|Starting`) heads the resume surface, and a resume loads `workflow-shared/references/reconcile-advisory.md` in every phase but investigation and scoping.
+
+The experiment carries no status branch: it resolves its record (`select-record.md`) before the label.
+
 ### Reference File Structure
 
 ```markdown
@@ -889,6 +904,8 @@ How should this reference file exit?
 **Backbone escape** (`→ Return to **[the skill](../SKILL.md)**`) is for two scenarios:
 1. **Short-circuiting the call stack** — a reference file loaded by another reference file needs to skip past its caller and land on the backbone directly. Like an exception bubbling up past intermediate frames.
 2. **Directing to a specific backbone step** — different conditional paths within a file need to route to different backbone steps (e.g., one path → Step 4, another → Step 5). The caller's single `→ Proceed to` line can only go one place, so the file overrides it. This applies regardless of whether the caller is the backbone or another reference file.
+
+**A `b/back` renders the surface before it — never re-invokes a skill, never exits.** Where that surface is the start menu (the continue menus, the roadmap, the baseline, help), the branch loads `workflow-start/references/start-menu.md` across the skill boundary: `/workflow-start` is never re-invoked — model invocation is disabled on it.
 
 #### Exit pattern summary
 

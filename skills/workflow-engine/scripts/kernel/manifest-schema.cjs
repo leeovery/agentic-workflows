@@ -33,7 +33,8 @@ const WORK_TYPE_PIPELINES = {
 
 // Derived-bookkeeping phases: the item is computed over its own records — no
 // hand lifecycle, no start-time reconcile, no resume or reactivate; the
-// phase's own verbs maintain the item.
+// phase's own verbs maintain the item. Every generic surface keys on this
+// list, never on a phase name.
 const DERIVED_PHASES = ['experiment'];
 
 const VALID_PHASE_STATUSES = {

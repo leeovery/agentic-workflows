@@ -4,10 +4,12 @@ This page is for working **on** the system rather than with it. Most of
 the documentation describes the product; this describes the repository
 that produces it.
 
-Start by reading `CLAUDE.md` at the repository root — it is the working
-brief for anyone, human or agent, changing this codebase, and it covers
-architecture, conventions, and the standing rules that are easy to
-violate by accident.
+Start by reading `CLAUDE.md` at the repository root — the standing rules
+for working on this repository that are easy to violate by accident, a
+short map of the system, and the documents that own each part. How the
+system behaves lives in the skills themselves, the engine's command
+reference (`skills/workflow-engine/references/commands.md`), the module
+header comments, and this book.
 
 ## Getting set up
 
@@ -46,13 +48,51 @@ check `$?` instead. This has produced a falsely-green report before.
 
 The knowledge base is engine code — its mechanism in
 `skills/workflow-engine/scripts/kernel/knowledge/`, its workflow side in
-`skills/workflow-engine/scripts/domain/knowledge/`. A change that moves
-retrieval re-pins the eval baseline in the same PR, so the diff carries
-the before and after:
+`skills/workflow-engine/scripts/domain/knowledge/`. The kernel holds the
+store's file format, the tokenizer and stemmer, ranking, chunking,
+excerpts and outlines, the embedding providers and the config; the domain
+side holds artifact identity against the manifests, indexing, the vector
+fill, query and the passages it prints, status, decay, setup, and
+`commands.cjs`, the `engine knowledge` door; the per-phase chunking
+configs sit in `skills/workflow-engine/content/knowledge/chunking/`. Each
+module's header states its contract. The modules take no dependencies:
+Node's built-ins alone, none newer than Node 18.
+
+A change that moves retrieval re-pins the eval baseline in the same PR, so
+the diff carries the before and after:
 
 ```bash
 node tests/scripts/knowledge-eval.cjs --pin
 ```
+
+## Writing a migration
+
+Migrations bring an existing project's `.workflows/` forward to the
+current design; `engine boot` runs them at `/workflow-start`. The
+orchestrator's header (`skills/workflow-migrate/scripts/migrate.cjs`)
+states the module contract — `id`, `description`, `run`, the report
+callbacks, the optional verification addendum and notice.
+
+- A new migration is
+  `skills/workflow-migrate/scripts/migrations/NNN-description.cjs`, the
+  next number after the highest. The `*.sh` files are the frozen fleet:
+  nothing new is written in bash.
+- It reads and writes `manifest.json` directly, never through `engine
+  manifest` — the field surface validates against today's schema, and a
+  migration is a point-in-time snapshot.
+- It may stage its changes and never commits; the migration commit, on
+  the user's yes at `/workflow-start`, records them.
+- A project path it writes that `OWNED_PATHS`
+  (`skills/workflow-engine/scripts/domain/commit.cjs`) does not hold yet
+  joins the list in the same change. Migration 066, which edits the
+  user's own Claude Code settings, is the one migration that writes
+  outside the project; its verification addendum names the change, since
+  the review diff cannot show it.
+- Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
+  `package.json`'s `test` script. Like its siblings it drives `run()`
+  against a temp `projectDir` with counting `reportUpdate`/`reportSkip`
+  stubs, and covers the happy path, the skip, idempotency (run twice),
+  content preservation, and every defensive guard.
 
 ## Prose tests
 
@@ -109,5 +149,6 @@ once.
 Open an issue before anything substantial, so the shape can be agreed
 before the work. Each idea ships as its own pull request rather than
 bundled with others, and any change to engine scripts (the knowledge
-base's among them), adapters or migrations lands with its test alongside
-it.
+base's among them), adapters, migrations or the gate mods lands with its
+test alongside it. A change to what the system does describes itself in
+its pull request and in this book.
