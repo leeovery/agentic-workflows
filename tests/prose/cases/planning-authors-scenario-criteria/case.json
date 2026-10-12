@@ -74,7 +74,6 @@
       "author_gate_mode=auto",
       "task_list_gate_mode auto",
       "render task-count-gate",
-      "render spec-corrections",
       "task init",
       "task start",
       "topic complete",

@@ -73,13 +73,7 @@ Re-classify before anything renders, in the one permitted direction (core rule 5
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
-The engine incorporates the row. No menu needed — a single line tells the user it came back with nothing new, at the end of your current turn, above the gate where one is waiting on the user. Fetch it there:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant clean
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+The engine incorporates the row. No menu needed — at the end of your current turn, above the gate where one is waiting on the user, say `Background {agent_type} returned — nothing new beyond what we've already covered.`
 
 → Return to caller.
 
@@ -103,13 +97,7 @@ Consult the natural-breaks checklist. Route on the row's `announced` flag.
 
 **If `announced` is `false`:**
 
-A one-line parenthetical tells the user the report is waiting for the next pause, at the end of your current turn, above the gate where one is waiting on the user. Fetch it there:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant deferred
-```
-
-Emit the call's DISPLAY section verbatim per its marker, then record it:
+At the end of your current turn, above the gate where one is waiting on the user, say `*(Background {agent_type} just returned — I'll raise it when we pause.)*`, then record it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
@@ -221,7 +209,7 @@ When every finding on the screen has landed, record them in one call:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line total — `All {N} landed.` — never a per-finding recap: the screen the user approved already said what each fix is. Nothing is pending, so the turn continues.
+Confirm in one line total — `All landed.` — never a per-finding recap: the screen the user approved already said what each fix is. Nothing is pending, so the turn continues.
 
 → Return to **D. Route by Lane**.
 
@@ -275,7 +263,7 @@ When every finding on the screen has landed, record them in one call:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line total — `All {N} documented.` — never a per-finding recap: the screen the user approved already said what each call is. Nothing is pending, so the turn continues.
+Confirm in one line total — `All documented.` — never a per-finding recap: the screen the user approved already said what each call is. Nothing is pending, so the turn continues.
 
 → Return to **D. Route by Lane**.
 
@@ -381,7 +369,7 @@ On return, a `result` of `cancelled` means nothing was written for that finding 
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line total — `All {N} sent.`, or what actually landed when a delivery was cancelled — never a per-delivery recap.
+Confirm in one line total — `All sent.`, or what actually landed when a delivery was cancelled — never a per-delivery recap.
 
 → Return to **D. Route by Lane**.
 

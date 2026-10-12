@@ -565,11 +565,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 
 ## I. All Tasks Complete
 
-Count the tasks the plan holds as implemented — the format's completed status, skipped and cancelled tasks left out — as `{implemented}`, then fetch the close and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-complete {work_unit}.implementation.{topic} --count {implemented}
-```
+Count the tasks the plan holds as implemented — the format's completed status, skipped and cancelled tasks left out — as `{implemented}`, then say `All tasks complete — {implemented} implemented.`
 
 **CRITICAL**: The caller always routes to the analysis loop after task loop completion — on every pass, not just the first. Even if you have already been through this cycle before, return to the caller and let it route to the analysis loop. Never skip ahead to completion from here.
 

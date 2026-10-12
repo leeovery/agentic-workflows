@@ -100,11 +100,7 @@ If the manifest still carries a `staging.author-p{N}` subtree for this phase (ch
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.planning.{topic} staging.author-p{N}
 ```
 
-Fetch the phase's line — its name rides the task-list payload **B** wrote — and emit the call's DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant already-authored --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
-```
+Say `Phase {N}: {Phase Name} — all tasks already authored.`
 
 → Proceed to **D. Advance Phase**.
 
@@ -136,11 +132,7 @@ Commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete Phase {N} tasks" --topic planning/{topic}
 ```
 
-Fetch the phase's completion line — its name rides the task-list payload **B** wrote — and emit the call's DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant phase-complete --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
-```
+Say `Phase {N}: {Phase Name} — complete ({M} task(s) authored).`, `{M}` the tasks in the phase's task list.
 
 #### If more phases remain
 

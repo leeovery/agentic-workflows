@@ -27,11 +27,7 @@ Invoke `workflow-planning-task-designer` with these file paths:
 6. **All approved phases**: the complete phase structure from the planning file
 7. **Target phase number**: the phase being broken into tasks
 
-Fetch the phase's line — its name rides `phase-tree.json`, the payload the phase structure was presented from — and emit the call's DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant designing --phase {N} --file .workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json
-```
+Say `Taking Phase {N}: {Phase Name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.`
 
 This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The task designer agent has been dispatched for phase {N}.`
 
@@ -45,11 +41,7 @@ The agent returns a task overview and task table.
 
 → Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the task it surfaced in}`.
 
-When at least one corrigendum landed — the record's or one the user settled at the exchange; nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
-```
+When at least one corrigendum landed — the record's or one the user settled at the exchange; nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
 
 Where a landing changed the specification, or the reference returned work the plan must carry — the tree owing what the specification decides — re-invoke `workflow-planning-task-designer` through its amendment path with the corrections and that work as the feedback, and take the revised task list forward. Settle that return's `## Spec Defects` the same way, once: a defect the designer still reports after one re-run is left to the review walk, which meets the plan against the specification at the end of the phase.
 

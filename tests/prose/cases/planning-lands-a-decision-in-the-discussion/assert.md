@@ -65,11 +65,12 @@ Expected path:
     the decision the discussion now carries, the specification is
     re-indexed, and one scoped commit lands carrying `--topic
     specification/pay` and `--sweep`
-12. the landing changed the specification, so the task designer is
-    re-invoked through its amendment path with the correction as
-    feedback; its second stubbed return carries the same two-task table
-    and no defects. One corrigendum landed, so the engine's spec
-    corrections line is fetched with a count of 1 and emitted
+12. one corrigendum landed, so the walk says `1 spec correction(s)
+    recorded.` — one line, never a per-correction recap. The landing
+    changed the specification, so the task designer is then re-invoked
+    through its amendment path with the correction as feedback; its
+    second stubbed return carries the same two-task table and no
+    defects
 13. the amended task table is written under Phase 1, the manifest
     position recorded, the draft committed on the planning topic's
     scope, and the task-list payload written to the phase cache

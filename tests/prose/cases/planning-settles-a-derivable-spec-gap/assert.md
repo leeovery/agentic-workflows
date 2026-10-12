@@ -59,12 +59,11 @@ Expected path:
    `--topic specification/pay` and `--sweep`. No gate renders
    for it, no question is asked, no scripted answer is consumed, and
    the specification item's status is never touched
-9. the landing changed the specification, so the task designer is
-   re-invoked through its amendment path with the correction as
-   feedback; its second stubbed return carries the same two-task table
-   and no defects. One corrigendum landed, so the engine's spec
-   corrections line is fetched with a count of 1 and emitted — one
-   line, never a per-correction recap
+9. one corrigendum landed, so the walk says `1 spec correction(s)
+   recorded.` — one line, never a per-correction recap. The landing
+   changed the specification, so the task designer is then re-invoked
+   through its amendment path with the correction as feedback; its
+   second stubbed return carries the same two-task table and no defects
 10. only then is the amended task table written under Phase 1 in the
     planning file, the manifest position recorded, and the draft
     committed on the planning topic's scope; the task-list payload is

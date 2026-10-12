@@ -22,15 +22,7 @@ Bounded regardless of how many sessions exist:
 
 ## B. Briefing
 
-Synthesise the recent-in-full logs into a short briefing that resumes the conversation — the threads being circled, what the user was leaning toward, what was left open. When the most recent log is an in-progress resume, note the edits already applied this session. Surface the *thinking*; don't restate the map.
-
-Write it to `.workflows/.cache/{work_unit}/discovery/catch-up.json` with the Write tool — `{"recent": "…", "earlier": ["…"]}`: `recent` is 2–4 lines from the recent session(s) — the threads circled, what the user was leaning toward, what was still open; `earlier` is one line per older session from its Conclusion, and only when it aids orientation — leave it out otherwise. Render it:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render catch-up --file .workflows/.cache/{work_unit}/discovery/catch-up.json
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+In your own words, say where we'd got to — a short briefing synthesised from the recent-in-full logs, 2–4 lines: the threads being circled, what the user was leaning toward, what was left open, and, when the most recent log is an in-progress resume, the edits already applied this session. Surface the *thinking*; don't restate the map. Then, only where it aids orientation, one line per older session from its Conclusion.
 
 The caller renders its own opener prompt and STOP after this briefing.
 

@@ -884,17 +884,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.doesNotMatch(gateAlone, /DISPLAY: phase tree/);
 
   // Approvals and authoring decisions are manifest state, vocabulary-guarded.
-  // Construction says where it is as it goes (plan-progress): the phase's
-  // name rides the payload the flow already wrote for it, the counts are the
-  // planning item's.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.structure', '2026-07-23']);
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'designing', '--phase', '1', '--file', phaseTree], { expect: 'content' }),
-    /Taking Phase 1: Foundation and breaking it into tasks/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'approvals.tasks.p1', '2026-07-23']);
-  const taskList = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-list-phase-1.json`,
-    { phase: 1, phase_name: 'Foundation', tasks: [{ name: 'Land the core', summary: 'the one task' }] });
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'authoring', '--file', taskList], { expect: 'content' }),
-    /Authoring 1 task for Phase 1: Foundation\.\.\./);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
   // The gate-mode check over the phase answers empty while gated; each task
   // then shows its detail above its gate.
@@ -903,8 +894,6 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.match(sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--m', '1', '--total', '1', '--title', 'Land the core', '--file', authorTask], { expect: 'content' }),
     /=== DISPLAY: authored task[\s\S]*=== MENU: author task gate/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'revising', '--phase', '1'], { expect: 'content' }),
-    /1 task needs revision/);
   // The amendment resets a rejected row to pending only after the rewrite
   // validates (author-tasks C) — the mismatch that never settles stops at its
   // own gate first, beneath the two lists that disagree.
@@ -919,8 +908,6 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     /Phase 1: 1 task authored\. Auto-approved\. Writing to plan\./);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'author_gate_mode', 'gated']);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'approved']);
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'authored', '--m', '1', '--total', '1', '--title', 'Land the core'], { expect: 'content' }),
-    /Task 1 of 1: Land the core — authored\./);
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'maybe'], /Invalid staging task status/);
   // Guarded containers refuse the writes no prose ever makes — wholesale, pushed, or non-canonically spelt.
   sim.refuses(['manifest', 'set', `${wu}.planning.${topic}`, 'staging', '{}'], /guarded state container/);
@@ -928,24 +915,20 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.refuses(['manifest', 'set', `${wu}.planning`, `items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"items" is the topic tree/);
   sim.refuses(['manifest', 'set', wu, `phases.planning.items.${topic}.staging.author-p1.tasks.${topic}-1-1`, 'bogus'], /"phases" is the phase tree/);
   sim.run(['manifest', 'delete', `${wu}.planning.${topic}`, 'staging.author-p1']);
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'already-authored', '--file', taskList], { expect: 'content' }),
-    /Phase 1: Foundation — all tasks already authored\./);
-  assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'phase-complete', '--file', taskList], { expect: 'content' }),
-    /Phase 1: Foundation — complete \(1 task authored\)\./);
+  // The construction's close counts the plan off task_map.
   assert.match(sim.render(['plan-progress', `${wu}.planning.${topic}`, '--variant', 'construction-complete'], { expect: 'content' }),
     /The plan has \*\*1 phase\*\* with \*\*1 task\*\* total\./);
 
-  // The graph approval — the grapher's report beneath it, or its cycle with
-  // nothing to approve — then the review loop's two gates and the
-  // conclusion's consent, each fetched where the flow displays it.
+  // The graph approval with the grapher's report beneath it, then the review
+  // loop's two gates and the conclusion's consent, each fetched where the
+  // flow displays it.
   const graph = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-graph.json`, {
-    notes: 'One task — nothing to order.', dependencies: [], priorities: [], cycle: `${topic}-1-1 → ${topic}-1-1`,
+    notes: 'One task — nothing to order.', dependencies: [], priorities: [],
   });
   assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph', '--file', graph], { expect: 'content' }),
     /I've analyzed all 1 task and the natural execution order is already correct[\s\S]*=== MENU: dependency approval gate/);
   assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'updated-graph', '--file', graph], { expect: 'content' }),
     /\*\*Dependencies\*\* \(0 relationships\):/);
-  assert.doesNotMatch(sim.render(['task-graph-cycle', `${wu}.planning.${topic}`, '--file', graph], { expect: 'content' }), /=== MENU/);
   // Review opens: the cycle and the plan's word baseline land in one write,
   // the way plan-review stamps them.
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, 'review_cycle=1', 'review_baseline_words=63929']);
@@ -953,13 +936,6 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'the plan baseline survives as a number the growth diagnostic can read');
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
-  // The loop's own lines read the cycle the stamp above opened; a stream's
-  // pass closes over the summary it rendered, and a walked finding over the
-  // payload it rendered from.
-  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'cycle'], { expect: 'content' }),
-    /Review cycle 1 complete — findings applied\. Running follow-up cycle\./);
-  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'clean', '--review', 'integrity'], { expect: 'content' }),
-    /Integrity review complete — no findings\./);
   sim.write('.workflows/.cache/scratch/plan-findings-summary.json', JSON.stringify({
     review_label: 'Traceability Review',
     items: [{ title: 'Missing retry bound', tag: 'missing', summary: 'No task bounds the retries.', status: 'approved' }],
@@ -971,13 +947,6 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     diff: { current: [], proposed: ['Retries stop after four attempts.'] },
   }));
   sim.render(['finding', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-finding.json'], { expect: 'content' });
-  assert.match(sim.render(['finding-landed', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-finding.json'], { expect: 'content' }),
-    /Finding 1 of 1: Missing Retry Bound — fixed\./);
-  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'processed', '--review', 'traceability',
-    '--file', '.workflows/.cache/scratch/plan-findings-summary.json'], { expect: 'content' }),
-    /Traceability review complete — 1 findings processed\./);
-  assert.match(sim.render(['review-loop', `${wu}.planning.${topic}`, '--variant', 'complete'], { expect: 'content' }),
-    /Plan review complete — 1 cycle\(s\), all tracking files finalised\./);
   // The escalation diagnostic reads the plan's growth the way the spec loop
   // reads the construction's — same surface, the plan named as the document.
   sim.write('.workflows/.cache/scratch/plan-convergence.json', JSON.stringify({
@@ -1077,9 +1046,6 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'false',
     'nothing for the backstop to delete');
   sim.refuses(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank'], /not found/);
-  // The task loop's close counts the tasks implemented, held to what was recorded.
-  assert.match(sim.render(['tasks-complete', `${wu}.implementation.${topic}`, '--count', '1'], { expect: 'content' }),
-    /All tasks complete\. 1 task implemented\./);
   sim.render(['conclude-gate', `${wu}.implementation.${topic}`], { expect: 'content' });
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
 
@@ -1682,12 +1648,6 @@ describe('pipeline simulation', () => {
     const closed = sim.run(['agent', 'incorporate', wu, 'investigation', wu, val.id]);
     assert.strictEqual(closed.status, 'incorporated');
 
-    // Blocked on something only the user knows, the trace asks from a payload.
-    const traceAsk = sim.write(`.workflows/.cache/${wu}/investigation/${wu}/trace-question.json`,
-      { question: 'Does the crash need a cold start to reproduce?' });
-    assert.match(sim.render(['trace-question', `${wu}.investigation.${wu}`, '--file', traceAsk], { expect: 'content' }),
-      /DISPLAY: trace question[^\n]*\nDoes the crash need a cold start to reproduce\?/);
-
     // The findings sign-off (findings-signoff B) is read from the
     // investigation file, and the gate refuses a topic that has none.
     assert.match(sim.render(['findings-signoff-gate', `${wu}.investigation.${wu}`], { expect: 'content' }),
@@ -1781,8 +1741,6 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['scoping-questions', wu, '--open', 'where,exclusions'], { expect: 'content' }),
       /Scoping: Typo\n\nA few questions to scope this change:\n\n- Where in the codebase\?/);
     sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
-    assert.match(sim.render(['spec-written', wu], { expect: 'content' }),
-      new RegExp(`Specification written: \\.workflows/${wu}/specification/${wu}/specification\\.md`));
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, '# Plan\n');
@@ -2127,14 +2085,11 @@ describe('pipeline simulation', () => {
     sim.write(rev2.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev2.id, '--clean']);
-    assert.match(sim.render(['agent-line', `${wu}.discussion.beta`, '--id', rev2.id, '--variant', 'clean'], { expect: 'content' }),
-      /Background review returned — nothing new/, 'a clean return says so in a line, read off the incorporated row');
     const revFinal = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
     assert.strictEqual(revFinal.id, 'review-003', 'the closing pass dispatches over a quiet map');
     sim.write(revFinal.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
-    sim.render(['agent-line', `${wu}.discussion.beta`, '--id', revFinal.id, '--variant', 'clean'], { expect: 'content' });
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
@@ -2528,7 +2483,6 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file', summaries], { expect: 'content' }),
       /Proposed summaries for 4 topic\(s\):[\s\S]*3\. Delta {2}\(research\)\n {7}Delta summary {2}\(already populated\)/);
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'proposed', '--file', summaries], { expect: 'content' }), /Delta summary/);
-    sim.refuses(['render', 'summary-backfill-gate', wu, '--variant', 'prompt', '--topic', 'delta'], /already has its summary on the map/);
     const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
@@ -2749,16 +2703,7 @@ describe('pipeline simulation', () => {
       /Continue with review\?/);
     assert.match(sim.render(['spec-review-gate', `${wu}.specification.unified`, '--variant', 'reloop'], { expect: 'content' }),
       /Run another review cycle\?/);
-    assert.match(sim.render(['review-loop', `${wu}.specification.unified`, '--variant', 'complete'], { expect: 'content' }),
-      /Specification review complete — 1 cycle\(s\), all tracking files finalised\./);
-    sim.refuses(['render', 'review-loop', `${wu}.review.unified`, '--variant', 'complete'],
-      /address must be <work_unit>\.planning\|specification\.<topic>/);
-    // The specification's ask over unclear sources, and the epic's
-    // cross-cutting assessment above its confirm, each from a judgment payload.
-    const concern = sim.write(`.workflows/.cache/${wu}/specification/unified/source-concern.json`,
-      { concern: 'the beta discussion never settles retries' });
-    assert.match(sim.render(['source-concern', `${wu}.specification.unified`, '--file', concern], { expect: 'content' }),
-      /I have the source material, but the beta discussion never settles retries\. Should I proceed as-is/);
+    // The epic's cross-cutting assessment above its confirm, from a judgment payload.
     const assessment = sim.write(`.workflows/.cache/${wu}/specification/unified/assessment.json`,
       { cross_cutting: false, rationale: 'It builds the unified pipeline.' });
     assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'assessment', '--file', assessment], { expect: 'content' }),
@@ -2805,11 +2750,7 @@ describe('pipeline simulation', () => {
     const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
     assert.match(summary, /~~Missing Outcome field~~/, 'the resolved finding renders struck');
     assert.match(summary, /1 remaining/, 'the pending finding moves the remaining count');
-    assert.match(sim.render(['review-loop', `${wu}.specification.unified`, '--variant', 'processed', '--review', 'input',
-      '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' }),
-      /Input Review complete — 2 findings processed\./);
-    // A choice walks alone and closes on the side it took; the session's
-    // clause rides the payload the finding rendered from.
+    // A choice walks alone, its sides recommended-first.
     const choice = {
       n: 2, total: 2, title: 'Declined Card Copy', meta: [['Category', 'gap']], move: 'choice',
       problem: 'A declined shopper sees nothing.',
@@ -2817,11 +2758,6 @@ describe('pipeline simulation', () => {
     };
     sim.write('.workflows/.cache/scratch/spec-choice.json', JSON.stringify(choice));
     sim.render(['finding', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'], { expect: 'content' });
-    sim.refuses(['render', 'finding-landed', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'],
-      /a "choice" finding needs "chosen"/);
-    sim.write('.workflows/.cache/scratch/spec-choice.json', JSON.stringify({ ...choice, chosen: 'a generic message' }));
-    assert.match(sim.render(['finding-landed', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'], { expect: 'content' }),
-      /Finding 2 of 2: Declined Card Copy — a generic message\./);
     // The specification's calls batch on the settled lane — gated it asks
     // once for the screen and offers the flip; under auto the same screen
     // lands as a display, the one gate that never stops.
@@ -3670,11 +3606,6 @@ describe('pipeline simulation', () => {
     // The pause is the plan's, in the plan's voice.
     assert.match(sim.render(['wait-gate', `${wu}.planning.billing`], { expect: 'content' }),
       /⚑ Conclusion blocked — this plan awaits its specification[\s\S]*Keep planning here/);
-    // A yes leaves on the pause's line, naming the topic whose mailbox
-    // took the gap.
-    assert.match(sim.render(['pause-note', `${wu}.planning.billing`, '--landed', 'billing'], { expect: 'content' }),
-      /> Paused with the gap in billing's mailbox — planning resumes once billing has decided it/);
-    sim.refuses(['render', 'pause-note', `${wu}.planning.billing`], /--landed is required/);
     assert.match(arriveAtEpicMenu(sim, wu, 'planning', 'paused'),
       /Planning paused for "Holdplan" — "Billing" awaits its specification/);
     const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
@@ -5005,11 +4936,6 @@ describe('pipeline simulation', () => {
       'the fourth cycle on the topic trips the lifetime limit');
     assert.match(sim.render(['cycle-limit', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /Analysis cycle 4 on this topic — over the cycle limit of 3/, 'the callout names the lifetime count');
-    // A pass that corrected the specification confirms it in one engine line
-    // (analysis-loop.md E, consolidation-pass.md B, review-actions-loop.md C).
-    assert.match(sim.render(['spec-corrections', '--count', '1'], { expect: 'content' }),
-      /^1 spec correction recorded\.$/m, 'the confirmation is singular for one');
-    sim.refuses(['render', 'spec-corrections', '--count', '0'], /at least 1/);
 
     // The ad hoc plan-changes gate stages under its own family key (ad-hoc-plan-changes.md E/F)
     // and renders the shared proposed-task surface without the synthesis-only fields.
@@ -5067,8 +4993,6 @@ describe('pipeline simulation', () => {
     const dive = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(dive.id, 'deep-dive-001-auth');
     sim.run(['research-threads', 'set', wu, 'alpha', 'auth', 'digging']);
-    assert.match(sim.render(['agent-line', `${wu}.research.alpha`, '--id', dive.id, '--variant', 'dispatched'], { expect: 'content' }),
-      /Deep dive dispatched on "How does auth land\?"/, 'the dispatched line names the thread the row\'s label digs');
     let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
     assert.deepStrictEqual(scan.pending, [], 'nothing readable while the dive runs');
     sim.refuses(['agent', 'ack', wu, 'research', 'alpha', dive.id, '--clean'], /in-flight/);
@@ -5099,9 +5023,7 @@ describe('pipeline simulation', () => {
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), ['review-001']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', 'review-001', '--findings', 'F1,F2']);
-    sim.render(['agent-line', `${wu}.discussion.beta`, '--id', 'review-001', '--variant', 'deferred'], { expect: 'content' });
     sim.run(['agent', 'announce', wu, 'discussion', 'beta', 'review-001']);
-    sim.refuses(['render', 'agent-line', `${wu}.discussion.beta`, '--id', 'review-001', '--variant', 'deferred'], /already announced/);
     sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1']);
     const last = sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F2']);
     assert.strictEqual(last.status, 'incorporated', 'last finding auto-incorporates');
@@ -5208,8 +5130,6 @@ describe('pipeline simulation', () => {
       '--label', 'user-centric', '--label', 'capability-first']);
     assert.strictEqual(pair.agents.length, 2);
     assert.ok(pair.agents.every((a) => a.id.includes(`-${pair.set}-`)), 'one shared set number');
-    assert.match(sim.render(['agent-line', `${wu}.discussion.alpha`, '--id', pair.agents[0].id, '--variant', 'dispatched'], { expect: 'content' }),
-      /Dispatched 2 perspective agents: User Centric, Capability First\./);
     sim.write(pair.agents[0].file, '# The user-centric case\n');
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     assert.strictEqual(scan.pending.length + scan.in_flight.length, 2,
@@ -5884,10 +5804,6 @@ describe('pipeline simulation', () => {
       /Work E1 now\?/);
     sim.refuses(['render', 'experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E9'],
       /holds no evidence wait on E9/);
-    // A yes that leaves pauses on the line naming what it queued.
-    assert.match(sim.render(['pause-note', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' }),
-      /> Paused with E1 queued — the closing ceremony is skipped/);
-    sim.refuses(['render', 'pause-note', `${wu}.discussion.timing`, '--id', 'E9'], /holds no evidence wait on E9/);
 
     // A research spawn locks identically — the phases are symmetric — and
     // numbers the series onward.

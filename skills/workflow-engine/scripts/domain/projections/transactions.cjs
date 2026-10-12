@@ -277,11 +277,6 @@ function absorbContinuationMenu(feature, epic) {
   );
 }
 
-/** The inbox archive's receipt — how many items left the inbox. @param {number} count @returns {string} */
-function inboxArchiveReceipt(count) {
-  return confirmation(`Archived ${count} item${count === 1 ? '' : 's'} from the inbox.`);
-}
-
 /** The archived item's restore receipt. @param {string} title @returns {string} */
 function inboxRestoreReceipt(title) {
   return confirmation(`Restored "${title}" to the inbox.`);
@@ -304,4 +299,4 @@ function sessionReceipt({ warn = false } = {}) {
     : '';
 }
 
-module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt };
+module.exports = { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxRestoreReceipt, inboxDeleteReceipt };

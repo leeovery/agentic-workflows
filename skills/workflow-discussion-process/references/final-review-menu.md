@@ -40,11 +40,7 @@ Read the content file completely — `.workflows/.cache/{work_unit}/{phase}/{top
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant clean
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Background review returned — nothing new beyond what we've already covered.`
 
 → Return to caller.
 

@@ -47,11 +47,7 @@ Invoke `workflow-planning-task-author` with these file paths:
 
 The agent writes all tasks to the task detail file and returns.
 
-Fetch the authoring line — the phase's name rides `task-list-phase-{N}.json`, the payload the phase's task list was presented from — and emit the call's DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant authoring --file .workflows/.cache/{work_unit}/planning/{topic}/task-list-phase-{N}.json
-```
+Say `Authoring {count} task(s) for Phase {N}: {Phase Name}...`, `{count}` the rejected tasks on an amendment run and the phase's task count otherwise.
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task author agent has been dispatched for phase {N}.`
 
@@ -73,11 +69,7 @@ For each `## Spec Defects` entry in the agent's return, once per entry:
 
 → Load **[resolve-spec-gap.md](resolve-spec-gap.md)** with lane = `construction`, gap = `{the entry, and the task it surfaced in}`.
 
-When at least one corrigendum landed — the record's or one the user settled at the exchange; nothing when none did, never a per-correction recap — fetch and emit the `DISPLAY: spec corrections` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-corrections --count {count}
-```
+When at least one corrigendum landed — the record's or one the user settled at the exchange; nothing when none did, never a per-correction recap — say `{count} spec correction(s) recorded.`
 
 **If a landing changed the specification, or the reference returned work the plan must carry, and this return is not itself from that re-run:**
 
@@ -231,11 +223,7 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 
 #### If rejected tasks exist
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant revising --phase {N}
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `{count} task(s) to revise. Re-invoking author agent...`, `{count}` the `rejected` rows just read.
 
 → Return to **B. Invoke the Agent** for an amendment run.
 
@@ -261,10 +249,7 @@ For each approved task in the task detail file, in order (crash-resume guard: a 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): author task {internal_id} ({task name})" --plan {topic}
    ```
-5. Fetch the task's authored line and emit the call's DISPLAY section verbatim per its marker:
-   ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant authored --m {M} --total {total} --title "{Task Name}"
-   ```
+5. Say `Task {M} of {total}: {Task Name} — authored.`
 
 Repeat for each task.
 

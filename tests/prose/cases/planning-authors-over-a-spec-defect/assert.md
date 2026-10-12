@@ -57,9 +57,8 @@ Expected path:
     one scoped commit lands carrying `--topic specification/pay`
     and `--sweep`. No gate renders for it and no scripted answer
     is consumed
-11. one corrigendum landed, so the engine's spec corrections line is
-    fetched with a count of 1 and emitted — one line, never a
-    per-correction recap
+11. one corrigendum landed, so the walk says `1 spec correction(s)
+    recorded.` — one line, never a per-correction recap
 12. the landing changed the specification and this return is not itself
     from a re-run, so the whole phase is authored again as a full run.
     This is a first authoring run, so there is **no** `staging.author-p1`

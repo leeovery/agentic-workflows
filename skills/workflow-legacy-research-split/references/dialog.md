@@ -294,11 +294,7 @@ Remove the cache subdirectory (if it exists):
 rm -rf .workflows/.cache/{work_unit}/legacy-split/{current_source}
 ```
 
-Increment `abandoned_count`. Fetch the skip's line and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display {work_unit} --variant skipped --source {current_source}
-```
+Increment `abandoned_count`, then say `Skipping {current_source}. Source file and manifest unchanged.`
 
 → Return to **A. Iterate**.
 

@@ -43,11 +43,7 @@ Create the specification file at `.workflows/{work_unit}/specification/{topic}/s
 ## Working Notes
 ```
 
-Confirm the spec was written — fetch the confirmation and emit its DISPLAY section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render spec-written {work_unit}
-```
+Say ``Specification written: `.workflows/{work_unit}/specification/{topic}/specification.md` ``.
 
 → On return, proceed to **B. Register in Manifest**.
 

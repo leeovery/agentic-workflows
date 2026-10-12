@@ -230,21 +230,13 @@ From the second cycle onward the trend decides whether the loop runs again: a ch
 
 **If `review_cycle` is 1, or the analysis classified no `churning` trend:**
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant cycle
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Review cycle {N} complete — findings applied. Running follow-up cycle.`
 
 → Return to **A. Cycle Initialization**.
 
 **If `review_cycle` is 2, 3, or 4 and the analysis classified the trend as `churning`** (its diagnostic rendered above):
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant churning
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Findings are churning — concluding the review.`
 
 → Proceed to **G. Completion**.
 
@@ -252,11 +244,7 @@ Emit the call's DISPLAY section verbatim per its marker.
 
 → Load **[convergence-analysis.md](../../workflow-shared/references/convergence-analysis.md)** with loop_type = `spec-review`, work_unit = `{work_unit}`, topic = `{topic}`, render_when = `always`.
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant cap
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Cycle cap reached — concluding the review.`
 
 → On return, proceed to **G. Completion**.
 
@@ -296,10 +284,6 @@ If any entry is `in-progress`, that file's findings were not fully processed —
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): complete specification review (cycle {N})" --topic specification/{topic}
 ```
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant complete
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Specification review complete — {N} cycle(s), all tracking files finalised.`
 
 → Return to caller.

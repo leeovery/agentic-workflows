@@ -12,11 +12,7 @@ Check if the tracking file exists at the expected path.
 
 #### If no tracking file exists (no findings)
 
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant clean --review {review_type}
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `{review_label} complete — no findings.`, `{review_label}` the stream's name as **A** maps it.
 
 → Return to caller.
 
@@ -125,7 +121,7 @@ Emit the DISPLAY and MENU sections verbatim per their markers.
 
 **If `yes`:**
 
-Land the screen's findings per **Landing a Settled Finding**, in the order they read, then confirm in one line — `All {N} documented.`
+Land the screen's findings per **Landing a Settled Finding**, in the order they read, then confirm in one line — `All documented.`
 
 → Return to **C. The Settled Batch**.
 
@@ -137,7 +133,7 @@ Record the mode — every remaining screen documents itself:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto
 ```
 
-Then land this screen as `yes` does — its findings per **Landing a Settled Finding**, in the order they read — and confirm in one line — `All {N} documented.`
+Then land this screen as `yes` does — its findings per **Landing a Settled Finding**, in the order they read — and confirm in one line — `All documented.`
 
 → Return to **C. The Settled Batch**.
 
@@ -235,13 +231,7 @@ On return, land by what the reference did — the three outcomes **Landing a Set
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "spec({work_unit}): {what the choice settled}" --topic specification/{topic}
 ```
 
-Rewrite `.workflows/.cache/{work_unit}/specification/{topic}/finding-current.json` with the Write tool, adding `chosen` — the chosen option, one clause — then render the landed line:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding-landed {work_unit}.specification.{topic} --file .workflows/.cache/{work_unit}/specification/{topic}/finding-current.json
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `Finding {n} of {total}: {title} — {chosen option, one clause}.`
 
 → Return to **D. The Choices**.
 
@@ -294,12 +284,6 @@ Then update the tracking file — Resolution `Routed` with a note naming what la
 1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.
 
-Render the pass's closing line over the summary **A** wrote:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render review-loop {work_unit}.specification.{topic} --variant processed --review {review_type} --file .workflows/.cache/{work_unit}/specification/{topic}/findings-summary.json
-```
-
-Emit the call's DISPLAY section verbatim per its marker.
+Say `{review_label} complete — {N} finding(s) processed.`, `{review_label}` the stream's name as **A** maps it and `{N}` the count of **A**'s summary items.
 
 → Return to caller.
