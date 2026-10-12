@@ -68,8 +68,8 @@ function buildDocuments(root, artifact, workUnits) {
         `Use \`${ENGINE_COMMAND} knowledge remove\` explicitly if that is what you want.`
     );
   }
-  // A chunk is dated by its source document (its mtime), never by the index:
-  // results show when the work was written, however recently it was indexed.
+  // A chunk is dated by its source file's mtime, never by the index run; git
+  // keeps no mtimes, so on a fresh clone that is the clone day.
   const timestamp = fs.statSync(absSource).mtimeMs;
   const sourceHash = store.contentHash(content);
   const confidence = chunkConfig.confidence || 'medium';

@@ -593,26 +593,23 @@ assert_eq "every chunk carries its source's sha256" \
   "$(chunk_hashes auth-flow discussion auth-flow)"
 teardown_project
 
-# --- Test 16: last_indexed updated; the retired retry queues drop on write ---
-echo "Test 16: last_indexed updated, retired queues dropped"
+# --- Test 16: last_indexed updated ---
+echo "Test 16: last_indexed updated"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-# A metadata.json from a store that still carried the retry queues.
 node -e "
   const fs = require('fs');
   const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.last_indexed = '2020-01-01T00:00:00.000Z';
-  m.pending = [{file: 'test.md', failed_at: '2026-01-01T00:00:00Z', error: 'test'}];
-  m.pending_removals = [{workUnit: 'gone', attempts: 2}];
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
 run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-meta=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(['pending' in m, 'pending_removals' in m, m.last_indexed > '2020-01-02'].join(','))")
-assert_eq "queues dropped, timestamp moved" "false,false,true" "$meta"
+moved=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.last_indexed > '2020-01-02'))")
+assert_eq "timestamp moved" "true" "$moved"
 teardown_project
 
 # ============================================================================

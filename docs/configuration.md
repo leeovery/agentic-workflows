@@ -10,7 +10,7 @@ npx agntc add leeovery/agentic-workflows
 
 This installs the workflow skills into the project. Commit the installed files to share the workflows with your team and to use them in Claude Code for the Web. `npx agntc update` pulls the latest version, and `npx agntc remove leeovery/agentic-workflows` uninstalls. Updates carry themselves forward: the first run after an update brings your existing work into line with the new version automatically, so there is nothing to migrate by hand.
 
-The workflows need Node 18 or newer and, in Claude Code's terminal app or the Desktop app's Code tab, Claude Code 2.1.287 or newer, where the Claude Code mod the workflows come with is on by default (see [buttons above the prompt](#buttons-above-the-prompt)). Your first `/workflow-start` sets everything else up in conversation. Optionally, if you want search-by-meaning over your past work, you will be offered a one-time setup for it — including an option that needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
+The workflows need Node 18 or newer and, in Claude Code's terminal app or the Desktop app's Code tab, Claude Code 2.1.287 or newer, where the Claude Code mod the workflows come with is on by default (see [buttons above the prompt](#buttons-above-the-prompt)). Your first `/workflow-start` sets everything else up in conversation. That includes the knowledge base, set up once in each copy of the project: it is required, and one of its choices, keyword-only, needs no external service at all. See [the knowledge base](knowledge-base.md) for that choice.
 
 ## Settings that fill themselves in
 
@@ -67,7 +67,7 @@ Four tuning keys exist, and the only way one appears in a file is that you put i
 - `decay_base_stability` (default `5`, a number above 0) — how quickly material sinks as later work completes. Higher is slower.
 - `decay_weights` — how much each kind of completed work counts toward that sinking: a number of 0 or more per work type.
 
-Specifications never decay whatever these say. Changing a value takes effect on the next query; nothing needs re-running.
+Specifications never decay whatever these say, and neither do the baseline and the roadmap. Changing a value takes effect on the next query — `decay_prune_below` at the next start, when pruning runs; nothing needs re-running.
 
 A mistaken setting in either file never stops the knowledge base. A key it does not know, or a tuning value outside what the list above allows, is ignored — the value beneath it, or the default, applies — and named: in a note above a search's results, in `status`, and in the warnings at the start of a session. The provider settings are the exception: they decide what the store holds, so they are used as written, and a wrong one fails where it is used.
 
