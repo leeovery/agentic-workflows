@@ -574,13 +574,62 @@ project's own measurements decide (R7).
   R14): phases in build order, each independently verifiable, with
   acceptance criteria as scenarios. Across 26 units with 916 planned tasks
   the cut itself always held — phases ran in the order planned, none
-  dropped, merged or reordered. What makes a good phase, and a good first
-  phase, in an agentic build is researched before the guidance is written
-  (Open): today's answer is the walking skeleton, a first slice someone
-  can run end to end (every epic's phase 1 was one; 9 of 16 features,
-  never asked for one, opened with a foundation layer nothing could run),
-  and the person doubts it still fits when nobody runs a phase before the
-  next is built.
+  dropped, merged or reordered.
+
+  **How work is broken up**, ruled by the person 2026-10-12 after research
+  into published practice and their own projects. These principles and
+  the task template replace planning's teaching:
+  1. Every phase ends with the product running and its new behaviour
+     reachable: the builder proves it by running it (R32) and the phase
+     review checks that proof. No phase leaves work unwired for a later one
+     to join up.
+  2. The first phase gets the product running and drivable — it launches,
+     a smoke check passes, the verify setup exists — and sets the pattern
+     later work copies. It need not touch every layer; on an existing
+     product it is the first capability.
+  3. Shared ground first, then parallel: a design several tasks touch is
+     settled, and the code they share is built by one agent, before work
+     fans out; parallel tasks each own their files; work on a shared file
+     runs one task at a time.
+  4. Cut by what someone can do, not by layer, as far as the product
+     allows; where it is too interconnected, cut so the pieces meet as
+     early as they can.
+  5. A task is one piece of work an agent can finish and prove in one go —
+     not a single test cycle, not a grab-bag of unrelated changes.
+  6. Tasks are written at the phase start against the code, at product
+     altitude, naming no mechanism the record did not decide.
+
+  Left unsaid, because the Claude 5 generation does it unprompted and
+  instructing it backfires (telling it to verify makes it over-verify):
+  breaking a task down, keeping its own to-do list, checking its own work,
+  finishing rather than leaving stubs. Evidence:
+  - Nobody ran a phase before the next began. Across 25 units phase 2
+    started a median 8 minutes after phase 1 ended, walking skeletons
+    included. No first-phase shape (skeleton, foundation layer,
+    user-visible slice) went with fewer later fixes or less rework.
+  - What mattered was whether the pieces met early. Portal's session
+    resurrection built scaffolding, saving, restore and hooks and joined
+    them in phase 5; it drew 12 fixes within a month, most of them broken
+    contracts between its own phases. FlowX's drafts never ran end to end;
+    Goosemates left its screens late and the person found a dashboard of
+    three cards that did nothing. In every project the defects that
+    mattered were found by running the product, after tests and review had
+    passed.
+  - Parallel work is the best-measured part: two agents on overlapping
+    features succeed about 30% less often than one doing both (CooperBench,
+    January 2026); a central orchestrator holds error amplification far
+    below independent agents (Google, December 2025); Cursor's swarms
+    needed planners to settle shared design; Switchboard's rework gathered
+    where parallel slices each settled the same timing rule; in Portal 52
+    of 153 task builds edited one 5,467-line file.
+  - A task carries about 10 minutes of fixed cost in Portal whatever its
+    size; Anthropic's Claude 5 guidance says to give the full spec and let
+    the model run, and that skills written for earlier models are often
+    too prescriptive and degrade output.
+  - Today's teaching came from the person's pre-AI practice in one January
+    session (walking skeleton, steel thread, vertical phases, 3–6 tasks),
+    and its own task examples ("Create Event model and migration") teach
+    the foundation-first order its rules warn against.
 
   **One orchestrator runs the build across its phases**, ruled by the
   person 2026-10-12. It delegates rather than does — a task-writer agent
@@ -1563,20 +1612,6 @@ think is a good sign."
   FlowX, Goosemates), and this repository's own design history. Spikes,
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
-- **How to break work up now.** The person approved cutting planning's
-  teaching to its contract (the task template and scenario criteria, the
-  spec reference, no mechanism the record did not decide, each tracker's
-  adapter) plus a clean set of principles, and asked first to step back:
-  what is the right way to break work into phases and tasks in the
-  agentic era? Today's guidance came from how the person broke work up
-  before AI, plus research; a walking skeleton nobody runs may no longer
-  be the right first phase. Phases now also serve the builder's own proof
-  by running the product (R32), the phase review, and tasks written
-  against the code the previous phase left. Evidence so far: planning is
-  38k words, its teaching about 5k; the cut always held; what went stale
-  was task mechanism; 46% of delivered tasks were written mid-build with
-  only the template and a short writer agent. Researched before the
-  principles are written.
 - **The build's progress view.** A board of tasks building, landed and
   parked cannot be redrawn once it is in the transcript, and reprinting it
   on every change buries the conversation. Proposed: the transcript
