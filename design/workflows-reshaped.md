@@ -646,15 +646,23 @@ project's own measurements decide (R7).
 
 ## Strand B — trust
 
-Reworked 2026-10-12 into a layer the engine computes: whether Claude asks
-is arithmetic over the person's own answers, never Claude's judgement. Its
-detailed design is pinned by the person until the shape review (Open)
-settles, and starts from the list of kinds of question (R25).
+Whether Claude asks is arithmetic the engine computes over the person's
+own answers, never Claude's judgement. Designed on 2026-10-12 from the
+person's history and their verdicts on it (R29); the person approved
+each call on a page that day.
 
-- **R23 — The ledger.** Every call Claude makes without asking is
-  recorded: what it decided, the kind of question, what else it could
-  have done. Written by a verb, never edited by hand. The person reads it
-  only when they choose; blind questions bring samples to them (R26).
+- **R23 — The ledger and the verdict queue.** Every call Claude makes
+  without asking is recorded: what it decided, the kind of question, what
+  else it could have done, and the evidence where it found out first
+  (R24). Written by a verb, never edited by hand. The person reads it when
+  they choose, and at the ready-to-build sign-off of a topic Claude
+  settled (R24). Every departure — an answer that amends or overrules
+  Claude's lean — joins a verdict queue: a page like the one the person
+  used for R29, where they say, when they choose, what the product would
+  have lost had Claude built its own answer: nothing, a fix later, or a
+  real loss. Until then the departure counts as a real loss, so a backlog
+  only makes Claude ask more. A verdict asked in the moment would cost a
+  press just after a disagreement; asked later, it is one batch.
 - **R24 — Whether to ask is computed.**
   - **Facts are checked, intent is asked.** A question that reading the
     code, the record or running something can answer never reaches the
@@ -680,15 +688,13 @@ settles, and starts from the list of kinds of question (R25).
   - **The rule:** ask when the pessimistic rate of real loss for the
     question's kind exceeds the person's threshold.
     - **Real loss** — what the product would have lost had Claude built
-      its own answer, from the person's verdict on each departure:
-      nothing, a fix later, or a real loss. Only a real loss counts; a
-      departure without a verdict yet, or one the person cannot call,
-      counts as a loss until they do. Agreements count as no loss. This
-      measures the cost of a wrong call per kind instead of setting it by
-      feel: over 315 decided questions the person overruled Claude 12% of
-      the time, and Claude's answer would have cost a real loss 3% (R29).
-      Departures queue for a verdict page the person works through when
-      they choose.
+      its own answer, from the person's verdict on each departure (R23).
+      Only a real loss counts; a departure without a verdict yet, or one
+      the person cannot call, counts as a loss until they do. Agreements
+      count as no loss. This measures the cost of a wrong call per kind
+      instead of setting it by feel: over 315 decided questions the
+      person overruled Claude 12% of the time, and Claude's answer would
+      have cost a real loss 3% (R29).
     - **Pessimistic** — per kind, per person, per project, per model: the
       upper end of a 95% range on the rate of real loss (a beta
       distribution over the counts of R25). Few answers leave the range
@@ -696,26 +702,57 @@ settles, and starts from the list of kinds of question (R25).
       under 20%, 18 under 15%, 28 under 10%; one loss among 20 answers
       puts it back at 21%.
     - **The threshold** — one number the person picks from a replay of
-      their own history (R29): 20%, the person's pick (2026-10-12). Set
-      higher mid-build, where a question blocks work, once the build's
-      own answers show by how much; until then the same. **Hard to undo** — a later change that would
-      reach beyond the piece — halves it: a quarter of such departures
-      were real losses, against a tenth of the rest, and in the replay the
-      halving alone kept two real losses from going through. **The person
-      cares about it** lowers it for a kind (visual design in Fumi: the
-      person had a picture of it and wanted it their way).
-    - **Frozen always-ask kinds** — data model, external contracts,
-      destructive operations, security. No count loosens them.
-    - Worked, at a 20% threshold: behaviour goes quiet after 13 answers
-      without a loss; one loss among its next answers puts it back over
-      the line, and it asks again until the count outweighs it. A
-      contract question that would be hard to undo needs the bound under
-      10% — about 28 answers without a loss.
-  - **Raising is an engine command paired with the written rule** — never
-    a prose rule alone; uptake follows design, not availability. A raise
-    is drawn by the engine and readable cold: what is being decided, why
-    it matters, Claude's lean, what changes either way — Switchboard's
-    non-answers came from questions the person could not follow.
+      their own history (R29): 20%, the person's pick. Set higher
+      mid-build, where a question blocks work, once the build's own
+      answers show by how much; until then the same. **Hard to undo** — a
+      later change that would reach beyond the piece — halves it: a
+      quarter of such departures were real losses, against a tenth of the
+      rest, and in the replay the halving alone kept two real losses from
+      going through. **The person cares about it** lowers it for a kind
+      (visual design in Fumi: the person had a picture of it and wanted
+      it their way).
+    - **Danger always asks:** an option that could destroy, overwrite or
+      expose the person's data or secrets, or weaken permissions or
+      security. No count loosens it — 2 real losses in 28 decided, the
+      highest rate of any kind. Data model and external contracts ask on
+      evidence instead: a contract that would be hard to undo needs about
+      28 answers without a loss, and in the replay the evidence alone kept
+      94% of contract questions coming to the person. Fumi's tags were
+      hard to reverse and, by the person's account, did not matter.
+    - Worked, at 20%: behaviour goes quiet after 13 answers without a
+      loss; one loss among its next answers puts it back over the line,
+      and it asks again until the count outweighs it. A contract question
+      that would be hard to undo needs the bound under 10%.
+  - **The cone of collaboration** enters in three places, never as a key
+    in the counts, which would split the evidence into cells too small to
+    learn from. Discovery and research stay conversation: the person
+    brings the idea, it is shaped together, and Claude never decides
+    there alone — research questions departed 35% of the time (6 of 17),
+    decision questions 17% (42 of 242). The rule runs from the decision
+    phase on. Convergence hands a topic to Claude's settling, and
+    mid-build the threshold rises (above).
+  - **Convergence moves the work on.** After 8 agreements in a row in a
+    topic, or on the person's word, Claude offers to settle the rest: how
+    many points are open, how many it would settle, and which still come
+    to the person by the rule ("12 open: I'd settle 9; 3 come to you — 2
+    contracts, 1 look"). On yes, Claude settles them in the ledger, asks
+    the rest in one batch and brings the topic to ready to build, where
+    the person signs off with the ledger in view. Declined, it waits for
+    the next run. The run only times the offer: after 5 agreements in a
+    row in a session, the person's next answers departed 18% of the time,
+    against 19% overall; after 8, 23%. Settling is safe because real loss
+    is rare (3%) and the rule still sends the risky kinds to the person.
+    A yes is stated intent, recorded in the trust log.
+  - **A raise reaches the person product first**, drawn by an engine
+    command paired with the written rule — never a prose rule alone;
+    uptake follows design, not availability. It reads cold: what is being
+    decided, Claude's lean, what the person would notice either way, and
+    why it asks (the kind, or the rule's reason). The mechanism sits
+    behind a toggle. "I don't follow" is a button, counted as no answer.
+    Raises ready at once arrive as one batch. The person could not follow
+    31% of the questions about internals, 20% on danger and 16% on
+    contracts — questions written in mechanism, as Switchboard's
+    non-answers were; the verdict page (R29) used this shape.
 
   The vocabulary is the existing ask-or-decide reference's: it already
   asks for expensive-to-reverse calls; it gains "the person cares" as a
@@ -723,14 +760,27 @@ settles, and starts from the list of kinds of question (R25).
   reach into the build, where the builder's block rules are separate
   today. Door type is one reason to ask, not the name of the split.
 - **R25 — Kinds, evidence and the trust log.**
-  - **Kinds of question** key every count, so the list is the foundation
-    and where the person's taste shows most (UI look and feel and UX flow
-    are probably separate kinds; naming may be its own). Gate answers are
-    keyed by the gate's name, which is fixed. Raises are labelled from the
-    fixed list by something other than the Claude that wants to proceed —
-    a decision model with neutral option names, or a separate agent — since
-    a self-labelled question can drift into a trusted kind. Claude's own
-    stated confidence never gates: in REFLEX, wrong calls averaged 0.78.
+  - **Kinds of question** key every count. A labeller answers twelve
+    narrow yes/no questions about the question Claude put, from Claude's
+    words alone: is it about the session rather than the product; could
+    Claude find the answer out; would a user see the difference; is it
+    about how something looks; the words a user reads or types; the steps
+    a user goes through; whether something is in the work at all; does
+    other code or saved data come to rely on it; could an option lose
+    data or weaken security; would a later change reach beyond the piece;
+    would one option be a mistake on its merits; does answering need the
+    code's insides. The engine composes the kind in code: process,
+    danger, contract, scope; then, for what a user sees, look, words or
+    behaviour; else internals. Two models agree on the composed kind
+    85–89% of the time, against 50% picking from a list (R29); the steps
+    a user goes through split them, so flow is part of behaviour. "Would
+    a later change reach beyond the piece" also halves the threshold, and
+    "could Claude find out" routes a question to checking (R24). The
+    labeller is never the Claude that wants to proceed — a separate model
+    call, Jev later (R28) — since a self-labelled question can drift into
+    a trusted kind. Gate answers are keyed by the gate's name. Claude's
+    own stated confidence never gates: in REFLEX, wrong calls averaged
+    0.78; in the Fumi replay right and wrong calls overlapped (R29).
   - **Evidence is weighted by what it proves:**
     - a blind question (R26) answered cold — full weight;
     - an answer to a recommendation the person was shown — full weight.
@@ -744,26 +794,31 @@ settles, and starts from the list of kinds of question (R25).
     - "didn't follow" — no weight, and a first-class answer: a yes to a
       question the person could not follow is not agreement.
 
-    Older answers fade, so a change of taste shows. A new model inherits
-    its predecessor's counts at a discount and earns its way back. The
-    procedure stays fixed across model generations; only the numbers move.
+    Two starting values with no evidence yet — six weeks of one model —
+    retuned by replay once the log holds it: an answer counts half once
+    it is six months old, so a change of taste shows; a new model starts
+    from its predecessor's counts at half weight and earns the rest. The
+    procedure stays fixed across model generations; only the numbers
+    move.
   - **The trust log** is append-only, at user level in the person's
     workflows config directory (which already holds the system config and
     each conversation's state), across all their projects, reached through
     the engine. Only the engine writes it; Claude cannot edit it or the
-    costs. Events: each raise with Claude's sealed answer and the person's
-    answer; each gate answer by the gate's name with the option the engine
-    recommended and the one picked (the gate mod already sees the click
-    and the engine's payload already marks the recommended row, but
-    nothing records answers durably, nor answers typed at the prompt);
-    each ledger call; each blind question; each reversal. Keys carry scope
-    (project, kind). **The person's level and the project's level merge**
-    for every decision: the person's counts across all projects are each
-    project's starting point, and the project's own answers move it as
-    they accumulate — a new project starts from the person's general
-    taste; a project where they care about the UI soon shows it. In the
-    arithmetic, the person-level counts, capped at the weight of a few
-    answers, are the prior the project's counts update; the pessimistic
+    settings. Events: each raise with Claude's sealed answer and the
+    person's answer; each verdict on a departure; each gate answer by the
+    gate's name with the option the engine recommended and the one picked
+    (the gate mod already sees the click and the engine's payload already
+    marks the recommended row, but nothing records answers durably, nor
+    answers typed at the prompt); each ledger call; each blind question;
+    each reversal; each switch of a phase's position (R40) and each
+    convergence accepted. Keys carry scope (project, kind). **The person's
+    level and the project's level merge** for every decision: the
+    person's counts across all projects are each project's starting
+    point, and the project's own answers move it as they accumulate — a
+    new project starts from the person's general taste; a project where
+    they care about the UI soon shows it. In the arithmetic, the
+    person's counts from their other projects, capped at 20 answers'
+    weight, are the prior the project's counts update; the pessimistic
     rate of R24 is read from the merged range. The same merge lets gates
     of one kind share evidence (the long tail, R29) and lets a new model
     inherit its predecessor's counts at a discount. Counts are derived
@@ -794,9 +849,11 @@ settles, and starts from the list of kinds of question (R25).
   the engine holds back a call Claude would have made silently, keeps
   Claude's answer sealed, and asks the person the question cold — in the
   moment, in context. Afterwards it shows what Claude would have picked.
-  - The engine draws them at random, more often where a kind's range is
-    wide (little history, a new model), never below a small floor; Claude
-    never chooses which. Every draw is logged.
+  - The engine draws them by a fixed share — one in ten of the calls
+    Claude would make alone to start, more where a kind's range is wide
+    (little history, a new model); Claude never chooses which. Every draw
+    is logged. In the replay a twentieth or a fifth moved the outcome by
+    one or two questions.
   - Mid-build, for a call cheap to undo, Claude proceeds on its own answer
     while the question waits; a disagreement undoes it.
   - The comparison is how the person comes to trust Claude, not only how
@@ -814,9 +871,10 @@ settles, and starts from the list of kinds of question (R25).
   what one project learns never reaches another. What transfers between
   projects is taste and principle, not specific decisions.
 - **R28 — Decision models come later, as labellers.** The bare loop ships
-  first: the log, the ledger, the counts, the arithmetic in the engine. A
-  decision model joins later, first to label kinds (R25), never as the
-  ask oracle — decision models are weakest at exactly "should I ask"
+  first: the log, the ledger, the counts, the arithmetic in the engine,
+  and the twelve questions of R25 answered by a separate Claude call. A
+  decision model joins later as that labeller — Jev reads narrow yes/no
+  questions, the shape the kinds now take — never as the ask oracle — decision models are weakest at exactly "should I ask"
   (REFLEX: 68.8% right on clarification decisions, 51.2% on risk):
   - one provider interface written to Jev's API, Jev the default as the
     cheapest, Clef behind the same interface (open weights, self-hostable);
@@ -939,8 +997,8 @@ settles, and starts from the list of kinds of question (R25).
       shown agreement overstates, as R25's half weight assumes.
     - Claude's "would check with the person" caught 6 of its 13 wrong
       calls and fired on 2 of its 19 right ones: Claude cannot be the
-      judge of when to ask (R24). The frozen one-way kinds would have
-      caught all six one-way misses, if labelled right.
+      judge of when to ask (R24). Asking on every one-way question would
+      have caught all six one-way misses, if labelled right.
     - Confidence did not separate: right calls 55–85 (mean 75), wrong
       60–80 (mean 68) — confidence never gates.
     - Of 11 decisions that had been reopened, 5 came out different: the
@@ -1014,8 +1072,8 @@ settles, and starts from the list of kinds of question (R25).
     - Not measured: what one to three quick plain searches find, the
       comparison that matters if the call turns on cost. Budgets were not
       matched.
-- **R30 — Every optimising loop has a counter-measure** and the frozen
-  anchors of R24, so trust cannot drift by optimising its own metric.
+- **R30 — Every optimising loop has a counter-measure** and R24's
+  frozen anchor, danger, so trust cannot drift by optimising its own metric.
 
 ## Strand C — verification
 
@@ -1101,6 +1159,17 @@ think is a good sign."
     automatic step with a one-line report, and comes back if their answers
     start to vary. The gates that served review loops (finding batches,
     re-review, analysis cycles, per-task approval) go with the loops.
+  - **A phase runs in one of three positions**, set once and switchable
+    at any time — the person's idea, approved 2026-10-12: learned, the
+    default (above); auto, where every process gate passes for the rest
+    of the phase; step, where every process gate stops (Folio, where the
+    person reviews and tests the work as it lands). A switch is stated
+    intent, recorded in the trust log (R25), and outranks the learned
+    counts; Folio shows one gate answered differently by purpose, which
+    counts alone would blur. In every position the authority gates and
+    danger questions (R24) stop. Where a gate offers auto, the person
+    takes it at the first chance (task approval 32 of 36, task gate 20 of
+    24, fix gate 15 of 22).
 - **R41 — Foundations first.** Discovery orders the map's topics by what
   depends on what; the topics others depend on are decided first, so
   fewer messages bounce back and nothing is built on an undecided model
@@ -1224,11 +1293,14 @@ think is a good sign."
    The entry-layer design landed rather than folding in; this programme
    builds on it, and merging research and discussion is now one skill and
    one row in each of the engine's phase tables.
-2. **Review the shape, then measure.** Done 2026-10-12: the shape review
-   (R40–R42) and the four measurements (R29). Nothing in the workflows
+2. **Review the shape, measure, design trust.** Done 2026-10-12: the
+   shape review (R40–R42), the four measurements and the person's
+   verdicts (R29), and the trust layer (R23–R28, R40's positions), each
+   call approved by the person on a page. Nothing in the workflows
    changed.
 3. **Foundations shared by A and B.** The ledger, raise and gate-answer
-   logging, the user-level store. Logging collects from the day it ships,
+   logging, the verdict queue, the user-level store, and the author's log
+   seeded from R29's history. Logging collects from the day it ships,
    before anything depends on it.
 4. **Restructure (A)**, the record-and-log split first, with its
    migration and directive, and
@@ -1251,41 +1323,6 @@ think is a good sign."
   FlowX, Goosemates), and this repository's own design history. Spikes,
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
-- **The trust design** — pinned by the person on 2026-10-12 until the
-  shape review settles; starts from the list of kinds of question (R25),
-  made sharp enough that two labellers agree on it (R29: 50% as one
-  pick-one, 85–89% as narrow yes/no questions). The
-  person leans to Jev as the labeller. Prior art to read first: dex's lab
-  (`~/Code/dex/lab/typed-decisions.md`, experiments E39–E46), where Jev
-  became a calibrated, deterministic judge on narrow yes/no questions —
-  splitting one pick-one into narrow questions gained most, a middle band
-  of scores went to a strong model, and Jev reads wording literally, so
-  one fact worded two ways is its wall.
-  The person's inputs (2026-10-12), from Fumi's late sessions, where they
-  answered "agree" to every decision while ironing out details:
-  - **What counts is the product consequence**, not whether a call
-    differs, nor reversibility alone. Fumi's tags were hard to reverse and
-    shaped the product differently, yet either shape delivers tagging and
-    can be polished; in hindsight the person thinks Claude's first answer
-    may have been the better one. The cost of a wrong call is what the
-    product loses; reversibility weighs only where the product would
-    differ. This questions whether the data model belongs among the frozen
-    always-ask kinds (R24) — for the trust design to settle.
-  - **The cone of collaboration.** Early discovery and decision work is
-    collaboration, not Claude deciding. The person always brings the
-    product idea — Claude never comes to them unsolicited — and from there
-    it is shaped together, quickly and well beyond where it started; the
-    record captures it in a form that expands into topics, a roadmap and
-    structure. As the work converges towards
-    building, the decisions get clearer and Claude can take more of them.
-    The ask rule has a stage dimension.
-  - **Convergence moves the work on.** A topic whose answers have become a
-    run of agreements is ready: the system should see that and finish the
-    remaining details itself, in the ledger, carrying the work to "ready
-    to build", where the person signs off ("you've said agree to the last
-    ten questions" is the shape, not the rule). Fumi, by the person's
-    account, is there now and would get about 90% of the way. The person
-    loves this one.
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
   sessions wipes restore data") as the test case; quick-fix in detail.
@@ -1359,29 +1396,10 @@ think is a good sign."
     evidence only for what the person reviewed; the feature map groups
     bugs by area so tracking can flag a hotspot; the knowledge base's value
     over plain search joins the measurements.
-- **Auto as a mode the person sets for a whole phase.** The person's
-  idea (2026-10-12), to design after the measurements. The gates were
-  added for weaker models; at the gates that offer auto, auto is the
-  person's usual pick the first chance they get (since 2026-08-31: task
-  approval 32 of 36, task gate 20 of 24, fix gate 15 of 22, finding gate 9
-  of 11, construction gate 7 of 9). Yet in Folio the person stays manual,
-  to review and test the work as it lands. So: auto, once set, holds for
-  the whole phase, and the person can switch in and out of it at any time.
-  A switch is stated intent, the clearest evidence the trust log can hold,
-  and it outranks the counts of R40's learned gates; Folio shows the same
-  gate answered differently by project and by purpose, which counts pooled
-  across projects would blur. Claude's lean: auto passes process gates
-  only — authority gates (R40) and the frozen always-ask kinds (R24) still
-  stop — and every switch is recorded in the trust log.
 - **Logs by session or by topic.** Proposed and not ruled: a session's log
   records the whole conversation wherever it went, while each decision
   lands in its own topic's record (subject to R13). The alternative keeps
   a log per topic.
-- **The trust store's shape:** the kinds of question, the cost scale, the
-  cost of asking, the weights, how fast old answers fade, the discount on
-  a model change, the floor for blind questions. The user-level store
-  lives in the workflows config directory, which the engine already
-  reaches.
 - **Whether a decision record holds findings** ("what we now know")
   beside decisions — carried in from the record-and-log session the
   person closed.
