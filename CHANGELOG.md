@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.16] - 2026-10-12
+
+🔧 Changed
+- Engine now draws more of the workflow displays — step openers, plan progress, the blocked-tasks list, checkpoint file lists, dependency graphs, scoping questions and view-plan summaries — so layout and counts stay consistent and no longer drift.
+- Plain one-line confirmations and receipts are now said inline rather than drawn from fenced templates.
+- The map-operation gate now answers a refused remove, rename, re-route, close or reopen with a plain refusal naming the topic's state and the way forward, instead of a confirm that can't land.
+- Backing out of the code-session gate now returns to the epic menu on an epic, or the start menu otherwise, instead of ending the session.
+- The experiment skill's "nothing entered" path now returns to the start menu instead of dead-ending.
+- Finding-announce takes the agent's kind and finding count from its row, and finding-batch screens open on their lane heading when marked as a drain's first screen.
+- Format-version checks now pass the work unit, phase and topic, and a missing tool is reported distinctly from an outdated one.
+- Knowledge-base docs corrected to match what the code does: the store is local, text is sent to an embedding service only when one is configured, baseline and roadmap material never decays, and a result's date is the source file's modified time.
+- Hard blocks are documented as three — research before discussion, open sources before specification, an unsettled specification before planning.
+- `CLAUDE.md` is slimmed to working rules plus a short system map, with behaviour deferred to the skills, engine reference and `docs/`.
+- `CONVENTIONS.md` now states what the engine renders versus what Claude says inline, and holds the phase-skill contract and Step 0 order.
+
+✨ Added
+- Design record for the knowledge-base programme (`design/`), covering the eval harness, our own store, local-embedding measurements, the move into the engine, excerpts, lifecycle ranking and the dropped catalogue.
+- Contributor docs for writing a migration in `docs/contributing.md`, and for where the knowledge-base modules live.
+- New render surfaces for plan progress, step openings, openers, summary-backfill proposals, change-set tree checks, scoping questions, plan summaries and inbox restore/delete receipts.
+
+🐛 Fixed
+- The summary-backfill edit loop no longer offers to edit a topic whose summary is already populated, and sets its description when edited.
+- Closing a topic as a dead end is refused consistently while messages wait in its mailbox.
+- The pre-analysis checkpoint no longer stops to ask when no unexpected files are dirty.
+- Choosing the single blocking dependency now auto-selects it instead of showing a one-item menu.
+
+🗑️ Removed
+- The standalone `spec-corrections` render surface, replaced by a plain inline line.
+
 ## [0.8.15] - 2026-10-11
 
 ✨ Added
