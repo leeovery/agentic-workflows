@@ -1124,6 +1124,20 @@ think is a good sign."
     evidence only for what the person reviewed; the feature map groups
     bugs by area so tracking can flag a hotspot; the knowledge base's value
     over plain search joins the measurements.
+- **Auto as a mode the person sets for a whole phase.** The person's
+  idea (2026-10-12), to design after the measurements. The gates were
+  added for weaker models; at the gates that offer auto, auto is the
+  person's usual pick the first chance they get (since 2026-08-31: task
+  approval 32 of 36, task gate 20 of 24, fix gate 15 of 22, finding gate 9
+  of 11, construction gate 7 of 9). Yet in Folio the person stays manual,
+  to review and test the work as it lands. So: auto, once set, holds for
+  the whole phase, and the person can switch in and out of it at any time.
+  A switch is stated intent, the clearest evidence the trust log can hold,
+  and it outranks the counts of R40's learned gates; Folio shows the same
+  gate answered differently by project and by purpose, which counts pooled
+  across projects would blur. Claude's lean: auto passes process gates
+  only — authority gates (R40) and the frozen always-ask kinds (R24) still
+  stop — and every switch is recorded in the trust log.
 - **Logs by session or by topic.** Proposed and not ruled: a session's log
   records the whole conversation wherever it went, while each decision
   lands in its own topic's record (subject to R13). The alternative keeps
