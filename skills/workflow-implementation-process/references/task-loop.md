@@ -59,21 +59,10 @@ Follow the format's **reading.md** instructions to determine the next available 
 
 **If open or in-progress tasks remain (blocked):**
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-No ready tasks remain, but {N} task(s) are still open — blocked:
-
-  {internal_id}: {Task Name}
-  └─ Blocked by {blocker_id} [{blocker status}]
-
-  ...
-```
-
-Fetch the blocked-tasks menu and emit its `MENU: blocked tasks` section verbatim per its marker:
+Write the payload to `.workflows/.cache/{work_unit}/implementation/{topic}/blocked-tasks.json` with the Write tool — every blocked task in plan order, each with what blocks it as the format's reading gives it: `{"tasks": [{"id": "{internal_id}", "name": "{Task Name}", "blockers": [{"id": "{blocker_id}", "status": "{blocker status}"}]}]}` — then fetch the blocked tasks and their stop, emitting each section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render blocked-tasks
+node .claude/skills/workflow-engine/scripts/engine.cjs render blocked-tasks {work_unit}.implementation.{topic} --file .workflows/.cache/{work_unit}/implementation/{topic}/blocked-tasks.json
 ```
 
 **STOP.** Wait for user response.
@@ -576,10 +565,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
 
 ## I. All Tasks Complete
 
-> *Output the next fenced block as a text code block (```text fence):*
+Count the tasks the plan holds as implemented — the format's completed status, skipped and cancelled tasks left out — as `{implemented}`, then fetch the close and emit its DISPLAY section verbatim per its marker:
 
-```text
-All tasks complete. {M} tasks implemented.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render tasks-complete {work_unit}.implementation.{topic} --count {implemented}
 ```
 
 **CRITICAL**: The caller always routes to the analysis loop after task loop completion — on every pass, not just the first. Even if you have already been through this cycle before, return to the caller and let it route to the analysis loop. Never skip ahead to completion from here.

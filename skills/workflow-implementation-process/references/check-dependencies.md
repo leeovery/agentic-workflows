@@ -69,17 +69,11 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **If `implement`:**
 
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```properties
-⚑ "{topic:(titlecase)}" is blocked until these dependencies are resolved
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant exit --blocking {blocking_topics}
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Use /workflow-start to navigate to the blocking work.
-```
+Emit the call's DISPLAY sections verbatim per their markers.
 
 **STOP.** Do not proceed — terminal condition.
 
@@ -87,25 +81,21 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 ## C. Select Dependency
 
-**If only one dependency in the blocking list:**
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Automatically proceeding with "{dep_topic:(titlecase)}".
-```
-
-Set `selected_topic` = `{dep_topic}`.
-
-→ Proceed to **D. Mark as Satisfied**.
-
-**If multiple dependencies in the blocking list:**
-
 Render the pick over `blocking_topics`:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render external-dependency-gate {work_unit}.planning.{topic} --variant pick --blocking {blocking_topics}
 ```
+
+#### If only one dependency is in the blocking list
+
+Emit the call's DISPLAY section verbatim per its marker.
+
+Set `selected_topic` = that dependency's topic.
+
+→ Proceed to **D. Mark as Satisfied**.
+
+#### If several dependencies are in the blocking list
 
 Emit the call's MENU section verbatim per its marker.
 

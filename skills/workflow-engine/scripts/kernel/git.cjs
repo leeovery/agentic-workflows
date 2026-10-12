@@ -310,21 +310,55 @@ function commitIndexEntries(cwd, specs, message) {
 
 /**
  * Every path in the working tree that differs from HEAD — tracked
- * modifications and untracked, non-ignored files alike — project-relative.
- * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
- * record's second field (the source path) is consumed with it.
+ * modifications and untracked, non-ignored files alike — project-relative,
+ * each with its two-letter porcelain status (`??` untracked). NUL-separated
+ * so paths with spaces or non-ASCII bytes survive; a rename record's second
+ * field (the source path) is consumed with it.
+ * @param {string} cwd
+ * @returns {{path: string, status: string}[]}
+ */
+function dirtyEntries(cwd) {
+  const fields = git(cwd, ['status', '--porcelain', '-z']).split('\0');
+  /** @type {{path: string, status: string}[]} */
+  const entries = [];
+  for (let i = 0; i < fields.length; i++) {
+    const entry = fields[i];
+    if (entry.length < 4) continue;
+    entries.push({ path: entry.slice(3), status: entry.slice(0, 2) });
+    if (entry[0] === 'R' || entry[0] === 'C') i += 1;
+  }
+  return entries;
+}
+
+/**
+ * The paths of `dirtyEntries`.
  * @param {string} cwd
  * @returns {string[]}
  */
 function dirtyPaths(cwd) {
-  const fields = git(cwd, ['status', '--porcelain', '-z']).split('\0');
-  /** @type {string[]} */
-  const paths = [];
-  for (let i = 0; i < fields.length; i++) {
-    const entry = fields[i];
-    if (entry.length < 4) continue;
-    paths.push(entry.slice(3));
-    if (entry[0] === 'R' || entry[0] === 'C') i += 1;
+  return dirtyEntries(cwd).map((e) => e.path);
+}
+
+/**
+ * Every path a commit whose subject opens `prefix` touched, across the whole
+ * history — `--fixed-strings` narrows the walk, the subject test pins the
+ * prefix to the subject's start. NUL-separated names, so no path is quoted.
+ * @param {string} cwd
+ * @param {string} prefix
+ * @returns {Set<string>}
+ */
+function pathsTouchedBySubject(cwd, prefix) {
+  const out = git(cwd, ['log', '--fixed-strings', `--grep=${prefix}`, '--format=%x1e%s', '--name-only', '-z']);
+  /** @type {Set<string>} */
+  const paths = new Set();
+  for (const record of out.split('\x1e').slice(1)) {
+    const end = record.search(/[\n\0]/);
+    const subject = end < 0 ? record : record.slice(0, end);
+    if (!subject.startsWith(prefix) || end < 0) continue;
+    for (const name of record.slice(end).split('\0')) {
+      const p = name.replace(/^\n+/, '');
+      if (p) paths.add(p);
+    }
   }
   return paths;
 }
@@ -339,4 +373,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyPaths, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, dirtyPaths, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, removeFiles };

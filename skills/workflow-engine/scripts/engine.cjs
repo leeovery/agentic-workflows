@@ -269,9 +269,11 @@ Commands:
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
   render review-loop      <wu.planning|specification.topic> --variant cycle|churning|cap|complete | --variant clean --review <stream> | --variant processed --review <stream> --file <payload.json>
-  render spec-completion-gate <wu.specification.topic> --variant assessment|signoff
+  render spec-completion-gate <wu.specification.topic> --variant assessment --file <payload.json> | --variant signoff
+  render source-concern   <wu.specification.topic> --file <payload.json>
   render carry-note-gate  <wu.research.topic> --file <payload.json>
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
+  render trace-question   <wu.investigation.topic> --file <payload.json>
   render findings-signoff-gate <wu.investigation.topic>
   render fix-direction     <wu.investigation.topic> --file <payload.json>
   render validation-gate   <wu.investigation.topic> --variant root-cause
@@ -307,8 +309,8 @@ Commands:
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
   render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
   render summary-backfill-gate <wu> --variant batch|unsourced [--file <payload.json>]
-  render external-dependency-gate <wu.planning.topic> --variant blocking|pick --blocking <topic,topic,…>
-  render checkpoint-files-gate <wu.implementation.topic>
+  render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
+  render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution
   render task-count-gate  <wu.planning.topic>
@@ -317,6 +319,8 @@ Commands:
   render cross-cutting-references --file <payload.json>
   render plan-format-gate [--variant select --file <payload.json>]
   render plan-review-gate <wu.planning.topic> --variant continue|reloop
+  render scoping-questions <wu> --open <what,where,why,exclusions>
+  render spec-written     <wu>
   render complexity-gate  <wu> --file <payload.json>
   render first-phase-gate <wu> --file <payload.json>
   render correction-gate  <wu.specification.topic>
@@ -344,12 +348,14 @@ Commands:
   render task-result       <wu.implementation.topic> --file <payload.json> --result approved|needs-changes|blocked|failed
   render task-gate         <wu.implementation.topic>
   render fix-gate          <wu.implementation.topic>
-  render blocked-tasks
+  render blocked-tasks     <wu.implementation.topic> --file <payload.json>
   render cycle-limit       <wu.implementation.topic>
   render spec-corrections  --count <N>
+  render tasks-complete    <wu.implementation.topic> --count <N>
   render cycle-gate
   render workunit-receipt  <wu> --verb complete|cancel|reactivate|pivot [--pipeline [--skipped-review]] [--warn]
   render topic-receipt     <wu.phase.topic> --verb complete [--warn]
+  render topic-receipt     <wu.specification.spec> --verb supersede [--warn]
   render topic-receipt     <wu.discovery|specification.name> --verb cancel|reactivate [--warn]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render absorb-summary    <feature> --into <epic> --topic <name>

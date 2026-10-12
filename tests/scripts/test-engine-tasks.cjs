@@ -975,8 +975,59 @@ describe('engine render task surfaces', () => {
     createManifest(dir, 'auth', { phases });
   }
 
-  it('blocked-tasks renders the static stop menu, no address needed', () => {
-    assert.strictEqual(render(['blocked-tasks']), BLOCKED_MENU);
+  /** @param {object} payload */
+  function writeBlockedPayload(payload) {
+    const rel = path.join('.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'blocked-tasks.json');
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), JSON.stringify(payload));
+    return rel;
+  }
+
+  /** @param {Record<string, unknown>} [fields] */
+  function seedImplementation(fields = {}) {
+    const phases = planPhases();
+    phases.implementation = { items: { 'auth-flow': { status: 'in-progress', ...fields } } };
+    createManifest(dir, 'auth', { phases });
+  }
+
+  it('blocked-tasks renders each open task with what blocks it above the stop menu', () => {
+    seedImplementation();
+    const file = writeBlockedPayload({ tasks: [
+      { id: 'auth-flow-2-1', name: 'Wire the refresh token', blockers: [{ id: 'auth-flow-1-2', status: 'skipped' }] },
+      { id: 'auth-flow-2-2', name: 'Expire idle sessions', blockers: [{ id: 'auth-flow-1-2', status: 'skipped' }, { id: 'auth-flow-2-1', status: 'open' }] },
+    ] });
+    assert.strictEqual(render(['blocked-tasks', 'auth.implementation.auth-flow', '--file', file]), [
+      '=== DISPLAY: blocked tasks (emit verbatim as a text code block (```text fence)) ===',
+      'No ready tasks remain, but 2 tasks are still open — blocked:',
+      '',
+      '  auth-flow-2-1: Wire the refresh token',
+      '  └─ Blocked by auth-flow-1-2 [skipped]',
+      '',
+      '  auth-flow-2-2: Expire idle sessions',
+      '  ├─ Blocked by auth-flow-1-2 [skipped]',
+      '  └─ Blocked by auth-flow-2-1 [open]',
+      '',
+      BLOCKED_MENU,
+    ].join('\n'));
+    const one = writeBlockedPayload({ tasks: [{ id: 'auth-flow-2-1', name: 'Wire the refresh token', blockers: [{ id: 'auth-flow-1-2', status: 'cancelled' }] }] });
+    assert.match(render(['blocked-tasks', 'auth.implementation.auth-flow', '--file', one]), /^No ready tasks remain, but 1 task is still open — blocked:$/m);
+  });
+
+  it('blocked-tasks refuses a missing or malformed payload and an address that is not an implementation item', () => {
+    seedImplementation();
+    assert.match(renderFails(['blocked-tasks', 'auth.implementation.auth-flow']).error, /--file <payload\.json> is required/);
+    for (const [payload, re] of [
+      [{ tasks: [] }, /"tasks" must be a non-empty array/],
+      [{}, /"tasks" must be a non-empty array/],
+      [{ tasks: [{ id: 'auth-flow-2-1', blockers: [{ id: 'x', status: 'open' }] }] }, /tasks\[0\] must carry a non-empty "id" and "name"/],
+      [{ tasks: [{ id: 'auth-flow-2-1', name: 'n', blockers: [] }] }, /tasks\[0\]\.blockers must be a non-empty array/],
+      [{ tasks: [{ id: 'auth-flow-2-1', name: 'n', blockers: [{ id: 'x' }] }] }, /tasks\[0\]\.blockers\[0\] must carry a non-empty "id" and "status"/],
+    ]) {
+      assert.match(renderFails(['blocked-tasks', 'auth.implementation.auth-flow', '--file', writeBlockedPayload(payload)]).error, re);
+    }
+    const file = writeBlockedPayload({ tasks: [{ id: 'a', name: 'n', blockers: [{ id: 'x', status: 'open' }] }] });
+    assert.match(renderFails(['blocked-tasks', 'auth.planning.auth-flow', '--file', file]).error, /must be <work_unit>\.implementation\.<topic>/);
+    assert.match(renderFails(['blocked-tasks', 'auth.implementation.ghost', '--file', file]).error, /no implementation item "ghost"/);
   });
 
   it('cycle-gate renders the static cycle menu, no address needed', () => {
@@ -1373,6 +1424,24 @@ describe('engine render task surfaces', () => {
     createManifest(dir, 'auth', { phases: within });
     assert.match(renderFails(['cycle-limit', 'auth.implementation.auth-flow']).error, /within the cycle limit/);
   });
+  it('tasks-complete closes the loop on the session\'s implemented count, held to what completed_tasks records', () => {
+    seedImplementation({ completed_tasks: ['auth-flow-1-1', 'auth-flow-1-2', 'auth-flow-2-1'] });
+    assert.strictEqual(
+      render(['tasks-complete', 'auth.implementation.auth-flow', '--count', '2']),
+      [
+        '=== DISPLAY: tasks complete (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+        'All tasks complete. 2 tasks implemented.',
+        '',
+      ].join('\n'));
+    assert.match(render(['tasks-complete', 'auth.implementation.auth-flow', '--count', '1']), /^All tasks complete\. 1 task implemented\.$/m);
+    assert.match(render(['tasks-complete', 'auth.implementation.auth-flow', '--count', '0']), /^All tasks complete\. 0 tasks implemented\.$/m);
+    assert.match(renderFails(['tasks-complete', 'auth.implementation.auth-flow', '--count', '4']).error,
+      /--count 4 exceeds the 3 task\(s\) recorded in completed_tasks/);
+    assert.match(renderFails(['tasks-complete', 'auth.implementation.auth-flow', '--count', '-1']).error, /--count must be a whole number/);
+    assert.match(renderFails(['tasks-complete', 'auth.implementation.auth-flow']).error, /--count must be a whole number/);
+    assert.match(renderFails(['tasks-complete', 'auth.planning.auth-flow', '--count', '1']).error, /must be <work_unit>\.implementation\.<topic>/);
+  });
+
   it('spec-corrections renders the one-line confirmation, plural by count, refusing below one', () => {
     assert.strictEqual(
       render(['spec-corrections', '--count', '1']),
