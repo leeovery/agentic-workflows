@@ -1002,6 +1002,67 @@ settles, and starts from the list of kinds of question (R25).
   ruling that nothing is distilled at product level. The feature map (R32)
   is a candidate form: a current view kept honest by being run. The
   person's call.
+- **Shape review — evidence read 2026-10-12** (six read-only agents;
+  picture redrawn at the artifact link above, version 2). On the
+  workflows: Fumi, Portal, Tick, agntc, Mint. Without: Switchboard, FlowX,
+  Goosemates. Plus this repo's hand-run process and the workflows' history
+  back to Evvi.
+  - **Gates.** Process gates take the default 60–82% of the time (Fumi
+    since 08-31: 201 of 246; conclude 25/25, wrap-up 20/20, resume 24/25,
+    message offers 30/32 and 21/25, finding batches 30/32; re-review
+    declined 18 of 21). The one gate genuinely decided was defer (11 of 16
+    typed). In Fumi's decision phases 43% of the person's replies set their
+    own direction: decisions happen in conversation. Portal 60% default,
+    Tick, agntc and Mint about 70%.
+  - **Volume and reads.** Portal's features wrote 2.89M words: discussion
+    and spec 11%, plan and tasks 27%, review, analysis and tracking 61%.
+    Agent reads since 08-31: spec 871, analysis 243, plan 157, tasks 84,
+    discussion 24, review reports 19, tracking 13, investigation 9. In
+    Tick, agntc and Mint no later unit referenced v1's planning,
+    implementation or review files (about 470k words). Words track the
+    workflow version, not the change: a 184-line Tick fix in September
+    wrote 70k words; March bugfixes of the same size 5–10k.
+  - **Loops.** Portal: analysis added 631 tasks to 847 planned, about
+    three checking agents per builder; a feature passed review after 128
+    tasks and 8 analysis cycles, then needed 10 bugfixes in 5 weeks, one a
+    regression of two earlier fixes; restore 6 bugfixes, resume hooks 5.
+    History: four review loops each gained brakes instead of being
+    removed; "since the agents began running on Opus 5, no review has
+    converged". Review earns its place on large surfaces (Mint's first
+    pass found crashes).
+  - **Linear types always complete** (Portal bugfix 26/26, quick-fix
+    16/16). Epics stall in decision: Fumi 12 weeks, 361k words, no spec,
+    coupled topics concluded and reopened up to 10 times with about 145
+    messages between them.
+  - **Questions.** About one reply in five to Claude's questions is not an
+    answer (Switchboard 15 of 69, Goosemates 17%, Tick about 28 of 123
+    substantive). Over-asking in every project ("Aren't these just obvious
+    decisions?"); five of Goosemates' last seven questions cited an earlier
+    decision. The person: "What's the product consequence of this? That's
+    the only thing that should be surfaced to me, other than complex
+    coding architectural stuff." The opposite failure in this repo: acting
+    before a go is the largest correction class (31 of 93 feedback
+    memories are communication or authority, 13 of them that one fault),
+    and memory-by-incident does not generalise.
+  - **Goosemates** stalled because its core model was handed to the
+    builders: an overnight build filled 22 undecided points with defaults
+    and questions became sign-offs of built code. **FlowX**: undecided
+    things read as decided (documented ahead, undiscussed draft code cited
+    as evidence); spike, lock, canonical on its design boards; its record
+    split broke where work moved fastest. **This repo**: one go gate after
+    the shape, then autonomy; walks (running the product's prose) find the
+    most; tracking is its weakest part.
+  - **Proposals put to the person, not yet ruled:** process gates learned
+    from the gate-answer log (automatic once answers show ceremony, back
+    if answers vary; authority gates never); three authority gates
+    (approve the map, ready to build with spec sign-off folded in, and
+    finish); discovery orders topics foundations first; what is kept is
+    record, log, spec, evidence and a short review report, with tasks in
+    the plan's tracker and tracking, analysis and per-task report files
+    gone; spikes gain a lock step (spike, lock, canonical) and count as
+    evidence only for what the person reviewed; the feature map groups
+    bugs by area so tracking can flag a hotspot; the knowledge base's value
+    over plain search joins the measurements.
 - **Logs by session or by topic.** Proposed and not ruled: a session's log
   records the whole conversation wherever it went, while each decision
   lands in its own topic's record (subject to R13). The alternative keeps
