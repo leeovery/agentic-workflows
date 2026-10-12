@@ -209,7 +209,7 @@ When every finding on the screen has landed, record them in one call:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line total — `All landed.` — never a per-finding recap: the screen the user approved already said what each fix is. Nothing is pending, so the turn continues.
+Confirm in one line total — `All {N} landed.` — never a per-finding recap: the screen the user approved already said what each fix is. Nothing is pending, so the turn continues.
 
 → Return to **D. Route by Lane**.
 
@@ -263,7 +263,7 @@ When every finding on the screen has landed, record them in one call:
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line total — `All documented.` — never a per-finding recap: the screen the user approved already said what each call is. Nothing is pending, so the turn continues.
+Confirm in one line total — `All {N} documented.` — never a per-finding recap: the screen the user approved already said what each call is. Nothing is pending, so the turn continues.
 
 → Return to **D. Route by Lane**.
 
@@ -369,7 +369,7 @@ On return, a `result` of `cancelled` means nothing was written for that finding 
 node .claude/skills/workflow-engine/scripts/engine.cjs agent surface {work_unit} {phase} {topic} {id} {F1,F2,…}
 ```
 
-Confirm in one line total — `All sent.`, or what actually landed when a delivery was cancelled — never a per-delivery recap.
+Confirm in one line total — `All {N} sent.`, or what actually landed when a delivery was cancelled — never a per-delivery recap.
 
 → Return to **D. Route by Lane**.
 

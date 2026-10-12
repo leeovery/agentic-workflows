@@ -121,7 +121,7 @@ Emit the DISPLAY and MENU sections verbatim per their markers.
 
 **If `yes`:**
 
-Land the screen's findings per **Landing a Settled Finding**, in the order they read, then confirm in one line — `All documented.`
+Land the screen's findings per **Landing a Settled Finding**, in the order they read, then confirm in one line — `All {N} documented.`
 
 → Return to **C. The Settled Batch**.
 
@@ -133,7 +133,7 @@ Record the mode — every remaining screen documents itself:
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} finding_gate_mode auto
 ```
 
-Then land this screen as `yes` does — its findings per **Landing a Settled Finding**, in the order they read — and confirm in one line — `All documented.`
+Then land this screen as `yes` does — its findings per **Landing a Settled Finding**, in the order they read — and confirm in one line — `All {N} documented.`
 
 → Return to **C. The Settled Batch**.
 
