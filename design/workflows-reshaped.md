@@ -1307,6 +1307,31 @@ each call on a page that day.
   it, what proves it works. It is run once end to end before it counts
   and kept honest against drift. The builder verifies each task through
   the user's real path; review reads the evidence; the mod can show it.
+  - **Proven**, defined by the person's ruling 2026-10-12: a phase's
+    acceptance scenarios were performed on the running product, through
+    the path a user — or, for a product with no interface, a caller —
+    takes, and a script checked the result (a captured screen compared, a
+    response asserted, a recording). Claude's account of what happened
+    never counts. A scenario that cannot be driven is reported **not
+    proven**, and that is what reaches the person.
+  - **The verify setup is per project, like the environment setup.** It
+    is built the first time a build needs it: Claude studies the
+    repository, then researches the current tools for that kind of
+    product — the workflows give examples, never a fixed list, so the
+    setup moves with the times. It counts only once it has run end to
+    end. It grows as features land, each phase adding the drives for its
+    own scenarios (the feature map), and is researched again when it
+    breaks or the tools move on. Examples, never prescriptions: a TUI
+    (Switchboard) in a throwaway terminal, keys sent, the screen captured
+    as text and compared, recordings where the look matters, the
+    project's own design generators; a router with no interface, stood up
+    with stand-in upstreams and real requests asserted on where they went;
+    Portal on a throwaway tmux server, killed and restarted for restore
+    scenarios (the kill-all investigation's sandbox trials were exactly
+    this); a SaaS (FlowX, Folio) run locally against a test database and
+    driven in the browser; a Mac app (Fumi) launched and driven through
+    the accessibility layer, some of it possibly staying not proven; iOS
+    on the simulator with UI tests.
   - **Evidence is computed, never narrated.** Scripts produce verdicts;
     Claude never types a count. Zero tests is "not proven"; a criterion
     whose tests were skipped is "named, not run".
