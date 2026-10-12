@@ -4,7 +4,8 @@ The knowledge base was built early, before the engine existed in its current
 form, and it has not been revisited since. This is the design log for
 bringing it forward. First we measure what it retrieves. Then we replace its
 store with our own, ranking included, and move it into the engine. Last, we
-improve what it hands back. Opened 2026-09-25.
+improve what it hands back. Opened 2026-09-25; concluded 2026-10-12 with
+steps 1 to 6 released and step 7 decided against.
 
 ## Motivation
 
@@ -133,9 +134,9 @@ Drawn from the owner's dex-engineering knowledge base:
    and the relevance floor is closed. Released in v0.8.5 (stack #1448).
 6. **Lifecycle ranking within a topic:** a topic's specification before
    its discussion, its discussion before its research, read from the
-   manifests at query time. #1452.
-7. **Catalogue.** Scope still open: part of this programme, or an entry in
-   `ideas/`. A register of decisions is the record-and-log programme's.
+   manifests at query time. Released in v0.8.8 (#1452).
+7. **Catalogue.** Decided against. A register of decisions is the
+   record-and-log programme's.
 
 Each step is designed in full here when it is reached. The steps after the
 one in hand record only what is already decided and what is known to be
@@ -1108,9 +1109,29 @@ decisions kept apart from the journey, is a programme of its own.
 #1452: the order, its `--explain` line, both baselines re-pinned, and the
 guidance.
 
-## Step 7 — catalogue
+## Step 7 — catalogue, decided against
 
-A catalogue: one line per concluded artifact, which an agent reads to pick
-files, with chunk search as the fallback. Scope open. A register of
-decisions is not this programme's: the record-and-log programme keeps each
-topic's current decisions apart from its journey as they land.
+A catalogue would be one line per concluded artifact, which an agent reads
+to pick files, with chunk search as the fallback. It is not built:
+
+- Search already finds the file. File hit@5 is 1 in both modes after #1452,
+  so a list to pick from would give an agent nothing the search does not.
+- Every line would need a summary of its document, written at each
+  conclusion and kept current at each revision: a new artefact to maintain,
+  with no measured gain to pay for it.
+- The record-and-log programme gives each topic a record of its current
+  decisions, kept apart from the journey that led to them. That record is a
+  better index than a catalogue line, and it is searched like any other
+  document.
+
+## Afterwards
+
+A read of the finished docs against the finished code corrected the lines
+earlier steps had made untrue (#1504). It also settled two points:
+
+- Baseline and roadmap material never decays, having no work unit to
+  progress. A stale claim there is told to the user rather than left to
+  age out.
+- A result's date is the source file's mtime, which on a fresh clone is the
+  clone day. Dating by the last commit was left unbuilt; the docs say what
+  the date is.
