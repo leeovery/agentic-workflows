@@ -1182,16 +1182,20 @@ think is a good sign."
     differ. This questions whether the data model belongs among the frozen
     always-ask kinds (R24) — for the trust design to settle.
   - **The cone of collaboration.** Early discovery and decision work is
-    collaboration, not Claude deciding: the person carries a product idea
-    and relays it, and the record captures it in a form that expands into
-    topics, a roadmap and structure. As the work converges towards
+    collaboration, not Claude deciding. The person always brings the
+    product idea — Claude never comes to them unsolicited — and from there
+    it is shaped together, quickly and well beyond where it started; the
+    record captures it in a form that expands into topics, a roadmap and
+    structure. As the work converges towards
     building, the decisions get clearer and Claude can take more of them.
     The ask rule has a stage dimension.
   - **Convergence moves the work on.** A topic whose answers have become a
     run of agreements is ready: the system should see that and finish the
     remaining details itself, in the ledger, carrying the work to "ready
-    to build", where the person signs off. Fumi, by the person's account,
-    is there now and would get about 90% of the way.
+    to build", where the person signs off ("you've said agree to the last
+    ten questions" is the shape, not the rule). Fumi, by the person's
+    account, is there now and would get about 90% of the way. The person
+    loves this one.
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
   sessions wipes restore data") as the test case; quick-fix in detail.
