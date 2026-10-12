@@ -571,13 +571,36 @@ project's own measurements decide (R7).
   references) moves to the spec or the phase start.
 
   The phase cut is made in a corridor at the end of specification (R2,
-  R14): phases in build order, each a slice someone can run end to end,
-  phase 1 the thinnest such slice for every work type — the walking
-  skeleton. Today only an epic's guidance asks for one: every epic's
-  phase 1 was a skeleton, while 9 of 16 features opened with a foundation
-  layer nothing could run. Across 26 units with 916 planned tasks the cut
-  itself always held — phases ran in the order planned, none dropped,
-  merged or reordered. Per phase:
+  R14): phases in build order, each independently verifiable, with
+  acceptance criteria as scenarios. Across 26 units with 916 planned tasks
+  the cut itself always held — phases ran in the order planned, none
+  dropped, merged or reordered. What makes a good phase, and a good first
+  phase, in an agentic build is researched before the guidance is written
+  (Open): today's answer is the walking skeleton, a first slice someone
+  can run end to end (every epic's phase 1 was one; 9 of 16 features,
+  never asked for one, opened with a foundation layer nothing could run),
+  and the person doubts it still fits when nobody runs a phase before the
+  next is built.
+
+  **One orchestrator runs the build across its phases**, ruled by the
+  person 2026-10-12. It delegates rather than does — a task-writer agent
+  writes each phase's tasks, builder agents implement, reviewer agents
+  review — so its own context grows slowly and compactions are rare; when
+  one comes, the gate mod's recovery note names the build log and where
+  the phase stands. Rejected: a handoff at every phase boundary. It
+  guarantees a lossy reset, then spends tokens re-reading skills, code and
+  knowledge to regain the state the session already had, and the
+  compaction recovery already carries a session on.
+
+  **The build keeps a log**, ruled by the person 2026-10-12: appended as it
+  goes — what is in flight, what was tried and dropped, what a phase left
+  for the next — and read after a compaction and when a build resumes,
+  beside the ledger, which keeps holding Claude's calls. On Switchboard
+  Claude started one itself (`stage4-notes.md`, 87 entries, 10k words over
+  stages 4–8) and read it to carry on after compactions; what survived
+  every compaction there was what had been written down.
+
+  Per phase:
   - **Tasks are written when the phase starts**, in a short corridor,
     against the code the previous phase left, and recorded in the plan's
     task tracker with their dependencies — and which can run in parallel —
@@ -1308,7 +1331,7 @@ each call on a page that day.
     phase rename changes.
   - After a compaction the engine's recovery note names the skill and each
     document to re-read; the decision phase's note names the record and
-    the log.
+    the log, the build's its log and where the phase stands.
   - Anything that can use the mod to make the system better should.
 
 ## Shape review rulings
@@ -1343,7 +1366,7 @@ think is a good sign."
   fewer messages bounce back and nothing is built on an undecided model
   (Fumi's coupled topics, Goosemates' skipped core model).
 - **R42 — What is kept.** The record, the log, the spec, evidence and a
-  short review report. Tasks live in the plan's tracker. Tracking files,
+  short review report; the build's log joins them (R15). Tasks live in the plan's tracker. Tracking files,
   analysis files and per-task report files go: in every project only the
   spec was read downstream.
 
@@ -1491,33 +1514,20 @@ think is a good sign."
   FlowX, Goosemates), and this repository's own design history. Spikes,
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
-- **The build's three calls**, walked 2026-10-12 and on the person's page
-  (`https://claude.ai/artifact/HBuhivNGgVBBcxsveVZ5uf`, section 5), not yet
-  ruled:
-  - **A handoff at every phase boundary** into a clean context, the next
-    phase reading the phase review's report, the build log and the spec's
-    next phase — against one orchestrator across phases handing off only
-    when context runs low. Builds already end on context, not phases: half
-    of Portal's build sessions crossed phase boundaries (one ran phases
-    1–12) and half peaked above 750k tokens; 11 compacted automatically
-    mid-build. On Switchboard the person's handoffs at stage boundaries
-    held, and the one clear loss came after an automatic compaction
-    mid-stage (a review rule agreed in conversation, misapplied). A phase
-    loads about 27k tokens before work; a stage grows by 300–700k.
-  - **The build keeps a log** — what is in flight, what was tried and
-    dropped, what a phase left for the next — read at each phase start and
-    after a compaction, beside the ledger. It would join R42's list. On
-    Switchboard Claude started one itself (`stage4-notes.md`, 87 entries,
-    10k words over stages 4–8) and read it to carry on after compactions.
-  - **Planning's teaching shrinks to the contract and a paragraph**: the
-    task template and its scenario criteria, the spec reference, no
-    mechanism the record did not decide, each tracker's adapter, and one
-    paragraph for the two corridors (a phase is a slice someone can run end
-    to end, phase 1 the thinnest, a task small enough for one review). The
-    rest goes: about 5k words teaching how to break work up, the 9.3k-word
-    plan review, 8.8k of construction steps, the dependency algorithm;
-    walks check the cuts and tasks still meet the template. Planning is
-    38k words today, its how-to about 13%.
+- **How to break work up now.** The person approved cutting planning's
+  teaching to its contract (the task template and scenario criteria, the
+  spec reference, no mechanism the record did not decide, each tracker's
+  adapter) plus a clean set of principles, and asked first to step back:
+  what is the right way to break work into phases and tasks in the
+  agentic era? Today's guidance came from how the person broke work up
+  before AI, plus research; a walking skeleton nobody runs may no longer
+  be the right first phase. Phases now also serve the builder's own proof
+  by running the product (R32), the phase review, and tasks written
+  against the code the previous phase left. Evidence so far: planning is
+  38k words, its teaching about 5k; the cut always held; what went stale
+  was task mechanism; 46% of delivered tasks were written mid-build with
+  only the template and a short writer agent. Researched before the
+  principles are written.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, outside this programme; fixed on its own
