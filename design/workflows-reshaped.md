@@ -343,6 +343,21 @@ project's own measurements decide (R7).
   time; how a plan gets made, or how Claude reasons, does not. The
   person's own skills (`pr`, `orchestrate`) already have this shape: house
   rules fixed, the work left to Claude.
+
+  The person's picture of the result, 2026-10-12: gates, corridors and
+  fields. A phase is entered and left through gates. Some stretches are
+  corridors, short and linear because what they produce has a fixed shape:
+  cutting the work into phases at the end of specification, writing a
+  phase's tasks as it starts, the final review. Between them lie fields:
+  inside the build Claude works the task list as it judges best — order,
+  parallel worktrees, agents, how tests get written. A field has a
+  suggested path (the phase's goal, its done-condition and its guidance)
+  and no fence. Whatever Claude does in a field stays in the field: what
+  reaches the person, what gets recorded and every question to the person
+  go out only through the engine's verbs and gates. The layout hook, the
+  commit door and the engine's checklists refuse anything else; what they
+  cannot refuse — a question asked in plain prose, an extra review round —
+  prose walks catch, since they assert outcomes (R4).
 - **R3 — Explicitness, not length.** Obedience comes from explicit rules and
   single doors, not from volume; length dilutes. A one-line rule naming a
   verb is more explicit than pages of steps around it. Control flow lives
@@ -1325,7 +1340,21 @@ think is a good sign."
   Output: diagrams of the shape, and this record revised.
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
-  sessions wipes restore data") as the test case; quick-fix in detail.
+  sessions wipes restore data") as the test case; quick-fix in detail; and
+  the build, added by the person on 2026-10-12: how much of today's routing
+  survives (ad hoc tasks, a finding sent to a later phase, another topic,
+  the inbox or the roadmap, notes for later), which of it is a verb today
+  and which prose.
+- **Planning's knowledge, once planning splits.** Cutting the work into
+  phases moves to the end of specification and writing tasks to the start
+  of each build phase, so each needs what planning knows today (phase
+  design, the walking skeleton, how a task is written and its template)
+  loaded where it is used. How much of it today's models still need —
+  kept, trimmed to a statement and a template, or dropped — is measured,
+  not assumed. And whether the build hands off at each phase boundary for
+  a clean context, at the cost of the orchestrator losing what came before,
+  or keeps one orchestrator across phases. Both are taken up by the build
+  walk.
 - **The product record.** A current view of the product's character at
   project level beside the roadmap — record-and-log one level up — so
   every two-way call is made against the product's stated character
