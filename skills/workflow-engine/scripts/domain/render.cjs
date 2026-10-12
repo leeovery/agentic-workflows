@@ -4450,6 +4450,10 @@ function findingAnnounce(cwd, { dotpath, id, file }) {
 // BATCH_MAX items — a larger lane renders over successive screens, each
 // approved on its own.
 //
+// A drain's first screen opens on its lane's marker — whether a screen is the
+// first is the session's to know, so it travels as `--first`. The settled
+// batch heads nothing: the specification's walk names no lanes.
+//
 // The settled lane at the specification is the one screen a gate mode
 // reaches: it carries the row that sets the mode, and under auto it renders
 // as a display of what is landing, with no menu — a scan the user opted out
@@ -4477,9 +4481,10 @@ const CALL_LANE = {
   fields: ['title', 'detail'],
 };
 
-/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, auto?: {row: string, line: (n: number) => string}, fields: string[]}>} */
+/** @type {Record<string, {intro: (n: number) => string, question: (n: number) => string, confirm: (n: number, more: number) => string, discuss?: string, ask: string, auto?: {row: string, line: (n: number) => string}, marker?: string, fields: string[]}>} */
 const BATCH_LANES = {
   apply: {
+    marker: 'No Decision Needed',
     intro: () => "The fix follows from what's already decided. Nothing here is a choice.",
     question: (n) => (n === 1 ? 'Apply it?' : 'Apply them?'),
     confirm: (n, more) => `${n === 1 ? 'Apply it' : `Apply all ${n}`}, then move on${moreTail(more)}`,
@@ -4496,8 +4501,9 @@ const BATCH_LANES = {
       line: (n) => (n === 1 ? 'Documenting it' : `Documenting all ${n}`),
     },
   },
-  decide: CALL_LANE,
+  decide: { ...CALL_LANE, marker: 'Decided From the Record' },
   route: {
+    marker: 'Belongs Elsewhere',
     intro: (n) => (n === 1
       ? "Not this topic's to answer. It goes to its owner's mailbox as a message, carrying the context built here."
       : "Not this topic's to answer. Each goes to its owner's mailbox as a message, carrying the context built here."),
@@ -4520,10 +4526,10 @@ const callLaneOf = (phase) => (phase === SETTLED_BATCH_PHASE ? 'settled' : 'deci
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
+ * @param {{dotpath: string, file?: string, first?: string}} args
  * @returns {string}
  */
-function findingBatch(cwd, { dotpath, file }) {
+function findingBatch(cwd, { dotpath, file, first }) {
   if (!file) throw new Error('render finding-batch: --file <payload.json> is required');
   const { manifest, phase, topic } = resolveAddress(cwd, dotpath, 'finding-batch');
   const p = readJsonPayload(cwd, file, 'finding-batch');
@@ -4533,6 +4539,9 @@ function findingBatch(cwd, { dotpath, file }) {
   const lane = BATCH_LANES[p.lane];
   if (CALL_LANE_NAMES.includes(p.lane) && p.lane !== callLaneOf(phase)) {
     throw new Error(`render finding-batch: lane "${p.lane}" is not served at the ${phase} phase — its call lane is "${callLaneOf(phase)}"`);
+  }
+  if (first && !lane.marker) {
+    throw new Error(`render finding-batch: --first opens a drain on its lane's marker, and lane "${p.lane}" carries none`);
   }
   if (!Array.isArray(p.items) || p.items.length === 0) {
     throw new Error(`render finding-batch: "items" must be a non-empty array of {${lane.fields.join(', ')}}`);
@@ -4560,8 +4569,9 @@ function findingBatch(cwd, { dotpath, file }) {
     return section('DISPLAY: finding batch auto-approved', AUTO_GATE_MARKDOWN_INSTRUCTION,
       `${body}\n\n${lane.auto.line(count)} [auto].`);
   }
+  const heading = first ? `**\`▪ ${lane.marker}\`**\n\n` : '';
   return [
-    section('DISPLAY: finding batch', emitAs('markdown'), body),
+    section('DISPLAY: finding batch', emitAs('markdown'), `${heading}${body}`),
     section(
       'MENU: finding batch',
       MENU_INSTRUCTION,

@@ -1,7 +1,7 @@
 ---
 name: workflow-experiment-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(mkdir -p .workflows/.cache/), Bash(git status), Bash(git log), Bash(grep), Bash(rg), Bash(ls), Bash(wc), Bash(find)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(mkdir -p .workflows/.cache/), Bash(git status), Bash(git log), Bash(grep), Bash(rg), Bash(ls), Bash(wc), Bash(find)
 ---
 
 # Experiment Process
@@ -87,10 +87,12 @@ Load **[handing-off.md](../workflow-shared/references/handing-off.md)** with rou
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> Nothing entered — the series stands as it is, and `/workflow-start` is the way back.
+> Nothing entered — the series stands as it is.
 ```
 
-**STOP.** Do not proceed — terminal condition.
+Load **[start-menu.md](../workflow-start/references/start-menu.md)** and follow its instructions as written.
+
+→ On return, proceed as the reference directed.
 
 **Otherwise:**
 

@@ -2571,6 +2571,34 @@ describe('render finding-batch', () => {
     assert.match(plural, /\*\*`y\/yes`\*\* → Send all 2$/m);
   });
 
+  it("--first opens the drain's first screen on its lane's marker, the menu unchanged", () => {
+    for (const [lane, marker, item] of [
+      ['apply', 'No Decision Needed', { title: 'A', detail: 'a.' }],
+      ['decide', 'Decided From the Record', { title: 'A', detail: 'a.' }],
+      ['route', 'Belongs Elsewhere', { title: 'A', target: 't', detail: 'a.' }],
+    ]) {
+      const file = writePayload(dir, `first-${lane}.json`, { lane, items: [item] });
+      const later = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file });
+      const opening = renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file, first: '1' });
+      const [display, menuPart] = opening.split(/(?==== MENU: finding batch)/);
+      assert.ok(display.startsWith(`=== DISPLAY: finding batch (emit verbatim as markdown (not a code block)) ===\n**\`▪ ${marker}\`**\n\n`),
+        `${lane}: the marker heads the section it names, a blank line before the worklist`);
+      assert.strictEqual(display.replace(`**\`▪ ${marker}\`**\n\n`, ''), later.split(/(?==== MENU: finding batch)/)[0],
+        `${lane}: the worklist beneath it is the screen's own`);
+      assert.ok(later.endsWith(menuPart), `${lane}: the menu is the same either way`);
+      assert.ok(!later.includes('▪'), `${lane}: a later screen or a re-render carries no marker`);
+    }
+  });
+
+  it('refuses --first on the settled lane — the specification batch heads nothing', () => {
+    writeManifest(dir, 'pay', { phases: { specification: { items: { checkout: { status: 'in-progress', finding_gate_mode: 'gated' } } } } });
+    const file = writePayload(dir, 'first-settled.json', { lane: 'settled', items: [{ title: 'A', detail: 'a.' }] });
+    assert.throws(
+      () => renderSurface(dir, 'finding-batch', { dotpath: 'pay.specification.checkout', file, first: '1' }),
+      /--first opens a drain on its lane's marker, and lane "settled" carries none/,
+    );
+  });
+
   it('validates loudly — unknown lane, empty items, per-item fields by lane', () => {
     const bad = (name, obj) => renderSurface(dir, 'finding-batch', { dotpath: 'pay.discussion.checkout', file: writePayload(dir, name, obj) });
     // `ask` is the walked lane's name — the plausible producer mistake is

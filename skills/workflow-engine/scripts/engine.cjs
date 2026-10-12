@@ -265,7 +265,7 @@ Commands:
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
   render finding-landed   <wu.phase.topic> --file <payload.json>
   render finding-announce <wu.phase.topic> --id <agent id> --file <payload.json>
-  render finding-batch    <wu.phase.topic> --file <payload.json>
+  render finding-batch    <wu.phase.topic> --file <payload.json> [--first]
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
@@ -1995,30 +1995,19 @@ function runHandoff(call, argv) {
   }
 }
 
+const RENDER_FLAGS = ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify', 'resumed', 'first'];
+
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify', 'resumed']);
+  const { opts, flags, positional } = parseArgs(rest, RENDER_FLAGS);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
     try {
       /** @type {{dotpath: string} & Record<string, string|undefined>} */
       const args = { dotpath: positional[0], ...opts };
-      if (flags.has('approve')) args.approve = '1';
-      if (flags.has('skipped-review')) args['skipped-review'] = '1';
-      if (flags.has('own')) args.own = '1';
-      if (flags.has('paths')) args.paths = '1';
-      if (flags.has('warn')) args.warn = '1';
-      if (flags.has('pipeline')) args.pipeline = '1';
-      if (flags.has('donow')) args.donow = '1';
-      if (flags.has('recommendations')) args.recommendations = '1';
-      if (flags.has('dead-end')) args['dead-end'] = '1';
-      if (flags.has('menu-only')) args['menu-only'] = '1';
-      if (flags.has('pause')) args.pause = '1';
-      if (flags.has('single')) args.single = '1';
-      if (flags.has('unify')) args.unify = '1';
-      if (flags.has('resumed')) args.resumed = '1';
+      for (const flag of RENDER_FLAGS) if (flags.has(flag)) args[flag] = '1';
       respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {
       failJson(call, err);

@@ -4,6 +4,8 @@
 
 ---
 
+## A. Read the Series
+
 A record ended, or moved beneath the session. Re-render the register — the series moved — and emit its DISPLAY section verbatim per its marker:
 
 ```bash
@@ -30,6 +32,10 @@ Invoke `/workflow-bridge {work_unit} experiment`.
 
 #### Otherwise
 
+→ Proceed to **B. Offer the Next Experiment**.
+
+## B. Offer the Next Experiment
+
 Fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
@@ -50,13 +56,9 @@ Derive `{dir}` = `.workflows/{work_unit}/experiment/{topic}/{id}-{slug}`.
 
 **If the resolve returned no record** (`b/back` from the picker):
 
-> *Output the next fenced block as markdown (not a code block):*
+Nothing was picked — put the gate back.
 
-```
-> The spawning conversation picks the evidence up at its next entry — the menu is the router.
-```
-
-Invoke `/workflow-bridge {work_unit} experiment`.
+→ Return to **B. Offer the Next Experiment**.
 
 #### If `menu`
 

@@ -9,14 +9,23 @@
     "skills/workflow-shared/references/voice.md",
     "skills/workflow-shared/references/altitude.md",
     "skills/workflow-shared/references/ask-or-decide.md",
-    "skills/workflow-shared/references/code-session-gate.md"
+    "skills/workflow-shared/references/code-session-gate.md",
+    "skills/workflow-start/references/start-menu.md",
+    "skills/workflow-start/references/active-work.md"
   ],
   "answers": [
     "b — back"
   ],
   "invariants": {
     "calls_include": [
-      "render code-gate pay.review.pay"
+      "render code-gate pay.review.pay",
+      "engine.cjs session repair",
+      "gateway.cjs view"
+    ],
+    "calls_in_order": [
+      "render code-gate pay.review.pay",
+      "engine.cjs session repair",
+      "gateway.cjs view"
     ],
     "calls_exclude": [
       "render entry-gate pay.review.pay",
