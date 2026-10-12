@@ -61,8 +61,10 @@ Expected path:
     reads in place; no separate wording section is owed, that shape
     belonging to a finding that proposes a whole section. It carries
     the held-order rule
-11. nothing is resolved by expanding, so the batch screen renders
-    again, unchanged, and the walk **STOPS** a second time
+11. nothing is resolved by expanding: the question set the screen
+    aside, so once the expansion is read the walk asks whether the user
+    is ready to move on and **STOPS**; on their yes the batch screen
+    renders again, unchanged, and the walk **STOPS** again
 12. the user answers `yes`, and the screen's three findings land in
     the order they read
 13. findings 1 and 2 are the record's own calls, so each lands in the
@@ -92,7 +94,7 @@ Expected path:
 17. with every finding on the screen landed, the specification and
     the tracking file commit together — **once for the screen**, not
     once per finding — and the landing is confirmed in one line
-    naming all three
+    counting all three, `All 3 documented.`, never a per-finding recap
 18. the lane is empty, no choice and no route remains, and the
     cycle-1 gap-analysis tracking entry flips to `complete`
 19. findings were surfaced and the mode is still `gated`, so the
@@ -141,9 +143,9 @@ Also true:
   landed. A third row ending Approved with nothing in the discussion
   means the walk applied a call the source never made to the
   specification alone
-- the user is stopped exactly five times in the whole walk — the
-  resume choice, the screen, the screen again after the expansion,
-  the re-loop prompt, and sign-off
+- the user is stopped exactly six times in the whole walk — the
+  resume choice, the screen, the readiness question after the
+  expansion, the screen again, the re-loop prompt, and sign-off
 - no incoherence gate renders: the batch's landing enters the flow at
   its landing step, so nothing classifies, nothing routes to a mailbox, and no source is reopened
 - the discussion item never leaves `completed`, and the specification
