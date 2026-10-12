@@ -27,15 +27,17 @@ interrupted for what Claude knows how they would answer, with the product
 coming out the way they want it rather than the way a model's priors would
 make it.
 
-This record is shape-level by ruling: other work was landing on `main`
-while it was written and moves files, so nothing here names files or
-numbers. Each strand gets its own detailed design when it starts. It is
-written for the sessions that carry the programme, as its provenance and
-its survival across context resets; the person does not read it (R6). A
-browser picture of the flow drawn mid-conversation lives at
+This record is shape-level by ruling: it names behaviour, not files. Each
+strand gets its own detailed design when it starts. It is written for the
+sessions that carry the programme, as its provenance and its survival
+across context resets; the person does not read it (R6). It was
+consolidated on 2026-10-12 against `main` at v0.8.16, after the entry
+layer, the gate-mod compaction work, the mailbox and inbox rework and the
+engine displays had landed. A browser picture of the flow drawn
+mid-conversation lives at
 `https://claude.ai/artifact/Leag18MVTRNbbB1usbHPJQ`; it predates the
-migration, verification and trust-store rulings and is refreshed when the
-programme consolidates.
+migration, verification and trust rulings and is redrawn by the shape
+review (Open).
 
 ## Motivation
 
@@ -53,15 +55,62 @@ programme consolidates.
   keeping an amendment trail of drawings, because the workflows had no
   place to land a design image (any-file imports arrived 2026-09-17,
   after most of that work).
-- **Switchboard shows the opposite failure.** Built without the workflows
-  from close to one prompt, then a second version on "wow me", it works and
-  its routing is sound, but the second version was clever and unusable,
-  and the third iteration is slowly re-deciding UI, UX and data-model
-  calls nobody made up front. Goosemates, also built without the
-  workflows, has stalled on Claude surfacing questions back while it has
-  also made many calls nobody needed to see. Fumi and Switchboard are the
-  same failure from opposite sides: decisions made at the wrong moment
-  relative to when they are cheap.
+- **Switchboard shows the opposite failure, and then the cure.** Built
+  without the workflows: v1 from a 3.5-hour talk and "I'm giving you
+  authorisation to build the whole thing", v2 on "be creative… have fun
+  with it!" — clever and unusable, the brief rather than a missing step
+  at fault. Its third version, milestone 7, the person ran the workflows
+  by hand: five days of design rounds in Paper (about 40 rounds, 77 frames
+  signed off, frames drawn by generators as terminal-cell grids), "no
+  build before sign-off", a 14-stage plan approved from a 600-word
+  outline, then a build by the person's `orchestrate` skill (481 agent
+  launches, up to 10 slices in parallel, the stage order held). The build
+  has reopened only UI edge cases where a frame and the spec disagreed;
+  the data model is what keeps being re-decided (the day-summary format is
+  on its third version, a fourth planned). Read 2026-10-12 from its
+  repository and transcripts:
+  - **The record is the weak part.** One 87k-word design document, about
+    93% description, rewritten in place with git as history, some sections
+    stale; the reasons ("owner" appears 16 times) and rulings live outside
+    git — a 28k-word log and the generators in a Claude session folder,
+    25k words of stage plans in a temporary scratchpad, and memory.
+  - **Questions.** Of 69 replies to a Claude question or recommendation,
+    about 25 agree outright, 20 agree with an amendment, 7 overrule, 2
+    defer and 15 are not really answers (confusion, a different question,
+    a redirect). Before replying the person read a median 173–261 words,
+    some turns over 1,000 ("I'm only reading this last message"). Menus
+    mid-flow were rejected ("Just tell me what's going on"). Nearly all the
+    person's anger was about communication — acting on a question,
+    cryptic or three-line answers, not pausing — not about the product.
+  - **Silent calls overturned:** a Claude suggestion written into the spec
+    as decided ("I don't remember signing off an hourglass"), two defaults,
+    building while the design was still open.
+  - **Reviews do not converge.** `/code-review` returned 15 findings round
+    after round; 12 of 17 fix commits were review findings; the ledger
+    needed four rounds and still had time-zone and race bugs; 55 phantom
+    resets a day were found by using the product.
+
+  The person's verdict: v3's success is testament to slowing Claude down,
+  a strictly prescribed process, validated design and collaboration — "if
+  we don't collaborate together on the product decisions, then how on
+  earth could you possibly build something that I'm going to agree to?"
+  Goosemates, also vibed (229 commits, 27 Sep – 1 Oct), has stalled on
+  Claude surfacing questions — the person is burnt out answering — while
+  code was written before the product was designed. Fumi and Switchboard
+  are the same failure from opposite sides: decisions made at the wrong
+  moment relative to when they are cheap.
+- **FlowX shows the shape working by hand.** A spike in code and
+  conversation (June–August 2026): free-flowing discussion of event
+  sourcing and durable workflows, with prescribed documentation. Its
+  `spec/` states the current model and "is not a changelog"; `design/` is
+  the journal, wrong turns kept on purpose — record and log. Its draft
+  code lives in the docs in two sets, `trust: prototype`, indexed, "consult
+  before re-solving anything", "neither is scrap, neither is wired". Every
+  document carries machine-readable trust derived from where it lives and
+  its status, never set by hand; a generated index with a staleness queue
+  is kept current by a pre-commit hook; claims carry inline validation
+  marks; sources of truth are ranked code, cluster, cloud, infra, then the
+  person — "invaluable for intent/history, but fallible".
 - **Shaping is not optional.** Two-way decisions are not independent:
   fifty small calls made against the wrong idea of the product are a
   one-way door in aggregate. Delegating the product's shape ("wow me")
@@ -71,7 +120,9 @@ programme consolidates.
   thinking would make the product the model's rather than theirs.
 - **The system's own weight.** 287k words of skill prose across 389
   files, 41k lines of engine, 67 migrations, a 21k-word development
-  CLAUDE.md, 418 commits in the five weeks to 2026-10-06. Every model
+  CLAUDE.md, 418 commits in the five weeks to 2026-10-06. At v0.8.16:
+  278k words across 327 files, 43k lines of engine, 72 migrations, a
+  2k-word CLAUDE.md — the files thinned, the prose did not. Every model
   generation, prose written to steer the previous model becomes
   instruction the next one must obey where its own judgment is better.
 - **Planning is the heaviest phase and the most replaceable.** Its prose
@@ -172,7 +223,18 @@ project's own measurements decide (R7).
   transcripts. Its eval playbook keeps candidates blind to being evaluated
   (no "eval", "test", "judge", "rubric" anywhere they see), uses a judge
   from another model family, and grades chain-following from transcripts.
-  `2026-10-03-lauren-tan-workshop-xai-grokbot-4169a7`
+  `2026-10-03-lauren-tan-workshop-xai-grokbot-4169a7`. In a later
+  conversation with Matt Pocock (uploaded 2026-10-03) she calls
+  verification the single most important skill, since without it the
+  person stays the proxy between agent and output; puts the deterministic
+  part in a CLI so agents stop rebuilding verification tooling each time;
+  reviews by sampling and fixes the environment (lints, constraints,
+  skills) when several agents take the same shortcut; and says one-way
+  doors effectively become two-way where the work is verifiable.
+  poteto-mode's rule: before asking a "which approach" question, check
+  whether running something could answer it, and if so prototype instead.
+  She expects skills to keep shrinking as models stop needing
+  implementation detail. `2026-10-01-live-poteto-creator-of-pstack-on-shippin-5da913`
 - **Approval fatigue and per-question preferences.** gstack v1 (Garry Tan,
   2026-04-18): 53 question categories across 15 skills fired every time;
   users "just say yes yes yes". v1 checks a per-user preference before each
@@ -339,9 +401,11 @@ project's own measurements decide (R7).
   - **Routing by what needs the person.** Each topic is routed
     **discuss** (it holds questions that need the person) or **build**
     (it holds none; the builder makes its calls against the brief and the
-    shape). This replaces routing to research or discussion. Claude
-    proposes the routing with the map and the person corrects it; when
-    unsure, a topic is routed discuss.
+    shape). This replaces routing to research or discussion everywhere
+    that routing reaches today: the map, where a message sent to a topic
+    lands, and the epic menu's new-topic doors. Claude proposes the
+    routing with the map and the person corrects it; when unsure, a topic
+    is routed discuss.
   - **Each brief lists its topic's agenda**: the questions that need the
     person. The agenda is the decision phase's definition of done (R11).
 
@@ -365,9 +429,16 @@ project's own measurements decide (R7).
     and a **log** — the journey, options, false paths and reversals,
     appended and never rewritten. The record is what downstream phases and
     the knowledge base read first; the log keeps the person's thinking and
-    why minds changed. This absorbs the record-and-log programme and ends
-    the problem specifications were partly invented for: telling a false
-    path from a final decision.
+    why minds changed. This absorbs the record-and-log programme (folded
+    in by the person 2026-10-12, built first in strand A) and ends the
+    problem specifications were partly invented for: telling a false path
+    from a final decision. FlowX kept exactly this split by hand; without
+    it Switchboard's reasons ended up outside git.
+  - **Every record entry says who decided it:** the person, Claude, or
+    the person handing it over ("your call"). A Claude suggestion can
+    never sit in the record as the person's decision — the spec review
+    catches an unowned decision in the golden record. Whether the record
+    also holds findings ("what we now know") beside decisions is open.
   - **The map is the definition of done.** The Discussion Map is seeded
     from the brief's agenda, and the phase is done when it settles. Only
     questions that need the person go on it; a new one-way question met
@@ -380,25 +451,39 @@ project's own measurements decide (R7).
   - **One closing review pass**, aimed at unsettled questions that need
     the person and contradictions with other topics' records — not a
     background reviewer generating detail throughout the session.
-- **R12 — Spikes are encouraged, and their artifacts are evidence.** A spike
-  is anything that can be looked at or pressed: a design board, a
-  constrained design generator (Switchboard's terminal-cell generator over
-  HTML is the example), draft code in a throwaway worktree, a working
-  prototype to scroll and feel. Spikes may come early, in the first
-  decision conversations. What informs a decision — an exported image
-  with its live source link, draft code, pulled data — lands as a tracked
-  asset linked from the record, whoever made it (today's imports cover
-  only what the person shares). Each asset is:
+- **R12 — Spikes are encouraged, and their artifacts are evidence.** **A
+  spike is code or design that is never wired into the product**; size
+  does not decide it (FlowX's drafts are 323 files and still a spike;
+  Switchboard v1 was wired and shipped, so it was a product built fast,
+  not a spike). A spike is anything that can be looked at or pressed: a
+  design board, a constrained design generator (Switchboard's
+  terminal-cell generators are the example), draft code, a format trial,
+  a working prototype to scroll and feel. Spikes live inside decision
+  conversations and may come early, in the first ones; FlowX — discussion
+  with a spike, free process, prescribed documentation — is the model.
+  What informs a decision — an exported image with its live source link,
+  draft code, the generator that drew a design, pulled data — lands in the
+  work unit as a tracked asset linked from the record, whoever made it
+  (today's imports cover only what the person shares; Switchboard's
+  generators and design log sit in a Claude session folder and would be
+  lost). Each asset is:
   - **canonical** — the spec carries it, the builder builds to it, and it
     is replaced when the design changes (it belongs to the record); or
-  - **reference** — the builder may consult it ("we tried this, it
-    worked"); draft code is reference by default (it belongs to the log).
+  - **reference** — the builder consults it before re-solving anything it
+    covers ("we tried this, it worked"); draft code is reference by
+    default (it belongs to the log).
 
   Claude proposes the status when the asset lands; the person can change
   it. The record states what a spike settled and points at the asset; it
   never re-describes it. An image is what was decided; its live source
-  link is where work continues; both are recorded. No design tool is named
-  in the workflows.
+  link is where work continues; both are recorded. **Lifting a piece of
+  spike code into the product is an explicit, recorded act, never
+  drift.** No design tool is named in the workflows.
+
+  Whether a product gets the workflows at all is the person's decision,
+  made by installing them; the workflows never ask it. Building a v1 fast
+  is done outside them, and a later install starts from the existing
+  brownfield assessment, which reads what was built.
 
 ### Between topics
 
@@ -406,12 +491,20 @@ project's own measurements decide (R7).
   topic's record: a call that looks obvious through one topic's lens can
   read differently with the other topic's context in view, and in Fumi
   the back-and-forth between topics produced better decisions. The mailbox
-  stays a queue of files, one per concern (it was once a section of the
-  discussion document; moving it out was right). What changes is the
-  ceremony of answering:
-  - the receipt for a queued item ends with one command that opens the
-    target topic directly on that item, to run in another pane or later;
-  - a target already in session raises the item from its loop, as today.
+  stays a queue of files, one message each (it was once a section of the
+  discussion document; moving it out was right). With research and
+  discussion merged, a topic has one mailbox, so the choice of which
+  phase a message lands in goes. What changes is the ceremony of
+  answering:
+  - the report after a send ends with one command that opens the target
+    topic directly on that message, to run in another pane or later. None
+    exists today: the report says only where the message landed. The
+    engine already composes a continuation for its handoff, but phase
+    skills cannot be typed as commands and the start skill takes no
+    arguments, so the open needs either a command-line form that starts a
+    session with the continuation or arguments on the start skill;
+  - a target already in session raises the message from its loop, as
+    today.
 
   Rejected: visiting the target topic from inside the sending
   conversation — its record and log (40k–110k tokens for Fumi's larger
@@ -420,16 +513,16 @@ project's own measurements decide (R7).
   the item in the target's terms, takes the person's answer and lands it
   is a later fallback only if the one-command open still feels clunky; a
   forked agent is rejected, since it carries the sender's lens. The
-  mailbox rename discussed in another session lands separately and
-  first; this record adopts its names.
+  mailbox rework landed first (v0.8.15); this record uses its names —
+  mailbox, message, send.
 
 ### Specification
 
 - **R14 — Specification stays the golden record.** The spec is the document
   the build reads and the knowledge base serves for later decisions.
-  - Topics are grouped into buildable units, as today, and the spec is
-    assembled from their records and the build topics' briefs — assembly,
-    not archaeology.
+  - Topics are grouped into buildable units, as today (the grouping now
+    runs in the epic menu), and the spec is assembled from their records
+    and the build topics' briefs — assembly, not archaeology.
   - It marks what it leaves to the builder.
   - It ends with the **phase cut**: phases in build order, each an
     independently verifiable slice with acceptance criteria written as
@@ -446,7 +539,16 @@ project's own measurements decide (R7).
 
 ### Implementation
 
-- **R15 — The builder runs the build.** Per phase:
+- **R15 — The builder runs the build.** Its shape is the person's
+  `orchestrate` skill, proven on Switchboard: Claude orchestrates, agents
+  at a chosen model and effort write each slice, review sits between
+  every slice and its merge, and the one gate before building is the
+  person approving the phase cut as a short outline — Switchboard's
+  14-stage plan was approved from 600 words, and the person never read
+  the 41k it became. The workflows carry the shape in their own prose,
+  self-contained; they never depend on a personal skill. What planning's
+  set-up writes today (the plan's context and its cross-cutting
+  references) moves to the spec or the phase start. Per phase:
   - **Tasks are written when the phase starts**, against the code the
     previous phase left, and recorded in the plan's task tracker with
     their dependencies — and which can run in parallel — before anything
@@ -488,16 +590,24 @@ project's own measurements decide (R7).
   looked fine one phase at a time and are wrong in combination. The
   per-task reviewer goes only after a measured comparison on a real phase:
   one phase run with the phase review alone, and what it catches compared.
+  Switchboard is the evidence against rounds: a reviewer reading code
+  returns a full list every time, and the bugs that mattered were found by
+  running the product. Extra assurance goes into verification (strand C)
+  and, for slices where a subtle bug passes the tests (time, concurrency),
+  tests aimed at that risk — never another reading round.
 
 ### The tracking layer
 
 - **R17 — Work tracking stays and strengthens.** The start menu, inbox,
-  roadmap, backlog, work types, work units and the epic menu are the
-  ledger of the person's work across sessions — state a model cannot hold
-  and memory does not replace. Picking up, taking on and filing work into
-  its place keep getting stronger. The epic menu simplifies as phase
-  gating thins: most of its states (waits, holds, entry gates, staleness
-  flags) exist to police phase order.
+  roadmap (which now holds every kind of work, the backlog being one of
+  its horizons, with the inbox triaged onto it), work types, work units
+  and the epic menu are the ledger of the person's work across sessions —
+  state a model cannot hold and memory does not replace. Picking up,
+  taking on and filing work into its place keep getting stronger. The
+  epic menu simplifies as phase gating thins: most of its states (waits,
+  holds, entry gates, staleness flags) exist to police phase order, and it
+  has grown since (grouping, naming a new topic, back), so it has more to
+  shed.
 
 ### Work types
 
@@ -512,75 +622,136 @@ project's own measurements decide (R7).
   included; the specification is what the builder works from and the
   golden record the knowledge base keeps. The fix's test fails on the
   unfixed code. A root cause that is really a design problem raises, and
-  may become a feature.
+  may become a feature; a bug folded into a feature skips investigation,
+  as the mailbox rework ruled. Investigation is not itself split into
+  record and log: it is the log, the specification is the record.
 - **R21 — Quick-fix.** Quick must be quick: no scoping document and no plan.
   Claude does the work, runs the tests and linters, commits, and writes a
   ledger line if it made a call. It stays a tracked work unit on the start
   menu that closes. Review runs only if behaviour changed. Work that needs
   a design conversation is not a quick-fix; Claude says so and it moves to
-  feature or bugfix. (Detail still to walk.)
+  feature or bugfix. Every way in that hands a quick-fix to scoping today
+  (the roadmap pull, the inbox's start-now path) is re-aimed. (Detail
+  still to walk.)
 - **R22 — Cross-cutting.** discovery → decision → specification, ending
   there: a project-level record later topics read. Kept for mature
-  projects; unused so far.
+  projects; unused so far. A unit promoted from an epic's specification
+  has no discovery log and its moved topics read promoted; the decision
+  phase meets them as they are.
 
 ## Strand B — trust
 
+Reworked 2026-10-12 into a layer the engine computes: whether Claude asks
+is arithmetic over the person's own answers, never Claude's judgement. Its
+detailed design is pinned by the person until the shape review (Open)
+settles, and starts from the list of kinds of question (R25).
+
 - **R23 — The ledger.** Every call Claude makes without asking is
-  recorded: what it decided, what it guessed, the kind of question, its
-  confidence. Written by a verb, never edited by hand. The person reads
-  it only when they choose; spot checks bring samples to them (R26).
-- **R24 — The ask rule.** Ask when P(overturn) × reversal cost exceeds the
-  cost of asking:
-  - **P(overturn)** — how likely the person is to overturn Claude's lean
-    on this kind of question, from their history (R25).
-  - **Reversal cost** — a 1–10 scale per kind of question; where door
-    type lives. **The person cares about it** raises it: wrong there costs
-    them more than its reversal (visual design in Fumi is the example —
-    the person had a picture of it and wanted it their way).
-  - **Cost of asking** — the person's attention: cheap in a conversation,
-    dearer mid-build where a question blocks work.
-  - **Frozen always-ask kinds** — data model, external contracts,
-    destructive operations, security. No learned number loosens them.
+  recorded: what it decided, the kind of question, what else it could
+  have done. Written by a verb, never edited by hand. The person reads it
+  only when they choose; blind questions bring samples to them (R26).
+- **R24 — Whether to ask is computed.**
+  - **Facts are checked, intent is asked.** A question that reading the
+    code, the record or running something can answer never reaches the
+    person: Claude checks it. FlowX ranks the person last as a source of
+    facts and first as a source of intent; poteto-mode prototypes instead
+    of asking "which approach" when running something could answer it.
+    Only questions of intent and taste enter the trust layer.
+  - **Three parties.** Claude supplies the question and its own answer,
+    sealed where the person cannot see it. The engine decides whether to
+    ask, from stored counts; the same inputs always give the same
+    decision. The person supplies answers, and each becomes evidence.
+  - **The rule:** ask when the pessimistic overrule rate × the cost of a
+    wrong call exceeds the cost of asking.
+    - **Pessimistic overrule rate** — per kind of question, per person,
+      per model: the upper end of a 95% range on how often the person's
+      answer differs from Claude's sealed answer (a beta distribution over
+      the weighted counts of R25). Few answers leave the range wide, so
+      the system keeps asking: 3 agreements give 53%; 10 give 24%; 30
+      agreements and 1 overrule, 14%; 45 and 7 (Switchboard's rough mix),
+      23%; 100 agreements, 3%.
+    - **Cost of a wrong call** — per kind, on a 1–10 scale the person
+      sets; where door type lives. **The person cares about it** raises
+      it: wrong there costs them more than its reversal (visual design in
+      Fumi is the example — the person had a picture of it and wanted it
+      their way).
+    - **Cost of asking** — by context: cheap in a conversation, dearer
+      mid-build where a question blocks work.
+    - **Frozen always-ask kinds** — data model, external contracts,
+      destructive operations, security. No count loosens them.
+    - Worked: error handling at cost 3, asking at 1 — three agreements
+      still ask (0.53 × 3); thirty agreements and one overrule go quiet
+      (0.14 × 3).
   - **Raising is an engine command paired with the written rule** — never
-    a prose rule alone; uptake follows design, not availability.
+    a prose rule alone; uptake follows design, not availability. A raise
+    is drawn by the engine and readable cold: what is being decided, why
+    it matters, Claude's lean, what changes either way — Switchboard's
+    non-answers came from questions the person could not follow.
 
   The vocabulary is the existing ask-or-decide reference's: it already
   asks for expensive-to-reverse calls; it gains "the person cares" as a
   reason to ask, the ledger as the durable landing for decided calls, and
   reach into the build, where the builder's block rules are separate
   today. Door type is one reason to ask, not the name of the split.
-- **R25 — The trust log and the matrix.** An append-only log at user
-  level, in the person's workflows config directory, across all their
-  projects, reached through the engine. Only the engine writes it; Claude
-  cannot edit it or the thresholds. Events:
-  - each raise, with Claude's lean and the person's answer (agree, pick
-    another, amend, don't care);
-  - each gate answer by its surface name, with the option the engine
-    recommended and the one picked — the cheapest data source there is,
-    collecting the day it ships;
-  - each ledger call;
-  - each later overturn, as a new event pointing back at the call it
-    reverses — nothing is rewritten, so an "I agree" given in fatigue and
-    overturned later counts as an overturn;
-  - each spot-check answer.
+- **R25 — Kinds, evidence and the trust log.**
+  - **Kinds of question** key every count, so the list is the foundation
+    and where the person's taste shows most (UI look and feel and UX flow
+    are probably separate kinds; naming may be its own). Gate answers are
+    keyed by the gate's name, which is fixed. Raises are labelled from the
+    fixed list by something other than the Claude that wants to proceed —
+    a decision model with neutral option names, or a separate agent — since
+    a self-labelled question can drift into a trusted kind. Claude's own
+    stated confidence never gates: in REFLEX, wrong calls averaged 0.78.
+  - **Evidence is weighted by what it proves:**
+    - a blind question (R26) answered cold — full weight;
+    - "agree" to a recommendation the person was shown — half, since the
+      shown answer may have steered them;
+    - a later reversal — a full disagreement, recorded as a new event
+      pointing back at the call it reverses and cancelling the earlier
+      agreement; nothing is rewritten, so an "I agree" given in fatigue
+      and overturned later counts as an overturn;
+    - "didn't follow" — no weight, and a first-class answer: a yes to a
+      question the person could not follow is not agreement.
 
-  Keys carry scope (project, kind), and a project's own rows override the
-  person's general numbers where a project has its own taste. The matrix
-  is derived from the log, never stored, per person × model × kind. A new
-  model starts from its predecessor's counts, discounted, so it asks a
-  little more at first and loosens as its own evidence arrives — the
-  procedure stays fixed across model generations and only the numbers
-  move. The matrix is an engine-rendered screen the person can read and
-  correct ("error behaviour: agreed 31 of 32 — decide"); trust stays
-  their decision. A new user has no history, so anything with real
-  reversal cost asks: the system starts where today's workflows are and
-  loosens only with evidence.
-- **R26 — Silence is not agreement.** An unread ledger entry is no evidence.
-  The engine samples silent calls and puts them to the person as spot
-  checks in the flow (R6); those answers are the labels for kinds Claude
-  no longer asks about, and an overturned spot check pulls its kind back
-  towards asking. A call that held weighs more than a bare "I agree",
-  which may be fatigue.
+    Older answers fade, so a change of taste shows. A new model inherits
+    its predecessor's counts at a discount and earns its way back. The
+    procedure stays fixed across model generations; only the numbers move.
+  - **The trust log** is append-only, at user level in the person's
+    workflows config directory (which already holds the system config and
+    each conversation's state), across all their projects, reached through
+    the engine. Only the engine writes it; Claude cannot edit it or the
+    costs. Events: each raise with Claude's sealed answer and the person's
+    answer; each gate answer by the gate's name with the option the engine
+    recommended and the one picked (the gate mod already sees the click
+    and the engine's payload already marks the recommended row, but
+    nothing records answers durably, nor answers typed at the prompt);
+    each ledger call; each blind question; each reversal. Keys carry scope
+    (project, kind), and a project's own rows override the person's
+    general numbers where it has its own taste. Counts are derived from
+    the log, never stored.
+  - **The matrix** is an engine-drawn screen the person can read and
+    correct; trust stays their decision. **Tuning is by replay:** the
+    engine replays the log against a proposed setting ("last month this
+    would have skipped 40 questions; you'd have overruled 2 of them"), so
+    costs are set from evidence, not feel. A new user has no history, so
+    anything with real cost asks: the system starts where today's
+    workflows are and loosens only on evidence.
+- **R26 — Blind questions.** The person's idea (2026-10-12), replacing
+  after-the-fact spot checks, which anchor the person on Claude's answer
+  and ask them to judge later without the context they had. Now and then
+  the engine holds back a call Claude would have made silently, keeps
+  Claude's answer sealed, and asks the person the question cold — in the
+  moment, in context. Afterwards it shows what Claude would have picked.
+  - The engine draws them at random, more often where a kind's range is
+    wide (little history, a new model), never below a small floor; Claude
+    never chooses which. Every draw is logged.
+  - Mid-build, for a call cheap to undo, Claude proceeds on its own answer
+    while the question waits; a disagreement undoes it.
+  - The comparison is how the person comes to trust Claude, not only how
+    the system does: "Claude would have picked the same, 14 of the last 15
+    on error handling".
+  - Reading the ledger as a whole, at the final review, still looks for
+    calls that are fine alone and wrong in combination.
 - **R27 — The record of the person.** The person's preferences, each with
   its reason and examples — not a decision tree, which breaks on the
   first case it did not anticipate. Claude proposes an entry when it sees
@@ -590,35 +761,43 @@ project's own measurements decide (R7).
   memory cannot do this job: it is keyed to the project directory, so
   what one project learns never reaches another. What transfers between
   projects is taste and principle, not specific decisions.
-- **R28 — Measure before trusting.** The bare loop ships first: the log, the
-  ledger, the counts, the arithmetic in the engine. A decision model comes
-  later as one input, never the ask oracle:
+- **R28 — Decision models come later, as labellers.** The bare loop ships
+  first: the log, the ledger, the counts, the arithmetic in the engine. A
+  decision model joins later, first to label kinds (R25), never as the
+  ask oracle — decision models are weakest at exactly "should I ask"
+  (REFLEX: 68.8% right on clarification decisions, 51.2% on risk):
   - one provider interface written to Jev's API, Jev the default as the
     cheapest, Clef behind the same interface (open weights, self-hostable);
     the engine's knowledge-base providers are the precedent;
-  - which model answers which kind of question is chosen by running both
-    on the person's labelled history, never from vendor tables;
+  - which model labels which kind is chosen by running both on the
+    person's labelled history, never from vendor tables;
   - neutral option names; a threshold per kind set from about 100 of the
     person's labels by the lower-bound rule and checked on held-out items;
   - probabilities recalibrated on the person's labels before they steer
-    anything; fine-tuning a model on the trust log is the last rung, not
-    the first;
+    anything; fine-tuning a model on the trust log is the last rung;
   - a decision model does not sample, so the same question gets the same
     number every time — the determinism a probability asked of Claude
     cannot give;
+  - a per-question signal — how likely the person is to agree with this
+    particular answer — refines the per-kind counts last; counts come
+    first because they explain themselves;
   - the loop adjusts only on evidence larger than noise, checked against
     held-out data.
-- **R29 — Starting numbers.** Two measurements before any workflow change:
+- **R29 — Starting numbers.** Two measurements before any workflow change,
+  on hold since 2026-10-12 by the person's word until the shape review
+  settles, since it may change what they count. Both also count
+  non-answers. Switchboard's 69 hand-classified replies (Motivation) are a
+  first sample.
   - **Transcript mining.** As of 2026-10-06 the person's transcripts
     numbered 103 for Fumi (from mid-July), 152 for Portal, 36 for Tick
     and 1 for Goosemates. Every point where Claude offered a choice with a
     lean and the person answered is classified (agree, pick another,
-    amend, defer), within a recent window the person chooses, since the
-    workflows changed over time. At Jev's price 100 million input tokens
-    costs about $4. This tests the person's estimate that 60–80% of
-    Fumi's decisions matched what Claude would have said, and doubles as
-    the trust log's first labels. pstack's `/automate-me` and `/recall`
-    are prior art to read first.
+    amend, defer, didn't follow), within a recent window the person
+    chooses, since the workflows changed over time. At Jev's price 100
+    million input tokens costs about $4. This tests the person's estimate
+    that 60–80% of Fumi's decisions matched what Claude would have said,
+    and doubles as the trust log's first labels. pstack's `/automate-me`
+    and `/recall` are prior art to read first.
   - **The Fumi decision replay.** 30–40 decisions sampled across topics,
     each pre-classified one-way or two-way. Each becomes a question with
     its answer removed; the context is the topic's brief plus the record's
@@ -678,14 +857,25 @@ project's own measurements decide (R7).
 - **R35 — Engine and mod.**
   - The verbs are the only doors (R2).
   - A hook refuses writes under `.workflows/` to paths outside the layout:
-    no ad hoc directories.
-  - The commit door already confines what a commit takes; it also requires
-    a task for code.
+    no ad hoc directories. Today the mod's guard refuses direct edits only
+    to manifests, lets shell writes through, and runs only where the mod
+    is announced; it widens to the whole layout.
+  - The commit door already confines and serialises what a commit takes;
+    it also requires a task for code. The task in flight is already
+    recorded per conversation, so the door has one to read.
   - Checklists are engine-held.
-  - The gate mod draws raises and spot checks, logs gate answers (it sees
-    the click; the engine knows what it recommended), shows verification
-    evidence, and offers a reading surface for material the person may
-    want.
+  - Every surface the person sees is an engine surface — the ledger, the
+    matrix, raises, blind questions — under the display lint that already
+    fails a templated display in skill prose; a plain line made only of
+    values Claude already holds stays in prose.
+  - The gate mod draws raises and blind questions, logs gate answers (it
+    sees the click; the engine knows what it recommended), shows
+    verification evidence, and offers a reading surface for material the
+    person may want. It also carries phase words (its spinner) that a
+    phase rename changes.
+  - After a compaction the engine's recovery note names the skill and each
+    document to re-read; the decision phase's note names the record and
+    the log.
   - Anything that can use the mod to make the system better should.
 
 ## Measures and levers
@@ -718,6 +908,12 @@ project's own measurements decide (R7).
       the artifacts, as they already do after compaction;
     - a review or spec-review cycle in flight is closed out, and the next
       entry runs the single pass;
+    - a topic's research and discussion mailboxes merge into one,
+      messages renumbered (an earlier migration's collision rule is the
+      precedent); fields added since this record was first written —
+      promoted topics, unstarted messages, what a specification
+      incorporates, where a topic came from, a roadmap item's kind — carry
+      over unchanged;
     - the ledger and the trust log are new and start empty.
   - **Judgment, as one directive (R38): every decision topic gets a
     record.** Today's discussion file interleaves decisions with the
@@ -754,21 +950,26 @@ project's own measurements decide (R7).
   prose-test harness builds them. Fumi is the hardest real case: 9
   concluded discussions and 2 in progress get their logs moved and records
   derived, and the two in progress resume in decision with both; its 2
-  triaged items stay in their mailboxes; its 3 completed research files
-  join their topics' logs.
+  unstarted messages stay in their mailboxes; its 3 completed research
+  files join their topics' logs.
 
 ## Sequence
 
-1. **Clear the base.** The mod handoff's second phase (which flattens the
-   entry skills), other gate-mod work, and the mailbox rename land first —
-   a clearer base, even where this programme later removes some of it.
-2. **Measure.** Transcript mining and the Fumi replay (R29). Nothing in the
-   workflows changes; it tests the premise and names the kinds of question
-   the ledger needs.
+1. **Clear the base.** Done by v0.8.16: the entry layer (one skill per
+   phase, one continue skill, a lighter start), the gate-mod compaction
+   work, the mailbox and inbox rework and the engine displays landed first.
+   The entry-layer design landed rather than folding in; this programme
+   builds on it, and merging research and discussion is now one skill and
+   one row in each of the engine's phase tables.
+2. **Review the shape, then measure.** The shape review (Open) first; then
+   transcript mining and the Fumi replay (R29). Nothing in the workflows
+   changes; it tests the premise and names the kinds of question the
+   ledger needs.
 3. **Foundations shared by A and B.** The ledger, raise and gate-answer
    logging, the user-level store. Logging collects from the day it ships,
    before anything depends on it.
-4. **Restructure (A)** with its migration and directive, and
+4. **Restructure (A)**, the record-and-log split first, with its
+   migration and directive, and
    **verification (C)** alongside — C stands on its own and is useful
    under today's workflows.
 5. **The ask rule on (B)**, calibrated to ask what is asked today and
@@ -776,11 +977,20 @@ project's own measurements decide (R7).
 
 ## Open
 
-- **Consolidation with `main`.** `main` moved after this record was
-  written (the mod handoff's second phase among it). The next session
-  reads what landed, re-checks every ruling that names current behaviour,
-  and decides how the entry-layer design (branch `design/entry-layer`)
-  relates — landed first or folded in.
+- **The shape review.** The person asked on 2026-10-12, before any trust
+  detail, to zoom out and confirm the workflows' shape is right and built
+  to evolve across model generations without another rewrite: the
+  process, the gates, code against prose, the phases, the work types,
+  topics splitting at discovery and rejoining at the spec — changed only
+  where evidence says so, never for its own sake. The person's gut: what
+  exists is good, the process may need thought. Evidence to weigh: the
+  workflow projects (Fumi, Portal, Tick, agntc, mint, galley, codeintel,
+  nod, pigeon, quiz-biz), the projects run without them (Switchboard,
+  FlowX, Goosemates), and this repository's own design history. Spikes,
+  trust and verification are sanity-checked against the same evidence.
+  Output: diagrams of the shape, and this record revised.
+- **The trust design** — pinned by the person on 2026-10-12 until the
+  shape review settles; starts from the list of kinds of question (R25).
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
   sessions wipes restore data") as the test case; quick-fix in detail.
@@ -797,9 +1007,16 @@ project's own measurements decide (R7).
   lands in its own topic's record (subject to R13). The alternative keeps
   a log per topic.
 - **The trust store's shape:** the kinds of question, the cost scale, the
-  cost of asking, how the project engine reaches the user-level store.
+  cost of asking, the weights, how fast old answers fade, the discount on
+  a model change, the floor for blind questions. The user-level store
+  lives in the workflows config directory, which the engine already
+  reaches.
+- **Whether a decision record holds findings** ("what we now know")
+  beside decisions — carried in from the record-and-log session the
+  person closed.
 - **Where the phase cut lives on disk,** and how today's plan formats carry
   per-phase task writing.
 - **How project skills reach the builder** (R34).
 - **The per-task reviewer measurement** (R16).
-- **Starting the measurements** (R29) — offered, awaiting the person's go.
+- **Starting the measurements** (R29) — on hold by the person's word until
+  the shape review settles.
