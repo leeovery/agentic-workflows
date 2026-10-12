@@ -662,6 +662,17 @@ settles, and starts from the list of kinds of question (R25).
     facts and first as a source of intent; poteto-mode prototypes instead
     of asking "which approach" when running something could answer it.
     Only questions of intent and taste enter the trust layer.
+  - **Where there is more than one way and no obvious choice, Claude
+    finds out before it leans** — the person's rule (2026-10-12), stated
+    loosely on purpose. When each way has its pros, cons and risks and
+    evidence can tell them apart, Claude spikes it, researches, reads or
+    reverse-engineers the source, or looks at how open-source products do
+    it, instead of guessing or asking. A disposable machine (a macOS image
+    under Tart, say) or the person's own machine runs it; the person is
+    not involved. The ledger records the evidence beside the call. It
+    matters most where a wrong call means rebuilding inner machinery,
+    even behind a contract. The Fumi replay's one call the person said
+    would have been bad was of this kind (R29).
   - **Three parties.** Claude supplies the question and its own answer,
     sealed where the person cannot see it. The engine decides whether to
     ask, from stored counts; the same inputs always give the same
@@ -731,9 +742,17 @@ settles, and starts from the list of kinds of question (R25).
     and the engine's payload already marks the recommended row, but
     nothing records answers durably, nor answers typed at the prompt);
     each ledger call; each blind question; each reversal. Keys carry scope
-    (project, kind), and a project's own rows override the person's
-    general numbers where it has its own taste. Counts are derived from
-    the log, never stored.
+    (project, kind). **The person's level and the project's level merge**
+    for every decision: the person's counts across all projects are each
+    project's starting point, and the project's own answers move it as
+    they accumulate — a new project starts from the person's general
+    taste; a project where they care about the UI soon shows it. In the
+    arithmetic, the person-level counts, capped at the weight of a few
+    answers, are the prior the project's counts update; the pessimistic
+    rate of R24 is read from the merged range. The same merge lets gates
+    of one kind share evidence (the long tail, R29) and lets a new model
+    inherit its predecessor's counts at a discount. Counts are derived
+    from the log, never stored.
   - **The matrix** is an engine-drawn screen the person can read and
     correct; trust stays their decision. **Tuning is by replay:** the
     engine replays the log against a proposed setting ("last month this
@@ -844,7 +863,19 @@ settles, and starts from the list of kinds of question (R25).
     - Weaker than intended: thinner context than a real session; seven
       questions whose record does not show who decided (two graded
       different); grader and builder are one model family; 37 is small.
-      The person judges the different ones.
+      The person judged the 13 different calls (2026-10-12): 12 would
+      have been fine — wouldn't have mattered to the product, or could
+      have been improved later (first run is the example: "that could
+      have been a fast follow") — and some made them think their own call
+      was the wrong one. One was questionable: the placement write through
+      SkyLight rather than AppKit's state restoration, which would have
+      been found the hard way and changed, and which is a call evidence
+      settles rather than taste (R24). So the builder's calls were
+      acceptable on at least 31 of 37; the 5 partials were not judged. The
+      count that matters is whether the person would have changed the
+      call, not whether it differs from what they said. The judgement was
+      made after seeing both answers, the anchoring R26 discounts, so it
+      is strong direction rather than a count.
   - **Seeding the process gates (R40).** 1,744 gate answers since June: 953
     at process gates, 482 at review-loop gates, 309 at navigation menus.
     The rule: a gate goes automatic once the one-sided 95% upper bound on
@@ -884,8 +915,10 @@ settles, and starts from the list of kinds of question (R25).
       framings), on the current decision inside a long record (it ranks
       the superseded entry; the record-and-log split ends this), and on
       in-progress records it never indexes.
-    - In use since 2026-08-31 (mostly the store before its 2026-09-29
-      rewrite): 44 of 46 conversational sessions queried; of 76 query
+    - In use since 2026-08-31, mostly on the store before its 2026-09-29
+      rebuild (Orama then, and always ten results whatever the query —
+      85 of the 98 queries), so these usage figures describe the old
+      store; the head-to-head above ran on today's: 44 of 46 conversational sessions queried; of 76 query
       runs, 37 used a result, 17 acknowledged it, 18 ignored it, 4 got
       nothing. Those sessions searched records directly more than they
       queried (116 searches and 155 reads against 84 queries).
@@ -1025,6 +1058,12 @@ think is a good sign."
   outside the workflows; which MCP servers load where is the person's
   setup. The person's compaction point is 467k.
 
+- **R44 — The knowledge base stays, as the first look.** Ruled by the
+  person on 2026-10-12 on the R29 evidence. The knowledge base is the
+  cheap first pointer and the reach across work units, indexing records
+  (current decisions), never logs. Plain search, when depth matters, runs
+  in a helper agent so its cost stays out of the conversation (R43).
+
 ## Migration
 
 - **R37 — Every existing project migrates fully.** One canonical path (R8).
@@ -1125,7 +1164,13 @@ think is a good sign."
   Output: diagrams of the shape, and this record revised.
 - **The trust design** — pinned by the person on 2026-10-12 until the
   shape review settles; starts from the list of kinds of question (R25),
-  made sharp enough that two labellers agree on it (R29: 50% today).
+  made sharp enough that two labellers agree on it (R29: 50% today). The
+  person leans to Jev as the labeller. Prior art to read first: dex's lab
+  (`~/Code/dex/lab/typed-decisions.md`, experiments E39–E46), where Jev
+  became a calibrated, deterministic judge on narrow yes/no questions —
+  splitting one pick-one into narrow questions gained most, a middle band
+  of scores went to a strong model, and Jev reads wording literally, so
+  one fact worded two ways is its wall.
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
   sessions wipes restore data") as the test case; quick-fix in detail.
@@ -1229,8 +1274,3 @@ think is a good sign."
   per-phase task writing.
 - **How project skills reach the builder** (R34).
 - **The per-task reviewer measurement** (R16).
-- **The knowledge base's role.** Claude's lean on the R29 evidence: the
-  knowledge base stays as the cheap first pointer and the reach across
-  work units, indexing records only; plain search, when depth matters,
-  runs in a helper agent so its cost stays out of the conversation (R43).
-  Not ruled.
