@@ -132,7 +132,7 @@ Commit:
 node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "planning({work_unit}): complete Phase {N} tasks" --topic planning/{topic}
 ```
 
-Say `Phase {N}: {Phase Name} — complete ({M} tasks authored).`, `{M}` the tasks in the phase's task list.
+Say `Phase {N}: {Phase Name} — complete ({M} task(s) authored).`, `{M}` the tasks in the phase's task list.
 
 #### If more phases remain
 

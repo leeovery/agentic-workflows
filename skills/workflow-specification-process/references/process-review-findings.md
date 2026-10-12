@@ -12,7 +12,7 @@ Check if the tracking file exists at the expected path.
 
 #### If no tracking file exists (no findings)
 
-Say `{Review name} complete — no findings.`, the review named `Claims Verification`, `Input Review` or `Gap Analysis`.
+Say `{review_label} complete — no findings.`, `{review_label}` the stream's name as **A** maps it.
 
 → Return to caller.
 
@@ -284,6 +284,6 @@ Then update the tracking file — Resolution `Routed` with a note naming what la
 1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.specification.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any specification changes.
 
-Say `{Review name} complete — {N} findings processed.`, the review named `Claims Verification`, `Input Review` or `Gap Analysis` and `{N}` the count of **A**'s summary items.
+Say `{review_label} complete — {N} finding(s) processed.`, `{review_label}` the stream's name as **A** maps it and `{N}` the count of **A**'s summary items.
 
 → Return to caller.

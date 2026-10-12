@@ -47,7 +47,7 @@ Invoke `workflow-planning-task-author` with these file paths:
 
 The agent writes all tasks to the task detail file and returns.
 
-Say `Authoring {count} tasks for Phase {N}: {Phase Name}...`, `{count}` the rejected tasks on an amendment run and the phase's task count otherwise.
+Say `Authoring {count} task(s) for Phase {N}: {Phase Name}...`, `{count}` the rejected tasks on an amendment run and the phase's task count otherwise.
 
 The dispatch runs in the background (`run_in_background: true`) and ends the turn on exactly `The task author agent has been dispatched for phase {N}.`
 
@@ -223,7 +223,7 @@ Read the manifest's `staging.author-p{N}.tasks` for `rejected` rows.
 
 #### If rejected tasks exist
 
-Say `{count} tasks need revision. Re-invoking author agent...`, `{count}` the `rejected` rows just read.
+Say `{count} task(s) to revise. Re-invoking author agent...`, `{count}` the `rejected` rows just read.
 
 → Return to **B. Invoke the Agent** for an amendment run.
 

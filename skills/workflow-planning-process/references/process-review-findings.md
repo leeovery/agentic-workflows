@@ -218,6 +218,6 @@ Work the point through in conversation — a challenge, an adjustment, or a decl
 
 1. **Mark the tracking file complete** — `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set {work_unit}.planning.{topic} tracking.{file stem} complete`.
 2. **Commit** the tracking file and any plan changes.
-3. Say `{review_type:(titlecase)} review complete — {N} findings processed.`, `{N}` the count of **A**'s summary items.
+3. Say `{review_type:(titlecase)} review complete — {N} finding(s) processed.`, `{N}` the count of **A**'s summary items.
 
 → Return to caller.

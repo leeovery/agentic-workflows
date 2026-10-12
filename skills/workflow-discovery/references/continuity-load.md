@@ -22,9 +22,7 @@ Bounded regardless of how many sessions exist:
 
 ## B. Briefing
 
-Synthesise the recent-in-full logs into a short briefing that resumes the conversation — the threads being circled, what the user was leaning toward, what was left open. When the most recent log is an in-progress resume, note the edits already applied this session. Surface the *thinking*; don't restate the map.
-
-In your own words, say where we'd got to — 2–4 lines from the recent session(s): the threads circled, what the user was leaning toward, what was still open — then, only where it aids orientation, one line per older session from its Conclusion.
+In your own words, say where we'd got to — a short briefing synthesised from the recent-in-full logs, 2–4 lines: the threads being circled, what the user was leaning toward, what was left open, and, when the most recent log is an in-progress resume, the edits already applied this session. Surface the *thinking*; don't restate the map. Then, only where it aids orientation, one line per older session from its Conclusion.
 
 The caller renders its own opener prompt and STOP after this briefing.
 
