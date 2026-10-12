@@ -1612,16 +1612,25 @@ think is a good sign."
   FlowX, Goosemates), and this repository's own design history. Spikes,
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
-- **The build's progress view.** A board of tasks building, landed and
-  parked cannot be redrawn once it is in the transcript, and reprinting it
-  on every change buries the conversation. Proposed: the transcript
-  carries events only, one line each, never a redrawn board; the live
-  board is a mod panel, updated in place like the sitrep board; without
-  the mod the full board prints at each phase end and on request.
+- **The workflows board.** The story of the work stays in the
+  transcript: a headline when work starts (one block for a batch started
+  together), a product summary as each piece lands, the gate the phase's
+  position calls for. What is happening now cannot be redrawn there, and
+  reprinting it buries the conversation, so the now moves to a live board
+  drawn by the mod and fed by the engine, never by Claude's prose — wanted
+  by the person 2026-10-12 for every phase, not only the build (decision:
+  the agenda; specification: its sections and review; build: tasks
+  building, landed and parked, questions waiting, each phase's proof;
+  review: agents and findings). It sits apart from the person's sitrep
+  board, which works across projects and sessions a level above and is
+  updated by Claude through its own plugin, never by the workflows. Only
+  one board shows at a time, so the two need a way to switch; how is open,
+  pending what the mod surface allows. Sketches per phase come next.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
-  bug in the released epic menu, outside this programme; fixed on its own
-  branch on the person's go.
+  bug in the released epic menu, not fixed on its own: the person ruled
+  2026-10-12 that the restructure takes it in, and the reworked menu (R17)
+  is checked not to carry it.
 - **The product record.** A current view of the product's character at
   project level beside the roadmap — record-and-log one level up — so
   every two-way call is made against the product's stated character
