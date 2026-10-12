@@ -772,9 +772,22 @@ settles, and starts from the list of kinds of question (R25).
     correct; trust stays their decision. **Tuning is by replay:** the
     engine replays the log against a proposed setting ("last month this
     would have skipped 40 questions; you'd have overruled 2 of them"), so
-    costs are set from evidence, not feel. A new user has no history, so
-    anything with real cost asks: the system starts where today's
-    workflows are and loosens only on evidence.
+    the threshold is set from evidence, not feel.
+  - **What ships is the procedure, never anyone's counts:** the kinds and
+    their questions, the arithmetic and the defaults the person set from
+    their own replay (R24, R29). Each person's counts are learned from
+    their own answers; what transfers between people is the method, not
+    decisions. A new user starts with an empty log, so every question
+    Claude has a lean on asks — where today's workflows are — and each
+    kind loosens on that person's evidence (about 13 clean answers, 28
+    where a change would be hard to undo; danger never). A user of
+    today's workflows starts empty too: importing their transcripts
+    (labelling, two checks, a verdict page — about $10–20 of model calls
+    and an hour) stays out of the first release, added only if the first
+    weeks of asking prove heavy. The person who designed this seeds their
+    own log at build from the measured history (R29: the 410 questions
+    both checks read alike, the 60 verdicts, the 1,744 gate answers), so
+    it starts where the replay ended (the person's call, 2026-10-12).
 - **R26 — Blind questions.** The person's idea (2026-10-12), replacing
   after-the-fact spot checks, which anchor the person on Claude's answer
   and ask them to judge later without the context they had. Now and then
