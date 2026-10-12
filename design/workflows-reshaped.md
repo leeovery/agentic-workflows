@@ -1617,15 +1617,20 @@ think is a good sign."
   together), a product summary as each piece lands, the gate the phase's
   position calls for. What is happening now cannot be redrawn there, and
   reprinting it buries the conversation, so the now moves to a live board
-  drawn by the mod and fed by the engine, never by Claude's prose — wanted
-  by the person 2026-10-12 for every phase, not only the build (decision:
+  drawn by the mod — on the whole a picture of what the manifest holds,
+  driven by engine code, with room for Claude to put things on it that the
+  engine does not hold. Wanted by the person 2026-10-12 for every phase,
+  not only the build (decision:
   the agenda; specification: its sections and review; build: tasks
   building, landed and parked, questions waiting, each phase's proof;
   review: agents and findings). It sits apart from the person's sitrep
   board, which works across projects and sessions a level above and is
   updated by Claude through its own plugin, never by the workflows. Only
   one board shows at a time, so the two need a way to switch; how is open,
-  pending what the mod surface allows. Sketches per phase come next.
+  pending what the mod surface allows. The person also pictures browsing
+  it while Claude works — jumping to other work units, the inbox, the
+  roadmap, whatever the workflows hold for the project — without
+  interrupting the session. Sketches per phase come next.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
