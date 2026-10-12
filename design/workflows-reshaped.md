@@ -788,35 +788,110 @@ settles, and starts from the list of kinds of question (R25).
     first because they explain themselves;
   - the loop adjusts only on evidence larger than noise, checked against
     held-out data.
-- **R29 — Starting numbers.** Two measurements before any workflow change,
-  on hold since 2026-10-12 by the person's word until the shape review
-  settles, since it may change what they count. Both also count
-  non-answers. Switchboard's 69 hand-classified replies (Motivation) are a
-  first sample. The gate-answer history seeds which process gates start
-  automatic (R40). A third measurement joins them: the knowledge base's
-  value over Claude searching the files itself, never yet measured.
-  - **Transcript mining.** As of 2026-10-06 the person's transcripts
-    numbered 103 for Fumi (from mid-July), 152 for Portal, 36 for Tick
-    and 1 for Goosemates. Every point where Claude offered a choice with a
-    lean and the person answered is classified (agree, pick another,
-    amend, defer, didn't follow), within a recent window the person
-    chooses, since the workflows changed over time. At Jev's price 100
-    million input tokens costs about $4. This tests the person's estimate
-    that 60–80% of Fumi's decisions matched what Claude would have said,
-    and doubles as the trust log's first labels. pstack's `/automate-me`
-    and `/recall` are prior art to read first.
-  - **The Fumi decision replay.** 30–40 decisions sampled across topics,
-    each pre-classified one-way or two-way. Each becomes a question with
-    its answer removed; the context is the topic's brief plus the record's
-    one-way decisions — what a build session would have under this
-    design — with no decision the sample asks about leaking in. A fresh
-    agent answers from the packet alone, with no file access (the answers
-    sit in the Fumi checkout), framed as real builder work and never told
-    it is being evaluated. For each question it gives its answer, its
-    confidence and whether it would have asked. Answers are sorted same,
-    equivalent or different against the record; the person judges only
-    the different ones. The numbers that matter are the overturn rate by
-    door type and how well Claude's "would ask" matches the classification.
+- **R29 — Starting numbers.** Measured 2026-10-12, once the shape review
+  settled, over the person's transcripts for Fumi, Portal, Tick, agntc and
+  Mint (298 sessions; 28 headless ones dropped) from 2026-08-31 unless
+  stated. Read-only throughout; the raw material and scripts sat in the
+  session's scratch space.
+  - **Transcript mining.** 615 points where Claude asked the person
+    something or offered a choice, and the reply, each labelled with what
+    the reply did, the kind of question, its door and whether it could
+    have been checked instead of asked. Labelled by Sonnet; Opus labelled
+    60 of them independently.
+    - Where Claude stated a lean and the person decided (313): agree 77%,
+      amend 10%, overrule 13%. Fumi 81 / 8 / 11 — the top of the person's
+      60–80% estimate; Portal 60 / 16 / 24; Tick and agntc 87 / 9 / 4.
+    - Overrule by kind: UI look 5 of 14, UX flow 10 of 46, scope 6 of 32,
+      architecture 4 of 18; product behaviour 7 of 79, data model 1 of
+      12, the session's own mechanics 0 of 33. By door: one-way 20% (25),
+      two-way 14%, process 8%.
+    - Not an answer: 17% (did not follow 13%, answered something else 4%);
+      with challenges to the question's premise, 29%. Did-not-follow
+      gathers on technical questions — internal mechanism 33%,
+      architecture 26%, testing 25%, external contracts 20%. Only 5% of
+      replies said the question should not have been asked; 7% of
+      questions were facts Claude could have checked.
+    - **Labeller agreement** (Sonnet against Opus, 60 rows): what the
+      reply did 80% (kappa 0.75); door 75% (0.51); kind of question 50%
+      (0.43). The list of kinds is not yet sharp enough for two labellers
+      to agree, and every trust count is keyed by it (R25): the trust
+      design starts by making the list labellable and measuring agreement
+      before any count depends on it.
+  - **The Fumi decision replay.** 37 decisions across all 12 decided
+    topics (17 one-way, 20 two-way), posed blind to a fresh Opus at xhigh
+    effort with no tools at all — a headless session whose tool list was
+    confirmed empty — given a builder's brief: product overview, topic
+    briefs and the one-way decisions outside the sample, about 60 settled
+    facts held back for leakage, options shuffled so the recorded answer
+    sat in no favoured place. An Opus grader compared each call with the
+    record.
+    - Same 15, equivalent 4, partial 5, different 13: the person's call
+      19 of 37 (51%). Different 35% on both doors (6 of 17 one-way, 7 of
+      20 two-way). Shown, the person agreed 77%; blind, the match is 51% —
+      shown agreement overstates, as R25's half weight assumes.
+    - Claude's "would check with the person" caught 6 of its 13 wrong
+      calls and fired on 2 of its 19 right ones: Claude cannot be the
+      judge of when to ask (R24). The frozen one-way kinds would have
+      caught all six one-way misses, if labelled right.
+    - Confidence did not separate: right calls 55–85 (mean 75), wrong
+      60–80 (mean 68) — confidence never gates.
+    - Of 11 decisions that had been reopened, 5 came out different: the
+      builder lands on the person's first position.
+    - Several misses are the product's character rather than facts: the
+      user chooses when to install, first run is a proper wizard,
+      everyone is asked for notifications up front, a rejected note never
+      marks the menu-bar icon — evidence for the product record (Open).
+    - Weaker than intended: thinner context than a real session; seven
+      questions whose record does not show who decided (two graded
+      different); grader and builder are one model family; 37 is small.
+      The person judges the different ones.
+  - **Seeding the process gates (R40).** 1,744 gate answers since June: 953
+    at process gates, 482 at review-loop gates, 309 at navigation menus.
+    The rule: a gate goes automatic once the one-sided 95% upper bound on
+    leaving its usual answer falls below a threshold, with blind asks at
+    5%. Replayed in time order: at 20%, 216 of 953 process-gate answers
+    skipped (23%) and 5 would have gone against the person — all five
+    challenges to the premise (three reroute pushbacks, two conclude
+    challenges), not another option picked; at 10%, 10% skipped, 2 wrong.
+    Seeded automatic at 20%: resume (63, none different), conclude (99,
+    3), revisit, wrap-up, reroute, next phase, the project-skills and
+    linters confirmations, correction, plan format, dependency approval.
+    Spec sign-off qualifies by count and stays an authority gate. Where a
+    gate offers auto, auto is the person's usual pick (task approval 32 of
+    36, task gate 20 of 24, fix gate 15 of 22).
+    - **The long tail:** 193 gate names, most answered fewer than ten
+      times in three and a half months, so per-gate counts keep most
+      gates asking for months; fewer gates, and pooling evidence across
+      gates of one kind, are the levers.
+    - **Typed answers need a labeller** (R28): 171 typed instead of
+      pressed — many plain yeses, some asides, a few real pushbacks.
+    - **The transcripts stopped holding the evidence:** since the gate mod
+      (2026-09-27) only the gate's name and the press survive, not its
+      options or recommended row, so the trust log records gate answers
+      itself (R25).
+  - **The knowledge base against plain search.** 25 real information needs
+    from the sessions, run against copies of four projects: the knowledge
+    base's own query (hybrid) against an Opus agent searching the same
+    copy with grep and reads; a blind judge marked every result.
+    - Recall of relevant passages 0.46 against 0.88; precision 0.47
+      against 0.83; plain search found more on 24 of 25. Cost per need:
+      one call, half a second, about 2.3k tokens, against about 13 calls,
+      106 seconds and 56k tokens.
+    - The knowledge base is a good first pointer — a relevant passage in
+      its top five for 24 of 25 — and found 30 relevant passages plain
+      search missed, mostly other work units' specs.
+    - It loses on multi-part needs (ten result slots shared across the
+      framings), on the current decision inside a long record (it ranks
+      the superseded entry; the record-and-log split ends this), and on
+      in-progress records it never indexes.
+    - In use since 2026-08-31 (mostly the store before its 2026-09-29
+      rewrite): 44 of 46 conversational sessions queried; of 76 query
+      runs, 37 used a result, 17 acknowledged it, 18 ignored it, 4 got
+      nothing. Those sessions searched records directly more than they
+      queried (116 searches and 155 reads against 84 queries).
+    - Not measured: what one to three quick plain searches find, the
+      comparison that matters if the call turns on cost. Budgets were not
+      matched.
 - **R30 — Every optimising loop has a counter-measure** and the frozen
   anchors of R24, so trust cannot drift by optimising its own metric.
 
@@ -1021,10 +1096,9 @@ think is a good sign."
    The entry-layer design landed rather than folding in; this programme
    builds on it, and merging research and discussion is now one skill and
    one row in each of the engine's phase tables.
-2. **Review the shape, then measure.** The shape review (Open) first; then
-   transcript mining and the Fumi replay (R29). Nothing in the workflows
-   changes; it tests the premise and names the kinds of question the
-   ledger needs.
+2. **Review the shape, then measure.** Done 2026-10-12: the shape review
+   (R40–R42) and the four measurements (R29). Nothing in the workflows
+   changed.
 3. **Foundations shared by A and B.** The ledger, raise and gate-answer
    logging, the user-level store. Logging collects from the day it ships,
    before anything depends on it.
@@ -1050,7 +1124,8 @@ think is a good sign."
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
 - **The trust design** — pinned by the person on 2026-10-12 until the
-  shape review settles; starts from the list of kinds of question (R25).
+  shape review settles; starts from the list of kinds of question (R25),
+  made sharp enough that two labellers agree on it (R29: 50% today).
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
   sessions wipes restore data") as the test case; quick-fix in detail.
@@ -1154,5 +1229,8 @@ think is a good sign."
   per-phase task writing.
 - **How project skills reach the builder** (R34).
 - **The per-task reviewer measurement** (R16).
-- **Starting the measurements** (R29) — on hold by the person's word until
-  the shape review settles.
+- **The knowledge base's role.** Claude's lean on the R29 evidence: the
+  knowledge base stays as the cheap first pointer and the reach across
+  work units, indexing records only; plain search, when depth matters,
+  runs in a helper agent so its cost stays out of the conversation (R43).
+  Not ruled.
