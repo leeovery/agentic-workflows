@@ -20,7 +20,7 @@ const {
   manageListView,
   manageUnitView,
   absorbTargetMenu,
-  planTopicsMenu,
+  planTopicsPick,
   completedView,
 } = require('../../skills/workflow-engine/scripts/domain/projections/start.cjs');
 const { drawLabel } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
@@ -959,7 +959,7 @@ describe('start projections: manage unit', () => {
     assert.strictEqual(v.sections, undefined, 'the manage snapshot carries no deferred sections');
   });
 
-  it('multi-plan epic renders the plan-topics menu via its builder', () => {
+  it('multi-plan epic renders the plan-topics menu via its builder; a single plan the auto-select line', () => {
     createManifest(dir, 'v1', {
       work_type: 'epic',
       phases: { planning: { items: { 'topic-a': { status: 'completed' }, 'topic-b': { status: 'in-progress' } } } },
@@ -971,7 +971,7 @@ describe('start projections: manage unit', () => {
     const multiMd = manageDetail(dir, 'v1');
     const multi = manageUnitView(multiMd);
     assert.strictEqual(multi.sections, undefined, 'the manage snapshot carries no deferred sections');
-    assert.strictEqual(planTopicsMenu(multiMd), [
+    assert.strictEqual(planTopicsPick(multiMd), [
       "=== MENU: plan topics (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       '· · · · · · · · · · · ·',
       '**`◆ Which plan would you like to view?`**',
@@ -981,8 +981,14 @@ describe('start projections: manage unit', () => {
       '',
     ].join('\n'));
     assert.ok(multi.data.includes('planning_topics: topic-a [completed], topic-b [in-progress]'));
-    const single = manageUnitView(manageDetail(dir, 'v2'));
+    const singleMd = manageDetail(dir, 'v2');
+    const single = manageUnitView(singleMd);
     assert.strictEqual(single.sections, undefined, 'the manage snapshot carries no deferred sections');
+    assert.strictEqual(planTopicsPick(singleMd), [
+      '=== DISPLAY: plan topic auto-select (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      'Automatically proceeding with "Solo".',
+      '',
+    ].join('\n'));
   });
 
   it('manageDetail is null for a missing work unit', () => {
@@ -999,10 +1005,66 @@ describe('start projections: manage unit', () => {
     });
     assert.ok(renderSurface(dir, 'absorb-target', { dotpath: 'auth-flow' }).includes('MENU: absorb target'));
     assert.ok(renderSurface(dir, 'plan-topics', { dotpath: 'v1' }).includes('MENU: plan topics'));
-    // Guards: an epic is not absorbable; a feature has no multi-topic plan.
+    createManifest(dir, 'v2', {
+      work_type: 'epic',
+      phases: { planning: { items: { solo: { status: 'in-progress' } } } },
+    });
+    assert.ok(renderSurface(dir, 'plan-topics', { dotpath: 'v2' }).includes('Automatically proceeding with "Solo".'));
+    // Guards: an epic is not absorbable; a feature has no epic plan, nor an epic with no plan.
     assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'v1' }), /not absorbable/);
-    assert.throws(() => renderSurface(dir, 'plan-topics', { dotpath: 'auth-flow' }), /no multi-topic plan to choose from/);
+    assert.throws(() => renderSurface(dir, 'plan-topics', { dotpath: 'auth-flow' }), /"auth-flow" has no epic plan to choose from/);
+    createManifest(dir, 'v3', { work_type: 'epic', phases: { discussion: { items: { a: { status: 'completed' } } } } });
+    assert.throws(() => renderSurface(dir, 'plan-topics', { dotpath: 'v3' }), /"v3" has no epic plan to choose from/);
     assert.throws(() => renderSurface(dir, 'absorb-target', { dotpath: 'ghost' }), /not found/);
+  });
+
+  it('plan-summary renders the plan\'s phases and tasks under the item\'s own format, byte-stable', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { planning: { items: { 'topic-a': { status: 'in-progress', format: 'sample-format' } } } },
+    });
+    const file = '.workflows/.cache/v1/planning/topic-a/plan-summary.json';
+    createFile(dir, file, JSON.stringify({ phases: [
+      { name: 'Foundation', tasks: [{ id: 'topic-a-1-1', title: 'Wrap the command', done: true }, { id: 'topic-a-1-2', title: 'Drop the wait', done: false, note: 'blocked by topic-a-1-1' }] },
+      { name: 'Regression Net', tasks: [] },
+    ] }));
+    assert.strictEqual(renderSurface(dir, 'plan-summary', { dotpath: 'v1.planning.topic-a', file }), [
+      '=== DISPLAY: plan summary (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '**Plan: v1 / Topic A**',
+      '',
+      '**Format:** sample-format',
+      '',
+      '### Phase 1: Foundation',
+      '- [x] topic-a-1-1: Wrap the command',
+      '- [ ] topic-a-1-2: Drop the wait — blocked by topic-a-1-1',
+      '',
+      '### Phase 2: Regression Net',
+      '',
+    ].join('\n'));
+  });
+
+  it('plan-summary refuses a missing payload, a malformed phase or task, and a plan with no format', () => {
+    createManifest(dir, 'v1', {
+      work_type: 'epic',
+      phases: { planning: { items: { 'topic-a': { status: 'in-progress', format: 'sample-format' }, bare: { status: 'in-progress' } } } },
+    });
+    const write = (/** @type {string} */ name, /** @type {unknown} */ payload) => {
+      const rel = `.workflows/.cache/v1/planning/topic-a/${name}.json`;
+      createFile(dir, rel, JSON.stringify(payload));
+      return rel;
+    };
+    const render = (/** @type {string|undefined} */ file, dotpath = 'v1.planning.topic-a') => renderSurface(dir, 'plan-summary', { dotpath, file });
+    assert.throws(() => render(undefined), /--file <payload\.json> is required — the phases and tasks read through the format/);
+    assert.throws(() => render(write('a', {})), /"phases" must be an array of \{name, tasks\}/);
+    assert.throws(() => render(write('b', { phases: [{ tasks: [] }] })), /phase 1 needs "name", a non-empty string/);
+    assert.throws(() => render(write('c', { phases: [{ name: 'P' }] })), /phase 1 needs "tasks", an array/);
+    assert.throws(() => render(write('d', { phases: [{ name: 'P', tasks: [{ id: 'x', done: true }] }] })), /phase 1 task 1 needs "title", a non-empty string/);
+    assert.throws(() => render(write('e', { phases: [{ name: 'P', tasks: [{ id: 'x', title: 't', done: 'yes' }] }] })), /phase 1 task 1 needs "done", true or false/);
+    assert.throws(() => render(write('f', { phases: [{ name: 'P', tasks: [{ id: 'x', title: 't', done: false, note: '' }] }] })), /"note" must be a non-empty string when present/);
+    const ok = write('g', { phases: [] });
+    assert.throws(() => render(ok, 'v1.planning.bare'), /planning item "bare" records no format/);
+    assert.throws(() => render(ok, 'v1.planning.ghost'), /no planning item "ghost"/);
+    assert.throws(() => render(ok, 'v1.discussion.topic-a'), /address must be <work_unit>\.planning\.<topic>/);
   });
 
   it('the absorb confirm gate renders its consent and refuses out of place', () => {

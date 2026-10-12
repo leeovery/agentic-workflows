@@ -1569,6 +1569,129 @@ describe('render task-list', () => {
   });
 });
 
+describe('render plan-progress', () => {
+  let dir;
+  const CONTINUE_TEXT = '(emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs)';
+  const CONTINUE_MD = '(emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs)';
+  // Phase 1 authored in full, phase 2 half-way; the phase keys `portal-1` and
+  // `portal-2` are phases, never tasks. A topic ending in digits keeps the
+  // prefix honest: `portal-2` must not read as task 2 of a phase.
+  const item = {
+    status: 'in-progress',
+    staging: { 'author-p2': { tasks: { 'portal-2-1': 'approved', 'portal-2-2': 'rejected', 'portal-2-3': 'rejected' } } },
+    task_map: { 'portal-1': 'p1', 'portal-1-1': 'a', 'portal-1-2': 'b', 'portal-1-3': 'c', 'portal-2': 'p2', 'portal-2-1': 'd' },
+  };
+  const taskList = { phase: 1, phase_name: 'Adapter Wrapper', tasks: [{ name: 'A', summary: 's' }, { name: 'B', summary: 's' }] };
+  const render = (/** @type {Record<string, string>} */ args) => renderSurface(dir, 'plan-progress', { dotpath: 'pay.planning.portal', ...args });
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: item } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('designing names the phase from the phase-tree payload, as markdown', () => {
+    const file = writePayload(dir, 'pt.json', { phases: [{ name: 'Foundation' }, { name: 'Adapter Wrapper' }] });
+    assert.strictEqual(render({ variant: 'designing', phase: '2', file }), [
+      `=== DISPLAY: designing tasks ${CONTINUE_MD} ===`,
+      "Taking Phase 2: Adapter Wrapper and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.",
+      '',
+    ].join('\n'));
+    assert.throws(() => render({ variant: 'designing', phase: '3', file }), /the phase-tree payload names no phase 3/);
+    assert.throws(() => render({ variant: 'designing', file }), /--phase must be a positive integer/);
+    assert.throws(() => render({ variant: 'designing', phase: '1' }), /--file <phase-tree payload> is required for designing/);
+  });
+
+  it('authoring counts the task list on a full run and the rejected rows on an amendment', () => {
+    const file = writePayload(dir, 'tl.json', taskList);
+    assert.strictEqual(render({ variant: 'authoring', file }), [
+      `=== DISPLAY: authoring tasks ${CONTINUE_TEXT} ===`,
+      'Authoring 2 tasks for Phase 1: Adapter Wrapper...',
+      '',
+    ].join('\n'));
+    const amended = writePayload(dir, 'tl2.json', { ...taskList, phase: 2, tasks: [...taskList.tasks, { name: 'C', summary: 's' }] });
+    assert.ok(render({ variant: 'authoring', file: amended }).includes('Authoring 2 tasks for Phase 2: Adapter Wrapper...'),
+      'the two rejected rows, never the three-row task list');
+    const single = writePayload(dir, 'tl3.json', { ...taskList, tasks: [taskList.tasks[0]] });
+    assert.ok(render({ variant: 'authoring', file: single }).includes('Authoring 1 task for Phase 1'));
+    assert.throws(() => render({ variant: 'authoring' }), /--file <task-list payload> is required for authoring/);
+    const bad = writePayload(dir, 'bad.json', { phase: 1, phase_name: ' ', tasks: [] });
+    assert.throws(() => render({ variant: 'authoring', file: bad }), /render plan-progress: "phase_name" must be a non-empty string/);
+  });
+
+  it('revising counts the rejected rows, and refuses a phase with none', () => {
+    assert.strictEqual(render({ variant: 'revising', phase: '2' }), [
+      `=== DISPLAY: revising tasks ${CONTINUE_TEXT} ===`,
+      '2 tasks need revision. Re-invoking author agent...',
+      '',
+    ].join('\n'));
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { ...item, staging: { 'author-p2': { tasks: { 'portal-2-1': 'rejected' } } } } } } } });
+    assert.ok(render({ variant: 'revising', phase: '2' }).includes('1 task needs revision. Re-invoking author agent...'));
+    assert.throws(() => render({ variant: 'revising', phase: '1' }), /phase 1 has no rejected authoring rows to revise/);
+  });
+
+  it('authored takes the task scalars the author gate takes', () => {
+    assert.strictEqual(render({ variant: 'authored', m: '2', total: '3', title: 'Wrap command' }), [
+      `=== DISPLAY: task authored ${CONTINUE_TEXT} ===`,
+      'Task 2 of 3: Wrap command — authored.',
+      '',
+    ].join('\n'));
+    assert.throws(() => render({ variant: 'authored', m: '4', total: '3', title: 'X' }), /render plan-progress: --total must be an integer ≥ --m/);
+    assert.throws(() => render({ variant: 'authored', m: '1', total: '3' }), /render plan-progress: --title is required/);
+  });
+
+  it('already-authored and phase-complete name the phase from its task-list payload; the count is task_map\'s', () => {
+    const file = writePayload(dir, 'tl.json', taskList);
+    assert.strictEqual(render({ variant: 'already-authored', file }), [
+      `=== DISPLAY: phase already authored ${CONTINUE_MD} ===`,
+      'Phase 1: Adapter Wrapper — all tasks already authored.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(render({ variant: 'phase-complete', file }), [
+      `=== DISPLAY: phase authored ${CONTINUE_MD} ===`,
+      'Phase 1: Adapter Wrapper — complete (3 tasks authored).',
+      '',
+    ].join('\n'), 'three tasks authored in task_map, though the payload lists two');
+    const unauthored = writePayload(dir, 'tl3.json', { ...taskList, phase: 3 });
+    assert.throws(() => render({ variant: 'phase-complete', file: unauthored }), /phase 3 has no authored tasks in task_map/);
+  });
+
+  it('construction-complete and concluded count the plan\'s phases and tasks off task_map', () => {
+    assert.strictEqual(render({ variant: 'construction-complete' }), [
+      `=== DISPLAY: plan constructed ${CONTINUE_MD} ===`,
+      'All phases are complete. The plan has **2 phases** with **4 tasks** total.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(render({ variant: 'concluded' }), [
+      `=== DISPLAY: plan concluded ${CONTINUE_MD} ===`,
+      'Planning is complete for **pay**.',
+      '',
+      'The plan contains **2 phases** with **4 tasks** total, reviewed for traceability against the specification and structural integrity.',
+      '',
+      'Status has been marked as `completed`. The plan is ready for implementation.',
+      '',
+    ].join('\n'));
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', task_map: { 'portal-1': 'p1', 'portal-1-1': 'a' } } } } } });
+    assert.ok(render({ variant: 'construction-complete' }).includes('The plan has **1 phase** with **1 task** total.'));
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', task_map: { 'portal-1': 'p1' } } } } } });
+    assert.throws(() => render({ variant: 'concluded' }), /"portal" has no authored tasks in task_map/);
+  });
+
+  it('a topic ending in digits never reads its phase keys as tasks', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { 'auth-2': {
+      status: 'in-progress',
+      task_map: { 'auth-2-1': 'p1', 'auth-2-1-1': 'a', 'auth-2-1-2': 'b', 'auth-2-2': 'p2', 'auth-2-2-1': 'c' },
+    } } } } });
+    assert.ok(renderSurface(dir, 'plan-progress', { dotpath: 'pay.planning.auth-2', variant: 'construction-complete' })
+      .includes('The plan has **2 phases** with **3 tasks** total.'));
+  });
+
+  it('refuses an unknown variant and a non-planning address', () => {
+    assert.throws(() => render({}), /--variant must be one of designing, authoring, revising, authored, already-authored, phase-complete, construction-complete, concluded, got "undefined"/);
+    assert.throws(() => render({ variant: 'done' }), /--variant must be one of .*, got "done"/);
+    assert.throws(() => renderSurface(dir, 'plan-progress', { dotpath: 'pay.discussion.portal', variant: 'concluded' }), /address must be <work_unit>\.planning\.<topic>/);
+  });
+});
+
 describe('render findings-summary', () => {
   let dir;
   beforeEach(() => {
@@ -4419,9 +4542,17 @@ describe('render author-task-gate', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the authoring menu byte-exactly', () => {
-    const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command' });
+  it('renders the task\'s detail above the authoring menu byte-exactly', () => {
+    const file = writePayload(dir, 'at.json', { content: '## portal-1-2\n\n### Task 2: Wrap command\n\n**Problem**: the argv runs bare.' });
+    const out = renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '5', title: 'Wrap command', file });
     assert.strictEqual(out, [
+      '=== DISPLAY: authored task (emit verbatim as markdown (not a code block)) ===',
+      '## portal-1-2',
+      '',
+      '### Task 2: Wrap command',
+      '',
+      '**Problem**: the argv runs bare.',
+      '',
       '=== MENU: author task gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
       '**Task 2 of 5: Wrap command**',
@@ -4438,10 +4569,38 @@ describe('render author-task-gate', () => {
     ].join('\n'));
   });
 
-  it('validates the scalars loudly', () => {
-    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '0', total: '5', title: 'X' }), /--m must be a positive integer/);
-    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '1', title: 'X' }), /--total must be an integer/);
-    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2' }), /--title is required/);
+  it('validates the scalars and the payload loudly', () => {
+    const file = writePayload(dir, 'at.json', { content: 'x' });
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '0', total: '5', title: 'X', file }), /--m must be a positive integer/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '2', total: '1', title: 'X', file }), /--total must be an integer/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2', file }), /--title is required/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2', title: 'X' }), /--file <payload\.json> is required — the task's detail/);
+    const blank = writePayload(dir, 'blank.json', { content: '  ' });
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', m: '1', total: '2', title: 'X', file: blank }), /"content" must be the task's full detail, a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.implementation.portal', m: '1', total: '2', title: 'X', file }), /address must be <work_unit>\.planning\.<topic>/);
+  });
+
+  it('--phase is the gate-mode check: the auto line counts the phase\'s rows, gated answers empty', () => {
+    const rows = { 'portal-1-1': 'pending', 'portal-1-2': 'approved', 'portal-1-3': 'rejected' };
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', author_gate_mode: 'auto', staging: { 'author-p1': { tasks: rows } } } } } } });
+    assert.strictEqual(renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', phase: '1' }), [
+      '=== DISPLAY: author tasks auto-approved (emit verbatim as a text code block (```text fence) after recording the approvals — the user set this gate to auto: do not stop; continue as the workflow instructs) ===',
+      'Phase 1: 3 tasks authored. Auto-approved. Writing to plan.',
+      '',
+    ].join('\n'));
+
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', author_gate_mode: 'gated', staging: { 'author-p1': { tasks: rows } } } } } } });
+    assert.strictEqual(renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', phase: '1' }), '');
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', staging: { 'author-p1': { tasks: rows } } } } } } });
+    assert.strictEqual(renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', phase: '1' }), '', 'no recorded mode reads gated');
+  });
+
+  it('--phase refuses a phase with no authoring rows, a bad number, and the task flags beside it', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { portal: { status: 'in-progress', author_gate_mode: 'auto' } } } } });
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', phase: '1' }), /phase 1 has no authoring rows — register them before the check/);
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', phase: 'one' }), /--phase must be a positive integer/);
+    const file = writePayload(dir, 'at.json', { content: 'x' });
+    assert.throws(() => renderSurface(dir, 'author-task-gate', { dotpath: 'pay.planning.portal', phase: '1', file }), /--phase is the phase's gate-mode check — it takes no task flags/);
   });
 });
 
@@ -4769,7 +4928,9 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['phase-tree', 'pay.planning.pay', '--menu-only']).startsWith('=== MENU: phase structure gate'));
     const task = writePayload(dir, 'task.json', { current: 1, total: 1, title: 'T', severity: 'Minor', sources: 's', problem: 'p', solution: 's', outcome: 'o', steps: ['1'], criteria: ['c'] });
     assert.ok(run(['proposed-task', 'pay.planning.pay', '--file', task, '--gate', 'auto']).includes('approved [auto]'));
-    assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T']).includes('**Task 1 of 2: T**'));
+    const detail = writePayload(dir, 'at.json', { content: 'The task.' });
+    assert.ok(run(['author-task-gate', 'pay.planning.pay', '--m', '1', '--total', '2', '--title', 'T', '--file', detail]).includes('**Task 1 of 2: T**'));
+    assert.ok(run(['plan-progress', 'pay.planning.pay', '--variant', 'authored', '--m', '1', '--total', '2', '--title', 'T']).includes('Task 1 of 2: T — authored.'));
     const gate = run(['next-phase-gate', 'pay', '--prev', 'implementation', '--next', 'review']);
     assert.ok(gate.includes('Implementation completed for "Pay".') && gate.includes('Complete without review'), gate);
     assert.ok(run(['phase-completed', 'pay', '--phase', 'discussion']).includes('Discussion completed for "Pay".'));
@@ -5366,7 +5527,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-graph-cycle, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -8298,32 +8459,194 @@ describe('render — the adopted phase gates', () => {
       /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
   });
 
-  it('dependency-approval-gate: three variants, one approve-or-change shape', () => {
-    const graph = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph' });
-    assert.match(graph, /MENU: dependency approval gate/);
-    assert.match(graph, /`◆ Approve the dependency graph\?`/);
-    assert.match(unwrap(graph), /\*\*`y\/yes`\*\*\s+→ Proceed/);
-    assert.match(unwrap(graph), /\*\*Tell me what to change\*\* → which priorities or dependencies to adjust/);
+  // The grapher worked over the plan's authored tasks — three in task_map,
+  // beside the phase key, which is no task.
+  const graphed = (/** @type {Record<string, any>} */ extra = {}) => writeManifest(dir, 'pay', { phases: { planning: { items: {
+    checkout: { status: 'in-progress', task_map: { 'checkout-1': 'p1', 'checkout-1-1': 'a', 'checkout-1-2': 'b', 'checkout-1-3': 'c' }, ...extra },
+  } } } });
 
-    assert.match(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph' }),
-      /`◆ Approve the updated graph\?`/);
-    const resolution = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' });
-    assert.match(resolution, /`◆ Approve the dependency resolution\?`/);
-    assert.match(unwrap(resolution), /\*\*Tell me what to change\*\* → which resolutions to adjust or links to add/);
+  it('dependency-approval-gate graph: the grapher\'s notes beneath the natural-order line, byte-stable', () => {
+    graphed();
+    const file = writePayload(dir, 'tg.json', { notes: 'Every task builds on the one before it.' });
+    assert.strictEqual(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', file }), [
+      '=== DISPLAY: task graph (emit verbatim as markdown (not a code block)) ===',
+      "I've analyzed all 3 tasks and the natural execution order is already correct — no explicit dependencies or priorities are needed.",
+      '',
+      'Every task builds on the one before it.',
+      '',
+      "=== MENU: dependency approval gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Approve the dependency graph?`**',
+      '',
+      '**`y/yes`**                  → Proceed',
+      '**Tell me what to change** → which priorities or dependencies to',
+      `${NB(25)}adjust`,
+      '',
+    ].join('\n'));
+    const blank = writePayload(dir, 'blank.json', { notes: ' ' });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', file: blank }),
+      /"notes" must be the grapher's notes, a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph' }),
+      /--file <payload\.json> is required — the grapher's report/);
+  });
 
+  it('dependency-approval-gate updated-graph: the applied rows, counted, with notes only where given', () => {
+    graphed();
+    const file = writePayload(dir, 'tg.json', {
+      dependencies: ['checkout-1-2 depends on checkout-1-1 — the wrapper exists first', 'checkout-1-3 depends on checkout-1-2 — it drops the wait'],
+      priorities: ['checkout-1-1: 1 — everything waits on it'],
+      notes: 'No isolated tasks.',
+    });
+    assert.strictEqual(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file }).split('=== MENU')[0], [
+      '=== DISPLAY: task graph (emit verbatim as markdown (not a code block)) ===',
+      "I've analyzed and applied dependencies and priorities across all 3 tasks:",
+      '',
+      '**Dependencies** (2 relationships):',
+      '- checkout-1-2 depends on checkout-1-1 — the wrapper exists first',
+      '- checkout-1-3 depends on checkout-1-2 — it drops the wait',
+      '',
+      '**Priorities**:',
+      '- checkout-1-1: 1 — everything waits on it',
+      '',
+      'No isolated tasks.',
+      '',
+      '',
+    ].join('\n'));
+    const bare = writePayload(dir, 'bare.json', { dependencies: ['checkout-1-2 depends on checkout-1-1 — first'], priorities: [] });
+    const out = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: bare });
+    assert.ok(out.includes('**Dependencies** (1 relationship):\n- checkout-1-2 depends on checkout-1-1 — first\n\n**Priorities**:\n\n=== MENU'), out);
+    assert.match(out, /`◆ Approve the updated graph\?`/);
+
+    const noRows = writePayload(dir, 'norows.json', { priorities: [] });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: noRows }),
+      /"dependencies" must be an array of the grapher's dependencies rows, each a non-empty string/);
+    const blankRow = writePayload(dir, 'blankrow.json', { dependencies: [], priorities: [''] });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: blankRow }),
+      /"priorities" must be an array/);
+    const blankNotes = writePayload(dir, 'blanknotes.json', { dependencies: [], priorities: [], notes: '' });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'updated-graph', file: blankNotes }),
+      /"notes" must be a non-empty string when present/);
+  });
+
+  it('dependency-approval-gate graph variants refuse a plan with no authored task', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress' } } } } });
+    const file = writePayload(dir, 'tg.json', { notes: 'n' });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'graph', file }),
+      /"checkout" has no authored tasks in task_map/);
+  });
+
+  it('dependency-approval-gate resolution: the plan\'s dependencies and every resolution onto its tasks, read off the planning items', () => {
+    writeManifest(dir, 'pay', { phases: { planning: { items: {
+      checkout: { status: 'in-progress', external_dependencies: {
+        'data-model': { description: 'the shared row shape', state: 'unresolved' },
+        'auth-flow': { description: 'session tokens', state: 'resolved', internal_id: 'auth-flow-1-2' },
+        billing: { description: 'invoices', state: 'satisfied_externally' },
+      } },
+      'order-history': { status: 'in-progress', external_dependencies: { checkout: { description: 'the paid order', state: 'resolved', internal_id: 'checkout-2-1' } } },
+      refunds: { status: 'in-progress', external_dependencies: { checkout: { description: 'the capture', state: 'unresolved' } } },
+      'auth-flow': { status: 'completed' },
+    } } } });
+    assert.strictEqual(renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }), [
+      '=== DISPLAY: external dependencies (emit verbatim as a text code block (```text fence)) ===',
+      'External Dependencies',
+      '',
+      '  Data Model (unresolved)',
+      '',
+      '  Auth Flow (resolved)',
+      '  └─ auth-flow-1-2',
+      '',
+      '  Billing (satisfied_externally)',
+      '',
+      'Reverse resolutions:',
+      '  Order History → Checkout:checkout-2-1',
+      '',
+      "=== MENU: dependency approval gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Approve the dependency resolution?`**',
+      '',
+      '**`y/yes`**                  → Proceed',
+      '**Tell me what to change** → which resolutions to adjust or links to',
+      `${NB(25)}add`,
+      '',
+    ].join('\n'));
+  });
+
+  it('dependency-approval-gate resolution: no reverse heading without a reverse resolution; a broken row and --file refuse', () => {
+    const out = renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' });
+    assert.ok(out.includes('  Data Model (unresolved)\n\n  Auth Flow (resolved)\n  └─ auth-1-2\n\n=== MENU'), out);
+    assert.ok(!out.includes('Reverse resolutions'), out);
+    const file = writePayload(dir, 'tg.json', { notes: 'n' });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution', file }),
+      /--file belongs to the graph variants/);
+    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress', external_dependencies: { x: { state: 'resolved' } } } } } } });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }),
+      /external dependency "x" is resolved but names no internal_id/);
+    writeManifest(dir, 'pay', { phases: { planning: { items: { checkout: { status: 'in-progress', external_dependencies: { y: { description: 'd' } } } } } } });
+    assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout', variant: 'resolution' }),
+      /external dependency "y" carries no state/);
+  });
+
+  it('dependency-approval-gate: refuses an unknown variant and a non-planning address', () => {
     assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.planning.checkout' }),
       /--variant must be one of graph, updated-graph, resolution, got "undefined"/);
     assert.throws(() => renderSurface(dir, 'dependency-approval-gate', { dotpath: 'pay.discussion.checkout', variant: 'graph' }),
       /address must be <work_unit>\.planning\.<topic>/);
   });
 
-  it('task-count-gate: the authoring mismatch stop', () => {
-    const out = renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout' });
-    assert.match(out, /MENU: task count gate/);
-    assert.match(out, /`◆ How would you like to proceed\?`/);
-    assert.match(unwrap(out), /\*\*`r\/retry`\*\* → Re-invoke the author agent once more/);
-    assert.match(unwrap(out), /\*\*Adjust\*\*\s+→ Tell me what to correct \(the task table or the detail file\), and I'll apply it and re-validate/);
-    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.implementation.checkout' }),
+  it('task-graph-cycle: the grapher\'s cycle as markdown, stopping for the user\'s direction — no menu', () => {
+    const file = writePayload(dir, 'tg.json', { cycle: 'checkout-1-2 → checkout-1-3 → checkout-1-2' });
+    assert.strictEqual(renderSurface(dir, 'task-graph-cycle', { dotpath: 'pay.planning.checkout', file }), [
+      "=== DISPLAY: task graph cycle (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      'The dependency analysis found a circular dependency:',
+      '',
+      'checkout-1-2 → checkout-1-3 → checkout-1-2',
+      '',
+      'This must be resolved before continuing. The cycle usually means two tasks each assume the other is done first — one needs to be restructured or the dependency removed.',
+      '',
+    ].join('\n'));
+    assert.throws(() => renderSurface(dir, 'task-graph-cycle', { dotpath: 'pay.planning.checkout' }), /--file <payload\.json> is required — the grapher's cycle/);
+    const blank = writePayload(dir, 'blank.json', { cycle: '' });
+    assert.throws(() => renderSurface(dir, 'task-graph-cycle', { dotpath: 'pay.planning.checkout', file: blank }), /"cycle" must be the grapher's cycle chain, a non-empty string/);
+    assert.throws(() => renderSurface(dir, 'task-graph-cycle', { dotpath: 'pay.discussion.checkout', file }), /address must be <work_unit>\.planning\.<topic>/);
+  });
+
+  it('task-count-gate: the two id lists aligned in one column above the retry/adjust stop, byte-stable', () => {
+    const file = writePayload(dir, 'tc.json', {
+      table: ['checkout-1-1', 'checkout-1-2', 'checkout-1-3', 'checkout-1-4', 'checkout-1-5'],
+      detail: ['checkout-1-1'],
+    });
+    assert.strictEqual(renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file }), [
+      '=== DISPLAY: task count mismatch (emit verbatim as a text code block (```text fence)) ===',
+      'Task count mismatch persists after 2 authoring attempts.',
+      '',
+      'Planning file task table: 5 tasks — checkout-1-1, checkout-1-2,',
+      '                          checkout-1-3, checkout-1-4,',
+      '                          checkout-1-5',
+      'Task detail file:         1 task — checkout-1-1',
+      '',
+      "=== MENU: task count gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      "**`◆ How would you like to proceed?`**",
+      '',
+      '**`r/retry`** → Re-invoke the author agent once more',
+      '**Adjust**  → Tell me what to correct (the task table or the detail',
+      `${NB(10)}file), and I'll apply it and re-validate`,
+      '',
+    ].join('\n'));
+    const empty = writePayload(dir, 'empty.json', { table: ['checkout-1-1'], detail: [] });
+    assert.ok(renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: empty }).includes('Task detail file:         0 tasks — none'));
+  });
+
+  it('task-count-gate: refuses a missing payload, a malformed list, an empty table, and a non-planning address', () => {
+    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout' }), /--file <payload\.json> is required — the two lists of internal ids/);
+    const noDetail = writePayload(dir, 'nd.json', { table: ['a'] });
+    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: noDetail }), /"detail" must be an array of internal ids, each a non-empty string/);
+    const blankId = writePayload(dir, 'bi.json', { table: [' '], detail: [] });
+    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: blankId }), /"table" must be an array of internal ids/);
+    const noTable = writePayload(dir, 'nt.json', { table: [], detail: ['a'] });
+    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.planning.checkout', file: noTable }), /"table" must name the planning file's tasks/);
+    const file = writePayload(dir, 'tc.json', { table: ['a'], detail: [] });
+    assert.throws(() => renderSurface(dir, 'task-count-gate', { dotpath: 'pay.implementation.checkout', file }),
       /address must be <work_unit>\.planning\.<topic>/);
   });
 

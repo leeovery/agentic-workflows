@@ -260,6 +260,7 @@ Commands:
   commit --migrations -m <message>
   render resume-gate <wu.phase.topic> [--mail N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
+  render plan-progress <wu.planning.topic> --variant designing|authoring|revising|authored|already-authored|phase-complete|construction-complete|concluded [--phase N] [--file <payload.json>] [--m N --total N --title STR]
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
   render finding-landed   <wu.phase.topic> --file <payload.json>
@@ -313,8 +314,9 @@ Commands:
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
-  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph|resolution
-  render task-count-gate  <wu.planning.topic>
+  render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --file <payload.json> | --variant resolution
+  render task-graph-cycle <wu.planning.topic> --file <payload.json>
+  render task-count-gate  <wu.planning.topic> --file <payload.json>
   render plan-context-gate <wu.planning.topic>
   render cross-cutting-gate --file <payload.json>
   render cross-cutting-references --file <payload.json>
@@ -332,7 +334,7 @@ Commands:
   render resurface-gate   <wu.phase.topic> --file <payload.json> [--view full]
   render construction-gate <wu.phase.topic>
   render tasks-overview   <wu.phase.topic> --file <payload.json>
-  render author-task-gate <wu.planning.topic> --m N --total N --title STR
+  render author-task-gate <wu.planning.topic> --m N --total N --title STR --file <payload.json> | --phase N  (--phase: empty while gated)
   render phase-tree       <wu.planning.topic> --file <payload.json> [--approve] | --menu-only
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <research|discussion|planning|specification>
@@ -369,6 +371,7 @@ Commands:
   render absorb-target     <feature>
   render absorb-confirm-gate <feature>
   render plan-topics       <wu>
+  render plan-summary      <wu.planning.topic> --file <payload.json>
   render archived-actions  --path <archived path>
   render archived-delete-gate --path <archived path>
   render inbox-content     --path <inbox path>[,<inbox path>…]

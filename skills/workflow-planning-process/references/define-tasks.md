@@ -27,10 +27,10 @@ Invoke `workflow-planning-task-designer` with these file paths:
 6. **All approved phases**: the complete phase structure from the planning file
 7. **Target phase number**: the phase being broken into tasks
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the phase's line — its name rides `phase-tree.json`, the payload the phase structure was presented from — and emit the call's DISPLAY section verbatim per its marker:
 
-```
-Taking Phase {N}: {Phase Name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render plan-progress {work_unit}.planning.{topic} --variant designing --phase {N} --file .workflows/.cache/{work_unit}/planning/{topic}/phase-tree.json
 ```
 
 This dispatch and every re-invocation of the designer below run in the background (`run_in_background: true`) and end the turn on exactly `The task designer agent has been dispatched for phase {N}.`

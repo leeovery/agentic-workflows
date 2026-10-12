@@ -16,14 +16,15 @@
 const fs = require('fs');
 const path = require('path');
 const { loadAllManifests, loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { signpost } = require('../kernel/render.cjs');
+const { signpost, wrap } = require('../kernel/render.cjs');
+const { displayWidth } = require('../kernel/terminal.cjs');
 const { TREE_WIDTH, titlecase, tag, WORKLIST_GLYPH, DISCOVERY_GLYPH, discoveryLifecycleLabel } = require('./conventions.cjs');
 const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, timedInstruction, menu, menuFrame, MENU_GLYPH, cmdOption, bareOption, promptOption, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, AUTO_GATE_CLAUSE } = require('./projections/surfaces.cjs');
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, tasksCompleteDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
 const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt } = require('./projections/transactions.cjs');
-const { absorbTargetMenu, absorbConfirmGate, planTopicsMenu, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
+const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
 const { archivedItem, inboxItems } = require('./inbox-set.cjs');
 const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
@@ -239,42 +240,31 @@ function resumeGate(cwd, args) {
  * Parse and validate the task-list payload: `{phase, phase_name, tasks[]}`,
  * each task `{name, summary, edge_cases?}`. Shape errors are loud and name
  * the field, so a malformed write self-corrects.
- * @param {string} cwd @param {string} file
+ * @param {string} cwd @param {string} file @param {string} [surface]
  * @returns {{phase: number, phase_name: string, tasks: {name: string, summary: string, edge_cases?: string[]}[]}}
  */
-function readTaskListPayload(cwd, file) {
-  let raw;
-  try {
-    raw = fs.readFileSync(path.resolve(cwd, file), 'utf8');
-  } catch {
-    throw new Error(`render task-list: payload file not found: ${file}`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`render task-list: payload is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('render task-list: payload must be an object {phase, phase_name, tasks}');
+function readTaskListPayload(cwd, file, surface = 'task-list') {
+  const parsed = readJsonPayload(cwd, file, surface);
+  if (Array.isArray(parsed)) {
+    throw new Error(`render ${surface}: payload must be an object {phase, phase_name, tasks}`);
   }
   if (!Number.isInteger(parsed.phase) || parsed.phase < 1) {
-    throw new Error('render task-list: "phase" must be a positive integer');
+    throw new Error(`render ${surface}: "phase" must be a positive integer`);
   }
-  if (typeof parsed.phase_name !== 'string' || parsed.phase_name.trim() === '') {
-    throw new Error('render task-list: "phase_name" must be a non-empty string');
+  if (!isFilled(parsed.phase_name)) {
+    throw new Error(`render ${surface}: "phase_name" must be a non-empty string`);
   }
   if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
-    throw new Error('render task-list: "tasks" must be a non-empty array of {name, summary, edge_cases}');
+    throw new Error(`render ${surface}: "tasks" must be a non-empty array of {name, summary, edge_cases}`);
   }
   for (const [i, t] of parsed.tasks.entries()) {
     for (const field of ['name', 'summary']) {
-      if (!t || typeof t[field] !== 'string' || t[field].trim() === '') {
-        throw new Error(`render task-list: task ${i + 1} is missing "${field}" (each task needs name, summary, optional edge_cases[])`);
+      if (!t || !isFilled(t[field])) {
+        throw new Error(`render ${surface}: task ${i + 1} is missing "${field}" (each task needs name, summary, optional edge_cases[])`);
       }
     }
-    if (t.edge_cases !== undefined && (!Array.isArray(t.edge_cases) || t.edge_cases.some((e) => typeof e !== 'string' || e.trim() === ''))) {
-      throw new Error(`render task-list: task ${i + 1} "edge_cases" must be an array of non-empty strings when present`);
+    if (t.edge_cases !== undefined && (!Array.isArray(t.edge_cases) || t.edge_cases.some((e) => !isFilled(e)))) {
+      throw new Error(`render ${surface}: task ${i + 1} "edge_cases" must be an array of non-empty strings when present`);
     }
   }
   return parsed;
@@ -339,6 +329,176 @@ function taskList(cwd, { dotpath, file, variant: variantArg }) {
     ));
   }
   return parts.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// plan-progress — the lines plan construction says as it works: a phase's
+// tasks designed, authored, revised and written, a phase done, the plan
+// built, the plan concluded. Counts are read where the manifest holds them:
+// the phase's authoring rows (`staging.author-p{N}.tasks`) and the authored
+// tasks in `task_map`, whose `{topic}-{phase}-{task}` keys name each task's
+// phase. A phase's name is the planning file's, so it rides the payload the
+// flow already wrote for that phase — the phase-tree payload before the
+// phase has a task list, the task-list payload once it has one.
+// ---------------------------------------------------------------------------
+
+/** @param {number} n @returns {string} */
+function taskCount(n) {
+  return `${n} task${n === 1 ? '' : 's'}`;
+}
+
+/** @param {object} manifest @param {string} topic @returns {Record<string, any>} */
+function planningItem(manifest, topic) {
+  return itemOf(manifest, 'planning', topic) || {};
+}
+
+/**
+ * The authored tasks per phase: every `task_map` key `{topic}-{phase}-{task}`
+ * is a task — a phase's own `{topic}-{phase}` key is not.
+ * @param {Record<string, any>} item @param {string} topic
+ * @returns {Map<number, number>}
+ */
+function authoredByPhase(item, topic) {
+  const prefix = `${topic}-`;
+  /** @type {Map<number, number>} */
+  const counts = new Map();
+  for (const id of Object.keys(item.task_map || {})) {
+    const step = id.startsWith(prefix) ? /^(\d+)-\d+$/.exec(id.slice(prefix.length)) : null;
+    if (step) counts.set(Number(step[1]), (counts.get(Number(step[1])) || 0) + 1);
+  }
+  return counts;
+}
+
+/** The plan's authored phases and tasks; refuses a plan with none. @param {Record<string, any>} item @param {string} topic @param {string} surface */
+function authoredPlan(item, topic, surface) {
+  const counts = authoredByPhase(item, topic);
+  const tasks = [...counts.values()].reduce((a, b) => a + b, 0);
+  if (tasks === 0) throw new Error(`render ${surface}: "${topic}" has no authored tasks in task_map`);
+  return { phases: counts.size, tasks };
+}
+
+/** The phase's authoring rows, internal id → pending|approved|rejected. @param {Record<string, any>} item @param {number} phase @returns {Record<string, string>} */
+function authorRows(item, phase) {
+  const tasks = ((item.staging || {})[`author-p${phase}`] || {}).tasks;
+  return tasks && typeof tasks === 'object' ? tasks : {};
+}
+
+/** @param {Record<string, string>} rows @returns {number} */
+function rejectedCount(rows) {
+  return Object.values(rows).filter((s) => s === 'rejected').length;
+}
+
+/** @param {string|undefined} phase @param {string} surface @returns {number} */
+function phaseFlag(phase, surface) {
+  const n = parseInt(phase || '', 10);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`render ${surface}: --phase must be a positive integer`);
+  return n;
+}
+
+/** @typedef {{cwd: string, args: Record<string, string|undefined>, workUnit: string, topic: string, item: Record<string, any>}} ProgressContext */
+
+/** @type {Record<string, {name: string, form: 'text'|'markdown', line: (ctx: ProgressContext) => string}>} */
+const PLAN_PROGRESS = {
+  designing: {
+    name: 'DISPLAY: designing tasks',
+    form: 'markdown',
+    line: ({ cwd, args }) => {
+      const n = phaseFlag(args.phase, 'plan-progress');
+      if (!args.file) throw new Error('render plan-progress: --file <phase-tree payload> is required for designing');
+      const p = readJsonPayload(cwd, args.file, 'plan-progress');
+      const ph = Array.isArray(p.phases) ? p.phases[n - 1] : undefined;
+      if (!ph || !isFilled(ph.name)) throw new Error(`render plan-progress: the phase-tree payload names no phase ${n}`);
+      return `Taking Phase ${n}: ${ph.name} and breaking it into tasks. I'll delegate this to a specialist agent that will read the full specification and propose a task list.`;
+    },
+  },
+  authoring: {
+    name: 'DISPLAY: authoring tasks',
+    form: 'text',
+    line: ({ cwd, args, item }) => {
+      const p = progressTaskList(cwd, args, 'authoring');
+      const rejected = rejectedCount(authorRows(item, p.phase));
+      return `Authoring ${taskCount(rejected || p.tasks.length)} for Phase ${p.phase}: ${p.phase_name}...`;
+    },
+  },
+  revising: {
+    name: 'DISPLAY: revising tasks',
+    form: 'text',
+    line: ({ args, item }) => {
+      const n = phaseFlag(args.phase, 'plan-progress');
+      const rejected = rejectedCount(authorRows(item, n));
+      if (rejected === 0) throw new Error(`render plan-progress: phase ${n} has no rejected authoring rows to revise`);
+      return `${rejected === 1 ? '1 task needs' : `${rejected} tasks need`} revision. Re-invoking author agent...`;
+    },
+  },
+  authored: {
+    name: 'DISPLAY: task authored',
+    form: 'text',
+    line: ({ args }) => {
+      const { m, total, title } = authorScalars(args, 'plan-progress');
+      return `Task ${m} of ${total}: ${title} — authored.`;
+    },
+  },
+  'already-authored': {
+    name: 'DISPLAY: phase already authored',
+    form: 'markdown',
+    line: ({ cwd, args }) => {
+      const p = progressTaskList(cwd, args, 'already-authored');
+      return `Phase ${p.phase}: ${p.phase_name} — all tasks already authored.`;
+    },
+  },
+  'phase-complete': {
+    name: 'DISPLAY: phase authored',
+    form: 'markdown',
+    line: ({ cwd, args, item, topic }) => {
+      const p = progressTaskList(cwd, args, 'phase-complete');
+      const authored = authoredByPhase(item, topic).get(p.phase) || 0;
+      if (authored === 0) throw new Error(`render plan-progress: phase ${p.phase} has no authored tasks in task_map`);
+      return `Phase ${p.phase}: ${p.phase_name} — complete (${taskCount(authored)} authored).`;
+    },
+  },
+  'construction-complete': {
+    name: 'DISPLAY: plan constructed',
+    form: 'markdown',
+    line: ({ item, topic }) => {
+      const { phases, tasks } = authoredPlan(item, topic, 'plan-progress');
+      return `All phases are complete. The plan has **${phases} phase${phases === 1 ? '' : 's'}** with **${taskCount(tasks)}** total.`;
+    },
+  },
+  concluded: {
+    name: 'DISPLAY: plan concluded',
+    form: 'markdown',
+    line: ({ workUnit, item, topic }) => {
+      const { phases, tasks } = authoredPlan(item, topic, 'plan-progress');
+      return [
+        `Planning is complete for **${workUnit}**.`,
+        '',
+        `The plan contains **${phases} phase${phases === 1 ? '' : 's'}** with **${taskCount(tasks)}** total, reviewed for traceability against the specification and structural integrity.`,
+        '',
+        'Status has been marked as `completed`. The plan is ready for implementation.',
+      ].join('\n');
+    },
+  },
+};
+
+/** The phase's task-list payload a progress line reads its phase from. @param {string} cwd @param {Record<string, string|undefined>} args @param {string} variant */
+function progressTaskList(cwd, args, variant) {
+  if (!args.file) throw new Error(`render plan-progress: --file <task-list payload> is required for ${variant}`);
+  return readTaskListPayload(cwd, args.file, 'plan-progress');
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, variant?: string} & Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function planProgress(cwd, args) {
+  const spec = args.variant === undefined ? undefined : PLAN_PROGRESS[args.variant];
+  if (!spec) {
+    throw new Error(`render plan-progress: --variant must be one of ${Object.keys(PLAN_PROGRESS).join(', ')}, got "${args.variant}"`);
+  }
+  const { workUnit, manifest, topic } = resolvePlanning(cwd, args.dotpath, 'plan-progress');
+  const line = spec.line({ cwd, args, workUnit, topic, item: planningItem(manifest, topic) });
+  return section(spec.name, spec.form === 'text' ? CONTINUE_INSTRUCTION : CONTINUE_MARKDOWN_INSTRUCTION, line);
 }
 
 // ---------------------------------------------------------------------------
@@ -1740,33 +1900,72 @@ function tasksOverview(cwd, { dotpath, file }) {
 }
 
 // ---------------------------------------------------------------------------
-// author-task-gate — the planning task-authoring per-task menu. The task
-// detail itself is a verbatim file emission the flow owns; only the gate
-// renders here. Scalars ride as flags.
+// author-task-gate — the planning authoring loop's gate, called two ways.
+// Over the phase (`--phase N`) it is the gate-mode check: under auto the
+// line saying the phase's tasks were approved together; gated answers
+// empty, the per-task gates following. Over a task it is that task's full
+// detail — markdown the engine never parses, so it rides the payload —
+// above the approval menu. The task's ordinal and name ride as flags.
 // ---------------------------------------------------------------------------
 
 /**
- * @param {string} cwd
- * @param {{dotpath: string, m?: string, total?: string, title?: string}} args
+ * The task scalars the per-task gate and the authored line share.
+ * @param {Record<string, string|undefined>} args @param {string} surface
+ * @returns {{m: number, total: number, title: string}}
+ */
+function authorScalars(args, surface) {
+  const m = parseInt(args.m || '', 10);
+  const total = parseInt(args.total || '', 10);
+  if (!Number.isInteger(m) || m < 1) throw new Error(`render ${surface}: --m must be a positive integer`);
+  if (!Number.isInteger(total) || total < m) throw new Error(`render ${surface}: --total must be an integer ≥ --m`);
+  if (!isFilled(args.title)) throw new Error(`render ${surface}: --title is required`);
+  return { m, total, title: args.title };
+}
+
+/**
+ * The phase's gate-mode check: the auto line, counting the phase's authoring
+ * rows, or empty while the gate is gated.
+ * @param {Record<string, any>} item @param {string} phase
  * @returns {string}
  */
-function authorTaskGate(cwd, { dotpath, m, total, title }) {
-  resolveAddress(cwd, dotpath, 'author-task-gate');
-  const mN = parseInt(m || '', 10);
-  const totalN = parseInt(total || '', 10);
-  if (!Number.isInteger(mN) || mN < 1) throw new Error('render author-task-gate: --m must be a positive integer');
-  if (!Number.isInteger(totalN) || totalN < mN) throw new Error('render author-task-gate: --total must be an integer ≥ --m');
-  if (!isFilled(title)) throw new Error('render author-task-gate: --title is required');
+function authorPhaseCheck(item, phase) {
+  const n = phaseFlag(phase, 'author-task-gate');
+  const rows = Object.keys(authorRows(item, n)).length;
+  if (rows === 0) throw new Error(`render author-task-gate: phase ${n} has no authoring rows — register them before the check`);
+  if (gateOf(item, 'author_gate_mode') !== 'auto') return '';
   return section(
-    'MENU: author task gate',
-    MENU_INSTRUCTION,
-    menu(`**Task ${mN} of ${totalN}: ${title}**`, [
+    'DISPLAY: author tasks auto-approved',
+    timedInstruction('text', 'after recording the approvals', AUTO_GATE_CLAUSE),
+    `Phase ${n}: ${taskCount(rows)} authored. Auto-approved. Writing to plan.`,
+  );
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, phase?: string, m?: string, total?: string, title?: string, file?: string}} args
+ * @returns {string}
+ */
+function authorTaskGate(cwd, args) {
+  const { manifest, topic } = resolvePlanning(cwd, args.dotpath, 'author-task-gate');
+  if (args.phase !== undefined) {
+    if (args.m !== undefined || args.file !== undefined) {
+      throw new Error("render author-task-gate: --phase is the phase's gate-mode check — it takes no task flags");
+    }
+    return authorPhaseCheck(planningItem(manifest, topic), args.phase);
+  }
+  const { m, total, title } = authorScalars(args, 'author-task-gate');
+  if (!args.file) throw new Error("render author-task-gate: --file <payload.json> is required — the task's detail");
+  const p = readJsonPayload(cwd, args.file, 'author-task-gate');
+  if (!isFilled(p.content)) throw new Error('render author-task-gate: "content" must be the task\'s full detail, a non-empty string');
+  return [
+    section('DISPLAY: authored task', emitAs('markdown'), p.content),
+    section('MENU: author task gate', MENU_INSTRUCTION, menu(`**Task ${m} of ${total}: ${title}**`, [
       cmdOption('y', 'yes', 'Write it to the plan'),
       cmdOption('a', 'auto', 'Approve this and all remaining tasks automatically'),
       promptOption('Tell me what to change', 'what to revise in this task'),
       promptOption('Navigate', 'Tell me where to go: a different phase or task, or the leading edge'),
-    ], { question: 'Write it to the plan?' }),
-  );
+    ], { question: 'Write it to the plan?' })),
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -3415,46 +3614,191 @@ function executorBlockGate(cwd, { dotpath, result, file }) {
 }
 
 // dependency-approval-gate — planning's three approvals over dependency
-// work: the graph as first analysed, the graph after it was applied, and the
-// external-dependency resolutions. One shape — approve, or say what to
-// change — with each variant's own wording.
+// work, each beneath what it approves. The task graph is the grapher's
+// report, so it rides the payload: the natural order already right
+// (`graph`), or the dependencies and priorities it applied (`updated-graph`);
+// the task count it worked over is the plan's authored tasks. The
+// resolutions (`resolution`) are the plan's external dependencies and every
+// other plan's dependency resolved onto one of its tasks, all read off the
+// planning items. One shape — approve, or say what to change — with each
+// variant's own wording.
+
+/** @typedef {{cwd: string, file: string|undefined, manifest: object, topic: string}} ApprovalContext */
+
+/** @param {ApprovalContext} ctx @returns {Record<string, any>} */
+function taskGraphPayload({ cwd, file }) {
+  if (!file) throw new Error('render dependency-approval-gate: --file <payload.json> is required — the grapher\'s report');
+  return readJsonPayload(cwd, file, 'dependency-approval-gate');
+}
+
+/** @param {Record<string, any>} p @param {string} field @returns {string[]} */
+function graphRows(p, field) {
+  if (!Array.isArray(p[field]) || p[field].some((/** @type {unknown} */ r) => !isFilled(r))) {
+    throw new Error(`render dependency-approval-gate: "${field}" must be an array of the grapher's ${field} rows, each a non-empty string`);
+  }
+  return p[field];
+}
+
+/** @param {ApprovalContext} ctx @returns {string} */
+function unchangedGraph(ctx) {
+  const p = taskGraphPayload(ctx);
+  if (!isFilled(p.notes)) throw new Error('render dependency-approval-gate: "notes" must be the grapher\'s notes, a non-empty string');
+  const { tasks } = authoredPlan(planningItem(ctx.manifest, ctx.topic), ctx.topic, 'dependency-approval-gate');
+  return [
+    `I've analyzed all ${taskCount(tasks)} and the natural execution order is already correct — no explicit dependencies or priorities are needed.`,
+    '',
+    p.notes,
+  ].join('\n');
+}
+
+/** @param {ApprovalContext} ctx @returns {string} */
+function appliedGraph(ctx) {
+  const p = taskGraphPayload(ctx);
+  const dependencies = graphRows(p, 'dependencies');
+  const priorities = graphRows(p, 'priorities');
+  if (p.notes !== undefined && !isFilled(p.notes)) throw new Error('render dependency-approval-gate: "notes" must be a non-empty string when present');
+  const { tasks } = authoredPlan(planningItem(ctx.manifest, ctx.topic), ctx.topic, 'dependency-approval-gate');
+  const body = [
+    `I've analyzed and applied dependencies and priorities across all ${taskCount(tasks)}:`,
+    '',
+    `**Dependencies** (${dependencies.length} relationship${dependencies.length === 1 ? '' : 's'}):`,
+    ...dependencies.map((r) => `- ${r}`),
+    '',
+    '**Priorities**:',
+    ...priorities.map((r) => `- ${r}`),
+  ];
+  if (isFilled(p.notes)) body.push('', p.notes);
+  return body.join('\n');
+}
+
+/**
+ * The plan's external dependencies, each its state and the task a resolved
+ * one waits on, then every other plan's dependency resolved onto a task of
+ * this one.
+ * @param {ApprovalContext} ctx @returns {string}
+ */
+function externalResolutions({ file, manifest, topic }) {
+  if (file !== undefined) throw new Error('render dependency-approval-gate: --file belongs to the graph variants — the resolutions are read off the planning items');
+  const lines = ['External Dependencies', ''];
+  for (const [name, dep] of Object.entries(planningItem(manifest, topic).external_dependencies || {})) {
+    if (!dep || !isFilled(dep.state)) throw new Error(`render dependency-approval-gate: external dependency "${name}" carries no state`);
+    if (dep.state === 'resolved' && !isFilled(dep.internal_id)) {
+      throw new Error(`render dependency-approval-gate: external dependency "${name}" is resolved but names no internal_id`);
+    }
+    lines.push(`  ${titlecase(name)} (${dep.state})`);
+    if (dep.state === 'resolved') lines.push(treeList([dep.internal_id], { indent: '  ' }));
+    lines.push('');
+  }
+  const reverse = phaseItems(manifest, 'planning')
+    .filter((other) => other.name !== topic)
+    .map((other) => ({ name: other.name, dep: (other.external_dependencies || {})[topic] }))
+    .filter(({ dep }) => dep && dep.state === 'resolved' && isFilled(dep.internal_id));
+  if (reverse.length > 0) {
+    lines.push('Reverse resolutions:', ...reverse.map(({ name, dep }) => `  ${titlecase(name)} → ${titlecase(topic)}:${dep.internal_id}`));
+  }
+  return lines.join('\n');
+}
+
+/** @type {Record<string, {question: string, change: string, label: string, form: 'markdown'|'text', display: (ctx: ApprovalContext) => string}>} */
 const DEPENDENCY_APPROVALS = {
-  graph: { question: 'Approve the dependency graph?', change: 'which priorities or dependencies to adjust' },
-  'updated-graph': { question: 'Approve the updated graph?', change: 'which priorities or dependencies to adjust' },
-  resolution: { question: 'Approve the dependency resolution?', change: 'which resolutions to adjust or links to add' },
+  graph: { question: 'Approve the dependency graph?', change: 'which priorities or dependencies to adjust', label: 'DISPLAY: task graph', form: 'markdown', display: unchangedGraph },
+  'updated-graph': { question: 'Approve the updated graph?', change: 'which priorities or dependencies to adjust', label: 'DISPLAY: task graph', form: 'markdown', display: appliedGraph },
+  resolution: { question: 'Approve the dependency resolution?', change: 'which resolutions to adjust or links to add', label: 'DISPLAY: external dependencies', form: 'text', display: externalResolutions },
 };
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, variant?: string}} args
+ * @param {{dotpath: string, variant?: string, file?: string}} args
  * @returns {string}
  */
-function dependencyApprovalGate(cwd, { dotpath, variant }) {
+function dependencyApprovalGate(cwd, { dotpath, variant, file }) {
   const spec = variant === undefined ? undefined : DEPENDENCY_APPROVALS[variant];
   if (!spec) {
     throw new Error(`render dependency-approval-gate: --variant must be one of ${Object.keys(DEPENDENCY_APPROVALS).join(', ')}, got "${variant}"`);
   }
-  resolvePlanning(cwd, dotpath, 'dependency-approval-gate');
-  return section('MENU: dependency approval gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Proceed'),
-    promptOption('Tell me what to change', spec.change),
-  ], { question: spec.question }));
+  const { manifest, topic } = resolvePlanning(cwd, dotpath, 'dependency-approval-gate');
+  return [
+    section(spec.label, emitAs(spec.form), spec.display({ cwd, file, manifest, topic })),
+    section('MENU: dependency approval gate', MENU_INSTRUCTION, menu('', [
+      cmdOption('y', 'yes', 'Proceed'),
+      promptOption('Tell me what to change', spec.change),
+    ], { question: spec.question })),
+  ].join('\n');
 }
 
-// task-count-gate — the authoring loop's stop when the detail file and the
-// task table still disagree after two attempts.
+// task-graph-cycle — the grapher's third outcome: a circular dependency, so
+// nothing was applied and there is nothing to approve. The cycle is the
+// grapher's report, so it rides the payload; the user's direction answers
+// it, free-form.
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string}} args
+ * @param {{dotpath: string, file?: string}} args
  * @returns {string}
  */
-function taskCountGate(cwd, { dotpath }) {
+function taskGraphCycle(cwd, { dotpath, file }) {
+  resolvePlanning(cwd, dotpath, 'task-graph-cycle');
+  if (!file) throw new Error('render task-graph-cycle: --file <payload.json> is required — the grapher\'s cycle');
+  const p = readJsonPayload(cwd, file, 'task-graph-cycle');
+  if (!isFilled(p.cycle)) throw new Error('render task-graph-cycle: "cycle" must be the grapher\'s cycle chain, a non-empty string');
+  return section('DISPLAY: task graph cycle', emitAs('markdown', STOP_CLAUSE), [
+    'The dependency analysis found a circular dependency:',
+    '',
+    p.cycle,
+    '',
+    'This must be resolved before continuing. The cycle usually means two tasks each assume the other is done first — one needs to be restructured or the dependency removed.',
+  ].join('\n'));
+}
+
+// task-count-gate — the authoring loop's stop when the detail file and the
+// task table still disagree after two attempts, beneath the two lists. Both
+// are markdown the engine never parses, so their internal ids ride the
+// payload; the counts are the lists'.
+
+/**
+ * One side of the mismatch: its label padded to the column, the count and
+ * ids wrapped under the value column.
+ * @param {string} label @param {string[]} ids @param {number} column
+ * @returns {string[]}
+ */
+function mismatchRow(label, ids, column) {
+  const value = `${taskCount(ids.length)} — ${ids.length > 0 ? ids.join(', ') : 'none'}`;
+  return wrap(value, displayWidth() - column).map((seg, i) => (i === 0 ? label.padEnd(column) : ' '.repeat(column)) + seg);
+}
+
+/** @param {Record<string, any>} p @param {string} field @returns {string[]} */
+function mismatchIds(p, field) {
+  if (!Array.isArray(p[field]) || p[field].some((/** @type {unknown} */ id) => !isFilled(id))) {
+    throw new Error(`render task-count-gate: "${field}" must be an array of internal ids, each a non-empty string`);
+  }
+  return p[field];
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function taskCountGate(cwd, { dotpath, file }) {
   resolvePlanning(cwd, dotpath, 'task-count-gate');
-  return section('MENU: task count gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('r', 'retry', 'Re-invoke the author agent once more'),
-    promptOption('Adjust', "Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate"),
-  ], { question: 'How would you like to proceed?' }));
+  if (!file) throw new Error('render task-count-gate: --file <payload.json> is required — the two lists of internal ids');
+  const p = readJsonPayload(cwd, file, 'task-count-gate');
+  const table = mismatchIds(p, 'table');
+  const detail = mismatchIds(p, 'detail');
+  if (table.length === 0) throw new Error('render task-count-gate: "table" must name the planning file\'s tasks — the phase has a task table');
+  const column = 'Planning file task table: '.length;
+  return [
+    section('DISPLAY: task count mismatch', emitAs('text'), [
+      'Task count mismatch persists after 2 authoring attempts.',
+      '',
+      ...mismatchRow('Planning file task table:', table, column),
+      ...mismatchRow('Task detail file:', detail, column),
+    ].join('\n')),
+    section('MENU: task count gate', MENU_INSTRUCTION, menu('', [
+      cmdOption('r', 'retry', 'Re-invoke the author agent once more'),
+      promptOption('Adjust', "Tell me what to correct (the task table or the detail file), and I'll apply it and re-validate"),
+    ], { question: 'How would you like to proceed?' })),
+  ].join('\n');
 }
 
 // plan-context-gate — planning's one offer before a fresh plan is built:
@@ -5891,10 +6235,53 @@ function planTopics(cwd, args) {
   const { workUnit } = resolveWorkUnit(cwd, args.dotpath, 'plan-topics');
   const md = manageDetail(cwd, workUnit);
   if (!md) throw new Error(`render plan-topics: work unit "${workUnit}" not found`);
-  if (!(md.work_type === 'epic' && md.has_plan && md.planning_topics.length > 1)) {
-    throw new Error(`render plan-topics: "${workUnit}" has no multi-topic plan to choose from`);
+  if (!(md.work_type === 'epic' && md.has_plan && md.planning_topics.length > 0)) {
+    throw new Error(`render plan-topics: "${workUnit}" has no epic plan to choose from`);
   }
-  return planTopicsMenu(md);
+  return planTopicsPick(md);
+}
+
+// plan-summary — view-plan's readable summary of one plan: each phase and
+// its tasks, a task's box ticked once it is done. The phases and tasks are
+// read through the plan's output format, which the engine never reads, so
+// they ride the payload; the format named is the planning item's own.
+
+/**
+ * One task row: its status box, internal id and title, and the inline note
+ * a blocked or dependent task carries.
+ * @param {unknown} t @param {string} where
+ * @returns {string}
+ */
+function planSummaryTask(t, where) {
+  const task = /** @type {Record<string, unknown>} */ (t && typeof t === 'object' ? t : {});
+  for (const field of ['id', 'title']) {
+    if (!isFilled(task[field])) throw new Error(`render plan-summary: ${where} needs "${field}", a non-empty string`);
+  }
+  if (typeof task.done !== 'boolean') throw new Error(`render plan-summary: ${where} needs "done", true or false`);
+  if (task.note !== undefined && !isFilled(task.note)) throw new Error(`render plan-summary: ${where} "note" must be a non-empty string when present`);
+  return `- [${task.done ? 'x' : ' '}] ${task.id}: ${task.title}${isFilled(task.note) ? ` — ${task.note}` : ''}`;
+}
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, file?: string}} args
+ * @returns {string}
+ */
+function planSummary(cwd, { dotpath, file }) {
+  const { workUnit, topic, manifest } = resolvePlanning(cwd, dotpath, 'plan-summary');
+  const item = itemOf(manifest, 'planning', topic);
+  if (!item) throw new Error(`render plan-summary: no planning item "${topic}"`);
+  if (!isFilled(item.format)) throw new Error(`render plan-summary: planning item "${topic}" records no format`);
+  if (!file) throw new Error('render plan-summary: --file <payload.json> is required — the phases and tasks read through the format');
+  const p = readJsonPayload(cwd, file, 'plan-summary');
+  if (!Array.isArray(p.phases)) throw new Error('render plan-summary: "phases" must be an array of {name, tasks}');
+  const lines = [`**Plan: ${workUnit} / ${titlecase(topic)}**`, '', `**Format:** ${item.format}`];
+  p.phases.forEach((/** @type {Record<string, unknown>} */ ph, /** @type {number} */ i) => {
+    if (!ph || !isFilled(ph.name)) throw new Error(`render plan-summary: phase ${i + 1} needs "name", a non-empty string`);
+    if (!Array.isArray(ph.tasks)) throw new Error(`render plan-summary: phase ${i + 1} needs "tasks", an array`);
+    lines.push('', `### Phase ${i + 1}: ${ph.name}`, ...ph.tasks.map((t, j) => planSummaryTask(t, `phase ${i + 1} task ${j + 1}`)));
+  });
+  return section('DISPLAY: plan summary', CONTINUE_MARKDOWN_INSTRUCTION, lines.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -6640,6 +7027,7 @@ function knowledgeReadySurface(cwd) {
 const SURFACES = {
   'resume-gate': resumeGate,
   'task-list': taskList,
+  'plan-progress': planProgress,
   'findings-summary': findingsSummary,
   'finding-announce': findingAnnounce,
   'finding-batch': findingBatch,
@@ -6694,6 +7082,7 @@ const SURFACES = {
   'checkpoint-files-gate': checkpointFilesGate,
   'executor-block-gate': executorBlockGate,
   'dependency-approval-gate': dependencyApprovalGate,
+  'task-graph-cycle': taskGraphCycle,
   'task-count-gate': taskCountGate,
   'plan-context-gate': planContextGate,
   'cross-cutting-gate': crossCuttingGate,
@@ -6746,6 +7135,7 @@ const SURFACES = {
   'absorb-target': absorbTarget,
   'absorb-confirm-gate': absorbConfirmGateSurface,
   'plan-topics': planTopics,
+  'plan-summary': planSummary,
   'archived-actions': archivedActionsSurface,
   'archived-delete-gate': archivedDeleteGateSurface,
   'inbox-content': inboxContentSurface,
