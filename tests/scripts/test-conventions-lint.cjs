@@ -662,18 +662,9 @@ function checkInertLoadChrome(files) {
 // the ratchet working, not a reason to adjust it.
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
-  'skills/workflow-continue-epic/references/summary-backfill.md': 2,
-  'skills/workflow-discovery/references/map-operations.md': 2,
-  'skills/workflow-legacy-research-split/SKILL.md': 3,
-  'skills/workflow-legacy-research-split/references/dialog.md': 4,
   'skills/workflow-log-bug/SKILL.md': 1,
   'skills/workflow-log-idea/SKILL.md': 1,
   'skills/workflow-log-quickfix/SKILL.md': 1,
-  'skills/workflow-planning-process/references/output-formats/linear/authoring.md': 1,
-  'skills/workflow-shared/references/analysis-approval-gate.md': 1,
-  'skills/workflow-shared/references/compliance-check.md': 1,
-  'skills/workflow-start/references/inbox-archived.md': 3,
-  'skills/workflow-start/references/knowledge-gate.md': 1,
 };
 
 // Count a file's templated menu/display fences: a rendering-instruction line,

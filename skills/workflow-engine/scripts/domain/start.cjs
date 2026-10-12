@@ -121,12 +121,16 @@ function pipelineOf(workType) {
  * @property {StartState} state
  */
 
-/** First markdown H1, or null. @param {string} filePath @returns {string|null} */
+/** An inbox item's title: its content's first markdown H1, or null. @param {string} content @returns {string|null} */
+function titleOf(content) {
+  const match = content.match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : null;
+}
+
+/** The title of the file at `filePath`, or null. @param {string} filePath @returns {string|null} */
 function readTitle(filePath) {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const match = content.match(/^#\s+(.+)$/m);
-    return match ? match[1].trim() : null;
+    return titleOf(fs.readFileSync(filePath, 'utf8'));
   } catch {
     return null;
   }
@@ -301,4 +305,4 @@ function startDetail(cwd) {
   };
 }
 
-module.exports = { startDetail, discoverInbox };
+module.exports = { startDetail, discoverInbox, titleOf };

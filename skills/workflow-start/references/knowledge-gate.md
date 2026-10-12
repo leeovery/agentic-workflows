@@ -153,39 +153,18 @@ node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --keyword
 
 The setup command refused or was rejected because no working API key is available for the provider it targeted. The key goes straight from the user's terminal into a private store — it never touches this chat.
 
-> *Output the next fenced block as a text code block (```text fence):*
+Fetch the gate for the provider the setup command targeted — `system_config.provider` for origin `B`, `openai` for `C-openai`, `openai-compatible` for `C-compatible`:
 
-```text
-@if(provider is openai)
-No OpenAI API key was found. Store one without it touching this
-chat — run ONE of these in your terminal, then come back:
-
-  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only
-      Private prompt, input hidden. Stored at
-      ~/.config/workflows/credentials.json (mode 0600).
-
-  export OPENAI_API_KEY=<your key>   # note: inline export lands in shell history — --key-only avoids that
-      Shell environment — takes precedence over the stored key.
-@else
-The endpoint requires an API key. Store one without it touching
-this chat — run this in your terminal, then come back:
-
-  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible
-      Private prompt, input hidden. Stored at
-      ~/.config/workflows/credentials.json (mode 0600).
-@endif
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant retry --provider {provider}
 ```
+
+Emit its `DISPLAY: knowledge retry` section verbatim per its marker, then the signpost below, then its `MENU: knowledge retry gate` section verbatim per its marker.
 
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
 > Do not paste the API key into this chat — not even partially. Store it in your terminal with one of the commands above, then come back here.
-```
-
-Fetch the gate and emit its `MENU: knowledge retry gate` section verbatim per its marker:
-
-```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render knowledge-gate --variant retry
 ```
 
 **STOP.** Wait for user response.

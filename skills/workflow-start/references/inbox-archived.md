@@ -41,7 +41,7 @@ Emit the MENU section verbatim per its marker.
 
 **If user chose a number:**
 
-Store the selected item's `ITEMS` row — its type, slug, date, path, and title.
+Store the selected item's path from its `ITEMS` row as `item.path`.
 
 → Proceed to **B. Action Menu**.
 
@@ -57,17 +57,11 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-actions -
 
 #### If user chose `v/view`
 
-Read the file and render its full content as markdown (not a code block), so the item's own headings and formatting render properly.
+Fetch the item in full and emit the call's DISPLAY section verbatim per its marker:
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-content --path {item.path}
 ```
-*[{item.type}] — {item.date}*
-
-{item.full_content}
-```
-
-Emit the file content as-is — its own `#` heading is the item's visible title. Skip a frontmatter block when one exists.
 
 → Return to **B. Action Menu**.
 
@@ -79,10 +73,10 @@ Move the file back into its inbox folder and commit — one command:
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox restore {item.path}
 ```
 
-> *Output the next fenced block as a text code block (```text fence):*
+Fetch the receipt over the response's `restored` path and emit its DISPLAY section verbatim per its marker:
 
-```text
-Restored "{item.title}" to the inbox.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-restore-receipt --path {restored_path}
 ```
 
 → Return to **A. Select**.
@@ -107,10 +101,10 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render archived-delete-ga
 node .claude/skills/workflow-engine/scripts/engine.cjs inbox delete {item.path}
 ```
 
-> *Output the next fenced block as a text code block (```text fence):*
+Fetch the receipt and emit its DISPLAY section verbatim per its marker:
 
-```text
-Deleted "{item.title}".
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render inbox-delete-receipt --path {item.path}
 ```
 
 → Return to **A. Select**.

@@ -23,9 +23,9 @@ const { openGate, section, titleSection, dataSection, CONTINUE_INSTRUCTION, CONT
 const { buildOrderLive } = require('./build-order.cjs');
 const { worklist, escapeMarkdown } = require('./projections/worklist.cjs');
 const { blockedTasksDisplay, blockedTasksMenu, taskGateSection, fixGateSection, cycleLimitDisplay, specCorrectionsDisplay, tasksCompleteDisplay, cycleGateMenu } = require('./projections/tasks.cjs');
-const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbSummary, absorbReceipt, promoteReceipt, importReprompt, pivotContinuationMenu, absorbContinuationMenu, sessionReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { absorbTargetMenu, absorbConfirmGate, planTopicsPick, archivedActions, archivedDeleteGate, inboxContent, completedActions } = require('./projections/start.cjs');
-const { archivedItem, inboxItems } = require('./inbox-set.cjs');
+const { archivedItem, inboxItems, liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
 const {
@@ -37,7 +37,7 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
@@ -2739,6 +2739,8 @@ function sendCandidates(cwd, { dotpath, file }) {
 // whichever flow raised it and at any width.
 // ---------------------------------------------------------------------------
 
+const { markerRefusal, MARKER_VERBS } = require('./discovery-map.cjs');
+
 // A bare yes/no pair — no labels, because the question above them already
 // says what yes means (CONVENTIONS.md: Yes/no prompt). Composed per render,
 // as every option set is: a row records itself where it is built.
@@ -2746,7 +2748,8 @@ const yesNo = () => [bareOption('y', 'yes'), bareOption('n', 'no')];
 
 // The map-operation family: op → the confirm question its gate asks. The
 // batch ops (a run of summary or description edits confirmed together) ask
-// once for the whole batch; every other op is its own group of one.
+// once for the whole batch and land at any lifecycle; every other op is its
+// own group of one, which its topic's lifecycle may refuse.
 const MAP_OP_QUESTIONS = {
   'edit-summary': 'Apply?',
   'edit-description': 'Apply?',
@@ -2756,6 +2759,7 @@ const MAP_OP_QUESTIONS = {
   close: 'Confirm close as dead end?',
   reopen: 'Confirm reopen?',
 };
+const MAP_OP_BATCHES = ['edit-summary', 'edit-description'];
 
 /** @param {object} p @param {string} field @returns {string} */
 function mapOpName(p, field) {
@@ -2865,41 +2869,44 @@ function mapOpTargets(op, p) {
   return [mapOpName(p, 'name')];
 }
 
-// The lifecycle each op is legal from, mirroring map-operations.md's
-// validation table — the prose pre-checks and the engine's write path both
-// enforce it, and the gate refuses in between rather than confirming an
-// operation that cannot land. The lifecycle join is the one every map
-// consumer uses, so the three cannot drift apart.
-/** @param {object} manifest @param {string} op @param {string} name */
-function assertMapOp(manifest, op, name) {
+/** @param {object} manifest @param {string} name */
+function assertOnMap(manifest, name) {
   const items = (((manifest.phases || {}).discovery || {}).items) || {};
   if (!items[name]) throw new Error(`render map-op-gate: no discovery item "${name}" on the map`);
-  if (op === 'edit-summary' || op === 'edit-description') return;
-  const { lifecycle } = computeTopicLifecycle(manifest, name);
-  if (op === 'close') {
-    if (lifecycle === 'handled') {
-      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's already closed`);
-    }
-    if (lifecycle === 'cancelled') {
-      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first`);
-    }
-    if (lifecycle === 'postponed') {
-      throw new Error(`render map-op-gate: "${name}" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first`);
-    }
-    return;
+}
+
+// A destructive op — remove, rename, re-route — lands on a fresh topic
+// alone. Its refusal names where the topic stands and the way to what the
+// user is after: the way back for a closed lifecycle, the cancel or the
+// postpone for live work.
+const DESTRUCTIVE_VERBS = { remove: 'removed', rename: 'renamed', reroute: 're-routed' };
+/** @type {Record<string, (name: string) => string>} */
+const DESTRUCTIVE_RECOVERY = {
+  handled: (name) => `Say "reopen ${name}" to make it actionable again.`,
+  cancelled: () => 'Reactivate it from the epic menu first.',
+  postponed: () => 'Pull it forward from the roadmap first.',
+};
+const STOP_WORK_RECOVERY = 'To stop work on it, use `a`/`cancel` from the epic menu instead — or postpone it to the roadmap for later.';
+
+/**
+ * Why a single-item op cannot land from where its topic stands, as the
+ * refusal the gate shows in place of its confirm — or null where it can.
+ * The lifecycle join is the one every map consumer uses, and the marker ops
+ * read the very refusal their transactions throw, so the gate and the write
+ * path cannot drift apart.
+ * @param {string} cwd @param {object} manifest @param {string} op @param {string} name
+ * @returns {string|null}
+ */
+function mapOpRefusal(cwd, manifest, op, name) {
+  if (op === 'close' || op === 'reopen') {
+    const phrase = markerRefusal(cwd, manifest, op, name);
+    return phrase && `"${name}" can't be ${MARKER_VERBS[op]} — ${phrase}.`;
   }
-  if (op === 'reopen') {
-    if (lifecycle !== 'handled') {
-      throw new Error(`render map-op-gate: "${name}" can't be reopened — it's "${lifecycle}", not closed as a dead end`);
-    }
-    return;
-  }
-  if (lifecycle !== 'fresh') {
-    const verb = { remove: 'removed', rename: 'renamed', reroute: 're-routed' }[op];
-    const recovery = lifecycle === 'cancelled' ? ' — reactivate it from the epic menu first'
-      : lifecycle === 'postponed' ? ' — pull it forward from the roadmap first' : '';
-    throw new Error(`render map-op-gate: "${name}" can't be ${verb} — it's "${lifecycle}", not fresh${recovery}`);
-  }
+  const { lifecycle, research_state } = computeTopicLifecycle(manifest, name);
+  if (lifecycle === 'fresh') return null;
+  const recovery = Object.hasOwn(DESTRUCTIVE_RECOVERY, lifecycle) ? DESTRUCTIVE_RECOVERY[lifecycle](name) : STOP_WORK_RECOVERY;
+  const verb = DESTRUCTIVE_VERBS[/** @type {keyof typeof DESTRUCTIVE_VERBS} */ (op)];
+  return `"${name}" can't be ${verb} from the map — ${lifecyclePhrase(lifecycle, research_state)}. ${recovery}`;
 }
 
 /**
@@ -2915,7 +2922,10 @@ function mapOpGate(cwd, { dotpath, op, file }) {
   const { manifest } = resolveWorkUnit(cwd, dotpath, 'map-op-gate');
   const p = readJsonPayload(cwd, file, 'map-op-gate');
   const body = mapOpBody(op, p);
-  for (const name of mapOpTargets(op, p)) assertMapOp(manifest, op, name);
+  const targets = mapOpTargets(op, p);
+  for (const name of targets) assertOnMap(manifest, name);
+  const refusal = MAP_OP_BATCHES.includes(op) ? null : mapOpRefusal(cwd, manifest, op, targets[0]);
+  if (refusal) return section('DISPLAY: map operation refused', CONTINUE_INSTRUCTION, indentedBody([refusal], { indent: '' }).join('\n'));
   return [
     section('DISPLAY: map operation', emitAs('text', ', directly above the menu'), body.join('\n')),
     section('MENU: map operation gate', MENU_INSTRUCTION, menu('', yesNo(), { question: MAP_OP_QUESTIONS[op] })),
@@ -2928,16 +2938,38 @@ function mapOpGate(cwd, { dotpath, op, file }) {
 // inside the surface: the caller never chooses between gated and auto
 // output. A candidate the manifest does not mark `pending` never renders —
 // a stale payload refuses rather than gating something already decided.
+// The announce variant opens the walk: how many candidates wait pending,
+// counted from the same subtree — nothing to review where none do, or the
+// analysis staged nothing.
+
+/** The gap analysis's staging subtree, or undefined. @param {object} manifest @returns {any} */
+function gapStaging(manifest) {
+  return ((((manifest.phases || {}).discovery || {}).analysis_staging) || {})['discovery-gap-analysis'];
+}
+
+/** @param {string} cwd @param {string} dotpath @returns {string} */
+function candidateAnnounce(cwd, dotpath) {
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'candidate-gate');
+  const staging = gapStaging(manifest);
+  const rows = Object.values((staging && staging.candidates) || {});
+  const pending = rows.filter((row) => row && row.status === 'pending').length;
+  return section('DISPLAY: candidates announced', CONTINUE_INSTRUCTION,
+    pending === 0 ? 'Nothing new to review.' : `Gap analysis surfaced ${pending} candidate topic(s).`);
+}
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, file?: string}} args
+ * @param {{dotpath: string, file?: string, variant?: string}} args
  * @returns {string}
  */
-function candidateGate(cwd, { dotpath, file }) {
+function candidateGate(cwd, { dotpath, file, variant }) {
+  if (variant !== undefined && variant !== 'announce') {
+    throw new Error(`render candidate-gate: --variant takes "announce" alone — the per-candidate gate takes none, got "${variant}"`);
+  }
+  if (variant === 'announce') return candidateAnnounce(cwd, dotpath);
   if (!file) throw new Error('render candidate-gate: --file <payload.json> is required');
   const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'candidate-gate');
-  const staging = ((((manifest.phases || {}).discovery || {}).analysis_staging) || {})['discovery-gap-analysis'];
+  const staging = gapStaging(manifest);
   if (!staging || typeof staging !== 'object') {
     throw new Error(`render candidate-gate: no staged gap-analysis candidates for "${workUnit}"`);
   }
@@ -3365,28 +3397,112 @@ function waitGateSurface(cwd, { dotpath }) {
   return blocking.length === 0 ? '' : waitGate(phase, topic, blocking, manifest.work_type === 'epic');
 }
 
-// summary-backfill-gate — the epic's provenance recovery, both stops. The
-// batch variant is static (the proposed lines are displayed above it); the
-// unsourced variant names the topics no source file could be drafted from,
-// so its list rides as a payload.
+// summary-backfill-gate — the epic's provenance recovery. The topics it
+// recovers are the map's rows missing a summary or a description, read from
+// the manifest in map order; the summaries drafted for the rows missing one
+// are judgment content and ride a payload keyed by topic. batch = the
+// proposed summaries above the accept gate, proposed = the same display
+// alone (the edit loop's re-render), prompt = the ask for one drafted
+// line's replacement, unsourced = the topics no source file could be
+// drafted from, named by payload.
+
+const { buildDiscoveryMap } = require('./derivations.cjs');
+
+const SUMMARY_BACKFILL_VARIANTS = ['batch', 'proposed', 'prompt', 'unsourced'];
+
+/** @param {string} cwd @param {string} workUnit @param {object} manifest @returns {import('./derivations.cjs').DiscoveryMapRow[]} */
+function backfillRows(cwd, workUnit, manifest) {
+  const rows = buildDiscoveryMap(manifest, path.join(cwd, '.workflows')).map
+    .filter((row) => !row.summary_present || !row.description_present);
+  if (rows.length === 0) {
+    throw new Error(`render summary-backfill-gate: "${workUnit}" has no discovery item missing a summary or description — nothing to backfill`);
+  }
+  return rows;
+}
+
+/**
+ * The drafted summaries, one per row missing its summary — null where the
+ * topic's source file is missing.
+ * @param {string} cwd @param {string|undefined} file @param {import('./derivations.cjs').DiscoveryMapRow[]} rows
+ * @returns {Record<string, string|null>}
+ */
+function draftedSummaries(cwd, file, rows) {
+  if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required — the drafted summaries');
+  const drafted = readJsonPayload(cwd, file, 'summary-backfill-gate').summaries;
+  if (!drafted || typeof drafted !== 'object' || Array.isArray(drafted)) {
+    throw new Error('render summary-backfill-gate: "summaries" must be an object keyed by topic name');
+  }
+  const needing = rows.filter((row) => !row.summary_present).map((row) => row.name);
+  const stray = Object.keys(drafted).find((name) => !needing.includes(name));
+  if (stray) throw new Error(`render summary-backfill-gate: "${stray}" is not a topic missing its summary — only those take a drafted line`);
+  const unanswered = needing.find((name) => drafted[name] !== null && !isFilled(drafted[name]));
+  if (unanswered) {
+    throw new Error(`render summary-backfill-gate: "summaries.${unanswered}" must be its drafted line, or null where its source file is missing`);
+  }
+  return drafted;
+}
+
+/**
+ * The proposed summaries, one numbered row per topic.
+ * @param {import('./derivations.cjs').DiscoveryMapRow[]} rows @param {Record<string, string|null>} drafted @param {string} instruction
+ * @returns {string}
+ */
+function proposedSummaries(rows, drafted, instruction) {
+  const indent = '       ';
+  const lines = [`Proposed summaries for ${rows.length} topic(s):`, ''];
+  rows.forEach((row, i) => {
+    lines.push(`  ${i + 1}. ${titlecase(row.name)}  (${row.routing ?? 'none'})`);
+    if (!row.summary_present) {
+      lines.push(...indentedBody([drafted[row.name] ?? '(source file missing — please provide)'], { indent }));
+      return;
+    }
+    // The tag keeps its two-space gap, dropping to a line of its own where the summary's last line has no room.
+    const summary = indentedBody([/** @type {string} */ (row.summary)], { indent });
+    const tagged = `${summary[summary.length - 1]}  (already populated)`;
+    if (tagged.length <= displayWidth()) summary[summary.length - 1] = tagged;
+    else summary.push(`${indent}(already populated)`);
+    lines.push(...summary);
+  });
+  return section('DISPLAY: proposed summaries', instruction, lines.join('\n'));
+}
+
+/** The ask for one drafted line's replacement. @param {import('./derivations.cjs').DiscoveryMapRow[]} rows @param {string|undefined} topic @returns {string} */
+function summaryPrompt(rows, topic) {
+  const row = rows.find((r) => r.name === topic);
+  if (!row) throw new Error(`render summary-backfill-gate: --topic must name a topic the batch proposes, got "${topic ?? ''}"`);
+  if (row.summary_present) {
+    throw new Error(`render summary-backfill-gate: "${topic}" already has its summary on the map — only a drafted line is edited here`);
+  }
+  return section('DISPLAY: summary prompt', emitAs('markdown', STOP_CLAUSE), `New summary for "${titlecase(row.name)}":`);
+}
 
 /**
  * @param {string} cwd
- * @param {{dotpath: string, variant?: string, file?: string}} args
+ * @param {{dotpath: string, variant?: string, file?: string, topic?: string}} args
  * @returns {string}
  */
-function summaryBackfillGate(cwd, { dotpath, variant, file }) {
-  if (variant !== 'batch' && variant !== 'unsourced') {
-    throw new Error(`render summary-backfill-gate: --variant must be "batch" or "unsourced", got "${variant}"`);
+function summaryBackfillGate(cwd, { dotpath, variant, file, topic }) {
+  if (variant === undefined || !SUMMARY_BACKFILL_VARIANTS.includes(variant)) {
+    throw new Error(`render summary-backfill-gate: --variant must be one of ${SUMMARY_BACKFILL_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
   }
-  resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
-  if (variant === 'batch') {
-    return section('MENU: summary batch gate', MENU_INSTRUCTION, menu('', [
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'summary-backfill-gate');
+  if (variant === 'unsourced') return unsourcedGate(cwd, file);
+  const rows = backfillRows(cwd, workUnit, manifest);
+  if (variant === 'prompt') return summaryPrompt(rows, topic);
+  const drafted = draftedSummaries(cwd, file, rows);
+  if (variant === 'proposed') return proposedSummaries(rows, drafted, CONTINUE_INSTRUCTION);
+  return [
+    proposedSummaries(rows, drafted, emitAs('text', ', directly above the menu')),
+    section('MENU: summary batch gate', MENU_INSTRUCTION, menu('', [
       cmdOption('y', 'yes', 'Accept all summaries as drafted (description is auto-drafted silently)'),
       cmdOption('e', 'edit', 'Edit one or more summary lines before accepting'),
       cmdOption('s', 'skip', 'Skip the whole batch (leave fields blank)'),
-    ], { question: 'Accept these summaries?' }));
-  }
+    ], { question: 'Accept these summaries?' })),
+  ].join('\n');
+}
+
+/** The topics no source file could be drafted from. @param {string} cwd @param {string|undefined} file @returns {string} */
+function unsourcedGate(cwd, file) {
   if (!file) throw new Error('render summary-backfill-gate: --file <payload.json> is required for --variant unsourced');
   const p = readJsonPayload(cwd, file, 'summary-backfill-gate');
   if (!Array.isArray(p.names) || p.names.length === 0 || p.names.some((n) => !isFilled(n))) {
@@ -5211,6 +5327,27 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 }
 
 // ---------------------------------------------------------------------------
+// compliance-issues — the heading the compliance self-check shows over the
+// significant issues it surfaces before a phase concludes, counted from the
+// payload's list: each issue's one-line name is the session's judgment.
+// Project-level, so every phase and the roadmap share it.
+// ---------------------------------------------------------------------------
+
+/** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
+function complianceIssues(cwd, { file }) {
+  if (!file) throw new Error('render compliance-issues: --file <payload.json> is required');
+  const { issues } = readJsonPayload(cwd, file, 'compliance-issues');
+  if (!Array.isArray(issues) || issues.length === 0) {
+    throw new Error('render compliance-issues: "issues" must be a non-empty array — one line naming each significant issue');
+  }
+  issues.forEach((issue, i) => {
+    if (!isFilled(issue)) throw new Error(`render compliance-issues: issues[${i}] must be a non-empty string`);
+  });
+  return section('DISPLAY: compliance issues', CONTINUE_INSTRUCTION,
+    `Compliance Check — Issues Found\n\n${issues.length} issue(s) detected during self-check.`);
+}
+
+// ---------------------------------------------------------------------------
 // entry-gate — the prerequisite check where a phase starts. The engine
 // derives the verdict from manifest state (the reads and the branch leave the
 // prose): an empty response means clear — proceed; a blocked response carries
@@ -6202,6 +6339,34 @@ function inboxArchiveReceiptSurface(cwd, args) {
   return inboxArchiveReceipt(paths.length);
 }
 
+/**
+ * The single-item receipts after the archived sub-view acts, over the path
+ * the verb answered: a restore's item must be live again, and a delete's
+ * gone from the archive — its title read from git's last copy.
+ * @param {string} cwd @param {{dotpath: string, path?: string}} args
+ * @param {string} surface @param {string} what @param {(cwd: string, given: string) => string} titleAt
+ * @returns {string}
+ */
+function receiptTitle(cwd, { path: given }, surface, what, titleAt) {
+  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — ${what}`);
+  try {
+    return titleAt(cwd, /** @type {string} */ (given));
+  } catch (err) {
+    throw new Error(`render ${surface}: ${messageOf(err)}`);
+  }
+}
+
+/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+function inboxRestoreReceiptSurface(cwd, args) {
+  return inboxRestoreReceipt(receiptTitle(cwd, args, 'inbox-restore-receipt', 'the live path `inbox restore` answered',
+    (root, given) => liveItem(root, given).title));
+}
+
+/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
+function inboxDeleteReceiptSurface(cwd, args) {
+  return inboxDeleteReceipt(receiptTitle(cwd, args, 'inbox-delete-receipt', 'the archived path `inbox delete` answered', deletedItemTitle));
+}
+
 // completed-actions — the completed & cancelled view's action menu over the
 // selected unit, its status read where the list read it. An active unit
 // refuses: the list it is picked from holds closed units alone.
@@ -6696,41 +6861,140 @@ function legacySplitGateSurface(_cwd, { variant }) {
   return section(`MENU: legacy split ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options(), { question: gate.question }));
 }
 
-// The legacy research split's dialog displays, keyed by what each shows:
+const { legacySources } = require('./legacy-split.cjs');
+
+// The legacy research split's displays, keyed by what each shows. Read from
+// the epic's state: sources = the scan the split opens on (the interrupted
+// splits and unsplittable sources it flags, then the qualifying sources it
+// works through), skipped = a source left as it stood. Over a payload:
 // candidates = the theme list at the early sanity gate (a batch worklist,
 // summary beneath each name), plan = the drafted plan (each theme's summary,
 // drafted content, and cache path as a tree, then the rename apply makes —
 // its stamp is minted at apply, so the footer names the slot), errors =
-// validate.cjs's refusals as bullets. Names, summaries, counts, previews,
-// and the validator's lines are judgment content and ride the payload; the
-// cache layout is the engine's.
+// validate.cjs's refusals as bullets, apply = apply.cjs's outcome. Names,
+// summaries, counts, previews, and the scripts' answers are judgment content
+// and ride the payload; the cache layout is the engine's.
 /** @type {Record<string, string[]>} */
 const LEGACY_SPLIT_THEME_FIELDS = {
   candidates: ['kebab_name', 'summary'],
   plan: ['kebab_name', 'summary', 'content_preview'],
 };
-const LEGACY_SPLIT_DISPLAY_VARIANTS = [...Object.keys(LEGACY_SPLIT_THEME_FIELDS), 'errors'];
 
-/** One of the legacy split dialog's displays. @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
-function legacySplitDisplaySurface(cwd, { variant, file }) {
-  if (variant === undefined || !LEGACY_SPLIT_DISPLAY_VARIANTS.includes(variant)) {
-    throw new Error(`render legacy-split-display: --variant must be one of ${LEGACY_SPLIT_DISPLAY_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+/** @param {string} cwd @param {string} dotpath @returns {{workUnit: string, sources: import('./legacy-split.cjs').LegacySources}} */
+function legacySplitScan(cwd, dotpath) {
+  const { workUnit, manifest } = resolveWorkUnit(cwd, dotpath, 'legacy-split-display');
+  return { workUnit, sources: legacySources(cwd, manifest) };
+}
+
+/** A ⚑ advisory whose label and tail each wrap on their own lines. @param {string} label @param {string} tail @returns {string} */
+function legacySplitFlag(label, tail) {
+  const budget = displayWidth() - 4;
+  return callout([...wrap(label, budget), ...wrap(tail, budget)]);
+}
+
+/** The scan's sections — each present only where the scan found its kind. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
+function legacySplitSources(cwd, { dotpath }) {
+  const { sources } = legacySplitScan(cwd, dotpath);
+  const sections = [];
+  if (sources.stranded_sentinels.length > 0) {
+    sections.push(section('DISPLAY: legacy split interrupted', CONTINUE_INSTRUCTION, [
+      legacySplitFlag('Interrupted split(s) detected — a prior apply crashed mid-flight.', 'Clear each, then reopen the epic via /workflow-start to retry:'),
+      '',
+      ...sources.stranded_sentinels.flatMap((name) => bulletRow(name, { indent: '    ' })),
+      '',
+      ...indentedBody(['Per-item recovery is under "Recovery from Interrupted Apply" at the end of this skill.'], { indent: '    ' }),
+    ].join('\n')));
   }
-  if (!file) throw new Error('render legacy-split-display: --file <payload.json> is required');
-  const p = readJsonPayload(cwd, file, 'legacy-split-display');
-  if (!isFilled(p.source)) throw new Error('render legacy-split-display: "source" must be a non-empty string');
-
-  if (variant === 'errors') {
-    if (!Array.isArray(p.errors) || p.errors.length === 0) {
-      throw new Error('render legacy-split-display: "errors" must be a non-empty array of strings');
-    }
-    p.errors.forEach((e, i) => {
-      if (!isFilled(e)) throw new Error(`render legacy-split-display: errors[${i}] must be a non-empty string`);
-    });
-    const body = [`Validation failed for ${p.source}:`, '', ...p.errors.flatMap((e) => bulletRow(e))];
-    return section('DISPLAY: legacy split errors', CONTINUE_INSTRUCTION, body.join('\n'));
+  if (sources.unsplittable.length > 0) {
+    sections.push(section('DISPLAY: legacy split unsplittable', CONTINUE_INSTRUCTION, [
+      callout('Unsplittable source(s) — rename each on the discovery map to a kebab name, then reopen the epic to split:'),
+      '',
+      ...sources.unsplittable.flatMap((src) => bulletRow(`${src.name} — ${src.reason}`, { indent: '    ' })),
+    ].join('\n')));
   }
+  if (sources.qualifying_sources.length > 0) {
+    sections.push(section('DISPLAY: legacy split sources', CONTINUE_INSTRUCTION, [
+      'Qualifying source files (in-progress, migration-seeded):',
+      '',
+      ...sources.qualifying_sources.flatMap((name) => bulletRow(`${name}.md`)),
+    ].join('\n')));
+  }
+  return sections.join('\n');
+}
 
+/** A qualifying source the split left as it stood. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
+function legacySplitSkipped(cwd, { dotpath, source }) {
+  if (!isFilled(source)) throw new Error('render legacy-split-display: --source is required — the source the split skipped');
+  const { workUnit, sources } = legacySplitScan(cwd, dotpath);
+  if (!sources.qualifying_sources.includes(/** @type {string} */ (source))) {
+    throw new Error(`render legacy-split-display: "${source}" is not a qualifying source of "${workUnit}" — a skipped source stands unchanged`);
+  }
+  return section('DISPLAY: legacy split skipped', CONTINUE_INSTRUCTION, `Skipping ${source}. Source file and manifest unchanged.`);
+}
+
+/** @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
+const LEGACY_SPLIT_STATE_DISPLAYS = { sources: legacySplitSources, skipped: legacySplitSkipped };
+
+/** validate.cjs's refusals. @param {Record<string, any>} p @returns {string} */
+function legacySplitErrors(p) {
+  if (!Array.isArray(p.errors) || p.errors.length === 0) {
+    throw new Error('render legacy-split-display: "errors" must be a non-empty array of strings');
+  }
+  p.errors.forEach((e, i) => {
+    if (!isFilled(e)) throw new Error(`render legacy-split-display: errors[${i}] must be a non-empty string`);
+  });
+  const body = [`Validation failed for ${p.source}:`, '', ...p.errors.flatMap((e) => bulletRow(e))];
+  return section('DISPLAY: legacy split errors', CONTINUE_INSTRUCTION, body.join('\n'));
+}
+
+/** @param {Record<string, any>} result @param {string} field @returns {string} */
+function applyField(result, field) {
+  if (!isFilled(result[field])) throw new Error(`render legacy-split-display: "result.${field}" must be a non-empty string — a failed apply names it`);
+  return result[field];
+}
+
+/** apply.cjs's failure: the stage it stopped at, its error, the recovery it names. @param {string} source @param {Record<string, any>} result @returns {string} */
+function legacySplitApplyFailed(source, result) {
+  const [stage, error, hint] = ['stage', 'error', 'recovery_hint'].map((field) => applyField(result, field));
+  return section('DISPLAY: legacy split apply failed', CONTINUE_INSTRUCTION, [
+    `Apply failed for ${source} at stage "${stage}":`,
+    ...errorOutputLines(error),
+    '',
+    ...wrap(`Recovery: ${hint}`, displayWidth()),
+  ].join('\n'));
+}
+
+/** apply.cjs's success: the themes it landed, then any knowledge-base cleanup warnings. @param {string} source @param {Record<string, any>} result @returns {string} */
+function legacySplitApplied(source, result) {
+  const themes = result.applied && result.applied.themes;
+  if (!Number.isInteger(themes) || themes < 1) {
+    throw new Error('render legacy-split-display: "result.applied.themes" must be a positive integer — the themes the apply landed');
+  }
+  const warnings = result.kb_warnings ?? [];
+  if (!Array.isArray(warnings) || warnings.some((w) => !isFilled(w))) {
+    throw new Error('render legacy-split-display: "result.kb_warnings" must be an array of non-empty strings when present');
+  }
+  const applied = section('DISPLAY: legacy split applied', CONTINUE_INSTRUCTION, `Applied ${source}: ${themes} new file(s).`);
+  if (warnings.length === 0) return applied;
+  return [applied, section('DISPLAY: legacy split kb warnings', CONTINUE_MARKDOWN_INSTRUCTION, [
+    '> ⚑ Knowledge-base cleanup reported warnings:',
+    ...warnings.map((w) => `> - ${escapeMarkdown(w)}`),
+    '>',
+    '> The next start brings the knowledge base up to date.',
+  ].join('\n'))].join('\n');
+}
+
+/** apply.cjs's outcome, its JSON carried whole under `result`. @param {Record<string, any>} p @returns {string} */
+function legacySplitApply(p) {
+  const result = p.result;
+  if (!result || typeof result !== 'object' || typeof result.ok !== 'boolean') {
+    throw new Error('render legacy-split-display: "result" must be the JSON apply.cjs answered, its "ok" a boolean');
+  }
+  return result.ok ? legacySplitApplied(p.source, result) : legacySplitApplyFailed(p.source, result);
+}
+
+/** The theme list or the drafted plan. @param {'candidates'|'plan'} variant @param {Record<string, any>} p @returns {string} */
+function legacySplitThemes(variant, p) {
   const fields = LEGACY_SPLIT_THEME_FIELDS[variant];
   if (variant === 'plan' && !isFilled(p.work_unit)) {
     throw new Error('render legacy-split-display: "work_unit" must be a non-empty string');
@@ -6767,6 +7031,29 @@ function legacySplitDisplaySurface(cwd, { variant, file }) {
   });
   lines.push(`Source file will be renamed to ${p.source}-superseded-<datetime>.md.`);
   return section('DISPLAY: legacy split plan', CONTINUE_INSTRUCTION, lines.join('\n'));
+}
+
+/** @type {Record<string, (p: Record<string, any>) => string>} */
+const LEGACY_SPLIT_PAYLOAD_DISPLAYS = {
+  candidates: (p) => legacySplitThemes('candidates', p),
+  plan: (p) => legacySplitThemes('plan', p),
+  errors: legacySplitErrors,
+  apply: legacySplitApply,
+};
+
+const LEGACY_SPLIT_DISPLAY_VARIANTS = [...Object.keys(LEGACY_SPLIT_STATE_DISPLAYS), ...Object.keys(LEGACY_SPLIT_PAYLOAD_DISPLAYS)];
+
+/** One of the legacy split's displays. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
+function legacySplitDisplaySurface(cwd, args) {
+  const { variant, file } = args;
+  if (variant === undefined || !LEGACY_SPLIT_DISPLAY_VARIANTS.includes(variant)) {
+    throw new Error(`render legacy-split-display: --variant must be one of ${LEGACY_SPLIT_DISPLAY_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  if (Object.hasOwn(LEGACY_SPLIT_STATE_DISPLAYS, variant)) return LEGACY_SPLIT_STATE_DISPLAYS[variant](cwd, args);
+  if (!file) throw new Error('render legacy-split-display: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'legacy-split-display');
+  if (!isFilled(p.source)) throw new Error('render legacy-split-display: "source" must be a non-empty string');
+  return LEGACY_SPLIT_PAYLOAD_DISPLAYS[variant](p);
 }
 
 // ---------------------------------------------------------------------------
@@ -6983,19 +7270,29 @@ function walkthroughTopicSurface(_cwd, args) {
   return walkthroughTopic(loadCard(args.name), Boolean(args['menu-only']));
 }
 
+// The flags each knowledge gate variant takes: the reuse variant's system
+// configuration (its yes row names it), the retry variant's provider (whose
+// missing key its display says how to store). Every other variant takes none.
+/** @type {Record<string, string[]>} */
+const KNOWLEDGE_GATE_FLAGS = { reuse: ['provider', 'model'], retry: ['provider'] };
+
 /**
- * workflow-start's knowledge gate menus. `--provider` and `--model` belong to
- * the reuse variant alone — the system configuration its yes row names. A
- * provider stands without a model (the provider defaults it); a model
- * without a provider names nothing.
+ * workflow-start's knowledge gate menus. A reuse provider stands without a
+ * model (the provider defaults it); a model without a provider names
+ * nothing. The retry variant names the provider its key is for.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function knowledgeGateSurface(_cwd, { variant, provider, model }) {
   if (variant === undefined || !KNOWLEDGE_GATE_VARIANTS.includes(variant)) {
     throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
   }
-  if (variant !== 'reuse' && (provider !== undefined || model !== undefined)) {
-    throw new Error(`render knowledge-gate: --provider/--model belong to the reuse variant — the ${variant} variant names no configuration`);
+  const takes = KNOWLEDGE_GATE_FLAGS[variant] ?? [];
+  const stray = Object.entries({ provider, model }).find(([flag, value]) => value !== undefined && !takes.includes(flag));
+  if (stray) {
+    throw new Error(`render knowledge-gate: --${stray[0]} does not belong to the ${variant} variant — --provider/--model name the reuse variant's configuration, --provider the retry variant's key`);
+  }
+  if (variant === 'retry' && !KEY_PROVIDERS.includes(provider ?? '')) {
+    throw new Error(`render knowledge-gate: the retry variant needs --provider ${KEY_PROVIDERS.join('|')} — the provider whose key the setup could not find, got "${provider ?? ''}"`);
   }
   if (isFilled(model) && !isFilled(provider)) {
     throw new Error('render knowledge-gate: --model names nothing without --provider — the provider is the configuration, the model rides with it');
@@ -7106,6 +7403,7 @@ const SURFACES = {
   'phase-completed': phaseCompleted,
   'phase-paused': phasePausedSurface,
   'phase-note': phaseNote,
+  'compliance-issues': complianceIssues,
   'entry-gate': entryGate,
   'direct-entry-gate': directEntryGate,
   'code-gate': codeGate,
@@ -7140,6 +7438,8 @@ const SURFACES = {
   'archived-delete-gate': archivedDeleteGateSurface,
   'inbox-content': inboxContentSurface,
   'inbox-archive-receipt': inboxArchiveReceiptSurface,
+  'inbox-restore-receipt': inboxRestoreReceiptSurface,
+  'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'completed-actions': completedActionsSurface,
   'revisit-phases': revisitPhasesSurface,
   'roadmap-view': roadmapViewSurface,

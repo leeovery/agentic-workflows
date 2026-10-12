@@ -4965,6 +4965,31 @@ describe('render phase-note', () => {
   });
 });
 
+describe('render compliance-issues', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const issues = (obj) => writePayload(dir, '.workflows/.cache/compliance-check.json', obj);
+  const MARKER = '=== DISPLAY: compliance issues (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
+
+  it('heads the significant issues with their count, counted from the payload\'s list — one and several', () => {
+    assert.strictEqual(renderSurface(dir, 'compliance-issues', { file: issues({ issues: ['The plan was committed before its review'] }) }),
+      `${MARKER}\nCompliance Check — Issues Found\n\n1 issue(s) detected during self-check.\n`);
+    assert.strictEqual(renderSurface(dir, 'compliance-issues', { file: issues({ issues: ['a', 'b', 'c'] }) }),
+      `${MARKER}\nCompliance Check — Issues Found\n\n3 issue(s) detected during self-check.\n`);
+  });
+
+  it('refuses no payload, an empty or absent list, and a blank issue', () => {
+    assert.throws(() => renderSurface(dir, 'compliance-issues', {}), /render compliance-issues: --file <payload\.json> is required/);
+    assert.throws(() => renderSurface(dir, 'compliance-issues', { file: issues({}) }),
+      /"issues" must be a non-empty array — one line naming each significant issue/);
+    assert.throws(() => renderSurface(dir, 'compliance-issues', { file: issues({ issues: [] }) }), /"issues" must be a non-empty array/);
+    assert.throws(() => renderSurface(dir, 'compliance-issues', { file: issues({ issues: ['a', '  '] }) }),
+      /render compliance-issues: issues\[1\] must be a non-empty string/);
+  });
+});
+
 describe('render code-gate', () => {
   let dir;
   beforeEach(() => {
@@ -5527,7 +5552,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-graph-cycle, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, plan-progress, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-graph-cycle, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, compliance-issues, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, plan-summary, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, inbox-restore-receipt, inbox-delete-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -6244,12 +6269,52 @@ describe('baseline surfaces', () => {
     assert.match(unwrap(mode), /\*\*`k\/keyword`\*\*\s+→ Keyword-only search — the no-key backstop; upgrade anytime later/);
     assert.match(unwrap(mode), /\*\*`t\/terminal`\*\*\s+→ Run the interactive wizard in your terminal instead/);
 
-    const retry = renderSurface(dir, 'knowledge-gate', { variant: 'retry' });
+    const retry = renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai' });
     assert.match(retry, /=== MENU: knowledge retry gate/);
     assert.match(retry, /\*\*`◆ Ready to retry\?`\*\*/);
     assert.match(unwrap(retry), /\*\*`y\/yes`\*\*\s+→ The key is stored — re-run the setup/);
     assert.match(unwrap(retry), /\*\*`k\/keyword`\*\* → Skip the key for now — use keyword-only search instead/);
     assert.doesNotMatch(retry, /d\/done/);
+  });
+
+  it('the knowledge gate\'s retry: an OpenAI key is stored at the private prompt or the shell, the guidance against pasting it going between the commands and the menu', () => {
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai' }), [
+      '=== DISPLAY: knowledge retry (emit verbatim as a text code block (```text fence)) ===',
+      'No OpenAI API key was found. Store one without it touching this',
+      'chat — run ONE of these in your terminal, then come back:',
+      '',
+      '  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only',
+      '      Private prompt, input hidden. Stored at',
+      '      ~/.config/workflows/credentials.json (mode 0600).',
+      '',
+      '  export OPENAI_API_KEY=<your key>   # note: inline export lands in shell history — --key-only avoids that',
+      '      Shell environment — takes precedence over the stored key.',
+      '',
+      "=== MENU: knowledge retry gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Ready to retry?`**',
+      '',
+      '**`y/yes`**     → The key is stored — re-run the setup',
+      '**`k/keyword`** → Skip the key for now — use keyword-only search',
+      `${NB(12)}instead`,
+      '',
+    ].join('\n'));
+  });
+
+  it('the knowledge gate\'s retry: an OpenAI-compatible endpoint\'s key is stored at the private prompt alone', () => {
+    const out = renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai-compatible' });
+    assert.ok(out.startsWith([
+      '=== DISPLAY: knowledge retry (emit verbatim as a text code block (```text fence)) ===',
+      'The endpoint requires an API key. Store one without it touching',
+      'this chat — run this in your terminal, then come back:',
+      '',
+      '  node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible',
+      '      Private prompt, input hidden. Stored at',
+      '      ~/.config/workflows/credentials.json (mode 0600).',
+      '',
+      "=== MENU: knowledge retry gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+    ].join('\n')), out);
+    assert.doesNotMatch(out, /OPENAI_API_KEY/);
   });
 
   it('the knowledge gate\'s wizard wait: the command to run above a gate that asks whether it completed', () => {
@@ -6269,7 +6334,7 @@ describe('baseline surfaces', () => {
       '**`y/yes`** → It completed — check the knowledge base again',
       '',
     ].join('\n'));
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'wizard', provider: 'openai' }), /belong to the reuse variant — the wizard variant/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'wizard', provider: 'openai' }), /--provider does not belong to the wizard variant/);
   });
 
   it('knowledge-ready names the configuration this checkout\'s store was built with, read from its metadata', () => {
@@ -6288,13 +6353,16 @@ describe('baseline surfaces', () => {
     assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), /render knowledge-ready: \.workflows\/\.knowledge\/metadata\.json is not valid JSON/);
   });
 
-  it('the knowledge gate refuses a missing or unknown variant, a lone provider or model, and a configuration on any variant but reuse', () => {
+  it('the knowledge gate refuses a missing or unknown variant, a lone model, a configuration off the reuse variant, and a retry naming no provider it can store a key for', () => {
     assert.throws(() => renderSurface(dir, 'knowledge-gate', {}), /--variant must be one of reuse, deviate, mode, retry, wizard, got ""/);
     assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'setup' }), /--variant must be one of reuse, deviate, mode, retry, wizard, got "setup"/);
     assert.match(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai' }), /Use the existing configuration \(openai\)/);
     assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', model: 'text-embedding-3-small' }), /--model names nothing without --provider/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'mode', provider: 'openai', model: 'text-embedding-3-small' }), /--provider\/--model belong to the reuse variant — the mode variant names no configuration/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', model: 'x' }), /belong to the reuse variant — the retry variant/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'mode', provider: 'openai', model: 'text-embedding-3-small' }), /--provider does not belong to the mode variant/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'deviate', model: 'x' }), /--model does not belong to the deviate variant/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai', model: 'x' }), /--model does not belong to the retry variant/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry' }), /the retry variant needs --provider openai\|openai-compatible — the provider whose key the setup could not find, got ""/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'ollama' }), /the retry variant needs --provider openai\|openai-compatible — .*got "ollama"/);
   });
 
   it('the static baseline gates render their menus; the completed-only pair refuse mid-flight', () => {
@@ -6952,6 +7020,69 @@ describe('render inbox-content and inbox-archive-receipt', () => {
     assert.throws(() => renderSurface(dir, 'inbox-archive-receipt', { dotpath: undefined, path: BUG }),
       /render inbox-archive-receipt: inbox file not found/);
   });
+
+  const RECEIPT = '=== DISPLAY: confirmation (emit verbatim as a text code block (```text fence) after the response) ===';
+
+  it('inbox-restore-receipt names the item back in the inbox by its own title — its slug where it has none', () => {
+    write(IDEA, '---\nsource: chat\n---\n\n# Smart Retry\n');
+    assert.strictEqual(renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined, path: IDEA }),
+      `${RECEIPT}\nRestored "Smart Retry" to the inbox.\n`);
+    write(IDEA, 'no heading here\n');
+    assert.strictEqual(renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined, path: IDEA }),
+      `${RECEIPT}\nRestored "smart-retry" to the inbox.\n`);
+  });
+
+  it('inbox-restore-receipt refuses no path, an archived path, and a live path nothing sits at — the inbox is the state it receipts', () => {
+    write(BUG, '# Login Loop\n');
+    assert.throws(() => renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined }),
+      /render inbox-restore-receipt: --path is required — the live path `inbox restore` answered/);
+    assert.throws(() => renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined, path: BUG }),
+      /render inbox-restore-receipt: not a live inbox path/);
+    assert.throws(() => renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined, path: IDEA }),
+      /render inbox-restore-receipt: not in the live inbox: "\.workflows\/\.inbox\/ideas\/2026-06-01--smart-retry\.md"/);
+  });
+
+  const git = (...args) => {
+    const res = require('child_process').spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(res.status, 0, res.stderr);
+  };
+  const committed = (rel, text) => {
+    write(rel, text);
+    git('add', '--', rel);
+    git('commit', '-q', '-m', `add ${rel}`);
+  };
+
+  it('inbox-delete-receipt names the deleted item by the title git last held — the deleting commit\'s parent, however many commits sit above it', () => {
+    git('init', '-q');
+    committed(BUG, '# Login Loop\n');
+    git('rm', '-q', '--', BUG);
+    git('commit', '-q', '-m', 'delete');
+    committed('notes.md', 'later work\n');
+    assert.strictEqual(renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: BUG }),
+      `${RECEIPT}\nDeleted "Login Loop".\n`);
+  });
+
+  it('inbox-delete-receipt reads HEAD while the deletion is only staged — a commit the delete could not land', () => {
+    git('init', '-q');
+    committed(BUG, 'no heading here\n');
+    git('rm', '-q', '--', BUG);
+    assert.strictEqual(renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: BUG }),
+      `${RECEIPT}\nDeleted "login-loop".\n`);
+  });
+
+  it('inbox-delete-receipt refuses no path, a live path, a path the archive still holds, and one git holds no copy of', () => {
+    git('init', '-q');
+    committed(BUG, '# Login Loop\n');
+    assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined }),
+      /render inbox-delete-receipt: --path is required — the archived path `inbox delete` answered/);
+    assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: IDEA }),
+      /render inbox-delete-receipt: not an archived inbox path/);
+    assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: BUG }),
+      /render inbox-delete-receipt: still in the archived store, so nothing was deleted: "\.workflows\/\.inbox\/\.archived\/bugs\/2026-06-02--login-loop\.md"/);
+    const ghost = '.workflows/.inbox/.archived/ideas/2026-06-09--ghost.md';
+    assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: ghost }),
+      /render inbox-delete-receipt: git holds no deleted file at "\.workflows\/\.inbox\/\.archived\/ideas\/2026-06-09--ghost\.md"/);
+  });
 });
 
 describe('render backlog-gate', () => {
@@ -7415,8 +7546,8 @@ describe('render legacy-split-display', () => {
 
   it('refuses a missing or unknown variant, a missing or absent file, and a payload short of its variant\'s fields', () => {
     const bad = (name, variant, obj) => () => renderSurface(dir, 'legacy-split-display', { variant, file: writePayload(dir, name, obj) });
-    assert.throws(() => renderSurface(dir, 'legacy-split-display', {}), /--variant must be one of candidates, plan, errors, got ""/);
-    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'themes' }), /--variant must be one of candidates, plan, errors, got "themes"/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', {}), /--variant must be one of sources, skipped, candidates, plan, errors, apply, got ""/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'themes' }), /--variant must be one of sources, skipped, candidates, plan, errors, apply, got "themes"/);
     assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates' }), /--file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'candidates', file: 'nope.json' }), /payload file not found: nope\.json/);
     assert.throws(bad('s.json', 'candidates', { themes }), /"source" must be a non-empty string/);
@@ -7429,6 +7560,152 @@ describe('render legacy-split-display', () => {
     assert.throws(bad('pn.json', 'plan', { source: 'auth', work_unit: 'pay', themes: [{ ...themes[0], paragraph_count: -1, content_preview: 'x' }] }), /theme 1 "paragraph_count" must be a non-negative integer/);
     assert.throws(bad('ee.json', 'errors', { source: 'auth', errors: [] }), /"errors" must be a non-empty array of strings/);
     assert.throws(bad('eb.json', 'errors', { source: 'auth', errors: ['ok', ''] }), /errors\[1\] must be a non-empty string/);
+  });
+
+  // An epic whose map holds a qualifying source, one a crashed apply left
+  // mid-split, one whose name the split cannot process, and two that do not
+  // qualify — a parked research item, and a source whose file is gone.
+  const legacyEpic = () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: {
+          auth: { routing: 'research', source: 'migration-seeded' },
+          'bad.name': { routing: 'research', source: 'migration-seeded' },
+          billing: { routing: 'research', source: 'discovery', legacy_split_state: 'in-progress' },
+          parked: { routing: 'research', source: 'migration-seeded' },
+          vanished: { routing: 'research', source: 'migration-seeded' },
+        } },
+        research: { items: {
+          auth: { status: 'in-progress' },
+          'bad.name': { status: 'in-progress' },
+          parked: { status: 'unstarted' },
+          vanished: { status: 'in-progress' },
+        } },
+      },
+    });
+    for (const name of ['auth', 'bad.name', 'parked']) writePayload(dir, `.workflows/pay/research/${name}.md`, '# Research\n');
+  };
+
+  it('sources: the scan read from the epic — the interrupted splits, the unsplittable sources, then the qualifying files', () => {
+    legacyEpic();
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'sources' }), [
+      '=== DISPLAY: legacy split interrupted (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '  ⚑ Interrupted split(s) detected — a prior apply crashed',
+      '    mid-flight.',
+      '    Clear each, then reopen the epic via /workflow-start to',
+      '    retry:',
+      '',
+      '    • billing',
+      '',
+      '    Per-item recovery is under "Recovery from Interrupted Apply"',
+      '    at the end of this skill.',
+      '',
+      '=== DISPLAY: legacy split unsplittable (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '  ⚑ Unsplittable source(s) — rename each on the discovery map to',
+      '    a kebab name, then reopen the epic to split:',
+      '',
+      '    • bad.name — name must match ^[a-z0-9][a-z0-9-]*$ (engine',
+      '      dot-paths reject dots/slashes)',
+      '',
+      '=== DISPLAY: legacy split sources (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      'Qualifying source files (in-progress, migration-seeded):',
+      '',
+      '  • auth.md',
+      '',
+    ].join('\n'));
+  });
+
+  it('sources: each section stands only where the scan found its kind, and a scan that found nothing answers empty', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: { auth: { routing: 'research', source: 'migration-seeded' } } },
+        research: { items: { auth: { status: 'in-progress' } } },
+      },
+    });
+    writePayload(dir, '.workflows/pay/research/auth.md', '# Auth\n');
+    const out = renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'sources' });
+    assert.match(out, /^=== DISPLAY: legacy split sources /);
+    assert.doesNotMatch(out, /interrupted|unsplittable/);
+
+    writeManifest(dir, 'pay', { phases: { discovery: { items: { auth: { routing: 'research', source: 'discovery' } } } } });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'sources' }), '');
+  });
+
+  it('skipped: a qualifying source left as it stood', () => {
+    legacyEpic();
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'skipped', source: 'auth' }), [
+      '=== DISPLAY: legacy split skipped (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      'Skipping auth. Source file and manifest unchanged.',
+      '',
+    ].join('\n'));
+  });
+
+  it('sources and skipped refuse a non-bare address and an unknown unit; skipped refuses no source and one the scan does not find qualifying', () => {
+    legacyEpic();
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { dotpath: 'pay.discovery.auth', variant: 'sources' }), /address must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { dotpath: 'ghost', variant: 'sources' }), /work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'skipped' }), /--source is required — the source the split skipped/);
+    for (const source of ['billing', 'bad.name', 'parked', 'vanished', 'ghost']) {
+      assert.throws(() => renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'skipped', source }),
+        new RegExp(`"${source.replace('.', '\\.')}" is not a qualifying source of "pay" — a skipped source stands unchanged`));
+    }
+  });
+
+  it('apply: a landed split names its themes; knowledge-base cleanup warnings follow as a markdown advisory', () => {
+    const applied = '=== DISPLAY: legacy split applied (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===\nApplied auth: 3 new file(s).\n';
+    const clean = writePayload(dir, 'apply.json', { source: 'auth', result: { ok: true, applied: { themes: 3 } } });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'apply', file: clean }), applied);
+    const empty = writePayload(dir, 'apply-empty.json', { source: 'auth', result: { ok: true, applied: { themes: 3 }, kb_warnings: [] } });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'apply', file: empty }), applied);
+
+    const warned = writePayload(dir, 'apply-warned.json', { source: 'auth', result: {
+      ok: true, applied: { themes: 3 }, kb_warnings: ['knowledge remove (research/auth) failed: store_locked', 'chunk *42* left'],
+    } });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'apply', file: warned }), [
+      applied,
+      '=== DISPLAY: legacy split kb warnings (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '> ⚑ Knowledge-base cleanup reported warnings:',
+      '> - knowledge remove (research/auth) failed: store\\_locked',
+      '> - chunk \\*42\\* left',
+      '>',
+      '> The next start brings the knowledge base up to date.',
+      '',
+    ].join('\n'));
+  });
+
+  it('apply: a failed split names the stage it stopped at, its error, and the recovery', () => {
+    const file = writePayload(dir, 'apply.json', { source: 'auth', result: {
+      ok: false,
+      stage: 'rename_source_file',
+      error: "ENOENT: no such file or directory, rename 'auth.md'",
+      recovery_hint: 'source file rename failed. Clear sentinel manually: engine manifest delete pay.discovery.auth legacy_split_state',
+    } });
+    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'apply', file }), [
+      '=== DISPLAY: legacy split apply failed (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      'Apply failed for auth at stage "rename_source_file":',
+      "  ENOENT: no such file or directory, rename 'auth.md'",
+      '',
+      'Recovery: source file rename failed. Clear sentinel manually:',
+      'engine manifest delete pay.discovery.auth legacy_split_state',
+      '',
+    ].join('\n'));
+  });
+
+  it('apply: refuses a result that is not apply.cjs\'s answer — no ok, a landed split without its theme count or with blank warnings, a failure short of its stage, error or recovery', () => {
+    const bad = (name, result) => () => renderSurface(dir, 'legacy-split-display', { variant: 'apply', file: writePayload(dir, name, { source: 'auth', result }) });
+    assert.throws(bad('a1.json', undefined), /"result" must be the JSON apply\.cjs answered, its "ok" a boolean/);
+    assert.throws(bad('a2.json', { applied: { themes: 1 } }), /"result" must be the JSON apply\.cjs answered, its "ok" a boolean/);
+    assert.throws(bad('a3.json', { ok: true }), /"result\.applied\.themes" must be a positive integer/);
+    assert.throws(bad('a4.json', { ok: true, applied: { themes: 0 } }), /"result\.applied\.themes" must be a positive integer/);
+    assert.throws(bad('a5.json', { ok: true, applied: { themes: 1 }, kb_warnings: ['ok', ' '] }), /"result\.kb_warnings" must be an array of non-empty strings when present/);
+    assert.throws(bad('a6.json', { ok: true, applied: { themes: 1 }, kb_warnings: 'one' }), /"result\.kb_warnings" must be an array of non-empty strings when present/);
+    for (const field of ['stage', 'error', 'recovery_hint']) {
+      const result = { ok: false, stage: 'git_commit', error: 'hook failed', recovery_hint: 'commit by hand' };
+      delete result[field];
+      assert.throws(bad(`f-${field}.json`, result), new RegExp(`"result\\.${field}" must be a non-empty string — a failed apply names it`));
+    }
+    assert.throws(() => renderSurface(dir, 'legacy-split-display', { variant: 'apply', file: writePayload(dir, 'ns.json', { result: { ok: true, applied: { themes: 1 } } }) }),
+      /"source" must be a non-empty string/);
   });
 });
 
@@ -7553,55 +7830,95 @@ describe('render map-op-gate', () => {
       /no discovery item "ghost" on the map/);
   });
 
-  it('refuses an op its lifecycle forbids — the same table the write path enforces', () => {
-    assert.throws(() => render('remove', { name: 'in-flight' }, 'r1.json'),
-      /render map-op-gate: "in-flight" can't be removed — it's "discussing", not fresh/);
-    assert.throws(() => render('rename', { name: 'in-flight', new_name: 'x' }, 'r2.json'),
-      /"in-flight" can't be renamed — it's "discussing", not fresh/);
-    assert.throws(() => render('reroute', { name: 'in-flight', from: 'research', to: 'discussion' }, 'r3.json'),
-      /"in-flight" can't be re-routed — it's "discussing", not fresh/);
-    assert.throws(() => render('close', { name: 'dead-end' }, 'r4.json'),
-      /"dead-end" can't be closed as a dead end — it's already closed/);
-    assert.throws(() => render('reopen', { name: 'auth-flow' }, 'r5.json'),
-      /"auth-flow" can't be reopened — it's "fresh", not closed as a dead end/);
+  const REFUSED = '=== DISPLAY: map operation refused (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
+  // The refusal's one sentence, its display-width wrap undone.
+  const refusal = (out) => {
+    assert.ok(out.startsWith(`${REFUSED}\n`), out);
+    assert.doesNotMatch(out, /MENU/, 'a refused op is never confirmed');
+    return out.slice(REFUSED.length + 1).trimEnd().replace(/\n/g, ' ');
+  };
+
+  it('a destructive op its lifecycle forbids answers its refusal alone, wrapped — no menu, nothing to confirm', () => {
+    assert.strictEqual(render('remove', { name: 'in-flight' }, 'r1.json'), [
+      REFUSED,
+      '"in-flight" can\'t be removed from the map — discussion is in',
+      'flight on it. To stop work on it, use `a`/`cancel` from the epic',
+      'menu instead — or postpone it to the roadmap for later.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(refusal(render('rename', { name: 'in-flight', new_name: 'x' }, 'r2.json')),
+      '"in-flight" can\'t be renamed from the map — discussion is in flight on it. To stop work on it, use `a`/`cancel` from the epic menu instead — or postpone it to the roadmap for later.');
+    assert.strictEqual(refusal(render('reroute', { name: 'in-flight', from: 'research', to: 'discussion' }, 'r3.json')),
+      '"in-flight" can\'t be re-routed from the map — discussion is in flight on it. To stop work on it, use `a`/`cancel` from the epic menu instead — or postpone it to the roadmap for later.');
   });
 
-  it('a cancelled row names its way back — the reactivate — on every op it refuses', () => {
-    assert.throws(() => render('remove', { name: 'gone' }, 'c1.json'),
-      /"gone" can't be removed — it's "cancelled", not fresh — reactivate it from the epic menu first/);
-    assert.throws(() => render('rename', { name: 'gone', new_name: 'x' }, 'c2.json'),
-      /"gone" can't be renamed — it's "cancelled", not fresh — reactivate it from the epic menu first/);
-    assert.throws(() => render('reroute', { name: 'gone', from: 'discussion', to: 'research' }, 'c3.json'),
-      /"gone" can't be re-routed — it's "cancelled", not fresh — reactivate it from the epic menu first/);
-    assert.throws(() => render('close', { name: 'gone' }, 'c4.json'),
-      /"gone" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first/);
-    assert.throws(() => render('remove', { name: 'in-flight' }, 'c5.json'), /not fresh$/, 'a live row carries no reactivate clause');
+  it('the destructive refusal names where the topic stands from its own state — a superseded research is never named completed', () => {
+    writeManifest(dir, 'pay', {
+      phases: {
+        discovery: { items: {
+          researching: { routing: 'research', source: 'discovery' },
+          queued: { routing: 'research', source: 'discovery' },
+          superseded: { routing: 'research', source: 'discovery' },
+          settled: { routing: 'discussion', source: 'discovery' },
+        } },
+        research: { items: {
+          researching: { status: 'in-progress' },
+          queued: { status: 'completed' },
+          superseded: { status: 'superseded' },
+        } },
+        discussion: { items: { settled: { status: 'completed' } } },
+      },
+    });
+    const phrase = (name) => refusal(render('remove', { name }, `${name}.json`)).match(/— (.*)\. To stop/)[1];
+    assert.strictEqual(phrase('researching'), 'research is in flight on it');
+    assert.strictEqual(phrase('queued'), 'research has completed and discussion is queued');
+    assert.strictEqual(phrase('superseded'), 'its research was superseded and discussion is queued');
+    assert.strictEqual(phrase('settled'), 'discussion has concluded');
   });
 
-  it('a postponed row names its way back — the pull — on every op it refuses', () => {
-    assert.throws(() => render('remove', { name: 'away' }, 'p1.json'),
-      /"away" can't be removed — it's "postponed", not fresh — pull it forward from the roadmap first/);
-    assert.throws(() => render('rename', { name: 'away', new_name: 'x' }, 'p2.json'),
-      /"away" can't be renamed — it's "postponed", not fresh — pull it forward from the roadmap first/);
-    assert.throws(() => render('reroute', { name: 'away', from: 'discussion', to: 'research' }, 'p3.json'),
-      /"away" can't be re-routed — it's "postponed", not fresh — pull it forward from the roadmap first/);
-    assert.throws(() => render('close', { name: 'away' }, 'p4.json'),
-      /"away" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first/);
-    assert.throws(() => render('reopen', { name: 'away' }, 'p5.json'),
-      /"away" can't be reopened — it's "postponed", not closed as a dead end/);
-    assert.match(render('edit-summary', { items: [{ name: 'away', summary: 'Still editable' }] }, 'p6.json'),
-      /Updating 1 summary\(ies\):/);
+  it('a closed row names its way back on every destructive op — the reopen, the reactivate, the pull', () => {
+    for (const [op, extra, verb] of [['remove', {}, 'removed'], ['rename', { new_name: 'x' }, 'renamed'], ['reroute', { from: 'discussion', to: 'research' }, 're-routed']]) {
+      assert.strictEqual(refusal(render(op, { name: 'dead-end', ...extra }, `${op}-h.json`)),
+        `"dead-end" can't be ${verb} from the map — it is closed as a dead end and stays on the map as record. Say "reopen dead-end" to make it actionable again.`);
+      assert.strictEqual(refusal(render(op, { name: 'gone', ...extra }, `${op}-c.json`)),
+        `"gone" can't be ${verb} from the map — it is cancelled and stays on the map as record. Reactivate it from the epic menu first.`);
+      assert.strictEqual(refusal(render(op, { name: 'away', ...extra }, `${op}-p.json`)),
+        `"away" can't be ${verb} from the map — it is postponed and waits on the roadmap. Pull it forward from the roadmap first.`);
+    }
+  });
+
+  it('a marker op its lifecycle forbids answers the very refusal its transaction throws', () => {
+    assert.strictEqual(render('close', { name: 'dead-end' }, 'm1.json'), `${REFUSED}\n"dead-end" can't be closed as a dead end — it's already closed.\n`);
+    assert.strictEqual(refusal(render('close', { name: 'gone' }, 'm2.json')),
+      '"gone" can\'t be closed as a dead end — it\'s cancelled; reactivate it from the epic menu first.');
+    assert.strictEqual(refusal(render('close', { name: 'away' }, 'm3.json')),
+      '"away" can\'t be closed as a dead end — it\'s postponed; pull it forward from the roadmap first.');
+    assert.strictEqual(refusal(render('reopen', { name: 'auth-flow' }, 'm4.json')),
+      '"auth-flow" can\'t be reopened — it isn\'t closed as a dead end, so there\'s nothing to reopen.');
+    assert.strictEqual(refusal(render('reopen', { name: 'gone' }, 'm5.json')),
+      '"gone" can\'t be reopened — it\'s cancelled; reactivate it from the epic menu first.');
+    assert.strictEqual(refusal(render('reopen', { name: 'away' }, 'm6.json')),
+      '"away" can\'t be reopened — it\'s postponed; pull it forward from the roadmap first.');
+  });
+
+  it('a close over messages waiting in the topic\'s mailbox is refused, naming each mailbox that holds them', () => {
+    writePayload(dir, '.workflows/pay/research/.mailbox/auth-flow/001.md', 'a point\n');
+    writePayload(dir, '.workflows/pay/discussion/.mailbox/auth-flow/001.md', 'another\n');
+    assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'w.json')),
+      '"auth-flow" can\'t be closed as a dead end — messages wait in its research and discussion mailbox; start the topic to drain them, or cancel the topic from the epic menu instead.');
   });
 
   it('a cancelled topic refuses the close, and an edit rides any lifecycle', () => {
+    assert.match(render('edit-summary', { items: [{ name: 'away', summary: 'Still editable' }] }, 'p6.json'),
+      /Updating 1 summary\(ies\):/);
     writeManifest(dir, 'pay', {
       phases: {
         discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } },
         discussion: { items: { 'auth-flow': { status: 'cancelled' } } },
       },
     });
-    assert.throws(() => render('close', { name: 'auth-flow' }, 'c1.json'),
-      /"auth-flow" can't be closed as a dead end — it's cancelled; reactivate it from the epic menu first/);
+    assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'c1.json')),
+      '"auth-flow" can\'t be closed as a dead end — it\'s cancelled; reactivate it from the epic menu first.');
     assert.match(render('edit-summary', { items: [{ name: 'auth-flow', summary: 'Still editable' }] }, 'c2.json'),
       /Updating 1 summary\(ies\):/);
   });
@@ -7743,6 +8060,34 @@ describe('render candidate-gate', () => {
     writeManifest(dir, 'bare', { phases: { discovery: { items: {} } } });
     assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'bare', file: writePayload(dir, 'b.json', payload) }),
       /no staged gap-analysis candidates for "bare"/);
+  });
+
+  const ANNOUNCED = '=== DISPLAY: candidates announced (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
+  const announce = () => renderSurface(dir, 'candidate-gate', { dotpath: 'pay', variant: 'announce' });
+
+  it('announce: counts the candidates the staging subtree marks pending — the decided ones never count', () => {
+    writeManifest(dir, 'pay', {
+      phases: { discovery: { analysis_staging: { 'discovery-gap-analysis': {
+        gate_mode: 'gated',
+        candidates: { a: { status: 'pending' }, b: { status: 'approved' }, c: { status: 'pending' }, d: { status: 'skipped' } },
+      } } } },
+    });
+    assert.strictEqual(announce(), `${ANNOUNCED}\nGap analysis surfaced 2 candidate topic(s).\n`);
+  });
+
+  it('announce: nothing new to review where none wait pending, or the analysis staged nothing', () => {
+    staged('gated', 'approved');
+    assert.strictEqual(announce(), `${ANNOUNCED}\nNothing new to review.\n`);
+    writeManifest(dir, 'pay', { phases: { discovery: { items: {} } } });
+    assert.strictEqual(announce(), `${ANNOUNCED}\nNothing new to review.\n`);
+  });
+
+  it('announce: refuses an unknown variant, a non-bare address and an unknown unit', () => {
+    staged('gated');
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay', variant: 'count' }),
+      /--variant takes "announce" alone — the per-candidate gate takes none, got "count"/);
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'pay.discovery.x', variant: 'announce' }), /address must be a bare <work_unit>/);
+    assert.throws(() => renderSurface(dir, 'candidate-gate', { dotpath: 'ghost', variant: 'announce' }), /work unit "ghost" not found/);
   });
 });
 
@@ -8190,14 +8535,112 @@ describe('render — the adopted phase gates', () => {
       /takes no --reason/);
   });
 
-  it('summary-backfill-gate: the static batch gate and the payload-named unsourced set', () => {
-    const batch = renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'batch' });
-    assert.match(batch, /MENU: summary batch gate/);
-    assert.match(batch, /`◆ Accept these summaries\?`/);
-    assert.match(unwrap(batch), /\*\*`y\/yes`\*\*\s+→ Accept all summaries as drafted \(description is auto-drafted silently\)/);
-    assert.match(unwrap(batch), /\*\*`e\/edit`\*\* → Edit one or more summary lines before accepting/);
-    assert.match(unwrap(batch), /\*\*`s\/skip`\*\* → Skip the whole batch \(leave fields blank\)/);
+  // A map whose rows are missing a summary (one drafted, one with no source
+  // to draft from), a description alone, or nothing at all — the last never
+  // part of the batch.
+  const backfillMap = () => writeManifest(dir, 'pay', {
+    phases: { discovery: { items: {
+      'auth-flow': { routing: 'research', source: 'discovery', order: 1 },
+      billing: { routing: 'discussion', source: 'discovery', order: 2, summary: 'How invoices are raised and settled' },
+      'legacy-bits': { routing: 'discussion', source: 'discovery', order: 3 },
+      settled: { routing: 'discussion', source: 'discovery', order: 4, summary: 'Whole', description: 'Whole' },
+    } } },
+  });
+  const drafted = (summaries, name = 'summaries.json') => writePayload(dir, `.workflows/.cache/pay/discovery/${name}`, { summaries });
+  const backfill = (variant, extra = {}) => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant, ...extra });
+  const PROPOSED_ROWS = [
+    'Proposed summaries for 3 topic(s):',
+    '',
+    '  1. Auth Flow  (research)',
+    '       How sign-in survives a dropped session and a token refresh',
+    '       mid-request',
+    '  2. Billing  (discussion)',
+    '       How invoices are raised and settled  (already populated)',
+    '  3. Legacy Bits  (discussion)',
+    '       (source file missing — please provide)',
+  ];
+  const DRAFTS = { 'auth-flow': 'How sign-in survives a dropped session and a token refresh mid-request', 'legacy-bits': null };
 
+  it('summary-backfill-gate: the batch — the rows missing a summary or description, read from the map, their drafts from the payload, above the accept gate', () => {
+    backfillMap();
+    assert.strictEqual(backfill('batch', { file: drafted(DRAFTS) }), [
+      '=== DISPLAY: proposed summaries (emit verbatim as a text code block (```text fence), directly above the menu) ===',
+      ...PROPOSED_ROWS,
+      '',
+      "=== MENU: summary batch gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Accept these summaries?`**',
+      '',
+      '**`y/yes`**  → Accept all summaries as drafted (description is',
+      `${NB(9)}auto-drafted silently)`,
+      '**`e/edit`** → Edit one or more summary lines before accepting',
+      '**`s/skip`** → Skip the whole batch (leave fields blank)',
+      '',
+    ].join('\n'));
+  });
+
+  it('summary-backfill-gate: proposed is the batch display alone, the edit loop\'s re-render — never a gate', () => {
+    backfillMap();
+    assert.strictEqual(backfill('proposed', { file: drafted(DRAFTS) }), [
+      '=== DISPLAY: proposed summaries (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      ...PROPOSED_ROWS,
+      '',
+    ].join('\n'));
+  });
+
+  it('summary-backfill-gate: a populated summary\'s tag drops to its own line where the last line has no room for it', () => {
+    writeManifest(dir, 'pay', {
+      phases: { discovery: { items: { billing: { routing: 'discussion', source: 'discovery', summary: 'How invoices are raised, reconciled, and settled each month end' } } } },
+    });
+    assert.ok(backfill('proposed', { file: drafted({}) }).includes([
+      '  1. Billing  (discussion)',
+      '       How invoices are raised, reconciled, and settled each',
+      '       month end  (already populated)',
+    ].join('\n')));
+    writeManifest(dir, 'pay', {
+      phases: { discovery: { items: { billing: { routing: 'discussion', source: 'discovery', summary: 'How invoices are raised, reconciled, and settled monthly' } } } },
+    });
+    assert.ok(backfill('proposed', { file: drafted({}) }).includes([
+      '       How invoices are raised, reconciled, and settled monthly',
+      '       (already populated)',
+    ].join('\n')));
+  });
+
+  it('summary-backfill-gate: prompt asks for one drafted line\'s replacement — never a summary the map already holds', () => {
+    backfillMap();
+    assert.strictEqual(backfill('prompt', { topic: 'legacy-bits' }), [
+      "=== DISPLAY: summary prompt (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      'New summary for "Legacy Bits":',
+      '',
+    ].join('\n'));
+    assert.throws(() => backfill('prompt', { topic: 'billing' }),
+      /"billing" already has its summary on the map — only a drafted line is edited here/);
+    assert.throws(() => backfill('prompt', { topic: 'settled' }), /--topic must name a topic the batch proposes, got "settled"/);
+    assert.throws(() => backfill('prompt', {}), /--topic must name a topic the batch proposes, got ""/);
+  });
+
+  it('summary-backfill-gate: the drafts are keyed by exactly the rows missing a summary, each a line or null', () => {
+    backfillMap();
+    assert.throws(() => backfill('batch'), /--file <payload\.json> is required — the drafted summaries/);
+    assert.throws(() => backfill('batch', { file: writePayload(dir, 'x.json', { summaries: ['a'] }) }), /"summaries" must be an object keyed by topic name/);
+    assert.throws(() => backfill('batch', { file: drafted({ 'auth-flow': 'a' }) }),
+      /"summaries\.legacy-bits" must be its drafted line, or null where its source file is missing/);
+    assert.throws(() => backfill('proposed', { file: drafted({ 'auth-flow': ' ', 'legacy-bits': null }) }),
+      /"summaries\.auth-flow" must be its drafted line/);
+    assert.throws(() => backfill('batch', { file: drafted({ ...DRAFTS, billing: 'b' }) }),
+      /"billing" is not a topic missing its summary — only those take a drafted line/);
+    assert.throws(() => backfill('batch', { file: drafted({ ...DRAFTS, ghost: 'g' }) }), /"ghost" is not a topic missing its summary/);
+  });
+
+  it('summary-backfill-gate: a map with nothing to backfill refuses every variant over it', () => {
+    writeManifest(dir, 'pay', { phases: { discovery: { items: { settled: { routing: 'discussion', summary: 'Whole', description: 'Whole' } } } } });
+    for (const variant of ['batch', 'proposed', 'prompt']) {
+      assert.throws(() => backfill(variant, { file: drafted({}), topic: 'settled' }),
+        /"pay" has no discovery item missing a summary or description — nothing to backfill/);
+    }
+  });
+
+  it('summary-backfill-gate: the payload-named unsourced set', () => {
     const unsourced = renderSurface(dir, 'summary-backfill-gate', {
       dotpath: 'pay', variant: 'unsourced', file: writePayload(dir, 'u.json', { names: ['auth-flow', 'legacy-bits'] }),
     });
@@ -8208,7 +8651,7 @@ describe('render — the adopted phase gates', () => {
 
   it('summary-backfill-gate: validates the variant, the payload and the address', () => {
     assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay' }),
-      /--variant must be "batch" or "unsourced", got "undefined"/);
+      /--variant must be one of batch, proposed, prompt, unsourced, got ""/);
     assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay.discovery.x', variant: 'batch' }),
       /address must be a bare <work_unit>/);
     assert.throws(() => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant: 'unsourced' }),

@@ -51,68 +51,13 @@ Walk the groups in user order. For mixed batches, each destructive op is its own
 
 ## B. Validate
 
-Apply per-operation validation gates **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
+Apply per-operation validation **before** any STOP gate. If validation fails for an operation, surface the rejection with a clear next-step pointer (don't just say "blocked") and remove the operation from its group. Continue with the rest.
 
-**Lifecycle gates** — for destructive (Remove, Rename, Change routing) and marker (Close as dead end, Reopen) operations, look up the operation's target topic in `discovery_map` and read its `lifecycle` field. The operation is allowed only when:
-
-| Operation       | Allowed lifecycles | Disallowed                                                                  |
-| --------------- | ------------------ | --------------------------------------------------------------------------- |
-| Remove          | `fresh`            | `researching`, `discussing`, `ready_for_discussion`, `decided`, `handled`, `cancelled`, `postponed` |
-| Rename          | `fresh`            | all others                                                                  |
-| Change routing  | `fresh`            | all others (routing is implicit once a phase item exists)                   |
-| Close as dead end | any except `handled`, `cancelled`, `postponed` | `handled`, `cancelled`, `postponed`           |
-| Reopen          | `handled`          | all others                                                                  |
-| Edit summary    | any                | —                                                                           |
-| Edit description| any                | —                                                                           |
-
-`cancelled` and `postponed` are also disallowed for Remove because the discovery item is the record that the topic was raised and declined, or that it went to the roadmap. Remove is for mistakes and duplicates — a never-started topic that should not be on the map. Not doing a topic, started or not, is the epic menu's `a/cancel`: it keeps the row and can be reversed. Not doing it *yet* is Postpone.
+**Lifecycle gates** — where a topic stands decides which single-item ops it takes, and each op's gate reads that itself: a Remove, Rename, Change routing, Close as dead end, or Reopen that its topic's lifecycle refuses is answered with the rejection in place of its confirm (see **E**–**J**). Edits ride any lifecycle. Remove is for mistakes and duplicates — a never-started topic that should not be on the map; not doing a topic, started or not, is the epic menu's `a/cancel`, which keeps the row and can be reversed, and not doing it *yet* is Postpone.
 
 Postpone takes no pre-check at all: its gate is the postpone confirm, which refuses a cancelled, postponed, or dead-ended row — and a started specification sourcing the discussion, a live experiment record, or a roadmap item already holding the name — in the engine's own words. A dead end is the answer to its own question and carries nothing forward under the topic's name, so "later" over one is a contradiction: it reopens first. Every other lifecycle postpones.
 
-`fresh` alone does not guarantee Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including an `unstarted` stub holding messages (dump cue `mail=waiting`). Surface the engine's refusal as the rejection.
-
-Close as dead end is non-destructive — it sets a display/convergence marker (`handled` in the manifest), for a topic with nothing to carry forward under its own name. It's allowed from any actionable lifecycle; an already-closed or `cancelled` topic is rejected, and so is one carrying the `mail=waiting` cue — messages wait in its mailbox, and the engine refuses the close until they are heard. Reopen is its inverse — allowed on `handled` only, clearing the marker; a cancel marker over the dead end reads `cancelled`, and that is the reactivate's to clear.
-
-The engine enforces these same gates — `engine discovery-map` refuses an illegal op with an error naming the blocking lifecycle, so this pre-validation and the write path can never disagree. The rejection displays below stay this file's job, rendered from the pre-check here or from an engine error.
-
-**Destructive-op rejection** — for a Remove, Rename, or Change routing op that fails its gate:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-"{topic}" can't be {removed|renamed|re-routed} from the map —
-{lifecycle_phrase}. {recovery_pointer}
-```
-
-`{lifecycle_phrase}` examples (derive from the topic's actual research state — superseded research is named as such, never as completed):
-
-- `researching` — `research is in flight on it`
-- `discussing` — `discussion is in flight on it`
-- `ready_for_discussion` — `research has completed and discussion is queued` (superseded research: `its research was superseded and discussion is queued`)
-- `decided` — `discussion has concluded`
-- `handled` — `it is closed as a dead end and stays on the map as record`
-- `cancelled` — `it is cancelled and stays on the map as record`
-- `postponed` — `it is postponed and waits on the roadmap`
-
-`{recovery_pointer}`: for a `handled` target, `Say "reopen {topic}" to make it actionable again.` For a `cancelled` target, `Reactivate it from the epic menu first.` For a `postponed` target, `Pull it forward from the roadmap first.` For any other disallowed lifecycle, `To stop work on it, use \`a\`/\`cancel\` from the epic menu instead — or postpone it to the roadmap for later.`
-
-**Marker-op rejection** — for a Close as dead end op on an already-closed, `cancelled`, or `mail=waiting` topic, or a Reopen op on a non-`handled` topic:
-
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-"{topic}" can't be {closed as a dead end|reopened} — {marker_phrase}.
-```
-
-`{marker_phrase}` examples:
-
-- Close as dead end on `handled` — `it's already closed`
-- Close as dead end on `cancelled` — `it's cancelled; reactivate it from the epic menu first`
-- Close as dead end on `postponed` — `it's postponed; pull it forward from the roadmap first`
-- Close as dead end on `mail=waiting` — `messages wait in its {research|discussion} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`
-- Reopen on `cancelled` — `it's cancelled; reactivate it from the epic menu first`
-- Reopen on `postponed` — `it's postponed; pull it forward from the roadmap first`
-- Reopen on any other non-`handled` lifecycle — `it isn't closed as a dead end, so there's nothing to reopen`
+A gate's confirm does not guarantee a Remove, Rename, or Change routing will succeed — any research or discussion item on record refuses engine-side, including an `unstarted` stub holding messages (dump cue `mail=waiting`). Surface the engine's refusal as the rejection.
 
 **Name validation** — for each Rename operation, validate the proposed name via the shared reference:
 
@@ -223,17 +168,25 @@ Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with 
 node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op remove --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-Emit the call's DISPLAY and MENU sections verbatim per their markers.
+Emit the call's sections, each verbatim per its marker.
+
+#### If the call answered with `DISPLAY: map operation refused`
+
+The topic's lifecycle refuses the removal. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If the call answered with the gate
 
 **STOP.** Wait for user response.
 
-#### If `no`
+**If `no`:**
 
 Skip this operation. No manifest writes, no session-log entry, no commit.
 
 → Return to **C. Apply** for the next group.
 
-#### If `yes`
+**If `yes`:**
 
 Hard-delete the discovery item and add the name to the dismissed list:
 
@@ -263,17 +216,25 @@ Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with 
 node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op rename --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-Emit the call's DISPLAY and MENU sections verbatim per their markers.
+Emit the call's sections, each verbatim per its marker.
+
+#### If the call answered with `DISPLAY: map operation refused`
+
+The topic's lifecycle refuses the rename. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If the call answered with the gate
 
 **STOP.** Wait for user response.
 
-#### If `no`
+**If `no`:**
 
 Skip this operation. No manifest writes, no session-log entry, no commit.
 
 → Return to **C. Apply** for the next group.
 
-#### If `yes`
+**If `yes`:**
 
 Move the item to the new name — every field carries across:
 
@@ -305,17 +266,25 @@ Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with 
 node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reroute --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-Emit the call's DISPLAY and MENU sections verbatim per their markers.
+Emit the call's sections, each verbatim per its marker.
+
+#### If the call answered with `DISPLAY: map operation refused`
+
+The topic's lifecycle refuses the routing change. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If the call answered with the gate
 
 **STOP.** Wait for user response.
 
-#### If `no`
+**If `no`:**
 
 Skip this operation. No manifest writes, no session-log entry, no commit.
 
 → Return to **C. Apply** for the next group.
 
-#### If `yes`
+**If `yes`:**
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map reroute {work_unit} {name} {research|discussion}
@@ -386,17 +355,25 @@ Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with 
 node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op close --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-Emit the call's DISPLAY and MENU sections verbatim per their markers.
+Emit the call's sections, each verbatim per its marker.
+
+#### If the call answered with `DISPLAY: map operation refused`
+
+The topic's lifecycle refuses the close. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If the call answered with the gate
 
 **STOP.** Wait for user response.
 
-#### If `no`
+**If `no`:**
 
 Skip this operation. No manifest writes, no session-log entry, no commit.
 
 → Return to **C. Apply** for the next group.
 
-#### If `yes`
+**If `yes`:**
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map handle {work_unit} {name}
@@ -426,17 +403,25 @@ Write the payload to `.workflows/.cache/{work_unit}/discovery/map-op.json` with 
 node .claude/skills/workflow-engine/scripts/engine.cjs render map-op-gate {work_unit} --op reopen --file .workflows/.cache/{work_unit}/discovery/map-op.json
 ```
 
-Emit the call's DISPLAY and MENU sections verbatim per their markers.
+Emit the call's sections, each verbatim per its marker.
+
+#### If the call answered with `DISPLAY: map operation refused`
+
+The topic's lifecycle refuses the reopen. No manifest writes, no session-log entry, no commit.
+
+→ Return to **C. Apply** for the next group.
+
+#### If the call answered with the gate
 
 **STOP.** Wait for user response.
 
-#### If `no`
+**If `no`:**
 
 Skip this operation. No manifest writes, no session-log entry, no commit.
 
 → Return to **C. Apply** for the next group.
 
-#### If `yes`
+**If `yes`:**
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs discovery-map unhandle {work_unit} {name}

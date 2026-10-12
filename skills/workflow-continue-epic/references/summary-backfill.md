@@ -25,13 +25,13 @@ The caller passes:
 
 For each item in `items_to_recover`:
 
+- Set `item.needs_summary` from the row's `summary=absent` and `item.needs_description` from `description=absent` so section **D** writes only the newly-drafted fields.
 - If `routing` is `research`: read `.workflows/{work_unit}/research/{item.name}.md`
 - If `routing` is `discussion`: read `.workflows/{work_unit}/discussion/{item.name}.md`
 - If the file is missing or empty (rare — the topic exists in the manifest but the file is gone), record `derived_summary: null` and `derived_description: null` and a note `(source file missing)` for that item
 
 For each readable file:
 
-- Set `item.needs_summary` from the row's `summary=absent` and `item.needs_description` from `description=absent` so section **D** writes only the newly-drafted fields.
 - If `item.needs_summary`, derive a one-line summary that captures what the topic is about. Aim for 8–15 words. Use the file's headings and opening paragraphs as the primary signal. Attach as `item.derived_summary`.
 - If `item.needs_description`, derive a paragraph or two of richer context — what the topic covers, why it surfaced, key dimensions. Use the file's body content (not just headings). Attach as `item.derived_description`.
 - If a field is already populated, leave its current value in place and skip derivation for that field.
@@ -42,26 +42,17 @@ For each readable file:
 
 Render the proposed summaries as a single batch. Description is drafted silently in the background — paragraphs would bloat the batch view, and downstream phases use whatever the auto-draft produces. The user can edit a description later via a follow-up discovery session.
 
-> *Output the next fenced block as a text code block (```text fence):*
+Write the drafted summaries to `.workflows/.cache/{work_unit}/discovery/summaries.json` with the Write tool — one entry per item whose `needs_summary` is true, keyed by its name, its `derived_summary` or `null` where the source file is missing:
 
-```text
-Proposed summaries for {N} topic(s):
-
-@foreach(item in items_to_recover)
-  {N}. {item.name:(titlecase)}  ({item.routing})
-@if(item.needs_summary)
-       @if(item.derived_summary) {item.derived_summary} @else (source file missing — please provide) @endif
-@else
-       {item.summary}  (already populated)
-@endif
-@endforeach
+```json
+{"summaries": {"{item.name}": "{item.derived_summary}"}}
 ```
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch
+node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant batch --file .workflows/.cache/{work_unit}/discovery/summaries.json
 ```
 
-Emit the call's MENU section verbatim per its marker.
+Emit the call's DISPLAY and MENU sections verbatim per their markers.
 
 **STOP.** Wait for user response.
 
@@ -93,17 +84,27 @@ Which line would you like to edit? Enter the number, or `done` to accept the cur
 
 → Proceed to **D. Write and Commit**.
 
-#### If a number
+#### If a number naming a row marked `(already populated)`
 
-> *Output the next fenced block as markdown (not a code block):*
+The number counts the batch display's rows. That item's summary is already on the map, and the batch writes only drafted lines — say so in one line.
 
-```
-New summary for "{item.name:(titlecase)}":
+→ Return to **C. Edit Loop**.
+
+#### If a number naming any other row
+
+The number counts the batch display's rows. Fetch the prompt for that row's item and emit its DISPLAY section verbatim per its marker:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant prompt --topic {item.name}
 ```
 
 **STOP.** Wait for user response.
 
-Update the in-memory summary for that item with the user's response, then output the batch display from **B** again with the updated state — its fenced block alone, never the gate call beneath it; the prompt at the top of this section takes the next answer.
+Set `item.derived_summary` and the item's entry in `summaries.json` to the user's response, and where `item.needs_description` is true and `item.derived_description` is null, set `item.derived_description` to a description drawn from it. Then fetch the batch display alone and emit its DISPLAY section verbatim per its marker — the prompt at the top of this section takes the next answer:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render summary-backfill-gate {work_unit} --variant proposed --file .workflows/.cache/{work_unit}/discovery/summaries.json
+```
 
 → Return to **C. Edit Loop**.
 
