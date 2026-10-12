@@ -696,8 +696,9 @@ settles, and starts from the list of kinds of question (R25).
       under 20%, 18 under 15%, 28 under 10%; one loss among 20 answers
       puts it back at 21%.
     - **The threshold** — one number the person picks from a replay of
-      their own history (R29), set higher mid-build, where a question
-      blocks work, than in a conversation. **Hard to undo** — a later change that would
+      their own history (R29): 20%, the person's pick (2026-10-12). Set
+      higher mid-build, where a question blocks work, once the build's
+      own answers show by how much; until then the same. **Hard to undo** — a later change that would
       reach beyond the piece — halves it: a quarter of such departures
       were real losses, against a tenth of the rest, and in the replay the
       halving alone kept two real losses from going through. **The person
