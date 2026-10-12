@@ -652,6 +652,30 @@ project's own measurements decide (R7).
   - **One independent phase review** closes each phase: each task's
     criteria, the phase's coherence, what should be consolidated. Its
     fixes land before the phase closes.
+  - **What the person sees during the build**, agreed 2026-10-12. The
+    person's aim: wide collaboration early in the cone, fewer touches as
+    the work moves on, and a build that runs start to finish unattended,
+    stopping only where the shape says it must — a stop for good reason is
+    a good outcome, not a failure. Engine-drawn, whatever order Claude
+    works in:
+    - when a task lands, its summary: what changed, which criteria its
+      tests prove, the review's verdict, how many calls went to the
+      ledger. Whether it then stops at a gate follows the phase's position
+      (R40): learned by default, every task in step, none in auto;
+    - **questions queue.** A task that needs the person parks, with
+      whatever depends on it, and everything else carries on. The question
+      waits in a queue the engine holds — a count on the progress view and
+      first on the epic menu — and is drawn one at a time, product first,
+      when nothing left can proceed without an answer or a phase ends. An
+      open question would stall the whole build; a parked task stalls only
+      what depends on it;
+    - when nothing can proceed, the build stops with a report: what was
+      built, what waits on the person and why, what runs after the answer.
+      Danger and the authority gates stop what depends on them in every
+      position.
+
+    How the live progress (each task building, landed, parked) is shown is
+    open (Open): the transcript cannot redraw it.
 
 ### Review
 
@@ -1528,6 +1552,12 @@ think is a good sign."
   was task mechanism; 46% of delivered tasks were written mid-build with
   only the template and a short writer agent. Researched before the
   principles are written.
+- **The build's progress view.** A board of tasks building, landed and
+  parked cannot be redrawn once it is in the transcript, and reprinting it
+  on every change buries the conversation. Proposed: the transcript
+  carries events only, one line each, never a redrawn board; the live
+  board is a mod panel, updated in place like the sitrep board; without
+  the mod the full board prints at each phase end and on request.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, outside this programme; fixed on its own
