@@ -1171,6 +1171,27 @@ think is a good sign."
   splitting one pick-one into narrow questions gained most, a middle band
   of scores went to a strong model, and Jev reads wording literally, so
   one fact worded two ways is its wall.
+  The person's inputs (2026-10-12), from Fumi's late sessions, where they
+  answered "agree" to every decision while ironing out details:
+  - **What counts is the product consequence**, not whether a call
+    differs, nor reversibility alone. Fumi's tags were hard to reverse and
+    shaped the product differently, yet either shape delivers tagging and
+    can be polished; in hindsight the person thinks Claude's first answer
+    may have been the better one. The cost of a wrong call is what the
+    product loses; reversibility weighs only where the product would
+    differ. This questions whether the data model belongs among the frozen
+    always-ask kinds (R24) — for the trust design to settle.
+  - **The cone of collaboration.** Early discovery and decision work is
+    collaboration, not Claude deciding: the person carries a product idea
+    and relays it, and the record captures it in a form that expands into
+    topics, a roadmap and structure. As the work converges towards
+    building, the decisions get clearer and Claude can take more of them.
+    The ask rule has a stage dimension.
+  - **Convergence moves the work on.** A topic whose answers have become a
+    run of agreements is ready: the system should see that and finish the
+    remaining details itself, in the ledger, carrying the work to "ready
+    to build", where the person signs off. Fumi, by the person's account,
+    is there now and would get about 90% of the way.
 - **Still to walk:** the review stage in detail; the epic menu once phase
   gating thins; bugfix in detail, with Portal's live bugfix ("killing all
   sessions wipes restore data") as the test case; quick-fix in detail.
