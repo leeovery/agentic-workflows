@@ -915,7 +915,7 @@ think is a good sign."
 
 ## Measures and levers
 
-- **R36 — The system adjusts itself through four measures**, each moving one
+- **R36 — The system adjusts itself through five measures**, each moving one
   lever:
 
   | Measure | Lever |
@@ -924,6 +924,31 @@ think is a good sign."
   | Review findings per phase | where the build is cutting corners |
   | Bugs found after review | where verification has a gap |
   | Contracts slipping in prose tests | which contract needs a verb or a check |
+  | Context spent before the first question, per phase | what a phase loads, and when |
+- **R43 — A context budget.** Ruled by the person on 2026-10-12. The
+  context a phase spends before its first question to the person is a
+  measured number, per phase, with a budget; the walks record it, so a
+  change that grows it shows. Three rules hold it down:
+  - **The question comes before the reading.** A gate needs only what the
+    engine holds. Records are read after the answer, never before a
+    question whose answer may discard them.
+  - **Resuming reads the record, never the log** (R11).
+  - **Prescription lives in code.** What the person sees and what is
+    recorded is held by engine verbs, a few hundred tokens a call; prose
+    keeps goals, done-conditions and conversation guidance (R2), and a
+    phase loads no shared reference it does not use.
+
+  Evidence — Fumi, resuming status-and-alerts on 2026-10-12: 165k tokens
+  at the continue-or-restart question. Claude Code itself took about 68k
+  and seven MCP servers the workflows never use about 36k (measured
+  headless with and without them: 75.7k against 39.2k); the workflow
+  skill, its shared references and engine output about 23k; the
+  discussion document, read whole before asking whether to delete it,
+  about 35k. Of its 104KB the current decisions are about 35KB, and one
+  decision carried four dated revisions. The workflows' share, about
+  58k, falls to about 15k under these rules. The harness's share is
+  outside the workflows; which MCP servers load where is the person's
+  setup. The person's compaction point is 467k.
 
 ## Migration
 
