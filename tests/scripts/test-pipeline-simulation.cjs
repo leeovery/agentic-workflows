@@ -804,6 +804,8 @@ function walkDeliveryPhasesToImplementation(sim, wu, topic) {
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
   assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
     'the task\'s completion takes it off');
+  assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
+    /□ Consolidation Pass \(phase 1\)[\s\S]*> Phase 1's tasks are done\./);
   sim.run(['manifest', 'push', `${wu}.implementation.${topic}`, 'consolidated_phases', '1']);
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--phase-complete']);
   sim.run(['topic', 'complete', wu, 'implementation', topic]);
@@ -837,6 +839,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   }
   sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
   sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
+  assert.match(sim.render(['step-opening', `${wu}.specification.${topic}`, '--step', 'conclude'], { expect: 'content' }),
+    /□ Conclude[\s\S]*> Wrapping up\. Final assessment, sign-off, and handover to the planning phase\./);
   sim.run(['topic', 'complete', wu, 'specification', topic]);
   assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, topic]).incorporations, []);
 
@@ -1057,6 +1061,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // finder — marks the boundary, and the re-record closes the phase
   // (consolidation-pass.md F). Nothing crosses the boundary.
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
+  assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
+    /□ Consolidation Pass \(phase 1\)/, 'the pass opens on the phase in flight');
   assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'true',
     'the guard reads the field before the delete — an absent bank refuses the delete');
   sim.run(['manifest', 'delete', `${wu}.implementation.${topic}`, 'bank']);
@@ -1097,9 +1103,23 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
   sim.write(`.workflows/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
   sim.write(`.workflows/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
+  // The verifiers leave the tree as they found it: the check reads git and
+  // answers empty, the review's own artifacts sitting under .workflows/.
+  sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'empty' });
+  // Prep's synthesis writes the action list the rest of the review reads.
+  sim.write(`.workflows/.cache/${wu}/review/${topic}/actions.json`, {
+    verdict: 'pass',
+    actions: [
+      { id: 'A1', route: 'do-now', ids: ['1-1-1'], files: [`src/${topic}.js`] },
+      { id: 'A2', route: 'do-now', ids: ['1-1-2'], files: [`src/${topic}.js`] },
+      { id: 'A3', route: 'out-of-scope', kind: 'quick-fix', ids: ['9-2-1'] },
+    ],
+  });
   sim.run(['commit', wu, '-m', `review(${wu}): verification and prep`, '--topic', `review/${topic}`]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'out_of_scope',
     '{"id":"A3","kind":"quick-fix","summary":"a guard the spec never asked for"}']);
+  assert.match(sim.render(['step-opening', `${wu}.review.${topic}`, '--step', 'do-now'], { expect: 'content' }),
+    /□ Apply Do-Now[\s\S]*> Applying 2 contained corrections — /);
   // The apply lane writes code: in-scope, contained findings land in-session
   // as one commit, through the same declared-paths door the task loop uses —
   // beating the review topic, which is the code slot this session holds.
@@ -1165,6 +1185,8 @@ describe('pipeline simulation', () => {
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session'], { expect: 'content' }),
+      /□ Discussion Session[\s\S]*> Discussion starting\./);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     // The close's own consents render on the road to the conclude gate;
     // every variant carries its own wording, so a --reason is refused.
@@ -1263,6 +1285,8 @@ describe('pipeline simulation', () => {
     // The feature's continue menu proceeds to the research, handing off to it.
     assert.strictEqual(linearPick(sim, wu, 'continue').line, '→ Research · ledger');
     sim.run(['topic', 'start', wu, 'research', wu]);
+    assert.match(sim.render(['step-opening', `${wu}.research.${wu}`, '--step', 'session'], { expect: 'content' }),
+      /□ Research Session[\s\S]*> Starting the research session\./);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
     assert.match(sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'content' }), /awaits research on "Ledger" \(in flight\)/);
     assert.match(sim.render(['phase-paused', wu, '--phase', 'discussion'], { expect: 'content' }),
@@ -1284,6 +1308,8 @@ describe('pipeline simulation', () => {
       /\nDiscussion paused for "Ledger"\.\n$/);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'discussion');
     assert.strictEqual(sim.run(['topic', 'start', wu, 'discussion', wu]).created, false);
+    assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session', '--resumed'], { expect: 'content' }),
+      /> Picking the discussion back up where the map leaves it\./, 'the session the research held picks back up');
     // The send's hop flagged the discussion: the session reads the landed
     // research and clears the flag (prose-owned — simulated here).
     sim.run(['manifest', 'delete', `${wu}.discussion.${wu}`, 'reconcile_needed']);
@@ -1899,6 +1925,8 @@ describe('pipeline simulation', () => {
     // knowledge query surfaces it, and the plan references it instead.
     sim.write(`.workflows/${cc}/specification/${cc}/specification.md`,
       `# Spec — ${cc}\n\n## Envelope\n\nEvery error leaves in one envelope: a code, a message, and a trace id.\n`);
+    assert.match(sim.render(['step-opening', `${cc}.specification.${cc}`, '--step', 'conclude'], { expect: 'content' }),
+      /> Wrapping up\. Final assessment, sign-off, and closure — the pipeline completes here\./, 'a cross-cutting specification is terminal');
     sim.run(['topic', 'complete', cc, 'specification', cc]);
     // cross-cutting-context D: the query filtered to completed cross-cutting
     // specifications finds it, and nothing of the unit's discussion.
@@ -2492,7 +2520,8 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'epic-soft-gate', wu, '--action', 'analyze_discussions'], /unknown --action "analyze_discussions"/);
     sim.refuses(['handoff', '/workflow-specification-process', 'epic', wu], /^an epic enters specification at a topic$/);
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: analyze$/m);
-    sim.render(['analysis-proceed-gate', wu], { expect: 'content' });
+    assert.match(sim.render(['analysis-proceed-gate', wu], { expect: 'content' }),
+      /^=== DISPLAY: analysis prompt [^\n]*\n> Your discussions will be analyzed for natural groupings[\s\S]*Proceed with analysis\?/);
     // Every row landed with its summary and no description: the batch shows
     // each summary it keeps, and no line of it is edited here.
     const summaries = sim.write(`.workflows/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
@@ -3641,6 +3670,11 @@ describe('pipeline simulation', () => {
     // The pause is the plan's, in the plan's voice.
     assert.match(sim.render(['wait-gate', `${wu}.planning.billing`], { expect: 'content' }),
       /⚑ Conclusion blocked — this plan awaits its specification[\s\S]*Keep planning here/);
+    // A yes leaves on the pause's line, naming the topic whose mailbox
+    // took the gap.
+    assert.match(sim.render(['pause-note', `${wu}.planning.billing`, '--landed', 'billing'], { expect: 'content' }),
+      /> Paused with the gap in billing's mailbox — planning resumes once billing has decided it/);
+    sim.refuses(['render', 'pause-note', `${wu}.planning.billing`], /--landed is required/);
     assert.match(arriveAtEpicMenu(sim, wu, 'planning', 'paused'),
       /Planning paused for "Holdplan" — "Billing" awaits its specification/);
     const planRows = () => epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys
@@ -5282,7 +5316,8 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /--model does not belong to the retry variant/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'themes'], { expect: 'content' }), /Proceed with these themes\?/);
     assert.match(sim.render(['legacy-split-gate', '--variant', 'plan'], { expect: 'content' }), /Apply this plan\?/);
-    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove'], { expect: 'content' }), /Remove the theme\?[\s\S]*Remove the theme and drop its content/);
+    assert.match(sim.render(['legacy-split-gate', '--variant', 'remove', '--theme', 'caching'], { expect: 'content' }), /> Removing "caching" drops its drafted content[\s\S]*Remove the theme\?[\s\S]*Remove the theme and drop its content/);
+    sim.refuses(['render', 'legacy-split-gate', '--variant', 'remove'], /--theme is required with --variant remove/);
     sim.refuses(['render', 'legacy-split-gate'], /--variant must be one of themes, plan, remove/);
     sim.refuses(['render', 'legacy-split-gate', '--variant', 'apply'], /got "apply"/);
     // The split's three displays over their payloads: the candidate list at
@@ -5305,6 +5340,13 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.workflows/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.workflows/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
+    // The split's conclusion is the session's tallies, rendered under its
+    // step marker — the aborted apply leading whatever else happened.
+    assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '1', '--abandoned', '0', '--errored', '1'], { expect: 'content' }),
+      /□ Legacy Split Complete[\s\S]*> 1 source file\(s\) aborted mid-apply; 1 decomposed; 0 skipped\./);
+    assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '0', '--abandoned', '0', '--errored', '0'], { expect: 'content' }),
+      /> No legacy source files needed decomposition\./);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'complete', '--applied', '1'], /--abandoned must be a non-negative integer/);
     // The archived sub-view's gates resolve the selected item by its store
     // path — the title on the label is the file's own; a missing path, a live
     // path, and a path the store does not hold each refuse.
@@ -5343,6 +5385,10 @@ describe('pipeline simulation', () => {
       areas: [{ name: 'overview', detail: 'What the product is' }, { name: 'dispatcher', detail: 'The downstream push' }],
     }));
     assert.match(sim.render(['baseline-scope-gate', '--file', '.workflows/.cache/scratch/baseline-scope.json'], { expect: 'content' }), /Assess these areas\?/);
+    // Each area's interview opens on its marker, counted across the areas.
+    const areaOpening = sim.write('.workflows/.cache/baseline/area.json', { area: 'overview', summary: 'What the product is and who it serves.' });
+    assert.match(sim.render(['baseline-area', '--file', areaOpening], { expect: 'content' }),
+      /□ Interviewing Overview \(1 of 2\)[\s\S]*> What the product is and who it serves\. Answer in your own words/);
     sim.write('.workflows/.cache/scratch/baseline-round.json', JSON.stringify({
       area: 'dispatcher',
       questions: [{ text: 'Why polling over webhooks?', candidates: ['Decoupling from a flaky downstream'] }],
@@ -5357,6 +5403,10 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
     sim.run(['commit', '--workflows', '-m', 'baseline(overview): document the overview baseline']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
+    sim.write('.workflows/.cache/baseline/area.json', { area: 'dispatcher', summary: 'The downstream push.' });
+    assert.match(sim.render(['baseline-area', '--file', '.workflows/.cache/baseline/area.json'], { expect: 'content' }), /□ Interviewing Dispatcher \(2 of 2\)/);
+    sim.write('.workflows/.cache/baseline/area.json', { area: 'overview', summary: 'Again.' });
+    sim.refuses(['render', 'baseline-area', '--file', '.workflows/.cache/baseline/area.json'], /area "overview" is "completed", not researched/);
     assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
     assert.match(sim.render(['baseline-paused'], { expect: 'content' }), /Paused — 1 of 2/);
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'completed']);
@@ -5823,6 +5873,10 @@ describe('pipeline simulation', () => {
       /Work E1 now\?/);
     sim.refuses(['render', 'experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E9'],
       /holds no evidence wait on E9/);
+    // A yes that leaves pauses on the line naming what it queued.
+    assert.match(sim.render(['pause-note', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' }),
+      /> Paused with E1 queued — the closing ceremony is skipped/);
+    sim.refuses(['render', 'pause-note', `${wu}.discussion.timing`, '--id', 'E9'], /holds no evidence wait on E9/);
 
     // A research spawn locks identically — the phases are symmetric — and
     // numbers the series onward.

@@ -191,7 +191,7 @@ Load **[knowledge-usage.md](../workflow-shared/references/knowledge-usage.md)** 
 
 ## Step 4: Contextual Query
 
-Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** with work_unit = `{work_unit}`, phase = `discussion`, topic = `{topic}`, and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 
@@ -199,19 +199,11 @@ Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)*
 
 ## Step 5: Discussion Session
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the session's opening — `--resumed` where `resumed` is `true` — and emit its DISPLAY section verbatim per its marker before the reference loads:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.discussion.{topic} --step session [--resumed]
 ```
-**`□ Discussion Session`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> @if(resumed) Picking the discussion back up where the map leaves it. @else Discussion starting. I'll track our conversation on a Discussion Map. @endif You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.
-```
-
-Both blocks above are emitted before the reference loads.
 
 Load **[discussion-session.md](references/discussion-session.md)** and follow its instructions as written.
 

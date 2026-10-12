@@ -189,7 +189,7 @@ describe('gate payload — a render surface', () => {
   });
 
   it('a bare key row states no label — its word is the key the person presses, never a head', () => {
-    createManifest(dir, 'auth', {});
+    createManifest(dir, 'auth', { work_type: 'epic' });
     const gate = gateOf(output(dir, ['render', 'analysis-proceed-gate', 'auth'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'Proceed with analysis?');

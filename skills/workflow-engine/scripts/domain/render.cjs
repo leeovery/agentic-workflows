@@ -30,7 +30,7 @@ const { parseInboxPaths, seedKind, FOLDER_KIND } = require('./inbox.cjs');
 const { sourceLines } = require('../kernel/knowledge/chunker.cjs');
 const {
   baselineProgress, baselineAreaGate, baselinePaused, baselineReceipt,
-  baselineScopeGate, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
+  baselineScopeGate, baselineArea, baselineRound, baselineDocGate, baselineManageGate, baselineDocPick,
   baselineOfferGate,
 } = require('./projections/baseline.cjs');
 const { baselineState } = require('./baseline.cjs');
@@ -65,7 +65,7 @@ const {
   phaseItems, computeNextPhase, computeTopicLifecycle, lifecyclePhrase, awaitedExperiments, waits, itemOf,
   outstandingResearch, outstandingResearchPhrase, CLOSED_LIFECYCLES,
   sourceRows, OPEN_SOURCE_STATUSES, specSourcePhase, awaitedSources, specUnsettled, specUnsettledPhrase, UNIT_PHASES, liveUnitItems, discoveryUnitExists, unitLocks, unitLockNames, ownNamedItems, deliveryStarted, cancelPlan,
-  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles,
+  postponePlan, postponeTarget, postponedItem, openExperiments, mailboxFiles, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
 const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
@@ -2062,6 +2062,19 @@ function isFilled(v) {
   return typeof v === 'string' && v.trim() !== '';
 }
 
+/**
+ * A count flag the session tallied — a non-negative integer, refused by name.
+ * @param {string|undefined} value @param {string} surface @param {string} flag
+ * @returns {number}
+ */
+function countFlag(value, surface, flag) {
+  const n = Number(value);
+  if (!isFilled(value) || !Number.isInteger(n) || n < 0) {
+    throw new Error(`render ${surface}: --${flag} must be a non-negative integer, got "${value ?? ''}"`);
+  }
+  return n;
+}
+
 /** @param {unknown} v @param {string} surface @param {string} field @returns {string[]} */
 function stringLines(v, surface, field) {
   if (!Array.isArray(v) || v.some((l) => typeof l !== 'string')) {
@@ -3397,6 +3410,33 @@ function waitGateSurface(cwd, { dotpath }) {
   return blocking.length === 0 ? '' : waitGate(phase, topic, blocking, manifest.work_type === 'epic');
 }
 
+// pause-note — the line a session leaves on as it pauses through the bridge,
+// naming what it waits on. A conversation pausing over its spawn names the
+// experiment it queued (`--id`, refused unless the item waits on it); a plan
+// pausing over a routed gap names the topic whose mailbox took it
+// (`--landed`, as the send answered it — the landing may have renamed it).
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, id?: string, landed?: string}} args
+ * @returns {string}
+ */
+function pauseNoteSurface(cwd, { dotpath, id, landed }) {
+  const { phase, topic, manifest } = resolvePhaseItem(cwd, dotpath, 'pause-note', [...EXPERIMENT_SPAWN_PHASES, 'planning'], 'the pausing item itself');
+  let line;
+  if (phase === 'planning') {
+    if (!isFilled(landed)) throw new Error('render pause-note: --landed is required — the topic whose mailbox took the gap');
+    line = `Paused with the gap in ${landed}'s mailbox — planning resumes once ${landed} has decided it and the specification has been brought into line.`;
+  } else {
+    if (!isFilled(id)) throw new Error('render pause-note: --id is required (E1, E2, …)');
+    if (!awaitedExperiments(manifest, phase, topic).includes(id)) {
+      throw new Error(`render pause-note: ${phase} "${topic}" holds no evidence wait on ${id} — the pause follows the recorded spawn (experiment create)`);
+    }
+    line = `Paused with ${id} queued — the closing ceremony is skipped, and this conversation concludes once the evidence lands.`;
+  }
+  return section('DISPLAY: pause note', CONTINUE_MARKDOWN_INSTRUCTION, `> ${line}`);
+}
+
 // summary-backfill-gate — the epic's provenance recovery. The topics it
 // recovers are the map's rows missing a summary or a description, read from
 // the manifest in map order; the summaries drafted for the rows missing one
@@ -3674,6 +3714,28 @@ function checkpointFilesGate(cwd, { dotpath }) {
       promptOption('Comment', 'Specify which to include'),
     ], { question: 'Include unexpected files in the checkpoint commit?' })),
   ].join('\n');
+}
+
+// change-set-tree — the check after the review's change-set verifiers
+// return: they measure inside the working tree and must leave it as they
+// found it. The review's own artifacts sit uncommitted under `.workflows/`
+// until prep commits them, so the check reads everything else from git.
+// Empty when that is clean; otherwise the terminal blocker naming each
+// modified or untracked path, never reverted blind.
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string}} args
+ * @returns {string} the blocker's sections, or '' when the tree is clean outside .workflows/
+ */
+function changeSetTree(cwd, { dotpath }) {
+  resolvePhaseItem(cwd, dotpath, 'change-set-tree', ['review'], 'the review the verifiers ran for');
+  const dirty = dirtyEntries(cwd).filter((e) => !e.path.startsWith('.workflows/')).map((e) => `\`${e.path}\``);
+  if (dirty.length === 0) return '';
+  return blocker(
+    'The change-set verification left the working tree dirty outside .workflows/',
+    `The pass must leave the tree as it found it — these paths are modified or untracked: ${dirty.join(', ')}. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.`,
+  );
 }
 
 // executor-block-gate — the task loop's stop after an executor returns
@@ -4265,8 +4327,12 @@ function correctionGate(cwd, { dotpath }) {
 }
 
 // analysis-proceed-gate — the epic specification menu's consent before the
-// grouping analysis runs. The cache-aware message above it differs by cache
-// state; the ask does not.
+// grouping analysis runs. The signpost above it says first that the cached
+// analysis is outdated where the discussions have moved since it ran; the
+// ask does not differ.
+
+const ANALYSIS_STALE = 'Analysis outdated — discussions have changed since the last grouping analysis.';
+const ANALYSIS_PROMPT = 'Your discussions will be analyzed for natural groupings, each one a proposed specification you can start when ready. Results are cached and reused until discussions change.';
 
 /**
  * @param {string} cwd
@@ -4274,8 +4340,13 @@ function correctionGate(cwd, { dotpath }) {
  * @returns {string}
  */
 function analysisProceedGate(cwd, { dotpath }) {
-  resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
-  return section('MENU: analysis proceed gate', MENU_INSTRUCTION, menu('', yesNo(), { question: 'Proceed with analysis?' }));
+  const { manifest } = resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
+  const analysis = computeAnalysisCacheStatus(manifest, path.join(cwd, '.workflows'), 'grouping-analysis');
+  const stale = analysis.stamped && analysis.status !== 'valid';
+  return [
+    section('DISPLAY: analysis prompt', emitAs('markdown'), `> ${stale ? `${ANALYSIS_STALE} ` : ''}${ANALYSIS_PROMPT}`),
+    section('MENU: analysis proceed gate', MENU_INSTRUCTION, menu('', yesNo(), { question: 'Proceed with analysis?' })),
+  ].join('\n');
 }
 
 // spec-confirm-gate — the consent before a specification's entry. After a
@@ -5327,6 +5398,111 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 }
 
 // ---------------------------------------------------------------------------
+// step-opening — the chrome a step opens on where its marker or signpost
+// names state: the step marker as the section's first line, the signpost
+// beneath it. Each step reads what it names — the work type, the phase in
+// flight, the do-now actions the review synthesis wrote to the cache. A
+// session's `--resumed` is the one fact the session alone holds: a fresh
+// start and a continued session both stand in progress with their file in
+// place by the time the session step opens.
+// ---------------------------------------------------------------------------
+
+/** @type {Record<string, {name: string, resumed: string, fresh: string, rest: string}>} */
+const SESSION_OPENINGS = {
+  research: {
+    name: 'Research Session',
+    resumed: 'Picking the research back up where it left off.',
+    fresh: 'Starting the research session.',
+    rest: "This is open-ended exploration — follow threads, surface options, and document findings; I'll keep a register of what we set out to learn and where each question stands. No decisions needed at this stage.",
+  },
+  discussion: {
+    name: 'Discussion Session',
+    resumed: 'Picking the discussion back up where the map leaves it.',
+    fresh: "Discussion starting. I'll track our conversation on a Discussion Map.",
+    rest: "You can lead wherever you want — I'll challenge thinking, explore edge cases, and capture decisions as we go.",
+  },
+};
+
+/**
+ * The review's do-now actions, counted from the synthesis output.
+ * @param {string} cwd @param {string} workUnit @param {string} topic
+ */
+function doNowCount(cwd, workUnit, topic) {
+  const rel = `.workflows/.cache/${workUnit}/review/${topic}/actions.json`;
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(path.join(cwd, rel), 'utf8'));
+  } catch {
+    throw new Error(`render step-opening: ${rel} is missing or not valid JSON — the do-now step follows the review synthesis`);
+  }
+  const actions = Array.isArray(parsed && parsed.actions) ? parsed.actions : [];
+  const count = actions.filter((a) => a && a.route === 'do-now').length;
+  if (count === 0) throw new Error(`render step-opening: ${rel} holds no do-now action — the step opens only over work to apply`);
+  return count;
+}
+
+/** @typedef {{cwd: string, workUnit: string, phase: string, topic: string, manifest: any, resumed: boolean}} StepContext */
+
+/** @type {Record<string, {phases: string[], open: (ctx: StepContext) => {name: string, signpost: string}}>} */
+const STEP_OPENINGS = {
+  session: {
+    phases: ['research', 'discussion'],
+    open: ({ phase, resumed }) => {
+      const s = SESSION_OPENINGS[phase];
+      return { name: s.name, signpost: `${resumed ? s.resumed : s.fresh} ${s.rest}` };
+    },
+  },
+  conclude: {
+    phases: ['specification'],
+    open: ({ manifest }) => ({
+      name: 'Conclude',
+      signpost: `Wrapping up. Final assessment, sign-off, and ${manifest.work_type === 'cross-cutting' ? 'closure — the pipeline completes here' : 'handover to the planning phase'}.`,
+    }),
+  },
+  consolidation: {
+    phases: ['implementation'],
+    open: ({ manifest, topic }) => {
+      const n = (itemOf(manifest, 'implementation', topic) || {}).current_phase;
+      if (!Number.isInteger(n)) throw new Error(`render step-opening: implementation "${topic}" records no current_phase — the pass runs at a phase boundary`);
+      return {
+        name: `Consolidation Pass (phase ${n})`,
+        signpost: `Phase ${n}'s tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way.`,
+      };
+    },
+  },
+  'do-now': {
+    phases: ['review'],
+    open: ({ cwd, workUnit, topic }) => {
+      const count = doNowCount(cwd, workUnit, topic);
+      return {
+        name: 'Apply Do-Now',
+        signpost: `Applying ${count} contained ${count === 1 ? 'correction' : 'corrections'} — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.`,
+      };
+    },
+  },
+};
+
+const STEP_OPENING_STEPS = Object.keys(STEP_OPENINGS);
+
+/**
+ * @param {string} cwd
+ * @param {{dotpath: string, step?: string, resumed?: string}} args
+ * @returns {string}
+ */
+function stepOpeningSurface(cwd, { dotpath, step, resumed }) {
+  if (step === undefined || !STEP_OPENING_STEPS.includes(step)) {
+    throw new Error(`render step-opening: --step must be one of ${STEP_OPENING_STEPS.join(', ')}, got "${step ?? ''}"`);
+  }
+  const opening = STEP_OPENINGS[step];
+  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'step-opening');
+  if (!opening.phases.includes(phase)) {
+    throw new Error(`render step-opening: the ${step} step opens in ${opening.phases.join(' or ')}, got phase "${phase}"`);
+  }
+  const { name, signpost } = opening.open({ cwd, workUnit, phase, topic, manifest, resumed: Boolean(resumed) });
+  return section('DISPLAY: step opening', CONTINUE_MARKDOWN_INSTRUCTION, `**\`□ ${name}\`**\n\n> ${signpost}`);
+}
+
+// ---------------------------------------------------------------------------
 // compliance-issues — the heading the compliance self-check shows over the
 // significant issues it surfaces before a phase concludes, counted from the
 // payload's list: each issue's one-line name is the session's judgment.
@@ -5345,6 +5521,92 @@ function complianceIssues(cwd, { file }) {
   });
   return section('DISPLAY: compliance issues', CONTINUE_INSTRUCTION,
     `Compliance Check — Issues Found\n\n${issues.length} issue(s) detected during self-check.`);
+}
+
+// ---------------------------------------------------------------------------
+// document-review — the closing line of a document review that changed the
+// record, from the counts the review tallied. session-log = a discovery or
+// roadmap session log, reconciled by correction alone, so a change is at
+// least one; document = a research or discussion file, whose review also
+// captures gaps before the compliance check runs — and whose routing of
+// misdirected notes changes the file with neither, so both counts may be 0.
+// Project-level: the counts are the whole of what it renders.
+// ---------------------------------------------------------------------------
+
+/** @type {Record<string, (args: Record<string, string|undefined>) => string>} */
+const DOCUMENT_REVIEW_LINES = {
+  'session-log': ({ corrections }) => {
+    const n = countFlag(corrections, 'document-review', 'corrections');
+    if (n === 0) throw new Error('render document-review: --corrections must be at least 1 — a review that changed nothing closes on its own line');
+    return `Document review complete. ${n} correction(s) applied to the session log.`;
+  },
+  document: ({ gaps, corrections }) => {
+    const g = countFlag(gaps, 'document-review', 'gaps');
+    const m = countFlag(corrections, 'document-review', 'corrections');
+    return `Document review complete. ${g} gap(s) captured, ${m} correction(s) applied. Proceeding to the final compliance check.`;
+  },
+};
+
+const DOCUMENT_REVIEW_VARIANTS = Object.keys(DOCUMENT_REVIEW_LINES);
+
+/** @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
+function documentReview(_cwd, args) {
+  const { variant } = args;
+  if (variant === undefined || !DOCUMENT_REVIEW_VARIANTS.includes(variant)) {
+    throw new Error(`render document-review: --variant must be one of ${DOCUMENT_REVIEW_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+  }
+  return section('DISPLAY: document review', CONTINUE_MARKDOWN_INSTRUCTION, `> ${DOCUMENT_REVIEW_LINES[variant](args)}`);
+}
+
+// ---------------------------------------------------------------------------
+// surfaced-context — the acknowledgment a phase's contextual query shows when
+// the knowledge base surfaced prior work: the fixed opening, then the one
+// line the session wrote naming the most relevant piece.
+// ---------------------------------------------------------------------------
+
+/** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
+function surfacedContext(cwd, { file }) {
+  if (!file) throw new Error('render surfaced-context: --file <payload.json> is required');
+  const { line } = readJsonPayload(cwd, file, 'surfaced-context');
+  if (!isFilled(line) || line.includes('\n')) {
+    throw new Error('render surfaced-context: "line" must be one non-empty line naming the most relevant piece');
+  }
+  return section('DISPLAY: surfaced context', CONTINUE_MARKDOWN_INSTRUCTION,
+    `> Surfaced prior context from the knowledge base — incorporating into this phase. ${line.trim()}`);
+}
+
+// ---------------------------------------------------------------------------
+// format-version-check — the stop where a plan format's tool is missing or
+// older than the format requires. Every value is read from the format's own
+// declaration and the tool's own output, so all of it rides the payload, the
+// format's name among it: the engine names no format. A missing tool has no
+// installed version, so the payload leaves `installed` out. The guidance
+// waits on the user, who installs or updates the tool and says so; the check
+// then runs again.
+// ---------------------------------------------------------------------------
+
+const FORMAT_VERSION_FIELDS = ['tool', 'format', 'required', 'update_instructions'];
+
+/** @param {string} cwd @param {{dotpath: string, file?: string}} args @returns {string} */
+function formatVersionCheck(cwd, { file }) {
+  if (!file) throw new Error('render format-version-check: --file <payload.json> is required');
+  const p = readJsonPayload(cwd, file, 'format-version-check');
+  for (const field of FORMAT_VERSION_FIELDS) {
+    if (!isFilled(p[field])) throw new Error(`render format-version-check: "${field}" must be a non-empty string`);
+  }
+  const missing = p.installed === undefined || p.installed === null;
+  if (!missing && !isFilled(p.installed)) {
+    throw new Error('render format-version-check: "installed" must be a non-empty string, or left out where the tool is not installed');
+  }
+  const [blocker, guidance] = missing
+    ? ['⚑ The tool this plan format requires is not installed',
+      `> ${p.tool} is not installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to install.`]
+    : ['⚑ The installed tool does not meet the version this plan format requires',
+      `> ${p.tool} ${p.installed} is installed; the ${p.format} format requires \`${p.required}\`. See ${p.update_instructions} to update.`];
+  return [
+    section('DISPLAY: version blocker', emitAs('properties'), blocker),
+    section('DISPLAY: version guidance', emitAs('markdown', STOP_CLAUSE), guidance),
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -6852,13 +7114,23 @@ const LEGACY_SPLIT_GATES = {
 
 const LEGACY_SPLIT_GATE_VARIANTS = Object.keys(LEGACY_SPLIT_GATES);
 
-/** One of the legacy split dialog's gates. @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
-function legacySplitGateSurface(_cwd, { variant }) {
+/**
+ * One of the legacy split dialog's gates. The remove confirm says first what
+ * the removal of `--theme` drops.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function legacySplitGateSurface(_cwd, { variant, theme }) {
   if (variant === undefined || !LEGACY_SPLIT_GATE_VARIANTS.includes(variant)) {
     throw new Error(`render legacy-split-gate: --variant must be one of ${LEGACY_SPLIT_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
   }
   const gate = LEGACY_SPLIT_GATES[variant];
-  return section(`MENU: legacy split ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options(), { question: gate.question }));
+  const gateSection = section(`MENU: legacy split ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options(), { question: gate.question }));
+  if (variant !== 'remove') return gateSection;
+  if (!isFilled(theme)) throw new Error('render legacy-split-gate: --theme is required with --variant remove — the theme the removal drops');
+  return [
+    section('DISPLAY: legacy split removal', emitAs('markdown'), `> Removing "${theme}" drops its drafted content — gone unless another theme has already reabsorbed it.`),
+    gateSection,
+  ].join('\n');
 }
 
 const { legacySources } = require('./legacy-split.cjs');
@@ -6922,18 +7194,61 @@ function legacySplitSources(cwd, { dotpath }) {
   return sections.join('\n');
 }
 
-/** A qualifying source the split left as it stood. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
-function legacySplitSkipped(cwd, { dotpath, source }) {
-  if (!isFilled(source)) throw new Error('render legacy-split-display: --source is required — the source the split skipped');
+/**
+ * A `--source` the scan still finds qualifying, refused otherwise.
+ * @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args
+ * @param {{what: string, why: string}} refusal  the source's part in the step, and why only a qualifying one
+ * @returns {string}
+ */
+function qualifyingSource(cwd, { dotpath, source }, { what, why }) {
+  if (!isFilled(source)) throw new Error(`render legacy-split-display: --source is required — the source the split ${what}`);
   const { workUnit, sources } = legacySplitScan(cwd, dotpath);
-  if (!sources.qualifying_sources.includes(/** @type {string} */ (source))) {
-    throw new Error(`render legacy-split-display: "${source}" is not a qualifying source of "${workUnit}" — a skipped source stands unchanged`);
+  if (!sources.qualifying_sources.includes(source)) {
+    throw new Error(`render legacy-split-display: "${source}" is not a qualifying source of "${workUnit}" — ${why}`);
   }
+  return source;
+}
+
+/** The sub-step opening on a source the split takes up. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
+function legacySplitProcessing(cwd, args) {
+  const source = qualifyingSource(cwd, args, { what: 'takes up', why: 'the split works through the qualifying sources alone' });
+  return section('DISPLAY: legacy split processing', CONTINUE_MARKDOWN_INSTRUCTION,
+    `**\`▪ Processing ${source}\`**\n\n> Working on ${source}.md.`);
+}
+
+/** A qualifying source the split left as it stood. @param {string} cwd @param {{dotpath: string} & Record<string, string|undefined>} args @returns {string} */
+function legacySplitSkipped(cwd, args) {
+  const source = qualifyingSource(cwd, args, { what: 'skipped', why: 'a skipped source stands unchanged' });
   return section('DISPLAY: legacy split skipped', CONTINUE_INSTRUCTION, `Skipping ${source}. Source file and manifest unchanged.`);
 }
 
+/**
+ * The split's closing line, from the session's tallies — an aborted apply
+ * first, since its stuck sentinel needs clearing before anything else.
+ * @param {{applied: number, abandoned: number, errored: number}} t
+ * @returns {string}
+ */
+function legacySplitOutcome({ applied, abandoned, errored }) {
+  if (errored > 0) {
+    return `${errored} source file(s) aborted mid-apply; ${applied} decomposed; ${abandoned} skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /workflow-start.`;
+  }
+  if (applied === 0 && abandoned === 0) return 'No legacy source files needed decomposition.';
+  if (abandoned === 0) return 'Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.';
+  if (applied > 0) {
+    return `${applied} source file(s) decomposed; ${abandoned} skipped. Skipped files remain on the map and can be revisited next time you open the epic via /workflow-start.`;
+  }
+  return 'No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /workflow-start.';
+}
+
+/** The split's conclusion. @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string} */
+function legacySplitComplete(_cwd, args) {
+  const [applied, abandoned, errored] = ['applied', 'abandoned', 'errored'].map((flag) => countFlag(args[flag], 'legacy-split-display', flag));
+  return section('DISPLAY: legacy split complete', CONTINUE_MARKDOWN_INSTRUCTION,
+    `**\`□ Legacy Split Complete\`**\n\n> ${legacySplitOutcome({ applied, abandoned, errored })}`);
+}
+
 /** @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
-const LEGACY_SPLIT_STATE_DISPLAYS = { sources: legacySplitSources, skipped: legacySplitSkipped };
+const LEGACY_SPLIT_STATE_DISPLAYS = { sources: legacySplitSources, processing: legacySplitProcessing, skipped: legacySplitSkipped, complete: legacySplitComplete };
 
 /** validate.cjs's refusals. @param {Record<string, any>} p @returns {string} */
 function legacySplitErrors(p) {
@@ -7162,6 +7477,24 @@ function baselineScopeGateSurface(cwd, { file }) {
 }
 
 /** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
+function baselineAreaSurface(cwd, { file }) {
+  const payload = readBaselinePayload(cwd, 'baseline-area', file);
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('render baseline-area: payload must be an object {area, summary}');
+  }
+  const d = resolveBaseline(cwd, 'baseline-area');
+  const entry = d.areas.find((a) => a.name === payload.area);
+  if (!entry) throw new Error(`render baseline-area: unknown area "${payload.area}"`);
+  if (entry.status !== 'researched') {
+    throw new Error(`render baseline-area: area "${payload.area}" is "${entry.status}", not researched — the interview opens on a researched area`);
+  }
+  if (!isFilled(payload.summary) || payload.summary.includes('\n')) {
+    throw new Error('render baseline-area: "summary" must be one non-empty line — what the area covers and what the questions are after');
+  }
+  return baselineArea(d, payload.area, payload.summary.trim());
+}
+
+/** @param {string} cwd @param {Record<string, string|undefined>} args @returns {string} */
 function baselineRoundSurface(cwd, { file }) {
   const payload = readBaselinePayload(cwd, 'baseline-round', file);
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -7374,9 +7707,11 @@ const SURFACES = {
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
   'wait-gate': waitGateSurface,
+  'pause-note': pauseNoteSurface,
   'summary-backfill-gate': summaryBackfillGate,
   'external-dependency-gate': externalDependencyGate,
   'checkpoint-files-gate': checkpointFilesGate,
+  'change-set-tree': changeSetTree,
   'executor-block-gate': executorBlockGate,
   'dependency-approval-gate': dependencyApprovalGate,
   'task-graph-cycle': taskGraphCycle,
@@ -7403,7 +7738,11 @@ const SURFACES = {
   'phase-completed': phaseCompleted,
   'phase-paused': phasePausedSurface,
   'phase-note': phaseNote,
+  'step-opening': stepOpeningSurface,
   'compliance-issues': complianceIssues,
+  'document-review': documentReview,
+  'surfaced-context': surfacedContext,
+  'format-version-check': formatVersionCheck,
   'entry-gate': entryGate,
   'direct-entry-gate': directEntryGate,
   'code-gate': codeGate,
@@ -7461,6 +7800,7 @@ const SURFACES = {
   'baseline-paused': baselinePausedSurface,
   'baseline-receipt': baselineReceiptSurface,
   'baseline-scope-gate': baselineScopeGateSurface,
+  'baseline-area': baselineAreaSurface,
   'baseline-round': baselineRoundSurface,
   'baseline-doc-gate': baselineDocGateSurface,
   'baseline-manage-gate': baselineManageGateSurface,

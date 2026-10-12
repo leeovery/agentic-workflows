@@ -32,7 +32,7 @@ Emit the call's MENU section verbatim per its marker.
 
 **If `yes`:**
 
-→ Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{plan_format}`.
+→ Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{plan_format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
 
 → Return to caller.
 
@@ -48,6 +48,6 @@ Emit the call's MENU section verbatim per its marker.
 
 → Load the chosen format's **[about.md](../../workflow-planning-process/references/output-formats/{chosen-format}/about.md)** and follow its Setup section — complete any prerequisites (installation, initialisation, MCP configuration) before tasks are written.
 
-→ Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{chosen-format}`.
+→ Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{chosen-format}`, work_unit = `{work_unit}`, phase = `scoping`, topic = `{topic}`.
 
 → Return to caller.

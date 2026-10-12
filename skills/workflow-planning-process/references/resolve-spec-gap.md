@@ -293,10 +293,10 @@ Emit them verbatim per their markers — the blocker naming what is owed, its gu
 
 **If `yes`:**
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the pause's line and emit its DISPLAY section verbatim per its marker:
 
-```
-> Paused with the gap in {landed_topic}'s mailbox — planning resumes once {landed_topic} has decided it and the specification has been brought into line.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render pause-note {work_unit}.planning.{topic} --landed {landed_topic}
 ```
 
 Invoke `/workflow-bridge {work_unit} planning none paused`.

@@ -88,60 +88,10 @@ Load **[dialog.md](references/dialog.md)** and follow its instructions as writte
 
 ## Step 3: Conclude
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the split's conclusion from the session's tallies and emit its DISPLAY section verbatim per its marker:
 
-```
-**`□ Legacy Split Complete`**
-```
-
-Evaluate the branches below in order — error reporting takes precedence over clean outcomes.
-
-#### If `errored_count > 0`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> {errored_count} source file(s) aborted mid-apply; {applied_count} decomposed; {abandoned_count} skipped. See "Recovery from Interrupted Apply" below to clear stuck sentinels before you reopen the epic via /workflow-start.
-```
-
-→ Return to caller.
-
-#### If `applied_count == 0` and `abandoned_count == 0`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> No legacy source files needed decomposition.
-```
-
-→ Return to caller.
-
-#### If `applied_count > 0` and `abandoned_count == 0`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Legacy broad research files decomposed. The discovery map now reflects topic-scoped items.
-```
-
-→ Return to caller.
-
-#### If `applied_count > 0` and `abandoned_count > 0`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> {applied_count} source file(s) decomposed; {abandoned_count} skipped. Skipped files remain on the map and can be revisited next time you open the epic via /workflow-start.
-```
-
-→ Return to caller.
-
-#### If `applied_count == 0` and `abandoned_count > 0`
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> No source files decomposed — every qualifying file was skipped. They remain on the map and can be revisited next time you open the epic via /workflow-start.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render legacy-split-display --variant complete --applied {applied_count} --abandoned {abandoned_count} --errored {errored_count}
 ```
 
 → Return to caller.

@@ -9,7 +9,7 @@
 
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
-const { section, dataSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, emitAs, MENU_INSTRUCTION, STOP_CLAUSE } = require('./surfaces.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION, STOP_CLAUSE } = require('./surfaces.cjs');
 const { titlecase } = require('../conventions.cjs');
 
 const ASK_INSTRUCTION = emitAs('text', STOP_CLAUSE);
@@ -122,6 +122,22 @@ function baselineScopeGate(payload) {
 }
 
 /**
+ * The opening of an area's interview — its step marker, counted across every
+ * area in interview order (the areas already documented come first), then
+ * the session's one line on what the area covers and how to answer.
+ * @param {BaselineState} d @param {string} area @param {string} summary
+ * @returns {string}
+ */
+function baselineArea(d, area, summary) {
+  const n = d.areas.length - d.remaining + 1;
+  return section('DISPLAY: baseline area', CONTINUE_MARKDOWN_INSTRUCTION, [
+    `**\`□ Interviewing ${titlecase(area)} (${n} of ${d.areas.length})\`**`,
+    '',
+    `> ${summary} Answer in your own words, pick a candidate, or say "don't know" — an unanswered question is recorded as open, never guessed at.`,
+  ].join('\n'));
+}
+
+/**
  * @typedef {object} RoundPayload
  * @property {string} area
  * @property {{text: string, candidates?: string[]}[]} questions
@@ -225,6 +241,7 @@ module.exports = {
   baselinePaused,
   baselineReceipt,
   baselineScopeGate,
+  baselineArea,
   baselineRound,
   baselineDocGate,
   baselineManageGate,

@@ -18,16 +18,10 @@ Read the `do-now` actions from `.workflows/.cache/{work_unit}/review/{topic}/act
 
 #### Otherwise
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the step's opening and emit its DISPLAY section verbatim per its marker:
 
-```
-**`□ Apply Do-Now`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Applying {count} contained {noun:[correction|corrections]} — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.review.{topic} --step do-now
 ```
 
 This is an announcement, not a gate: the user reads it while the work proceeds.

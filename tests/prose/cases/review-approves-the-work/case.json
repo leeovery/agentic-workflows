@@ -52,7 +52,7 @@
       "render review-gate pay.review.pay",
       "push pay.review.pay reviewed_tasks",
       "manifest get pay.implementation.pay linters",
-      "git status",
+      "render change-set-tree pay.review.pay",
       "review(pay): complete review",
       "manifest exists pay.review.pay out_of_scope",
       "topic complete pay review pay",
@@ -65,7 +65,7 @@
       "impl(pay): T",
       "push pay.review.pay reviewed_tasks",
       "write:.workflows/pay/review/pay/change-set-",
-      "git status",
+      "render change-set-tree pay.review.pay",
       "review(pay): complete review",
       "topic complete pay review pay",
       "review(pay): complete review phase"
@@ -78,7 +78,8 @@
       "workunit create",
       "engine.cjs knowledge index",
       "task start",
-      "manifest push pay.review.pay out_of_scope"
+      "manifest push pay.review.pay out_of_scope",
+      "render step-opening"
     ]
   }
 }

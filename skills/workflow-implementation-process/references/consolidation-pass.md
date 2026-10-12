@@ -4,22 +4,26 @@
 
 ---
 
-One pass per phase, bounded by construction: a finder sweeps the phase's combined surface, the survivors are walked as proposals and the approved ones become ordinary plan tasks in the still-open phase, and the phase records complete — there is no re-check after those tasks land. `{N}` throughout is the manifest's `current_phase`. The walk's gate mode is `consolidation_gate_mode` (session-reset by `task init`); read it here:
+One pass per phase, bounded by construction: a finder sweeps the phase's combined surface, the survivors are walked as proposals and the approved ones become ordinary plan tasks in the still-open phase, and the phase records complete — there is no re-check after those tasks land. `{N}` throughout is the manifest's `current_phase`.
+
+#### If the work unit's `work_type` is `quick-fix` (read at loop entry)
+
+A quick-fix plan never grows — record the phase without a sweep.
+
+→ Proceed to **F. Record the Phase**.
+
+#### Otherwise
+
+The walk's gate mode is `consolidation_gate_mode` (session-reset by `task init`); read it here:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidation_gate_mode
 ```
 
-> *Output the next fenced block as markdown (not a code block):*
+Fetch the pass's opening and emit its DISPLAY section verbatim per its marker:
 
-```
-**`□ Consolidation Pass (phase {N})`**
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Phase {N}'s tasks are done. Before the phase closes: one sweep over what they built side by side — consolidation the plan could not author, plus everything banked along the way.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render step-opening {work_unit}.implementation.{topic} --step consolidation
 ```
 
 Resume guards — read the durable state (each print is empty when the field is absent; the review item's `staging` carries the review walk's approval rows, read here for **B**), then check in order, first match wins:
@@ -30,35 +34,29 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.review.{topic} staging
 ```
 
-#### If the work unit's `work_type` is `quick-fix` (read at loop entry)
-
-A quick-fix plan never grows — record the phase without a sweep.
-
-→ Proceed to **F. Record the Phase**.
-
-#### If `staging.p{N}` holds a `pending` task
+**If `staging.p{N}` holds a `pending` task:**
 
 The walk is mid-approval.
 
 → Proceed to **C. Approval Overview**.
 
-#### If `staging.p{N}` holds no `pending` task and at least one `approved` row's task is missing from the plan
+**If `staging.p{N}` holds no `pending` task and at least one `approved` row's task is missing from the plan:**
 
 The session died between the walk and the plan write — or partway through the task author's or the task writer's run.
 
 → Proceed to **E. Create Tasks in Plan**.
 
-#### If the manifest's `consolidated_phases` contains `{N}`
+**If the manifest's `consolidated_phases` contains `{N}`:**
 
 The pass ran; only the phase record is outstanding.
 
 → Proceed to **F. Record the Phase**.
 
-#### If `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md` exists
+**If `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md` exists:**
 
 → Proceed to **B. Judge the Findings** over the existing file.
 
-#### Otherwise
+**Otherwise:**
 
 → Proceed to **A. Dispatch the Finder**.
 
@@ -347,7 +345,11 @@ Close the phase:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest delete {work_unit}.implementation.{topic} bank
    ```
-2. **Mark the boundary** — skip the push when `consolidated_phases` already contains `{N}`:
+2. **Mark the boundary** — read `consolidated_phases` (empty when the field is absent):
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} consolidated_phases
+   ```
+   Skip the push when it already contains `{N}`; otherwise push it:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest push {work_unit}.implementation.{topic} consolidated_phases {N}
    ```

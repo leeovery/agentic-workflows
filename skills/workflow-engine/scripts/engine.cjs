@@ -310,9 +310,11 @@ Commands:
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.research|discussion.topic> --id <E{n}>
   render wait-gate        <wu.research|discussion|planning.topic>  (empty when the item holds no wait)
+  render pause-note       <wu.research|discussion.topic> --id <E{n}> | <wu.planning.topic> --landed <topic>
   render summary-backfill-gate <wu> --variant batch|proposed|prompt|unsourced [--file <payload.json>] [--topic <name>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
+  render change-set-tree  <wu.review.topic>  (empty when the tree is clean outside .workflows/)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --file <payload.json> | --variant resolution
   render task-graph-cycle <wu.planning.topic> --file <payload.json>
@@ -339,7 +341,11 @@ Commands:
   render phase-completed   <wu> --phase <phase> [--paths]
   render phase-paused      <wu> --phase <research|discussion|planning|specification>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
+  render step-opening      <wu.phase.topic> --step session|conclude|consolidation|do-now [--resumed]
   render compliance-issues --file <payload.json>
+  render document-review   --variant session-log --corrections N | --variant document --gaps N --corrections N
+  render surfaced-context  --file <payload.json>
+  render format-version-check --file <payload.json>
   render entry-gate        <wu.phase.topic> [--own]  (discussion|planning|implementation|review|specification)
   render direct-entry-gate <wu.phase.topic>          (research|discussion — empty when the name is not on the map)
   render code-gate         <wu.phase.topic>          (implementation|review — empty when the code slot is free)
@@ -400,6 +406,7 @@ Commands:
   render baseline-paused
   render baseline-receipt
   render baseline-scope-gate --file <payload.json>
+  render baseline-area --file <payload.json>
   render baseline-round --file <payload.json>
   render baseline-doc-gate
   render baseline-manage-gate
@@ -415,8 +422,8 @@ Commands:
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
-  render legacy-split-gate --variant themes|plan|remove
-  render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant skipped --source <name>
+  render legacy-split-gate --variant themes|plan | --variant remove --theme <name>
+  render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing|skipped --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
   render wrap <text> [--width N] [--prefix STR]                  (dev aid)
@@ -1991,7 +1998,7 @@ function runHandoff(call, argv) {
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify']);
+  const { opts, flags, positional } = parseArgs(rest, ['approve', 'skipped-review', 'own', 'paths', 'warn', 'pipeline', 'donow', 'recommendations', 'dead-end', 'menu-only', 'pause', 'single', 'unify', 'resumed']);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -2011,6 +2018,7 @@ function runRender(call, argv) {
       if (flags.has('pause')) args.pause = '1';
       if (flags.has('single')) args.single = '1';
       if (flags.has('unify')) args.unify = '1';
+      if (flags.has('resumed')) args.resumed = '1';
       respondSections(call, renderSurface(call.cwd, command, args));
     } catch (err) {
       failJson(call, err);

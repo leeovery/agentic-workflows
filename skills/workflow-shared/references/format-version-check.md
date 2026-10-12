@@ -4,7 +4,7 @@
 
 ---
 
-The caller provides `format`.
+The caller provides `format`, and `work_unit`, `topic` and `phase` (the session's own).
 
 ## A. Read the Declaration
 
@@ -22,7 +22,7 @@ Read the **Version** section of the format's **[about.md](../../workflow-plannin
 
 ## B. Compare
 
-Run the declared command and take the installed version from its output. The check passes when the installed version satisfies the requirement.
+Run the declared command and take the installed version from its output; where the command fails because the tool is not installed, there is no installed version. The check passes when the installed version satisfies the requirement.
 
 #### If the check passes
 
@@ -30,16 +30,10 @@ Run the declared command and take the installed version from its output. The che
 
 #### Otherwise
 
-> *Output the next fenced block as a properties code block (```properties fence):*
+Write what the check found to `.workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json` with the Write tool — `{"tool": "{tool}", "installed": "{installed version}", "format": "{format}", "required": "{required version}", "update_instructions": "{where the update instructions live}"}`, leaving `installed` out where the command failed — then fetch the blocker and emit both sections verbatim per their markers:
 
-```properties
-⚑ The installed tool does not meet the version this plan format requires
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> {tool} {installed} is installed; the {format} format requires `{required}`. See {update_instructions} to update.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render format-version-check --file .workflows/.cache/{work_unit}/{phase}/{topic}/format-version.json
 ```
 
 **STOP.** Wait for user response.

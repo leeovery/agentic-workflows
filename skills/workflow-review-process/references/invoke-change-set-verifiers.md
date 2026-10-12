@@ -103,28 +103,18 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 The agents measure inside the working tree and must leave it as they found it. The review's own artifacts — the reports, this cycle's section files, the manifest — sit uncommitted under `.workflows/` until prep commits them, so the check reads everything else:
 
 ```bash
-git status
+node .claude/skills/workflow-engine/scripts/engine.cjs render change-set-tree {work_unit}.review.{topic}
 ```
 
-#### If nothing outside `.workflows/` is modified or untracked
+#### If the output is empty
+
+Nothing outside `.workflows/` is modified or untracked.
 
 → Proceed to **E. Reconcile**.
 
 #### Otherwise
 
-A path outside `.workflows/` is modified or untracked. Never revert it blind — the paths are named and the review stops here.
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```properties
-⚑ The change-set verification left the working tree dirty outside .workflows/
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> The pass must leave the tree as it found it — these paths are modified or untracked: {paths}. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.
-```
+A path outside `.workflows/` is modified or untracked. Never revert it blind — the paths are named and the review stops here. Emit both sections verbatim per their markers.
 
 **STOP.** Do not proceed — terminal condition.
 

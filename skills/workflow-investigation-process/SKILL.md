@@ -211,7 +211,7 @@ When symptoms are sufficiently understood to begin code analysis:
 
 ## Step 4: Contextual Query
 
-Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** and follow its instructions as written.
+Load **[contextual-query.md](../workflow-shared/references/contextual-query.md)** with work_unit = `{work_unit}`, phase = `investigation`, topic = `{topic}`, and follow its instructions as written.
 
 → On return, proceed to **Step 5**.
 

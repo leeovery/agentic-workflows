@@ -13,7 +13,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.
 1. Read the plan — understand phases, tasks, and acceptance criteria
 2. Read the linked specification — load design context
 3. Take the plan's `format` and `external_id` from the item read above
-4. Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{format}`
+4. Load **[format-version-check.md](../../workflow-shared/references/format-version-check.md)** with format = `{format}`, work_unit = `{work_unit}`, phase = `review`, topic = `{topic}`
 5. Load the format's reading adapter from `../../workflow-planning-process/references/output-formats/{format}/reading.md` — this tells you how to locate and read individual task files
 6. Extract all tasks across all phases
 
