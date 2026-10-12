@@ -1585,8 +1585,10 @@ think is a good sign."
 2. **Review the shape, measure, design trust.** Done 2026-10-12: the
    shape review (R40–R42), the four measurements and the person's
    verdicts (R29), and the trust layer (R23–R28, R40's positions), each
-   call approved by the person on a page. Nothing in the workflows
-   changed.
+   call approved by the person on a page; then the walks of review, the
+   epic menu, bugfix, quick-fix and the build, and how work is broken up.
+   What remains before the plan is in Where things stand. Nothing in the
+   workflows changed.
 3. **Foundations shared by A and B.** The ledger, raise and gate-answer
    logging, the verdict queue, the user-level store, and the author's log
    seeded from R29's history. Logging collects from the day it ships,
@@ -1597,6 +1599,93 @@ think is a good sign."
    under today's workflows.
 5. **The ask rule on (B)**, calibrated to ask what is asked today and
    loosening only as evidence supports; the decision model last.
+
+## Where things stand
+
+Consolidated on 2026-10-12 at the person's request, to stop one question
+rippling into the next. This is the list the next sessions walk with the
+person, one item at a time; the sections above hold the detail.
+
+**Ruled by the person** — decided; changed only on new evidence:
+- The direction and the strands (R1–R9), agreed at shape level; the shape
+  review's proposals (R40–R42); the context budget (R43); the knowledge
+  base as the first look (R44).
+- Gates, corridors and fields (R2): whatever Claude does in a field stays
+  in it.
+- The trust layer, each call approved on a page (R23–R28, R40's three
+  positions); the threshold, 20% halved where hard to undo; what ships is
+  the procedure, never anyone's counts, with the author's log seeded.
+- From the walks: quick-fix in one session, a short record after the
+  work, no review step (R21); a specification waits until every topic is
+  decided (R17); bugfix validations acted on by Claude, the
+  address-or-dismiss gates gone, rework as a fix-direction option with no
+  count (R20); one orchestrator across a build's phases, delegating; the
+  build keeps a log; six principles and the task template replace
+  planning's teaching (R15); what the person sees during a build —
+  landed summaries, a question queue, a stop report (R15); proven, and the
+  per-project verify setup (R32); the gap-analysis session bug goes with
+  the restructure.
+
+**Settled from evidence, shown to the person, never explicitly agreed:**
+- Review (R16): every finding lands somewhere, out of scope to the inbox
+  by verb with no keep-or-drop offer; the short product-first report; the
+  final review runs the product; the loop gates learned.
+- The epic menu (R17): what waits on the person first; topics by what they
+  need; build units by phase; the rarer doors behind one; research and
+  planning items gone; cancelling moves mail to the inbox; "dead end"
+  goes.
+- Bugfix (R20): find out how comparable tools handle it before leaning;
+  the spec assembled from the investigation; the first task proves the bug
+  failing; the plan, check-in and conclude gates learned.
+- The build (R15): one verb per door, a door for the agent writing a task;
+  the commit door checks for a task and refuses a raw commit; dependencies
+  per phase; the tracker telling done from not yet written; the transcript
+  keeping the story (a headline per start, one block per batch, a product
+  summary per landing).
+
+**Shape only — agreed in outline, never walked in detail:**
+- Discovery (R10, R41): routing discuss or build, the brief's agenda,
+  foundations first.
+- Decision (R11, R12): record and log, the map as done, spikes and their
+  assets, the closing pass; the cone (R24) in practice.
+- Mailboxes (R13): the one-command open needs a command-line form or
+  arguments on the start skill.
+- Specification (R14): assembly from the records, the phase-cut corridor,
+  the one review pass, the corrigendum verb.
+- Feature (R19) and cross-cutting (R22).
+- The tracking layer beyond the epic menu (R17): the start menu, the
+  inbox, the roadmap.
+- The deterministic core (R35): which verbs, the layout hook, the
+  checklists.
+- Verification beyond its definition (R31–R34): adequacy by mutation or
+  deliberate breaks, habit hooks, hard checks, how project skills reach
+  the builder.
+- Measures (R36); migration, directives and rehearsal (R37–R39).
+
+**Not touched at all:** the brownfield assessment; the start skill's
+setup gates and environment setup; the help walkthrough and glossary; the
+user-facing docs; the prose-test harness for the new shape (R4); session
+handoffs and compaction recovery beyond R35's note.
+
+**Still the person's to decide:** the product record; logs by session or
+by topic; whether a decision record holds findings (all in Open).
+
+**Unclear, or engineering for the plan:** where the phase cut lives on
+disk and how a tracker shows a phase not yet written; how project skills
+reach the builder (R34); the per-task reviewer measurement (R16); whether
+two mods' panes share Claude Code's tab row (untested); Jev as the
+labeller (unreachable here).
+
+**Parked:** the workflows board (Open) — low priority by the person's
+ruling, a visual tool rather than something that builds better products;
+mod panels are spiked with the person later; the first sketches were
+rushed and are set aside.
+
+**Still to come:** walk what is shape only, in the order the work
+depends on it — discovery and decision first, then specification, the
+tracking layer, mailboxes, feature and cross-cutting — and confirm the
+settled-from-evidence items with the person; then the formal plan
+(Sequence steps 3–5).
 
 ## Open
 
