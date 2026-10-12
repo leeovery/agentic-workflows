@@ -568,12 +568,30 @@ project's own measurements decide (R7).
   the 41k it became. The workflows carry the shape in their own prose,
   self-contained; they never depend on a personal skill. What planning's
   set-up writes today (the plan's context and its cross-cutting
-  references) moves to the spec or the phase start. Per phase:
-  - **Tasks are written when the phase starts**, against the code the
-    previous phase left, and recorded in the plan's task tracker with
-    their dependencies — and which can run in parallel — before anything
-    runs. Tasks written months ahead describe code that turned out
-    differently.
+  references) moves to the spec or the phase start.
+
+  The phase cut is made in a corridor at the end of specification (R2,
+  R14): phases in build order, each a slice someone can run end to end,
+  phase 1 the thinnest such slice for every work type — the walking
+  skeleton. Today only an epic's guidance asks for one: every epic's
+  phase 1 was a skeleton, while 9 of 16 features opened with a foundation
+  layer nothing could run. Across 26 units with 916 planned tasks the cut
+  itself always held — phases ran in the order planned, none dropped,
+  merged or reordered. Per phase:
+  - **Tasks are written when the phase starts**, in a short corridor,
+    against the code the previous phase left, and recorded in the plan's
+    task tracker with their dependencies — and which can run in parallel —
+    before anything runs. Each uses the task template (problem, solution,
+    outcome, acceptance criteria as scenarios, spec reference) and names
+    no mechanism the record did not decide. What went stale in tasks
+    written ahead was exactly the mechanism and the `file:line` anchors
+    into code earlier phases changed; the template's fields never needed
+    amending, and 46% of all delivered tasks were already written mid-build
+    against the code with only the template, the tracker's adapter and a
+    short writer agent. Dependencies are recorded within the phase as its
+    tasks are written: the plan-wide pass that clears and rebuilds every
+    dependency goes, and the tracker's readers tell "every task is done"
+    from "the next phase is not written yet".
   - **Shared design is settled first.** A design question several tasks
     touch is settled when the tasks are written, never by two builders
     separately.
@@ -592,9 +610,19 @@ project's own measurements decide (R7).
     when they visit the session and the build carries on.
   - **No code change without a task.** When something outside the plan
     turns up — a bug the person reports, a gap the builder finds — Claude
-    judges where it goes (this phase, a later one, the inbox, the roadmap)
-    and it lands through a verb. Fixing it off the books is impossible:
-    the commit door refuses a code commit that names no task.
+    judges where it goes and it lands through a verb, one per door: a task
+    in this phase or a later one, a note for the phase review, a spec
+    correction, a message to another topic, the inbox, the roadmap. An
+    agent writing a task reports a find outside its task and Claude lands
+    it; today such a find has no route at all. Today the doors are mostly
+    prose plus direct manifest writes and agents (only the topic send and
+    the roadmap add are verbs). Fixing it off the books is impossible: the
+    commit door refuses a code commit that names no task. Today it confines
+    paths and checks no task, and about 76 code commits since it landed
+    belonged to none because the prose prescribed them (comment
+    corrections, the checkpoint before analysis); comment corrections fold
+    into the task in flight, and a raw `git commit` during a build is
+    refused by the hook (R35).
   - **Notes for later** (today's banking) are written by a verb and read by
     the phase review. The machinery around banking (the flag, the deposit
     reference, the separate judge) goes.
@@ -616,6 +644,34 @@ project's own measurements decide (R7).
   and, for slices where a subtle bug passes the tests (time, concurrency),
   tests aimed at that risk — never another reading round.
 
+  Walked on 2026-10-12. Today's five layers are the per-task reviewer, the
+  phase consolidation finder, the analysis loop's three agents until all
+  come back clean, review's per-task verifiers and its per-section
+  change-set verifiers; a failed review loops back through the build.
+  Portal's kill-all bugfix wrote 69k words of review; session resurrection
+  passed after 8 analysis cycles and needed 10 bugfixes in the next five
+  weeks. The defects that mattered came from the per-task reviewer
+  (concurrency, data loss) and from verifiers that ran the program; most
+  of what escaped in Portal were runtime faults no review ran. The new
+  shape:
+  - The final review runs the product wherever the project has a way to;
+    what could not be run is reported not proven (R32). A bugfix's test is
+    run on the unfixed code and must fail.
+  - **Every finding lands somewhere.** Below the floor: dropped. Above it
+    and in scope: tasks in a closing phase, which that phase's review
+    checks; there is no second final review. Out of scope: the inbox,
+    through a verb, with no keep-or-drop offer — out-of-scope routing lost
+    a real agntc defect that never reached the inbox and is still in its
+    code.
+  - **The report is short and product first**: what the person can now do
+    that they could not, what was proven by running it and what was not,
+    what was fixed, what went to the inbox, Claude's calls worth a look.
+    Then finish, the authority gate. 8 of the person's 21 answers at
+    today's review gate were typed, mostly asking what a finding meant or
+    cost ("Can I now just safely reboot my computer…").
+  - The task gate, the fix gate and task approval become learned (R40):
+    auto was taken 42 of 49 and 40 of 44 times where offered.
+
 ### The tracking layer
 
 - **R17 — Work tracking stays and strengthens.** The start menu, inbox,
@@ -628,6 +684,40 @@ project's own measurements decide (R7).
   holds, entry gates, staleness flags) exist to police phase order, and it
   has grown since (grouping, naming a new topic, back), so it has more to
   shed.
+
+  Walked on 2026-10-12. Of the 76 things the menu can show, 30 police phase
+  order and 19 of those go; Fumi's menu is 16 rows, the person took the
+  recommended row 75% of the time, and grouping (offered 72 times), resume
+  completed (72), the new-topic doors (82) and reactivate (37) were never
+  picked. The menu becomes:
+  - **What waits on the person first** — an authority gate (approve the
+    map, ready to build, finish), a builder's question raised mid-phase,
+    verdicts waiting (R23) — each with its door.
+  - **Topics by what they need.** A discuss topic shows its progress
+    through its agenda; a build topic shows it goes to specification from
+    its brief; decided, in session, mail waiting and experiments waiting
+    stay. A build unit shows specification, phase N of M, final review, in
+    place of the plan rows.
+  - The recommended row first, in the foundations-first order (R41); a
+    topic in session elsewhere stays struck, so several open at once.
+  - Grouping, discovery and back on the face; cancel, postpone,
+    reactivate, pull forward, resume a completed topic and a new topic
+    behind one door.
+  - Gone: everything that kept research apart from discussion and
+    everything about planning; the soft gates that remain become learned;
+    decision named throughout. Cancelling a topic moves its waiting mail to
+    the inbox; "dead end" goes — a topic that ends in not doing it is
+    decided with that as its decision, or cancelled.
+  - **A specification waits until every topic is decided**, ruled by the
+    person 2026-10-12. Grouping reads the records: groups drawn from half
+    of them come out differently once the rest are decided, and a topic
+    decided after its spec can change the spec's nature. Today the engine
+    refuses new spec structure only while a discussion is in progress (a
+    hard block since 2026-08-11, a warning before), so unstarted topics do
+    not block it; the rule tightens to every topic decided, cancelled or
+    postponed, and postponing a topic to the roadmap is how an epic moves
+    on without it. Rejected: grouping a decided subset early — Fumi's
+    decided topics were reopened up to 10 times by later ones.
 
 ### Work types
 
@@ -645,14 +735,77 @@ project's own measurements decide (R7).
   may become a feature; a bug folded into a feature skips investigation,
   as the mailbox rework ruled. Investigation is not itself split into
   record and log: it is the log, the specification is the record.
-- **R21 — Quick-fix.** Quick must be quick: no scoping document and no plan.
-  Claude does the work, runs the tests and linters, commits, and writes a
-  ledger line if it made a call. It stays a tracked work unit on the start
-  menu that closes. Review runs only if behaviour changed. Work that needs
-  a design conversation is not a quick-fix; Claude says so and it moves to
-  feature or bugfix. Every way in that hands a quick-fix to scoping today
-  (the roadmap pull, the inbox's start-now path) is re-aimed. (Detail
-  still to walk.)
+
+  Walked on 2026-10-12 on Portal's `killing-all-sessions-wipes-restore-state`.
+  The person likes today's bugfix — prove the bug, investigate, document —
+  and every product correction they made on the case landed in discovery
+  or investigation, while specification and planning drew 14 presses and
+  nothing typed and restated the fix twice (6.6k and 14.9k words, plus
+  10.7k of spec review tracking). Ruled by the person:
+  - **Both validations always run, and Claude acts on what they find,**
+    recording it in the investigation. The address-or-dismiss gates after
+    them go: answered 16 times, never dismissed, and the person did not
+    know what "address" meant. A finding that changes what the fix does
+    for the person reaches them as a product question; the case's
+    kill-versus-detach ruling came from one.
+  - **Earlier fixes are part of the analysis.** Claude checks whether the
+    area was fixed before and whether the cause sits in the design, as it
+    reads the code; nothing is shown to the person and nothing is counted.
+    When the cause sits in the design or the area keeps breaking, the
+    fix-direction question gains one option: rework the area as a feature.
+    Portal's restore and resume work is the evidence: 16 units since
+    March, the case touching files changed by 13 of them, the hook key
+    re-keyed three times, "an empty read is the truth" fixed one call site
+    at a time in April, May and October — and every investigation that
+    named the premise stayed a bugfix.
+
+  Settled with them: before leaning on a fix direction, Claude finds out
+  how comparable tools handle the problem (the person had to ask how other
+  tmux plugins save state); the specification is assembled from the
+  investigation — root cause, the fix, the rules it keeps with their
+  checks, the phase cut — with one review pass and ready to build from an
+  outline; the first task runs a test on the unfixed code and records it
+  failing before any fix (on the case the reproducing test was task 8 of
+  phase 1, and only the final review checked it against the old code,
+  where it failed in 1 of 11 trials); the plan, check-in and conclude
+  gates become learned. The ask rule asked the case's kill-versus-detach
+  question because forgetting killed sessions deletes saved scrollback,
+  which is danger; as behaviour alone it would have been Claude's call on
+  the person's record (1 real loss in 69), and the person's verdict on
+  that overrule was a later fix, not a real loss.
+- **R21 — Quick-fix.** Quick must be quick: one session from "what's the
+  change?" to closed, with no handoffs; the clean-context handoff stays
+  for the heavy phases. Every way in — the start menu, the inbox (one item
+  or a set), the roadmap — lands on the same short opener; today a roadmap
+  pull skips it and goes straight to scoping. Claude does the work, runs
+  the tests and linters, and commits; its calls go to the ledger, and a
+  question the ask rule sends the person is raised as anywhere else. A
+  quick-fix is its own task, so the commit door takes it without a plan.
+  - **No document before the work and no plan. A short record after it**
+    — what changed, why, what it leaves out — which the knowledge base
+    indexes. Quick-fix specs were read later (named in nine later
+    investigations, specs, discussions and reviews; one gained a
+    corrigendum to what it left out); the plans never were.
+  - **No review step.** A change to behaviour is proven by running the
+    product where the project has a way to, and the close says what was
+    proven; the person can ask for a review. Reviewing whenever behaviour
+    changed would have reviewed about 11 of 20; the person chose review on
+    2, and neither found anything that had to change.
+  - Work that needs a decision from the person beyond a quick call moves to
+    feature or bugfix through a verb; today that is a line of prose with
+    no route. The size check before the work goes: it never stopped one,
+    though about half changed behaviour and two made a design call inside
+    scoping.
+  - A set from the inbox runs in one sitting, each fix keeping its own
+    unit, record and commit. It stays a tracked work unit on the start menu
+    that closes.
+
+  Walked and ruled by the person on 2026-10-12, replacing the earlier "no
+  document" and "review only if behaviour changed". Evidence: 20
+  quick-fixes (Portal 16, Tick 3, Mint 1), none since July; median change
+  100 lines; the two with surviving sessions took about 3h20m each over
+  three sessions and two handoffs, more than an hour of each build session
+  spent waiting at gates that always got the same answer.
 - **R22 — Cross-cutting.** discovery → decision → specification, ending
   there: a project-level record later topics read. Kept for mature
   projects; unused so far. A unit promoted from an epic's specification
@@ -1338,23 +1491,37 @@ think is a good sign."
   FlowX, Goosemates), and this repository's own design history. Spikes,
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
-- **Still to walk:** the review stage in detail; the epic menu once phase
-  gating thins; bugfix in detail, with Portal's live bugfix ("killing all
-  sessions wipes restore data") as the test case; quick-fix in detail; and
-  the build, added by the person on 2026-10-12: how much of today's routing
-  survives (ad hoc tasks, a finding sent to a later phase, another topic,
-  the inbox or the roadmap, notes for later), which of it is a verb today
-  and which prose.
-- **Planning's knowledge, once planning splits.** Cutting the work into
-  phases moves to the end of specification and writing tasks to the start
-  of each build phase, so each needs what planning knows today (phase
-  design, the walking skeleton, how a task is written and its template)
-  loaded where it is used. How much of it today's models still need —
-  kept, trimmed to a statement and a template, or dropped — is measured,
-  not assumed. And whether the build hands off at each phase boundary for
-  a clean context, at the cost of the orchestrator losing what came before,
-  or keeps one orchestrator across phases. Both are taken up by the build
-  walk.
+- **The build's three calls**, walked 2026-10-12 and on the person's page
+  (`https://claude.ai/artifact/HBuhivNGgVBBcxsveVZ5uf`, section 5), not yet
+  ruled:
+  - **A handoff at every phase boundary** into a clean context, the next
+    phase reading the phase review's report, the build log and the spec's
+    next phase — against one orchestrator across phases handing off only
+    when context runs low. Builds already end on context, not phases: half
+    of Portal's build sessions crossed phase boundaries (one ran phases
+    1–12) and half peaked above 750k tokens; 11 compacted automatically
+    mid-build. On Switchboard the person's handoffs at stage boundaries
+    held, and the one clear loss came after an automatic compaction
+    mid-stage (a review rule agreed in conversation, misapplied). A phase
+    loads about 27k tokens before work; a stage grows by 300–700k.
+  - **The build keeps a log** — what is in flight, what was tried and
+    dropped, what a phase left for the next — read at each phase start and
+    after a compaction, beside the ledger. It would join R42's list. On
+    Switchboard Claude started one itself (`stage4-notes.md`, 87 entries,
+    10k words over stages 4–8) and read it to carry on after compactions.
+  - **Planning's teaching shrinks to the contract and a paragraph**: the
+    task template and its scenario criteria, the spec reference, no
+    mechanism the record did not decide, each tracker's adapter, and one
+    paragraph for the two corridors (a phase is a slice someone can run end
+    to end, phase 1 the thinnest, a task small enough for one review). The
+    rest goes: about 5k words teaching how to break work up, the 9.3k-word
+    plan review, 8.8k of construction steps, the dependency algorithm;
+    walks check the cuts and tasks still meet the template. Planning is
+    38k words today, its how-to about 13%.
+- **The gap analysis counts the person's own session as another** (Fumi,
+  2026-09-01: "I don't believe I have another session in progress"). A
+  bug in the released epic menu, outside this programme; fixed on its own
+  branch on the person's go.
 - **The product record.** A current view of the product's character at
   project level beside the roadmap — record-and-log one level up — so
   every two-way call is made against the product's stated character
