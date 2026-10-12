@@ -202,10 +202,12 @@ Verify each fix before committing it. Never batch a pile of fixes and
 discover their interactions a PR later.
 
 Then run the gates the change touches — `npm test`, `npm run test:cli`,
-`npm run test:migrations`, `npm run typecheck` — and update the pipeline
-simulation if the change moved an engine verb, a prose call sequence, a
-phase ordering, or a manifest field. Where a finding describes a failure
-the tests would not have caught, add the case that would have caught it.
+`npm run test:migrations`, `npm run typecheck`, and for a change under
+`skills/workflow-gates*/`, `npm run typecheck:mod` and `npm run test:mod` —
+and update the pipeline simulation if the change moved an engine verb, a
+prose call sequence, a phase ordering, or a manifest field. Where a finding
+describes a failure the tests would not have caught, add the case that
+would have caught it.
 
 Commit and push without being asked — but never onto main, and never onto
 whatever branch happens to be checked out. Where the fix lands was settled

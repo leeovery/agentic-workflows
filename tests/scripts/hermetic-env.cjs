@@ -13,6 +13,12 @@
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
 // entries into it. `test-hermetic-env.cjs` guards both.
+//
+// A suite that fakes `$HOME` to reach a system config takes the pinned
+// WORKFLOWS_CONFIG_DIR back off the environment it passes down, since that
+// answers ahead of `$HOME`. The shell tiers pin their own subset in their npm
+// scripts; `test:mod` stands outside the pin altogether — `claude plugin test`
+// runs the mod suites against its own stand-in environment and files.
 
 const fs = require('fs');
 const os = require('os');

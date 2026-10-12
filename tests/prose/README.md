@@ -45,10 +45,36 @@ case with no `assertion-state.cjs` expects its world back untouched — a
 start that refuses, a menu that only hands off — and that is a strong
 claim in itself.
 
+What a snapshot cannot hold directly, a recipe declares in a **sidecar**
+the snapshot carries and materialise turns into real world state, never
+landing in the world itself: `.world-history.json` (layered commits),
+`.world-presence.json` (heartbeats a peer session holds — presence files
+are excluded from every snapshot as timing noise) and `.world-dirt.json`
+(paths held out of the world's commits). `lib/worlds.cjs` states each
+shape.
+
 Shared pipeline stages live in `mainlines/{work-type}.cjs`, so a
 fixture-state is usually three lines of composition. Worlds are per-case
 and duplication is accepted: a case you can read in one directory beats
 a deduplicated fixture library you have to chase across the tree.
+
+## Where a case starts and stops
+
+**A case starts where a session starts.** `entry` names a skill a
+conversation opens on — one of the engine's `OPENING_SKILLS`
+(`domain/handoff.cjs`): `workflow-start`, or a skill a handoff lands the
+work on in a fresh context. Never a skill only ever opened in place (help,
+the linear continue menu, the bridge, the legacy research split — a case
+about help enters at `workflow-start` and picks `h/help`), and never a
+reference: a walk begun mid-session lacks the context the prose was
+written for (`lib/cases.cjs`).
+
+**A handoff ends a walk.** The walker's `Bash` hook
+(`lib/announce-handoff.cjs`) stands in for the gate mod, so `engine
+handoff` answers `mod` and the prose ends the turn at the recorded call —
+a walk never runs on into the skill a handoff names. A handoff is a fine
+ending. What a case must never do is stop where only display claims
+remain, since text put on screen is evidenced by no hook.
 
 ## Writing a case
 
@@ -186,6 +212,14 @@ unstubbed. The stub boundary is a scope decision, not a convenience.
 
 ## Assertion
 
+Claims code can settle belong in `case.json`'s `invariants` —
+`engine_before_write` (declared only where the walk writes),
+`calls_include`, `calls_exclude`, `calls_in_order` (whose `write:<path>`
+token stands for the path's first recorded write, and `dispatch:<agent>`
+/ `send:<agent>` for that agent's next held dispatch or send), and
+`dispatches`. They run before the asserter, and its verdict cannot
+overturn theirs; `lib/invariants.cjs` states each.
+
 Code computes the factual delta between the acted world and the expected
 world; the asserting agent classifies every difference as volatile
 (timestamps, git SHAs, engine-allocated ids) or material, and checks the
@@ -201,10 +235,26 @@ byte-compare it — both token-free, and this repo's only gate since there
 is no automated CI. Rebuilds are skipped when nothing feeding a world has
 changed; the hash covers each case's recipes, the shared mainlines, and
 the engine's sources, so an engine change invalidates every hash and
-forces a full rebuild. Only `/prose-test` spends tokens.
+forces a full rebuild. The hashes live in a gitignored local cache
+(`tests/prose/.cache/`) the verify keeps itself — a byte-identical
+rebuild records its hash, a drift records nothing — and rebuilds fan out
+over a thread pool a core short of the machine (`lib/verify-pool.cjs`).
+Only `/prose-test` spends tokens.
 
 Snapshots exclude `.git/`, `.workflows/.knowledge/` (checkout-local — the
 world builder sets it up afresh, never committed) and `.claude/skills|agents/` (copied into live
 worlds, never part of a world's own state), and store `.gitignore` files
 as `_gitignore.fixture` so the product-written `.workflows/.gitignore`
 cannot ignore snapshot content out of this repo.
+
+A rebuild that drifts means a world moved: CLAUDE.md's Prose tests rules
+say how a world is regenerated.
+
+## Running walks
+
+Walks run through `/prose-test`; when to run them, and what a change owes
+the corpus, are CLAUDE.md's Prose tests rules. Each orchestrator records
+its verdict in the gitignored verdict store
+(`node tests/prose/run.cjs verdict <case-id> --file <path>`,
+`lib/verdicts.cjs`) before it hands back, and the skill collates from the
+store.

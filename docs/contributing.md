@@ -4,10 +4,12 @@ This page is for working **on** the system rather than with it. Most of
 the documentation describes the product; this describes the repository
 that produces it.
 
-Start by reading `CLAUDE.md` at the repository root — it is the working
-brief for anyone, human or agent, changing this codebase, and it covers
-architecture, conventions, and the standing rules that are easy to
-violate by accident.
+Start by reading `CLAUDE.md` at the repository root — the standing rules
+for working on this repository that are easy to violate by accident, a
+short map of the system, and the documents that own each part. How the
+system behaves lives in the skills themselves, the engine's command
+reference (`skills/workflow-engine/references/commands.md`), the module
+header comments, and this book.
 
 ## Getting set up
 
@@ -46,20 +48,52 @@ check `$?` instead. This has produced a falsely-green report before.
 
 The knowledge base is engine code — its mechanism in
 `skills/workflow-engine/scripts/kernel/knowledge/`, its workflow side in
-`skills/workflow-engine/scripts/domain/knowledge/`. A change that moves
-retrieval re-pins the eval baseline in the same PR, so the diff carries
-the before and after:
+`skills/workflow-engine/scripts/domain/knowledge/`. The kernel holds the
+store's file format, the tokenizer and stemmer, ranking, chunking,
+excerpts and outlines, the embedding providers and the config; the domain
+side holds artifact identity against the manifests, indexing, the vector
+fill, query and the passages it prints, status, decay, setup, and
+`commands.cjs`, the `engine knowledge` door; the per-phase chunking
+configs sit in `skills/workflow-engine/content/knowledge/chunking/`. Each
+module's header states its contract. The modules take no dependencies:
+Node's built-ins alone, none newer than Node 18.
+
+A change that moves retrieval re-pins the eval baseline in the same PR, so
+the diff carries the before and after:
 
 ```bash
 node tests/scripts/knowledge-eval.cjs --pin
 ```
 
+## Writing a migration
+
+Migrations bring an existing project's `.workflows/` forward to the
+current design; `engine boot` runs them at `/workflow-start`. The rules
+every migration keeps are CLAUDE.md's (Migrations). The orchestrator's
+header (`skills/workflow-migrate/scripts/migrate.cjs`) states the module
+contract — `id`, `description`, `run`, the report callbacks, the optional
+verification addendum and notice.
+
+- A new migration is
+  `skills/workflow-migrate/scripts/migrations/NNN-description.cjs`, the
+  next number after the highest. The `*.sh` files are the frozen fleet:
+  nothing new is written in bash.
+- Migration 066, which edits the user's own Claude Code settings, is the
+  one migration that writes outside the project; its verification
+  addendum names the change, since the review diff cannot show it.
+- Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
+  `package.json`'s `test` script. Like its siblings it drives `run()`
+  against a temp `projectDir` with counting `reportUpdate`/`reportSkip`
+  stubs, and covers the happy path, the skip, idempotency (run twice),
+  content preservation, and every defensive guard.
+
 ## Prose tests
 
 `tests/prose/` walks the skill prose with real agents against real
-project states. Walks cost tokens, so they run on command via the
-`/prose-test` skill rather than as part of a gate. `npm test` covers only
-the token-free perimeter: corpus validation and snapshot rebuilds.
+project states, through the `/prose-test` skill; when walks run, and what
+a change owes the corpus, are CLAUDE.md's rules (Prose tests). `npm test`
+covers only the token-free perimeter: corpus validation and snapshot
+rebuilds.
 
 **Prerequisite that will otherwise waste your afternoon:** the walker
 records what it did through a `PostToolUse` hook declared in its own
@@ -88,13 +122,10 @@ it, so an old checkout will look set up and quietly not be.
   `.claude/agents/*.md` and immediately testing will exercise the old
   definition. Reload plugins, or restart, before trusting a result.
 - **Snapshot drift is expected after an engine change.** A red
-  `prose-test snapshots` suite means a world moved. Regenerate with
-  `node tests/prose/run.cjs snap <case-id>` and land the snapshot diff in
-  the same PR as the change that moved it. Never hand-edit a snapshot.
-- **`CHANGELOG.md` is generated.** Never edit it by hand.
-- **Released migrations are frozen.** Fix forward with a new numbered
-  `.cjs` migration rather than editing or deleting one that has run on
-  real installs.
+  `prose-test snapshots` suite means a world moved; CLAUDE.md (Prose
+  tests) says how it is regenerated.
+- **`CHANGELOG.md` is generated** — CLAUDE.md (Changelog).
+- **Released migrations are frozen** — CLAUDE.md (Migrations).
 
 ## Conventions
 
@@ -109,5 +140,6 @@ once.
 Open an issue before anything substantial, so the shape can be agreed
 before the work. Each idea ships as its own pull request rather than
 bundled with others, and any change to engine scripts (the knowledge
-base's among them), adapters or migrations lands with its test alongside
-it.
+base's among them), adapters, migrations or the gate mods lands with its
+test alongside it. A change to what the system does describes itself in
+its pull request and in this book.

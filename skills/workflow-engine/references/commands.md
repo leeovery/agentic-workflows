@@ -36,7 +36,7 @@ engine boot
 | Segments | Level | Path | Field | Resolves to |
 |----------|-------|------|-------|-------------|
 | 1 | Work unit | `my-epic` | `work_type` | `work_type` |
-| 2 | Phase | `my-epic.planning` | `format` | `phases.planning.format` |
+| 2 | Phase | `my-epic.discovery` | `dismissed` | `phases.discovery.dismissed` |
 | 3 | Topic | `my-epic.discussion.auth-flow` | `status` | `phases.discussion.items.auth-flow.status` |
 
 Topic-level access routes through items (`phases.{phase}.items.{topic}.{field}`); the field argument may itself be a dot-path (`sources.auth-api.status`). The wildcard topic `*` collects from every item in a phase (`get`/`exists` only; `get` returns a JSON array of `{topic, value}` objects). The reserved prefix `project` routes to the project manifest (`.workflows/manifest.json`) with the field embedded in the dot-path — `get project.defaults.plan_format`, `set project.defaults.plan_format {format}` — which is why `project` is a reserved work-unit name, alongside `baseline` (the project baseline's knowledge-base identity), `roadmap` (the product layer's identity) and `none` (the literal a skill takes where an argument names nothing — see `handoff`); dots and phase names are also barred, enforced at `workunit create`.
