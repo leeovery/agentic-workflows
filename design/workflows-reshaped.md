@@ -677,27 +677,39 @@ settles, and starts from the list of kinds of question (R25).
     sealed where the person cannot see it. The engine decides whether to
     ask, from stored counts; the same inputs always give the same
     decision. The person supplies answers, and each becomes evidence.
-  - **The rule:** ask when the pessimistic overrule rate × the cost of a
-    wrong call exceeds the cost of asking.
-    - **Pessimistic overrule rate** — per kind of question, per person,
-      per model: the upper end of a 95% range on how often the person's
-      answer differs from Claude's sealed answer (a beta distribution over
-      the weighted counts of R25). Few answers leave the range wide, so
-      the system keeps asking: 3 agreements give 53%; 10 give 24%; 30
-      agreements and 1 overrule, 14%; 45 and 7 (Switchboard's rough mix),
-      23%; 100 agreements, 3%.
-    - **Cost of a wrong call** — per kind, on a 1–10 scale the person
-      sets; where door type lives. **The person cares about it** raises
-      it: wrong there costs them more than its reversal (visual design in
-      Fumi is the example — the person had a picture of it and wanted it
-      their way).
-    - **Cost of asking** — by context: cheap in a conversation, dearer
-      mid-build where a question blocks work.
+  - **The rule:** ask when the pessimistic rate of real loss for the
+    question's kind exceeds the person's threshold.
+    - **Real loss** — what the product would have lost had Claude built
+      its own answer, from the person's verdict on each departure:
+      nothing, a fix later, or a real loss. Only a real loss counts; a
+      departure without a verdict yet, or one the person cannot call,
+      counts as a loss until they do. Agreements count as no loss. This
+      measures the cost of a wrong call per kind instead of setting it by
+      feel: over 315 decided questions the person overruled Claude 12% of
+      the time, and Claude's answer would have cost a real loss 3% (R29).
+      Departures queue for a verdict page the person works through when
+      they choose.
+    - **Pessimistic** — per kind, per person, per project, per model: the
+      upper end of a 95% range on the rate of real loss (a beta
+      distribution over the counts of R25). Few answers leave the range
+      wide, so the system keeps asking: with no loss, 13 answers bring it
+      under 20%, 18 under 15%, 28 under 10%; one loss among 20 answers
+      puts it back at 21%.
+    - **The threshold** — one number the person picks from a replay of
+      their own history (R29), set higher mid-build, where a question
+      blocks work, than in a conversation. **Hard to undo** — a later change that would
+      reach beyond the piece — halves it: a quarter of such departures
+      were real losses, against a tenth of the rest, and in the replay the
+      halving alone kept two real losses from going through. **The person
+      cares about it** lowers it for a kind (visual design in Fumi: the
+      person had a picture of it and wanted it their way).
     - **Frozen always-ask kinds** — data model, external contracts,
       destructive operations, security. No count loosens them.
-    - Worked: error handling at cost 3, asking at 1 — three agreements
-      still ask (0.53 × 3); thirty agreements and one overrule go quiet
-      (0.14 × 3).
+    - Worked, at a 20% threshold: behaviour goes quiet after 13 answers
+      without a loss; one loss among its next answers puts it back over
+      the line, and it asks again until the count outweighs it. A
+      contract question that would be hard to undo needs the bound under
+      10% — about 28 answers without a loss.
   - **Raising is an engine command paired with the written rule** — never
     a prose rule alone; uptake follows design, not availability. A raise
     is drawn by the engine and readable cold: what is being decided, why
@@ -720,8 +732,10 @@ settles, and starts from the list of kinds of question (R25).
     stated confidence never gates: in REFLEX, wrong calls averaged 0.78.
   - **Evidence is weighted by what it proves:**
     - a blind question (R26) answered cold — full weight;
-    - "agree" to a recommendation the person was shown — half, since the
-      shown answer may have steered them;
+    - an answer to a recommendation the person was shown — full weight.
+      A shown answer can steer agreement (shown 82%, blind 51%, R29), but
+      the rule counts real loss, and the blind replay's misses cost the
+      product one questionable call in 37, the same 3% as shown answers;
     - a later reversal — a full disagreement, recorded as a new event
       pointing back at the call it reverses and cancelling the earlier
       agreement; nothing is rewritten, so an "I agree" given in fatigue
@@ -869,6 +883,27 @@ settles, and starts from the list of kinds of question (R25).
       loss, that Claude's way would have been backtracked rather than
       lost. Judged with both answers in view, so direction, like the
       replay.
+    - **The rule replayed** (R24) over the person's history in time
+      order: 410 questions with a lean and a reply both checks read the
+      same way. At each, the engine reads the kind's counts — the
+      project's own plus the person's other projects, capped at 20
+      answers' weight — and asks when the pessimistic rate of real loss
+      passes the threshold; it learns only from what it asked, plus blind
+      draws on a tenth of the rest; danger always asks. Not asked, and
+      what went through to the ledger instead:
+      - 15%: 28% not asked (Fumi 31%, Portal 33%, Tick and agntc about a
+        tenth); process and behaviour 55% quiet, scope 42%, no other kind.
+        No real loss through; 4 the person could not call, 8 fixes later,
+        6 nothing.
+      - 20%, halved where hard to undo: 38% (Fumi 36%, Portal 46%);
+        process 77%, behaviour 64%, scope 53%, contract 6%. No real loss
+        through; 6 could not call, 8 fixes later, 6 nothing.
+      - 20% alone: 54%, and two real losses through, both Fumi's
+        agent-write contracts — the halving's catch.
+      - Half weight on shown agreements kept nearly everything asked (3%
+        not asked at 15%); capping the other projects at 5 answers'
+        weight, 18%. The six weeks start from nothing, so these are the
+        first weeks of a person's history, not its steady state.
     - Not an answer (first pass, all 615): 17% (did not follow 13%,
       answered something else 4%); with challenges to the question's
       premise, 29%. Did-not-follow gathers on technical questions —
