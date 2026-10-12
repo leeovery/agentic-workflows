@@ -2114,14 +2114,22 @@ describe('render finding-announce', () => {
   });
   afterEach(() => teardown(dir));
 
-  it('renders the opt-in gate — statement, glyphed question, y/l options', () => {
-    const file = writePayload(dir, 'ann.json', {
-      agent_type: 'review',
-      count: 16,
-      shape: '3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere',
-    });
-    const out = renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file });
-    assert.strictEqual(out, [
+  const agents = require('../../skills/workflow-engine/scripts/domain/agent-state.cjs');
+  const announce = (id, file) => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', id, file });
+  // A dispatched agent's report lands and the scan promotes it; the ack, when
+  // given its findings, reads it.
+  const landed = (opts, findings) => {
+    const row = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', opts);
+    fs.writeFileSync(path.join(dir, row.file), '# Report\n');
+    agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
+    if (findings) agents.ackAgent(dir, 'pay', 'discussion', 'checkout', row.id, { findings });
+    return row.id;
+  };
+  const shape = () => writePayload(dir, 'ann.json', { shape: '3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere' });
+
+  it('renders the opt-in gate — the row\'s kind and finding count, the payload\'s lane split, glyphed question, y/l options', () => {
+    const id = landed({ kind: 'review' }, Array.from({ length: 16 }, (_, i) => `F${i + 1}`));
+    assert.strictEqual(announce(id, shape()), [
       '=== MENU: finding announce (emit verbatim as markdown (not a code block)) ===',
       DOTS,
       'Background review returned — 16 finding(s): 3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere.',
@@ -2135,16 +2143,30 @@ describe('render finding-announce', () => {
     ].join('\n'));
   });
 
-  it('refuses a missing or malformed payload field by name', () => {
-    const noShape = writePayload(dir, 'n1.json', { agent_type: 'review', count: 2 });
-    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: noShape }),
-      /"shape" must be a non-empty string/);
-    const badCount = writePayload(dir, 'n2.json', { agent_type: 'review', count: 0, shape: '2 need a call' });
-    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: badCount }),
-      /"count" must be a positive integer/);
-    const noType = writePayload(dir, 'n3.json', { count: 2, shape: '2 need a call' });
-    assert.throws(() => renderSurface(dir, 'finding-announce', { dotpath: 'pay.discussion.checkout', file: noType }),
-      /"agent_type" must be a non-empty string/);
+  it('names a synthesis by its kind', () => {
+    const { agents: pair } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['ship-now', 'strategic-timing'] });
+    for (const lens of pair) fs.writeFileSync(path.join(dir, lens.file), '# Case\n');
+    agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
+    const id = landed({ kind: 'synthesis', set: '001' }, ['T1', 'T2']);
+    assert.match(announce(id, shape()), /^Background synthesis returned — 2 finding\(s\): /m);
+  });
+
+  it('refuses a row not yet read, one with findings already surfaced, and an id the store does not hold', () => {
+    const unread = landed({ kind: 'review' });
+    assert.throws(() => announce(unread, shape()),
+      /render finding-announce: "review-001" is pending — the announce follows the first read, before any finding surfaces/);
+    agents.ackAgent(dir, 'pay', 'discussion', 'checkout', unread, { findings: ['F1', 'F2'] });
+    agents.surfaceFinding(dir, 'pay', 'discussion', 'checkout', unread, 'F1');
+    assert.throws(() => announce(unread, shape()),
+      /"review-001" is acknowledged with findings already surfaced — the announce follows the first read/);
+    assert.throws(() => announce('review-009', shape()), /render finding-announce: no agent "review-009" for discussion\/checkout/);
+  });
+
+  it('refuses a missing id, a missing payload, and an empty shape by name', () => {
+    const id = landed({ kind: 'review' }, ['F1']);
+    assert.throws(() => announce(undefined, shape()), /render finding-announce: --id <agent id> is required/);
+    assert.throws(() => announce(id, undefined), /render finding-announce: --file <payload\.json> is required/);
+    assert.throws(() => announce(id, writePayload(dir, 'n1.json', {})), /"shape" must be a non-empty string/);
   });
 });
 
@@ -5344,7 +5366,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, source-concern, convergence-diagnostic, carry-note-gate, hypothesis-board, trace-question, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, agent-line, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, scoping-questions, spec-written, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, tasks-complete, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, opener, catch-up, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 
@@ -6937,6 +6959,166 @@ describe('render — the adopted cross-flow static gates', () => {
   });
 });
 
+describe('render opener', () => {
+  const STOP_MARKER = '=== DISPLAY: opener (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===';
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const inbox = (rel) => writePayload(dir, `.workflows/.inbox/${rel}`, '# Item\n');
+  const opener = (args) => renderSurface(dir, 'opener', args);
+
+  describe('inbox — before any work unit exists', () => {
+    it('names the set by kind and counts each kind where several, then the sketch and the question that closes on the files invite', () => {
+      const paths = [inbox('ideas/2026-01-01--a.md'), inbox('bugs/2026-01-02--b.md'), inbox('ideas/2026-01-03--c.md')];
+      const file = writePayload(dir, 'o.json', { sketch: 'Saved filters that follow the user.', question: 'Who reaches for them first?' });
+      assert.strictEqual(opener({ variant: 'inbox', path: paths.join(','), file }), [
+        STOP_MARKER,
+        "I've read your 2 ideas and a bug. Here's the shape I'm picking up:",
+        '',
+        'Saved filters that follow the user.',
+        '',
+        "Who reaches for them first? If you have any related notes, screenshots, or files, share the path(s) and I'll read them too.",
+        '',
+      ].join('\n'));
+    });
+
+    it('a lone item is its bare noun; several of one kind are counted; a lone first kind takes no article', () => {
+      const file = writePayload(dir, 'o.json', { sketch: 's', question: 'q?' });
+      const read = (paths) => opener({ variant: 'inbox', path: paths.join(','), file }).split('\n')[1];
+      assert.strictEqual(read([inbox('bugs/2026-01-01--a.md')]), "I've read your bug. Here's the shape I'm picking up:");
+      assert.strictEqual(read([inbox('ideas/2026-01-01--a.md'), inbox('ideas/2026-01-02--b.md'), inbox('ideas/2026-01-03--c.md')]),
+        "I've read your 3 ideas. Here's the shape I'm picking up:");
+      assert.strictEqual(read([inbox('quickfixes/2026-01-01--q.md'), inbox('ideas/2026-01-01--a.md'), inbox('bugs/2026-01-01--b.md')]),
+        "I've read your idea, a bug and a quick-fix. Here's the shape I'm picking up:");
+      assert.strictEqual(read([inbox('quickfixes/2026-01-01--q.md'), inbox('quickfixes/2026-01-02--r.md'), inbox('bugs/2026-01-01--b.md')]),
+        "I've read your bug and 2 quick-fixes. Here's the shape I'm picking up:");
+    });
+
+    it('refuses an address, a path outside the live inbox, a missing payload, and an empty field by name', () => {
+      const path1 = inbox('ideas/2026-01-01--a.md');
+      const file = writePayload(dir, 'o.json', { sketch: 's', question: 'q?' });
+      assert.throws(() => opener({ variant: 'inbox', dotpath: 'pay', path: path1, file }),
+        /render opener: --variant inbox takes no address — no work unit exists yet/);
+      assert.throws(() => opener({ variant: 'inbox', file }), /render opener: --path is required — the inbox seeds read, comma-joined/);
+      assert.throws(() => opener({ variant: 'inbox', path: '.workflows/.inbox/ideas/2026-09-09--gone.md', file }),
+        /render opener: inbox file not found/);
+      assert.throws(() => opener({ variant: 'inbox', path: '.workflows/.inbox/.archived/ideas/x.md', file }), /render opener: not a live inbox path/);
+      assert.throws(() => opener({ variant: 'inbox', path: path1 }), /render opener: --file <payload\.json> is required/);
+      assert.throws(() => opener({ variant: 'inbox', path: path1, file: writePayload(dir, 'n.json', { question: 'q?' }) }),
+        /render opener: "sketch" must be a non-empty string/);
+      assert.throws(() => opener({ variant: 'inbox', path: path1, file: writePayload(dir, 'n.json', { sketch: 's' }) }),
+        /render opener: "question" must be a non-empty string/);
+    });
+  });
+
+  describe('seeded — an epic\'s first session over its seeds and imports', () => {
+    const seeds = (...sources) => sources.map((source, i) => ({ path: `seeds/s${i}.md`, source }));
+    const imports = (n) => Array.from({ length: n }, (_, i) => ({ path: `imports/i${i}.md`, imported_at: '2026-01-01', origin: 'discovery' }));
+
+    it('names the seeds by their source tags and the imports, then the sketch and the questions after the dash', () => {
+      writeManifest(dir, 'pay', { seeds: seeds('inbox:idea'), imports: imports(2) });
+      const file = writePayload(dir, 'o.json', { sketch: 'A checkout that survives a dropped connection.', questions: 'where does a retry start, and who sees it?' });
+      assert.strictEqual(opener({ variant: 'seeded', dotpath: 'pay', file }), [
+        STOP_MARKER,
+        "Read your idea and 2 imports. Here's the shape I'm picking up:",
+        '',
+        'A checkout that survives a dropped connection.',
+        '',
+        "Before we name topics, let's pull on a few things — where does a retry start, and who sees it?",
+        '',
+      ].join('\n'));
+    });
+
+    it('questions that end on no mark take the full stop; seeds alone, imports alone, and a mix read as they hold', () => {
+      const file = writePayload(dir, 'o.json', { sketch: 's', questions: 'the retry boundary' });
+      const read = () => opener({ variant: 'seeded', dotpath: 'pay', file });
+      writeManifest(dir, 'pay', { seeds: seeds('inbox:bug', 'inbox:quickfix', 'inbox:bug'), imports: [] });
+      assert.match(read(), /^Read your 2 bugs and a quick-fix\. Here's/m);
+      assert.match(read(), /let's pull on a few things — the retry boundary\.$/m);
+      writeManifest(dir, 'pay', { imports: imports(1) });
+      assert.match(read(), /^Read your import\. Here's/m);
+      writeManifest(dir, 'pay', { seeds: seeds('inbox:idea', 'inbox:bug'), imports: imports(1) });
+      assert.match(read(), /^Read your idea, a bug and an import\. Here's/m);
+    });
+
+    it('refuses a unit holding neither, and a payload missing its questions', () => {
+      writeManifest(dir, 'pay', {});
+      const file = writePayload(dir, 'o.json', { sketch: 's', questions: 'q?' });
+      assert.throws(() => opener({ variant: 'seeded', dotpath: 'pay', file }),
+        /render opener: "pay" holds no seeds or imports — the seeded opener reads what they describe/);
+      writeManifest(dir, 'pay', { imports: imports(1) });
+      assert.throws(() => opener({ variant: 'seeded', dotpath: 'pay', file: writePayload(dir, 'n.json', { sketch: 's', question: 'q?' }) }),
+        /render opener: "questions" must be a non-empty string/);
+      assert.throws(() => opener({ variant: 'seeded', dotpath: 'pay.discovery.x', file }), /address must be a bare <work_unit>/);
+    });
+  });
+
+  describe('discussion — a fresh discussion\'s core-problem question', () => {
+    it('names the topic from the address', () => {
+      writeManifest(dir, 'pay', { phases: { discussion: { items: { 'retry-policy': { status: 'in-progress' } } } } });
+      assert.strictEqual(opener({ variant: 'discussion', dotpath: 'pay.discussion.retry-policy' }), [
+        STOP_MARKER,
+        'New discussion: retry-policy',
+        '',
+        "What's the core problem or decision we need to work through?",
+        '',
+      ].join('\n'));
+    });
+
+    it('refuses an address in another phase', () => {
+      writeManifest(dir, 'pay', {});
+      assert.throws(() => opener({ variant: 'discussion', dotpath: 'pay.research.retry-policy' }),
+        /render opener: --variant discussion takes <work_unit>\.discussion\.<topic>, got phase "research"/);
+    });
+  });
+
+  it('refuses an unknown variant', () => {
+    assert.throws(() => opener({ variant: 'roadmap' }), /render opener: --variant must be one of inbox, seeded, discussion, got "roadmap"/);
+    assert.throws(() => opener({}), /--variant must be one of inbox, seeded, discussion, got ""/);
+  });
+});
+
+describe('render catch-up', () => {
+  let dir;
+  beforeEach(() => { dir = setup(); });
+  afterEach(() => teardown(dir));
+
+  const catchUp = (payload) => renderSurface(dir, 'catch-up', { file: writePayload(dir, 'c.json', payload) });
+  const MARKER = '=== DISPLAY: catch-up (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===';
+
+  it('the recent thinking under its lead, and the older sessions one line each under "Earlier:"', () => {
+    assert.strictEqual(catchUp({
+      recent: 'We were circling how retries surface to the shopper, leaning toward a silent first retry.',
+      earlier: ['Session 1 — 4 topics added, map at 4', 'Session 2 — renamed billing, map at 5'],
+    }), [
+      MARKER,
+      "Where we'd got to:",
+      '',
+      'We were circling how retries surface to the shopper, leaning toward a silent first retry.',
+      '',
+      'Earlier:',
+      '- Session 1 — 4 topics added, map at 4',
+      '- Session 2 — renamed billing, map at 5',
+      '',
+    ].join('\n'));
+  });
+
+  it('with no older sessions worth naming, the recent thinking stands alone', () => {
+    const want = [MARKER, "Where we'd got to:", '', 'Leaning toward v1 for exports.', ''].join('\n');
+    assert.strictEqual(catchUp({ recent: 'Leaning toward v1 for exports.' }), want);
+    assert.strictEqual(catchUp({ recent: 'Leaning toward v1 for exports.', earlier: [] }), want);
+  });
+
+  it('refuses a missing payload, an empty recent, and an earlier that is not one-line strings', () => {
+    assert.throws(() => renderSurface(dir, 'catch-up', {}), /render catch-up: --file <payload\.json> is required/);
+    assert.throws(() => catchUp({ recent: '  ' }), /render catch-up: "recent" must be a non-empty string/);
+    assert.throws(() => catchUp({ recent: 'r', earlier: 'Session 1' }), /render catch-up: "earlier" must be a list of one-line strings/);
+    assert.throws(() => catchUp({ recent: 'r', earlier: ['one\ntwo'] }), /"earlier" must be a list of one-line strings/);
+    assert.throws(() => catchUp({ recent: 'r', earlier: [''] }), /"earlier" must be a list of one-line strings/);
+  });
+});
+
 describe('render import-reprompt', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
@@ -7571,6 +7753,142 @@ describe('render deep-dive-offer / in-flight-agents-gate', () => {
       /--count must be a positive integer, got "undefined"/);
     assert.throws(() => renderSurface(dir, 'in-flight-agents-gate', { dotpath: 'pay.research.checkout', count: '0' }),
       /--count must be a positive integer, got "0"/);
+  });
+});
+
+describe('render agent-line', () => {
+  const agents = require('../../skills/workflow-engine/scripts/domain/agent-state.cjs');
+  const TEXT_LINE = '(emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs)';
+  let dir;
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', {
+      phases: {
+        research: { items: { checkout: { status: 'in-progress', threads: {
+          ranking: { question: 'How does the competitor rank a query it has never seen?', status: 'open', origin: 'user', parent: null },
+          'cold-start': { question: 'Cold-start behaviour of the ranker', status: 'open', origin: 'user', parent: null },
+        } } } },
+        discussion: { items: { checkout: { status: 'in-progress' } } },
+      },
+    });
+  });
+  afterEach(() => teardown(dir));
+
+  const line = (dotpath, id, variant) => renderSurface(dir, 'agent-line', { dotpath, id, variant });
+  // A dispatched agent's report lands, the scan promotes it, and the ack reads it.
+  const land = (phase, id, findings) => {
+    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', phase, 'checkout', `${id}.md`), '# Report\n');
+    agents.scanAgents(dir, 'pay', phase, 'checkout');
+    return agents.ackAgent(dir, 'pay', phase, 'checkout', id, { findings });
+  };
+
+  it('dispatched: a deep dive names the register thread it digs, by its label — the question quoted, its own mark closing it', () => {
+    const { id } = agents.dispatchAgent(dir, 'pay', 'research', 'checkout', { kind: 'deep-dive', labels: ['ranking'] });
+    assert.strictEqual(line('pay.research.checkout', id, 'dispatched'), [
+      `=== DISPLAY: agent dispatched ${TEXT_LINE} ===`,
+      'Deep dive dispatched on "How does the competitor rank a query it has never seen?" It folds in when it lands.',
+      '',
+    ].join('\n'));
+  });
+
+  it('dispatched: a thread that is no question takes the full stop', () => {
+    const { id } = agents.dispatchAgent(dir, 'pay', 'research', 'checkout', { kind: 'deep-dive', labels: ['cold-start'] });
+    assert.match(line('pay.research.checkout', id, 'dispatched'),
+      /^Deep dive dispatched on "Cold-start behaviour of the ranker"\. It folds in when it lands\.$/m);
+  });
+
+  it('dispatched: a perspective pair is named whole from either lens, in the order its labels were given', () => {
+    const { agents: pair } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['user-centric', 'capability-first'] });
+    const expected = [
+      `=== DISPLAY: agent dispatched ${TEXT_LINE} ===`,
+      'Dispatched 2 perspective agents: User Centric, Capability First.',
+      'Results will be surfaced when available.',
+      '',
+    ].join('\n');
+    assert.strictEqual(line('pay.discussion.checkout', pair[0].id, 'dispatched'), expected);
+    assert.strictEqual(line('pay.discussion.checkout', pair[1].id, 'dispatched'), expected);
+  });
+
+  it('dispatched: a later pair names its own set alone', () => {
+    agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['ship-now', 'strategic-timing'] });
+    const { agents: pair } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['direct-fix', 'systems-thinker'] });
+    assert.match(line('pay.discussion.checkout', pair[0].id, 'dispatched'), /^Dispatched 2 perspective agents: Direct Fix, Systems Thinker\.$/m);
+  });
+
+  it('dispatched refuses a row past its dispatch, a kind with no dispatched line, and a dive whose thread left the register', () => {
+    const dive = agents.dispatchAgent(dir, 'pay', 'research', 'checkout', { kind: 'deep-dive', labels: ['ranking'] });
+    fs.writeFileSync(path.join(dir, dive.file), '# Report\n');
+    agents.scanAgents(dir, 'pay', 'research', 'checkout');
+    assert.throws(() => line('pay.research.checkout', dive.id, 'dispatched'),
+      /render agent-line: "deep-dive-001-ranking" is pending, not in-flight — the line follows the dispatch/);
+    const review = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'review' });
+    assert.throws(() => line('pay.discussion.checkout', review.id, 'dispatched'),
+      /a review has no dispatched line — a deep dive and a perspective pair do/);
+    const orphan = agents.dispatchAgent(dir, 'pay', 'research', 'checkout', { kind: 'deep-dive', labels: ['merged-away'] });
+    assert.throws(() => line('pay.research.checkout', orphan.id, 'dispatched'),
+      /no thread "merged-away" on checkout's register — a deep dive digs a register thread/);
+  });
+
+  it('clean: a review or synthesis acked clean says it came back with nothing new', () => {
+    const { id } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'review' });
+    land('discussion', id, []);
+    assert.strictEqual(line('pay.discussion.checkout', id, 'clean'), [
+      `=== DISPLAY: agent returned ${TEXT_LINE} ===`,
+      "Background review returned — nothing new beyond what we've already covered.",
+      '',
+    ].join('\n'));
+  });
+
+  it('clean refuses a report not yet acked, one acked with findings, and a kind the protocol never raises', () => {
+    const pending = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'review' });
+    fs.writeFileSync(path.join(dir, pending.file), '# Report\n');
+    agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
+    assert.throws(() => line('pay.discussion.checkout', pending.id, 'clean'),
+      /"review-001" is not a clean return — the line follows its `agent ack --clean`/);
+    agents.ackAgent(dir, 'pay', 'discussion', 'checkout', pending.id, { findings: ['F1'] });
+    agents.surfaceFinding(dir, 'pay', 'discussion', 'checkout', pending.id, 'F1');
+    assert.throws(() => line('pay.discussion.checkout', pending.id, 'clean'), /is not a clean return/);
+    const dive = agents.dispatchAgent(dir, 'pay', 'research', 'checkout', { kind: 'deep-dive', labels: ['ranking'] });
+    land('research', dive.id, []);
+    assert.throws(() => line('pay.research.checkout', dive.id, 'clean'),
+      /a deep-dive has no clean line — the review and synthesis reports do/);
+  });
+
+  it('deferred: a report back mid-thread waits for the pause, in the italic parenthetical', () => {
+    const { id } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'review' });
+    land('discussion', id, ['F1', 'F2']);
+    assert.strictEqual(line('pay.discussion.checkout', id, 'deferred'), [
+      '=== DISPLAY: agent deferred (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      "*(Background review just returned — I'll raise it when we pause.)*",
+      '',
+    ].join('\n'));
+  });
+
+  it('deferred names a synthesis by its kind', () => {
+    const { agents: pair } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['ship-now', 'strategic-timing'] });
+    for (const lens of pair) fs.writeFileSync(path.join(dir, lens.file), '# Case\n');
+    agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
+    const syn = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'synthesis', set: '001' });
+    land('discussion', syn.id, ['T1']);
+    assert.match(line('pay.discussion.checkout', syn.id, 'deferred'), /^\*\(Background synthesis just returned — I'll raise it when we pause\.\)\*$/m);
+  });
+
+  it('deferred refuses a report not yet read and one already announced', () => {
+    const { id } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'review' });
+    assert.throws(() => line('pay.discussion.checkout', id, 'deferred'),
+      /"review-001" is in-flight, not acknowledged — the line follows the first read/);
+    land('discussion', id, ['F1']);
+    agents.announceAgent(dir, 'pay', 'discussion', 'checkout', id);
+    assert.throws(() => line('pay.discussion.checkout', id, 'deferred'),
+      /"review-001" is already announced — the user knows it is waiting/);
+  });
+
+  it('refuses an unknown variant, a missing id, and an id the store does not hold', () => {
+    assert.throws(() => line('pay.discussion.checkout', 'review-001', 'landed'),
+      /render agent-line: --variant must be one of dispatched, clean, deferred, got "landed"/);
+    assert.throws(() => line('pay.discussion.checkout', undefined, 'clean'), /render agent-line: --id <agent id> is required/);
+    assert.throws(() => line('pay.discussion.checkout', 'review-009', 'clean'),
+      /render agent-line: no agent "review-009" for discussion\/checkout/);
   });
 });
 

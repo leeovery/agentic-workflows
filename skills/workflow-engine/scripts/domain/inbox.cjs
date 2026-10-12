@@ -31,6 +31,19 @@ function archivedDir(folder) {
 // the inbox lists and the roadmap's items share.
 const FOLDER_KIND = /** @type {Record<string, ItemKind>} */ ({ ideas: 'idea', bugs: 'bug', quickfixes: 'quick-fix' });
 
+/** The `source` tag a landed seed carries, per inbox folder. */
+const SEED_SOURCES = /** @type {Record<string, string>} */ ({ ideas: 'inbox:idea', bugs: 'inbox:bug', quickfixes: 'inbox:quickfix' });
+
+/**
+ * The kind of item a landed seed was, read off its `source` tag.
+ * @param {string} source @returns {ItemKind}
+ */
+function seedKind(source) {
+  const folder = Object.keys(SEED_SOURCES).find((f) => SEED_SOURCES[f] === source);
+  if (!folder) throw new Error(`unknown seed source ${JSON.stringify(source)} — one of: ${Object.values(SEED_SOURCES).join(', ')}`);
+  return FOLDER_KIND[folder];
+}
+
 /**
  * @typedef {object} InboxItem
  * @property {string} given   the path as passed (normalised)
@@ -258,4 +271,6 @@ module.exports = {
   INBOX,
   ARCHIVED,
   FOLDER_KIND,
+  SEED_SOURCES,
+  seedKind,
 };

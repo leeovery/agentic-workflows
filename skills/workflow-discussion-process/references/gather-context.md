@@ -22,13 +22,11 @@ Ask each question below **one at a time**. After each, stop and wait for the use
 
 ## A. Core Problem
 
-> *Output the next fenced block as markdown (not a code block):*
-
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render opener {work_unit}.discussion.{topic} --variant discussion
 ```
-New discussion: {topic}
 
-What's the core problem or decision we need to work through?
-```
+Emit the call's DISPLAY section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

@@ -86,12 +86,13 @@ RESTATEMENT: {one sentence}
 SUMMARY: {1 sentence}
 ```
 
-> *Output the next fenced block as a text code block (```text fence):*
+Either lens's `id` from the dispatch response names the whole pair:
 
-```text
-Dispatched 2 perspective agents: {lens A}, {lens B}.
-Results will be surfaced when available.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.discussion.{topic} --id {id} --variant dispatched
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 The discussion continues — do not wait for agents to return.
 

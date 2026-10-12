@@ -1177,6 +1177,11 @@ describe('pipeline simulation', () => {
     // Ideas carry no work type, so discovery decides it.
     const route = `/workflow-discovery none none "${ideas.join(',')}"`;
     assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);
+    // Discovery opens on the seeds before any work unit exists, naming them
+    // from the inbox paths the route carries.
+    sim.write('.workflows/.cache/discovery-opener.json', JSON.stringify({ sketch: 'Filters that persist.', question: 'Who saves one first?' }));
+    assert.match(sim.render(['opener', '--variant', 'inbox', '--path', ideas.join(','), '--file', '.workflows/.cache/discovery-opener.json'], { expect: 'content' }),
+      /I've read your 2 ideas\. Here's the shape I'm picking up:/);
     const wu = 'saved-filters';
     const created = sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved search filters',
       '--session-log-file', sessionLog(sim, wu), ...ideas.flatMap((seed) => ['--seed', seed])]);
@@ -2023,17 +2028,17 @@ describe('pipeline simulation', () => {
     const rev1 = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
     sim.write(rev1.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
-    // The surfacing protocol's opt-in gate renders from a judgment payload.
-    sim.write('.workflows/.cache/scratch/announce.json',
-      JSON.stringify({ agent_type: 'review', count: 1, shape: '1 needs a call' }));
-    assert.match(
-      sim.render(['finding-announce', `${wu}.discussion.beta`, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
-      /Work through them now\?/, 'the announce gate renders from the payload');
     // The conclusion's drain offer reads the acknowledged row's own count and
     // refuses every other state — pending before the ack, incorporated after
     // the last finding surfaces.
     sim.refuses(['render', 'review-findings-gate', `${wu}.discussion.beta`], /"review-001" is pending/);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--findings', 'F1']);
+    // The surfacing protocol's opt-in gate: the kind and the count off the
+    // acknowledged row, the lane split from the judgment payload.
+    sim.write('.workflows/.cache/scratch/announce.json', JSON.stringify({ shape: '1 needs a call' }));
+    assert.match(
+      sim.render(['finding-announce', `${wu}.discussion.beta`, '--id', rev1.id, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
+      /Background review returned — 1 finding\(s\): 1 needs a call\./, 'the announce gate reads the row and the payload');
     assert.match(sim.render(['review-findings-gate', `${wu}.discussion.beta`], { expect: 'content' }),
       /The review left 1 finding still to walk\./, 'the drain offer counts the row\'s unsurfaced findings');
     sim.run(['agent', 'surface', wu, 'discussion', 'beta', rev1.id, 'F1']);
@@ -2050,11 +2055,14 @@ describe('pipeline simulation', () => {
     sim.write(rev2.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev2.id, '--clean']);
+    assert.match(sim.render(['agent-line', `${wu}.discussion.beta`, '--id', rev2.id, '--variant', 'clean'], { expect: 'content' }),
+      /Background review returned — nothing new/, 'a clean return says so in a line, read off the incorporated row');
     const revFinal = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review', '--final']);
     assert.strictEqual(revFinal.id, 'review-003', 'the closing pass dispatches over a quiet map');
     sim.write(revFinal.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
+    sim.render(['agent-line', `${wu}.discussion.beta`, '--id', revFinal.id, '--variant', 'clean'], { expect: 'content' });
     sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
@@ -4559,6 +4567,10 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-session', 'close', epic, '-m', `discovery(${epic}): shape`]);
     sim.write('shared/dockset-05.png', "the epic's own shot\n");
     sim.run(['workunit', 'import', epic, 'shared/dockset-05.png', '--from', 'discovery']);
+    // The next session over the still-empty map opens on that material.
+    sim.write(`.workflows/.cache/${epic}/discovery/opener.json`, JSON.stringify({ sketch: 'An onboarding screen.', questions: 'who lands on it first?' }));
+    assert.match(sim.render(['opener', epic, '--variant', 'seeded', '--file', `.workflows/.cache/${epic}/discovery/opener.json`], { expect: 'content' }),
+      /Read your import\. Here's the shape I'm picking up:/);
 
     // Absorb re-homes the material: the collision suffixes, the links the
     // rename broke are rewritten in the documents absorb moved, and the
@@ -4967,6 +4979,8 @@ describe('pipeline simulation', () => {
     const dive = sim.run(['agent', 'dispatch', wu, 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(dive.id, 'deep-dive-001-auth');
     sim.run(['research-threads', 'set', wu, 'alpha', 'auth', 'digging']);
+    assert.match(sim.render(['agent-line', `${wu}.research.alpha`, '--id', dive.id, '--variant', 'dispatched'], { expect: 'content' }),
+      /Deep dive dispatched on "How does auth land\?"/, 'the dispatched line names the thread the row\'s label digs');
     let scan = sim.run(['agent', 'scan', wu, 'research', 'alpha']);
     assert.deepStrictEqual(scan.pending, [], 'nothing readable while the dive runs');
     sim.refuses(['agent', 'ack', wu, 'research', 'alpha', dive.id, '--clean'], /in-flight/);
@@ -4989,6 +5003,7 @@ describe('pipeline simulation', () => {
     // for — so the map need not move between them; the movement gate is the
     // epic mainline's to pin.
     sim.run(['topic', 'start', wu, 'discussion', 'beta']);
+    sim.render(['opener', `${wu}.discussion.beta`, '--variant', 'discussion'], { expect: 'content' });
     const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'beta', '--kind', 'review']);
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(scan.pending, [], 'nothing readable while the review runs');
@@ -4996,7 +5011,9 @@ describe('pipeline simulation', () => {
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     assert.deepStrictEqual(scan.pending.map((/** @type {any} */ r) => r.id), ['review-001']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', 'review-001', '--findings', 'F1,F2']);
+    sim.render(['agent-line', `${wu}.discussion.beta`, '--id', 'review-001', '--variant', 'deferred'], { expect: 'content' });
     sim.run(['agent', 'announce', wu, 'discussion', 'beta', 'review-001']);
+    sim.refuses(['render', 'agent-line', `${wu}.discussion.beta`, '--id', 'review-001', '--variant', 'deferred'], /already announced/);
     sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1']);
     const last = sim.run(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F2']);
     assert.strictEqual(last.status, 'incorporated', 'last finding auto-incorporates');
@@ -5094,6 +5111,8 @@ describe('pipeline simulation', () => {
       '--label', 'user-centric', '--label', 'capability-first']);
     assert.strictEqual(pair.agents.length, 2);
     assert.ok(pair.agents.every((a) => a.id.includes(`-${pair.set}-`)), 'one shared set number');
+    assert.match(sim.render(['agent-line', `${wu}.discussion.alpha`, '--id', pair.agents[0].id, '--variant', 'dispatched'], { expect: 'content' }),
+      /Dispatched 2 perspective agents: User Centric, Capability First\./);
     sim.write(pair.agents[0].file, '# The user-centric case\n');
     scan = sim.run(['agent', 'scan', wu, 'discussion', 'alpha']);
     assert.strictEqual(scan.pending.length + scan.in_flight.length, 2,

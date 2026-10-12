@@ -263,7 +263,7 @@ Commands:
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
   render finding-landed   <wu.phase.topic> --file <payload.json>
-  render finding-announce <wu.phase.topic> --file <payload.json>
+  render finding-announce <wu.phase.topic> --id <agent id> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
@@ -290,6 +290,7 @@ Commands:
   render research-conclude-gate <wu.research.topic> [--dead-end]
   render deep-dive-offer  <wu.research.topic> --file <payload.json>
   render perspective-offer <wu.discussion.topic> --file <payload.json>
+  render agent-line       <wu.phase.topic> --id <agent id> --variant dispatched|clean|deferred
   render in-flight-agents-gate <wu.research|discussion.topic> --count N [--pause]
   render review-findings-gate <wu.discussion.topic>
   render send-candidates  <wu.phase.topic> --file <payload.json>
@@ -384,6 +385,8 @@ Commands:
   render roadmap-parks-gate
   render roadmap-shape-gate
   render shape-gate
+  render opener --variant inbox --path <inbox path>[,…] --file <payload.json> | <wu> --variant seeded --file <payload.json> | <wu.discussion.topic> --variant discussion
+  render catch-up --file <payload.json>
   render synthesis-gate
   render query-failure-gate --file <payload.json>
   render baseline-progress

@@ -663,13 +663,7 @@ function checkInertLoadChrome(files) {
 /** @type {Record<string, number>} */
 const RATCHET_PINS = {
   'skills/workflow-continue-epic/references/summary-backfill.md': 2,
-  'skills/workflow-discovery/references/continuity-load.md': 1,
   'skills/workflow-discovery/references/map-operations.md': 2,
-  'skills/workflow-discovery/references/opener-pattern.md': 1,
-  'skills/workflow-discovery/references/session-loop.md': 1,
-  'skills/workflow-discussion-process/references/background-agent-surfacing.md': 2,
-  'skills/workflow-discussion-process/references/gather-context.md': 1,
-  'skills/workflow-discussion-process/references/perspective-agents.md': 1,
   'skills/workflow-legacy-research-split/SKILL.md': 3,
   'skills/workflow-legacy-research-split/references/dialog.md': 4,
   'skills/workflow-log-bug/SKILL.md': 1,
@@ -682,8 +676,6 @@ const RATCHET_PINS = {
   'skills/workflow-planning-process/references/output-formats/linear/authoring.md': 1,
   'skills/workflow-planning-process/references/plan-construction.md': 3,
   'skills/workflow-planning-process/references/resolve-dependencies.md': 1,
-  'skills/workflow-research-process/references/deep-dive-agent.md': 1,
-  'skills/workflow-roadmap/references/session-loop.md': 1,
   'skills/workflow-shared/references/analysis-approval-gate.md': 1,
   'skills/workflow-shared/references/compliance-check.md': 1,
   'skills/workflow-start/references/inbox-archived.md': 3,

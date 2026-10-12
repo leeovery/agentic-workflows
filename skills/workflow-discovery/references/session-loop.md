@@ -98,15 +98,13 @@ What's on your mind for this map?
 
 Fresh first-session with seed material. Read each file listed under `seeds[]` then `imports[]` (paths are relative to `.workflows/{work_unit}/`) — the seed is the primary launchpad, imports are supporting. A markdown import is read as prose and an image with vision; anything else is named to the user rather than opened. Use this content to launch the conversation: reflect what's there, ask exploratory questions about it. Don't dump it back at the user verbatim — synthesise.
 
-> *Output the next fenced block as markdown (not a code block):*
+Write the opener's content to `.workflows/.cache/{work_unit}/discovery/opener.json` with the Write tool — `{"sketch": "…", "questions": "…"}`: `sketch` a one-line summary of what the seed and import material describes, `questions` one or two exploratory questions drawn from it, written to follow "Before we name topics, let's pull on a few things —". The opener names what was read from the manifest. Render it:
 
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render opener {work_unit} --variant seeded --file .workflows/.cache/{work_unit}/discovery/opener.json
 ```
-Read your {seed | import(s) | seed and import(s)}. Here's the shape I'm picking up:
 
-{one-line summary of what the seed/import material describes}
-
-Before we name topics, let's pull on a few things — {one or two exploratory questions drawn from the seed material}.
-```
+Emit the call's DISPLAY section verbatim per its marker.
 
 **STOP.** Wait for user response.
 

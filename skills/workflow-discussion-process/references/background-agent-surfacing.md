@@ -73,13 +73,13 @@ Re-classify before anything renders, in the one permitted direction (core rule 5
 node .claude/skills/workflow-engine/scripts/engine.cjs agent ack {work_unit} {phase} {topic} {id} --clean
 ```
 
-The engine incorporates the row. No menu needed — append this single line at the end of your current turn, above the gate where one is waiting on the user:
+The engine incorporates the row. No menu needed — a single line tells the user it came back with nothing new, at the end of your current turn, above the gate where one is waiting on the user. Fetch it there:
 
-> *Output the next fenced block as a text code block (```text fence):*
-
-```text
-Background {agent_type} returned — nothing new beyond what we've already covered.
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant clean
 ```
+
+Emit the call's DISPLAY section verbatim per its marker.
 
 → Return to caller.
 
@@ -103,13 +103,13 @@ Consult the natural-breaks checklist. Route on the row's `announced` flag.
 
 **If `announced` is `false`:**
 
-Append this one-line parenthetical at the end of your current turn, above the gate where one is waiting on the user, then record it:
+A one-line parenthetical tells the user the report is waiting for the next pause, at the end of your current turn, above the gate where one is waiting on the user. Fetch it there:
 
-> *Output the next fenced block as markdown (not a code block):*
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs render agent-line {work_unit}.{phase}.{topic} --id {id} --variant deferred
+```
 
-```
-*(Background {agent_type} just returned — I'll raise it when we pause.)*
-```
+Emit the call's DISPLAY section verbatim per its marker, then record it:
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs agent announce {work_unit} {phase} {topic} {id}
@@ -129,10 +129,10 @@ Route on the row's `surfaced` list: empty means the user has not yet opted in; n
 
 **If `surfaced` is empty (first time at a break):**
 
-Render the announce menu. `shape` is the lane split in one clause, in lane order, each lane's count carrying that lane's own phrase — apply *need nothing from you*, decide *need a scan*, the walk *need a call*, route *belong elsewhere* (e.g. *3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere*); name only lanes that have findings, and never lend one lane another's phrase — a decide count announced as needing a call reads as decisions still owed when the calls are already made. Do not describe individual findings, do not summarise, do not preview. Write the payload to the topic's cache directory with the Write tool (`{"agent_type": "…", "count": N, "shape": "…"}`), then render it, emitting the section verbatim per its marker:
+Render the announce menu. `shape` is the lane split in one clause, in lane order, each lane's count carrying that lane's own phrase — apply *need nothing from you*, decide *need a scan*, the walk *need a call*, route *belong elsewhere* (e.g. *3 need nothing from you, 5 need a scan, 6 need a call, 2 belong elsewhere*); name only lanes that have findings, and never lend one lane another's phrase — a decide count announced as needing a call reads as decisions still owed when the calls are already made. Do not describe individual findings, do not summarise, do not preview. Write the payload to the topic's cache directory with the Write tool (`{"shape": "…"}` — the agent and its finding count come off the row), then render it, emitting the section verbatim per its marker:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs render finding-announce {work_unit}.{phase}.{topic} --file .workflows/.cache/{work_unit}/{phase}/{topic}/announce.json
+node .claude/skills/workflow-engine/scripts/engine.cjs render finding-announce {work_unit}.{phase}.{topic} --id {id} --file .workflows/.cache/{work_unit}/{phase}/{topic}/announce.json
 ```
 
 After emitting the menu, record the announce — skip the call when the row already reads `announced: true`:
