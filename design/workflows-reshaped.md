@@ -813,29 +813,55 @@ settles, and starts from the list of kinds of question (R25).
   stated. Read-only throughout; the raw material and scripts sat in the
   session's scratch space.
   - **Transcript mining.** 615 points where Claude asked the person
-    something or offered a choice, and the reply, each labelled with what
-    the reply did, the kind of question, its door and whether it could
-    have been checked instead of asked. Labelled by Sonnet; Opus labelled
-    60 of them independently.
-    - Where Claude stated a lean and the person decided (313): agree 77%,
-      amend 10%, overrule 13%. Fumi 81 / 8 / 11 — the top of the person's
-      60–80% estimate; Portal 60 / 16 / 24; Tick and agntc 87 / 9 / 4.
-    - Overrule by kind: UI look 5 of 14, UX flow 10 of 46, scope 6 of 32,
-      architecture 4 of 18; product behaviour 7 of 79, data model 1 of
-      12, the session's own mechanics 0 of 33. By door: one-way 20% (25),
-      two-way 14%, process 8%.
-    - Not an answer: 17% (did not follow 13%, answered something else 4%);
-      with challenges to the question's premise, 29%. Did-not-follow
-      gathers on technical questions — internal mechanism 33%,
-      architecture 26%, testing 25%, external contracts 20%. Only 5% of
-      replies said the question should not have been asked; 7% of
-      questions were facts Claude could have checked.
-    - **Labeller agreement** (Sonnet against Opus, 60 rows): what the
-      reply did 80% (kappa 0.75); door 75% (0.51); kind of question 50%
-      (0.43). The list of kinds is not yet sharp enough for two labellers
-      to agree, and every trust count is keyed by it (R25): the trust
-      design starts by making the list labellable and measuring agreement
-      before any count depends on it.
+    something or offered a choice, and the reply. A first pass by Sonnet
+    labelled what the reply did, the kind of question, its door and
+    whether it could have been checked instead of asked; Opus labelled 60
+    of them independently: what the reply did 80% agreement (kappa 0.75),
+    door 75% (0.51), kind of question 50% (0.43).
+    - **What the reply did, re-checked.** The person saw the first pass
+      count agreements as departures (an "agree" that also answered a
+      separate point read as an amendment). Opus and Sonnet re-checked
+      every exchange where Claude stated a lean (437) separately, asking
+      whether the reply changes what Claude would have built; they agree
+      93% (kappa 0.88), and a row counts only where both agree (407). Of
+      the first pass's 73 amendments and overrules, both checks found 26
+      not departures and split on 7; of its 51 challenges to the
+      question's premise, 12 were departures.
+    - Where Claude stated a lean and the person decided (315): agree 82%,
+      amend 6%, overrule 12% (upper bound 15%). Fumi 83 / 7 / 10 — the top
+      of the person's 60–80% estimate; Portal 70 / 5 / 24; Tick and agntc
+      98 / 2 / 0 (44).
+    - **Kinds as narrow questions.** Twelve yes/no questions about the
+      question Claude put, answered from Claude's turn alone, never the
+      reply: is it about the session rather than the product; could Claude
+      find the answer out; would a user see the difference; is it about
+      how something looks; the words a user reads or types; the steps a
+      user goes through; whether something is in the work at all; does
+      other code or saved data come to rely on it; could an option lose
+      data or weaken security; would a later change reach beyond the
+      piece; would one option be a mistake on its merits; does answering
+      need the code's insides. A kind is composed from the answers in
+      code: process, danger, contract, scope, then for what a user sees
+      look, words or behaviour, else internals. Opus and Sonnet agree on
+      the composed kind 85–89% (kappa 0.81–0.86) over 150 exchanges in
+      two rounds of wording; Opus agrees with itself across runs 93%. The
+      steps a user goes through split the labellers (kappa 0.61–0.66), so
+      flow is part of behaviour. Splitting one pick-one into narrow
+      questions is what dex's lab found for Jev (E39).
+    - Overrule by kind (Opus's kinds, re-checked replies): danger 7 of 28,
+      contract 14 of 75, process 9 of 81, look 2 of 22, words 1 of 7,
+      behaviour 4 of 69, scope 1 of 28, internals 0 of 5. Contracts by
+      project: Portal 6 of 15, Fumi 8 of 34, Tick and agntc 0 of 26. By
+      door (first pass): one-way 19% (26), two-way 11%, process 11%. A
+      later change reaching beyond the piece: 21% overruled against 9%;
+      one option a mistake on its merits: 8% against 14%.
+    - Not an answer (first pass, all 615): 17% (did not follow 13%,
+      answered something else 4%); with challenges to the question's
+      premise, 29%. Did-not-follow gathers on technical questions —
+      internal mechanism 33%, architecture 26%, testing 25%, external
+      contracts 20%; under the composed kinds, internals 31%, danger 20%,
+      contract 16%. Only 5% of replies said the question should not have
+      been asked; 7% of questions were facts Claude could have checked.
   - **The Fumi decision replay.** 37 decisions across all 12 decided
     topics (17 one-way, 20 two-way), posed blind to a fresh Opus at xhigh
     effort with no tools at all — a headless session whose tool list was
@@ -846,7 +872,7 @@ settles, and starts from the list of kinds of question (R25).
     record.
     - Same 15, equivalent 4, partial 5, different 13: the person's call
       19 of 37 (51%). Different 35% on both doors (6 of 17 one-way, 7 of
-      20 two-way). Shown, the person agreed 77%; blind, the match is 51% —
+      20 two-way). Shown, the person agreed 82%; blind, the match is 51% —
       shown agreement overstates, as R25's half weight assumes.
     - Claude's "would check with the person" caught 6 of its 13 wrong
       calls and fired on 2 of its 19 right ones: Claude cannot be the
@@ -1164,7 +1190,8 @@ think is a good sign."
   Output: diagrams of the shape, and this record revised.
 - **The trust design** — pinned by the person on 2026-10-12 until the
   shape review settles; starts from the list of kinds of question (R25),
-  made sharp enough that two labellers agree on it (R29: 50% today). The
+  made sharp enough that two labellers agree on it (R29: 50% as one
+  pick-one, 85–89% as narrow yes/no questions). The
   person leans to Jev as the labeller. Prior art to read first: dex's lab
   (`~/Code/dex/lab/typed-decisions.md`, experiments E39–E46), where Jev
   became a calibrated, deterministic judge on narrow yes/no questions —
