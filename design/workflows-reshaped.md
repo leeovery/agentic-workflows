@@ -478,7 +478,12 @@ project's own measurements decide (R7).
   never re-describes it. An image is what was decided; its live source
   link is where work continues; both are recorded. **Lifting a piece of
   spike code into the product is an explicit, recorded act, never
-  drift.** No design tool is named in the workflows.
+  drift.** A design spike runs in rounds and ends in a **lock**: the
+  locked design becomes canonical and the spike goes, a rejected spike's
+  rejection is kept, and a later spike may challenge a locked design with
+  a stated hypothesis (FlowX's design boards). A spike is evidence only
+  for what the person reviewed in it: scaffolding nobody discussed is
+  never cited as decided. No design tool is named in the workflows.
 
   Whether a product gets the workflows at all is the person's decision,
   made by installing them; the workflows never ask it. Building a v1 fast
@@ -787,7 +792,9 @@ settles, and starts from the list of kinds of question (R25).
   on hold since 2026-10-12 by the person's word until the shape review
   settles, since it may change what they count. Both also count
   non-answers. Switchboard's 69 hand-classified replies (Motivation) are a
-  first sample.
+  first sample. The gate-answer history seeds which process gates start
+  automatic (R40). A third measurement joins them: the knowledge base's
+  value over Claude searching the files itself, never yet measured.
   - **Transcript mining.** As of 2026-10-06 the person's transcripts
     numbered 103 for Fumi (from mid-July), 152 for Portal, 36 for Tick
     and 1 for Goosemates. Every point where Claude offered a choice with a
@@ -833,6 +840,9 @@ settles, and starts from the list of kinds of question (R25).
   - **Evidence is computed, never narrated.** Scripts produce verdicts;
     Claude never types a count. Zero tests is "not proven"; a criterion
     whose tests were skipped is "named, not run".
+  - **The feature map groups bugs by area,** so the tracking layer can
+    flag an area that keeps breaking for a design look (Portal: six
+    bugfixes around restore, five around resume hooks).
   - **Verified work is cheaper to get wrong**, so verification lowers
     reversal cost in the ask rule: history is one lever on how often
     Claude asks, verification the other.
@@ -877,6 +887,31 @@ settles, and starts from the list of kinds of question (R25).
     document to re-read; the decision phase's note names the record and
     the log.
   - Anything that can use the mod to make the system better should.
+
+## Shape review rulings
+
+Ruled by the person on 2026-10-12 after the shape review (Open), on the
+evidence recorded there: "pretty much what we already agreed, which I
+think is a good sign."
+
+- **R40 — Gates in three kinds.**
+  - **Authority gates, fixed:** approve the map, ready to build (signing
+    off the spec folds in here), finish. Never automatic; acting before
+    the person's go is the correction they make most often.
+  - **Product questions, computed** by the ask rule (R24).
+  - **Process gates, learned.** Every gate answer is recorded by the gate's
+    name (R25). A gate the person always answers the same way becomes an
+    automatic step with a one-line report, and comes back if their answers
+    start to vary. The gates that served review loops (finding batches,
+    re-review, analysis cycles, per-task approval) go with the loops.
+- **R41 — Foundations first.** Discovery orders the map's topics by what
+  depends on what; the topics others depend on are decided first, so
+  fewer messages bounce back and nothing is built on an undecided model
+  (Fumi's coupled topics, Goosemates' skipped core model).
+- **R42 — What is kept.** The record, the log, the spec, evidence and a
+  short review report. Tasks live in the plan's tracker. Tracking files,
+  analysis files and per-task report files go: in every project only the
+  spec was read downstream.
 
 ## Measures and levers
 
@@ -1052,7 +1087,8 @@ settles, and starts from the list of kinds of question (R25).
     split broke where work moved fastest. **This repo**: one go gate after
     the shape, then autonomy; walks (running the product's prose) find the
     most; tracking is its weakest part.
-  - **Proposals put to the person, not yet ruled:** process gates learned
+  - **Proposals, ruled 2026-10-12 (R40–R42 and the R12, R29, R32
+    additions):** process gates learned
     from the gate-answer log (automatic once answers show ceremony, back
     if answers vary; authority gates never); three authority gates
     (approve the map, ready to build with spec sign-off folded in, and
