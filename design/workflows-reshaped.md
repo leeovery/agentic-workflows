@@ -855,6 +855,20 @@ settles, and starts from the list of kinds of question (R25).
       door (first pass): one-way 19% (26), two-way 11%, process 11%. A
       later change reaching beyond the piece: 21% overruled against 9%;
       one option a mistake on its merits: 8% against 14%.
+    - **What a departure cost.** The person judged the 60 departures both
+      checks confirmed (2026-10-12): had Claude built its own lean without
+      asking, what would the product have lost? Nothing 14, a fix later
+      31, a real loss 8, can't tell 7. Over the 315 decided questions,
+      Claude's lean would have cost a real loss 8 times (3%, upper bound
+      5%); with the fixable ones, 42 (13%). Real losses by kind: contract
+      3 of 75 decided, danger 2 of 28, look 1 of 22, words 1 of 7,
+      behaviour 1 of 69; process 0 of 81, scope 0 of 28. Four were
+      Portal's (74 decided), four Fumi's (197). Where a later change would
+      reach beyond the piece, 4 of 16 departures were losses, against 4 of
+      44. Twice the person noted the work later went Claude's way; on one
+      loss, that Claude's way would have been backtracked rather than
+      lost. Judged with both answers in view, so direction, like the
+      replay.
     - Not an answer (first pass, all 615): 17% (did not follow 13%,
       answered something else 4%); with challenges to the question's
       premise, 29%. Did-not-follow gathers on technical questions —
