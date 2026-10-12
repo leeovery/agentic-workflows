@@ -14,7 +14,7 @@
 
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
-const { menuFrame, cmdOption, bulletRow, optionDetail } = require('./surfaces.cjs');
+const { menuFrame, cmdOption, bulletRow, optionDetail, autoSelectLine } = require('./surfaces.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -186,7 +186,7 @@ function singleDisplay(detail) {
     itemBlock(1, row),
     notReadyBlock(detail.in_progress_discussions),
     keyBlock(displayedTerms([row])),
-    `Automatically proceeding with "${titlecase(single.proceed_name)}".`,
+    autoSelectLine(single.proceed_name),
   ]);
 }
 

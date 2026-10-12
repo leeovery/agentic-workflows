@@ -15,6 +15,7 @@
 
 const { wrap } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
+const { titlecase } = require('../conventions.cjs');
 
 const DOTS = '· · · · · · · · · · · ·';
 
@@ -717,6 +718,15 @@ function bulletRow(text, { indent = '  ', width = displayWidth() } = {}) {
 }
 
 /**
+ * The line a flow shows where one actionable item leaves nothing to pick.
+ * @param {string} name
+ * @returns {string}
+ */
+function autoSelectLine(name) {
+  return `Automatically proceeding with "${titlecase(name)}".`;
+}
+
+/**
  * Glyphed sub-detail (`· `) within a numbered item: quiet marker on the
  * first line, continuations aligned under the text — never column zero.
  * @param {string} text
@@ -749,5 +759,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, subDetail, treeList };
+module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList };
 

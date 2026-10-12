@@ -2531,6 +2531,92 @@ describe('render spec-review-gate', () => {
   });
 });
 
+describe('render review-loop', () => {
+  let dir;
+  const CONTINUE = '(emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs)';
+  const summary = {
+    review_label: 'Integrity Review',
+    items: [
+      { title: 'Missing Outcome field', tag: 'Minor', summary: 'Task 1-1 lacks the Outcome field.', status: 'approved' },
+      { title: 'Orphaned dependency', tag: 'Important', summary: 'Task 2-3 depends on a removed task.', status: 'skipped' },
+      { title: 'Duplicated criteria', tag: 'Minor', summary: 'Two tasks share one criterion.' },
+    ],
+  };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: {
+      planning: { items: { portal: { status: 'in-progress', review_cycle: 3 }, fresh: { status: 'in-progress', review_cycle: 0 } } },
+      specification: { items: { portal: { status: 'in-progress', review_cycle: 2 } } },
+      discussion: { items: { portal: { status: 'in-progress' } } },
+    } });
+  });
+  afterEach(() => teardown(dir));
+
+  const line = (dotpath, variant, extra = {}) => renderSurface(dir, 'review-loop', { dotpath, variant, ...extra });
+
+  it('cycle reads the open cycle off the item — the line the auto loop runs on with', () => {
+    assert.strictEqual(line('pay.planning.portal', 'cycle'),
+      `=== DISPLAY: review cycle complete ${CONTINUE} ===\nReview cycle 3 complete — findings applied. Running follow-up cycle.\n`);
+    assert.strictEqual(line('pay.specification.portal', 'cycle'),
+      `=== DISPLAY: review cycle complete ${CONTINUE} ===\nReview cycle 2 complete — findings applied. Running follow-up cycle.\n`);
+  });
+
+  it('churning and cap: the two ways an auto loop concludes itself', () => {
+    assert.strictEqual(line('pay.planning.portal', 'churning'),
+      `=== DISPLAY: review churning ${CONTINUE} ===\nFindings are churning — concluding the review.\n`);
+    assert.strictEqual(line('pay.specification.portal', 'cap'),
+      `=== DISPLAY: review cycle cap ${CONTINUE} ===\nCycle cap reached — concluding the review.\n`);
+  });
+
+  it('complete names the document under review and the cycles it took', () => {
+    assert.strictEqual(line('pay.planning.portal', 'complete'),
+      `=== DISPLAY: review complete ${CONTINUE} ===\nPlan review complete — 3 cycle(s), all tracking files finalised.\n`);
+    assert.strictEqual(line('pay.specification.portal', 'complete'),
+      `=== DISPLAY: review complete ${CONTINUE} ===\nSpecification review complete — 2 cycle(s), all tracking files finalised.\n`);
+  });
+
+  it('clean names the stream in its phase\'s words', () => {
+    assert.strictEqual(line('pay.planning.portal', 'clean', { review: 'traceability' }),
+      `=== DISPLAY: review stream clean ${CONTINUE} ===\nTraceability review complete — no findings.\n`);
+    assert.match(line('pay.planning.portal', 'clean', { review: 'integrity' }), /^Integrity review complete — no findings\.$/m);
+    assert.match(line('pay.specification.portal', 'clean', { review: 'claims' }), /^Claims Verification complete — no findings\.$/m);
+    assert.match(line('pay.specification.portal', 'clean', { review: 'input' }), /^Input Review complete — no findings\.$/m);
+    assert.match(line('pay.specification.portal', 'clean', { review: 'gap-analysis' }), /^Gap Analysis complete — no findings\.$/m);
+  });
+
+  it('processed counts every finding the pass\'s summary listed, settled earlier or this sitting', () => {
+    const file = writePayload(dir, 's.json', summary);
+    assert.strictEqual(line('pay.planning.portal', 'processed', { review: 'integrity', file }),
+      `=== DISPLAY: review stream processed ${CONTINUE} ===\nIntegrity review complete — 3 findings processed.\n`);
+    assert.match(line('pay.specification.portal', 'processed', { review: 'gap-analysis', file }),
+      /^Gap Analysis complete — 3 findings processed\.$/m);
+  });
+
+  it('refuses a missing variant, a stream outside the phase, and an address outside the two loops', () => {
+    assert.throws(() => line('pay.planning.portal', undefined), /--variant must be one of cycle, churning, cap, complete, clean, processed/);
+    assert.throws(() => line('pay.planning.portal', 'again'), /--variant must be one of cycle, churning, cap, complete, clean, processed/);
+    assert.throws(() => line('pay.planning.portal', 'clean'), /--review must be one of traceability, integrity at a planning address/);
+    assert.throws(() => line('pay.planning.portal', 'clean', { review: 'claims' }), /--review must be one of traceability, integrity at a planning address/);
+    assert.throws(() => line('pay.specification.portal', 'processed', { review: 'integrity', file: writePayload(dir, 's.json', summary) }),
+      /--review must be one of claims, input, gap-analysis at a specification address/);
+    assert.throws(() => line('pay.discussion.portal', 'complete'), /address must be <work_unit>\.planning\|specification\.<topic>, got phase "discussion"/);
+  });
+
+  it('refuses a cycle line with no cycle open', () => {
+    assert.throws(() => line('pay.planning.fresh', 'cycle'), /pay\.planning\.fresh has no review cycle open — review_cycle must be at least 1/);
+    assert.throws(() => line('pay.planning.missing', 'complete'), /pay\.planning\.missing has no review cycle open/);
+  });
+
+  it('processed refuses a missing or malformed summary by name', () => {
+    assert.throws(() => line('pay.planning.portal', 'processed', { review: 'integrity' }), /--variant processed needs --file <findings-summary\.json>/);
+    assert.throws(() => line('pay.planning.portal', 'processed', { review: 'integrity', file: 'nope.json' }), /render review-loop: payload file not found: nope\.json/);
+    assert.throws(() => line('pay.planning.portal', 'processed', { review: 'integrity', file: writePayload(dir, 'e.json', { review_label: 'X', items: [] }) }),
+      /render review-loop: "items" must be a non-empty array/);
+    assert.throws(() => line('pay.planning.portal', 'processed', { review: 'integrity', file: writePayload(dir, 'l.json', { items: summary.items }) }),
+      /render review-loop: "review_label" must be a non-empty string/);
+  });
+});
+
 describe('render convergence-diagnostic', () => {
   let dir;
   const base = {
@@ -3492,6 +3578,55 @@ describe('render finding', () => {
       const file = writePayload(dir, `bad-${i}.json`, payload);
       assert.throws(() => renderSurface(dir, 'finding', { dotpath: 'pay.planning.portal', file }), re);
     });
+  });
+});
+
+describe('render finding-landed', () => {
+  let dir;
+  const CONTINUE = '(emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs)';
+  const base = {
+    n: 2, total: 3, title: 'Declined Card Copy',
+    meta: [['Severity', 'Important']],
+    problem: 'A shopper whose card is declined is shown nothing.',
+  };
+  const settled = { ...base, move: 'settled', proposal: 'The specification names the message.' };
+  const choice = { ...base, move: 'choice', options: [{ summary: 'Retry silently' }, { summary: 'Ask the shopper', recommended: true }] };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'pay', { phases: {
+      planning: { items: { portal: { status: 'in-progress' } } },
+      specification: { items: { portal: { status: 'in-progress' } } },
+    } });
+  });
+  afterEach(() => teardown(dir));
+
+  const landed = (dotpath, payload) => renderSurface(dir, 'finding-landed', { dotpath, file: writePayload(dir, 'f.json', payload) });
+
+  it('a settled finding lands as presented — fixed', () => {
+    assert.strictEqual(landed('pay.planning.portal', settled),
+      `=== DISPLAY: finding landed ${CONTINUE} ===\nFinding 2 of 3: Declined Card Copy — fixed.\n`);
+  });
+
+  it('a choice lands the side it took, in the session\'s clause, at either phase', () => {
+    assert.strictEqual(landed('pay.planning.portal', { ...choice, chosen: 'ask the shopper before retrying' }),
+      `=== DISPLAY: finding landed ${CONTINUE} ===\nFinding 2 of 3: Declined Card Copy — ask the shopper before retrying.\n`);
+    assert.match(landed('pay.specification.portal', { ...choice, chosen: ' ask the shopper before retrying. ' }),
+      /^Finding 2 of 3: Declined Card Copy — ask the shopper before retrying\.$/m, 'the clause\'s own full stop is not doubled');
+  });
+
+  it('refuses a choice with no clause, a settled finding carrying one, and a settled finding at the specification', () => {
+    assert.throws(() => landed('pay.planning.portal', choice), /a "choice" finding needs "chosen" — the side it took, in one clause/);
+    assert.throws(() => landed('pay.planning.portal', { ...choice, chosen: '  ' }), /a "choice" finding needs "chosen"/);
+    assert.throws(() => landed('pay.planning.portal', { ...settled, chosen: 'x' }), /a "settled" finding carries no "chosen"/);
+    assert.throws(() => landed('pay.specification.portal', settled), /a "settled" finding at the specification phase lands through its finding-batch screen/);
+  });
+
+  it('refuses a payload with no place in the walk or no move', () => {
+    assert.throws(() => renderSurface(dir, 'finding-landed', { dotpath: 'pay.planning.portal' }), /--file <payload\.json> is required/);
+    assert.throws(() => landed('pay.planning.portal', { ...settled, n: 0 }), /render finding-landed: "n" must be a positive integer/);
+    assert.throws(() => landed('pay.planning.portal', { ...settled, total: 1 }), /render finding-landed: "total" must be an integer ≥ "n"/);
+    assert.throws(() => landed('pay.planning.portal', { ...settled, title: '' }), /render finding-landed: "title" must be a non-empty string/);
+    assert.throws(() => landed('pay.planning.portal', { ...settled, move: 'route' }), /render finding-landed: "move" must be one of settled\/choice/);
   });
 });
 
@@ -5073,7 +5208,7 @@ describe('catalogue dispatch', () => {
   });
 
   it('unknown surface errors with the catalogue listing', () => {
-    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, review-presentation, review-gate, spec-review-gate, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
+    assert.throws(() => renderSurface('/tmp', 'nope', { dotpath: 'a.b.c' }), /unknown surface "nope" \(surfaces: resume-gate, task-list, findings-summary, finding-announce, finding-batch, finding, finding-landed, review-presentation, review-gate, spec-review-gate, review-loop, spec-completion-gate, convergence-diagnostic, carry-note-gate, hypothesis-board, findings-signoff-gate, fix-direction, validation-gate, validation-report, project-skills, linters, mail-announce, mail-offer, mail-block, forward-offer, send-offer, research-threads, research-conclude-gate, deep-dive-offer, perspective-offer, in-flight-agents-gate, review-findings-gate, send-candidates, off-topic-offer, backlog-gate, map-op-gate, candidate-gate, dismissed-topics, send-closed-target, conclude-gate, closing-gate, defer-gate, experiment-register, experiment-approval-gate, experiment-pick, experiment-next-gate, experiment-spawn-gate, wait-gate, summary-backfill-gate, external-dependency-gate, checkpoint-files-gate, executor-block-gate, dependency-approval-gate, task-count-gate, plan-context-gate, cross-cutting-gate, cross-cutting-references, plan-format-gate, plan-review-gate, complexity-gate, first-phase-gate, correction-gate, analysis-proceed-gate, spec-confirm-gate, proposed-task, incoherence-gate, resurface-gate, construction-gate, tasks-overview, author-task-gate, phase-tree, phase-completed, phase-paused, phase-note, entry-gate, direct-entry-gate, code-gate, next-phase-gate, cancel-gate, postpone-gate, epic-all-done-gate, epic-soft-gate, task-brief, task-result, task-gate, fix-gate, blocked-tasks, cycle-limit, spec-corrections, cycle-gate, workunit-receipt, topic-receipt, absorb-summary, absorb-receipt, absorb-continuation, promote-receipt, import-reprompt, pivot-continuation, session-receipt, absorb-target, absorb-confirm-gate, plan-topics, archived-actions, archived-delete-gate, inbox-content, inbox-archive-receipt, completed-actions, revisit-phases, roadmap-view, roadmap-add-gate, horizon-pick, park-gate, inbox-roadmap-gate, roadmap-session-receipt, roadmap-harvest-gate, roadmap-parks-gate, roadmap-shape-gate, shape-gate, synthesis-gate, query-failure-gate, baseline-progress, baseline-area-gate, baseline-paused, baseline-receipt, baseline-scope-gate, baseline-round, baseline-doc-gate, baseline-manage-gate, baseline-doc-pick, baseline-offer-gate, walkthrough-offer, walkthrough-screen, walkthrough-home, walkthrough-topics, walkthrough-topic, migrations-applied, migration-gate, label-gate, knowledge-gate, knowledge-ready, legacy-split-gate, legacy-split-display\)/);
   });
 });
 

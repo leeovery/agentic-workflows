@@ -262,11 +262,13 @@ Commands:
   render task-list   <wu.planning.topic> --file <payload.json>
   render findings-summary <wu.phase.topic> --file <payload.json>
   render finding          <wu.phase.topic> --file <payload.json> [--view full]
+  render finding-landed   <wu.phase.topic> --file <payload.json>
   render finding-announce <wu.phase.topic> --file <payload.json>
   render finding-batch    <wu.phase.topic> --file <payload.json>
   render review-presentation <wu.review.topic> --file <payload.json>
   render review-gate      <wu.review.topic> --verdict pass|fail [--replan N]
   render spec-review-gate <wu.specification.topic> --variant continue|reloop
+  render review-loop      <wu.planning|specification.topic> --variant cycle|churning|cap|complete | --variant clean --review <stream> | --variant processed --review <stream> --file <payload.json>
   render spec-completion-gate <wu.specification.topic> --variant assessment|signoff
   render carry-note-gate  <wu.research.topic> --file <payload.json>
   render hypothesis-board <wu.investigation.topic> --file <payload.json> --variant plan|resume|check-in|pivot
