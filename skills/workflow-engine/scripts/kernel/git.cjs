@@ -187,15 +187,12 @@ function hasStagedDeletions(cwd, spec) {
 }
 
 /**
- * Whether HEAD's own commit, made with this message, deleted the path —
- * never on a repo's first commit, which has no parent to compare with. The
- * message is compared as `commit -m` stored it, whitespace cleaned.
- * @param {string} cwd @param {string} spec @param {string} message
+ * Whether HEAD's own commit deleted the path — never on a repo's first
+ * commit, which has no parent to compare with.
+ * @param {string} cwd @param {string} spec
  * @returns {boolean}
  */
-function deletedAtHead(cwd, spec, message) {
-  const made = tryGit(cwd, ['log', '-1', '--format=%B', 'HEAD']);
-  if (made === null || made.trimEnd() !== git(cwd, ['stripspace'], undefined, message).trimEnd()) return false;
+function deletedAtHead(cwd, spec) {
   const out = tryGit(cwd, ['diff', '--name-only', '--no-renames', '--diff-filter=D', 'HEAD^', 'HEAD', '--', spec]);
   return out !== null && out.trim() !== '';
 }
@@ -437,4 +434,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, addRefused, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles };

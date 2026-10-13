@@ -19,7 +19,7 @@
 // ---------------------------------------------------------------------------
 
 const { gitPath, commitPathspec, commitStaged } = require('../kernel/git.cjs');
-const { commitGroups, repoName } = require('../kernel/repos.cjs');
+const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
@@ -103,22 +103,22 @@ function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
 
 /**
  * The code commit across the project's repos: each repo's share of the paths
- * committed under that repo's own commit lock, with the same message,
- * deepest first, its `heldOut` folders held out — a parent never commits a
- * nested repo's folder, and records a submodule's new pointer only where the
- * call reached into that submodule. A repo whose commit fails fails the
- * call, naming itself and the commits already made; re-running it is the
- * retry, as those repos have nothing left in the paths and a moved pointer
- * is recorded whatever moved it.
- * @param {import('../kernel/repos.cjs').Repo[]} repos
- * @param {string[]} specs project paths
+ * — its `commitGroups` group, in their order, deepest first — committed
+ * under that repo's own commit lock, with the same message, its `heldOut`
+ * folders held out — a parent never commits a nested repo's folder, and
+ * records a submodule's new pointer only where the call reached into that
+ * submodule. A repo whose commit fails fails the call, naming itself and the
+ * commits already made; re-running it is the retry, as those repos have
+ * nothing left in the paths and a moved pointer is recorded whatever moved
+ * it.
+ * @param {{repo: import('../kernel/repos.cjs').Repo, paths: string[]}[]} groups
  * @param {string} message
  * @returns {{repo: string, sha: string}[]} the commits made, `.` naming the root
  */
-function commitAcrossRepos(repos, specs, message) {
+function commitAcrossRepos(groups, message) {
   /** @type {{repo: string, sha: string}[]} */
   const committed = [];
-  for (const { repo, paths } of commitGroups(repos, specs)) {
+  for (const { repo, paths } of groups) {
     const sha = commitInRepo(repo, paths, message, committed);
     if (sha !== null) committed.push({ repo: repoName(repo), sha });
   }

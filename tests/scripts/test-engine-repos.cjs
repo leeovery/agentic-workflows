@@ -105,6 +105,24 @@ describe('projectRepos: the repos a project holds', () => {
     assert.deepStrictEqual(dirsOf(projectRepos(dir)), ['']);
   });
 
+  it('takes a folder whose repository cannot be resolved for no repo — a dangling .git link, a git dir the resolve fails on', () => {
+    fs.mkdirSync(path.join(dir, 'node_modules/broken'), { recursive: true });
+    fs.symlinkSync(path.join(dir, 'nowhere'), path.join(dir, 'node_modules/broken/.git'));
+    const api = initRepo(path.join(dir, 'api'));
+    writeFile(api, 'index.js', '1\n');
+    commitAll(api, 'init');
+    const realpathSync = fs.realpathSync;
+    fs.realpathSync = /** @type {typeof fs.realpathSync} */ ((/** @type {string} */ p, ...rest) => {
+      if (String(p).endsWith(`${path.sep}api${path.sep}.git`)) throw Object.assign(new Error(`EACCES: permission denied, realpath '${p}'`), { code: 'EACCES' });
+      return realpathSync(p, ...rest);
+    });
+    try {
+      assert.deepStrictEqual(dirsOf(projectRepos(dir)), ['']);
+    } finally {
+      fs.realpathSync = realpathSync;
+    }
+  });
+
   it('a project nested in a larger repository finds only the repos inside it', () => {
     const project = path.join(dir, 'apps/web');
     writeFile(project, 'src/app.js', '1\n');

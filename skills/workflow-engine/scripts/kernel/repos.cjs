@@ -48,13 +48,19 @@ function listed(cwd, args) {
 /**
  * The repository a checkout belongs to: its common git dir, which every
  * linked worktree of one repository shares, with symbolic links resolved —
- * or null where git finds no repository there.
+ * or null where git finds no repository there, or where what git names
+ * cannot be resolved.
  * @param {string} dir
  * @returns {string|null}
  */
 function commonDir(dir) {
   const out = tryGit(dir, ['rev-parse', '--git-common-dir']);
-  return out === null ? null : fs.realpathSync(path.resolve(dir, out.trim()));
+  if (out === null) return null;
+  try {
+    return fs.realpathSync(path.resolve(dir, out.trim()));
+  } catch {
+    return null;
+  }
 }
 
 /**

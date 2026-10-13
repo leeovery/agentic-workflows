@@ -586,19 +586,6 @@ describe('engine commit --paths: the code commit', () => {
       /"src\/gone\.js" is neither on disk nor tracked/);
   });
 
-  it('passes the HEAD commit\'s deletion only when that commit carries the call\'s message — the retry\'s case', () => {
-    fs.unlinkSync(path.join(dir, 'src/gone.js'));
-    commitAll(dir, 'chore: my own cleanup');
-
-    assert.match(engineFails(dir, ['commit', '--paths', 'src/gone.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
-      /"src\/gone\.js" is neither on disk nor tracked/, 'a deletion the user committed is not this call\'s');
-
-    const retried = engine(dir, ['commit', '--paths', 'src/gone.js', '-m', 'chore: my own cleanup', ...forTopic]);
-
-    assert.deepStrictEqual(retried.committed, []);
-    assert.strictEqual(retried.note, 'nothing to commit');
-  });
-
   it('commits in a project nested in its repository under the project\'s own directory, reading only its own folder', () => {
     const repo = harness.setupGitFixture('engine-commit-nested-paths-');
     try {
@@ -755,6 +742,34 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(headFiles(dir).sort(), ['sdk', 'src/app.js']);
   });
 
+  it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a merge in the root — before any repo commits', () => {
+    const sdk = harness.addSubmodule(dir, 'sdk', api);
+    writeFile(sdk, 'src/handler.js', 'const h = 2;\n');
+    commitAll(sdk, 'the submodule moves on');
+    assert.throws(() => git(sdk, ['rebase', '-q', '--exec', 'false', 'HEAD~1']), 'the rebase stops at its failing exec');
+    writeFile(sdk, 'src/other.js', 'const o = 2;\n');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    const [rootBefore, sdkBefore] = [head(dir), head(sdk)];
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/other.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
+      'commit --paths: a rebase is in progress in sdk (rebase-merge) — finish or abort it there, then run the commit again',
+      'never read as the detached HEAD the rebase leaves');
+    assert.deepStrictEqual([head(dir), head(sdk)], [rootBefore, sdkBefore], 'nothing commits in any repo');
+
+    git(sdk, ['rebase', '--abort']);
+    git(dir, ['checkout', '-q', '-b', 'side']);
+    writeFile(dir, 'src/side.js', 'const s = 1;\n');
+    commitAll(dir, 'the side');
+    git(dir, ['checkout', '-q', '-']);
+    git(dir, ['merge', '-q', '--no-ff', '--no-commit', 'side']);
+    writeFile(api, 'src/handler.js', 'const h = 3;\n');
+    const apiBefore = head(api);
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
+      'commit --paths: a merge is in progress in . (MERGE_HEAD) — finish or abort it there, then run the commit again');
+    assert.deepStrictEqual([head(dir), head(api)], [rootBefore, apiBefore], 'the clone, whose commit would come first, made none');
+  });
+
   it('never checks a repo the call does not commit in — a detached clone blocks nothing elsewhere', () => {
     git(api, ['checkout', '-q', '--detach']);
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
@@ -762,6 +777,19 @@ describe('engine commit --paths: code in repos of its own', () => {
     const res = engine(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
+  });
+
+  it('commits beside a folder whose .git is a dangling link — no repo, never a failure', () => {
+    writeFile(dir, '.gitignore', 'api/\nbroken/\n');
+    commitAll(dir, 'the broken folder is ignored');
+    fs.mkdirSync(path.join(dir, 'broken'));
+    fs.symlinkSync(path.join(dir, 'nowhere'), path.join(dir, 'broken/.git'));
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+
+    const res = engine(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+
+    assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(res.left_dirty, []);
   });
 
   it('records the pointer of a submodule the call reaches into inside a folder the call also names', () => {
