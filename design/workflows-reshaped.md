@@ -412,7 +412,39 @@ project's own measurements decide (R7).
   the product through once and the conversation becomes the record the
   topics come out of. The product-level conversation on the roadmap, the
   work-type commit, the discovery map, the briefs and the gap analysis all
-  stay. Two things change:
+  stay. What changes:
+  - **One phase, at whatever level the conversation reaches.** The person
+    starts and talks; the conversation finds its level and moves between
+    levels as it goes (the pivots run both ways). The type call comes down
+    to five: the product across time (the roadmap, where nothing is
+    created until an item is pulled, and the pull makes an epic or a
+    feature), building something in one topic (feature) or several
+    (epic), defining a pattern or principle (cross-cutting), fixing
+    something broken (bugfix), a small known change (quick-fix). A
+    separate product-level phase was considered and rejected: it would
+    make the person name the level before they start. Ruled by the person
+    2026-10-13.
+  - **Claude asks no detail questions in discovery.** It shapes scope and
+    what the work touches; detail is decision's. Today's guidance invites
+    decisions in an epic's second conversation, and the person pushed back
+    every time it did: "Why are you asking that question? We're in
+    discovery"; "the whole point of this process is to surface topics…
+    It's not for making decisions or shaping CLI" (Fumi); "rather than
+    making granular decisions at this discovery stage, we should be
+    thinking about what else is affected" (Portal's
+    tagging-and-filtering). The length stays: Fumi's discovery ran to
+    about 150 of the person's replies over two sessions.
+  - **Feature and epic stay two types, and the call between them is
+    light.** A feature is linear by definition and its menus are simpler.
+    Discovery leans one topic; the work becomes an epic only when the
+    conversation shows parts that each need their own decisions. The one
+    time the person held a reading against Claude's in shaping, they kept
+    one feature where Claude saw several (Portal's theming: "It might seem
+    like multiple features, but I think really it just comes down to one
+    feature"). A feature that grows pivots, as Mint's did two days in, so
+    the boundary needs no more confidence than the rest of the type call;
+    today's detection asks for more, holding that the boundary has no
+    safety net. Ruled by the person 2026-10-13.
   - **No routing.** Every topic of an epic, feature or cross-cutting unit
     goes to decision; none goes straight to the build. How much of the
     person a topic takes is set inside decision — by how much the product
@@ -857,8 +889,10 @@ project's own measurements decide (R7).
 
 - **R18 — Epic.** discovery → decision → specification → implementation
   → review.
-- **R19 — Feature.** An epic with one topic; its decision can be the view
-  and one answer (R11). Pivot and absorb stay.
+- **R19 — Feature.** Its own type — linear, with the simpler menus — and
+  in decision an epic with one topic: its decision can be the view and
+  one answer (R11). Discovery leans one topic (R10); pivot and absorb
+  stay.
 - **R20 — Bugfix.** discovery → investigation → specification →
   implementation → review. Investigation's rigour stays — symptoms, code
   analysis, root cause before fix — with its procedure loosened like every
@@ -1692,7 +1726,9 @@ person, one item at a time; the sections above hold the detail.
   decided constrains a fork (R11); the brief feeds that view and approving
   the map stays topics and order (R10); the cone narrows as the product
   takes shape, not phase by phase (R24); foundations first for the cone's
-  sake, with research others rest on first (R41).
+  sake, with research others rest on first (R41); discovery one phase at
+  whatever level the conversation reaches, no detail questions in it,
+  feature and epic two types with a light call between them (R10, R19).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1712,8 +1748,8 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Discovery (R10): the rest of the walk — what Claude asks and records
-  in discovery.
+- Discovery (R10): its gates, the gap analysis, and the product record
+  (Open), on the walk now.
 - Decision (R11, R12): record and log, the map as done, spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
