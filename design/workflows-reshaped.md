@@ -22,10 +22,10 @@ Opened 2026-10-06 from a conversation about whether the workflows are still
 needed at all. The answer reached: they are, because structure, consistent
 outputs and a durable record are what make agent work dependable and
 reviewable — but the walls are too thick for today's models and must become
-rope. The goal is the person asked about what they need to decide and never
-interrupted for what Claude knows how they would answer, with the product
-coming out the way they want it rather than the way a model's priors would
-make it.
+rope. The goal is Claude making the calls the person would have made had
+they been asked, so the product comes out the way they want it rather
+than the way a model's priors would make it; the person being asked less
+follows from that and is never the aim.
 
 ## What the workflows are for
 
@@ -56,10 +56,17 @@ learned from the person's own answers and recorded so every call can be
 traced, overruled and learned from, and the system backs off where its
 calls start proving wrong and relearns, following the person's taste as
 it changes. The few that need the person reach them, with periodic
-checks that the work is still heading the right way. Of ten findings, the
-aim is one for the person, most answered by Claude and a couple sent
-where they belong; today's lanes often show the reverse ("three need
-nothing from you, six need your attention").
+checks that the work is still heading the right way. When Claude's calls
+match the person's, of ten findings about one reaches the person, most
+are answered by Claude and a couple go where they belong; today's lanes
+often show the reverse ("three need nothing from you, six need your
+attention").
+
+The goal is never to ask the person less. It is Claude deciding as the
+person would have decided, through the matrix, the ledger and what is
+already recorded about the product. Being asked less is the side effect
+of that, and the workflows never trade a question the person should see
+for a quieter session.
 
 The two halves need each other. A trust layer with the reviews cut has
 little left to decide and leaves the gaps for the build; reviews without
@@ -510,7 +517,7 @@ project's own measurements decide (R7).
       said;
     - decisions add to it: a topic that settles something bigger than
       itself (Fumi's "updates never install themselves", decided inside
-      engine-architecture) lists the lines on its ready-to-build screen,
+      engine-architecture) lists the lines on its decided screen,
       and the person's yes there covers them — no gate of its own, while
       the person still sees Claude widen a topic's call into a rule for
       the product. Lines written in a product conversation need no
@@ -555,7 +562,7 @@ project's own measurements decide (R7).
     decisions made after discovery. It now happens at two moments:
     - when a topic finishes: its closing pass (R11) also asks whether the
       decision creates work no topic owns, and a candidate shows on the
-      ready-to-build screen with its reason, beside the product record's
+      decided screen with its reason, beside the product record's
       lines; the person's yes covers it, or they strike it;
     - once every topic is decided, before the spec (R17): one sweep
       across all the records for what falls between topics.
@@ -694,12 +701,12 @@ project's own measurements decide (R7).
     as a message or to the roadmap as later; nothing waits half-decided as
     deferred. Each time the map shows, it lists Claude's calls since the
     person last looked, so a call is overruled when made rather than at
-    ready to build. Today every subtopic Claude names goes on the map in
+    the topic's close. Today every subtopic Claude names goes on the map in
     five states of its own bookkeeping: 166 across Fumi's 13 topics, 14 in
     commercialization for one or two questions that needed the person.
     The epic menu shows the person's count ("2 of 3 decided").
   - **When nothing of the person's is open**, the closing pass runs (below)
-    and the ready-to-build screen shows what the person decided, how many
+    and the **decided** screen shows what the person decided, how many
     calls Claude made with only the few worth a look (hard to undo, thin
     evidence, least sure first), the proposed product-record lines and any
     new-topic candidates; the person's yes is the authority gate. It
@@ -709,8 +716,8 @@ project's own measurements decide (R7).
     answers ("Did you fix all those items then or not?").
   - **Once the shape is agreed, Claude fills in the rest.** The ask rule
     sends the person the few calls that need them, in one batch; the rest
-    are Claude's, on the map and in the ledger; the topic goes to ready to
-    build (R24's convergence). "Don't care"
+    are Claude's, on the map and in the ledger; the topic goes to its
+    decided screen (R24's convergence). "Don't care"
     hands a call to the builder and is recorded as the builder's.
   - **Tools:** deep dives to learn, spikes to see and feel (R12),
     experiments to measure (unchanged: a rigid laboratory for questions
@@ -725,7 +732,7 @@ project's own measurements decide (R7).
     checked, intent goes to the matrix and becomes Claude's call (in the
     ledger, on the map under "since you last looked") or a question on
     the person's map, another topic's goes there as a message, a gap is a
-    candidate on the ready-to-build screen. The gates inside the reviews
+    candidate on the decided screen. The gates inside the reviews
     are process gates, learned (R40).
   - **The closing pass** is the final review, run once nothing of the
     person's is open, with two readers: a fresh agent, unanchored by the
@@ -839,10 +846,19 @@ project's own measurements decide (R7).
 
 - **R14 — Specification stays the golden record.** The spec is the document
   the build reads and the knowledge base serves for later decisions.
+  Walked with the person 2026-10-13; 138 of their answers at spec gates
+  across Portal, Tick, agntc and Mint, sign-off a yes 13 of 13.
   - Topics are grouped into buildable units, as today (the grouping now
     runs in the epic menu), and the spec is assembled from their records —
-    assembly, not archaeology.
-  - It marks what it leaves to the builder.
+    assembly, not archaeology. Today Claude extracts exhaustively from the
+    discussion documents, a gate per topic, with tracking files proving
+    each source item incorporated.
+  - **Every statement traces to an entry**: it cites the ledger entry it
+    comes from (R23) or is marked the builder's, so a statement with no
+    source is invented and the review finds it mechanically (Portal: "what
+    do you mean portal exits with an error? Thats not what we agreed").
+  - It marks what it leaves to the builder: only what the matrix makes
+    the builder's, recorded as such.
   - It ends with the **phase cut**: phases in build order, each an
     independently verifiable slice with acceptance criteria written as
     scenarios. Those criteria are the test list (R33).
@@ -850,11 +866,26 @@ project's own measurements decide (R7).
     (R34).
   - Canonical assets are linked from it: the builder cannot build a design
     it has not seen.
-  - One review pass: fidelity to the records, contradictions between
-    topics, unsettled questions that needed the person. The pass that
-    hunts undecided detail goes — the builder decides that detail.
-  - Correcting a concluded spec stays the corrigendum route, made one verb
-    that applies the edit, writes the entry and re-indexes.
+  - **The review hunts gaps, and the matrix answers them** (What the
+    workflows are for): fidelity to the records, contradictions between
+    topics, and the undecided detail the build would otherwise meet. A
+    gap found here is decided here — mostly Claude's call, sometimes the
+    person's, in product terms and never by section number ("you're
+    referencing specification section numbers, which mean nothing to me")
+    — and written as an entry in the topic it belongs to, so the record
+    stays the source. Gaps at the spec mean decision missed them; the
+    measure (R36) shows where.
+  - **A re-review reads only what changed, unasked**, and stops when a pass
+    changes nothing. Today each cycle rereads the whole spec and asks the
+    person whether to go again ("If we're still finding errors that were
+    created by the review before, how do we ever stop?").
+  - **Ready to build** is the spec's gate, once per spec: the short outline
+    and the phase cut (R15), replacing today's construction, finding,
+    re-loop and sign-off gates. A topic's close is **decided** (R11); for a
+    feature the two are one screen.
+  - Correcting a concluded spec is one verb doing three things: a ledger
+    entry superseding the decision, which updates the topic's record; the
+    spec's corrigendum; the re-index.
 
 ### Implementation
 
@@ -1086,7 +1117,7 @@ project's own measurements decide (R7).
   completed (72), the new-topic doors (82) and reactivate (37) were never
   picked. The menu becomes:
   - **What waits on the person first** — an authority gate (start this work, approve the
-    map, ready to build, finish), a builder's question raised mid-phase,
+    map, decided, ready to build, finish), a builder's question raised mid-phase,
     verdicts waiting (R23) — each with its door.
   - **Topics by what they need.** A topic in decision shows its progress
     through its map; decided, in session, mail waiting and experiments
@@ -1245,7 +1276,7 @@ each call on a page that day.
     entries); an index rebuilt from the lines is added only if queries
     slow.
   - Written by engine commands only, never by hand. The person reads it
-    when they choose; at ready to build they see the count and the few
+    when they choose; at a topic's decided screen they see the count and the few
     calls worth a look, never the whole list. Every departure — an answer that amends or overrules
   Claude's lean — joins a verdict queue: a page like the one the person
   used for R29, where they say, when they choose, what the product would
@@ -1266,8 +1297,9 @@ each call on a page that day.
     commercialization background review on 2026-10-13 came back 15
     findings, 14 needing the person's call and 1 belonging elsewhere —
     "I really can't be bothered to work through all of those"; usually
-    two or three are Claude's, ten or eleven the person's. The aim
-    reverses it: of ten, about one for the person.
+    two or three are Claude's, ten or eleven the person's. Calls that
+    match the person's reverse it — of ten, about one for the person — an
+    indicator of the matrix working, never a target.
   - **Facts are checked, intent is asked.** A question that reading the
     code, the record or running something can answer never reaches the
     person: Claude checks it. FlowX ranks the person last as a source of
@@ -1354,8 +1386,8 @@ each call on a page that day.
     many points are open, how many it would settle, and which still come
     to the person by the rule ("12 open: I'd settle 9; 3 come to you — 2
     contracts, 1 look"). On yes, Claude settles them in the ledger, asks
-    the rest in one batch and brings the topic to ready to build, where
-    the person signs off with the ledger in view. Declined, it waits for
+    the rest in one batch and brings the topic to its decided screen,
+    where the person signs off with the ledger in view. Declined, it waits for
     the next run. The run only times the offer: after 5 agreements in a
     row in a session, the person's next answers departed 18% of the time,
     against 19% overall; after 8, 23%. Settling is safe because real loss
@@ -1796,8 +1828,9 @@ think is a good sign."
 
 - **R40 — Gates in three kinds.**
   - **Authority gates, fixed:** start this work (discovery's shape gate,
-    R10), approve the map, ready to build (signing off the spec folds in
-    here), finish. Never automatic; acting before
+    R10), approve the map, decided (a topic's close, R11), ready to build
+    (the spec's outline and phase cut, R14; for a feature one screen with
+    decided), finish. Never automatic; acting before
     the person's go is the correction they make most often.
   - **Product questions, computed** by the ask rule (R24).
   - **Process gates, learned.** Every gate answer is recorded by the gate's
@@ -2006,7 +2039,7 @@ person, one item at a time; the sections above hold the detail.
   whatever level the conversation reaches, no detail questions in it,
   feature and epic two types with a light call between them (R10, R19);
   the product record — the workflows' own file, never CLAUDE.md, started
-  in discovery, added to from decisions at ready to build, read by every
+  in discovery, added to from decisions at a topic's decided screen, read by every
   opening view, apart from the feature map (R10); where the person has no
   view on a fork, Claude's lean comes next (R11); discovery's gates —
   starting work an authority gate, the map's screen holding the parks, no
@@ -2029,6 +2062,13 @@ person, one item at a time; the sections above hold the detail.
   what they find, the closing pass with two readers and re-reading what
   it changed (R11, R40); the purpose of the workflows stated (What the
   workflows are for). Decision is walked.
+- From the specification walk (2026-10-13): every statement traces to an
+  entry; the review hunts gaps and the matrix answers them, written into
+  the topics' records; a re-review reads only what changed, unasked;
+  "decided" closes a topic and "ready to build" is the spec's gate; a
+  correction is one verb doing three things (R14, R40). The goal stated:
+  Claude deciding as the person would have, never asking less for its
+  own sake (What the workflows are for).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -2050,8 +2090,6 @@ person, one item at a time; the sections above hold the detail.
 **Shape only — agreed in outline, never walked in detail:**
 - Mailboxes (R13): the one-command open needs a command-line form or
   arguments on the start skill.
-- Specification (R14): assembly from the records, the phase-cut corridor,
-  the one review pass, the corrigendum verb.
 - Feature (R19) and cross-cutting (R22).
 - The tracking layer beyond the epic menu (R17): the start menu, the
   inbox, the roadmap.
