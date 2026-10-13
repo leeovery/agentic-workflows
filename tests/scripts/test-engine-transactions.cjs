@@ -2195,6 +2195,23 @@ describe('engine inbox archive / restore / delete', () => {
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
   });
 
+  it('deletes the archived item named, never a sibling its name would match as a pattern', () => {
+    const archived = path.join(dir, '.workflows/.inbox/.archived/ideas');
+    fs.mkdirSync(archived, { recursive: true });
+    fs.writeFileSync(path.join(archived, '2026-06-01--retry[s].md'), '# Retry\n');
+    fs.writeFileSync(path.join(archived, '2026-06-01--retrys.md'), '# Retrys\n');
+    git(dir, ['add', '.workflows/.inbox/.archived']);
+    git(dir, ['commit', '-q', '-m', 'archive two']);
+
+    const res = engine(dir, ['inbox', 'delete', '.workflows/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+
+    assert.deepStrictEqual(res.deleted, ['.workflows/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+    assert.ok(!fs.existsSync(path.join(archived, '2026-06-01--retry[s].md')));
+    assert.ok(fs.existsSync(path.join(archived, '2026-06-01--retrys.md')));
+    assert.deepStrictEqual(git(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n'),
+      ['.workflows/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+  });
+
   it('rejects invalid paths strictly, before anything moves', () => {
     // Outside the inbox entirely.
     assert.match(

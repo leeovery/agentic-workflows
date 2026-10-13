@@ -551,13 +551,13 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
    node .claude/skills/workflow-engine/scripts/engine.cjs code status
    ```
 
-   Name, from its `files`, every file the task wrote; the engine validates each path, commits confined to them, and answers with `left_dirty`:
+   Name, from its `files`, every file the task wrote, each single-quoted (a single quote inside a path written `'\''`); the engine validates each path, commits confined to them, and answers with `left_dirty`:
 
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {code and test files} -m "impl({work_unit}): T{internal_id} — {brief description}" --for {work_unit} implementation/{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths '{code or test file}' … -m "impl({work_unit}): T{internal_id} — {brief description}" --for {work_unit} implementation/{topic}
    ```
 
-   The subject is exactly as shown — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review reads task commits by this token through `engine code log`, and the task's commits alone are what it reads the task's file list from, so nothing but code and tests belongs in them. Anything in the response's `left_dirty` that this task touched is a path you forgot: commit it now with a second `--paths` call carrying the same message, so `code log` selects it with the task's commit, before proceeding. Nothing else in that list is yours. `.workflows` dirt never appears there at all, but a plan store outside the work unit does, and so does anything else on the tree — including a concurrent session's. Name only files this task wrote.
+   The subject is exactly as shown — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review reads task commits by this token through `engine code log`, and the task's commits alone are what it reads the task's file list from, so nothing but code and tests belongs in them. Anything in the response's `left_dirty` that this task touched is a path you forgot: commit it now with a second `--paths` call, each path single-quoted, carrying the same message, so `code log` selects it with the task's commit, before proceeding. Nothing else in that list is yours. `.workflows` dirt never appears there at all, but a plan store outside the work unit does, and so does anything else on the tree — including a concurrent session's. Name only files this task wrote.
 
 #### If `{disposition}` is `boundary`
 

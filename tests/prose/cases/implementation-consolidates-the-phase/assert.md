@@ -50,7 +50,7 @@ The prose should have taken this path:
     src/webhooks/capture.js has its two-line OLD text replaced by the
     NEW text verbatim, the claim about the rest of the system gone and
     the idempotency clause kept — and committed as a code commit
-    naming that one file (`commit --paths src/webhooks/capture.js …
+    naming that one file, single-quoted (`commit --paths 'src/webhooks/capture.js' …
     --for pay implementation/pay`, message `impl(pay): phase 1 comment
     corrections`), with no agent, no fix round and no user turn; the
     one finding folds into one staged proposal — title, placement,
