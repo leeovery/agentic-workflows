@@ -55,7 +55,7 @@
       "task init pay pay",
       "manifest get pay work_type",
       "task analysis-cycle pay pay",
-      "--grep=impl(pay): Tpay-",
+      "code log pay pay",
       "impl(pay): analysis cycle 1 — findings",
       "render conclude-gate pay.implementation.pay",
       "topic complete pay implementation pay",

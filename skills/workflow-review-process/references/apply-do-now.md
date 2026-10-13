@@ -32,7 +32,11 @@ This is an announcement, not a gate: the user reads it while the work proceeds.
 
 ## B. Apply
 
-Ensure the working tree is clean before the first batch — `git status`. A dirty tree makes the verification unattributable.
+Ensure the working tree is clean before the first batch — nothing uncommitted in any repo of the project, the call's `files` empty. A dirty tree makes the verification unattributable.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code status
+```
 
 Group the actions by **connected file sets**: any two actions sharing a file belong to the same set, transitively. An action already spans every file it must touch — synthesis collapsed coupled findings into one action precisely so a bound pair cannot be split — so a set never holds half of anything.
 
@@ -76,7 +80,11 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 
 ## D. Commit
 
-**The record is the outcome.** Before anything is written forward, confirm it: the diff shows the applied work, and a status claiming work the diff does not show is a discrepancy to surface, never to carry into the report.
+**The record is the outcome.** Before anything is written forward, confirm it: the uncommitted change across every repo in the project shows the applied work, and a status claiming work the diff does not show is a discrepancy to surface, never to carry into the report.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code diff
+```
 
 #### If nothing was applied
 

@@ -19,7 +19,7 @@ The prose should have taken this path:
    specification's numbered headings — the payment-intent section, the
    capture section, and the test surface — finds none of this cycle's
    files (`change-set-c1-…`) already written, gathers the brief (the
-   first task commit and the file list, the linter names — the fixture
+   linter names — the fixture
    declares none — the root `CLAUDE.md` and the project skills as the
    project's conventions, the finding floor path, and the unsettled
    file path), and dispatches one agent per section in parallel —

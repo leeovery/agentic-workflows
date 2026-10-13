@@ -545,13 +545,19 @@ node .claude/skills/workflow-engine/scripts/engine.cjs task complete {work_unit}
    node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "impl({work_unit}): record T{internal_id} fix rounds" --topic implementation/{topic}
    ```
 
-3. **The task's code and tests** — name every file the task wrote; the engine validates each path, commits confined to them, and answers with `left_dirty`:
+3. **The task's code and tests** — read the uncommitted code, across every repo in the project:
+
+   ```bash
+   node .claude/skills/workflow-engine/scripts/engine.cjs code status
+   ```
+
+   Name, from its `files`, every file the task wrote; the engine validates each path, commits confined to them, and answers with `left_dirty`:
 
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {code and test files} -m "impl({work_unit}): T{internal_id} — {brief description}" --for {work_unit} implementation/{topic}
    ```
 
-   The subject is exactly as shown — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review's scope-grep finds task commits by this token, and this commit alone is what it reads the task's file list from, so nothing but code and tests belongs in it. Anything in the response's `left_dirty` that this task touched is a path you forgot: commit it now with a second `--paths` call before proceeding. Nothing else in that list is yours. `.workflows` dirt never appears there at all, but a plan store outside the work unit does, and so does anything else on the tree — including a concurrent session's. Name only files this task wrote.
+   The subject is exactly as shown — `T` immediately followed by the internal id, no space (`impl(pay): Tpay-1-1 — …`); review reads task commits by this token through `engine code log`, and this commit alone is what it reads the task's file list from, so nothing but code and tests belongs in it. Anything in the response's `left_dirty` that this task touched is a path you forgot: commit it now with a second `--paths` call before proceeding. Nothing else in that list is yours. `.workflows` dirt never appears there at all, but a plan store outside the work unit does, and so does anything else on the tree — including a concurrent session's. Name only files this task wrote.
 
 #### If `{disposition}` is `boundary`
 

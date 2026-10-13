@@ -8,7 +8,7 @@ The prose should have taken this path:
 3. the plan and specification are read through the planning item and
    the format's reading adapter; the implementation's project
    skills are looked up
-4. verification scopes its files from the git history of the per-task
+4. verification scopes its files from `code log` over the per-task
    implementation commits, extracts both tasks from the plan, creates
    the review directory, and dispatches a verifier per task — stubbed:
    each report lands at its task's suffix, each return is complete with
@@ -22,7 +22,7 @@ The prose should have taken this path:
    specification's numbered headings — the payment-intent section, the
    capture section, and the test surface — finds none of this cycle's
    files (`change-set-c1-…`) already written, gathers the brief (the
-   first task commit and the file list, the linter names — the fixture
+   linter names — the fixture
    declares none — the project skills, the finding floor path, and the
    statement that nothing was unsettled, since no unsettled file
    exists), and dispatches the three agents in parallel — stubbed: each

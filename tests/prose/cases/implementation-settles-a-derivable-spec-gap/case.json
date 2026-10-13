@@ -54,7 +54,7 @@
       "manifest get pay.implementation.pay staging",
       "manifest get pay.review.pay staging",
       "task analysis-cycle pay pay",
-      "--grep=impl(pay): Tpay-",
+      "code log pay pay",
       "impl(pay): analysis cycle 1 — findings",
       "staging.c1.tasks.1",
       "impl(pay): analysis cycle 1 — synthesis",

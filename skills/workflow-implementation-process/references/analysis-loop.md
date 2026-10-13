@@ -99,9 +99,13 @@ You MUST NOT choose on the user's behalf.
 
 ## B. Git Checkpoint
 
-Ensure clean code before analysis. Run `git status` and set aside every `.workflows/` path — those belong to their own phase's scope, and the loop's own commits carry them.
+Ensure clean code before analysis. Read the uncommitted code across every repo in the project, `.workflows/` held out:
 
-#### If nothing outside `.workflows/` is dirty
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code status
+```
+
+#### If `files` is empty
 
 → Proceed to **C. Dispatch Analysis Agents**.
 

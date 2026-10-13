@@ -47,7 +47,7 @@
       "render entry-gate pay.review.pay",
       "manifest get pay.review.pay status",
       "topic start pay review pay",
-      "impl(pay): T",
+      "code log pay pay",
       "push pay.review.pay reviewed_tasks",
       "manifest get pay.implementation.pay linters",
       "render change-set-tree pay.review.pay",
@@ -62,7 +62,7 @@
     "calls_in_order": [
       "render entry-gate pay.review.pay",
       "topic start pay review pay",
-      "impl(pay): T",
+      "code log pay pay",
       "push pay.review.pay reviewed_tasks",
       "write:.workflows/pay/review/pay/change-set-",
       "render change-set-tree pay.review.pay",

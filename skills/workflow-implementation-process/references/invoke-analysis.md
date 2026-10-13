@@ -10,13 +10,11 @@ This step dispatches the three analysis agents in parallel to evaluate the compl
 
 ## Identify Scope
 
-Build the list of implementation files using git history:
+The implementation files are the `files` of this topic's task commits, read across every repo in the project:
 
 ```bash
-git log --oneline --name-only --pretty=format: --grep="impl({work_unit}): T{topic}-" | sort -u | grep -v '^$'
+node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic}
 ```
-
-This captures all files touched by this topic's task commits (internal IDs embed the topic, so the `T{topic}-` prefix keeps sibling topics of a multi-topic epic out of scope).
 
 ---
 

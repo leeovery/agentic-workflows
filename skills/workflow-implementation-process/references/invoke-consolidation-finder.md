@@ -10,10 +10,10 @@ This step invokes the `workflow-implementation-consolidation-finder` agent (`.cl
 
 ## Identify Scope
 
-Build the list of files the phase touched using git history — internal IDs embed the topic and phase, so the `T{topic}-{N}-` prefix scopes the sweep to this phase's task commits:
+The phase files are the `files` of this phase's task commits, read across every repo in the project:
 
 ```bash
-git log --oneline --name-only --pretty=format: --grep="impl({work_unit}): T{topic}-{N}-" | sort -u | grep -v '^$'
+node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic} --phase {N}
 ```
 
 Read the bank (an absent field is empty — dispatch with an empty list):
@@ -42,7 +42,7 @@ Pass:
 6. **finding-floor.md path** — `.claude/skills/workflow-implementation-process/references/finding-floor.md`
 7. **Work unit** — the work unit name (for path construction)
 8. **Topic name** — the implementation topic
-9. **Phase number** — `{N}`, and the commit grep token `impl({work_unit}): T{topic}-{N}-` for reading the phase's diff
+9. **Phase number** — `{N}`
 
 The agent writes its findings to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{N}.md`.
 

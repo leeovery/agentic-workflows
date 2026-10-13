@@ -193,6 +193,10 @@ The cue on a topic another session is working right now. Awareness only: it neve
 **code session**:
 The one session per checkout allowed to be writing code at a time, since implementation and review change the same tree.
 
+**nested repo**:
+A git repository of its own inside the project's folder that holds code: a clone, or a submodule. Found every time, never configured: a code commit lands in each one it touches, and every read of the change spans them all.
+_Avoid_: child repo
+
 **mailbox**:
 Where a discussion, investigation or research receives messages, whatever the kind of work: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot conclude while one waits; the menus show it as *mail waiting*.
 _Avoid_: triage queue, queue

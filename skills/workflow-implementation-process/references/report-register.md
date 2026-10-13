@@ -55,7 +55,7 @@ As markdown (not a code block). Issues in severity order. Per issue, a labeled s
 
 ## Product Summary
 
-As markdown (not a code block). Bold section labels, in this order, each section omitted when it has nothing to say. Drawn from the executor's report, the review and its notes, the fix history, and the diff — never the executor's SUMMARY alone.
+As markdown (not a code block). Bold section labels, in this order, each section omitted when it has nothing to say. Drawn from the executor's report, the review and its notes, the fix history, and the task's uncommitted change across every repo in the project (`node .claude/skills/workflow-engine/scripts/engine.cjs code diff`) — never the executor's SUMMARY alone.
 
 - **Changed since last gate** — leads, and only after a fix round: what the fix round changed.
 - **Before** — what this part of the product did before the task.
