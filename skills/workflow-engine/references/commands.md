@@ -439,7 +439,7 @@ engine commit --migrations -m "<message>"            # every path the workflows 
 
 `log` and the selecting `diff` take commits by one of two selections, never both:
 
-- `<work-unit> <topic> [--phase <N>]` — the topic's task commits: those whose subject opens `impl({work_unit}): T` and an internal id of the topic, `{topic}-{phase}-{task}`, ending the subject or followed by a space. A sibling topic whose name extends this one (`auth`, `auth-flow`) is never caught, and neither is an id that runs on. `--phase` takes that phase's task commits alone.
+- `<work-unit> <topic> [--phase <N>]` — the topic's task commits: those whose subject opens `impl({work_unit}): T` and an internal id of the topic, `{topic}-{phase}-{task}`, ending the subject or followed by a character no id continues with — anything but a word character or `-`, so a space, a colon or an em dash ends it. A sibling topic whose name extends this one (`auth`, `auth-flow`, `auth-2`) is never caught, and neither is an id that runs on (`auth-1-1x`). `--phase` takes that phase's task commits alone.
 - `--subject <prefix>` — the commits whose subject opens with the prefix, taken as a fixed string (`review({work_unit}): {topic} cycle {N} — apply do-now findings`). A mention in a body, or the prefix later in a subject, never matches.
 
 The forms:

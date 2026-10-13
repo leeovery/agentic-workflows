@@ -48,18 +48,19 @@ function subjectSelector(prefix) {
 
 /**
  * A topic's task commits — `impl({work_unit}): T{internal id}`, the id one of
- * the topic's (`{topic}-{phase}-{task}`) and ending the subject or a word of
- * it — and with `phase`, only that phase's.
+ * the topic's (`{topic}-{phase}-{task}`) and ending where the subject does or
+ * at a character no id continues with, neither a word character nor `-` —
+ * and with `phase`, only that phase's.
  * @param {string} workUnit @param {string} topic @param {number} [phase]
  * @returns {Selector}
  */
 function taskSelector(workUnit, topic, phase) {
-  const opening = `impl(${workUnit}): T`;
+  const opening = `impl(${workUnit}): T${topic}-`;
   return {
-    grep: `${opening}${topic}-`,
+    grep: opening,
     selects: (subject) => {
       if (!subject.startsWith(opening)) return false;
-      const [id] = subject.slice(opening.length).split(' ');
+      const id = `${topic}-${subject.slice(opening.length).split(/[^\w-]/)[0]}`;
       const step = stepOfInternalId(id);
       return step !== null && id === `${topic}-${step.phase}-${step.task}` && (phase === undefined || step.phase === phase);
     },

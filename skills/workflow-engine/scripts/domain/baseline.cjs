@@ -12,7 +12,7 @@
 // confined transaction.
 // ---------------------------------------------------------------------------
 
-const { git, hasCommits } = require('../kernel/git.cjs');
+const { git, GitError, hasCommits } = require('../kernel/git.cjs');
 const { projectRepos, projectPath } = require('../kernel/repos.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -303,7 +303,8 @@ function treeShape(paths) {
  * commits yet adds nothing, a shallow nested clone its tree alone, and a
  * submodule's pointer is never one of the root's files. Null when there is
  * no honest history to read — not a git repository, no commits, a shallow
- * root, or a read that failed — leaving the judgment to the tree.
+ * root, or a git read that failed — leaving the judgment to the tree. Any
+ * other failure is a bug, and throws.
  * @param {string} cwd
  * @returns {BaselineSignal|null}
  */
@@ -327,8 +328,9 @@ function baselineSignal(cwd) {
       history_before: elided(mergedByTime(accounts.map((a) => a.history))),
       ...treeShape(accounts.flatMap((a) => a.files).filter((p) => !repoDirs.has(p))),
     };
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof GitError) return null;
+    throw err;
   }
 }
 

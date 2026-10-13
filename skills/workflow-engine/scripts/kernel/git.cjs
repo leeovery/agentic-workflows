@@ -51,8 +51,12 @@ function indexBudgetMs() {
 // truncated answer.
 const READ_BUDGET_BYTES = 64 * 1024 * 1024;
 
+/** A git run that failed — told apart from a bug in the code around it. */
+class GitError extends Error {}
+
 /**
- * Run git and return stdout. Throws with git's stderr on a non-zero exit.
+ * Run git and return stdout. Throws a GitError with git's stderr on a
+ * non-zero exit.
  * @param {string} cwd
  * @param {string[]} args
  * @param {Record<string, string>} [env] variables layered over the process's own
@@ -63,10 +67,10 @@ function git(cwd, args, env, input) {
   const res = spawnSync('git', args, {
     cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, input, maxBuffer: READ_BUDGET_BYTES,
   });
-  if (res.error) throw new Error(`git ${args[0]} failed: ${res.error.message}`);
+  if (res.error) throw new GitError(`git ${args[0]} failed: ${res.error.message}`);
   if (res.status !== 0) {
     const detail = (res.stderr || res.stdout || `exit ${res.status}`).trim();
-    throw new Error(`git ${args[0]} failed: ${detail}`);
+    throw new GitError(`git ${args[0]} failed: ${detail}`);
   }
   return res.stdout;
 }
@@ -499,19 +503,14 @@ function untrackedFiles(cwd, exclude = []) {
 
 /**
  * The patch `git diff` answers for `args`, plain whatever the user's config —
- * no colour, no external diff driver. Exit 1 is git saying the sides differ,
- * whatever warning it printed beside; above that is a failure.
+ * no colour, no external diff driver.
  * @param {string} cwd
  * @param {string[]} args
  * @param {Record<string, string>} [env] variables layered over the process's own
  * @returns {string}
  */
 function diffPatch(cwd, args, env) {
-  const full = ['diff', '--no-color', '--no-ext-diff', ...args];
-  const res = spawnSync('git', full, { cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, maxBuffer: READ_BUDGET_BYTES });
-  if (!res.error && (res.status === 0 || res.status === 1)) return res.stdout;
-  const detail = res.error ? res.error.message : (res.stderr || `exit ${res.status}`).trim();
-  throw new Error(`git diff failed: ${detail}`);
+  return git(cwd, ['diff', '--no-color', '--no-ext-diff', ...args], env);
 }
 
 /**
@@ -554,7 +553,7 @@ function removeFiles(cwd, paths) {
 }
 
 module.exports = {
-  git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
+  git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles,
 };

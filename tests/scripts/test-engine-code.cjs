@@ -291,11 +291,12 @@ describe('engine code diff and status: the change not yet committed', () => {
     assert.ok(patch.includes('+one'));
   });
 
-  it('a diff that exits 1 for its differences is a patch, whatever warning git printed beside it', () => {
-    git(dir, ['config', 'core.autocrlf', 'input']);
-    writeFile(dir, 'src/app.js', '2\r\n');
+  it('a diff whose git exits anything but 0 fails — exit 1 included, never read as a patch', () => {
+    writeFile(dir, 'src/app.js', '2\n');
 
-    assert.match(diffPatch(dir, ['--exit-code', 'HEAD']), /^\+2/m);
+    assert.match(diffPatch(dir, ['HEAD']), /^\+2/m);
+    assert.throws(() => diffPatch(dir, ['--exit-code', 'HEAD']), /^Error: git diff failed/);
+    assert.throws(() => diffPatch(dir, ['no-such-rev']), /^Error: git diff failed/);
   });
 
   it('diff: a clean project prints nothing', () => {
@@ -434,6 +435,32 @@ describe('engine code log and diff <work-unit> <topic>: a topic\'s task commits'
     assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~4') }, { repo: 'api', base: sha(api, 'HEAD~1') }]);
     assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth-flow']).commits.map((c) => c.subject),
       ['impl(pay): Tauth-flow-1-1 — the sibling topic']);
+  });
+
+  it('log: an id ends the subject or meets a character no id continues with — a colon, an em dash with no space', () => {
+    const subjects = [
+      'impl(pay): Tauth-1-3: the colon',
+      'impl(pay): Tauth-1-4—no space',
+      'impl(pay): Tauth-1-5',
+      'impl(pay): Tauth-1-12 — runs to its own end',
+      'impl(pay): Tauth-1-1_x — an underscore runs on',
+      'impl(pay): Tauth-2-1-1 — the auth-2 topic',
+    ];
+    subjects.forEach((subject, i) => {
+      writeFile(dir, `src/edge-${i}.js`, '1\n');
+      commitAll(dir, subject);
+    });
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth', '--phase', '1']).commits.map((c) => c.subject), [
+      'impl(pay): Tauth-1-1 — login',
+      'impl(pay): Tauth-1-3: the colon',
+      'impl(pay): Tauth-1-4—no space',
+      'impl(pay): Tauth-1-5',
+      'impl(pay): Tauth-1-12 — runs to its own end',
+      'impl(pay): Tauth-1-2',
+    ]);
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth-2']).commits.map((c) => c.subject),
+      ['impl(pay): Tauth-2-1-1 — the auth-2 topic'], 'and auth\'s own Tauth-2-1 is never auth-2\'s');
   });
 
   it('log --phase: only that phase\'s task commits, and each repo\'s base from its earliest of them', () => {

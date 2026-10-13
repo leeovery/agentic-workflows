@@ -189,6 +189,28 @@ describe('the baseline signal across the project\'s repos', () => {
   });
 });
 
+describe('the baseline signal\'s failures', () => {
+  const reposModule = require.resolve('../../skills/workflow-engine/scripts/kernel/repos.cjs');
+  const baselineModule = require.resolve('../../skills/workflow-engine/scripts/domain/baseline.cjs');
+
+  it('throws a failure that is no git read — only a failed git read nulls the signal', () => {
+    const dir = harness.setupGitFixture('engine-baseline-bug-');
+    const repos = require(reposModule);
+    const projectRepos = repos.projectRepos;
+    // A repo list with no root: the signal's own code then reads a property of undefined.
+    repos.projectRepos = () => [];
+    delete require.cache[baselineModule];
+    try {
+      const { baselineSignal } = require(baselineModule);
+      assert.throws(() => baselineSignal(dir), TypeError);
+    } finally {
+      repos.projectRepos = projectRepos;
+      delete require.cache[baselineModule];
+      harness.cleanupFixture(dir);
+    }
+  });
+});
+
 describe('the baseline signal of a project inside a larger repository', () => {
   const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
   let dir;
