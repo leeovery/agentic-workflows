@@ -94,10 +94,10 @@ Every action was skipped or reverted — there is nothing to commit. Carry that 
 
 #### Otherwise
 
-Commit the work as one body — the code commit takes the paths you name, validates each, and answers with `left_dirty`. `{N}` is this review cycle's number, as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it:
+Commit the work as one body — the code commit takes the paths you name, each single-quoted, validates each, and answers with `left_dirty`. `{N}` is this review cycle's number, as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {files the fixes touched, each single-quoted} -m "review({work_unit}): {topic} cycle {N} — apply do-now findings" --for {work_unit} review/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {files the fixes touched} -m "review({work_unit}): {topic} cycle {N} — apply do-now findings" --for {work_unit} review/{topic}
 ```
 
 Anything in `left_dirty` that these fixes touched is a path you forgot: commit it now with a second `--paths` call, each path single-quoted, carrying the same message, so the report's read of the apply commit finds it, before carrying the outcome forward.

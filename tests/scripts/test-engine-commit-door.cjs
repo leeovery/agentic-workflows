@@ -15,6 +15,7 @@ const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
 
 const { ENGINE, git, cleanupFixture } = harness;
 
@@ -1250,6 +1251,21 @@ describe('engine commit --migrations: the paths the workflows own', () => {
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',
       '--for', 'payments', 'implementation/topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--migrations']).error, /Usage/);
+  });
+
+  it('takes each path literally — a file named with brackets is that file, never its glob siblings', () => {
+    for (const rel of ['app/[id]/page.tsx', 'app/[id]/old.tsx', 'app/i/page.tsx', 'app/d/page.tsx']) writeFile(dir, rel, `// ${rel}\n`);
+    commitAll(dir, 'routes');
+    for (const rel of ['app/[id]/page.tsx', 'app/i/page.tsx', 'app/d/page.tsx']) writeFile(dir, rel, '// edited\n');
+    fs.unlinkSync(path.join(dir, 'app/[id]/old.tsx'));
+    git(dir, ['add', '--', 'app/d/page.tsx']);
+
+    const sha = commitStaged(dir, ['app/[id]/page.tsx', 'app/[id]/old.tsx'], 'chore: the bracketed files');
+
+    assert.strictEqual(sha, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(headChanges(), ['D\tapp/[id]/old.tsx', 'M\tapp/[id]/page.tsx']);
+    assert.deepStrictEqual(statusLines(dir), ['M  app/d/page.tsx', ' M app/i/page.tsx'],
+      'the glob siblings stay as they were — one staged, one not');
   });
 });
 

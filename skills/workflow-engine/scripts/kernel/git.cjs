@@ -273,8 +273,10 @@ function commitPathspec(cwd, pathspec, message, nested = []) {
   const addable = stageableSpecs(cwd, files);
   if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
   const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
-  if (known.length === 0 || !hasChangesInPaths(cwd, [...literally(known), ...held])) return null;
-  gitIndexed(cwd, ['commit', '-m', message, '--', ...literally(known), ...held]);
+  if (known.length === 0) return null;
+  const scope = [...literally(known), ...held];
+  if (!hasChangesInPaths(cwd, scope)) return null;
+  gitIndexed(cwd, ['commit', '-m', message, '--', ...scope]);
   return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
@@ -318,10 +320,11 @@ function operationInProgress(cwd) {
  * `git commit -- <paths>` would read the file straight back from the working
  * tree: the commit is built from a scratch index holding HEAD with the paths'
  * entries taken from the real one, so whatever else is staged stays staged
- * and out of the commit. A pathspec git refuses to stage — one an ignore
- * rule holds out, one beyond a symbolic link — is left as it is, never
- * forced in, and one matching nothing is dropped. Refuses while a merge,
- * cherry-pick, revert or rebase is in progress, touching nothing.
+ * and out of the commit. Each path is taken literally. A path git refuses
+ * to stage — one an ignore rule holds out, one beyond a symbolic link — is
+ * left as it is, never forced in, and one matching nothing is dropped.
+ * Refuses while a merge, cherry-pick, revert or rebase is in progress,
+ * touching nothing.
  * @param {string} cwd project root
  * @param {string[]} specs
  * @param {string} message
@@ -331,7 +334,7 @@ function commitStaged(cwd, specs, message) {
   const open = operationInProgress(cwd);
   if (open) throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, then commit again`);
   const addable = stageableSpecs(cwd, specs).filter((p) => !addRefused(cwd, p));
-  if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...addable]);
+  if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...literally(addable)]);
   return commitIndexEntries(cwd, specs, message);
 }
 
@@ -376,12 +379,12 @@ function headTree(cwd) {
 function commitIndexEntries(cwd, specs, message) {
   const head = headTree(cwd);
   // `--index-info` reads paths from the repository root, whatever the cwd.
-  const entries = git(cwd, ['ls-files', '--stage', '-z', '--full-name', '--', ...specs]);
+  const entries = git(cwd, ['ls-files', '--stage', '-z', '--full-name', '--', ...literally(specs)]);
   if (head === null && entries === '') return null;
   const env = { GIT_INDEX_FILE: gitPath(cwd, 'workflows-commit.index') };
   try {
     git(cwd, head === null ? ['read-tree', '--empty'] : ['read-tree', 'HEAD'], env);
-    git(cwd, ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', ...specs], env);
+    git(cwd, ['rm', '--cached', '-r', '-q', '--ignore-unmatch', '--', ...literally(specs)], env);
     if (entries !== '') git(cwd, ['update-index', '-z', '--index-info'], env, entries);
     if (head !== null && git(cwd, ['write-tree'], env).trim() === head) return null;
     git(cwd, ['commit', '-q', '-m', message], env);
