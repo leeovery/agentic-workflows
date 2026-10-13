@@ -727,6 +727,15 @@ project's own measurements decide (R7).
   - **Claude's own spikes back its calls** (R24): the reference assets
     attach to Claude's ledger entry as its evidence, so "what have you
     decided without me" shows how Claude found out.
+  - **A spike for the whole epic happens in discovery**, through the epic
+    menu's discovery door — no surface of its own, since discovery is
+    already the epic-level conversation with a log, and can add topics and
+    send messages. Its result lands as a new topic (the brief pointing at
+    the spike), messages to the topics it affects (a decided one reopens
+    through its mailbox), product-record lines, or a direction not taken,
+    kept in discovery's log with its reason. Questions that span topics
+    do arise mid-epic: Fumi's switch to CloudKit was decided inside
+    storage-and-sync and reshaped three topics.
 
   Whether a product gets the workflows at all is the person's decision,
   made by installing them; the workflows never ask it. Building a v1 fast
