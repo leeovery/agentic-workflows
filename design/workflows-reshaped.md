@@ -1679,7 +1679,8 @@ labeller (unreachable here).
 **Parked:** the workflows board (Open) — low priority by the person's
 ruling, a visual tool rather than something that builds better products;
 mod panels are spiked with the person later; the first sketches were
-rushed and are set aside.
+rushed and are set aside. Uninstalling and reinstalling (Open) — raised
+by the person 2026-10-13, not yet discussed.
 
 **Still to come:** walk what is shape only, in the order the work
 depends on it — discovery and decision first, then specification, the
@@ -1720,6 +1721,20 @@ settled-from-evidence items with the person; then the formal plan
   it while Claude works — jumping to other work units, the inbox, the
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. Sketches per phase come next.
+- **Uninstalling and reinstalling.** Parked by the person 2026-10-13 for
+  a proper conversation later; recorded as raised, nothing decided.
+  - Removing the workflows with agntc leaves the hooks and the rest of
+    what the migrations put in place. The workflows need a way to
+    uninstall: remove the hooks, then either tell the user how to remove
+    the skills or run agntc's remove itself. Removing the skills is
+    agntc's job; agntc is being changed so the workflows can call its
+    remove, which is why this waits.
+  - Install runs through migrations at boot, on a new or an existing
+    project. Removal keeps `.workflows/` (the work, and the migrations
+    ledger with it), so a later reinstall would find the ledger and not
+    rerun the migrations that put the hooks in place. Deleting
+    `.workflows/` takes the ledger and everything reinstalls. A better
+    install process may be worth a look, or migrations may be fine.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
