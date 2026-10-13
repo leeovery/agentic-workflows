@@ -359,6 +359,19 @@ class Sim {
       fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(this.dir, '.claude/skills', skill, 'SKILL.md'));
     }
     fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), '.claude/skills/\n');
+    // Part of the project's code lives in a clone of its own that the project
+    // ignores — Folio's shape. A code commit naming a path in it lands in the
+    // clone's history, and every dirt read reaches into it.
+    this.api = path.join(this.dir, 'api');
+    fs.mkdirSync(this.api);
+    git(this.api, ['init', '-q', '-b', 'main']);
+    git(this.api, ['config', 'user.email', 'sim@example.com']);
+    git(this.api, ['config', 'user.name', 'Sim']);
+    git(this.api, ['config', 'commit.gpgsign', 'false']);
+    fs.writeFileSync(path.join(this.api, 'README.md'), '# API\n');
+    git(this.api, ['add', '-A']);
+    git(this.api, ['commit', '-q', '-m', 'init']);
+    fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), 'api/\n');
     this.step = 0;
     this.conversations = 0;
     // Hermetic environment, as a delta from this process's — the engine runs
@@ -472,7 +485,7 @@ class Sim {
         `[${label}] transaction verbs answer with pure JSON — display sections belong to render surfaces fetched at their display point`);
     }
     auditState(this.dir, label);
-    if (typeof parsed.committed === 'string') {
+    if (typeof parsed.committed === 'string' || (Array.isArray(parsed.committed) && parsed.committed.length > 0)) {
       assert.strictEqual(git(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
         `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);
     }
@@ -1001,18 +1014,25 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The task's code commit: declared paths, validated and confined, with the
   // residual dirt answered back so nothing the task touched is left behind.
   // Code has no layout to derive a scope from — this is the one commit whose
-  // paths Claude names.
-  sim.write(`src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
-  sim.write(`src/${topic}-untouched.js`, '// a file this task did not write\n');
-  // The analysis loop's checkpoint reads the dirty code from git: nothing an
-  // `impl(…):` commit touched yet, so both files are unexpected and the gate stands.
+  // paths Claude names. The task's code lives in the clone, so its commit
+  // lands in the clone's history and the root takes none.
+  sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
+  sim.write(`api/src/${topic}-untouched.js`, '// a file this task did not write\n');
+  // The analysis loop's checkpoint reads the dirty code from every repo:
+  // nothing an `impl(…):` commit touched yet, so both files are unexpected
+  // and the gate stands.
   assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
-    /implementation_files \(0\):\nunexpected_files \(1\):\n {2}src\/\n[\s\S]*- src\/ \(untracked\)[\s\S]*MENU: checkpoint files gate/);
-  const codeCommit = sim.run(['commit', '--paths', `src/${topic}.js`, '-m', `feat(${topic}): the task`,
+    /implementation_files \(0\):\nunexpected_files \(1\):\n {2}api\/src\/\n[\s\S]*- api\/src\/ \(untracked\)[\s\S]*MENU: checkpoint files gate/);
+  const rootHead = git(sim.dir, ['rev-parse', 'HEAD']).trim();
+  const codeCommit = sim.run(['commit', '--paths', `api/src/${topic}.js`, '-m', `feat(${topic}): the task`,
     '--for', wu, `implementation/${topic}`]);
-  assert.deepStrictEqual(codeCommit.left_dirty, [`src/${topic}-untouched.js`],
-    'the forgotten path comes back as the reconcile signal');
-  sim.run(['commit', '--paths', `src/${topic}-untouched.js`, '-m', `chore(${topic}): the rest`,
+  assert.deepStrictEqual(codeCommit.committed, [{ repo: 'api', sha: git(sim.api, ['rev-parse', '--short', 'HEAD']).trim() }],
+    'the commit lands in the clone that owns the file');
+  assert.strictEqual(git(sim.api, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), `src/${topic}.js`);
+  assert.strictEqual(git(sim.dir, ['rev-parse', 'HEAD']).trim(), rootHead, 'the root takes no code commit');
+  assert.deepStrictEqual(codeCommit.left_dirty, [`api/src/${topic}-untouched.js`],
+    'the forgotten path comes back as the reconcile signal, named from the project');
+  sim.run(['commit', '--paths', `api/src/${topic}-untouched.js`, '-m', `chore(${topic}): the rest`,
     '--for', wu, `implementation/${topic}`]);
   // Each executor and reviewer report's BANK entries deposit the moment the
   // report arrives (bank-deposit.md, loaded while `do_banking` is true) —
@@ -1069,15 +1089,20 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
   sim.write(`.workflows/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
   sim.write(`.workflows/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
-  // The verifiers leave the tree as they found it: the check reads git and
+  // The verifiers leave the tree as they found it: the check reads every
+  // repo — a leftover in the clone stops the review until it is gone — and
   // answers empty, the review's own artifacts sitting under .workflows/.
+  sim.write(`api/src/${topic}.probe.js`, '// a verifier\'s leftover\n');
+  assert.match(sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'content' }),
+    new RegExp(`modified or untracked: \`api/src/${topic}\\.probe\\.js\`\\.`));
+  fs.rmSync(path.join(sim.api, `src/${topic}.probe.js`));
   sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'empty' });
   // Prep's synthesis writes the action list the rest of the review reads.
   sim.write(`.workflows/.cache/${wu}/review/${topic}/actions.json`, {
     verdict: 'pass',
     actions: [
-      { id: 'A1', route: 'do-now', ids: ['1-1-1'], files: [`src/${topic}.js`] },
-      { id: 'A2', route: 'do-now', ids: ['1-1-2'], files: [`src/${topic}.js`] },
+      { id: 'A1', route: 'do-now', ids: ['1-1-1'], files: [`api/src/${topic}.js`] },
+      { id: 'A2', route: 'do-now', ids: ['1-1-2'], files: [`api/src/${topic}.js`] },
       { id: 'A3', route: 'out-of-scope', kind: 'quick-fix', ids: ['9-2-1'] },
     ],
   });
@@ -1089,9 +1114,11 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The apply lane writes code: in-scope, contained findings land in-session
   // as one commit, through the same declared-paths door the task loop uses —
   // beating the review topic, which is the code slot this session holds.
-  sim.write(`src/${topic}.js`, `module.exports = ${JSON.stringify(topic)}; // guarded\n`);
-  const applied = sim.run(['commit', '--paths', `src/${topic}.js`,
+  sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)}; // guarded\n`);
+  const applied = sim.run(['commit', '--paths', `api/src/${topic}.js`,
     '-m', `review(${wu}): apply do-now findings`, '--for', wu, `review/${topic}`]);
+  assert.deepStrictEqual(applied.committed.map((c) => c.repo), ['api'], 'the fixes land where the code lives');
+  assert.strictEqual(git(sim.api, ['log', '-1', '--format=%s']).trim(), `review(${wu}): apply do-now findings`);
   assert.deepStrictEqual(applied.left_dirty, [], 'the apply lane names everything it touched');
   sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);

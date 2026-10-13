@@ -14,10 +14,12 @@
 // - Commits are serialised: a process-wide lock (`.git/workflows-commit.lock`,
 //   same discipline as the manifest lock, on a longer clock) holds each
 //   add+commit sequence alone, so concurrent sessions never interleave on
-//   git's shared index.
+//   git's shared index. The code commit lands in each repo that owns one of
+//   its paths (kernel/repos), under that repo's own lock.
 // ---------------------------------------------------------------------------
 
 const { gitPath, commitPathspec, commitStaged } = require('../kernel/git.cjs');
+const { pathsByRepo, repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
@@ -53,8 +55,8 @@ function discoveryScope(workUnit) {
  * The commit lock lives in the `.git` dir (like git's own transient locks) —
  * a lock inside `.workflows` would be staged by the very commit it guards.
  * A linked worktree's lock is its own, which is the right scope: the index
- * being serialised is per-worktree too.
- * @param {string} cwd project root
+ * being serialised is per-worktree too — and so is a nested repo's.
+ * @param {string} cwd project root, or a nested repo's
  */
 function commitLockPath(cwd) {
   return gitPath(cwd, 'workflows-commit.lock');
@@ -63,7 +65,7 @@ function commitLockPath(cwd) {
 /**
  * Run `fn` holding the commit lock.
  * @template T
- * @param {string} cwd project root
+ * @param {string} cwd project root, or a nested repo's
  * @param {() => T} fn
  * @returns {T}
  */
@@ -97,6 +99,47 @@ function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
     if (beforeInLock) beforeInLock();
     return commitPathspec(cwd, pathspec, message);
   });
+}
+
+/**
+ * The code commit across the project's repos: each repo's share of the paths
+ * committed under that repo's own commit lock, with the same message, root
+ * first, its `heldOut` folders held out — a parent never commits a nested
+ * repo's folder or a submodule's pointer. A repo whose commit fails fails
+ * the call, naming the commits already made; re-running it is the retry, as
+ * those repos have nothing left in the paths.
+ * @param {import('../kernel/repos.cjs').Repo[]} repos
+ * @param {string[]} specs project paths
+ * @param {string} message
+ * @returns {{repo: string, sha: string}[]} the commits made, `.` naming the root
+ */
+function commitAcrossRepos(repos, specs, message) {
+  /** @type {{repo: string, sha: string}[]} */
+  const committed = [];
+  for (const { repo, paths } of pathsByRepo(repos, specs)) {
+    const sha = commitInRepo(repo, paths, message, committed);
+    if (sha !== null) committed.push({ repo: repoName(repo), sha });
+  }
+  return committed;
+}
+
+/**
+ * One repo's share of the code commit, under its own lock.
+ * @param {import('../kernel/repos.cjs').Repo} repo
+ * @param {string[]} paths as the repo names them
+ * @param {string} message
+ * @param {{repo: string, sha: string}[]} committed the commits the call made before this one
+ * @returns {string|null}
+ */
+function commitInRepo(repo, paths, message, committed) {
+  try {
+    return withCommitLock(repo.path, () => commitPathspec(repo.path, paths, message, repo.heldOut));
+  } catch (err) {
+    if (committed.length === 0) throw err;
+    const made = committed.map((c) => `${c.repo} committed ${c.sha}`).join(', ');
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`the commit in ${repoName(repo)} failed after ${made} — re-running the same call commits the rest: ${detail}`);
+  }
 }
 
 /**
@@ -165,6 +208,7 @@ function noteCommitOutcome(result, outcome, retry) {
 
 module.exports = {
   commitPathspecScoped,
+  commitAcrossRepos,
   commitStagedScoped,
   commitTailPathspec,
   noteCommitOutcome,

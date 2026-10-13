@@ -160,19 +160,52 @@ function git(dir, args) {
 }
 
 /**
+ * The test identity and no signing, on the repo at `dir`.
+ * @param {string} dir
+ */
+function testIdentity(dir) {
+  git(dir, ['config', 'user.email', 'test@example.com']);
+  git(dir, ['config', 'user.name', 'Test']);
+  git(dir, ['config', 'commit.gpgsign', 'false']);
+}
+
+/**
+ * A git repo at `dir`, the folder made where it is missing, under the test
+ * identity — a project's root, or a repo of its own inside one.
+ * @param {string} dir
+ * @returns {string} dir
+ */
+function initRepo(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  git(dir, ['init', '-q', '-b', 'main']);
+  testIdentity(dir);
+  return dir;
+}
+
+/**
  * A temp git repo with a `.workflows/` tree, a test identity and no signing —
  * the world an engine commit lands in. Content and a first commit are the
  * suite's own; `cleanupFixture` removes it.
  * @param {string} [prefix] temp-directory prefix, so a leftover names its suite
  */
 function setupGitFixture(prefix = 'engine-') {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
+  const dir = initRepo(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
   return dir;
+}
+
+/**
+ * `rel` added to the repo at `dir` as a submodule cloned from the repo at
+ * `source`, the addition committed; the clone commits under the test identity.
+ * @param {string} dir @param {string} rel @param {string} source
+ * @returns {string} the clone's path
+ */
+function addSubmodule(dir, rel, source) {
+  git(dir, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', source, rel]);
+  git(dir, ['commit', '-q', '-m', `add ${rel}`]);
+  const clone = path.join(dir, rel);
+  testIdentity(clone);
+  return clone;
 }
 
 const { call, callAsync, ok, okSections, refuses, output } = harness();
@@ -181,5 +214,5 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  git, setupGitFixture, cleanupFixture,
+  git, initRepo, setupGitFixture, addSubmodule, cleanupFixture,
 };

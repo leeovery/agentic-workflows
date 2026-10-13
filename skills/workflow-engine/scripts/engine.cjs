@@ -28,8 +28,9 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitPathspecScoped, commitStagedScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
-const { dirtyPaths, stageableSpecs, hasStagedDeletions } = require('./kernel/git.cjs');
+const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
+const { stageableSpecs, hasStagedDeletions, inHistory } = require('./kernel/git.cjs');
+const { projectRepos, repoOf, repoPath, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
 const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
@@ -1676,10 +1677,10 @@ function topicStatus(cwd, wu, phase, topic) {
  * anything is staged: inside the project, literal (a glob would commit
  * whatever it happened to match), and never a workflow artifact, which has a
  * derived scope of its own.
- * @param {string} cwd @param {string} given
+ * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given
  * @returns {string} the project-relative path
  */
-function codePathSpec(cwd, given) {
+function codePathSpec(cwd, repos, given) {
   if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
   if (/[*?\[\]]/.test(given) || given.startsWith(':')) {
     throw new Error(`commit --paths: "${given}" is a pattern — name each file literally`);
@@ -1693,12 +1694,17 @@ function codePathSpec(cwd, given) {
   if (spec === '.workflows' || spec.startsWith('.workflows/')) {
     throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
   }
-  // On disk, in the index, or — the case `stageableSpecs` cannot see — gone
-  // from both with its deletion already staged, which is what a `git mv` or
-  // `git rm` leaves behind. The commit door accepts that path; so must the
-  // validator in front of it, or the vanished side of a rename cannot be
-  // named and the commit lands half a move.
-  if (stageableSpecs(cwd, [spec]).length === 0 && !hasStagedDeletions(cwd, spec)) {
+  // On disk, in the owning repo's index, or — the case `stageableSpecs`
+  // cannot see — gone from both with its deletion already staged, which is
+  // what a `git mv` or `git rm` leaves behind. The commit door accepts that
+  // path; so must the validator in front of it, or the vanished side of a
+  // rename cannot be named and the commit lands half a move. A path the
+  // repo's history knows passes too, with nothing to commit: a deletion an
+  // earlier run of the same call landed before another repo failed, so
+  // re-running the call is its retry.
+  const repo = repoOf(repos, spec);
+  const own = repoPath(repo, spec);
+  if (stageableSpecs(repo.path, [own]).length === 0 && !hasStagedDeletions(repo.path, own) && !inHistory(repo.path, own)) {
     throw new Error(`commit --paths: "${given}" is neither on disk nor tracked`);
   }
   return spec;
@@ -1725,24 +1731,25 @@ function assertCodeTarget(cwd, target) {
 }
 
 /**
- * The code commit: the declared paths, committed confined under the commit
- * lock, answering with what the working tree still holds. `left_dirty` is the
- * backstop for a forgotten path — every tracked modification and untracked
- * file left outside `.workflows` (a doc session's dirt is its own, and runs
- * concurrently by design).
+ * The code commit: the declared paths, each committed confined in the repo
+ * that owns it under that repo's commit lock, answering with what the
+ * project's repos still hold. `left_dirty` is the backstop for a forgotten
+ * path — every tracked modification and untracked file left outside
+ * `.workflows` (a doc session's dirt is its own, and runs concurrently by
+ * design).
  * @param {string} cwd @param {string[]} paths @param {string} message
  * @param {{workUnit: string, phase: string, topic: string}} target
- * @returns {{committed: string|null, left_dirty: string[], note?: string}}
+ * @returns {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string}}
  */
 function commitCodePaths(cwd, paths, message, target) {
   assertCodeTarget(cwd, target);
-  const specs = paths.map((p) => codePathSpec(cwd, p));
-  const committed = commitPathspecScoped(cwd, specs, message);
+  const repos = projectRepos(cwd);
+  const specs = paths.map((p) => codePathSpec(cwd, repos, p));
+  const committed = commitAcrossRepos(repos, specs, message);
   beatQuietly(cwd, target.workUnit, target.phase, target.topic);
-  const left = dirtyPaths(cwd).filter((p) => p !== '.workflows' && !p.startsWith('.workflows/'));
-  /** @type {{committed: string|null, left_dirty: string[], note?: string}} */
-  const result = { committed, left_dirty: left };
-  if (committed === null) result.note = 'nothing to commit';
+  /** @type {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string}} */
+  const result = { committed, left_dirty: projectDirtyEntries(repos).map((e) => e.path) };
+  if (committed.length === 0) result.note = 'nothing to commit';
   return result;
 }
 
