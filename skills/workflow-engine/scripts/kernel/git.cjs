@@ -3,10 +3,11 @@
 // ---------------------------------------------------------------------------
 // Kernel: git, one repo at a time. Two halves:
 //
-// - Scoped commits — stage a pathspec, commit it confined to exactly those
-//   paths, report the sha. Every commit is pathspec-confined: no engine
-//   commit can sweep a path outside its declared scope, so concurrent
-//   sessions never take each other's work under their own messages.
+// - Scoped commits — stage the named paths, each taken literally, commit
+//   confined to exactly those paths, report the sha. Every commit is
+//   pathspec-confined: no engine commit can sweep a path outside its
+//   declared scope, so concurrent sessions never take each other's work
+//   under their own messages.
 // - Reads of a repo's change — its dirt, each untracked file named on its
 //   own; the commits a subject selects and the paths they touched; a
 //   commit's parent or the empty tree; and the patches `git diff` answers,
@@ -186,7 +187,7 @@ function stageableSpecs(cwd, specs) {
       if (!fs.statSync(abs).isDirectory()) return true;
       if (dirHasFiles(abs)) return true;
     }
-    const out = tryGit(cwd, ['ls-files', '--', p]);
+    const out = tryGit(cwd, ['ls-files', '--', ...literally([p])]);
     return out !== null && out.trim() !== '';
   });
 }
@@ -200,7 +201,7 @@ function stageableSpecs(cwd, specs) {
  * @returns {boolean}
  */
 function hasStagedDeletions(cwd, spec) {
-  const out = tryGit(cwd, ['diff', '--cached', '--name-only', '--', spec]);
+  const out = tryGit(cwd, ['diff', '--cached', '--name-only', '--', ...literally([spec])]);
   return out !== null && out.trim() !== '';
 }
 
@@ -211,7 +212,7 @@ function hasStagedDeletions(cwd, spec) {
  * @returns {boolean}
  */
 function deletedAtHead(cwd, spec) {
-  const out = tryGit(cwd, ['diff', '--name-only', '--no-renames', '--diff-filter=D', 'HEAD^', 'HEAD', '--', spec]);
+  const out = tryGit(cwd, ['diff', '--name-only', '--no-renames', '--diff-filter=D', 'HEAD^', 'HEAD', '--', ...literally([spec])]);
   return out !== null && out.trim() !== '';
 }
 
@@ -246,7 +247,7 @@ function heldOutOf(nested, specs) {
 }
 
 /**
- * Commit exactly the named pathspecs — `git commit -- <paths>` builds a
+ * Commit exactly the named paths — `git commit -- <paths>` builds a
  * temporary index from HEAD plus the worktree content of those paths, so
  * other processes' dirty or staged files are ignored and left untouched.
  * The `add` catches untracked files among the paths. Pathspecs git knows
@@ -270,10 +271,10 @@ function commitPathspec(cwd, pathspec, message, nested = []) {
   const files = specs.filter((spec) => !nested.includes(spec));
   const held = heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files);
   const addable = stageableSpecs(cwd, files);
-  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...addable, ...held]);
+  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
   const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
-  if (known.length === 0 || !hasChangesInPaths(cwd, [...known, ...held])) return null;
-  gitIndexed(cwd, ['commit', '-m', message, '--', ...known, ...held]);
+  if (known.length === 0 || !hasChangesInPaths(cwd, [...literally(known), ...held])) return null;
+  gitIndexed(cwd, ['commit', '-m', message, '--', ...literally(known), ...held]);
   return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
@@ -344,7 +345,7 @@ function commitStaged(cwd, specs, message) {
  */
 function addRefused(cwd, spec, nested = []) {
   try {
-    gitIndexed(cwd, ['add', '--all', '--dry-run', '--', spec, ...heldOutOf(nested, [spec])]);
+    gitIndexed(cwd, ['add', '--all', '--dry-run', '--', ...literally([spec]), ...heldOutOf(nested, [spec])]);
     return false;
   } catch (err) {
     if (isIndexLockError(err instanceof Error ? err.message : String(err))) throw err;

@@ -1010,7 +1010,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // paths Claude names. The task's code lives in the clone, so its commit
   // lands in the clone's history and the root takes none.
   sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
-  sim.write(`api/src/${topic}-untouched.js`, '// a file this task did not write\n');
+  sim.write('api/routes/[id].js', '// a file this task did not write\n');
   // The product summary at the task gate (report-register.md) draws on the
   // task's uncommitted change: the clone's untracked files read as
   // additions, named from the project.
@@ -1022,13 +1022,13 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // repo, named from the project — each untracked file on its own, never
   // the clone's new folder.
   assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files,
-    [{ path: `api/src/${topic}-untouched.js`, status: '??' }, { path: `api/src/${topic}.js`, status: '??' }],
+    [{ path: 'api/routes/[id].js', status: '??' }, { path: `api/src/${topic}.js`, status: '??' }],
     'the clone\'s dirt is read from the project, file by file, .workflows/ held out');
   // Where code is dirty the checkpoint gate sorts it: nothing an `impl(…):`
   // commit touched yet, so both files are unexpected and the gate stands.
   assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
-    new RegExp(`implementation_files \\(0\\):\\nunexpected_files \\(2\\):\\n {2}api/src/${topic}-untouched\\.js\\n {2}api/src/${topic}\\.js\\n`
-      + `[\\s\\S]*- api/src/${topic}-untouched\\.js \\(untracked\\)\\n- api/src/${topic}\\.js \\(untracked\\)[\\s\\S]*MENU: checkpoint files gate`));
+    new RegExp(`implementation_files \\(0\\):\\nunexpected_files \\(2\\):\\n {2}api/routes/\\[id\\]\\.js\\n {2}api/src/${topic}\\.js\\n`
+      + `[\\s\\S]*- api/routes/\\[id\\]\\.js \\(untracked\\)\\n- api/src/${topic}\\.js \\(untracked\\)[\\s\\S]*MENU: checkpoint files gate`));
   const rootHead = git(sim.dir, ['rev-parse', 'HEAD']).trim();
   const taskBase = git(sim.api, ['rev-parse', 'HEAD']).trim();
   const codeCommit = sim.run(['commit', '--paths', `api/src/${topic}.js`, '-m', `impl(${wu}): T${topic}-1-1 — the task`,
@@ -1037,10 +1037,13 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'the commit lands in the clone that owns the file');
   assert.strictEqual(git(sim.api, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), `src/${topic}.js`);
   assert.strictEqual(git(sim.dir, ['rev-parse', 'HEAD']).trim(), rootHead, 'the root takes no code commit');
-  assert.deepStrictEqual(codeCommit.left_dirty, [`api/src/${topic}-untouched.js`],
+  assert.deepStrictEqual(codeCommit.left_dirty, ['api/routes/[id].js'],
     'the forgotten path comes back as the reconcile signal, named from the project');
-  sim.run(['commit', '--paths', `api/src/${topic}-untouched.js`, '-m', `chore(${topic}): the rest`,
+  // A framework's routing file names itself with brackets; the code commit
+  // takes it literally.
+  sim.run(['commit', '--paths', 'api/routes/[id].js', '-m', `chore(${topic}): the rest`,
     '--for', wu, `implementation/${topic}`]);
+  assert.strictEqual(git(sim.api, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), 'routes/[id].js');
   // Each executor and reviewer report's BANK entries deposit the moment the
   // report arrives (bank-deposit.md, loaded while `do_banking` is true) —
   // durable on the manifest, emptied at the phase boundary.

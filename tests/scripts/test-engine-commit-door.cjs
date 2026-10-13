@@ -537,8 +537,58 @@ describe('engine commit --paths: the code commit', () => {
     assert.strictEqual(res.note, 'nothing to commit');
   });
 
-  it('refuses patterns, escapes, workflow artifacts, and a missing target', () => {
-    assert.match(engineFails(dir, ['commit', '--paths', 'src/*.js', '-m', 'x', ...forTopic]).error, /is a pattern/);
+  it('takes every path literally — a routing file is that file, never a pattern its siblings match', () => {
+    const named = ['app/[id]/page.tsx', 'app/(marketing)/page.tsx', 'src/a*b?.js', ':notes.md'];
+    for (const rel of [...named, 'app/i/page.tsx', 'app/d/page.tsx', 'src/aXbY.js']) writeFile(dir, rel, `// ${rel}\n`);
+
+    const res = engine(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...forTopic]);
+
+    assert.deepStrictEqual(headFiles(dir).sort(), [...named].sort(), 'exactly the named files');
+    assert.deepStrictEqual(res.left_dirty, ['app/d/page.tsx', 'app/i/page.tsx', 'src/aXbY.js'],
+      'the siblings a glob would have matched stay uncommitted, named as they are');
+    assert.deepStrictEqual(engine(dir, ['code', 'status']).files,
+      res.left_dirty.map((rel) => ({ path: rel, status: '??' })), 'code status names them as they are too');
+  });
+
+  it('takes a tracked path literally through its edit, its deletion, a staged removal and a retry', () => {
+    for (const rel of ['app/[slug]/page.tsx', 'app/[slug]/old.tsx', 'app/(shop)/cart.tsx', 'app/s/page.tsx', 'app/s/old.tsx']) {
+      writeFile(dir, rel, `// ${rel}\n`);
+    }
+    commitAll(dir, 'routes');
+    for (const rel of ['app/[slug]/page.tsx', 'app/s/page.tsx', 'app/s/old.tsx']) writeFile(dir, rel, '// edited\n');
+    fs.unlinkSync(path.join(dir, 'app/[slug]/old.tsx'));
+    git(dir, ['rm', '-q', '--', ':(literal)app/(shop)/cart.tsx']);
+    const call = ['commit', '--paths', 'app/[slug]/page.tsx', 'app/[slug]/old.tsx', 'app/(shop)/cart.tsx',
+      '-m', 'feat(topic-a): the slug route', ...forTopic];
+
+    const res = engine(dir, call);
+
+    assert.deepStrictEqual(git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
+      ['D\tapp/(shop)/cart.tsx', 'D\tapp/[slug]/old.tsx', 'M\tapp/[slug]/page.tsx']);
+    assert.deepStrictEqual(res.left_dirty, ['app/s/old.tsx', 'app/s/page.tsx']);
+
+    const again = engine(dir, call);
+    assert.deepStrictEqual(again.committed, [], 'the HEAD commit\'s own deletions pass the retry, with nothing left');
+  });
+
+  it('refuses a literal path git cannot stage or does not hold — a sibling its pattern would match stands in for none', () => {
+    writeFile(dir, '.gitignore', '*.log\n');
+    writeFile(dir, 'app/[id]/debug.log', 'noise\n');
+    writeFile(dir, 'app/x/page.tsx', '// a sibling\n');
+    commitAll(dir, 'routes');
+    fs.symlinkSync('app', path.join(dir, 'alias'));
+    writeFile(dir, 'app/[id]/page.tsx', '// the route\n');
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'app/[id]/debug.log', '-m', 'x', ...forTopic]).error,
+      'commit --paths: git in . refuses to stage "app/[id]/debug.log" (an ignore rule, or a path beyond a symbolic link)');
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'alias/[id]/page.tsx', '-m', 'x', ...forTopic]).error,
+      'commit --paths: git in . refuses to stage "alias/[id]/page.tsx" (an ignore rule, or a path beyond a symbolic link)');
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'app/[x]/page.tsx', '-m', 'x', ...forTopic]).error,
+      'commit --paths: "app/[x]/page.tsx" is neither on disk nor tracked');
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'a refusal stages nothing');
+  });
+
+  it('refuses escapes, workflow artifacts, and a missing target', () => {
     assert.match(engineFails(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
     assert.match(engineFails(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
     assert.match(engineFails(dir, ['commit', '--paths', '.workflows/payments/discussion/topic-a.md', '-m', 'x', ...forTopic]).error,
@@ -659,6 +709,38 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(headFiles(api).sort(), ['src/handler.js', 'src/new.js']);
     assert.deepStrictEqual([subject(dir), subject(api)], ['feat(topic-a): the task', 'feat(topic-a): the task']);
     assert.deepStrictEqual(res.left_dirty, []);
+  });
+
+  it('takes a path in a nested repo literally — a routing file in a clone or a submodule is that file', () => {
+    const sdk = harness.addSubmodule(dir, 'sdk', api);
+    const named = ['api/app/[id]/page.tsx', 'api/app/(marketing)/page.tsx', 'sdk/routes/[slug]/+page.svelte'];
+    for (const rel of [...named, 'api/app/i/page.tsx', 'sdk/routes/s/+page.svelte']) writeFile(dir, rel, `// ${rel}\n`);
+
+    const res = engine(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...forTopic]);
+
+    assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(headFiles(api).sort(), ['app/(marketing)/page.tsx', 'app/[id]/page.tsx']);
+    assert.deepStrictEqual(headFiles(sdk), ['routes/[slug]/+page.svelte']);
+    assert.deepStrictEqual(headFiles(dir), ['sdk'], 'the submodule\'s new pointer, and nothing else');
+    assert.deepStrictEqual(res.left_dirty, ['api/app/i/page.tsx', 'sdk/routes/s/+page.svelte']);
+  });
+
+  it('carries no pathspec magic into a nested repo — a name opening on a colon is that file, or not on disk', () => {
+    writeFile(api, ':weird.txt', 'odd\n');
+    writeFile(api, 'weird.txt', 'plain\n');
+    writeFile(api, 'keep.txt', 'kept\n');
+    writeFile(api, 'src/handler.js', 'const h = 2;\n');
+    const apiBefore = head(api);
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'api/:(exclude)keep.txt', '-m', 'x', ...forTopic]).error,
+      'commit --paths: "api/:(exclude)keep.txt" is neither on disk nor tracked');
+    assert.strictEqual(head(api), apiBefore, 'never a sweep of the clone');
+
+    const res = engine(dir, ['commit', '--paths', 'api/:weird.txt', '-m', 'feat(topic-a): the odd file', ...forTopic]);
+
+    assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }]);
+    assert.deepStrictEqual(headFiles(api), [':weird.txt']);
+    assert.deepStrictEqual(res.left_dirty.sort(), ['api/keep.txt', 'api/src/handler.js', 'api/weird.txt']);
   });
 
   it('commits a nested repo\'s paths alone — the root gains no commit', () => {

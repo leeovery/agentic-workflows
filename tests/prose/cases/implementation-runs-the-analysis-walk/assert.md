@@ -73,7 +73,7 @@ The prose should have taken this path:
     with the Edit tool — its two-line OLD text replaced by the NEW text
     verbatim, the claim about the rest of the system gone and the
     idempotency clause kept — and committed as a code commit naming
-    that one file (`commit --paths src/webhooks/capture.js … --for pay
+    that one file (`commit --paths 'src/webhooks/capture.js' … --for pay
     implementation/pay`, message `impl(pay): analysis cycle 1 — comment
     corrections`). No agent is dispatched for it, no fix round opens,
     no question is asked, and no scripted answer is consumed

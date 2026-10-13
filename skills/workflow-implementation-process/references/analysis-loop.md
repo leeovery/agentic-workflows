@@ -122,7 +122,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-g
 The response carries no gate. Name the `implementation_files`:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files, each single-quoted} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -136,7 +136,7 @@ Emit the call's DISPLAY and MENU sections verbatim per their markers.
 **If `yes`:**
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files and unexpected_files} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files and unexpected_files, each single-quoted} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -146,7 +146,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implement
 Name only the `implementation_files`, and make no commit where there are none. The unexpected ones stay uncommitted, and come back in the response's `left_dirty`.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files, each single-quoted} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -156,7 +156,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implement
 Confirm your reading of the comment with the person before anything acts on it, then name the `implementation_files` plus the ones the user specified.
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files and the named ones} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {implementation_files and the named ones, each single-quoted} -m "impl({work_unit}): pre-analysis checkpoint" --for {work_unit} implementation/{topic}
 ```
 
 → Proceed to **C. Dispatch Analysis Agents**.
@@ -225,7 +225,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs commit {work_unit} -m "im
    **Otherwise:** nothing to settle — continue.
 2. **Apply the comment corrections** — each `## Comment Corrections` entry with the Edit tool: its OLD text replaced by its NEW text at the named file, verbatim; an empty NEW deletes the comment. A correction whose NEW text is already in place was applied by an earlier run — skip it silently; one whose OLD text is otherwise absent is dropped — name the dropped ones in one line. Commit the files a correction changed as a code commit; nothing when none changed:
    ```bash
-   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {corrected files} -m "impl({work_unit}): analysis cycle {N} — comment corrections" --for {work_unit} implementation/{topic}
+   node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {corrected files, each single-quoted} -m "impl({work_unit}): analysis cycle {N} — comment corrections" --for {work_unit} implementation/{topic}
    ```
 
 #### If the cycle stages no proposal

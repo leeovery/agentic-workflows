@@ -71,7 +71,7 @@
       "manifest get pay.implementation.pay bank",
       "phase 1 consolidation — findings",
       "impl(pay): phase 1 comment corrections",
-      "commit --paths src/webhooks/capture.js",
+      "commit --paths 'src/webhooks/capture.js'",
       "staging.p1.tasks.1=pending",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",

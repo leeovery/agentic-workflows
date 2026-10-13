@@ -1679,18 +1679,16 @@ function topicStatus(cwd, wu, phase, topic) {
 
 /**
  * Validate one declared code path. Code has no layout to derive a pathspec
- * from, so the paths are Claude's to name — and every one is checked before
- * anything is staged: inside the project, literal (a glob would commit
- * whatever it happened to match), never a workflow artifact, which has a
- * derived scope of its own, and committable in the repo that owns it.
+ * from, so the paths are Claude's to name — each taken literally, so a
+ * routing file (`app/[id]/page.tsx`) is that file and never a pattern — and
+ * every one is checked before anything is staged: inside the project, never
+ * a workflow artifact, which has a derived scope of its own, and committable
+ * in the repo that owns it.
  * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given
  * @returns {string} the project-relative path
  */
 function codePathSpec(cwd, repos, given) {
   if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
-  if (/[*?\[\]]/.test(given) || given.startsWith(':')) {
-    throw new Error(`commit --paths: "${given}" is a pattern — name each file literally`);
-  }
   const abs = path.resolve(cwd, given);
   const rel = path.relative(cwd, abs);
   if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {

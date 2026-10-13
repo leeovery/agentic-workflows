@@ -68,7 +68,7 @@
       "--topic specification/pay",
       "--sweep",
       "impl(pay): analysis cycle 1 — comment corrections",
-      "commit --paths src/webhooks/capture.js",
+      "commit --paths 'src/webhooks/capture.js'",
       "render tasks-overview pay.implementation.pay",
       "render proposed-task pay.implementation.pay",
       "--gate gated",
