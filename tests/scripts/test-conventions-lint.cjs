@@ -1115,6 +1115,34 @@ function checkFrameworkLoad(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 28 — every Bash grant in a frontmatter `allowed-tools` carries a `*`.
+// A grant is a Claude Code permission rule, and one without a wildcard
+// matches only that exact command with no arguments, so it never pre-approves
+// a call the skill makes. The value is read inline or as an indented list.
+// ---------------------------------------------------------------------------
+
+const BASH_GRANT = /Bash\(([^)]*)\)/g;
+
+function checkBashGrantsCarryWildcard(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    if (lines[0] === undefined || lines[0].trim() !== '---') continue;
+    let inGrants = false;
+    for (let i = 1; i < lines.length && lines[i].trim() !== '---'; i++) {
+      const line = lines[i];
+      if (/^\S/.test(line)) inGrants = line.startsWith('allowed-tools:');
+      if (!inGrants) continue;
+      for (const [, grant] of line.matchAll(BASH_GRANT)) {
+        if (grant.includes('*')) continue;
+        out.push({ file, line: i + 1, message: `Bash(${grant}) has no \`*\` — it matches only that exact command, never a call with arguments; a script grant ends in \` *\`` });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Registry + reporting
 // ---------------------------------------------------------------------------
 
@@ -1143,6 +1171,7 @@ const CHECKS = [
   ['25: a dispatch names its mode, and a waited-on one its closing sentence', checkDispatchLines],
   ['26: a path a dispatch hands an agent is written as installed', checkInstalledDispatchPaths],
   ['27: the framework loads at the head of the skills a conversation opens on', checkFrameworkLoad],
+  ['28: every allowed-tools Bash grant carries a wildcard', checkBashGrantsCarryWildcard],
 ];
 
 // ---------------------------------------------------------------------------
@@ -2289,6 +2318,35 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
     ], `each miss is caught once, at its line, got ${report(v)}`);
     assert.match(v[0].message, /^workflow-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
     assert.match(v[2].message, /^workflow-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
+  });
+});
+
+test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or listed, permits a script grant ending in ` *`, a wildcard mid-path, other tools, and a grant outside the frontmatter', () => {
+  withTemp((dir) => {
+    const ENGINE = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
+    const starred = write(dir, 'skills/workflow-a-process/SKILL.md', [
+      '---', 'name: workflow-a-process',
+      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(mkdir -p .workflows/*/.state), Read`,
+      '---', '', `Run \`Bash(${ENGINE})\` from the body.`, '',
+    ].join('\n'));
+    const agent = write(dir, 'agents/workflow-b.md', '---\nname: workflow-b\ntools: Read, Bash\n---\n\nBody.\n');
+    const ok = checkBashGrantsCarryWildcard([starred, agent]);
+    assert.strictEqual(ok.length, 0, `wildcarded grants, other tools and body text are clean, got ${report(ok)}`);
+
+    const inline = write(dir, 'skills/workflow-c-process/SKILL.md', [
+      '---', 'name: workflow-c-process', `allowed-tools: Bash(${ENGINE}), Bash(${ENGINE} *), Bash(git log)`, '---', '',
+    ].join('\n'));
+    const listed = write(dir, 'skills/workflow-d-process/SKILL.md', [
+      '---', 'name: workflow-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
+    ].join('\n'));
+    const v = checkBashGrantsCarryWildcard([inline, listed]);
+    assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
+      ['workflow-c-process', 3],
+      ['workflow-c-process', 3],
+      ['workflow-d-process', 4],
+    ], `each bare grant is caught at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs\) has no `\*`/);
+    assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
   });
 });
 

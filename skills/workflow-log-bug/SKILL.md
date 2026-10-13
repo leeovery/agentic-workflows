@@ -1,7 +1,6 @@
 ---
 name: workflow-log-bug
 description: Capture a bug report as a markdown file in the workflow inbox. Use when the user wants to log, note, or save a bug for later.
-allowed-tools: Bash(mkdir -p)
 ---
 
 This skill captures a bug report and writes it to the inbox.
