@@ -563,11 +563,23 @@ project's own measurements decide (R7).
   Research is done to give a decision its data and belongs in the same log
   as the decision. The phase:
   - **Record and log.** Each topic keeps a **record** — current decisions
-    only, rewritten in place, each with its why and what it rules out —
-    and a **log** — the journey, options, false paths and reversals,
-    appended and never rewritten. The record is what downstream phases and
-    the knowledge base read first; the log keeps the person's thinking and
-    why minds changed. This absorbs the record-and-log programme (folded
+    only, each with its why and what it rules out — and a **log** — the
+    journey, options, false paths and reversals, appended and never
+    rewritten. The record is what downstream phases and the knowledge base
+    read first (R44 indexes records, never logs); the log keeps the
+    person's thinking and why minds changed, and the spec's session reads
+    it where it needs to know why — a why missing from it is a gap.
+    **A decision is written once**, ruled by the person 2026-10-13: every
+    decision and finding is a ledger entry (R23) written through an
+    engine command, and the record is the engine's view of the topic's
+    current entries, each shown with its number — as menus are drawn from
+    the manifest. Linking comes free, superseding stays append-only, and
+    nothing is edited in place. The engine holds only identity, links and
+    supersession, never the content: an entry's why can run to
+    paragraphs, the shape agreed after the opening view is itself an entry
+    in free prose, superseded whole when it changes, and spikes and their
+    assets are files an entry points at (R12) — Claude writes freely and
+    the structure stays out of its way. This absorbs the record-and-log programme (folded
     in by the person 2026-10-12, built first in strand A) and ends the
     problem specifications were partly invented for: telling a false path
     from a final decision. FlowX kept exactly this split by hand; without
@@ -625,14 +637,36 @@ project's own measurements decide (R7).
     most of it follows from earlier topics, and the view names the four
     things that need the person. The person's design, 2026-10-13: "Here's
     how I see this. How do you see it?"
-  - **The map is the definition of done.** It is seeded from the view's
-    forks, and the phase is done when it settles. Only questions that
-    need the person go on it; a new one met mid-conversation, or arriving
-    as a message or a finding, joins it.
-  - **Once the shape is agreed, Claude fills in the rest.** Calls it can
-    make go to the ledger (R23), not the map; the ask rule sends the
-    person the few that need them, in one batch; the topic goes to ready
-    to build with the ledger in view (R24's convergence). "Don't care"
+  - **The map is the definition of done**, agreed by the person
+    2026-10-13. It stores nothing: it is the topic's list of what is being
+    decided and where each stands, drawn from the ledger. The person's
+    questions — seeded from the view's forks, joined by any met
+    mid-conversation, arriving as a message or a finding, or added by the
+    person — sit beside Claude's calls, one line each. Only the person's
+    hold the topic open: Claude's are decided when made, and the topic is
+    done when nothing of the person's is open. A question of the person's
+    closes by their decision, by "your call" (Claude's, marked handed
+    over), by "don't care" (the builder's), or by moving to another topic
+    as a message or to the roadmap as later; nothing waits half-decided as
+    deferred. Each time the map shows, it lists Claude's calls since the
+    person last looked, so a call is overruled when made rather than at
+    ready to build. Today every subtopic Claude names goes on the map in
+    five states of its own bookkeeping: 166 across Fumi's 13 topics, 14 in
+    commercialization for one or two questions that needed the person.
+    The epic menu shows the person's count ("2 of 3 decided").
+  - **When nothing of the person's is open**, the closing pass runs (below)
+    and the ready-to-build screen shows what the person decided, how many
+    calls Claude made with only the few worth a look (hard to undo, thin
+    evidence, least sure first), the proposed product-record lines and any
+    new-topic candidates; the person's yes is the authority gate. It
+    replaces today's closing sequence — calls flush, landed-input check,
+    wait gate, map gate, closing gates — whose conclude gate took a yes
+    about 50 times on Fumi, the typed answers questions the screen now
+    answers ("Did you fix all those items then or not?").
+  - **Once the shape is agreed, Claude fills in the rest.** The ask rule
+    sends the person the few calls that need them, in one batch; the rest
+    are Claude's, on the map and in the ledger; the topic goes to ready to
+    build (R24's convergence). "Don't care"
     hands a call to the builder and is recorded as the builder's.
   - **Tools:** deep dives to learn, spikes to see and feel (R12),
     experiments to measure (unchanged: a rigid laboratory for questions
@@ -1091,12 +1125,38 @@ own answers, never Claude's judgement. Designed on 2026-10-12 from the
 person's history and their verdicts on it (R29); the person approved
 each call on a page that day.
 
-- **R23 — The ledger and the verdict queue.** Every call Claude makes
-  without asking is recorded: what it decided, the kind of question, what
-  else it could have done, and the evidence where it found out first
-  (R24). Written by a verb, never edited by hand. The person reads it when
-  they choose, and at the ready-to-build sign-off of a topic Claude
-  settled (R24). Every departure — an answer that amends or overrules
+- **R23 — The ledger and the verdict queue.** Designed with the person
+  2026-10-13. The ledger is the history of every decision and finding,
+  by either side, in the project: who made it, what the other side would
+  have said (Claude's sealed answer beside the person's; Claude's
+  alternatives and evidence beside its own call), who moved whom, the
+  kind of question, and what happened to it later. It never feeds the
+  work directly — the records drawn from it do (R11). Its jobs: answer
+  "what have you decided without me?" as one engine query, with nothing
+  for Claude to collect (the map's "since you last looked" is the same
+  query); give the matrix its evidence (R25); and keep both sides'
+  mistakes to learn from later, the person's included.
+  - **Entries are numbered per project** (L1, L2…), each tagged with its
+    work unit, topic, phase and session. The build's calls are entries
+    too: they draw no record, and the same query shows them. The product
+    record is the entries scoped to the product (R10).
+  - **Superseding appends:** a new entry names the one it supersedes and
+    why — a new fact, another topic's decision, a changed mind, or the
+    earlier one was wrong; the last applies to the person's decisions as
+    to Claude's. The superseded entry leaves the record and stays in the
+    ledger.
+  - **Stored as JSON lines in the project**, in `.workflows/` under git:
+    one line per event, appended, each carrying its schema version. A
+    later release changes the shape through a migration that brings every
+    line to the current version (Migrations: runtime code never reads an
+    older shape). A database was weighed and rejected: a database file
+    neither diffs nor merges in git, one outside git loses the history,
+    and the volume is small (Fumi's 13 topics come to hundreds of
+    entries); an index rebuilt from the lines is added only if queries
+    slow.
+  - Written by engine commands only, never by hand. The person reads it
+    when they choose; at ready to build they see the count and the few
+    calls worth a look, never the whole list. Every departure — an answer that amends or overrules
   Claude's lean — joins a verdict queue: a page like the one the person
   used for R29, where they say, when they choose, what the product would
   have lost had Claude built its own answer: nothing, a fix later, or a
@@ -1258,8 +1318,10 @@ each call on a page that day.
     workflows config directory (which already holds the system config and
     each conversation's state), across all their projects, reached through
     the engine. Only the engine writes it; Claude cannot edit it or the
-    settings. Events: each raise with Claude's sealed answer and the
-    person's answer; each verdict on a departure; each gate answer by the
+    settings. It holds what the matrix needs and no decision's content,
+    which stays in the project's ledger (R23): the engine writes both in
+    the same command. Events: each raise with Claude's sealed answer and
+    the person's answer, by kind; each verdict on a departure; each gate answer by the
     gate's name with the option the engine recommended and the one picked
     (the gate mod already sees the click and the engine's payload already
     marks the recommended row, but nothing records answers durably, nor
@@ -1735,15 +1797,17 @@ think is a good sign."
       promoted topics, unstarted messages, what a specification
       incorporates, where a topic came from, a roadmap item's kind — carry
       over unchanged;
-    - the ledger and the trust log are new and start empty.
+    - the trust log is new and starts empty; the ledger starts with the
+      entries the directive below writes.
   - **Judgment, as one directive (R38): every decision topic gets a
     record.** Today's discussion file interleaves decisions with the
     journey, so code cannot split it. The existing discussion file is the
     log — it is the journey — and moves verbatim, with the topic's
     research file joining it; that part is mechanical. Only the record
-    needs judgment: Claude derives the current decisions from the log,
-    every entry citing the log section it came from, inventing nothing; a
-    point the log leaves unsettled is recorded open. Every topic gets a
+    needs judgment: Claude derives the current decisions from the log as
+    ledger entries (R23), every entry citing the log section it came from
+    and who decided it where the log shows it, inventing nothing; a point
+    the log leaves unsettled is recorded open. Every topic gets a
     record, concluded ones included, so the new design never meets a
     topic without one. The knowledge base re-indexes, records ranked
     ahead of logs.
@@ -1845,7 +1909,14 @@ person, one item at a time; the sections above hold the detail.
   (R10, R11). Discovery is walked.
 - From the decision walk (2026-10-13): a decision log per topic,
   discovery's and the roadmap's per session; the record holds findings
-  beside decisions, each saying how it is known (R11).
+  beside decisions, each saying how it is known (R11); a decision is
+  written once, as a ledger entry, and the record drawn from the ledger;
+  the ledger holds every decision by either side, numbered per project,
+  stored as versioned JSON lines in the project, superseding by appending
+  with one of four reasons; the trust log keeps only what the matrix
+  needs (R11, R23, R25); the map lists the person's questions and
+  Claude's calls, done when nothing of the person's is open, Claude's new
+  calls shown each time (R11).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1865,7 +1936,7 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Decision (R11, R12): the map as done, spikes and their
+- Decision (R11, R12): spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
   arguments on the start skill.
@@ -1939,6 +2010,12 @@ settled-from-evidence items with the person; then the formal plan
   it while Claude works — jumping to other work units, the inbox, the
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. Sketches per phase come next.
+- **The merged phase's name.** "Decision" names the outcome, not the
+  activity, as discovery, research and discussion do; kept for now.
+  Rejected by the person 2026-10-13: deliberation (wrong for what the
+  phase is), design (confused with visual design), refinement (the phase
+  goes wide before it gets to detail; refinement polishes something that
+  exists). To come back to.
 - **Uninstalling and reinstalling.** Parked by the person 2026-10-13 for
   a proper conversation later; recorded as raised, nothing decided.
   - Removing the workflows with agntc leaves the hooks and the rest of
