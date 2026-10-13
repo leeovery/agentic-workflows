@@ -130,7 +130,7 @@ describe('the mods read conversation position as the engine writes it', () => {
       'the implementation dispatches the agent the mod watches for');
     const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId\]/.exec(source('skills/workflow-gates/hooks/executor.ts'));
     assert.ok(call, 'the gate mod runs the engine with the session id and the agent id');
-    const engine = literal('skills/workflow-gates/hooks/executor.ts', 'ENGINE');
+    const engine = literal('skills/workflow-gates/hooks/folder.ts', 'ENGINE');
     assert.ok(engine.startsWith('.claude/') && fs.existsSync(path.join(ROOT, engine.slice('.claude/'.length))), `the gate mod runs the engine where a project installs it (${engine})`);
     fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',

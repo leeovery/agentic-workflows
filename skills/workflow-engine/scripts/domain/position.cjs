@@ -162,16 +162,6 @@ function samePlace(a, b) {
   return a !== null && a.name === b.name && a.phase === b.phase && a.topic === b.topic;
 }
 
-/**
- * The position, with the prior one's executor where both are at one place on
- * one task.
- * @param {Position|null} prior @param {Position} position @returns {Position}
- */
-function keepingExecutor(prior, position) {
-  const isSameTask = position.task !== undefined && samePlace(prior, position) && prior?.task === position.task;
-  return isSameTask && prior?.executor !== undefined ? { ...position, executor: prior.executor } : position;
-}
-
 /** The plan step an internal id ends in, `{phase}.{task}`. @param {string} internalId @returns {string|null} */
 function taskStep(internalId) {
   const step = stepOfInternalId(internalId);
@@ -188,8 +178,11 @@ function recordPosition(cwd, name, phase, topic) {
   /** @type {Position} */
   const position = phase === undefined ? { name } : { name, phase, topic };
   const prior = readPosition(own);
-  if (phase === 'implementation' && samePlace(prior, position) && prior?.task) position.task = prior.task;
-  writePosition(own, keepingExecutor(prior, position));
+  if (phase === 'implementation' && samePlace(prior, position) && prior?.task) {
+    position.task = prior.task;
+    if (prior.executor !== undefined) position.executor = prior.executor;
+  }
+  writePosition(own, position);
 }
 
 /**
@@ -200,7 +193,11 @@ function recordTask(cwd, workUnit, topic, internalId) {
   const own = arrivingConversation(cwd);
   const step = taskStep(internalId);
   if (!own || step === null || !isPlace(cwd, workUnit, 'implementation', topic)) return;
-  writePosition(own, keepingExecutor(readPosition(own), { name: workUnit, phase: 'implementation', topic, task: step }));
+  /** @type {Position} */
+  const position = { name: workUnit, phase: 'implementation', topic, task: step };
+  const prior = readPosition(own);
+  if (samePlace(prior, position) && prior?.task === step && prior.executor !== undefined) position.executor = prior.executor;
+  writePosition(own, position);
 }
 
 /**

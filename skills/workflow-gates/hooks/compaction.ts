@@ -14,13 +14,9 @@
  */
 import type { EngineInterface, On, SessionMessage } from 'claude-code'
 
-import { MARKER, folderOf } from './folder.ts'
-
-const ENGINE = '.claude/skills/workflow-engine/scripts/engine.cjs'
+import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
 
 const POSITION_MARKER = '=== POSITION ('
-
-const ENGINE_TIMEOUT_MS = 15_000
 
 const COMPACTED = 'compacted.json'
 

@@ -1,5 +1,5 @@
 import type { On } from 'claude-code'
-import { describe, expect, test, tier } from 'claude-code/testing'
+import { describe, expect, mock, test, tier, type Engine } from 'claude-code/testing'
 
 tier('user')
 
@@ -63,7 +63,8 @@ const recording = (agentId: string) => ({
  * otherwise), the session's id and project, the folders the engine `marked`
  * under the config directory `markedIn`, what the Agent tool answers
  * (`answer`), and whether the engine's run fails to start
- * (`engineUnstartable`). `runs` records each run the mod asked for.
+ * (`engineUnstartable`). `runs` records each run the mod asked for, made
+ * once `clock` runs what the mod scheduled.
  */
 function world(
   on: On,
@@ -85,6 +86,7 @@ function world(
     answer = { result: COMPLETED },
     engineUnstartable = false,
   } = options
+  const clock = mock.clock(on)
   const runs: { argv: readonly string[]; cwd?: string; timeoutMs?: number }[] = []
   const environment: Record<string, string> = { HOME, ...env }
 
@@ -109,7 +111,7 @@ function world(
 
   on('tool.call', { tool: 'Agent' }, () => answer)
 
-  return runs
+  return { runs, clock }
 }
 
 const dispatchOf = (subagent_type: string | undefined, over: { agentId?: string } = {}) => ({
@@ -120,29 +122,49 @@ const dispatchOf = (subagent_type: string | undefined, over: { agentId?: string 
   ...over,
 })
 
+/** The dispatch's answer, once the mod's scheduled work has run. */
+async function dispatched($: Engine, clock: ReturnType<typeof mock.clock>, call: ReturnType<typeof dispatchOf>) {
+  const answer = await $.tool.call(call)
+
+  await clock.settle()
+
+  return answer
+}
+
 describe('the task executor, recorded as it is dispatched', () => {
   for (const dispatch of [COMPLETED, LAUNCHED]) {
     test(`hands the engine the agent id the dispatch answered with — ${dispatch.status}`, async ($, on) => {
-      const runs = world(on, { answer: { result: dispatch } })
+      const { runs, clock } = world(on, { answer: { result: dispatch } })
 
-      expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual({ result: dispatch })
+      expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: dispatch })
       expect(runs).toEqual([recording(dispatch.agentId)])
     })
   }
 
+  test('answers the dispatch at once, the record made after it', async ($, on) => {
+    const { runs, clock } = world(on)
+
+    expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+    expect(runs, 'nothing is run before the dispatch answers').toEqual([])
+
+    await clock.advance(0)
+
+    expect(runs).toEqual([recording(COMPLETED.agentId)])
+  })
+
   test('finds the conversation in the config directory the process names, never under the home directory', async ($, on) => {
     const config = '/Users/person/state/workflows'
-    const runs = world(on, { env: { ...ANNOUNCED, WORKFLOWS_CONFIG_DIR: config }, markedIn: config })
+    const { runs, clock } = world(on, { env: { ...ANNOUNCED, WORKFLOWS_CONFIG_DIR: config }, markedIn: config })
 
-    await $.tool.call(dispatchOf(EXECUTOR))
+    await dispatched($, clock, dispatchOf(EXECUTOR))
 
     expect(runs).toEqual([recording(COMPLETED.agentId)])
   })
 
   test('an engine that cannot start leaves the dispatch\'s result as Claude Code answered it', async ($, on) => {
-    const runs = world(on, { engineUnstartable: true })
+    const { runs, clock } = world(on, { engineUnstartable: true })
 
-    expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+    expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
     expect(runs.length, 'the mod asked once').toBe(1)
   })
 })
@@ -150,49 +172,49 @@ describe('the task executor, recorded as it is dispatched', () => {
 describe('what records nothing, the dispatch\'s result as Claude Code answered it', () => {
   for (const type of ['workflow-implementation-task-reviewer', 'general-purpose', undefined]) {
     test(`another agent — ${type ?? 'no type named'}`, async ($, on) => {
-      const runs = world(on)
+      const { runs, clock } = world(on)
 
-      expect(await $.tool.call(dispatchOf(type))).toEqual({ result: COMPLETED })
+      expect(await dispatched($, clock, dispatchOf(type))).toEqual({ result: COMPLETED })
       expect(runs).toEqual([])
     })
   }
 
   for (const answer of [{ deny: 'not now' }, { isError: true as const, result: 'Agent failed', text: 'Agent failed' }]) {
     test(`a dispatch that was refused or errored — ${JSON.stringify(answer)}`, async ($, on) => {
-      const runs = world(on, { answer })
+      const { runs, clock } = world(on, { answer })
 
-      expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual(answer)
+      expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual(answer)
       expect(runs).toEqual([])
     })
   }
 
   test('a dispatch a subagent made', async ($, on) => {
-    const runs = world(on)
+    const { runs, clock } = world(on)
 
-    expect(await $.tool.call(dispatchOf(EXECUTOR, { agentId: 'a1' }))).toEqual({ result: COMPLETED })
+    expect(await dispatched($, clock, dispatchOf(EXECUTOR, { agentId: 'a1' }))).toEqual({ result: COMPLETED })
     expect(runs).toEqual([])
   })
 
   for (const env of [{}, { WORKFLOWS_GATE_SURFACE: '0' }] as Readonly<Record<string, string>>[]) {
     test(`a session that did not announce — ${JSON.stringify(env)}`, async ($, on) => {
-      const runs = world(on, { env })
+      const { runs, clock } = world(on, { env })
 
-      expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+      expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
       expect(runs).toEqual([])
     })
   }
 
   test('a conversation the engine has not marked', async ($, on) => {
-    const runs = world(on, { marked: [] })
+    const { runs, clock } = world(on, { marked: [] })
 
-    expect(await $.tool.call(dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
+    expect(await dispatched($, clock, dispatchOf(EXECUTOR))).toEqual({ result: COMPLETED })
     expect(runs).toEqual([])
   })
 
   test('a process that names no folder', async ($, on) => {
-    const runs = world(on, { env: { ...ANNOUNCED, HOME: '' } })
+    const { runs, clock } = world(on, { env: { ...ANNOUNCED, HOME: '' } })
 
-    await $.tool.call(dispatchOf(EXECUTOR))
+    await dispatched($, clock, dispatchOf(EXECUTOR))
 
     expect(runs).toEqual([])
   })

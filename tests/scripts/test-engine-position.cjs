@@ -257,9 +257,10 @@ describe('the executor the gate mod records', () => {
   it('records on the conversation it names, never the calling one', () => {
     onTask();
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], 'sess-2');
-    assert.deepStrictEqual(executor('ab12', 'sess-2'), { ok: true, recorded: true });
+    const calling = position();
+    assert.deepStrictEqual(ok(['conversation', 'executor', 'sess-2', 'ab12'], 'sess-1'), { ok: true, recorded: true });
     assert.strictEqual(position('sess-2').executor, 'ab12');
-    assert.strictEqual(position().executor, AGENT);
+    assert.deepStrictEqual(position(), calling, 'the calling conversation\'s position is untouched');
   });
 
   it('a later dispatch for the same task replaces it', () => {
@@ -327,11 +328,18 @@ describe('the executor the gate mod records', () => {
     assert.strictEqual(position().executor, AGENT);
   });
 
-  it('a position that cannot be written records nothing', () => {
-    onTask();
-    fs.rmSync(path.join(folder(), 'position.json'));
-    fs.mkdirSync(path.join(folder(), 'position.json'));
-    assert.deepStrictEqual(executor(), { ok: true, recorded: false });
+  it('a position that cannot be written records nothing, the file left as it was', () => {
+    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    const file = path.join(folder(), 'position.json');
+    const before = fs.readFileSync(file, 'utf8');
+    fs.chmodSync(folder(), 0o555);
+    try {
+      assert.deepStrictEqual(executor(), { ok: true, recorded: false });
+    } finally {
+      fs.chmodSync(folder(), 0o755);
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
   });
 });
 

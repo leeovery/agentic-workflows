@@ -34,7 +34,7 @@ Every dispatch below runs in the background (`run_in_background: true`), and eve
 
 Dispatch a **fresh** `workflow-implementation-task-executor` agent via the Task tool. Never continue an executor from an earlier task — the task content below is this task's complete framing, and an executor still carrying the previous task's context erodes that boundary.
 
-The dispatch result names the new agent's id — keep it in session context; the task's later rounds (fix, retry, gate comment, answered block) continue this executor by that id.
+The dispatch result names the new agent's id — keep it in session context; after a compaction, the note naming the task names it too. The task's later rounds (fix, retry, gate comment, answered block) continue this executor by that id.
 
 The dispatch includes these file paths:
 
@@ -63,7 +63,7 @@ Continue that same executor — it already holds the task, the codebase context 
 
 Any round may also carry an **ad hoc addition** ([ad-hoc-plan-changes.md](ad-hoc-plan-changes.md) section C) — the user's instruction or the orchestrator's own, marked with its origin, included with the round's material.
 
-If the send fails — the recorded id no longer resolves, or a context refresh dropped it — dispatch a fresh executor with items 1–7 above plus the round's material as items 8 (**User-approved review notes**: verbatim or as modified by the user) and 9 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held. When the conversation no longer holds the round's material, read it from the latest `## Attempt {N}` section of the task's fix tracking file (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`).
+If the send fails — the recorded id no longer resolves, or neither the conversation nor a compaction's note holds it — dispatch a fresh executor with items 1–7 above plus the round's material as items 8 (**User-approved review notes**: verbatim or as modified by the user) and 9 (**Specific issues to address**: the ISSUES from the review); the full payload restores everything the continued executor would have held. When the conversation no longer holds the round's material, read it from the latest `## Attempt {N}` section of the task's fix tracking file (`.workflows/{work_unit}/implementation/{topic}/fix-tracking-{internal_id}.md`).
 
 → Proceed to **Expected Result**.
 

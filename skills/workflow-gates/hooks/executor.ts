@@ -4,18 +4,15 @@
  * loop's dispatch of the task executor hands the agent id it answers with to
  * the engine's `conversation executor`, which puts it on the position beside
  * the task in flight, so the note a compaction ends on names the executor the
- * task's later rounds continue. Whatever the engine answers, the dispatch's
- * result is Claude Code's own.
+ * task's later rounds continue. The result goes back unchanged and at once,
+ * the record made after it, so whatever the engine answers costs the dispatch
+ * nothing.
  */
 import type { EngineInterface, On, ToolCallResult } from 'claude-code'
 
-import { MARKER, folderOf } from './folder.ts'
-
-const ENGINE = '.claude/skills/workflow-engine/scripts/engine.cjs'
+import { ENGINE, ENGINE_TIMEOUT_MS, MARKER, folderOf } from './folder.ts'
 
 const EXECUTOR = 'workflow-implementation-task-executor'
-
-const ENGINE_TIMEOUT_MS = 15_000
 
 /**
  * Whether the session announced and the engine has marked its conversation
@@ -35,13 +32,20 @@ async function isWorkflow($: EngineInterface): Promise<boolean> {
   return folder !== null && (await $.fs.exists(`${folder}/${MARKER}`))
 }
 
+/** Records the executor where the conversation runs the workflows; a record that fails costs nothing. */
 async function recordExecutor($: EngineInterface, agentId: string) {
-  const root = await $.session.root()
+  try {
+    if (!(await isWorkflow($))) {
+      return
+    }
 
-  await $.process.run(
-    ['node', `${root}/${ENGINE}`, 'conversation', 'executor', await $.session.id(), agentId],
-    { cwd: root, timeoutMs: ENGINE_TIMEOUT_MS },
-  )
+    const root = await $.session.root()
+
+    await $.process.run(
+      ['node', `${root}/${ENGINE}`, 'conversation', 'executor', await $.session.id(), agentId],
+      { cwd: root, timeoutMs: ENGINE_TIMEOUT_MS },
+    )
+  } catch {}
 }
 
 /** The agent id a dispatch answered with; null where it answered none. */
@@ -58,8 +62,10 @@ export function executor(on: On) {
     const dispatched = await next(e)
     const agentId = agentIdOf(dispatched)
 
-    if (e.subagent_type === EXECUTOR && e.agentId === undefined && agentId !== null && (await isWorkflow($))) {
-      await recordExecutor($, agentId)
+    if (e.subagent_type === EXECUTOR && e.agentId === undefined && agentId !== null) {
+      $.clock.after(0, () => {
+        void recordExecutor($, agentId)
+      })
     }
 
     return dispatched
