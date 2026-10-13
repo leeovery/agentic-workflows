@@ -479,6 +479,26 @@ project's own measurements decide (R7).
     It stays apart from the feature map (R32): the build writes that and
     proving the work reads it; decision writes this and the opening view
     reads it. Adopted, with its forks, by the person 2026-10-13.
+  - **Discovery's gates**, ruled by the person 2026-10-13 from the
+    answers recorded since July:
+    - the shape gate becomes **start this work**, an authority gate
+      (R40): 14 of its 16 answers were a yes, and both others were
+      questions about the type ("would it make more sense to do then
+      indicudlalt as featurea? or as an epic?"; "could be processed as a
+      bug??"). Learned, it could go automatic and Claude would create
+      work on its own reading, which discovery never allows;
+    - approving the map is one screen: the topics, their order, and what
+      is parked on the roadmap in which horizon. Today's park gate (2
+      answers, both "Park it") and horizon pick fold into it;
+    - a change the person asked for in their own words is done and
+      reported in one line, with no confirm: a rename, a summary or
+      description edit, removing an unstarted topic, postponing.
+      Cancelling keeps its confirm: it is picked by number from a menu,
+      and a slip ends a topic;
+    - the name gate and the first-phase gate are gone, and the change
+      routing and dead-end map operations with them (R10's no routing,
+      R17); resume and the import prompt are process gates (R40); the
+      candidate gate belongs to the gap analysis.
   - **No routing.** Every topic of an epic, feature or cross-cutting unit
     goes to decision; none goes straight to the build. How much of the
     person a topic takes is set inside decision — by how much the product
@@ -892,7 +912,7 @@ project's own measurements decide (R7).
   recommended row 75% of the time, and grouping (offered 72 times), resume
   completed (72), the new-topic doors (82) and reactivate (37) were never
   picked. The menu becomes:
-  - **What waits on the person first** — an authority gate (approve the
+  - **What waits on the person first** — an authority gate (start this work, approve the
     map, ready to build, finish), a builder's question raised mid-phase,
     verdicts waiting (R23) — each with its door.
   - **Topics by what they need.** A topic in decision shows its progress
@@ -1560,8 +1580,9 @@ evidence recorded there: "pretty much what we already agreed, which I
 think is a good sign."
 
 - **R40 — Gates in three kinds.**
-  - **Authority gates, fixed:** approve the map, ready to build (signing
-    off the spec folds in here), finish. Never automatic; acting before
+  - **Authority gates, fixed:** start this work (discovery's shape gate,
+    R10), approve the map, ready to build (signing off the spec folds in
+    here), finish. Never automatic; acting before
     the person's go is the correction they make most often.
   - **Product questions, computed** by the ask rule (R24).
   - **Process gates, learned.** Every gate answer is recorded by the gate's
@@ -1767,7 +1788,10 @@ person, one item at a time; the sections above hold the detail.
   the product record — the workflows' own file, never CLAUDE.md, started
   in discovery, added to from decisions at ready to build, read by every
   opening view, apart from the feature map (R10); where the person has no
-  view on a fork, Claude's lean comes next (R11).
+  view on a fork, Claude's lean comes next (R11); discovery's gates —
+  starting work an authority gate, the map's screen holding the parks, no
+  confirm on a change the person asked for, cancelling still confirmed
+  (R10, R40).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1787,7 +1811,7 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Discovery (R10): its gates and the gap analysis, on the walk now.
+- Discovery (R10): the gap analysis, on the walk now.
 - Decision (R11, R12): record and log, the map as done, spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
