@@ -1619,7 +1619,8 @@ function runBoot(call) {
 // the discovery session's paths (`--discovery`), the imports home and the
 // manifest that records its entries (`--imports`), a plan's declared storage
 // (`--plan`), or declared code paths (`--paths`). A clean scope is fine:
-// {committed: null}.
+// {committed: null}, and for `--paths`, whose commits are listed per repo,
+// {committed: []}.
 // ---------------------------------------------------------------------------
 
 // Per-phase artifact pathspecs for `commit --topic` — the paths a topic's
