@@ -9,9 +9,10 @@
 // work under their own messages.
 //
 // Mechanism only: it knows nothing about work units or the inbox. Every call
-// spawns `git` with an explicit cwd (the project root). Failures throw loud
-// with git's own stderr; a clean scope is not a failure — `commitPathspec`
-// reports it as `null` so callers can treat an empty pause as fine.
+// spawns `git` with an explicit cwd — the project root, or a repo nested in
+// the project (kernel/repos). Failures throw loud with git's own stderr; a
+// clean scope is not a failure — `commitPathspec` reports it as `null` so
+// callers can treat an empty pause as fine.
 //
 // Index-mutating operations (add, commit, rm) retry on `index.lock`
 // contention — another process (a concurrent session, the user) holding
@@ -106,13 +107,24 @@ function gitIndexed(cwd, args) {
 }
 
 /**
- * Whether the given pathspecs differ from HEAD (worktree or index).
+ * Pathspecs holding the given paths out, each taken literally.
+ * @param {string[]} paths
+ * @returns {string[]}
+ */
+function excluding(paths) {
+  return paths.map((p) => `:(exclude,literal)${p}`);
+}
+
+/**
+ * Whether the given pathspecs differ from HEAD (worktree or index). A
+ * submodule differs only where its pointer has moved: work uncommitted
+ * inside it is no change a commit here can record.
  * @param {string} cwd
  * @param {string[]} specs
  * @returns {boolean}
  */
 function hasChangesInPaths(cwd, specs) {
-  return git(cwd, ['status', '--porcelain', '--', ...specs]).trim() !== '';
+  return git(cwd, ['status', '--porcelain', '--ignore-submodules=dirty', '--', ...specs]).trim() !== '';
 }
 
 /**
@@ -175,6 +187,47 @@ function hasStagedDeletions(cwd, spec) {
 }
 
 /**
+ * Whether HEAD's own commit deleted the path — never on a repo's first
+ * commit, which has no parent to compare with.
+ * @param {string} cwd @param {string} spec
+ * @returns {boolean}
+ */
+function deletedAtHead(cwd, spec) {
+  const out = tryGit(cwd, ['diff', '--name-only', '--no-renames', '--diff-filter=D', 'HEAD^', 'HEAD', '--', spec]);
+  return out !== null && out.trim() !== '';
+}
+
+/**
+ * Whether HEAD names a branch — false on a detached HEAD.
+ * @param {string} cwd
+ * @returns {boolean}
+ */
+function onBranch(cwd) {
+  return tryGit(cwd, ['symbolic-ref', '-q', 'HEAD']) !== null;
+}
+
+/**
+ * Whether the folder lies inside the pathspec.
+ * @param {string} folder @param {string} spec
+ * @returns {boolean}
+ */
+function liesInside(folder, spec) {
+  return spec === '.' || folder.startsWith(`${spec}/`);
+}
+
+/**
+ * The pathspecs holding out each nested repo's folder one of the paths
+ * reaches inside, where `add` would take in an untracked repo as a gitlink
+ * or a submodule's moved pointer. Only those: `add` refuses an ignored
+ * folder an exclude names once its walk meets it.
+ * @param {string[]} nested @param {string[]} specs
+ * @returns {string[]}
+ */
+function heldOutOf(nested, specs) {
+  return excluding(nested.filter((folder) => specs.some((spec) => liesInside(folder, spec))));
+}
+
+/**
  * Commit exactly the named pathspecs — `git commit -- <paths>` builds a
  * temporary index from HEAD plus the worktree content of those paths, so
  * other processes' dirty or staged files are ignored and left untouched.
@@ -182,18 +235,27 @@ function hasStagedDeletions(cwd, spec) {
  * nothing about are dropped: it refuses one that matches nothing, and a
  * scope naming a path its transaction never created is normal (an absent
  * mailbox, a work unit with no imports).
- * @param {string} cwd      project root
+ *
+ * `nested` names the folders of the repos nested in this one, held out of
+ * the paths that reach inside them (`heldOutOf`). A nested folder named
+ * itself is a submodule's pointer: tracked, so committed as the folder
+ * stands, never added, and never held out of a path that holds it.
+ * @param {string} cwd      the repo's root, or the project root
  * @param {string|string[]} pathspec
  * @param {string} message
+ * @param {string[]} [nested]
  * @returns {string|null} the short commit sha, or null when the paths are clean
  */
-function commitPathspec(cwd, pathspec, message) {
+function commitPathspec(cwd, pathspec, message, nested = []) {
   const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
-  const addable = stageableSpecs(cwd, specs);
-  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...addable]);
-  const known = specs.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p));
-  if (known.length === 0 || !hasChangesInPaths(cwd, known)) return null;
-  gitIndexed(cwd, ['commit', '-m', message, '--', ...known]);
+  const pointers = specs.filter((spec) => nested.includes(spec));
+  const files = specs.filter((spec) => !nested.includes(spec));
+  const held = heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files);
+  const addable = stageableSpecs(cwd, files);
+  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...addable, ...held]);
+  const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
+  if (known.length === 0 || !hasChangesInPaths(cwd, [...known, ...held])) return null;
+  gitIndexed(cwd, ['commit', '-m', message, '--', ...known, ...held]);
   return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
@@ -255,14 +317,16 @@ function commitStaged(cwd, specs, message) {
 }
 
 /**
- * Whether `git add` refuses the path — a dry run that fails. Another
- * process's hold on the index is waited out, never read as a refusal.
- * @param {string} cwd @param {string} spec
+ * Whether `git add` refuses the path — a dry run that fails, holding out
+ * the `nested` folders the path reaches inside as `commitPathspec` does.
+ * Another process's hold on the index is waited out, never read as a
+ * refusal.
+ * @param {string} cwd @param {string} spec @param {string[]} [nested]
  * @returns {boolean}
  */
-function addRefused(cwd, spec) {
+function addRefused(cwd, spec, nested = []) {
   try {
-    gitIndexed(cwd, ['add', '--all', '--dry-run', '--', spec]);
+    gitIndexed(cwd, ['add', '--all', '--dry-run', '--', spec, ...heldOutOf(nested, [spec])]);
     return false;
   } catch (err) {
     if (isIndexLockError(err instanceof Error ? err.message : String(err))) throw err;
@@ -309,48 +373,45 @@ function commitIndexEntries(cwd, specs, message) {
 }
 
 /**
- * Every path in the working tree that differs from HEAD — tracked
- * modifications and untracked, non-ignored files alike — project-relative,
- * each with its two-letter porcelain status (`??` untracked). NUL-separated
- * so paths with spaces or non-ASCII bytes survive; a rename record's second
- * field (the source path) is consumed with it.
+ * Every path under `cwd` that differs from HEAD — tracked modifications and
+ * untracked, non-ignored files alike — named from `cwd`, each with its
+ * two-letter porcelain status (`??` untracked), `exclude` held out. Porcelain
+ * names a path from the repository's top whatever the cwd, so a cwd below
+ * the top has its own prefix taken off. NUL-separated so paths with spaces
+ * or non-ASCII bytes survive; a rename record's second field (the source
+ * path) is consumed with it.
  * @param {string} cwd
+ * @param {string[]} [exclude]
  * @returns {{path: string, status: string}[]}
  */
-function dirtyEntries(cwd) {
-  const fields = git(cwd, ['status', '--porcelain', '-z']).split('\0');
+function dirtyEntries(cwd, exclude = []) {
+  const cwdPrefix = git(cwd, ['rev-parse', '--show-prefix']).trim();
+  const fields = git(cwd, ['status', '--porcelain', '-z', '--', '.', ...excluding(exclude)]).split('\0');
   /** @type {{path: string, status: string}[]} */
   const entries = [];
   for (let i = 0; i < fields.length; i++) {
     const entry = fields[i];
     if (entry.length < 4) continue;
-    entries.push({ path: entry.slice(3), status: entry.slice(0, 2) });
+    entries.push({ path: entry.slice(3 + cwdPrefix.length), status: entry.slice(0, 2) });
     if (entry[0] === 'R' || entry[0] === 'C') i += 1;
   }
   return entries;
 }
 
 /**
- * The paths of `dirtyEntries`.
- * @param {string} cwd
- * @returns {string[]}
- */
-function dirtyPaths(cwd) {
-  return dirtyEntries(cwd).map((e) => e.path);
-}
-
-/**
- * Every path a commit whose subject opens `prefix` touched, across the whole
- * history — `--fixed-strings` narrows the walk, the subject test pins the
- * prefix to the subject's start. NUL-separated names, so no path is quoted.
+ * Every path under `cwd`, named from it, that a commit whose subject opens
+ * `prefix` touched, across the whole history — `--fixed-strings` narrows the
+ * walk, the subject test pins the prefix to the subject's start. NUL-separated
+ * names, so no path is quoted. A repo with no commits yet has touched nothing.
  * @param {string} cwd
  * @param {string} prefix
  * @returns {Set<string>}
  */
 function pathsTouchedBySubject(cwd, prefix) {
-  const out = git(cwd, ['log', '--fixed-strings', `--grep=${prefix}`, '--format=%x1e%s', '--name-only', '-z']);
   /** @type {Set<string>} */
   const paths = new Set();
+  if (tryGit(cwd, ['rev-parse', '-q', '--verify', 'HEAD']) === null) return paths;
+  const out = git(cwd, ['log', '--relative', '--fixed-strings', `--grep=${prefix}`, '--format=%x1e%s', '--name-only', '-z']);
   for (const record of out.split('\x1e').slice(1)) {
     const end = record.search(/[\n\0]/);
     const subject = end < 0 ? record : record.slice(0, end);
@@ -373,4 +434,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, dirtyPaths, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles };

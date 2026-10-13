@@ -41,7 +41,7 @@ const { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeRea
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
-const { dirtyEntries, pathsTouchedBySubject } = require('../kernel/git.cjs');
+const { projectRepos, projectDirtyEntries, projectPathsTouchedBySubject } = require('../kernel/repos.cjs');
 const { heldCodeSessions, heldDocument, beatQuietly, fmtAge, CODE_PHASES } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode, validateKind, markedKind, planRoadmapBatch, DEFAULT_KIND } = require('./roadmap.cjs');
 const { mapState } = require('./discussion-map.cjs');
@@ -3328,19 +3328,20 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
 }
 
 // checkpoint-files-gate — the analysis loop's pre-analysis checkpoint over the
-// dirty code outside `.workflows/`, read from git: implementation files are
-// those an `impl({work_unit}):` commit touched, the rest are unexpected. DATA
-// names both sets for the commit; the unexpected files and the ask render
-// only where there are any — with none, the implementation files commit
-// without a stop.
+// dirty code outside `.workflows/`, read from every repo in the project:
+// implementation files are those an `impl({work_unit}):` commit touched, the
+// rest are unexpected. DATA names both sets for the commit; the unexpected
+// files and the ask render only where there are any — with none, the
+// implementation files commit without a stop.
 
 /**
  * @param {string} cwd @param {string} workUnit
  * @returns {{implementation: string[], unexpected: {path: string, status: string}[]}}
  */
 function checkpointFiles(cwd, workUnit) {
-  const touched = pathsTouchedBySubject(cwd, `impl(${workUnit}):`);
-  const code = dirtyEntries(cwd).filter((e) => !e.path.startsWith('.workflows/'));
+  const repos = projectRepos(cwd);
+  const touched = projectPathsTouchedBySubject(repos, `impl(${workUnit}):`);
+  const code = projectDirtyEntries(repos);
   return {
     implementation: code.filter((e) => touched.has(e.path)).map((e) => e.path),
     unexpected: code.filter((e) => !touched.has(e.path)),
@@ -3385,9 +3386,9 @@ function checkpointFilesGate(cwd, { dotpath }) {
 // change-set-tree — the check after the review's change-set verifiers
 // return: they measure inside the working tree and must leave it as they
 // found it. The review's own artifacts sit uncommitted under `.workflows/`
-// until prep commits them, so the check reads everything else from git.
-// Empty when that is clean; otherwise the terminal blocker naming each
-// modified or untracked path, never reverted blind.
+// until prep commits them, so the check reads everything else from every
+// repo in the project. Empty when that is clean; otherwise the terminal
+// blocker naming each modified or untracked path, never reverted blind.
 
 /**
  * @param {string} cwd
@@ -3396,7 +3397,7 @@ function checkpointFilesGate(cwd, { dotpath }) {
  */
 function changeSetTree(cwd, { dotpath }) {
   resolvePhaseItem(cwd, dotpath, 'change-set-tree', ['review'], 'the review the verifiers ran for');
-  const dirty = dirtyEntries(cwd).filter((e) => !e.path.startsWith('.workflows/')).map((e) => `\`${e.path}\``);
+  const dirty = projectDirtyEntries(projectRepos(cwd)).map((e) => `\`${e.path}\``);
   if (dirty.length === 0) return '';
   return blocker(
     'The change-set verification left the working tree dirty outside .workflows/',

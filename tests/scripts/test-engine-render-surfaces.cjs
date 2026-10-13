@@ -8448,7 +8448,7 @@ describe('render — the adopted phase gates', () => {
   });
 
   describe('checkpoint-files-gate: the dirty code read from git', () => {
-    const { git } = require('./engine-harness.cjs');
+    const { git, initRepo } = require('./engine-harness.cjs');
     const write = (rel, text) => {
       fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
       fs.writeFileSync(path.join(dir, rel), text);
@@ -8516,6 +8516,36 @@ describe('render — the adopted phase gates', () => {
     it('refuses a non-implementation address', () => {
       assert.throws(() => renderSurface(dir, 'checkpoint-files-gate', { dotpath: 'pay.planning.checkout' }),
         /address must be <work_unit>\.implementation\.<topic>, got phase "planning"/);
+    });
+
+    it('reads every repo in the project — a nested repo\'s file its own impl commit touched is an implementation file', () => {
+      write('.gitignore', 'api/\n');
+      commit('chore: the clone is its own repo', '.gitignore');
+      const api = initRepo(path.join(dir, 'api'));
+      write('api/src/routes.js', '1');
+      git(api, ['add', '-A']);
+      git(api, ['commit', '-q', '-m', 'init']);
+      write('api/src/handler.js', '1');
+      git(api, ['add', '-A']);
+      git(api, ['commit', '-q', '-m', 'impl(pay): Tcheckout-1-2 — the handler']);
+      initRepo(path.join(dir, 'fresh'));
+      write('fresh/notes.txt', 'x');
+      write('api/src/handler.js', '2');
+      write('api/src/routes.js', '2');
+
+      const out = checkpoint();
+
+      assert.ok(out.startsWith([
+        '=== DATA (reason from this — never display or parse the sections below) ===',
+        'implementation_files (1):',
+        '  api/src/handler.js',
+        'unexpected_files (2):',
+        '  api/src/routes.js',
+        '  fresh/notes.txt',
+        '',
+      ].join('\n')), out);
+      assert.match(out, /- api\/src\/routes\.js \(modified\)\n- fresh\/notes\.txt \(untracked\)\n/,
+        'a repo with no commits yet is read too — its folder in the parent never is');
     });
   });
 
@@ -8895,7 +8925,7 @@ describe('render — the adopted phase gates', () => {
 });
 
 describe('render change-set-tree', () => {
-  const { setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+  const { git, initRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
@@ -8924,6 +8954,40 @@ describe('render change-set-tree', () => {
   it('refuses an address outside the review', () => {
     assert.throws(() => renderSurface(dir, 'change-set-tree', { dotpath: 'pay.implementation.checkout' }),
       /address must be <work_unit>\.<review>\.<topic>/);
+  });
+
+  it('reads every repo in the project — a nested repo\'s change blocks, its folder in the parent never does', () => {
+    const web = initRepo(path.join(dir, 'web'));
+    writePayload(dir, 'web/index.js', 'x\n');
+    git(web, ['add', '-A']);
+    git(web, ['commit', '-q', '-m', 'init']);
+    assert.strictEqual(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }), '',
+      'a clean nested repo is no dirt, though the parent\'s git names its folder');
+
+    writePayload(dir, 'web/index.js', 'y\n');
+    assert.match(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }),
+      /these paths are modified or untracked: `web\/index\.js`\. Once the tree is clean/);
+  });
+
+  it('in a project nested in a larger repository, reads only the project\'s own folder of it', () => {
+    const repo = setupGitFixture('render-nested-');
+    try {
+      const project = path.join(repo, 'apps/web');
+      writeManifest(project, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+      writePayload(repo, 'other/x.js', 'x\n');
+      git(repo, ['add', '-A']);
+      git(repo, ['commit', '-q', '-m', 'init']);
+      writePayload(repo, 'other/x.js', 'y\n');
+      writePayload(project, '.workflows/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
+      assert.strictEqual(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }), '',
+        'a sibling folder\'s dirt and the project\'s own .workflows/ are not the project\'s code');
+
+      writePayload(project, 'src/probe.js', 'x\n');
+      assert.match(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }),
+        /these paths are modified or untracked: `src\/`\. Once the tree is clean/);
+    } finally {
+      cleanupFixture(repo);
+    }
   });
 });
 
