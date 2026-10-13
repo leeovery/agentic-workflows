@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.17] - 2026-10-13
+
+✨ Added
+- Nested-repo support — code living in clones, submodules, or git-ignored folders holding their own `.git` inside the project is now found automatically, with nothing to configure.
+- `engine code log`, `engine code diff` and `engine code status` — read a topic's task commits, the committed change, and uncommitted work across every repo, with paths named from the project.
+- Design record for child repos (`design/child-repos.md`).
+
+🔧 Changed
+- One code commit now lands in every repo it touches, deepest first, under the same message — a submodule's moved pointer is recorded in its parent.
+- The checkpoint and review clean-tree gates, the baseline assessment signal, and the implementation and review agents now see code in all repos instead of only the root's.
+- Commit paths are taken literally — files like `app/[id]/page.tsx` are committed as that file, never matched as a pattern.
+- Every skill's `allowed-tools` Bash grant now ends in a wildcard so calls with arguments are matched, and grants for raw `git` and `mkdir` commands are dropped in favour of the engine.
+- The review's do-now apply commit subject now carries the topic and cycle, so one cycle's commit is never mistaken for another's.
+- Investigation guidance now says to run history commands in the nested repo that holds the file (`git -C {folder}`).
+
+🐛 Fixed
+- Task commits no longer fail with "ignored by .gitignore" when code lives in a nested repo.
+- Analysis, consolidation, task verification and change-set verification no longer get an empty scope when the code sits outside the root repo.
+- The clean-tree gate no longer passes over uncommitted work in a nested repo.
+- The baseline assessment no longer reads a near-empty project when the code lives in nested repos.
+
 ## [0.8.16] - 2026-10-12
 
 🔧 Changed
