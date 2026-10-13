@@ -1,7 +1,7 @@
 ---
 name: workflow-continue-linear
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-continue-linear/scripts/gateway.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-continue-linear/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
 ---
 
 Continue an in-progress feature, bugfix, quick-fix or cross-cutting concern. Determines the current phase and hands the work off to its phase skill.

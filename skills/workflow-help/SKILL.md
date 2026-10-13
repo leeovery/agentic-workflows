@@ -1,7 +1,7 @@
 ---
 name: workflow-help
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *)
 ---
 
 # Help

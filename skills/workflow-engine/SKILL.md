@@ -1,7 +1,7 @@
 ---
 name: workflow-engine
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
 ---
 
 # Workflow Engine

@@ -1,7 +1,7 @@
 ---
 name: workflow-bridge
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs)
+allowed-tools: Bash(node .claude/skills/workflow-bridge/scripts/gateway.cjs *), Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)
 ---
 
 Decide where the work goes when a phase concludes or pauses, then hand it off.

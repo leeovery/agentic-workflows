@@ -1,7 +1,6 @@
 ---
 name: workflow-log-quickfix
 description: Capture a quick-fix as a markdown file in the workflow inbox. Use when the user wants to log a trivially scoped mechanical change for later.
-allowed-tools: Bash(mkdir -p)
 ---
 
 This skill captures a quick-fix and writes it to the inbox.

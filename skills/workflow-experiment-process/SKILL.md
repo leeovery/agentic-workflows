@@ -1,7 +1,7 @@
 ---
 name: workflow-experiment-process
 user-invocable: false
-allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs), Bash(mkdir -p .workflows/.cache/), Bash(git status), Bash(git log), Bash(grep), Bash(rg), Bash(ls), Bash(wc), Bash(find)
+allowed-tools: Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *), Bash(node .claude/skills/workflow-start/scripts/gateway.cjs *)
 ---
 
 # Experiment Process

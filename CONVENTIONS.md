@@ -750,6 +750,8 @@ Load directive → reference file
 
 **Frontmatter never declares a `SessionEnd` hook.** Claude Code does not fire SessionEnd hooks declared in skill frontmatter; session-end cleanup is the settings-level hook the engine installs in `.claude/settings.json`. Other hook events may be declared where a skill needs them. (Lint check 18.)
 
+**Every `allowed-tools` Bash grant carries a `*`.** A grant is a Claude Code permission rule, and one without a wildcard matches only that exact command, never a call with arguments: a grant for the workflows' own script ends in ` *` (`Bash(node .claude/skills/workflow-engine/scripts/engine.cjs *)`), and no other grant is written without one. (Lint check 28.)
+
 ### The Framework Load
 
 The framework loads once per conversation, at the head of the skill the conversation opens on — `workflow-start`, or a skill a handoff lands on (`OPENING_SKILLS` in `workflow-engine/scripts/domain/handoff.cjs`). Each of those skills opens its `## Instructions` section with one line and nothing else:
