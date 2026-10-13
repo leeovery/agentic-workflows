@@ -709,6 +709,25 @@ project's own measurements decide (R7).
   for what the person reviewed in it: scaffolding nobody discussed is
   never cited as decided. No design tool is named in the workflows.
 
+  Fitted to the ledger, ruled by the person 2026-10-13:
+  - **One home for what informs a decision.** A work unit's `assets/`
+    replaces `imports/`, whoever made the file; each asset is linked from
+    the ledger entry it informs (R23) — canonical from a decision,
+    reference from a finding or the log. Something living in an outside
+    tool is kept as its live link and an exported image.
+  - **A lock is a question on the map** ("which design?"), closed by the
+    person's choice: a ledger entry with the design as its canonical
+    asset, no gate of its own. Rejected designs stay reference, the reason
+    they lost in the log; a later spike that challenges a lock supersedes
+    it like any decision, with its reason.
+  - **Discovery may spike to see the shape** and decide the direction of
+    travel — "a valid use of discovery" (the person, Fumi). It settles
+    shape, not detail, so the no-detail rule stands; what it shows lands
+    as reference and the first topics' opening views read it.
+  - **Claude's own spikes back its calls** (R24): the reference assets
+    attach to Claude's ledger entry as its evidence, so "what have you
+    decided without me" shows how Claude found out.
+
   Whether a product gets the workflows at all is the person's decision,
   made by installing them; the workflows never ask it. Building a v1 fast
   is done outside them, and a later install starts from the existing
