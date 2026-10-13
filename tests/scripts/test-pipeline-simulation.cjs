@@ -1017,7 +1017,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
     /implementation_files \(0\):\nunexpected_files \(1\):\n {2}api\/src\/\n[\s\S]*- api\/src\/ \(untracked\)[\s\S]*MENU: checkpoint files gate/);
   const rootHead = git(sim.dir, ['rev-parse', 'HEAD']).trim();
-  const codeCommit = sim.run(['commit', '--paths', `api/src/${topic}.js`, '-m', `feat(${topic}): the task`,
+  const taskBase = git(sim.api, ['rev-parse', 'HEAD']).trim();
+  const codeCommit = sim.run(['commit', '--paths', `api/src/${topic}.js`, '-m', `impl(${wu}): T${topic}-1-1 — the task`,
     '--for', wu, `implementation/${topic}`]);
   assert.deepStrictEqual(codeCommit.committed, [{ repo: 'api', sha: git(sim.api, ['rev-parse', '--short', 'HEAD']).trim() }],
     'the commit lands in the clone that owns the file');
@@ -1076,6 +1077,16 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['topic', 'start', wu, 'review', topic]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
+  // The verifiers' scope is read across every repo: the topic's task commit
+  // landed in the clone, so its files, its base and its change set are the
+  // clone's, named from the project.
+  const taskLog = JSON.parse(sim.read(['code', 'log', wu, topic]));
+  assert.deepStrictEqual(taskLog.commits.map((c) => [c.repo, c.subject]), [['api', `impl(${wu}): T${topic}-1-1 — the task`]]);
+  assert.deepStrictEqual(taskLog.files, [`api/src/${topic}.js`]);
+  assert.deepStrictEqual(taskLog.repos, [{ repo: 'api', base: taskBase }], 'the change set starts at the clone\'s parent of the task commit');
+  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'log', wu, topic, '--phase', '1'])), taskLog, 'the phase\'s commits are the topic\'s one phase');
+  assert.deepStrictEqual(sim.read(['code', 'diff', wu, topic]).split('\n').filter((l) => l.startsWith('diff --git ')),
+    [`diff --git a/api/src/${topic}.js b/api/src/${topic}.js`]);
   // The change-set verification reads the declared linter names and writes one
   // file per section per cycle beside the per-task reports; prep's checkpoint
   // commit carries both classes under the review topic's scope.
@@ -1088,6 +1099,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.write(`api/src/${topic}.probe.js`, '// a verifier\'s leftover\n');
   assert.match(sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'content' }),
     new RegExp(`modified or untracked: \`api/src/${topic}\\.probe\\.js\`\\.`));
+  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files, [{ path: `api/src/${topic}.probe.js`, status: '??' }],
+    'the leftover is the only uncommitted code — the review\'s own artifacts sit under .workflows/');
+  assert.match(sim.read(['code', 'diff']), new RegExp(`^\\+\\+\\+ b/api/src/${topic}\\.probe\\.js$`, 'm'));
   fs.rmSync(path.join(sim.api, `src/${topic}.probe.js`));
   sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'empty' });
   // Prep's synthesis writes the action list the rest of the review reads.
@@ -1113,6 +1127,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.deepStrictEqual(applied.committed.map((c) => c.repo), ['api'], 'the fixes land where the code lives');
   assert.strictEqual(git(sim.api, ['log', '-1', '--format=%s']).trim(), `review(${wu}): apply do-now findings`);
   assert.deepStrictEqual(applied.left_dirty, [], 'the apply lane names everything it touched');
+  // The report reads the apply commit back by its subject.
+  assert.match(sim.read(['code', 'diff', '--subject', `review(${wu}): apply do-now findings`]),
+    new RegExp(`^\\+module\\.exports = "${topic}"; // guarded$`, 'm'));
   sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
   const presentation = sim.write(`.workflows/.cache/${wu}/review/${topic}/presentation.json`, {

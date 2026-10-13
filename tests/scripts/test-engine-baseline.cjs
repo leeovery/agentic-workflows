@@ -7,6 +7,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 
@@ -100,5 +101,77 @@ describe('engine baseline record', () => {
     const res = run(dir, ['baseline', 'record', 'skipped']);
     assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'skipped' });
     assert.match(res.committed, /^[0-9a-f]+$/);
+  });
+});
+
+describe('the baseline signal across the project\'s repos', () => {
+  const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
+  let dir;
+  let api;
+  beforeEach(() => {
+    dir = harness.setupGitFixture('engine-baseline-repos-');
+    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, 'README.md', '# Project\n');
+    api = harness.initRepo(path.join(dir, 'api'));
+  });
+  afterEach(() => harness.cleanupFixture(dir));
+
+  /** Commit everything in the repo at `repo`, authored and committed on `date`. */
+  function commitOn(repo, message, date) {
+    const when = `${date}T12:00:00Z`;
+    git(repo, ['add', '-A']);
+    execFileSync('git', ['commit', '-q', '-m', message], { cwd: repo, env: { ...process.env, GIT_AUTHOR_DATE: when, GIT_COMMITTER_DATE: when } });
+  }
+
+  it('totals history and files across the root and a clone it ignores — the arrival stays the root\'s, and cuts the clone at its last commit before it', () => {
+    writeFile(api, 'src/a.js', 'a\n');
+    writeFile(api, 'src/b.js', 'b\n');
+    commitOn(api, 'api: the first endpoints', '2025-01-15');
+    commitOn(dir, 'initial', '2025-03-01');
+    writeFile(api, 'src/c.js', 'c\n');
+    commitOn(api, 'api: billing', '2025-05-01');
+    writeFile(dir, '.workflows/manifest.json', '{}\n');
+    commitOn(dir, 'add workflows', '2025-09-01');
+    writeFile(api, 'src/d.js', 'd\n');
+    commitOn(api, 'api: built on the workflows', '2025-10-01');
+
+    assert.deepStrictEqual(baselineSignal(dir), {
+      root_date: '2025-01-15', workflows_date: '2025-09-01', commits_total: 5, commits_before: 3,
+      history_before: ['2025-01-15  api: the first endpoints', '2025-03-01  initial', '2025-05-01  api: billing'],
+      files_at_arrival: 5, tree_at_arrival: ['api/ (3)', '.gitignore', 'README.md'],
+    });
+  });
+
+  it('with nothing under .workflows/ committed, every repo\'s whole history and HEAD tree came before — a submodule\'s pointer is never a file, an empty repo adds nothing', () => {
+    writeFile(api, 'src/a.js', 'a\n');
+    writeFile(api, 'src/b.js', 'b\n');
+    commitOn(api, 'api: the first endpoints', '2025-02-01');
+    commitOn(dir, 'initial', '2025-03-01');
+    harness.addSubmodule(dir, 'vendor/sdk', api);
+    execFileSync('git', ['commit', '-q', '--amend', '--no-edit', '--date', '2025-04-01T12:00:00Z'],
+      { cwd: dir, env: { ...process.env, GIT_COMMITTER_DATE: '2025-04-01T12:00:00Z' } });
+    harness.initRepo(path.join(dir, 'fresh'));
+    writeFile(dir, 'fresh/notes.txt', 'nothing committed\n');
+
+    assert.deepStrictEqual(baselineSignal(dir), {
+      root_date: '2025-02-01', workflows_date: null, commits_total: 4, commits_before: 4,
+      history_before: ['2025-02-01  api: the first endpoints', '2025-02-01  api: the first endpoints', '2025-03-01  initial', '2025-04-01  add vendor/sdk'],
+      files_at_arrival: 7, tree_at_arrival: ['api/ (2)', 'vendor/ (2)', '.gitignore', '.gitmodules', 'README.md'],
+    });
+  });
+
+  it('a shallow repo anywhere in the project leaves no honest history to read', () => {
+    writeFile(api, 'src/a.js', 'a\n');
+    commitOn(api, 'api: one', '2025-01-01');
+    writeFile(api, 'src/b.js', 'b\n');
+    commitOn(api, 'api: two', '2025-02-01');
+    commitOn(dir, 'initial', '2025-03-01');
+    fs.renameSync(api, `${dir}-api-source`);
+    execFileSync('git', ['clone', '-q', '--depth', '1', `file://${dir}-api-source`, api]);
+    try {
+      assert.strictEqual(baselineSignal(dir), null);
+    } finally {
+      harness.cleanupFixture(`${dir}-api-source`);
+    }
   });
 });

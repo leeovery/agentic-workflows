@@ -116,6 +116,15 @@ function excluding(paths) {
 }
 
 /**
+ * Pathspecs naming the given paths, each taken literally.
+ * @param {string[]} paths
+ * @returns {string[]}
+ */
+function literally(paths) {
+  return paths.map((p) => `:(literal)${p}`);
+}
+
+/**
  * Whether the given pathspecs differ from HEAD (worktree or index). A
  * submodule differs only where its pointer has moved: work uncommitted
  * inside it is no change a commit here can record.
@@ -399,29 +408,97 @@ function dirtyEntries(cwd, exclude = []) {
 }
 
 /**
+ * Whether the repo has a commit yet.
+ * @param {string} cwd
+ * @returns {boolean}
+ */
+function hasCommits(cwd) {
+  return tryGit(cwd, ['rev-parse', '-q', '--verify', 'HEAD']) !== null;
+}
+
+/**
+ * Every commit whose subject `selects`, oldest first, with the paths under
+ * `cwd`, named from it, that it touched — a commit that touched none is not
+ * one of `cwd`'s. `grep` narrows the walk as a fixed string; `selects` tests
+ * the whole subject. NUL-separated names, so no path is quoted. A repo with
+ * no commits yet has none.
+ * @param {string} cwd
+ * @param {string} grep
+ * @param {(subject: string) => boolean} selects
+ * @returns {{sha: string, subject: string, paths: string[]}[]}
+ */
+function commitsBySubject(cwd, grep, selects) {
+  if (!hasCommits(cwd)) return [];
+  const out = git(cwd, ['log', '--reverse', '--relative', '--fixed-strings', `--grep=${grep}`, '--format=%x1e%H%x09%s', '--name-only', '-z']);
+  return out.split('\x1e').slice(1).flatMap((record) => {
+    const end = record.search(/[\n\0]/);
+    const head = end < 0 ? record : record.slice(0, end);
+    const tab = head.indexOf('\t');
+    const subject = head.slice(tab + 1);
+    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, '')).filter(Boolean);
+    return selects(subject) && paths.length > 0 ? [{ sha: head.slice(0, tab), subject, paths }] : [];
+  });
+}
+
+/**
  * Every path under `cwd`, named from it, that a commit whose subject opens
- * `prefix` touched, across the whole history — `--fixed-strings` narrows the
- * walk, the subject test pins the prefix to the subject's start. NUL-separated
- * names, so no path is quoted. A repo with no commits yet has touched nothing.
+ * `prefix` touched, across the whole history (`commitsBySubject`).
  * @param {string} cwd
  * @param {string} prefix
  * @returns {Set<string>}
  */
 function pathsTouchedBySubject(cwd, prefix) {
-  /** @type {Set<string>} */
-  const paths = new Set();
-  if (tryGit(cwd, ['rev-parse', '-q', '--verify', 'HEAD']) === null) return paths;
-  const out = git(cwd, ['log', '--relative', '--fixed-strings', `--grep=${prefix}`, '--format=%x1e%s', '--name-only', '-z']);
-  for (const record of out.split('\x1e').slice(1)) {
-    const end = record.search(/[\n\0]/);
-    const subject = end < 0 ? record : record.slice(0, end);
-    if (!subject.startsWith(prefix) || end < 0) continue;
-    for (const name of record.slice(end).split('\0')) {
-      const p = name.replace(/^\n+/, '');
-      if (p) paths.add(p);
-    }
-  }
-  return paths;
+  return new Set(commitsBySubject(cwd, prefix, (subject) => subject.startsWith(prefix)).flatMap((commit) => commit.paths));
+}
+
+/**
+ * What a diff from a commit's parent starts at: the parent, or the empty
+ * tree where the commit has none.
+ * @param {string} cwd @param {string} sha
+ * @returns {string}
+ */
+function parentOrEmptyTree(cwd, sha) {
+  const parent = tryGit(cwd, ['rev-parse', '-q', '--verify', `${sha}^`]);
+  return parent === null ? emptyTree(cwd) : parent.trim();
+}
+
+/**
+ * The empty tree's name in the repo's object format — the base of a repo
+ * with no commits yet.
+ * @param {string} cwd
+ * @returns {string}
+ */
+function emptyTree(cwd) {
+  return git(cwd, ['hash-object', '-t', 'tree', '--stdin'], undefined, '').trim();
+}
+
+/**
+ * The untracked, unignored files under `cwd`, one by one and named from it,
+ * `exclude` held out — never a folder, so a nested repo git names by its
+ * folder is not one.
+ * @param {string} cwd
+ * @param {string[]} [exclude]
+ * @returns {string[]}
+ */
+function untrackedFiles(cwd, exclude = []) {
+  return git(cwd, ['ls-files', '--others', '--exclude-standard', '-z', '--', '.', ...excluding(exclude)])
+    .split('\0').filter((p) => p !== '' && !p.endsWith('/'));
+}
+
+/**
+ * The patch `git diff` answers for `args`, plain whatever the user's config —
+ * no colour, no external diff driver. `--no-index` exits 1 when its two
+ * files differ, which is a patch, never a failure.
+ * @param {string} cwd
+ * @param {string[]} args
+ * @returns {string}
+ */
+function diffPatch(cwd, args) {
+  const full = ['diff', '--no-color', '--no-ext-diff', ...args];
+  const res = spawnSync('git', full, { cwd, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
+  if (!res.error && (res.status === 0 || (res.status === 1 && res.stderr === ''))) return res.stdout;
+  const detail = res.error ? res.error.message : (res.stderr || `exit ${res.status}`).trim();
+  throw new Error(`git diff failed: ${detail}`);
 }
 
 /**
@@ -434,4 +511,8 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles };
+module.exports = {
+  git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
+  parentOrEmptyTree, emptyTree, untrackedFiles, diffPatch, excluding, literally,
+  stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles,
+};

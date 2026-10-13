@@ -193,16 +193,24 @@ function commitGroups(repos, relPaths) {
 }
 
 /**
- * `dirtyEntries` across the project: each repo's, root first, its held-out
- * folders held out, and the project's `.workflows/` dropped.
+ * What a read of the repo's code holds out: the folders its git holds out,
+ * and in the root the project's `.workflows/`.
+ * @param {Repo} repo
+ * @returns {string[]}
+ */
+function codeHeldOut(repo) {
+  return repo.dir === '' ? [...repo.heldOut, '.workflows'] : repo.heldOut;
+}
+
+/**
+ * `dirtyEntries` across the project: each repo's, root first, in project
+ * paths, what a read of its code holds out held out.
  * @param {Repo[]} repos
  * @returns {{path: string, status: string}[]}
  */
 function projectDirtyEntries(repos) {
-  return repos
-    .flatMap((repo) => dirtyEntries(repo.path, repo.heldOut)
-      .map((entry) => ({ path: projectPath(repo.dir, entry.path), status: entry.status })))
-    .filter((entry) => entry.path !== '.workflows' && !entry.path.startsWith('.workflows/'));
+  return repos.flatMap((repo) => dirtyEntries(repo.path, codeHeldOut(repo))
+    .map((entry) => ({ path: projectPath(repo.dir, entry.path), status: entry.status })));
 }
 
 /**
@@ -215,6 +223,6 @@ function projectPathsTouchedBySubject(repos, prefix) {
 }
 
 module.exports = {
-  projectRepos, repoOf, repoPath, repoName, commitGroups,
-  projectDirtyEntries, projectPathsTouchedBySubject,
+  projectRepos, repoOf, repoPath, repoName, projectPath, commitGroups,
+  codeHeldOut, projectDirtyEntries, projectPathsTouchedBySubject,
 };
