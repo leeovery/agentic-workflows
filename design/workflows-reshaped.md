@@ -445,6 +445,23 @@ project's own measurements decide (R7).
     the boundary needs no more confidence than the rest of the type call;
     today's detection asks for more, holding that the boundary has no
     safety net. Ruled by the person 2026-10-13.
+  - **Product-level discovery writes the product record.** One short
+    document per project beside the roadmap, owned by the workflows: what
+    the product is, who it is for, what it values, and the standing rules
+    that cut across topics. It is a record, rewritten in place, and each
+    line says who decided it and where. Every topic's opening view reads
+    it with the decided records (R11), so a new epic's first topic starts
+    narrower (R24). Several of Claude's misses in the replay were the
+    product's character, not facts (R24). The roadmap keeps capabilities
+    in horizons, an item's substance left in its session logs until a pull
+    creates its topic; the product record sums up character, not items,
+    so that rule stands. It is not CLAUDE.md, which loads into every
+    session and subagent and is the person's to write: Portal's and
+    Switchboard's hold only how to work on the code, and Goosemates, run by
+    hand, kept its settled decisions in their own file with CLAUDE.md
+    pointing at it. The workflows never write CLAUDE.md; a pointer there is
+    the person's line. Adopted by the person 2026-10-13; three forks are
+    open (Open).
   - **No routing.** Every topic of an epic, feature or cross-cutting unit
     goes to decision; none goes straight to the build. How much of the
     person a topic takes is set inside decision — by how much the product
@@ -1066,7 +1083,7 @@ each call on a page that day.
     of the product exists the fewer ways remain that make sense. Across
     an epic the first topics are the widest; across epics, a new epic's
     first topic starts narrower once the product's character is known
-    (the product record, Open). The cone is never a key in the counts,
+    (the product record, R10). The cone is never a key in the counts,
     which would split the evidence into cells too small to learn from,
     and nothing computes where in it the work is; it enters where the
     work does:
@@ -1356,7 +1373,7 @@ each call on a page that day.
     - Several misses are the product's character rather than facts: the
       user chooses when to install, first run is a proper wizard,
       everyone is asked for notifications up front, a rejected note never
-      marks the menu-bar icon — evidence for the product record (Open).
+      marks the menu-bar icon — evidence for the product record (R10).
     - Weaker than intended: thinner context than a real session; seven
       questions whose record does not show who decided (two graded
       different); grader and builder are one model family; 37 is small.
@@ -1748,8 +1765,8 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Discovery (R10): its gates, the gap analysis, and the product record
-  (Open), on the walk now.
+- Discovery (R10): its gates, the gap analysis, and the product record's
+  three forks (Open), on the walk now.
 - Decision (R11, R12): record and log, the map as done, spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
@@ -1771,8 +1788,8 @@ setup gates and environment setup; the help walkthrough and glossary; the
 user-facing docs; the prose-test harness for the new shape (R4); session
 handoffs and compaction recovery beyond R35's note.
 
-**Still the person's to decide:** the product record; logs by session or
-by topic; whether a decision record holds findings (all in Open).
+**Still the person's to decide:** the product record's three forks; logs
+by session or by topic; whether a decision record holds findings (all in Open).
 
 **Unclear, or engineering for the plan:** where the phase cut lives on
 disk and how a tracker shows a phase not yet written; how project skills
@@ -1844,14 +1861,14 @@ settled-from-evidence items with the person; then the formal plan
   bug in the released epic menu, not fixed on its own: the person ruled
   2026-10-12 that the restructure takes it in, and the reworked menu (R17)
   is checked not to carry it.
-- **The product record.** A current view of the product's character at
-  project level beside the roadmap — record-and-log one level up — so
-  every two-way call is made against the product's stated character
-  rather than the model's priors. The roadmap's sessions are a log and its
-  map lists capabilities, not character. It would reverse the roadmap's
-  ruling that nothing is distilled at product level. The feature map (R32)
-  is a candidate form: a current view kept honest by being run. The
-  person's call.
+- **The product record's three forks** (adopted, R10):
+  - where it grows: product-level conversations only, or also any
+    decision that turns out to be about the product rather than its topic
+    (Fumi's "updates never auto-install" was decided inside
+    engine-architecture; Portal has never had a product conversation);
+  - who approves a line: the person line by line, or Claude writes it and
+    the person sees it when a view first leans on it;
+  - with the feature map (R32) or apart.
 - **Shape review — evidence read 2026-10-12** (six read-only agents;
   picture redrawn at the artifact link above, version 2). On the
   workflows: Fumi, Portal, Tick, agntc, Mint. Without: Switchboard, FlowX,
