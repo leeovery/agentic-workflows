@@ -8483,12 +8483,12 @@ describe('render — the adopted phase gates', () => {
         '  src/cart.js',
         'unexpected_files (2):',
         '  README.md',
-        '  scratch/',
+        '  scratch/notes.txt',
         '',
         '=== DISPLAY: unexpected files (emit verbatim as a text code block (```text fence)) ===',
         'Pre-analysis checkpoint — unexpected files detected:',
         '- README.md (modified)',
-        '- scratch/ (untracked)',
+        '- scratch/notes.txt (untracked)',
         '',
         "=== MENU: checkpoint files gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
         DOTS,
@@ -8946,7 +8946,7 @@ describe('render change-set-tree', () => {
       '⚑ The change-set verification left the working tree dirty outside .workflows/',
       '',
       '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
-      '> The pass must leave the tree as it found it — these paths are modified or untracked: `notes.txt`, `src/`. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.',
+      '> The pass must leave the tree as it found it — these paths are modified or untracked: `notes.txt`, `src/probe.js`. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.',
       '',
     ].join('\n'));
   });
@@ -8984,7 +8984,7 @@ describe('render change-set-tree', () => {
 
       writePayload(project, 'src/probe.js', 'x\n');
       assert.match(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }),
-        /these paths are modified or untracked: `src\/`\. Once the tree is clean/);
+        /these paths are modified or untracked: `src\/probe\.js`\. Once the tree is clean/);
     } finally {
       cleanupFixture(repo);
     }

@@ -82,7 +82,7 @@ describe('projectRepos: the repos a project holds', () => {
 
     assert.deepStrictEqual(dirsOf(repos), ['', 'api', 'vendor/sdk'], 'a submodule\'s own git dir is not the root\'s');
     assert.deepStrictEqual(repos[0].heldOut, ['vendor/sdk']);
-    assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'trees/', status: '??' }]);
+    assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'trees/side/', status: '??' }]);
   });
 
   it('knows the project\'s own worktree reached through a symbolic link', () => {
@@ -176,28 +176,41 @@ describe('dirt and history across the repos', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('reads every repo\'s dirt in project paths, the root first — never a parent\'s view of a nested repo, never .workflows/', () => {
+  it('reads every repo\'s dirt in project paths, each untracked file on its own, the root first — never a parent\'s view of a nested repo, never .workflows/', () => {
     const api = nestedRepo(dir, 'api', 'src/handler.js');
-    nestedRepo(dir, 'tools/cli');
+    const cli = nestedRepo(dir, 'tools/cli');
     writeFile(dir, 'packages/notes.txt', 'loose\n');
-    nestedRepo(dir, 'packages/kit');
+    const kit = nestedRepo(dir, 'packages/kit');
     const sdk = addSubmodule(dir, 'vendor/sdk', api);
     writeFile(sdk, 'moved.js', '1\n');
     commitAll(sdk, 'the pointer moves');
     writeFile(sdk, 'src/handler.js', '2\n');
+    writeFile(sdk, 'src/new/sdk.js', 'new\n');
     writeFile(dir, 'src/app.js', '2\n');
+    writeFile(dir, 'src/new/a.js', 'new\n');
+    writeFile(dir, 'src/new/b.js', 'new\n');
     writeFile(api, 'src/handler.js', '2\n');
+    writeFile(api, 'src/new/api.js', 'new\n');
+    writeFile(cli, 'bin/run.js', 'new\n');
+    writeFile(kit, 'lib/kit.js', 'new\n');
     writeFile(dir, '.workflows/pay/notes.md', 'a doc session\'s own\n');
 
-    assert.deepStrictEqual(git(dir, ['status', '--porcelain']).split('\n').filter(Boolean), [
-      ' M src/app.js', ' M vendor/sdk', '?? .workflows/', '?? packages/', '?? tools/',
-    ], 'the root\'s git names the nested repos\' folders');
+    assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean), [
+      ' M src/app.js', ' M vendor/sdk', '?? .workflows/pay/notes.md', '?? packages/kit/', '?? packages/notes.txt',
+      '?? src/new/a.js', '?? src/new/b.js', '?? tools/cli/',
+    ], 'the root\'s git names the nested repos by their folders, file by file never');
     assert.deepStrictEqual(projectDirtyEntries(projectRepos(dir)), [
       { path: 'src/app.js', status: ' M' },
-      { path: 'packages/', status: '??' },
+      { path: 'packages/notes.txt', status: '??' },
+      { path: 'src/new/a.js', status: '??' },
+      { path: 'src/new/b.js', status: '??' },
       { path: 'api/src/handler.js', status: ' M' },
+      { path: 'api/src/new/api.js', status: '??' },
+      { path: 'packages/kit/lib/kit.js', status: '??' },
+      { path: 'tools/cli/bin/run.js', status: '??' },
       { path: 'vendor/sdk/src/handler.js', status: ' M' },
-    ]);
+      { path: 'vendor/sdk/src/new/sdk.js', status: '??' },
+    ], 'an ignored clone, an untracked nested repo and a submodule never reach the root\'s dirt; each one\'s own reads under its folder');
   });
 
   it('a project nested in a larger repository reads only its own folder of it, named from the project', () => {

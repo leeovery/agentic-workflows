@@ -1,12 +1,17 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: scoped git operations — stage a pathspec, commit it confined to
-// exactly those paths, report the sha.
+// Kernel: git, one repo at a time. Two halves:
 //
-// Every commit is pathspec-confined: no engine commit can sweep a path
-// outside its declared scope, so concurrent sessions never take each other's
-// work under their own messages.
+// - Scoped commits — stage a pathspec, commit it confined to exactly those
+//   paths, report the sha. Every commit is pathspec-confined: no engine
+//   commit can sweep a path outside its declared scope, so concurrent
+//   sessions never take each other's work under their own messages.
+// - Reads of a repo's change — its dirt, each untracked file named on its
+//   own; the commits a subject selects and the paths they touched; a
+//   commit's parent or the empty tree; and the patches `git diff` answers,
+//   the uncommitted one with untracked files read as additions from a
+//   scratch index.
 //
 // Mechanism only: it knows nothing about work units or the inbox. Every call
 // spawns `git` with an explicit cwd — the project root, or a repo nested in
@@ -383,9 +388,10 @@ function commitIndexEntries(cwd, specs, message) {
 
 /**
  * Every path under `cwd` that differs from HEAD — tracked modifications and
- * untracked, non-ignored files alike, whatever the user's
- * `status.showUntrackedFiles` — named from `cwd`, each with its
- * two-letter porcelain status (`??` untracked), `exclude` held out. Porcelain
+ * untracked, non-ignored files alike, each untracked file on its own and
+ * never its folder, whatever the user's `status.showUntrackedFiles` — named
+ * from `cwd`, each with its two-letter porcelain status (`??` untracked),
+ * `exclude` held out. A nested repo git still names by its folder. Porcelain
  * names a path from the repository's top whatever the cwd, so a cwd below
  * the top has its own prefix taken off. NUL-separated so paths with spaces
  * or non-ASCII bytes survive; a rename record's second field (the source
@@ -396,7 +402,7 @@ function commitIndexEntries(cwd, specs, message) {
  */
 function dirtyEntries(cwd, exclude = []) {
   const cwdPrefix = git(cwd, ['rev-parse', '--show-prefix']).trim();
-  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=normal', '--', '.', ...excluding(exclude)]).split('\0');
+  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', '--', '.', ...excluding(exclude)]).split('\0');
   /** @type {{path: string, status: string}[]} */
   const entries = [];
   for (let i = 0; i < fields.length; i++) {

@@ -1012,10 +1012,11 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
   sim.write(`api/src/${topic}-untouched.js`, '// a file this task did not write\n');
   // The analysis loop's checkpoint reads the dirty code from every repo:
-  // nothing an `impl(…):` commit touched yet, so both files are unexpected
-  // and the gate stands.
+  // nothing an `impl(…):` commit touched yet, so both files are unexpected,
+  // each named on its own, and the gate stands.
   assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
-    /implementation_files \(0\):\nunexpected_files \(1\):\n {2}api\/src\/\n[\s\S]*- api\/src\/ \(untracked\)[\s\S]*MENU: checkpoint files gate/);
+    new RegExp(`implementation_files \\(0\\):\\nunexpected_files \\(2\\):\\n {2}api/src/${topic}-untouched\\.js\\n {2}api/src/${topic}\\.js\\n`
+      + `[\\s\\S]*- api/src/${topic}-untouched\\.js \\(untracked\\)\\n- api/src/${topic}\\.js \\(untracked\\)[\\s\\S]*MENU: checkpoint files gate`));
   const rootHead = git(sim.dir, ['rev-parse', 'HEAD']).trim();
   const taskBase = git(sim.api, ['rev-parse', 'HEAD']).trim();
   const codeCommit = sim.run(['commit', '--paths', `api/src/${topic}.js`, '-m', `impl(${wu}): T${topic}-1-1 — the task`,

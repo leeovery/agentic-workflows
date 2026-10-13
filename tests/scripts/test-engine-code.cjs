@@ -306,7 +306,27 @@ describe('engine code diff and status: the change not yet committed', () => {
     git(dir, ['config', 'status.showUntrackedFiles', 'no']);
     writeFile(dir, 'src/new/one.js', '1\n');
 
-    assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files, [{ path: 'src/new/', status: '??' }]);
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files, [{ path: 'src/new/one.js', status: '??' }]);
+  });
+
+  it('status names each untracked file in a new folder on its own, so a commit naming the task\'s file leaves a stranger\'s in left_dirty by name', () => {
+    writeFile(dir, '.workflows/pay/manifest.json', JSON.stringify({
+      name: 'pay', work_type: 'feature', status: 'in-progress',
+      phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
+    }));
+    git(dir, ['commit', '-q', '-m', 'chore: the work unit', '--', '.workflows/pay/manifest.json']);
+    writeFile(dir, 'src/billing/charge.js', 'the task\'s\n');
+    writeFile(dir, 'src/billing/stranger.js', 'not the task\'s\n');
+    writeFile(api, 'src/billing/refund.js', 'not the task\'s\n');
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files, [
+      { path: 'src/billing/charge.js', status: '??' },
+      { path: 'src/billing/stranger.js', status: '??' },
+      { path: 'api/src/billing/refund.js', status: '??' },
+    ]);
+    const res = harness.ok(dir, ['commit', '--paths', 'src/billing/charge.js', '-m', 'impl(pay): Tpay-1-1 — the charge', '--for', 'pay', 'implementation/pay']);
+    assert.deepStrictEqual(git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), 'src/billing/charge.js');
+    assert.deepStrictEqual(res.left_dirty, ['src/billing/stranger.js', 'api/src/billing/refund.js']);
   });
 
   it('a repo inside the project\'s .workflows/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
