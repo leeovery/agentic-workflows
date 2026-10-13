@@ -5,7 +5,9 @@
 // answer by its POSITION section marker and reads the keys of its one line of
 // JSON, the rows mod knows a compaction's note by the engine's opening words,
 // and both name the record of the notes handed up alike; the gate mod's
-// spinner reads the position file the engine keeps, by its name and keys.
+// spinner reads the position file the engine keeps, by its name and keys;
+// and the gate mod records the executor the implementation dispatches
+// through the verb the engine answers, which the note then names.
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
 
@@ -119,6 +121,25 @@ describe('the mods read conversation position as the engine writes it', () => {
     };
     assert.deepStrictEqual(words('PHASE_WORDS'), [...VALID_PHASES].sort());
     assert.deepStrictEqual(words('PLACE_WORDS'), [...PROJECT_IDENTITIES].sort());
+  });
+
+  it('the gate mod records the executor the implementation dispatches, through the verb the engine answers', () => {
+    const type = literal('skills/workflow-gates/hooks/executor.ts', 'EXECUTOR');
+    assert.ok(fs.existsSync(path.join(ROOT, 'agents', `${type}.md`)), `the workflows ship the agent "${type}"`);
+    assert.ok(source('skills/workflow-implementation-process/references/invoke-executor.md').includes(`\`${type}\``),
+      'the implementation dispatches the agent the mod watches for');
+    const call = /\['node', `\$\{root\}\/\$\{ENGINE\}`, '(\w+)', '(\w+)', await \$\.session\.id\(\), agentId\]/.exec(source('skills/workflow-gates/hooks/executor.ts'));
+    assert.ok(call, 'the gate mod runs the engine with the session id and the agent id');
+    const engine = literal('skills/workflow-gates/hooks/executor.ts', 'ENGINE');
+    assert.ok(engine.startsWith('.claude/') && fs.existsSync(path.join(ROOT, engine.slice('.claude/'.length))), `the gate mod runs the engine where a project installs it (${engine})`);
+    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+      name: 'pay', work_type: 'epic', status: 'in-progress',
+      phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
+    }));
+    harness.ok(dir, ['task', 'start', 'pay', 'ledger', 'ledger-2-3'], { env: env() });
+    assert.deepStrictEqual(harness.ok(dir, [call[1], call[2], 'sess-1', 'aa76bd7f82a2ef3e4'], { env: env() }), { ok: true, recorded: true });
+    const file = path.join(config, 'conversations', 'sess-1', literal('skills/workflow-gates/hooks/folder.ts', 'POSITION'));
+    assert.strictEqual(JSON.parse(fs.readFileSync(file, 'utf8')).executor, 'aa76bd7f82a2ef3e4');
   });
 
   it('the rows mod knows the note by the words the engine opens it with', () => {

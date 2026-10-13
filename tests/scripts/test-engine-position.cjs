@@ -6,13 +6,14 @@
 // a work unit's menu, the project-level places — a place this project lacks
 // refused, marking the conversation first where the call runs in a
 // workflows project, and nothing without a session id; the task `task
-// start` adds and its `task complete` takes off; the start menu's repair
-// dropping it; and `conversation position`, which answers what to re-read
-// to carry on there: the skill that runs the work, then the topic's
-// documents this project has, each by its absolute path under the project
-// root, as the note a compaction hands up and one line of JSON for the gate
-// mod — nothing from a place no longer open, or one whose skill the project
-// lacks.
+// start` adds and its `task complete` takes off; the executor the gate mod's
+// `conversation executor` adds beside a task in flight, riding with that task
+// alone; the start menu's repair dropping it; and `conversation position`,
+// which answers what to re-read to carry on there: the skill that runs the
+// work, then the topic's documents this project has, each by its absolute
+// path under the project root, as the note a compaction hands up and one line
+// of JSON for the gate mod — nothing from a place no longer open, or one
+// whose skill the project lacks.
 //
 
 require('./hermetic-env.cjs');
@@ -222,6 +223,118 @@ describe('the position every arrival records', () => {
   });
 });
 
+describe('the executor the gate mod records', () => {
+  const AGENT = 'aa76bd7f82a2ef3e4';
+
+  /** The gate mod's call as it sees the executor dispatched, its answer parsed. */
+  function executor(agentId = AGENT, sessionId = 'sess-1') {
+    return ok(['conversation', 'executor', sessionId, agentId], null);
+  }
+
+  /** The conversation in that implementation, on task 2.3, its executor recorded. */
+  function onTask() {
+    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    assert.deepStrictEqual(executor(), { ok: true, recorded: true });
+  }
+
+  it('records the agent id beside the task in flight', () => {
+    onTask();
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: AGENT });
+  });
+
+  it('records nothing without a task in flight — no position, another phase, an implementation between tasks', () => {
+    assert.deepStrictEqual(executor(AGENT, 'sess-none'), { ok: true, recorded: false });
+    assert.strictEqual(position('sess-none'), null);
+    for (const place of [['pay', 'discussion', 'ledger'], ['pay'], ['pay', 'implementation', 'ledger']]) {
+      ok(['session', 'label', ...place]);
+      const before = position();
+      assert.deepStrictEqual(executor(), { ok: true, recorded: false }, place.join(' '));
+      assert.deepStrictEqual(position(), before, place.join(' '));
+    }
+  });
+
+  it('records on the conversation it names, never the calling one', () => {
+    onTask();
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3'], 'sess-2');
+    assert.deepStrictEqual(executor('ab12', 'sess-2'), { ok: true, recorded: true });
+    assert.strictEqual(position('sess-2').executor, 'ab12');
+    assert.strictEqual(position().executor, AGENT);
+  });
+
+  it('a later dispatch for the same task replaces it', () => {
+    onTask();
+    executor('ab12');
+    assert.strictEqual(position().executor, 'ab12');
+  });
+
+  it('task start re-run for the task in flight keeps it; another task starts without one', () => {
+    onTask();
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    assert.strictEqual(position().executor, AGENT, 'the recovery steps re-run task start for the task in flight');
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-4']);
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.4' });
+  });
+
+  it('task start for the same step in another implementation starts without one', () => {
+    workUnit('pay', 'epic', {
+      implementation: { items: {
+        ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 },
+        refunds: { status: 'in-progress', current_task: null, fix_attempts: 0 },
+      } },
+    });
+    onTask();
+    ok(['task', 'start', 'pay', 'refunds', 'refunds-2-3']);
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'refunds', task: '2.3' });
+  });
+
+  it('the task\'s completion takes it off with the task', () => {
+    onTask();
+    ok(['task', 'complete', 'pay', 'ledger', 'ledger-1-1']);
+    assert.strictEqual(position().executor, AGENT, 'another task\'s completion leaves it');
+    ok(['task', 'complete', 'pay', 'ledger', 'ledger-2-3', '--next-task', '~']);
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger' });
+  });
+
+  it('a re-label of the same implementation keeps it; arriving anywhere else leaves none behind', () => {
+    onTask();
+    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
+    assert.strictEqual(position().executor, AGENT);
+    ok(['session', 'label', 'pay']);
+    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' });
+  });
+
+  it('a stored executor that does not read as an agent id is ignored, never carried on', () => {
+    install('workflow-implementation-process');
+    for (const stored of ['a b', '../x', '`x`', '', 7, null, ['a1']]) {
+      writePosition({ name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: stored });
+      const answer = reads();
+      assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' }, JSON.stringify(stored));
+      assert.doesNotMatch(answer.text, /executor/, JSON.stringify(stored));
+      ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+      assert.deepStrictEqual(position(), { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3' }, JSON.stringify(stored));
+    }
+  });
+
+  it('refuses an agent id that is not one, a missing argument, and an extra one, recording nothing', () => {
+    onTask();
+    const usage = /^Usage: engine conversation executor <session-id> <agent-id> — the agent id letters, digits, - and _ alone$/;
+    for (const args of [['sess-1', 'a b'], ['sess-1', '../x'], ['sess-1', 'a`b'], ['sess-1', ''], ['sess-1'], [], ['', AGENT], ['sess-1', AGENT, 'x']]) {
+      assert.match(harness.refuses(dir, ['conversation', 'executor', ...args], { env: env(null) }).error, usage, JSON.stringify(args));
+    }
+    assert.strictEqual(position().executor, AGENT);
+  });
+
+  it('a position that cannot be written records nothing', () => {
+    onTask();
+    fs.rmSync(path.join(folder(), 'position.json'));
+    fs.mkdirSync(path.join(folder(), 'position.json'));
+    assert.deepStrictEqual(executor(), { ok: true, recorded: false });
+  });
+});
+
 describe('conversation position', () => {
   /** The note for a skill that runs the work and the files after it. */
   function note(where, skill, files) {
@@ -317,6 +430,17 @@ describe('conversation position', () => {
       `- ${dir}/.workflows/pay/planning/ledger/tasks/ledger-2-3.md`,
     ].join('\n'));
     assert.strictEqual(answer.place, 'pay › implementation › ledger');
+  });
+
+  it('an implementation task with its executor recorded: the note names the agent its later rounds continue', () => {
+    install('workflow-implementation-process');
+    ok(['session', 'label', 'pay', 'implementation', 'ledger']);
+    ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
+    ok(['conversation', 'executor', 'sess-1', 'aa76bd7f82a2ef3e4'], null);
+    const answer = reads();
+    assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'implementation', topic: 'ledger', task: '2.3', executor: 'aa76bd7f82a2ef3e4' });
+    assert.strictEqual(answer.place, 'pay › implementation › ledger');
+    assert.strictEqual(answer.text, note('the implementation of "ledger" in the epic "pay", on task 2.3 (internal id `ledger-2-3`), its executor agent `aa76bd7f82a2ef3e4`', 'workflow-implementation-process', []));
   });
 
   it('an implementation task whose plan names no format, or one no file can be named for, names no reading adapter', () => {

@@ -989,6 +989,14 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.deepStrictEqual(onTask.position, { name: wu, phase: 'implementation', topic, task: '1.1' });
   assert.strictEqual(onTask.skill, path.join(sim.dir, '.claude/skills/workflow-implementation-process/SKILL.md'));
   assert.match(onTask.text, new RegExp(`^The conversation was just compacted\\. This conversation is working in the implementation of .*, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\)\\.`));
+  // The executor's dispatch: the gate mod hands the engine its agent id, which
+  // rides on the position with the task — through the recovery steps' re-run
+  // of `task start` — so the note names the agent the later rounds continue.
+  assert.strictEqual(sim.run(['conversation', 'executor', sim.env.CLAUDE_CODE_SESSION_ID, 'aa76bd7f82a2ef3e4']).recorded, true);
+  sim.run(['task', 'start', wu, topic, `${topic}-1-1`]);
+  const withExecutor = carryOn(sim);
+  assert.strictEqual(withExecutor.position.executor, 'aa76bd7f82a2ef3e4', 'the recovery re-run of task start keeps the executor');
+  assert.match(withExecutor.text, new RegExp(`, on task 1\\.1 \\(internal id \`${topic}-1-1\`\\), its executor agent \`aa76bd7f82a2ef3e4\`\\.`));
   // The loop's two stops: an executor that comes back blocked or failed
   // (task-loop C), and the analysis loop's checkpoint over files
   // implementation never wrote.
@@ -1030,6 +1038,8 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // finder — marks the boundary, and the re-record closes the phase
   // (consolidation-pass.md F). Nothing crosses the boundary.
   sim.run(['task', 'complete', wu, topic, `${topic}-1-1`, '--phase', '1', '--next-task', '~']);
+  assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'implementation', topic },
+    'the task\'s completion takes it off, its executor with it');
   assert.match(sim.render(['step-opening', `${wu}.implementation.${topic}`, '--step', 'consolidation'], { expect: 'content' }),
     /□ Consolidation Pass \(phase 1\)/, 'the pass opens on the phase in flight');
   assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.implementation.${topic}`, 'bank']), 'true',

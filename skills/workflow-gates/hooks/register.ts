@@ -31,8 +31,9 @@
  *
  * It registers the rest of what the mod does in a workflow conversation as
  * well: the spinner saying the phase (`spinner.ts`), the guard on direct
- * manifest edits (`guard.ts`), and the compaction — Claude Code's own, the
- * engine's note appended last (`compaction.ts`).
+ * manifest edits (`guard.ts`), the compaction — Claude Code's own, the
+ * engine's note appended last (`compaction.ts`) — and the implementation
+ * task's executor recorded as it is dispatched (`executor.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
  * tab alone, from 2.1.287. Elsewhere — the VS Code extension, Claude Code on
@@ -49,6 +50,7 @@ import type {
 } from 'claude-code'
 
 import { compaction } from './compaction.ts'
+import { executor } from './executor.ts'
 import { MARKER, folderOf as folderNamed } from './folder.ts'
 import { guard } from './guard.ts'
 import {
@@ -1146,4 +1148,5 @@ export const register: Register = on => {
   spinner(on)
   guard(on)
   compaction(on)
+  executor(on)
 }
