@@ -1116,14 +1116,14 @@ function checkFrameworkLoad(files) {
 
 // ---------------------------------------------------------------------------
 // Check 28 — every Bash grant in a frontmatter `allowed-tools` carries a `*`,
-// and a grant for one of the workflows' own scripts ends in ` *`. A grant is
-// a Claude Code permission rule, and one without a trailing ` *` matches no
-// call with arguments, which every script call carries. The value is read
-// inline or as an indented list.
+// and a grant running a script through `node` ends in ` *` (or its prefix
+// form `:*`). A grant is a Claude Code permission rule, and one without a
+// trailing ` *` matches no call with arguments, which every script call
+// carries. The value is read inline or as an indented list.
 // ---------------------------------------------------------------------------
 
 const BASH_GRANT = /Bash\(([^)]*)\)/g;
-const SCRIPT_GRANT = /^node \S+\.cjs\b/;
+const SCRIPT_GRANT = /^node\s/;
 
 function checkBashGrantsCarryWildcard(files) {
   const out = [];
@@ -1137,8 +1137,8 @@ function checkBashGrantsCarryWildcard(files) {
       if (!inGrants) continue;
       for (const [, grant] of line.matchAll(BASH_GRANT)) {
         if (SCRIPT_GRANT.test(grant)) {
-          if (grant.endsWith(' *')) continue;
-          out.push({ file, line: i + 1, message: `Bash(${grant}) is a script grant that does not end in \` *\` — it matches no call with arguments` });
+          if (grant.endsWith(' *') || grant.endsWith(':*')) continue;
+          out.push({ file, line: i + 1, message: `Bash(${grant}) is a script grant that does not end in \` *\` or \`:*\` — it matches no call with arguments` });
           continue;
         }
         if (grant.includes('*')) continue;
@@ -2333,7 +2333,7 @@ test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or
     const ENGINE = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
     const starred = write(dir, 'skills/workflow-a-process/SKILL.md', [
       '---', 'name: workflow-a-process',
-      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(mkdir -p .workflows/*/.state), Read`,
+      `allowed-tools: Bash(${ENGINE} *), Bash(${ENGINE} render *), Bash(${ENGINE} manifest:*), Bash(mkdir -p .workflows/*/.state), Read`,
       '---', '', `Run \`Bash(${ENGINE})\` from the body.`, '',
     ].join('\n'));
     const agent = write(dir, 'agents/workflow-b.md', '---\nname: workflow-b\ntools: Read, Bash\n---\n\nBody.\n');
@@ -2348,7 +2348,7 @@ test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or
     ].join('\n'));
     const misplaced = write(dir, 'skills/workflow-e-process/SKILL.md', [
       '---', 'name: workflow-e-process',
-      `allowed-tools: Bash(node .claude/skills/*/scripts/engine.cjs), Bash(${ENGINE}*)`, '---', '',
+      `allowed-tools: Bash(node .claude/skills/*/scripts/engine.cjs), Bash(${ENGINE}*), Bash(node --no-warnings tools/run.mjs*)`, '---', '',
     ].join('\n'));
     const v = checkBashGrantsCarryWildcard([inline, listed, misplaced]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
@@ -2357,7 +2357,8 @@ test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or
       ['workflow-d-process', 4],
       ['workflow-e-process', 3],
       ['workflow-e-process', 3],
-    ], `each bare grant, and each script grant whose \`*\` is not a trailing \` *\`, is caught at its line, got ${report(v)}`);
+      ['workflow-e-process', 3],
+    ], `each bare grant, and each script grant whose \`*\` is not a trailing \` *\` or \`:*\`, is caught at its line, got ${report(v)}`);
     assert.match(v[0].message, /^Bash\(node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
     assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
     assert.match(v[3].message, /^Bash\(node \.claude\/skills\/\*\/scripts\/engine\.cjs\) is a script grant/);
