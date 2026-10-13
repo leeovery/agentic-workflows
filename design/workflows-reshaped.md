@@ -413,26 +413,40 @@ project's own measurements decide (R7).
   topics come out of. The product-level conversation on the roadmap, the
   work-type commit, the discovery map, the briefs and the gap analysis all
   stay. Two things change:
-  - **Routing by what needs the person.** Each topic is routed
-    **discuss** (it holds questions that need the person) or **build**
-    (it holds none; the builder makes its calls against the brief and the
-    shape). This replaces routing to research or discussion everywhere
-    that routing reaches today: the map, where a message sent to a topic
-    lands, and the epic menu's new-topic doors. Claude proposes the
-    routing with the map and the person corrects it; when unsure, a topic
-    is routed discuss.
-  - **Each brief lists its topic's agenda**: the questions that need the
-    person. The agenda is the decision phase's definition of done (R11).
+  - **No routing.** Every topic of an epic, feature or cross-cutting unit
+    goes to decision; none goes straight to the build. How much of the
+    person a topic takes is set inside decision — by how much the product
+    already settles and by the ask rule (R11, R24) — never by a label
+    fixed at the map. This replaces routing to research or discussion
+    everywhere that routing reaches today: the map, the first-phase gate,
+    where a message sent to a topic lands, and the epic menu's new-topic
+    doors. Quick-fix (R21) and bugfix (R20) keep their own paths. Ruled
+    by the person 2026-10-13 on the discovery walk, replacing a proposed
+    label routing each topic discuss or build. A label set from the brief
+    is too coarse and too early:
+    - most topics mixed a few real questions with much agreement —
+      15 of 18 features held product calls only the person made, and
+      Fumi's engine-architecture took about 66 replies, about 50 of them
+      agreement and about 4 real questions;
+    - space-homing's brief held only technical questions, so it would
+      have gone to the build, when what needed the person — the bar for
+      placing notes at launch, the macOS 15 floor, no kill switch — came
+      out of its research;
+    - a build label would have sent undecided calls to the builder,
+      Goosemates' failure (the shape review's evidence, Open).
+  - **The brief feeds the topic's opening view** (R11): what discovery
+    found — soft decisions, rejected paths, open questions — is Claude's
+    input when the topic opens, not the list of what the person will be
+    asked. Briefs predicted that poorly: they matched where discovery
+    measured a running product (Portal's project-link, 7 of its 8
+    subtopics) and missed for most of greenfield Fumi, where the questions
+    came from research results and other topics' decisions. Approving the
+    map stays the topics and their order.
 
   Whether a door is one-way is set by what depends on the decision —
   persisted data, external contracts, decisions stacked on it — not by
   the size of the change; a public command surface is two-way until
-  something depends on it. Fumi, read by topic name only:
-  engine-architecture, note-model, storage-and-sync, platform-support and
-  licensing would route discuss; note-window, management-window and
-  status-and-alerts, 38% of its discussion volume, would route build —
-  except where the person cares (R24), which in Fumi includes its visual
-  design.
+  something depends on it.
 
 ### Decision
 
@@ -454,12 +468,37 @@ project's own measurements decide (R7).
     never sit in the record as the person's decision — the spec review
     catches an unowned decision in the golden record. Whether the record
     also holds findings ("what we now know") beside decisions is open.
-  - **The map is the definition of done.** The Discussion Map is seeded
-    from the brief's agenda, and the phase is done when it settles. Only
-    questions that need the person go on it; a new one-way question met
-    mid-conversation joins it.
-  - **Calls Claude can make** go to the ledger (R23), not the map. "Don't
-    care" hands a call to the builder and is recorded as the builder's.
+  - **A topic opens with Claude's view.** Nothing is written ahead. When
+    the topic starts, Claude reads its brief and the record of every topic
+    decided so far, checks what can be checked (R24), and shows its view
+    on one screen, in product terms:
+    - what earlier decisions already settle, each with where it comes
+      from;
+    - how Claude sees the rest — the shape;
+    - the forks: where there is more than one sensible way and the choice
+      shows in the product.
+
+    Where nothing decided constrains a fork, the view shows the options
+    and what the person would notice with each, and Claude gives its lean
+    only after the person has said how they see it: a shown answer pulls
+    agreement (82% shown against 51% blind, R29), and the shape of the
+    first topics is where the person wants the product to be theirs.
+    Where earlier decisions point one way, the lean comes first. The
+    conversation that follows is about the shape, and what the person
+    decides enters the record as theirs. The least a topic takes is the
+    view and one answer — Fumi's build-and-release in October is minutes:
+    most of it follows from earlier topics, and the view names the four
+    things that need the person. The person's design, 2026-10-13: "Here's
+    how I see this. How do you see it?"
+  - **The map is the definition of done.** It is seeded from the view's
+    forks, and the phase is done when it settles. Only questions that
+    need the person go on it; a new one met mid-conversation, or arriving
+    as a message or a finding, joins it.
+  - **Once the shape is agreed, Claude fills in the rest.** Calls it can
+    make go to the ledger (R23), not the map; the ask rule sends the
+    person the few that need them, in one batch; the topic goes to ready
+    to build with the ledger in view (R24's convergence). "Don't care"
+    hands a call to the builder and is recorded as the builder's.
   - **Tools:** deep dives to learn, spikes to see and feel (R12),
     experiments to measure (unchanged: a rigid laboratory for questions
     neither side can answer).
@@ -541,8 +580,8 @@ project's own measurements decide (R7).
 - **R14 — Specification stays the golden record.** The spec is the document
   the build reads and the knowledge base serves for later decisions.
   - Topics are grouped into buildable units, as today (the grouping now
-    runs in the epic menu), and the spec is assembled from their records
-    and the build topics' briefs — assembly, not archaeology.
+    runs in the epic menu), and the spec is assembled from their records —
+    assembly, not archaeology.
   - It marks what it leaves to the builder.
   - It ends with the **phase cut**: phases in build order, each an
     independently verifiable slice with acceptance criteria written as
@@ -789,10 +828,9 @@ project's own measurements decide (R7).
   - **What waits on the person first** — an authority gate (approve the
     map, ready to build, finish), a builder's question raised mid-phase,
     verdicts waiting (R23) — each with its door.
-  - **Topics by what they need.** A discuss topic shows its progress
-    through its agenda; a build topic shows it goes to specification from
-    its brief; decided, in session, mail waiting and experiments waiting
-    stay. A build unit shows specification, phase N of M, final review, in
+  - **Topics by what they need.** A topic in decision shows its progress
+    through its map; decided, in session, mail waiting and experiments
+    waiting stay. A build unit shows specification, phase N of M, final review, in
     place of the plan rows.
   - The recommended row first, in the foundations-first order (R41); a
     topic in session elsewhere stays struck, so several open at once.
@@ -987,14 +1025,28 @@ each call on a page that day.
       loss; one loss among its next answers puts it back over the line,
       and it asks again until the count outweighs it. A contract question
       that would be hard to undo needs the bound under 10%.
-  - **The cone of collaboration** enters in three places, never as a key
-    in the counts, which would split the evidence into cells too small to
-    learn from. Discovery and research stay conversation: the person
-    brings the idea, it is shaped together, and Claude never decides
-    there alone — research questions departed 35% of the time (6 of 17),
-    decision questions 17% (42 of 242). The rule runs from the decision
-    phase on. Convergence hands a topic to Claude's settling, and
-    mid-build the threshold rises (above).
+  - **The cone of collaboration narrows as the product takes shape**,
+    not phase by phase — the person's framing, 2026-10-13: widest on a
+    blank page, where the person drives and the framework goes in early,
+    narrowing as each decided topic constrains the next, because the more
+    of the product exists the fewer ways remain that make sense. Across
+    an epic the first topics are the widest; across epics, a new epic's
+    first topic starts narrower once the product's character is known
+    (the product record, Open). The cone is never a key in the counts,
+    which would split the evidence into cells too small to learn from,
+    and nothing computes where in it the work is; it enters where the
+    work does:
+    - Discovery stays conversation: the person brings the idea, it is
+      shaped together, and Claude never decides there alone.
+    - In decision, a topic's opening view (R11) carries it: the part
+      earlier decisions settle grows with every topic decided, so the
+      forks shrink on their own. Where research is still open the person
+      is needed most — research questions departed 35% of the time
+      (6 of 17), decision questions 17% (42 of 242).
+    - Hard to undo halves the threshold (above), which tends to bite on
+      early calls, the ones later work builds on.
+    - Convergence hands a topic's remaining calls to Claude's settling,
+      and mid-build the threshold rises (above).
   - **Convergence moves the work on.** After 8 agreements in a row in a
     topic, or on the person's word, Claude offers to settle the rest: how
     many points are open, how many it would settle, and which still come
@@ -1460,9 +1512,19 @@ think is a good sign."
     takes it at the first chance (task approval 32 of 36, task gate 20 of
     24, fix gate 15 of 22).
 - **R41 — Foundations first.** Discovery orders the map's topics by what
-  depends on what; the topics others depend on are decided first, so
-  fewer messages bounce back and nothing is built on an undecided model
-  (Fumi's coupled topics, Goosemates' skipped core model).
+  depends on what, and research whose results other topics rest on comes
+  first. The reason is the cone (R24): the topics everything rests on are
+  decided while the page is blank and the person is most involved, and
+  later topics arrive mostly settled; nothing is built on an undecided
+  model (Goosemates' skipped core model). Reasoned again 2026-10-13 on the
+  discovery walk: ordering does not stop topics bouncing. Fumi's map was
+  ordered foundations first at discovery and 73 of 155 messages still
+  went to an earlier topic, with about 37 reopens — decisions nobody could
+  see at discovery (CloudKit, the macOS 15 floor) and pairs that depend on
+  each other both ways (note-model and storage-and-sync, 7 and 6
+  messages). What the order would have changed in Fumi is research:
+  space-homing's sat seventh while engine-architecture designed around a
+  permission restart its research showed did not exist.
 - **R42 — What is kept.** The record, the log, the spec, evidence and a
   short review report; the build's log joins them (R15). Tasks live in the plan's tracker. Tracking files,
   analysis files and per-task report files go: in every project only the
@@ -1517,9 +1579,8 @@ think is a good sign."
   Two kinds of change:
   - **Mechanical, as code migrations:**
     - research and discussion items become decision items, and their
-      directories move; map routing of research or discussion becomes
-      discuss (build is never assigned by migration — a topic already
-      talked through is a discuss topic);
+      directories move; map routing of research or discussion is
+      dropped (R10);
     - a plan's phases become the specification's phase cut; tasks already
       written stay as tasks, which the builder revises at phase start like
       any other;
@@ -1625,6 +1686,13 @@ person, one item at a time; the sections above hold the detail.
   landed summaries, a question queue, a stop report (R15); proven, and the
   per-project verify setup (R32); the gap-analysis session bug goes with
   the restructure.
+- From the discovery walk (2026-10-13): no routing — every topic goes
+  through decision, none straight to the build (R10); a topic opens with
+  Claude's view, the forks laid out, its lean held back where nothing
+  decided constrains a fork (R11); the brief feeds that view and approving
+  the map stays topics and order (R10); the cone narrows as the product
+  takes shape, not phase by phase (R24); foundations first for the cone's
+  sake, with research others rest on first (R41).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1644,10 +1712,10 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Discovery (R10, R41): routing discuss or build, the brief's agenda,
-  foundations first.
+- Discovery (R10): the rest of the walk — what Claude asks and records
+  in discovery.
 - Decision (R11, R12): record and log, the map as done, spikes and their
-  assets, the closing pass; the cone (R24) in practice.
+  assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
   arguments on the start skill.
 - Specification (R14): assembly from the records, the phase-cut corridor,
@@ -1711,7 +1779,7 @@ settled-from-evidence items with the person; then the formal plan
   driven by engine code, with room for Claude to put things on it that the
   engine does not hold. Wanted by the person 2026-10-12 for every phase,
   not only the build (decision:
-  the agenda; specification: its sections and review; build: tasks
+  the map; specification: its sections and review; build: tasks
   building, landed and parked, questions waiting, each phase's proof;
   review: agents and findings). It sits apart from the person's sitrep
   board, which works across projects and sessions a level above and is
