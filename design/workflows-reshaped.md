@@ -572,11 +572,36 @@ project's own measurements decide (R7).
     problem specifications were partly invented for: telling a false path
     from a final decision. FlowX kept exactly this split by hand; without
     it Switchboard's reasons ended up outside git.
+
+    Today a topic that went through both phases has a research document
+    and a discussion document, each mixing journey and outcome (Fumi's
+    space-homing: 12k and 14k words; research carried across under
+    "Inherited position — from research"; a reopened decision sitting on
+    its earlier version, the fallback revised three times in three days).
+    The split moves from by phase to outcome against journey. A changed
+    mind rewrites the record's entry with no trace of the earlier answer,
+    beyond naming it among what the entry rules out where a reader needs
+    telling not to go back; the change and its why are appended to the
+    log. Ruled by the person 2026-10-13:
+    - **A decision log is kept per topic**, one dated heading per
+      session. The mailbox rule (R13) keeps a decision session to one
+      topic, so the topic's whole journey sits in one file beside its
+      record — for its next session, the knowledge base and the person
+      asking why. Discovery and the roadmap keep their logs per session:
+      their conversations are about the whole epic or product.
+    - **The record holds findings beside decisions,** in their own
+      section, each saying how it is known (measured, documented, seen in
+      a spike) and when, rewritten in place when superseded. With research
+      merged in, its results need a home other topics read: an opening
+      view reads records, not logs (Fumi's measured "no Accessibility
+      permission is needed" turns up across six other topics' documents,
+      and engine-architecture designed around a restart for a permission
+      that was not needed).
   - **Every record entry says who decided it:** the person, Claude, or
-    the person handing it over ("your call"). A Claude suggestion can
-    never sit in the record as the person's decision — the spec review
-    catches an unowned decision in the golden record. Whether the record
-    also holds findings ("what we now know") beside decisions is open.
+    the person handing it over ("your call"); a finding says how it is
+    known instead. A Claude suggestion can never sit in the record as the
+    person's decision — the spec review catches an unowned decision in the
+    golden record.
   - **A topic opens with Claude's view.** Nothing is written ahead. When
     the topic starts, Claude reads its brief and the record of every topic
     decided so far, checks what can be checked (R24), and shows its view
@@ -1818,6 +1843,9 @@ person, one item at a time; the sections above hold the detail.
   (R10, R40); the gap analysis at a topic's close and one sweep before
   the spec, a candidate a topic only when it holds the person's call
   (R10, R11). Discovery is walked.
+- From the decision walk (2026-10-13): a decision log per topic,
+  discovery's and the roadmap's per session; the record holds findings
+  beside decisions, each saying how it is known (R11).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1837,7 +1865,7 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Decision (R11, R12): record and log, the map as done, spikes and their
+- Decision (R11, R12): the map as done, spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
   arguments on the start skill.
@@ -1858,7 +1886,7 @@ setup gates and environment setup; the help walkthrough and glossary; the
 user-facing docs; the prose-test harness for the new shape (R4); session
 handoffs and compaction recovery beyond R35's note.
 
-**Still the person's to decide:** logs by session or by topic; whether a decision record holds findings (all in Open).
+**Still the person's to decide:** nothing open at present.
 
 **Unclear, or engineering for the plan:** where the phase cut lives on
 disk and how a tracker shows a phase not yet written; how project skills
@@ -1993,13 +2021,6 @@ settled-from-evidence items with the person; then the formal plan
     evidence only for what the person reviewed; the feature map groups
     bugs by area so tracking can flag a hotspot; the knowledge base's value
     over plain search joins the measurements.
-- **Logs by session or by topic.** Proposed and not ruled: a session's log
-  records the whole conversation wherever it went, while each decision
-  lands in its own topic's record (subject to R13). The alternative keeps
-  a log per topic.
-- **Whether a decision record holds findings** ("what we now know")
-  beside decisions — carried in from the record-and-log session the
-  person closed.
 - **Where the phase cut lives on disk,** and how today's plan formats carry
   per-phase task writing.
 - **How project skills reach the builder** (R34).
