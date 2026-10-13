@@ -460,8 +460,25 @@ project's own measurements decide (R7).
     Switchboard's hold only how to work on the code, and Goosemates, run by
     hand, kept its settled decisions in their own file with CLAUDE.md
     pointing at it. The workflows never write CLAUDE.md; a pointer there is
-    the person's line. Adopted by the person 2026-10-13; three forks are
-    open (Open).
+    the person's line. It is never a phase, and Claude never asks to fill
+    it; three moments touch it:
+    - discovery starts it: what a conversation about the product as a
+      whole settles goes in, a line only when something product-wide was
+      said;
+    - decisions add to it: a topic that settles something bigger than
+      itself (Fumi's "updates never install themselves", decided inside
+      engine-architecture) lists the lines on its ready-to-build screen,
+      and the person's yes there covers them — no gate of its own, while
+      the person still sees Claude widen a topic's call into a rule for
+      the product. Lines written in a product conversation need no
+      approval; the person was in it. A project with no product
+      conversation, such as Portal, starts empty and fills from its
+      decisions;
+    - every topic's opening view reads it, and the settled part cites it.
+
+    It stays apart from the feature map (R32): the build writes that and
+    proving the work reads it; decision writes this and the opening view
+    reads it. Adopted, with its forks, by the person 2026-10-13.
   - **No routing.** Every topic of an epic, feature or cross-cutting unit
     goes to decision; none goes straight to the build. How much of the
     person a topic takes is set inside decision — by how much the product
@@ -532,7 +549,8 @@ project's own measurements decide (R7).
     only after the person has said how they see it: a shown answer pulls
     agreement (82% shown against 51% blind, R29), and the shape of the
     first topics is where the person wants the product to be theirs.
-    Where earlier decisions point one way, the lean comes first. The
+    Where the person has no view, the lean comes next, so the topic never
+    stalls. Where earlier decisions point one way, the lean comes first. The
     conversation that follows is about the shape, and what the person
     decides enters the record as theirs. The least a topic takes is the
     view and one answer — Fumi's build-and-release in October is minutes:
@@ -1745,7 +1763,11 @@ person, one item at a time; the sections above hold the detail.
   takes shape, not phase by phase (R24); foundations first for the cone's
   sake, with research others rest on first (R41); discovery one phase at
   whatever level the conversation reaches, no detail questions in it,
-  feature and epic two types with a light call between them (R10, R19).
+  feature and epic two types with a light call between them (R10, R19);
+  the product record — the workflows' own file, never CLAUDE.md, started
+  in discovery, added to from decisions at ready to build, read by every
+  opening view, apart from the feature map (R10); where the person has no
+  view on a fork, Claude's lean comes next (R11).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1765,8 +1787,7 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Discovery (R10): its gates, the gap analysis, and the product record's
-  three forks (Open), on the walk now.
+- Discovery (R10): its gates and the gap analysis, on the walk now.
 - Decision (R11, R12): record and log, the map as done, spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
@@ -1788,8 +1809,7 @@ setup gates and environment setup; the help walkthrough and glossary; the
 user-facing docs; the prose-test harness for the new shape (R4); session
 handoffs and compaction recovery beyond R35's note.
 
-**Still the person's to decide:** the product record's three forks; logs
-by session or by topic; whether a decision record holds findings (all in Open).
+**Still the person's to decide:** logs by session or by topic; whether a decision record holds findings (all in Open).
 
 **Unclear, or engineering for the plan:** where the phase cut lives on
 disk and how a tracker shows a phase not yet written; how project skills
@@ -1861,14 +1881,6 @@ settled-from-evidence items with the person; then the formal plan
   bug in the released epic menu, not fixed on its own: the person ruled
   2026-10-12 that the restructure takes it in, and the reworked menu (R17)
   is checked not to carry it.
-- **The product record's three forks** (adopted, R10):
-  - where it grows: product-level conversations only, or also any
-    decision that turns out to be about the product rather than its topic
-    (Fumi's "updates never auto-install" was decided inside
-    engine-architecture; Portal has never had a product conversation);
-  - who approves a line: the person line by line, or Claude writes it and
-    the person sees it when a view first leans on it;
-  - with the feature map (R32) or apart.
 - **Shape review — evidence read 2026-10-12** (six read-only agents;
   picture redrawn at the artifact link above, version 2). On the
   workflows: Fumi, Portal, Tick, agntc, Mint. Without: Switchboard, FlowX,
