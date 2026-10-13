@@ -576,7 +576,17 @@ describe('engine commit --paths: the code commit', () => {
     assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
   });
 
-  it('commits in a project nested in its repository under the project\'s own directory', () => {
+  it('refuses a path deleted long before — only the HEAD commit\'s own deletion passes', () => {
+    fs.unlinkSync(path.join(dir, 'src/gone.js'));
+    commitAll(dir, 'drop the module');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    commitAll(dir, 'later work');
+
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/gone.js', '-m', 'x', ...forTopic]).error,
+      /"src\/gone\.js" is neither on disk nor tracked/);
+  });
+
+  it('commits in a project nested in its repository under the project\'s own directory, reading only its own folder', () => {
     const repo = harness.setupGitFixture('engine-commit-nested-paths-');
     try {
       const project = path.join(repo, 'apps/web');
@@ -584,13 +594,19 @@ describe('engine commit --paths: the code commit', () => {
       manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
       writeFile(project, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
       writeFile(project, 'src/app.js', 'const x = 1;\n');
+      writeFile(repo, 'other/x.js', 'const s = 1;\n');
       commitAll(repo, 'init');
       writeFile(project, 'src/app.js', 'const x = 2;\n');
+      writeFile(project, 'src/leftover.js', 'const l = 1;\n');
+      writeFile(project, '.workflows/payments/discussion/topic-b.md', '# a doc session\'s own\n');
+      writeFile(repo, 'other/x.js', 'const s = 2;\n');
 
       const res = engine(project, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
       assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(repo, ['rev-parse', '--short', 'HEAD']).trim() }]);
       assert.deepStrictEqual(headFiles(repo), ['apps/web/src/app.js']);
+      assert.deepStrictEqual(res.left_dirty, ['src/leftover.js'],
+        'named from the project — never a sibling folder\'s dirt, never the project\'s .workflows/');
     } finally {
       cleanupFixture(repo);
     }
@@ -608,7 +624,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     writeFile(dir, '.gitignore', 'api/\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     commitAll(dir, 'code');
-    // The clone the project ignores — Folio's shape.
+    // An ignored clone: a repo of its own that the root's .gitignore lists.
     api = harness.initRepo(path.join(dir, 'api'));
     writeFile(api, 'src/handler.js', 'const h = 1;\n');
     writeFile(api, 'src/other.js', 'const o = 1;\n');
@@ -620,17 +636,25 @@ describe('engine commit --paths: code in repos of its own', () => {
   const forTopic = ['--for', 'payments', 'implementation/topic-a'];
   const head = (repo) => git(repo, ['rev-parse', '--short', 'HEAD']).trim();
   const subject = (repo) => git(repo, ['log', '-1', '--format=%s']).trim();
+  /** The commit the root's HEAD records for a submodule. */
+  const pointer = (rel) => git(dir, ['rev-parse', `HEAD:${rel}`]).trim();
+  /** A pre-commit hook in the repo that refuses every commit. */
+  const refusingHook = (repo, name) => {
+    const hook = path.join(repo, '.git/hooks/pre-commit');
+    fs.mkdirSync(path.dirname(hook), { recursive: true });
+    fs.writeFileSync(hook, `#!/bin/sh\necho "the ${name} hook refuses" >&2\nexit 1\n`, { mode: 0o755 });
+    return hook;
+  };
 
-  it('commits each path in the repo that owns it — one call, a commit per repo, one message', () => {
+  it('commits each path in the repo that owns it — one call, a commit per repo, one message, the nested repo first', () => {
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     writeFile(api, 'src/handler.js', 'const h = 2;\n');
     writeFile(api, 'src/new.js', 'const n = 1;\n');
 
-    const res = engine(dir, ['commit', '--paths', 'api/src/handler.js', 'src/app.js', 'api/src/new.js',
+    const res = engine(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', 'api/src/new.js',
       '-m', 'feat(topic-a): the task', ...forTopic]);
 
-    assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }, { repo: 'api', sha: head(api) }],
-      'the root first, then the clone');
+    assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(headFiles(dir), ['src/app.js']);
     assert.deepStrictEqual(headFiles(api).sort(), ['src/handler.js', 'src/new.js']);
     assert.deepStrictEqual([subject(dir), subject(api)], ['feat(topic-a): the task', 'feat(topic-a): the task']);
@@ -663,16 +687,45 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.deepStrictEqual(res.left_dirty, ['api/src/other.js', 'web/index.js']);
   });
 
-  it('never commits a nested repo in its parent — not a submodule\'s pointer, not an untracked repo as a gitlink', () => {
+  it('records a submodule\'s new pointer in its parent when the call reaches into it, the submodule first', () => {
     const sdk = harness.addSubmodule(dir, 'sdk', api);
-    const pointer = () => git(dir, ['ls-tree', 'HEAD', '--', 'sdk']).trim();
-    const before = pointer();
     writeFile(sdk, 'src/handler.js', 'const h = 2;\n');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
 
-    const res = engine(dir, ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+    const both = engine(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
-    assert.deepStrictEqual(res.committed, [{ repo: 'sdk', sha: head(sdk) }]);
-    assert.strictEqual(pointer(), before, 'the root\'s gitlink stays where it was');
+    assert.deepStrictEqual(both.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(headFiles(dir).sort(), ['sdk', 'src/app.js']);
+    assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim(), 'the gitlink records the submodule\'s new HEAD');
+    assert.deepStrictEqual(both.left_dirty, []);
+
+    writeFile(sdk, 'src/other.js', 'const o = 2;\n');
+    const alone = engine(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...forTopic]);
+
+    assert.deepStrictEqual(alone.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }],
+      'a call naming the submodule alone records its pointer too');
+    assert.deepStrictEqual(headFiles(dir), ['sdk']);
+    assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
+
+    writeFile(sdk, 'scratch.txt', 'stray\n');
+    const again = engine(dir, ['commit', '--paths', 'sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...forTopic]);
+
+    assert.deepStrictEqual(again.committed, [], 'work uncommitted inside the submodule is no pointer to record');
+    assert.strictEqual(again.note, 'nothing to commit');
+  });
+
+  it('never commits a nested repo in its parent the call did not reach into — an untouched submodule, an untracked repo', () => {
+    const sdk = harness.addSubmodule(dir, 'sdk', api);
+    const before = pointer('sdk');
+    writeFile(sdk, 'src/handler.js', 'const h = 2;\n');
+    commitAll(sdk, 'the submodule moves on its own');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+
+    const res = engine(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+
+    assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(headFiles(dir), ['src/app.js']);
+    assert.strictEqual(pointer('sdk'), before, 'the untouched gitlink stays where it was');
     assert.ok(statusLines(dir).includes(' M sdk'), 'the moved pointer is the root\'s git to see');
     assert.deepStrictEqual(res.left_dirty, [], 'and never dirt');
 
@@ -685,38 +738,97 @@ describe('engine commit --paths: code in repos of its own', () => {
 
     assert.deepStrictEqual(folder.committed, [{ repo: '.', sha: head(dir) }]);
     assert.deepStrictEqual(headFiles(dir), ['packages/notes.txt'], 'the folder\'s files ride, the repo inside it never does');
-    assert.strictEqual(git(dir, ['ls-files', '--stage', '--', 'packages/kit', 'sdk']).trim().split('\n').length, 1,
-      'no gitlink staged for the untracked repo — the submodule\'s alone');
-    assert.strictEqual(pointer(), before);
+    assert.strictEqual(git(dir, ['ls-files', '--stage', '--', 'packages/kit']).trim(), '', 'no gitlink staged for the untracked repo');
   });
 
-  it('re-running a call one repo failed is the retry — a deletion the root already committed answers nothing', () => {
-    fs.unlinkSync(path.join(dir, 'src/app.js'));
+  it('commits beside a submodule its parent ignores, and records that submodule\'s pointer when the call reaches into it', () => {
+    writeFile(dir, '.gitignore', 'api/\nvendor/\n');
+    commitAll(dir, 'the vendor folder is ignored');
+    const sdk = harness.addSubmodule(dir, 'vendor/sdk', api, { force: true });
+    const before = pointer('vendor/sdk');
+    writeFile(sdk, 'src/handler.js', 'const h = 2;\n');
+    commitAll(sdk, 'the submodule moves on its own');
+    writeFile(dir, 'index.js', 'const i = 1;\n');
+
+    const beside = engine(dir, ['commit', '--paths', 'index.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+
+    assert.deepStrictEqual(beside.committed, [{ repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(headFiles(dir), ['index.js']);
+    assert.strictEqual(pointer('vendor/sdk'), before);
+    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'nothing is left staged');
+
+    writeFile(sdk, 'src/other.js', 'const o = 2;\n');
+    const into = engine(dir, ['commit', '--paths', 'vendor/sdk/src/other.js', '-m', 'feat(topic-a): the rest', ...forTopic]);
+
+    assert.deepStrictEqual(into.committed, [{ repo: 'vendor/sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
+    assert.strictEqual(pointer('vendor/sdk'), git(sdk, ['rev-parse', 'HEAD']).trim(), 'the pointer lands without being added');
+  });
+
+  it('names the repo whose commit failed, and the commits already made', () => {
     writeFile(api, 'src/handler.js', 'const h = 2;\n');
-    const hook = path.join(api, '.git/hooks/pre-commit');
-    fs.mkdirSync(path.dirname(hook), { recursive: true });
-    fs.writeFileSync(hook, '#!/bin/sh\necho "the api hook refuses" >&2\nexit 1\n', { mode: 0o755 });
-    const call = ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic];
+    const hook = refusingHook(api, 'api');
 
-    const failed = engineFails(dir, call);
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'x', ...forTopic]).error,
+      'the commit in api failed: git commit failed: the api hook refuses');
 
-    const rootSha = head(dir);
-    assert.strictEqual(failed.error,
-      `the commit in api failed after . committed ${rootSha} — re-running the same call commits the rest: git commit failed: the api hook refuses`);
-    assert.deepStrictEqual(git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim(), 'D\tsrc/app.js',
-      'the root committed the deletion before the clone failed');
-    assert.strictEqual(subject(api), 'init', 'the clone committed nothing');
+    fs.rmSync(hook);
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    refusingHook(dir, 'root');
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'src/app.js', 'api/src/handler.js', '-m', 'x', ...forTopic]).error,
+      `the commit in . failed after api committed ${head(api)} — re-running the same call commits the rest: git commit failed: the root hook refuses`);
+  });
+
+  it('re-running a call one repo failed is the retry — a deletion a nested repo already committed answers nothing', () => {
+    fs.unlinkSync(path.join(api, 'src/old.js'));
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    const hook = refusingHook(dir, 'root');
+    const call = ['commit', '--paths', 'api/src/old.js', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic];
+    const rootBefore = head(dir);
+
+    engineFails(dir, call);
+
+    const apiSha = head(api);
+    assert.strictEqual(git(api, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim(), 'D\tsrc/old.js',
+      'the clone committed the deletion before the root failed');
+    assert.strictEqual(head(dir), rootBefore, 'the root committed nothing');
 
     fs.rmSync(hook);
     const retried = engine(dir, call);
 
-    assert.deepStrictEqual(retried.committed, [{ repo: 'api', sha: head(api) }], 'the root has nothing left in the paths');
-    assert.strictEqual(head(dir), rootSha);
-    assert.deepStrictEqual(headFiles(api), ['src/handler.js']);
+    assert.deepStrictEqual(retried.committed, [{ repo: '.', sha: head(dir) }], 'the clone has nothing left in the paths');
+    assert.strictEqual(head(api), apiSha);
+    assert.deepStrictEqual(headFiles(dir), ['src/app.js']);
     assert.deepStrictEqual(retried.left_dirty, []);
   });
 
-  it('validates each path in the repo that owns it, before anything is staged', () => {
+  it('re-running the call picks up a submodule\'s pointer its parent failed to record', () => {
+    const sdk = harness.addSubmodule(dir, 'sdk', api);
+    writeFile(sdk, 'src/handler.js', 'const h = 2;\n');
+    const hook = refusingHook(dir, 'root');
+    const call = ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic];
+
+    assert.match(engineFails(dir, call).error, new RegExp(`^the commit in \\. failed after sdk committed ${head(sdk)} — `));
+
+    fs.rmSync(hook);
+    const retried = engine(dir, call);
+
+    assert.deepStrictEqual(retried.committed, [{ repo: '.', sha: head(dir) }], 'the submodule has nothing left; its pointer has');
+    assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
+  });
+
+  it('checks every path in the repo that owns it before any repo commits', () => {
+    writeFile(dir, '.gitignore', 'api/\n*.log\n');
+    commitAll(dir, 'logs are ignored');
+    writeFile(api, 'src/handler.js', 'const h = 2;\n');
+    writeFile(dir, 'debug.log', 'noise\n');
+    const apiBefore = head(api);
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'api/src/handler.js', 'debug.log', '-m', 'x', ...forTopic]).error,
+      'commit --paths: git in . refuses to stage "debug.log" (an ignore rule, or a path beyond a symbolic link)');
+    assert.strictEqual(head(api), apiBefore, 'the clone, whose commit would come first, made none');
+    assert.strictEqual(git(api, ['diff', '--cached', '--name-only']).trim(), '', 'and staged nothing');
+
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     const rootBefore = head(dir);
 
@@ -724,6 +836,16 @@ describe('engine commit --paths: code in repos of its own', () => {
       /"api\/src\/never-written\.js" is neither on disk nor tracked/);
     assert.strictEqual(head(dir), rootBefore);
     assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
+
+    writeFile(dir, '.gitignore', 'api/\n*.log\nlib/gen/\n');
+    commitAll(dir, 'generated code is ignored');
+    harness.addSubmodule(dir, 'lib/gen/sdk', api, { force: true });
+    writeFile(dir, 'lib/util.js', 'const u = 1;\n');
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'api/src/handler.js', 'lib', '-m', 'x', ...forTopic]).error,
+      'commit --paths: git in . refuses to stage "lib" (an ignore rule, or a path beyond a symbolic link)',
+      'a folder holding a submodule its parent ignores is checked as the commit would stage it');
+    assert.strictEqual(head(api), apiBefore);
 
     git(api, ['rm', '-q', '--', 'src/old.js']);
     const res = engine(dir, ['commit', '--paths', 'api/src/old.js', '-m', 'refactor(topic-a): drop the module', ...forTopic]);

@@ -197,11 +197,13 @@ function setupGitFixture(prefix = 'engine-') {
 /**
  * `rel` added to the repo at `dir` as a submodule cloned from the repo at
  * `source`, the addition committed; the clone commits under the test identity.
+ * `force` adds it where the repo ignores its folder.
  * @param {string} dir @param {string} rel @param {string} source
+ * @param {{force?: boolean}} [opts]
  * @returns {string} the clone's path
  */
-function addSubmodule(dir, rel, source) {
-  git(dir, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', source, rel]);
+function addSubmodule(dir, rel, source, { force = false } = {}) {
+  git(dir, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', ...(force ? ['-f'] : []), source, rel]);
   git(dir, ['commit', '-q', '-m', `add ${rel}`]);
   const clone = path.join(dir, rel);
   testIdentity(clone);

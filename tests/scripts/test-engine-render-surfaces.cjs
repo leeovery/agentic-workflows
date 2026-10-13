@@ -8968,6 +8968,27 @@ describe('render change-set-tree', () => {
     assert.match(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }),
       /these paths are modified or untracked: `web\/index\.js`\. Once the tree is clean/);
   });
+
+  it('in a project nested in a larger repository, reads only the project\'s own folder of it', () => {
+    const repo = setupGitFixture('render-nested-');
+    try {
+      const project = path.join(repo, 'apps/web');
+      writeManifest(project, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+      writePayload(repo, 'other/x.js', 'x\n');
+      git(repo, ['add', '-A']);
+      git(repo, ['commit', '-q', '-m', 'init']);
+      writePayload(repo, 'other/x.js', 'y\n');
+      writePayload(project, '.workflows/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
+      assert.strictEqual(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }), '',
+        'a sibling folder\'s dirt and the project\'s own .workflows/ are not the project\'s code');
+
+      writePayload(project, 'src/probe.js', 'x\n');
+      assert.match(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }),
+        /these paths are modified or untracked: `src\/`\. Once the tree is clean/);
+    } finally {
+      cleanupFixture(repo);
+    }
+  });
 });
 
 describe('render plan-context-gate', () => {

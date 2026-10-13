@@ -2,8 +2,8 @@
 
 //
 // Tests for the project's repos (kernel/repos.cjs): which folders inside a
-// project are repos of their own, which repo owns a path, and the dirt and
-// history read across them.
+// project are repos of their own, which repo owns a path, the order a code
+// commit takes through them, and the dirt and history read across them.
 //
 
 require('./hermetic-env.cjs');
@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, initRepo, setupGitFixture, addSubmodule, cleanupFixture } = require('./engine-harness.cjs');
-const { projectRepos, repoOf, projectDirtyEntries, projectPathsTouchedBySubject } = require('../../skills/workflow-engine/scripts/kernel/repos.cjs');
+const { projectRepos, repoOf, commitGroups, projectDirtyEntries, projectPathsTouchedBySubject } = require('../../skills/workflow-engine/scripts/kernel/repos.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -61,6 +61,7 @@ describe('projectRepos: the repos a project holds', () => {
       [dir, ...['api', 'api/lib', 'packages/tools/cli', 'vendor/sdk'].map((rel) => path.join(dir, rel))]);
     assert.deepStrictEqual(repos.map((repo) => repo.heldOut), [['packages/tools/cli', 'vendor/sdk'], ['lib'], [], [], []],
       'each git holds out the untracked repos and submodules directly inside it — never one it ignores, never one further down');
+    assert.deepStrictEqual(repos.map((repo) => repo.submodules), [['vendor/sdk'], [], [], [], []]);
   });
 
   it('never looks inside an ignored folder that is not a repo, and takes no submodule with nothing checked out', () => {
@@ -69,7 +70,7 @@ describe('projectRepos: the repos a project holds', () => {
     const sha = git(dir, ['rev-parse', 'HEAD']).trim();
     git(dir, ['update-index', '--add', '--cacheinfo', `160000,${sha},libs/absent`]);
 
-    assert.deepStrictEqual(projectRepos(dir), [{ dir: '', path: dir, heldOut: [] }]);
+    assert.deepStrictEqual(projectRepos(dir), [{ dir: '', path: dir, heldOut: [], submodules: [] }]);
   });
 
   it('a linked worktree of the project\'s own repository is no repo of its own — its folder stays the root\'s dirt', () => {
@@ -84,6 +85,26 @@ describe('projectRepos: the repos a project holds', () => {
     assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'trees/', status: '??' }]);
   });
 
+  it('knows the project\'s own worktree reached through a symbolic link', () => {
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', path.join(dir, 'trees/side')]);
+    const link = `${dir}-link`;
+    fs.symlinkSync(dir, link);
+    try {
+      assert.deepStrictEqual(dirsOf(projectRepos(link)), ['']);
+    } finally {
+      fs.rmSync(link);
+    }
+  });
+
+  it('takes a folder whose .git git cannot read for no repo — never a failure', () => {
+    writeFile(dir, '.gitignore', 'api/\nnode_modules/\nstale/\n');
+    commitAll(dir, 'ignore the stale worktree');
+    git(dir, ['worktree', 'add', '-q', '-b', 'stale', path.join(dir, 'stale')]);
+    fs.rmSync(path.join(dir, '.git/worktrees/stale'), { recursive: true });
+
+    assert.deepStrictEqual(dirsOf(projectRepos(dir)), ['']);
+  });
+
   it('a project nested in a larger repository finds only the repos inside it', () => {
     const project = path.join(dir, 'apps/web');
     writeFile(project, 'src/app.js', '1\n');
@@ -92,9 +113,25 @@ describe('projectRepos: the repos a project holds', () => {
     nestedRepo(project, 'service');
 
     assert.deepStrictEqual(projectRepos(project), [
-      { dir: '', path: project, heldOut: ['service'] },
-      { dir: 'service', path: path.join(project, 'service'), heldOut: [] },
+      { dir: '', path: project, heldOut: ['service'], submodules: [] },
+      { dir: 'service', path: path.join(project, 'service'), heldOut: [], submodules: [] },
     ]);
+  });
+});
+
+describe('commitGroups: a code commit\'s order', () => {
+  const repo = (dir, submodules = []) => ({ dir, path: `/p/${dir}`, heldOut: submodules, submodules });
+  const repos = [repo('', ['sdk']), repo('api'), repo('sdk', ['inner']), repo('sdk/inner'), repo('web')];
+  const plan = (paths) => commitGroups(repos, paths).map((group) => [group.repo.dir, group.paths]);
+
+  it('commits the deepest repos first, then by folder, so a repo commits before the one it is nested in', () => {
+    assert.deepStrictEqual(plan(['app.js', 'web/x.js', 'api/y.js']), [['api', ['y.js']], ['web', ['x.js']], ['', ['app.js']]]);
+  });
+
+  it('a parent takes the folder of each submodule the call reaches into, up the chain — never an untouched one', () => {
+    assert.deepStrictEqual(plan(['sdk/inner/x.js']), [['sdk/inner', ['x.js']], ['sdk', ['inner']], ['', ['sdk']]]);
+    assert.deepStrictEqual(plan(['app.js', 'sdk/z.js']), [['sdk', ['z.js']], ['', ['app.js', 'sdk']]]);
+    assert.deepStrictEqual(plan(['app.js']), [['', ['app.js']]]);
   });
 });
 
@@ -143,6 +180,22 @@ describe('dirt and history across the repos', () => {
       { path: 'api/src/handler.js', status: ' M' },
       { path: 'vendor/sdk/src/handler.js', status: ' M' },
     ]);
+  });
+
+  it('a project nested in a larger repository reads only its own folder of it, named from the project', () => {
+    const project = path.join(dir, 'apps/web');
+    writeFile(project, 'src/a.js', '1\n');
+    writeFile(dir, 'other/o.js', '1\n');
+    commitAll(dir, 'impl(pay): T3 — the project and its sibling');
+    writeFile(dir, 'other/o.js', '2\n');
+    commitAll(dir, 'impl(pay): T4 — the sibling alone');
+    writeFile(project, 'src/a.js', '2\n');
+    writeFile(dir, 'other/o.js', '3\n');
+    writeFile(project, '.workflows/pay/notes.md', 'a doc session\'s own\n');
+    const repos = projectRepos(project);
+
+    assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'src/a.js', status: ' M' }]);
+    assert.deepStrictEqual([...projectPathsTouchedBySubject(repos, 'impl(pay):')], ['src/a.js']);
   });
 
   it('reads history across the repos in project paths — a repo with no commits yet has touched nothing', () => {

@@ -15,11 +15,11 @@
 //   same discipline as the manifest lock, on a longer clock) holds each
 //   add+commit sequence alone, so concurrent sessions never interleave on
 //   git's shared index. The code commit lands in each repo that owns one of
-//   its paths (kernel/repos), under that repo's own lock.
+//   its paths (kernel/repos), deepest first, under that repo's own lock.
 // ---------------------------------------------------------------------------
 
 const { gitPath, commitPathspec, commitStaged } = require('../kernel/git.cjs');
-const { pathsByRepo, repoName } = require('../kernel/repos.cjs');
+const { commitGroups, repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
@@ -103,11 +103,13 @@ function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
 
 /**
  * The code commit across the project's repos: each repo's share of the paths
- * committed under that repo's own commit lock, with the same message, root
- * first, its `heldOut` folders held out — a parent never commits a nested
- * repo's folder or a submodule's pointer. A repo whose commit fails fails
- * the call, naming the commits already made; re-running it is the retry, as
- * those repos have nothing left in the paths.
+ * committed under that repo's own commit lock, with the same message,
+ * deepest first, its `heldOut` folders held out — a parent never commits a
+ * nested repo's folder, and records a submodule's new pointer only where the
+ * call reached into that submodule. A repo whose commit fails fails the
+ * call, naming itself and the commits already made; re-running it is the
+ * retry, as those repos have nothing left in the paths and a moved pointer
+ * is recorded whatever moved it.
  * @param {import('../kernel/repos.cjs').Repo[]} repos
  * @param {string[]} specs project paths
  * @param {string} message
@@ -116,7 +118,7 @@ function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
 function commitAcrossRepos(repos, specs, message) {
   /** @type {{repo: string, sha: string}[]} */
   const committed = [];
-  for (const { repo, paths } of pathsByRepo(repos, specs)) {
+  for (const { repo, paths } of commitGroups(repos, specs)) {
     const sha = commitInRepo(repo, paths, message, committed);
     if (sha !== null) committed.push({ repo: repoName(repo), sha });
   }
@@ -135,10 +137,10 @@ function commitInRepo(repo, paths, message, committed) {
   try {
     return withCommitLock(repo.path, () => commitPathspec(repo.path, paths, message, repo.heldOut));
   } catch (err) {
-    if (committed.length === 0) throw err;
     const made = committed.map((c) => `${c.repo} committed ${c.sha}`).join(', ');
+    const after = made === '' ? '' : ` after ${made} — re-running the same call commits the rest`;
     const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(`the commit in ${repoName(repo)} failed after ${made} — re-running the same call commits the rest: ${detail}`);
+    throw new Error(`the commit in ${repoName(repo)} failed${after}: ${detail}`);
   }
 }
 

@@ -65,6 +65,7 @@ const { openGate, drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/
 const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/position.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
+const { initRepo } = require('./engine-harness.cjs');
 
 // The epic specification menu's detail — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -337,10 +338,7 @@ class Sim {
     // The system config directory sits beside the project, as a real one
     // does: the conversation folders the sim's calls mark live there.
     this.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-config-'));
-    git(this.dir, ['init', '-q', '-b', 'main']);
-    git(this.dir, ['config', 'user.email', 'sim@example.com']);
-    git(this.dir, ['config', 'user.name', 'Sim']);
-    git(this.dir, ['config', 'commit.gpgsign', 'false']);
+    initRepo(this.dir);
     fs.mkdirSync(path.join(this.dir, '.workflows'), { recursive: true });
     // The nested gitignore every booted project carries (migrations 049,
     // 060): the cache is ephemeral session machinery, mechanical heartbeats
@@ -359,15 +357,10 @@ class Sim {
       fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(this.dir, '.claude/skills', skill, 'SKILL.md'));
     }
     fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), '.claude/skills/\n');
-    // Part of the project's code lives in a clone of its own that the project
-    // ignores — Folio's shape. A code commit naming a path in it lands in the
-    // clone's history, and every dirt read reaches into it.
-    this.api = path.join(this.dir, 'api');
-    fs.mkdirSync(this.api);
-    git(this.api, ['init', '-q', '-b', 'main']);
-    git(this.api, ['config', 'user.email', 'sim@example.com']);
-    git(this.api, ['config', 'user.name', 'Sim']);
-    git(this.api, ['config', 'commit.gpgsign', 'false']);
+    // Part of the project's code lives in an ignored clone: a repo of its own
+    // that the project's git ignores. A code commit naming a path in it lands
+    // in the clone's history, and every dirt read reaches into it.
+    this.api = initRepo(path.join(this.dir, 'api'));
     fs.writeFileSync(path.join(this.api, 'README.md'), '# API\n');
     git(this.api, ['add', '-A']);
     git(this.api, ['commit', '-q', '-m', 'init']);

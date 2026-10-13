@@ -29,8 +29,8 @@ const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
-const { stageableSpecs, hasStagedDeletions, inHistory } = require('./kernel/git.cjs');
-const { projectRepos, repoOf, repoPath, projectDirtyEntries } = require('./kernel/repos.cjs');
+const { stageableSpecs, hasStagedDeletions, deletedAtHead, addRefused } = require('./kernel/git.cjs');
+const { projectRepos, repoOf, repoPath, repoName, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
 const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
@@ -1675,8 +1675,8 @@ function topicStatus(cwd, wu, phase, topic) {
  * Validate one declared code path. Code has no layout to derive a pathspec
  * from, so the paths are Claude's to name — and every one is checked before
  * anything is staged: inside the project, literal (a glob would commit
- * whatever it happened to match), and never a workflow artifact, which has a
- * derived scope of its own.
+ * whatever it happened to match), never a workflow artifact, which has a
+ * derived scope of its own, and committable in the repo that owns it.
  * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given
  * @returns {string} the project-relative path
  */
@@ -1694,20 +1694,31 @@ function codePathSpec(cwd, repos, given) {
   if (spec === '.workflows' || spec.startsWith('.workflows/')) {
     throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
   }
-  // On disk, in the owning repo's index, or — the case `stageableSpecs`
-  // cannot see — gone from both with its deletion already staged, which is
-  // what a `git mv` or `git rm` leaves behind. The commit door accepts that
-  // path; so must the validator in front of it, or the vanished side of a
-  // rename cannot be named and the commit lands half a move. A path the
-  // repo's history knows passes too, with nothing to commit: a deletion an
-  // earlier run of the same call landed before another repo failed, so
-  // re-running the call is its retry.
+  assertCommittable(repos, spec, given);
+  return spec;
+}
+
+/**
+ * Check a code path in the repo that owns it, so no repo commits while
+ * another's path was always going to fail. On disk or in the index, git
+ * there must stage it. Otherwise its deletion must be staged — what a
+ * `git mv` or `git rm` leaves behind, which the commit door accepts, or the
+ * vanished side of a rename cannot be named and the commit lands half a
+ * move — or be the repo's HEAD commit's own: an earlier run of the same call
+ * landed it before another repo failed, so re-running the call is its retry,
+ * with nothing left to commit there.
+ * @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} spec @param {string} given
+ */
+function assertCommittable(repos, spec, given) {
   const repo = repoOf(repos, spec);
   const own = repoPath(repo, spec);
-  if (stageableSpecs(repo.path, [own]).length === 0 && !hasStagedDeletions(repo.path, own) && !inHistory(repo.path, own)) {
+  if (stageableSpecs(repo.path, [own]).length > 0) {
+    if (addRefused(repo.path, own, repo.heldOut)) {
+      throw new Error(`commit --paths: git in ${repoName(repo)} refuses to stage "${given}" (an ignore rule, or a path beyond a symbolic link)`);
+    }
+  } else if (!hasStagedDeletions(repo.path, own) && !deletedAtHead(repo.path, own)) {
     throw new Error(`commit --paths: "${given}" is neither on disk nor tracked`);
   }
-  return spec;
 }
 
 /**
