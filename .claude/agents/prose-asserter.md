@@ -95,6 +95,12 @@ closes with an incorporate") is evidenced from the recorded actions. A
 step about reasoning or output is evidenced from the walk. Where the two
 disagree about what was done, the recorded actions win.
 
+A step about what was shown passes only on the block itself, quoted in
+the walk where it went out — a final turn that ends on it included. A
+line saying it went out ("I emitted the recap", "the menu was shown") is
+a claim, not the block, wherever it appears; on its own it fails the
+step.
+
 **Read them against each other, always, before ruling on anything.** Two
 divergences matter and both are reported under markers:
 

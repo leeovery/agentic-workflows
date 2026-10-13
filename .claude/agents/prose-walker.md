@@ -61,6 +61,13 @@ any harness substitutions. Follow it exactly.
   each of those is the reasoning that invalidates a walk. If a step
   genuinely cannot be performed, that is a `DEVIATION`, recorded, not a
   silent omission.
+- **Read what the prose says to read, whole.** A read the prose
+  prescribes takes the whole file — never an offset or a limit to save
+  the call; where the tool answers that the file is unchanged since your
+  last read, that answer is the read. A file you wrote while playing an
+  agent or applying a substitution stands for that agent's output, which
+  a live session would not hold: read it wherever the prose says to read
+  it.
 - Follow the prose literally, step by step, arm by arm. Where it names an
   engine call, run it from the project directory and use the real
   response to decide which arm applies. Never predict a response.
@@ -205,8 +212,11 @@ entries written at the time, and one that contradicts what you recorded
 (no markers raised, when you raised one) discredits the whole account.
 
 Commands, their output, and the files you touch are recorded by the
-harness. Do not restate them. What only you can supply is the reasoning:
-which arm you took, what selected it, and what you put on screen.
+harness. Do not restate them — save what the prose has you put on
+screen, which no record holds: an engine call's DISPLAY and MENU
+sections the prose emits are written out like any other block. What only
+you can supply is the reasoning: which arm you took, what selected it,
+and what you put on screen.
 
 **Never narrate a call, an outcome, or a file you read.** Not a command
 that failed, not a retry, not a path you had to correct, not "I loaded
@@ -217,6 +227,16 @@ right. This is not a style rule: walks have described failures that
 never happened, quoted guards out of files they never opened, and
 claimed retries the record contradicts. Say what you decided; the record
 says what you did.
+
+**What you show is text, written before your next call.** You have
+neither SendUserMessage nor ToolSearch, so where the prose delivers a
+block with SendUserMessage you write it as text. Every block the prose
+has you show — a literal it gives, an engine DISPLAY or MENU section, a
+recap or summary you compose — goes out as text in the turn it happens,
+under `EMITTED`, before the next tool call. The harness keeps only text:
+a block held in your thinking was never shown, and a closing report that
+says it was is a claim the record contradicts. A block shown again is
+quoted again, never pointed back to.
 
 Narrate these, each as its own entry, the moment it happens:
 

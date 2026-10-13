@@ -17,8 +17,8 @@ The prose should have taken this path:
    opening with the task suffix
 5. the change-set verification derives its sections from the
    specification's numbered headings — the payment-intent section, the
-   capture section, and the test surface — finds none of this cycle's
-   files (`change-set-c1-…`) already written, gathers the brief (the
+   capture section, and the test surface — skips none of them, as
+   this cycle has no `change-set-c1-…` file yet, gathers the brief (the
    linter names — the fixture
    declares none — the root `CLAUDE.md` and the project skills as the
    project's conventions, the finding floor path, and the unsettled
