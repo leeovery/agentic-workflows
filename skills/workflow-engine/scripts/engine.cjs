@@ -61,6 +61,7 @@ const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, handoffSections } = require('./domain/handoff.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const baseline = require('./domain/baseline.cjs');
+const { subjectSelector, taskSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
@@ -259,6 +260,10 @@ Commands:
   commit --roadmap -m <message>
   commit --workflows -m <message>
   commit --migrations -m <message>
+  code log    <work-unit> <topic> [--phase <N>]
+  code log    --subject <prefix>
+  code diff   [<work-unit> <topic> [--phase <N>] | --subject <prefix>]
+  code status
   render resume-gate <wu.phase.topic> [--mail N] [--variant plan|review|scoping|session]  (session: bare <wu>)
   render task-list   <wu.planning.topic> --file <payload.json>
   render plan-progress <wu.planning.topic> --variant construction-complete|concluded
@@ -2003,6 +2008,56 @@ function runCommit(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
+// code — the code change, read across every repo in the project
+// (domain/code.cjs). `log` and the selecting `diff` take a topic's task
+// commits by identity, or any commits by subject prefix. `log` and `status`
+// answer the engine's JSON line; the two `diff` forms answer the unified diff
+// itself, empty when there is none, read as `git diff` is read. Nothing is
+// written.
+// ---------------------------------------------------------------------------
+
+const CODE_USAGE = 'Usage: engine code log (<work-unit> <topic> [--phase <N>] | --subject <prefix>) | engine code diff [<work-unit> <topic> [--phase <N>] | --subject <prefix>] | engine code status';
+
+/**
+ * The commits a `code` call selects, or null where it names none.
+ * @param {string[]} args
+ * @returns {import('./domain/code.cjs').Selector|null}
+ */
+function codeSelector(args) {
+  const { opts, lists, positional } = parseArgs(args, [], ['subject', 'phase']);
+  const subjects = lists.subject || [];
+  const phases = lists.phase || [];
+  if (Object.keys(opts).length > 0 || subjects.length > 1 || phases.length > 1
+      || [...subjects, ...phases, ...positional].some((value) => !value)) {
+    throw new Error(CODE_USAGE);
+  }
+  const [subject] = subjects;
+  const [phase] = phases;
+  if (subject !== undefined) {
+    if (positional.length > 0 || phase !== undefined) throw new Error(CODE_USAGE);
+    return subjectSelector(subject);
+  }
+  if (positional.length === 0 && phase === undefined) return null;
+  if (positional.length !== 2 || (phase !== undefined && !/^[1-9][0-9]*$/.test(phase))) throw new Error(CODE_USAGE);
+  return taskSelector(positional[0], positional[1], phase === undefined ? undefined : Number(phase));
+}
+
+/** @param {Call} call @param {string[]} argv */
+function runCode(call, argv) {
+  const [command, ...rest] = argv;
+  try {
+    const selector = codeSelector(rest);
+    const { cwd } = call;
+    if (command === 'log' && selector !== null) respond(call, codeLog(cwd, selector));
+    else if (command === 'diff') call.out(selector === null ? uncommittedDiff(cwd) : selectedDiff(cwd, selector));
+    else if (command === 'status' && selector === null) respond(call, codeStatus(cwd));
+    else throw new Error(CODE_USAGE);
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // handoff — a move into work (domain/handoff.cjs): the skill and its
 // arguments checked against the table, answered in sections like a render
 // surface's. Nothing is written.
@@ -2140,6 +2195,9 @@ function runCli(call, argv) {
       break;
     case 'commit':
       runCommit(call, rest);
+      break;
+    case 'code':
+      runCode(call, rest);
       break;
     case 'render':
       runRender(call, rest);

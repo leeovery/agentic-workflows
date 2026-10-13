@@ -6,12 +6,14 @@
 // resume/manage rows, and the render surfaces all derive from this state, so
 // the vocabulary and the remaining-count exist exactly once. Two more things
 // live here: the signal boot attaches while nothing is recorded — the
-// repository's own account of what came before the workflows, handed to the
-// one-time judgment as evidence to read rather than a number to threshold —
-// and the verdict write, one confined transaction.
+// project's own account of what came before the workflows, read from every
+// repo in it (kernel/repos) and handed to the one-time judgment as evidence
+// to read rather than a number to threshold — and the verdict write, one
+// confined transaction.
 // ---------------------------------------------------------------------------
 
-const { tryGit } = require('../kernel/git.cjs');
+const { git, GitError, hasCommits } = require('../kernel/git.cjs');
+const { projectRepos, projectPath } = require('../kernel/repos.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
@@ -33,13 +35,13 @@ const VERDICTS = /** @type {const} */ (['native', 'skipped']);
 
 /**
  * @typedef {object} BaselineSignal
- * @property {string} root_date  author date of the repository's first commit (YYYY-MM-DD)
- * @property {string|null} workflows_date  author date of the first commit touching `.workflows/` — null when none is committed yet, so the whole history predates the workflows
- * @property {number} commits_total  every commit reachable from HEAD
- * @property {number} commits_before  ancestors of the commit the workflows arrived in (the whole history when nothing under `.workflows/` is committed)
- * @property {string[]} history_before  those commits as `date  subject`, oldest first — the head and tail kept around an elision line when the run is long
- * @property {number} files_at_arrival  project files (outside `.claude/` and `.workflows/`, `.worktreeinclude` aside) in the tree the workflows arrived into — HEAD's tree when nothing under `.workflows/` is committed
- * @property {string[]} tree_at_arrival  that tree's top-level shape: `dir/ (n)` and root files, largest first, elided past a dozen
+ * @property {string} root_date  author date of the earliest first commit across the project's repos (YYYY-MM-DD)
+ * @property {string|null} workflows_date  author date of the root's first commit touching `.workflows/` — null when none is committed yet, so the whole history predates the workflows
+ * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
+ * @property {number} commits_before  the commits before the arrival, summed: the root's are the ancestors of the commit the workflows arrived in, a nested repo's its last commit made before that one and that commit's ancestors (each whole history when nothing under `.workflows/` is committed)
+ * @property {string[]} history_before  those commits as `date  subject`, oldest first across the repos — the head and tail kept around an elision line when the run is long
+ * @property {number} files_at_arrival  project files (outside `.claude/` and `.workflows/`, `.worktreeinclude` aside) in the tree the workflows arrived into — the root's at the arrival commit, a nested repo's at its last commit before it; HEAD's trees when nothing under `.workflows/` is committed
+ * @property {string[]} tree_at_arrival  that tree's top-level shape, named from the project: `dir/ (n)` and root files, largest first, elided past a dozen
  */
 
 /**
@@ -79,40 +81,202 @@ const HISTORY_HEAD = 8;
 const HISTORY_TAIL = 4;
 const TREE_ENTRIES = 12;
 
-/** Non-empty lines of a git listing, or null when the read failed. @param {string} cwd @param {string[]} args @returns {string[]|null} */
+/** @typedef {import('../kernel/repos.cjs').Repo} Repo */
+
+/**
+ * A commit as `date  subject`, timed by its author date.
+ * @typedef {{time: number, row: string}} TimedRow
+ */
+
+/**
+ * One repo's account, bounded by the workflows' arrival: its commits, its
+ * first commit's date, the commits before the arrival and the files, in
+ * project paths, of the tree the workflows arrived into.
+ * @typedef {object} RepoAccount
+ * @property {number} commits
+ * @property {string|null} rootDate
+ * @property {TimedRow[]} history  oldest first
+ * @property {string[]} files
+ */
+
+/**
+ * The revisions bounding a repo's account: `before` the last commit before
+ * the workflows arrived, `tree` the commit whose tree they arrived into —
+ * either null where there is none.
+ * @typedef {{before: string|null, tree: string|null}} Cut
+ */
+
+/** Non-empty lines of a git listing. Throws when the read fails. @param {string} cwd @param {string[]} args @returns {string[]} */
 function gitLines(cwd, args) {
-  const out = tryGit(cwd, args);
-  return out === null ? null : out.split('\n').map((l) => l.trim()).filter(Boolean);
+  return git(cwd, args).split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
+/** @param {string} cwd @param {string} rev @param {string[]} scope @returns {number} */
+function countOf(cwd, rev, scope) {
+  return parseInt(git(cwd, ['rev-list', '--count', rev, ...scope]), 10);
+}
+
+/** @param {string} cwd @returns {boolean} */
+function isShallow(cwd) {
+  return git(cwd, ['rev-parse', '--is-shallow-repository']).trim() === 'true';
 }
 
 /**
- * The commits reachable from `rev` as `date  subject`, oldest first. A long
- * run keeps its head and tail around one elision line — enough to see what
- * the history is made of without carrying it whole.
- * @param {string} cwd @param {string} rev @returns {string[]|null}
+ * The pathspec a repo's history is read through: none at a repository's
+ * top, and the folder itself for a project inside a larger repository, so
+ * its history is the commits that touched the project.
+ * @param {string} cwd
+ * @returns {string[]}
  */
-function historyOf(cwd, rev) {
-  const rows = gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%as%x09%s', rev]);
-  if (rows === null) return null;
-  const shaped = rows.map((r) => r.replace('\t', '  '));
-  if (shaped.length <= HISTORY_HEAD + HISTORY_TAIL) return shaped;
+function scopeOf(cwd) {
+  return git(cwd, ['rev-parse', '--show-prefix']).trim() === '' ? [] : ['--', '.'];
+}
+
+/**
+ * The author date of the history's first commit: the repository's root
+ * commit, or under a scope the first commit that touched it. Null when
+ * there is none.
+ * @param {string} cwd @param {string[]} scope
+ * @returns {string|null}
+ */
+function firstDate(cwd, scope) {
+  const roots = scope.length === 0 ? ['--max-parents=0'] : [];
+  const [date] = gitLines(cwd, ['log', '--no-show-signature', ...roots, '--reverse', '--format=%as', 'HEAD', ...scope]);
+  return date ?? null;
+}
+
+/** @param {number[]} values @returns {number} */
+function sum(values) {
+  return values.reduce((total, n) => total + n, 0);
+}
+
+/**
+ * The root's first commit touching `.workflows/` — its sha, author date and
+ * committer time — or null when none is committed yet.
+ * @param {string} cwd
+ * @returns {{sha: string, date: string, time: string}|null}
+ */
+function arrivalIn(cwd) {
+  if (!hasCommits(cwd)) return null;
+  const [first] = gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%H%x09%as%x09%ct', 'HEAD', '--', '.workflows']);
+  if (first === undefined) return null;
+  const [sha, date, time] = first.split('\t');
+  return { sha, date, time };
+}
+
+/**
+ * Where the arrival cuts the root: the arrival commit's tree, and its first
+ * parent's history — none when the workflows arrived in the root commit.
+ * Nothing committed under `.workflows/` means the workflows are arriving
+ * now, into HEAD's tree, and the whole history came before them.
+ * @param {string} cwd @param {{sha: string}|null} arrival
+ * @returns {Cut}
+ */
+function rootCut(cwd, arrival) {
+  if (arrival === null) return { before: 'HEAD', tree: 'HEAD' };
+  const parent = git(cwd, ['rev-list', '--parents', '-n', '1', arrival.sha]).trim().split(/\s+/)[1];
+  return { before: parent || null, tree: arrival.sha };
+}
+
+/**
+ * Where the arrival cuts a nested repo, which holds no `.workflows/` of its
+ * own: at its last commit made before the root's arrival commit.
+ * @param {string} cwd @param {{time: string}|null} arrival
+ * @returns {Cut}
+ */
+function nestedCut(cwd, arrival) {
+  if (arrival === null) return { before: 'HEAD', tree: 'HEAD' };
+  const last = git(cwd, ['rev-list', '-1', `--before=@${arrival.time}`, 'HEAD']).trim() || null;
+  return { before: last, tree: last };
+}
+
+/**
+ * The commits reachable from `rev` under the scope, oldest first.
+ * @param {string} cwd @param {string} rev @param {string[]} scope @returns {TimedRow[]}
+ */
+function historyOf(cwd, rev, scope) {
+  return gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%at%x09%as%x09%s', rev, ...scope]).map((line) => {
+    const tab = line.indexOf('\t');
+    return { time: Number(line.slice(0, tab)), row: line.slice(tab + 1).replace('\t', '  ') };
+  });
+}
+
+/**
+ * The files of the repo's tree at `rev`, in project paths — none without one.
+ * @param {Repo} repo @param {string|null} rev
+ * @returns {string[]}
+ */
+function filesAt(repo, rev) {
+  return rev === null ? [] : gitLines(repo.path, ['ls-tree', '-r', '--name-only', rev]).map((p) => projectPath(repo.dir, p));
+}
+
+/**
+ * @param {Repo} repo @param {Cut} cut @param {string[]} scope
+ * @returns {RepoAccount}
+ */
+function accountOf(repo, cut, scope) {
+  return {
+    commits: countOf(repo.path, 'HEAD', scope),
+    rootDate: firstDate(repo.path, scope),
+    history: cut.before === null ? [] : historyOf(repo.path, cut.before, scope),
+    files: filesAt(repo, cut.tree),
+  };
+}
+
+/**
+ * A nested repo's account. A shallow clone's history is truncated, so it
+ * adds its tree alone.
+ * @param {Repo} repo @param {Cut} cut
+ * @returns {RepoAccount}
+ */
+function nestedAccount(repo, cut) {
+  if (!isShallow(repo.path)) return accountOf(repo, cut, []);
+  return { commits: 0, rootDate: null, history: [], files: filesAt(repo, cut.tree) };
+}
+
+/**
+ * The repos' histories as one, oldest first — each repo's own order kept,
+ * the next row the earliest of the rows each repo has next.
+ * @param {TimedRow[][]} histories @returns {string[]}
+ */
+function mergedByTime(histories) {
+  const at = histories.map(() => 0);
+  /** @type {string[]} */
+  const rows = [];
+  const total = sum(histories.map((h) => h.length));
+  while (rows.length < total) {
+    const pick = histories.reduce((best, h, i) => {
+      if (at[i] === h.length) return best;
+      return best === -1 || h[at[i]].time < histories[best][at[best]].time ? i : best;
+    }, -1);
+    rows.push(histories[pick][at[pick]].row);
+    at[pick] += 1;
+  }
+  return rows;
+}
+
+/**
+ * A long run keeps its head and tail around one elision line — enough to see
+ * what the history is made of without carrying it whole.
+ * @param {string[]} rows @returns {string[]}
+ */
+function elided(rows) {
+  if (rows.length <= HISTORY_HEAD + HISTORY_TAIL) return rows;
   return [
-    ...shaped.slice(0, HISTORY_HEAD),
-    `… ${shaped.length - HISTORY_HEAD - HISTORY_TAIL} more …`,
-    ...shaped.slice(-HISTORY_TAIL),
+    ...rows.slice(0, HISTORY_HEAD),
+    `… ${rows.length - HISTORY_HEAD - HISTORY_TAIL} more …`,
+    ...rows.slice(-HISTORY_TAIL),
   ];
 }
 
 /**
- * The project's tree at `rev`, less the workflows' own footprint (the skills
- * install under `.claude/`, the `.workflows/` tree, the `.worktreeinclude`
- * boot keeps): a file count plus the top-level shape, largest entries first.
- * @param {string} cwd @param {string} rev
- * @returns {{files_at_arrival: number, tree_at_arrival: string[]}|null}
+ * The project's files, less the workflows' own footprint (the skills install
+ * under `.claude/`, the `.workflows/` tree, the `.worktreeinclude` boot
+ * keeps): a file count plus the top-level shape, largest entries first.
+ * @param {string[]} paths project paths
+ * @returns {{files_at_arrival: number, tree_at_arrival: string[]}}
  */
-function treeAt(cwd, rev) {
-  const paths = gitLines(cwd, ['ls-tree', '-r', '--name-only', rev]);
-  if (paths === null) return null;
+function treeShape(paths) {
   const project = paths.filter((p) => !p.startsWith('.claude/') && !p.startsWith('.workflows/') && p !== WORKTREE_INCLUDE);
   /** @type {Map<string, number>} */
   const top = new Map();
@@ -131,52 +295,43 @@ function treeAt(cwd, rev) {
 }
 
 /**
- * The repository's account of what came before the workflows: when the
- * history began, when `.workflows/` first landed in it, the commits before
- * that arrival (as commits, not a count alone) and the project tree they
- * arrived into. Null when there is no honest history to read — not a git
- * repository, no commits, a shallow clone, or a read that failed — leaving
- * the judgment to the tree.
+ * The project's account of what came before the workflows, across every
+ * repo in it: when the history began, when `.workflows/` first landed in
+ * the root, the commits before that arrival (as commits, not a count alone)
+ * and the project tree they arrived into. A project inside a larger
+ * repository reads the commits that touched its folder. A repo with no
+ * commits yet adds nothing, a shallow nested clone its tree alone, and a
+ * submodule's pointer is never one of the root's files. Null when there is
+ * no honest history to read — not a git repository, no commits, a shallow
+ * root, or a git read that failed — leaving the judgment to the tree. Any
+ * other failure is a bug, and throws.
  * @param {string} cwd
  * @returns {BaselineSignal|null}
  */
 function baselineSignal(cwd) {
-  if ((tryGit(cwd, ['rev-parse', '--is-shallow-repository']) || '').trim() === 'true') return null;
-  const total = tryGit(cwd, ['rev-list', '--count', 'HEAD']);
-  if (total === null) return null;
-  const commitsTotal = parseInt(total, 10);
-  if (!Number.isInteger(commitsTotal) || commitsTotal === 0) return null;
-
-  const roots = gitLines(cwd, ['log', '--no-show-signature', '--max-parents=0', '--reverse', '--format=%as', 'HEAD']);
-  if (roots === null || roots.length === 0) return null;
-  const rootDate = roots[0];
-
-  const arrivals = gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%H%x09%as', 'HEAD', '--', '.workflows']);
-  if (arrivals === null) return null;
-
-  if (arrivals.length === 0) {
-    // Nothing under `.workflows/` is committed: the workflows are arriving
-    // now, into HEAD's tree, and the whole history came before them.
-    const tree = treeAt(cwd, 'HEAD');
-    const history = historyOf(cwd, 'HEAD');
-    if (tree === null || history === null) return null;
-    return { root_date: rootDate, workflows_date: null, commits_total: commitsTotal, commits_before: commitsTotal, history_before: history, ...tree };
+  try {
+    const [root, ...nested] = projectRepos(cwd);
+    if (isShallow(root.path)) return null;
+    const arrival = arrivalIn(cwd);
+    const accounts = [
+      ...(hasCommits(root.path) ? [accountOf(root, rootCut(root.path, arrival), scopeOf(root.path))] : []),
+      ...nested.filter((repo) => hasCommits(repo.path)).map((repo) => nestedAccount(repo, nestedCut(repo.path, arrival))),
+    ];
+    const commitsTotal = sum(accounts.map((a) => a.commits));
+    if (commitsTotal === 0) return null;
+    const repoDirs = new Set(nested.map((repo) => repo.dir));
+    return {
+      root_date: accounts.flatMap((a) => (a.rootDate === null ? [] : [a.rootDate])).sort()[0],
+      workflows_date: arrival && arrival.date,
+      commits_total: commitsTotal,
+      commits_before: sum(accounts.map((a) => a.history.length)),
+      history_before: elided(mergedByTime(accounts.map((a) => a.history))),
+      ...treeShape(accounts.flatMap((a) => a.files).filter((p) => !repoDirs.has(p))),
+    };
+  } catch (err) {
+    if (err instanceof GitError) return null;
+    throw err;
   }
-
-  const [sha, workflowsDate] = arrivals[0].split('\t');
-  const tree = treeAt(cwd, sha);
-  const parents = tryGit(cwd, ['rev-list', '--parents', '-n', '1', sha]);
-  if (tree === null || parents === null) return null;
-  const firstParent = parents.trim().split(/\s+/)[1];
-  if (!firstParent) {
-    // The workflows arrived in the root commit: no commits came before, and
-    // the tree they arrived into is that commit's own.
-    return { root_date: rootDate, workflows_date: workflowsDate, commits_total: commitsTotal, commits_before: 0, history_before: [], ...tree };
-  }
-  const before = tryGit(cwd, ['rev-list', '--count', firstParent]);
-  const history = historyOf(cwd, firstParent);
-  if (before === null || history === null) return null;
-  return { root_date: rootDate, workflows_date: workflowsDate, commits_total: commitsTotal, commits_before: parseInt(before, 10), history_before: history, ...tree };
 }
 
 // --- the verdict ------------------------------------------------------------
