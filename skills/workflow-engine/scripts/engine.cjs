@@ -29,8 +29,8 @@ const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
-const { stageableSpecs, hasStagedDeletions, deletedAtHead, addRefused } = require('./kernel/git.cjs');
-const { projectRepos, repoOf, repoPath, repoName, projectDirtyEntries } = require('./kernel/repos.cjs');
+const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, addRefused } = require('./kernel/git.cjs');
+const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
 const { recordThreadAdd, recordThreadState, recordThreadStates, recordThreadReframe, recordThreadRemove } = require('./domain/research-threads.cjs');
 const { VALID_ROUTINGS, VALID_THREAD_STATUSES, TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
@@ -1678,10 +1678,11 @@ function topicStatus(cwd, wu, phase, topic) {
  * anything is staged: inside the project, literal (a glob would commit
  * whatever it happened to match), never a workflow artifact, which has a
  * derived scope of its own, and committable in the repo that owns it.
- * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given
+ * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos
+ * @param {string} given @param {string} message the call's commit message
  * @returns {string} the project-relative path
  */
-function codePathSpec(cwd, repos, given) {
+function codePathSpec(cwd, repos, given, message) {
   if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
   if (/[*?\[\]]/.test(given) || given.startsWith(':')) {
     throw new Error(`commit --paths: "${given}" is a pattern — name each file literally`);
@@ -1695,7 +1696,7 @@ function codePathSpec(cwd, repos, given) {
   if (spec === '.workflows' || spec.startsWith('.workflows/')) {
     throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
   }
-  assertCommittable(repos, spec, given);
+  assertCommittable(repos, spec, given, message);
   return spec;
 }
 
@@ -1705,20 +1706,36 @@ function codePathSpec(cwd, repos, given) {
  * there must stage it. Otherwise its deletion must be staged — what a
  * `git mv` or `git rm` leaves behind, which the commit door accepts, or the
  * vanished side of a rename cannot be named and the commit lands half a
- * move — or be the repo's HEAD commit's own: an earlier run of the same call
- * landed it before another repo failed, so re-running the call is its retry,
- * with nothing left to commit there.
- * @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} spec @param {string} given
+ * move — or be deleted by the repo's HEAD commit made with this call's
+ * message: an earlier run of the same call landed it before another repo
+ * failed, so re-running the call is its retry, with nothing left to commit
+ * there. A deletion any other commit made is history, not this call's.
+ * @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} spec
+ * @param {string} given @param {string} message
  */
-function assertCommittable(repos, spec, given) {
+function assertCommittable(repos, spec, given, message) {
   const repo = repoOf(repos, spec);
   const own = repoPath(repo, spec);
   if (stageableSpecs(repo.path, [own]).length > 0) {
     if (addRefused(repo.path, own, repo.heldOut)) {
       throw new Error(`commit --paths: git in ${repoName(repo)} refuses to stage "${given}" (an ignore rule, or a path beyond a symbolic link)`);
     }
-  } else if (!hasStagedDeletions(repo.path, own) && !deletedAtHead(repo.path, own)) {
+  } else if (!hasStagedDeletions(repo.path, own) && !deletedAtHead(repo.path, own, message)) {
     throw new Error(`commit --paths: "${given}" is neither on disk nor tracked`);
+  }
+}
+
+/**
+ * Every repo the code commit would commit in — a reached submodule's parent
+ * among them, for its pointer — must be on a branch: a commit on a detached
+ * HEAD (a submodule after `git submodule update`) is orphaned by the next
+ * checkout there.
+ * @param {import('./kernel/repos.cjs').Repo[]} repos @param {string[]} specs project paths
+ */
+function assertOnBranches(repos, specs) {
+  const detached = commitGroups(repos, specs).find(({ repo }) => !onBranch(repo.path));
+  if (detached !== undefined) {
+    throw new Error(`commit --paths: ${repoName(detached.repo)} is on a detached HEAD — check out a branch there, then run the commit again`);
   }
 }
 
@@ -1756,7 +1773,8 @@ function assertCodeTarget(cwd, target) {
 function commitCodePaths(cwd, paths, message, target) {
   assertCodeTarget(cwd, target);
   const repos = projectRepos(cwd);
-  const specs = paths.map((p) => codePathSpec(cwd, repos, p));
+  const specs = paths.map((p) => codePathSpec(cwd, repos, p, message));
+  assertOnBranches(repos, specs);
   const committed = commitAcrossRepos(repos, specs, message);
   beatQuietly(cwd, target.workUnit, target.phase, target.topic);
   /** @type {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string}} */

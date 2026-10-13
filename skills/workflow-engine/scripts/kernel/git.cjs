@@ -187,14 +187,26 @@ function hasStagedDeletions(cwd, spec) {
 }
 
 /**
- * Whether HEAD's own commit deleted the path — never on a repo's first
- * commit, which has no parent to compare with.
- * @param {string} cwd @param {string} spec
+ * Whether HEAD's own commit, made with this message, deleted the path —
+ * never on a repo's first commit, which has no parent to compare with. The
+ * message is compared as `commit -m` stored it, whitespace cleaned.
+ * @param {string} cwd @param {string} spec @param {string} message
  * @returns {boolean}
  */
-function deletedAtHead(cwd, spec) {
+function deletedAtHead(cwd, spec, message) {
+  const made = tryGit(cwd, ['log', '-1', '--format=%B', 'HEAD']);
+  if (made === null || made.trimEnd() !== git(cwd, ['stripspace'], undefined, message).trimEnd()) return false;
   const out = tryGit(cwd, ['diff', '--name-only', '--no-renames', '--diff-filter=D', 'HEAD^', 'HEAD', '--', spec]);
   return out !== null && out.trim() !== '';
+}
+
+/**
+ * Whether HEAD names a branch — false on a detached HEAD.
+ * @param {string} cwd
+ * @returns {boolean}
+ */
+function onBranch(cwd) {
+  return tryGit(cwd, ['symbolic-ref', '-q', 'HEAD']) !== null;
 }
 
 /**
@@ -230,7 +242,7 @@ function heldOutOf(nested, specs) {
  * `nested` names the folders of the repos nested in this one, held out of
  * the paths that reach inside them (`heldOutOf`). A nested folder named
  * itself is a submodule's pointer: tracked, so committed as the folder
- * stands, never added.
+ * stands, never added, and never held out of a path that holds it.
  * @param {string} cwd      the repo's root, or the project root
  * @param {string|string[]} pathspec
  * @param {string} message
@@ -241,7 +253,7 @@ function commitPathspec(cwd, pathspec, message, nested = []) {
   const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
   const pointers = specs.filter((spec) => nested.includes(spec));
   const files = specs.filter((spec) => !nested.includes(spec));
-  const held = heldOutOf(nested, files);
+  const held = heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files);
   const addable = stageableSpecs(cwd, files);
   if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...addable, ...held]);
   const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
@@ -425,4 +437,4 @@ function removeFiles(cwd, paths) {
   gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
 }
 
-module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, deletedAtHead, addRefused, removeFiles };
+module.exports = { git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, pathsTouchedBySubject, stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, addRefused, removeFiles };

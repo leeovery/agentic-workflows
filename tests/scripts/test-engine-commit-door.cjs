@@ -586,6 +586,19 @@ describe('engine commit --paths: the code commit', () => {
       /"src\/gone\.js" is neither on disk nor tracked/);
   });
 
+  it('passes the HEAD commit\'s deletion only when that commit carries the call\'s message — the retry\'s case', () => {
+    fs.unlinkSync(path.join(dir, 'src/gone.js'));
+    commitAll(dir, 'chore: my own cleanup');
+
+    assert.match(engineFails(dir, ['commit', '--paths', 'src/gone.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
+      /"src\/gone\.js" is neither on disk nor tracked/, 'a deletion the user committed is not this call\'s');
+
+    const retried = engine(dir, ['commit', '--paths', 'src/gone.js', '-m', 'chore: my own cleanup', ...forTopic]);
+
+    assert.deepStrictEqual(retried.committed, []);
+    assert.strictEqual(retried.note, 'nothing to commit');
+  });
+
   it('commits in a project nested in its repository under the project\'s own directory, reading only its own folder', () => {
     const repo = harness.setupGitFixture('engine-commit-nested-paths-');
     try {
@@ -712,6 +725,56 @@ describe('engine commit --paths: code in repos of its own', () => {
 
     assert.deepStrictEqual(again.committed, [], 'work uncommitted inside the submodule is no pointer to record');
     assert.strictEqual(again.note, 'nothing to commit');
+  });
+
+  it('refuses a call that would commit in a repo on a detached HEAD, before any repo commits', () => {
+    const sdk = harness.addSubmodule(dir, 'sdk', api);
+    const branch = git(sdk, ['symbolic-ref', '--short', 'HEAD']).trim();
+    git(sdk, ['checkout', '-q', '--detach']);
+    writeFile(sdk, 'src/handler.js', 'const h = 2;\n');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+    const call = ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic];
+    const [rootBefore, sdkBefore] = [head(dir), head(sdk)];
+
+    assert.strictEqual(engineFails(dir, call).error,
+      'commit --paths: sdk is on a detached HEAD — check out a branch there, then run the commit again');
+    assert.deepStrictEqual([head(dir), head(sdk)], [rootBefore, sdkBefore], 'nothing commits in any repo');
+
+    git(sdk, ['checkout', '-q', branch]);
+    git(dir, ['checkout', '-q', '--detach']);
+
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]).error,
+      'commit --paths: . is on a detached HEAD — check out a branch there, then run the commit again',
+      'the parent a reached submodule\'s pointer lands in is checked too');
+    assert.strictEqual(head(sdk), sdkBefore);
+
+    git(dir, ['checkout', '-q', '-']);
+    const landed = engine(dir, call);
+
+    assert.deepStrictEqual(landed.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(headFiles(dir).sort(), ['sdk', 'src/app.js']);
+  });
+
+  it('never checks a repo the call does not commit in — a detached clone blocks nothing elsewhere', () => {
+    git(api, ['checkout', '-q', '--detach']);
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+
+    const res = engine(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
+
+    assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
+  });
+
+  it('records the pointer of a submodule the call reaches into inside a folder the call also names', () => {
+    const sub = harness.addSubmodule(dir, 'packages/sub', api);
+    writeFile(dir, 'packages/readme.txt', 'the packages\n');
+    writeFile(sub, 'lib.txt', 'a library\n');
+
+    const res = engine(dir, ['commit', '--paths', 'packages', 'packages/sub/lib.txt', '-m', 'feat(topic-a): the task', ...forTopic]);
+
+    assert.deepStrictEqual(res.committed, [{ repo: 'packages/sub', sha: head(sub) }, { repo: '.', sha: head(dir) }]);
+    assert.deepStrictEqual(headFiles(dir).sort(), ['packages/readme.txt', 'packages/sub']);
+    assert.strictEqual(pointer('packages/sub'), git(sub, ['rev-parse', 'HEAD']).trim());
+    assert.deepStrictEqual(statusLines(dir), []);
   });
 
   it('never commits a nested repo in its parent the call did not reach into — an untouched submodule, an untracked repo', () => {
