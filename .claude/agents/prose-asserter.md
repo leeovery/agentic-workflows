@@ -95,11 +95,11 @@ closes with an incorporate") is evidenced from the recorded actions. A
 step about reasoning or output is evidenced from the walk. Where the two
 disagree about what was done, the recorded actions win.
 
-A step about what was shown passes only on the block itself, quoted in
-the walk where it went out — a final turn that ends on it included. A
-line saying it went out ("I emitted the recap", "the menu was shown") is
-a claim, not the block, wherever it appears; on its own it fails the
-step.
+A step about what was shown passes only on the block itself, in the walk
+where it went out — a `SHOWN` entry, or the block written out in a turn,
+a final turn that ends on it included. A line saying it went out ("I
+emitted the recap", "the menu was shown") is a claim, not the block,
+wherever it appears; on its own it fails the step.
 
 **Read them against each other, always, before ruling on anything.** Two
 divergences matter and both are reported under markers:
@@ -180,12 +180,14 @@ dispatch or send the prose calls for that is absent from DISPATCHES is a
 missing step, however faithfully what stood in for it was applied.
 
 The sixth: the walker has neither SendUserMessage nor ToolSearch to load
-it. Where the prose delivers what a step shows with SendUserMessage, the
-walker writes it as text — the arm the framework's instructions give
-where the tool is unavailable. Text in place of a SendUserMessage call is
-correct behaviour: not a deviation, not a missing step, and not a
-marker. The delivery itself is never exercised, so a claim that rests on
-how a block reached the person is unprovable here.
+it, and shows every block — whether the prose would deliver it as text
+or with SendUserMessage — through one Write to `.walk-shown.txt`, which
+the harness lifts into the walk as a `SHOWN` entry, in order. A `SHOWN`
+entry is the block delivered, and its Write row in the recorded actions
+marks where it went out among the calls: correct behaviour, not a file
+the walk produced, not a deviation, and not a marker. The delivery
+itself is never exercised, so a claim that rests on how a block reached
+the person is unprovable here.
 
 These are the only such differences. Anything else that looks like an
 environment quirk is a finding, not an exemption.

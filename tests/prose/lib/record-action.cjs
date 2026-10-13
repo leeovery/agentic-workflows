@@ -37,7 +37,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { dispatchRow, fromTranscript, worldIn } = require('./transcripts.cjs');
+const { dispatchRow, fromTranscript, isShowWrite, worldIn } = require('./transcripts.cjs');
 const { unannounced } = require('./announce-handoff.cjs');
 
 const LOG = '.walk-actions.log';
@@ -253,12 +253,16 @@ function main() {
     // A call that failed never arrives here — it raises PostToolUseFailure
     // instead — so reaching this point is itself the success signal.
     parts.push('ok');
-    parts.push(
-      responseText(
-        payload.tool_response,
-        WRITE_RESPONSE_TOOLS.has(tool) ? MAX_PRODUCED_OUTPUT : MAX_OUTPUT,
-      ).split(world).join('.'),
-    );
+    // A show write's block is the walk's SHOWN entry, so its row keeps
+    // the place it went out and not a second copy of it.
+    if (!isShowWrite(tool, payload.tool_input)) {
+      parts.push(
+        responseText(
+          payload.tool_response,
+          WRITE_RESPONSE_TOOLS.has(tool) ? MAX_PRODUCED_OUTPUT : MAX_OUTPUT,
+        ).split(world).join('.'),
+      );
+    }
   } else if (event === 'PostToolUseFailure') {
     parts.push('FAILED');
     parts.push(

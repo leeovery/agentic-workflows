@@ -109,7 +109,8 @@ time, lifted from the runtime's transcript by the harness. It was not
 summarised, and the walker had no chance to edit it after the fact.
 
 Read it for what only it can show: which section or arm was entered and
-the guard line that selected it, the blocks emitted to the user, the
+the guard line that selected it, the blocks shown to the user (each
+`SHOWN` entry lifted from the write that carried it), the
 questions asked and the scripted answers consumed. What a command ran and
 returned is settled by the recorded actions above, not here.
 

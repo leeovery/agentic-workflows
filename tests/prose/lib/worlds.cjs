@@ -70,6 +70,10 @@ const WALK_LOG = '.walk-transcript.log';
 // what each dispatch and send carried, which the invariants and the
 // asserter read.
 const DISPATCH_LOG = '.walk-dispatches.jsonl';
+// Written by the walker itself, one Write per block it shows, each
+// replacing the last — the transcript keeps every block; the file holds
+// only the latest.
+const SHOWN_FILE = '.walk-shown.txt';
 // The asserter's prompt, written by `run.cjs assert` into the world so the
 // orchestrator hands over a path, never the text — a 100 KB record relayed
 // by hand arrives cut, and an asserter judging a cut record rules on
@@ -78,7 +82,7 @@ const ASSERT_PROMPT = '.assert-prompt.md';
 // What the harness writes into a world that is not the world's own state:
 // out of every tree the differ reads, out of every commit, and lifted
 // whole by archive.
-const HARNESS_FILES = [ACTION_LOG, WALK_LOG, DISPATCH_LOG, ASSERT_PROMPT];
+const HARNESS_FILES = [ACTION_LOG, WALK_LOG, DISPATCH_LOG, SHOWN_FILE, ASSERT_PROMPT];
 
 // A recipe's git history dies at the world's fresh init, so a fixture
 // that needs one (the task commits review reads through `engine code log`)
@@ -832,7 +836,7 @@ function readWalkLog(worldDir) {
 module.exports = {
   ROOT, ENGINE, MAINLINES_DIR, WORLD_PREFIX, recipeEnv,
   ACTION_LOG, readActionLog, readActionRows, WALK_LOG, readWalkLog, ASSERT_PROMPT,
-  DISPATCH_LOG, readDispatches,
+  DISPATCH_LOG, readDispatches, SHOWN_FILE,
   runRecipe, collectTree, hasSnapshot, readSnapshot, snapshotDir,
   hashPaths, SHARED_INPUTS, sharedInputsHash, recipeHash,
   hashCacheFile, cachedHash, recordHash,

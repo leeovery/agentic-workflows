@@ -163,7 +163,7 @@ any harness substitutions. Follow it exactly.
 - **The engine's `handoff` call ends the walk.** The world stands in
   for the gate mod, so every `engine.cjs handoff` the prose runs answers
   `handoff: mod` and comes back with its `HANDOFF` section cut, as the
-  mod takes it. Emit what the prose says to emit and STOP there: in a
+  mod takes it. Show what the prose says to show and STOP there: in a
   live session the mod clears the conversation and the next skill starts
   in a fresh one, so nothing after that call is this walk's — never read
   on into the skill it names. Expected, not a `DEVIATION`, no marker.
@@ -212,11 +212,10 @@ entries written at the time, and one that contradicts what you recorded
 (no markers raised, when you raised one) discredits the whole account.
 
 Commands, their output, and the files you touch are recorded by the
-harness. Do not restate them — save what the prose has you put on
-screen, which no record holds: an engine call's DISPLAY and MENU
-sections the prose emits are written out like any other block. What only
-you can supply is the reasoning: which arm you took, what selected it,
-and what you put on screen.
+harness. Do not restate them. What the prose has you put on screen goes
+out through the show write below, an engine call's DISPLAY and MENU
+sections among it. What only you can supply in text is the reasoning:
+which arm you took and what selected it.
 
 **Never narrate a call, an outcome, or a file you read.** Not a command
 that failed, not a retry, not a path you had to correct, not "I loaded
@@ -228,42 +227,45 @@ never happened, quoted guards out of files they never opened, and
 claimed retries the record contradicts. Say what you decided; the record
 says what you did.
 
-**What you show is text, written before your next call.** You have
-neither SendUserMessage nor ToolSearch, so where the prose delivers a
-block with SendUserMessage you write it as text. Every block the prose
-has you show — a literal it gives, an engine DISPLAY or MENU section, a
-recap or summary you compose — goes out as text in the turn it happens,
-under `EMITTED`, before the next tool call. The harness keeps only text:
-a block held in your thinking was never shown, and a closing report that
-says it was is a claim the record contradicts. A block shown again is
-quoted again, never pointed back to.
+**What you show goes out through a write, one block at a time.** You
+have neither SendUserMessage nor ToolSearch. Every block the prose has
+you show — a literal it gives, an engine DISPLAY or MENU section, a
+recap or summary you compose — goes out as one Write to
+`.walk-shown.txt` in the project directory, at the moment the prose
+shows it and before its next call: the whole block, exactly as it went
+out, and nothing else. Each write replaces the last, and the harness
+lifts every one into the walk, in order, as `SHOWN`. Never show a block
+only in text, in your thinking, or in your closing report: the write is
+the showing, and a report that says a block was shown is a claim, not
+the block. A block shown again is written again, never pointed back to.
 
 Narrate these, each as its own entry, the moment it happens:
 
 1. Every prose section or arm entered: `file.md § Heading`, plus the
    quoted guard line that selected it.
-2. Every block the prose directed you to emit, quoted in full and in
-   the form it went out: a markdown section as indented markdown, never
-   inside a fence, and a fenced one inside its own tagged fence. The one
-   exception is static branding — the `workflow-start` banner art —
-   recorded as `EMITTED: [banner]`: no assertion can rest on it, and the
-   art is heavy to reproduce.
-3. Every menu or question encountered, verbatim, and the scripted answer
-   used.
+2. Every block the prose directs you to show, through its show write, in
+   the form it went out: a markdown section as markdown, never inside a
+   fence, and a fenced one inside its own tagged fence. The one exception
+   is static branding — the `workflow-start` banner art — written as
+   `[banner]`: no assertion can rest on it, and the art is heavy to
+   reproduce.
+3. Every menu or question encountered, shown through its write, and the
+   scripted answer used, as `ANSWERED:`.
 4. Every marker above.
 5. Finally: `STOPPED: <reason>`.
 
-The shape, abbreviated:
+The shape, abbreviated, as the walk reads back — each `SHOWN` entry is
+one show write, labelled by the harness, never typed by you:
 
 ```
 ENTERED: some-reference.md § A. Offer Something
   guard: (start of file)
-EMITTED:
-  > An independent agent can trace the code fresh…
-EMITTED (menu):
-  **`◆ Do the thing?`**
-  **`y/yes`**  → Do it
-  **`s/skip`** → Skip it
+SHOWN:
+> An independent agent can trace the code fresh…
+SHOWN:
+**`◆ Do the thing?`**
+**`y/yes`**  → Do it
+**`s/skip`** → Skip it
 ANSWERED: yes — do the thing   (scripted answer 1)
 ENTERED: some-reference.md § A — #### If `yes`
   guard: "#### If `yes`"

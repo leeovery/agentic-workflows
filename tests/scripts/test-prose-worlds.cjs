@@ -614,18 +614,19 @@ describe('the asserter prompt file: harness material, never world state', () => 
     fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'walk\n');
     fs.writeFileSync(path.join(dir, worlds.ASSERT_PROMPT), 'PROMPT\n');
     fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG), '{"tool_use_id":"t1","tool_name":"Agent","tool_input":{}}\n');
+    fs.writeFileSync(path.join(dir, worlds.SHOWN_FILE), 'Which feature?\n');
     fs.mkdirSync(path.join(dir, '.workflows'));
     fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), '{}\n');
     return dir;
   }
 
-  it('is excluded from the collected tree alongside the logs and the dispatch record', () => {
+  it('is excluded from the collected tree alongside the logs, the dispatch record and the show file', () => {
     const dir = worldDir();
     try {
       const tree = worlds.collectTree(dir);
       const rels = [...tree.keys()];
       assert.ok(rels.includes(path.join('.workflows', 'manifest.json')));
-      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT, worlds.DISPATCH_LOG]) {
+      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT, worlds.DISPATCH_LOG, worlds.SHOWN_FILE]) {
         assert.ok(!rels.includes(name), `${name} leaked into the tree`);
       }
     } finally {
@@ -638,7 +639,7 @@ describe('the asserter prompt file: harness material, never world state', () => 
     let dest;
     try {
       dest = worlds.archiveWorld(dir, 'some-case');
-      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT, worlds.DISPATCH_LOG]) {
+      for (const name of [worlds.ACTION_LOG, worlds.WALK_LOG, worlds.ASSERT_PROMPT, worlds.DISPATCH_LOG, worlds.SHOWN_FILE]) {
         assert.ok(fs.existsSync(path.join(dest, name)), `${name} missing from the archive`);
       }
       assert.strictEqual(fs.readFileSync(path.join(dest, worlds.ASSERT_PROMPT), 'utf8'), 'PROMPT\n');

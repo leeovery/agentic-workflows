@@ -207,6 +207,17 @@ describe('prose recorder — tool events', () => {
     assert.ok(!logLines()[0].includes('[truncated]'));
   });
 
+  it('keeps where a show write went out, and not a second copy of its block', () => {
+    fire({
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Write',
+      agent_type: 'prose-walker',
+      tool_input: { file_path: `${world}/.walk-shown.txt`, content: 'Which feature?' },
+      tool_response: { type: 'update', content: 'Which feature?' },
+    });
+    assert.deepStrictEqual(logLines()[0].split('\t'), ['PostToolUse', 'Write', './.walk-shown.txt', 'ok']);
+  });
+
   it('gives a command far more room than a file read', () => {
     const long = 'x'.repeat(1800);
     fire({
@@ -406,6 +417,30 @@ describe('prose recorder — the stop event', () => {
     assert.ok(walk.includes('research is still open'), 'the handed-back walk survives');
     assert.ok(walk.indexOf('ENTERED') < walk.indexOf('Report delivered'), 'in the order it happened');
     assert.ok(!walk.includes('not-a-turn'), 'another tool call is not a turn');
+  });
+
+  it('lifts each shown block out of its show write, verbatim and in order', () => {
+    const menu = '**`◆ Do the thing?`**\n  **`y/yes`**  → Do it';
+    const transcript = writeTranscript([
+      { message: { model: 'claude-sonnet-5-5', content: [{ type: 'text', text: 'ENTERED: a.md § Step 1' }] }, cwd: world },
+      { message: { content: [{ type: 'tool_use', name: 'Write', input: { file_path: `${world}/.walk-shown.txt`, content: menu } }] } },
+      { message: { content: [{ type: 'tool_use', name: 'Write', input: { file_path: `${world}/.workflows/notes.txt`, content: 'not-shown' } }] } },
+      { message: { content: [{ type: 'tool_use', name: 'Write', input: { file_path: `${world}/.walk-shown.txt`, content: 'Resuming implementation: Pay' } }] } },
+      { message: { content: [{ type: 'text', text: 'STOPPED: end of flow' }] } },
+    ]);
+    fire({
+      hook_event_name: 'SubagentStop',
+      agent_type: 'prose-walker',
+      agent_transcript_path: transcript,
+      last_assistant_message: 'STOPPED: end of flow',
+    });
+    const walk = fs.readFileSync(path.join(world, '.walk-transcript.log'), 'utf8');
+    assert.ok(walk.includes(`SHOWN:\n${menu}`), 'the block survives whole, as written');
+    assert.ok(walk.includes('SHOWN:\nResuming implementation: Pay'), 'and each one that replaced it');
+    assert.ok(!walk.includes('not-shown'), 'any other write is not a turn');
+    assert.ok(walk.indexOf('ENTERED') < walk.indexOf('Do the thing'), 'in the order it happened');
+    assert.ok(walk.indexOf('Do the thing') < walk.indexOf('Resuming'));
+    assert.ok(walk.indexOf('Resuming') < walk.indexOf('STOPPED'));
   });
 
   it('appends the closing turn the stop race leaves out of the transcript', () => {
