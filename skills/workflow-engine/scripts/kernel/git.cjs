@@ -547,13 +547,13 @@ function diffWithUntracked(cwd, base, args, exclude) {
 }
 
 /**
- * `git rm` the given files (stages the deletions). One call — git validates
- * every pathspec before removing anything.
+ * `git rm` the given files, each taken literally (stages the deletions). One
+ * call — git validates every pathspec before removing anything.
  * @param {string} cwd
  * @param {string[]} paths
  */
 function removeFiles(cwd, paths) {
-  gitIndexed(cwd, ['rm', '-q', '--', ...paths]);
+  gitIndexed(cwd, ['rm', '-q', '--', ...literally(paths)]);
 }
 
 module.exports = {
