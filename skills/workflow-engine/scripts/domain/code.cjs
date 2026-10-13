@@ -14,15 +14,16 @@
 // never caught. Each repo holding one has a base — the parent of its
 // earliest, the empty tree where that is the repo's first commit — and the
 // change since is the range from the base to the repo's HEAD, confined to
-// the files those commits touched. The uncommitted change is each repo's
-// tracked change against HEAD (the empty tree before its first commit), then
-// each untracked file as an addition, held out as the dirt is. A diff names
-// every path from the project, each repo's patch in repo order. Nothing is
+// the files those commits touched, a submodule's pointer never among them.
+// The uncommitted change is each repo's change against HEAD (the empty tree
+// before its first commit), its untracked files read as additions, held out
+// as the dirt is. A diff names every path from the project, a move as a
+// deletion and an addition, one patch per repo in repo order. Nothing is
 // written.
 // ---------------------------------------------------------------------------
 
 const {
-  commitsBySubject, parentOrEmptyTree, emptyTree, hasCommits, untrackedFiles, diffPatch, excluding, literally,
+  commitsBySubject, parentOrEmptyTree, emptyTree, hasCommits, diffPatch, diffWithUntracked, literally,
 } = require('../kernel/git.cjs');
 const { projectRepos, repoName, projectPath, codeHeldOut, projectDirtyEntries } = require('../kernel/repos.cjs');
 const { stepOfInternalId } = require('./tasks.cjs');
@@ -67,13 +68,14 @@ function taskSelector(workUnit, topic, phase) {
 
 /**
  * Each repo's selected commits, oldest first, and its base. A repo with none
- * is left out.
+ * is left out. A submodule's pointer is the submodule's change, never its
+ * parent's: a commit that recorded nothing else is not one of the parent's.
  * @param {Repo[]} repos @param {Selector} selector
  * @returns {{repo: Repo, commits: Commit[], base: string}[]}
  */
 function matchedByRepo(repos, selector) {
   return repos.flatMap((repo) => {
-    const commits = commitsBySubject(repo.path, selector.grep, selector.selects);
+    const commits = commitsBySubject(repo.path, selector.grep, selector.selects, repo.submodules);
     return commits.length === 0 ? [] : [{ repo, commits, base: parentOrEmptyTree(repo.path, commits[0].sha) }];
   });
 }
@@ -88,24 +90,16 @@ function touched(commits) {
 }
 
 /**
- * `git diff` in the repo with its paths named from the project. `--relative`
- * confines a root inside a larger repository to the project's folder.
- * @param {Repo} repo @param {string[]} args
- * @returns {string}
+ * The options that name a repo's diff from the project: `--relative`
+ * confines a root inside a larger repository to the project's folder, and a
+ * move reads as a deletion and an addition, so both its paths carry the
+ * repo's folder.
+ * @param {Repo} repo
+ * @returns {string[]}
  */
-function projectDiff(repo, args) {
+function projectDiffOptions(repo) {
   const prefix = projectPath(repo.dir, '');
-  return diffPatch(repo.path, ['--relative', `--src-prefix=a/${prefix}`, `--dst-prefix=b/${prefix}`, ...args]);
-}
-
-/**
- * An untracked file as an addition, named from the project.
- * @param {Repo} repo @param {string} file
- * @returns {string}
- */
-function addedDiff(repo, file) {
-  const prefix = projectPath(repo.dir, '');
-  return diffPatch(repo.path, ['--no-index', `--src-prefix=a/${prefix}`, `--dst-prefix=b/${prefix}`, '--', '/dev/null', file]);
+  return ['--relative', '--no-renames', `--src-prefix=a/${prefix}`, `--dst-prefix=b/${prefix}`];
 }
 
 /**
@@ -132,22 +126,21 @@ function codeLog(cwd, selector) {
  */
 function selectedDiff(cwd, selector) {
   return matchedByRepo(projectRepos(cwd), selector)
-    .map(({ repo, commits, base }) => projectDiff(repo, [base, 'HEAD', '--', ...literally(touched(commits))]))
+    .map(({ repo, commits, base }) => diffPatch(repo.path, [...projectDiffOptions(repo), base, 'HEAD', '--', ...literally(touched(commits))]))
     .join('');
 }
 
 /**
- * The change not yet committed: each repo's tracked change, then each
- * untracked file as an addition.
+ * The change not yet committed: each repo's tracked change and its untracked
+ * files as additions, in one patch per repo.
  * @param {string} cwd
  * @returns {string} the unified diff, '' when there is none
  */
 function uncommittedDiff(cwd) {
-  const repos = projectRepos(cwd);
-  const tracked = repos.map((repo) => projectDiff(repo,
-    [hasCommits(repo.path) ? 'HEAD' : emptyTree(repo.path), '--', '.', ...excluding(codeHeldOut(repo))]));
-  const untracked = repos.flatMap((repo) => untrackedFiles(repo.path, codeHeldOut(repo)).map((file) => addedDiff(repo, file)));
-  return [...tracked, ...untracked].join('');
+  return projectRepos(cwd)
+    .map((repo) => diffWithUntracked(repo.path, hasCommits(repo.path) ? 'HEAD' : emptyTree(repo.path),
+      projectDiffOptions(repo), codeHeldOut(repo)))
+    .join('');
 }
 
 /**

@@ -20,7 +20,8 @@
 // submodule's moved pointer is never the parent's dirt and never rides its
 // commit, but for one rule: a code commit that reaches into a submodule
 // records the submodule's new pointer in its parent, the child committing
-// first. The project's `.workflows/` is the workflows' own, never code dirt.
+// first. The project's `.workflows/` is the workflows' own: never code dirt,
+// and never home to a repo of the project, whatever checkout it holds.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -104,12 +105,25 @@ function projectPath(dir, repoRel) {
 }
 
 /**
- * The repo at `dir`, then every repo nested inside it, at any depth.
+ * Whether the project path lies in the project's `.workflows/`.
+ * @param {string} relPath
+ * @returns {boolean}
+ */
+function isWorkflowsPath(relPath) {
+  return relPath === '.workflows' || relPath.startsWith('.workflows/');
+}
+
+/**
+ * The repo at `dir`, then every repo nested inside it, at any depth — never
+ * one inside the project's `.workflows/`, whose content is the workflows'
+ * own whatever it holds.
  * @param {string} dir @param {string} abs
  * @returns {Repo[]}
  */
 function searched(dir, abs) {
-  const { untracked, submodules, ignored } = nestedRepoFolders(abs);
+  const found = nestedRepoFolders(abs);
+  const [untracked, submodules, ignored] = [found.untracked, found.submodules, found.ignored]
+    .map((folders) => folders.filter((rel) => !isWorkflowsPath(projectPath(dir, rel))));
   const nested = [...untracked, ...submodules, ...ignored].flatMap((rel) => searched(projectPath(dir, rel), path.join(abs, rel)));
   return [{ dir, path: abs, heldOut: [...untracked, ...submodules], submodules }, ...nested];
 }

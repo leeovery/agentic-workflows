@@ -147,31 +147,77 @@ describe('the baseline signal across the project\'s repos', () => {
     writeFile(api, 'src/b.js', 'b\n');
     commitOn(api, 'api: the first endpoints', '2025-02-01');
     commitOn(dir, 'initial', '2025-03-01');
-    harness.addSubmodule(dir, 'vendor/sdk', api);
+    const sdkSource = harness.initRepo(`${dir}-sdk-source`);
+    writeFile(sdkSource, 'index.js', 'sdk\n');
+    commitOn(sdkSource, 'sdk: the client', '2025-01-10');
+    harness.addSubmodule(dir, 'vendor/sdk', sdkSource);
     execFileSync('git', ['commit', '-q', '--amend', '--no-edit', '--date', '2025-04-01T12:00:00Z'],
       { cwd: dir, env: { ...process.env, GIT_COMMITTER_DATE: '2025-04-01T12:00:00Z' } });
     harness.initRepo(path.join(dir, 'fresh'));
     writeFile(dir, 'fresh/notes.txt', 'nothing committed\n');
 
-    assert.deepStrictEqual(baselineSignal(dir), {
-      root_date: '2025-02-01', workflows_date: null, commits_total: 4, commits_before: 4,
-      history_before: ['2025-02-01  api: the first endpoints', '2025-02-01  api: the first endpoints', '2025-03-01  initial', '2025-04-01  add vendor/sdk'],
-      files_at_arrival: 7, tree_at_arrival: ['api/ (2)', 'vendor/ (2)', '.gitignore', '.gitmodules', 'README.md'],
-    });
+    try {
+      assert.deepStrictEqual(baselineSignal(dir), {
+        root_date: '2025-01-10', workflows_date: null, commits_total: 4, commits_before: 4,
+        history_before: ['2025-01-10  sdk: the client', '2025-02-01  api: the first endpoints', '2025-03-01  initial', '2025-04-01  add vendor/sdk'],
+        files_at_arrival: 6, tree_at_arrival: ['api/ (2)', '.gitignore', '.gitmodules', 'README.md', 'vendor/ (1)'],
+      });
+    } finally {
+      harness.cleanupFixture(`${dir}-sdk-source`);
+    }
   });
 
-  it('a shallow repo anywhere in the project leaves no honest history to read', () => {
-    writeFile(api, 'src/a.js', 'a\n');
-    commitOn(api, 'api: one', '2025-01-01');
-    writeFile(api, 'src/b.js', 'b\n');
-    commitOn(api, 'api: two', '2025-02-01');
+  it('a shallow nested clone adds its tree alone — its truncated history is no account of what came before', () => {
+    const source = harness.initRepo(`${dir}-api-source`);
+    writeFile(source, 'src/a.js', 'a\n');
+    commitOn(source, 'api: one', '2025-01-01');
+    writeFile(source, 'src/b.js', 'b\n');
+    commitOn(source, 'api: two', '2025-02-01');
+    fs.rmSync(api, { recursive: true, force: true });
+    execFileSync('git', ['clone', '-q', '--depth', '1', `file://${source}`, api]);
     commitOn(dir, 'initial', '2025-03-01');
-    fs.renameSync(api, `${dir}-api-source`);
-    execFileSync('git', ['clone', '-q', '--depth', '1', `file://${dir}-api-source`, api]);
+
     try {
-      assert.strictEqual(baselineSignal(dir), null);
+      assert.deepStrictEqual(baselineSignal(dir), {
+        root_date: '2025-03-01', workflows_date: null, commits_total: 1, commits_before: 1,
+        history_before: ['2025-03-01  initial'],
+        files_at_arrival: 4, tree_at_arrival: ['api/ (2)', '.gitignore', 'README.md'],
+      });
     } finally {
       harness.cleanupFixture(`${dir}-api-source`);
     }
+  });
+});
+
+describe('the baseline signal of a project inside a larger repository', () => {
+  const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
+  let dir;
+  beforeEach(() => { dir = harness.setupGitFixture('engine-baseline-nested-'); });
+  afterEach(() => harness.cleanupFixture(dir));
+
+  function commitOn(message, date) {
+    const when = `${date}T12:00:00Z`;
+    git(dir, ['add', '-A']);
+    execFileSync('git', ['commit', '-q', '-m', message], { cwd: dir, env: { ...process.env, GIT_AUTHOR_DATE: when, GIT_COMMITTER_DATE: when } });
+  }
+
+  it('reads the commits that touched the project\'s folder alone — never its siblings\'', () => {
+    const project = path.join(dir, 'apps/web');
+    writeFile(dir, 'tools/build.sh', 'build\n');
+    commitOn('tools: the build', '2025-01-01');
+    writeFile(project, 'src/app.js', '1\n');
+    commitOn('web: the app', '2025-02-01');
+    writeFile(dir, 'tools/lint.sh', 'lint\n');
+    commitOn('tools: the linter', '2025-03-01');
+    writeFile(project, '.workflows/manifest.json', '{}\n');
+    commitOn('web: add workflows', '2025-04-01');
+    writeFile(dir, 'tools/deploy.sh', 'deploy\n');
+    commitOn('tools: deploy', '2025-05-01');
+
+    assert.deepStrictEqual(baselineSignal(project), {
+      root_date: '2025-02-01', workflows_date: '2025-04-01', commits_total: 2, commits_before: 1,
+      history_before: ['2025-02-01  web: the app'],
+      files_at_arrival: 1, tree_at_arrival: ['src/ (1)'],
+    });
   });
 });

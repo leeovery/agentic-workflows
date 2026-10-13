@@ -383,7 +383,8 @@ function commitIndexEntries(cwd, specs, message) {
 
 /**
  * Every path under `cwd` that differs from HEAD — tracked modifications and
- * untracked, non-ignored files alike — named from `cwd`, each with its
+ * untracked, non-ignored files alike, whatever the user's
+ * `status.showUntrackedFiles` — named from `cwd`, each with its
  * two-letter porcelain status (`??` untracked), `exclude` held out. Porcelain
  * names a path from the repository's top whatever the cwd, so a cwd below
  * the top has its own prefix taken off. NUL-separated so paths with spaces
@@ -395,7 +396,7 @@ function commitIndexEntries(cwd, specs, message) {
  */
 function dirtyEntries(cwd, exclude = []) {
   const cwdPrefix = git(cwd, ['rev-parse', '--show-prefix']).trim();
-  const fields = git(cwd, ['status', '--porcelain', '-z', '--', '.', ...excluding(exclude)]).split('\0');
+  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=normal', '--', '.', ...excluding(exclude)]).split('\0');
   /** @type {{path: string, status: string}[]} */
   const entries = [];
   for (let i = 0; i < fields.length; i++) {
@@ -418,24 +419,29 @@ function hasCommits(cwd) {
 
 /**
  * Every commit whose subject `selects`, oldest first, with the paths under
- * `cwd`, named from it, that it touched — a commit that touched none is not
- * one of `cwd`'s. `grep` narrows the walk as a fixed string; `selects` tests
- * the whole subject. NUL-separated names, so no path is quoted. A repo with
- * no commits yet has none.
+ * `cwd`, named from it, that it touched, `exclude` left out — a commit that
+ * touched none of the rest is not one of `cwd`'s. A move names both its
+ * paths. `grep` narrows the walk as a fixed string; `selects` tests the
+ * whole subject. NUL-separated names, so no path is quoted, and no
+ * signature is read among them whatever the user's `log.showSignature`. A
+ * repo with no commits yet has none.
  * @param {string} cwd
  * @param {string} grep
  * @param {(subject: string) => boolean} selects
+ * @param {string[]} [exclude]
  * @returns {{sha: string, subject: string, paths: string[]}[]}
  */
-function commitsBySubject(cwd, grep, selects) {
+function commitsBySubject(cwd, grep, selects, exclude = []) {
   if (!hasCommits(cwd)) return [];
-  const out = git(cwd, ['log', '--reverse', '--relative', '--fixed-strings', `--grep=${grep}`, '--format=%x1e%H%x09%s', '--name-only', '-z']);
+  const out = git(cwd, ['log', '--reverse', '--relative', '--no-renames', '--no-show-signature', '--fixed-strings', `--grep=${grep}`,
+    '--format=%x1e%H%x09%s', '--name-only', '-z']);
   return out.split('\x1e').slice(1).flatMap((record) => {
     const end = record.search(/[\n\0]/);
     const head = end < 0 ? record : record.slice(0, end);
     const tab = head.indexOf('\t');
     const subject = head.slice(tab + 1);
-    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, '')).filter(Boolean);
+    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, ''))
+      .filter((p) => p !== '' && !exclude.includes(p));
     return selects(subject) && paths.length > 0 ? [{ sha: head.slice(0, tab), subject, paths }] : [];
   });
 }
@@ -487,18 +493,48 @@ function untrackedFiles(cwd, exclude = []) {
 
 /**
  * The patch `git diff` answers for `args`, plain whatever the user's config —
- * no colour, no external diff driver. `--no-index` exits 1 when its two
- * files differ, which is a patch, never a failure.
+ * no colour, no external diff driver. Exit 1 is git saying the sides differ,
+ * whatever warning it printed beside; above that is a failure.
  * @param {string} cwd
  * @param {string[]} args
+ * @param {Record<string, string>} [env] variables layered over the process's own
  * @returns {string}
  */
-function diffPatch(cwd, args) {
+function diffPatch(cwd, args, env) {
   const full = ['diff', '--no-color', '--no-ext-diff', ...args];
-  const res = spawnSync('git', full, { cwd, encoding: 'utf8', maxBuffer: READ_BUDGET_BYTES });
-  if (!res.error && (res.status === 0 || (res.status === 1 && res.stderr === ''))) return res.stdout;
+  const res = spawnSync('git', full, { cwd, encoding: 'utf8', env: env && { ...process.env, ...env }, maxBuffer: READ_BUDGET_BYTES });
+  if (!res.error && (res.status === 0 || res.status === 1)) return res.stdout;
   const detail = res.error ? res.error.message : (res.stderr || `exit ${res.status}`).trim();
   throw new Error(`git diff failed: ${detail}`);
+}
+
+/**
+ * The patch `git diff {base}` answers under `cwd` with every untracked file
+ * there read as an addition beside the tracked change, `exclude` held out of
+ * both. The untracked files are taken in as intent-to-add on a scratch copy
+ * of the index, removed after, so the real index never changes.
+ * @param {string} cwd
+ * @param {string} base a commit or a tree
+ * @param {string[]} args diff options
+ * @param {string[]} exclude
+ * @returns {string}
+ */
+function diffWithUntracked(cwd, base, args, exclude) {
+  const index = gitPath(cwd, 'index');
+  const env = { GIT_INDEX_FILE: gitPath(cwd, `workflows-diff-${process.pid}.index`) };
+  try {
+    // The copy keeps the index's modified time: git reads an entry no older
+    // than the index file as possibly changed, and a fresh time would pass a
+    // file edited in the index's own second as clean.
+    if (fs.existsSync(index)) fs.cpSync(index, env.GIT_INDEX_FILE, { preserveTimestamps: true });
+    const untracked = untrackedFiles(cwd, exclude);
+    if (untracked.length > 0) {
+      git(cwd, ['--literal-pathspecs', 'add', '--intent-to-add', '--pathspec-from-file=-', '--pathspec-file-nul'], env, untracked.join('\0'));
+    }
+    return diffPatch(cwd, [...args, base, '--', '.', ...excluding(exclude)], env);
+  } finally {
+    fs.rmSync(env.GIT_INDEX_FILE, { force: true });
+  }
 }
 
 /**
@@ -513,6 +549,6 @@ function removeFiles(cwd, paths) {
 
 module.exports = {
   git, tryGit, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
-  parentOrEmptyTree, emptyTree, untrackedFiles, diffPatch, excluding, literally,
+  parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles,
 };

@@ -18,6 +18,7 @@ const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 
 const { git, initRepo, setupGitFixture, addSubmodule, cleanupFixture } = harness;
+const { diffPatch } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 const PREFIX = 'impl(pay): T1-';
@@ -38,12 +39,6 @@ const sha = (dir, rev = 'HEAD') => git(dir, ['rev-parse', rev]).trim();
 /** The `diff --git` header lines of a patch, in order. */
 const headers = (patch) => patch.split('\n').filter((line) => line.startsWith('diff --git '));
 
-/** What `git diff --no-index` prints for an untracked file — it exits 1 when the sides differ. */
-function addedByGit(dir, file) {
-  const res = spawnSync('git', ['diff', '--no-index', '--', '/dev/null', file], { cwd: dir, encoding: 'utf8' });
-  assert.strictEqual(res.status, 1, res.stderr);
-  return res.stdout;
-}
 
 describe('engine code log and diff --subject: the commits a subject prefix selects', () => {
   let dir;
@@ -131,6 +126,78 @@ describe('engine code log and diff --subject: the commits a subject prefix selec
   });
 });
 
+describe('engine code log and diff with a selection: what a commit carries', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture('engine-code-carries-');
+    writeFile(dir, 'src/old.ts', 'export const x = 1;\n');
+    commitAll(dir, 'chore: init');
+  });
+  afterEach(() => {
+    cleanupFixture(dir);
+    cleanupFixture(`${dir}-sdk-source`);
+  });
+
+  it('a move names both its paths, and its diff reads as a deletion and an addition', () => {
+    const api = initRepo(path.join(dir, 'api'));
+    writeFile(dir, '.gitignore', 'api/\n');
+    commitAll(dir, 'chore: ignore the clone');
+    writeFile(api, 'src/old.ts', 'export const x = 1;\n');
+    commitAll(api, 'chore: init');
+    git(api, ['mv', 'src/old.ts', 'src/new.ts']);
+    git(api, ['commit', '-q', '-m', 'impl(pay): Tmv-1-1 — the move']);
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'mv']).files, ['api/src/new.ts', 'api/src/old.ts']);
+    const patch = harness.output(dir, ['code', 'diff', 'pay', 'mv']);
+    assert.deepStrictEqual(headers(patch), ['diff --git a/api/src/new.ts b/api/src/new.ts', 'diff --git a/api/src/old.ts b/api/src/old.ts']);
+    assert.ok(patch.includes('deleted file mode 100644\nindex '), 'the old path\'s deletion is part of the change');
+    assert.ok(patch.includes('--- a/api/src/old.ts\n+++ /dev/null\n'));
+  });
+
+  it('a signed history reads the same under the user\'s log.showSignature', () => {
+    const key = path.join(dir, '.git', 'signing-key');
+    spawnSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key]);
+    git(dir, ['config', 'gpg.format', 'ssh']);
+    git(dir, ['config', 'user.signingkey', key]);
+    for (const n of [1, 2]) {
+      writeFile(dir, `src/signed-${n}.ts`, `${n}\n`);
+      git(dir, ['add', '-A']);
+      git(dir, ['commit', '-q', '-S', '-m', `impl(pay): Tsig-1-${n} — signed`]);
+    }
+    git(dir, ['config', 'log.showSignature', 'true']);
+    assert.match(git(dir, ['log', '-1']), /signature/, 'the fixture prints a signature with each commit');
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'sig']).files, ['src/signed-1.ts', 'src/signed-2.ts']);
+  });
+
+  it('a submodule\'s pointer is never its parent\'s change: the pointer\'s own commit drops out, a commit carrying more keeps the rest', () => {
+    const source = initRepo(`${dir}-sdk-source`);
+    writeFile(source, 'index.js', '1\n');
+    commitAll(source, 'init');
+    const sdk = addSubmodule(dir, 'vendor/sdk', source);
+    writeFile(sdk, 'lib.js', '1\n');
+    commitAll(sdk, 'impl(pay): Tsdk-1-1 — the client');
+    git(dir, ['add', 'vendor/sdk']);
+    git(dir, ['commit', '-q', '-m', 'impl(pay): Tsdk-1-1 — the client']);
+    writeFile(sdk, 'lib.js', '2\n');
+    commitAll(sdk, 'impl(pay): Tsdk-1-2 — the client and its caller');
+    writeFile(dir, 'src/caller.ts', 'call\n');
+    git(dir, ['add', 'vendor/sdk', 'src/caller.ts']);
+    git(dir, ['commit', '-q', '-m', 'impl(pay): Tsdk-1-2 — the client and its caller']);
+
+    const log = harness.ok(dir, ['code', 'log', 'pay', 'sdk']);
+    assert.deepStrictEqual(log.commits.map((c) => [c.repo, c.subject]), [
+      ['.', 'impl(pay): Tsdk-1-2 — the client and its caller'],
+      ['vendor/sdk', 'impl(pay): Tsdk-1-1 — the client'],
+      ['vendor/sdk', 'impl(pay): Tsdk-1-2 — the client and its caller'],
+    ]);
+    assert.deepStrictEqual(log.files, ['src/caller.ts', 'vendor/sdk/lib.js']);
+    const patch = harness.output(dir, ['code', 'diff', 'pay', 'sdk']);
+    assert.deepStrictEqual(headers(patch), ['diff --git a/src/caller.ts b/src/caller.ts', 'diff --git a/vendor/sdk/lib.js b/vendor/sdk/lib.js']);
+    assert.ok(!patch.includes('Subproject commit'));
+  });
+});
+
 describe('engine code diff and status: the change not yet committed', () => {
   let dir;
   let api;
@@ -155,7 +222,7 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('diff: every repo\'s tracked change, then every untracked file as an addition — named from the project, .workflows/ and the parents\' view of a nested repo held out', () => {
+  it('diff: one patch per repo in repo order, its tracked change and its untracked files as additions together — named from the project, .workflows/ and the parents\' view of a nested repo held out', () => {
     writeFile(dir, 'src/app.js', '2\n');
     writeFile(dir, 'src/staged.js', 'staged\n');
     git(dir, ['add', 'src/staged.js']);
@@ -173,19 +240,83 @@ describe('engine code diff and status: the change not yet committed', () => {
 
     assert.deepStrictEqual(headers(patch), [
       'diff --git a/src/app.js b/src/app.js',
+      'diff --git a/src/new.js b/src/new.js',
       'diff --git a/src/staged.js b/src/staged.js',
+      'diff --git a/api/src/extra.js b/api/src/extra.js',
       'diff --git a/api/src/handler.js b/api/src/handler.js',
+      'diff --git a/fresh/loose.txt b/fresh/loose.txt',
       'diff --git a/fresh/staged.txt b/fresh/staged.txt',
       'diff --git a/kit/kit.js b/kit/kit.js',
-      'diff --git a/src/new.js b/src/new.js',
-      'diff --git a/api/src/extra.js b/api/src/extra.js',
-      'diff --git a/fresh/loose.txt b/fresh/loose.txt',
     ], 'a repo with no commits yet shows every file as an addition; a submodule\'s moved pointer is no change');
     assert.ok(patch.includes('--- /dev/null\n+++ b/fresh/staged.txt\n@@ -0,0 +1 @@\n+staged\n'));
     assert.ok(patch.includes('--- /dev/null\n+++ b/api/src/extra.js\n@@ -0,0 +1 @@\n+extra\n'));
   });
 
+  it('diff: the real index is never touched — what is staged stays staged, and no untracked file is left intent-to-add', () => {
+    writeFile(dir, 'src/staged.js', 'staged\n');
+    git(dir, ['add', 'src/staged.js']);
+    writeFile(dir, 'src/new.js', 'new\n');
+    writeFile(api, 'src/extra.js', 'extra\n');
+    const before = [dir, api].map((repo) => [git(repo, ['diff', '--cached']), git(repo, ['ls-files', '--stage']), git(repo, ['status', '--porcelain'])]);
+
+    assert.match(harness.output(dir, ['code', 'diff']), /\+\+\+ b\/src\/new\.js/);
+
+    assert.deepStrictEqual([dir, api].map((repo) => [git(repo, ['diff', '--cached']), git(repo, ['ls-files', '--stage']), git(repo, ['status', '--porcelain'])]), before);
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.git')).filter((name) => name.startsWith('workflows-')), [], 'the scratch index is removed');
+  });
+
+  it('diff: an edit made in the index\'s own second still reads as a change — the scratch index keeps the real one\'s time', () => {
+    git(dir, ['config', 'core.trustctime', 'false']);
+    const file = path.join(dir, 'src/app.js');
+    const index = path.join(dir, '.git/index');
+    const second = Math.floor(Date.now() / 1000) - 60;
+    fs.utimesSync(file, second, second);
+    git(dir, ['add', 'src/app.js']);
+    fs.writeFileSync(file, '2\n');
+    fs.utimesSync(file, second, second);
+    fs.utimesSync(index, second, second);
+
+    assert.deepStrictEqual(headers(harness.output(dir, ['code', 'diff'])), ['diff --git a/src/app.js b/src/app.js']);
+  });
+
+  it('diff: an untracked file with CRLF endings under core.autocrlf=input, and an untracked link to a folder, read as additions', () => {
+    git(dir, ['config', 'core.autocrlf', 'input']);
+    writeFile(dir, 'src/crlf.txt', 'one\r\ntwo\r\n');
+    fs.symlinkSync('src', path.join(dir, 'srclink'));
+
+    const patch = harness.output(dir, ['code', 'diff']);
+
+    assert.deepStrictEqual(headers(patch), ['diff --git a/src/crlf.txt b/src/crlf.txt', 'diff --git a/srclink b/srclink']);
+    assert.ok(patch.includes('new file mode 120000'), 'the link reads as the link it is');
+    assert.ok(patch.includes('+one'));
+  });
+
+  it('a diff that exits 1 for its differences is a patch, whatever warning git printed beside it', () => {
+    git(dir, ['config', 'core.autocrlf', 'input']);
+    writeFile(dir, 'src/app.js', '2\r\n');
+
+    assert.match(diffPatch(dir, ['--exit-code', 'HEAD']), /^\+2/m);
+  });
+
   it('diff: a clean project prints nothing', () => {
+    assert.strictEqual(harness.output(dir, ['code', 'diff']), '');
+  });
+
+  it('status: untracked files are read whatever the user\'s status.showUntrackedFiles', () => {
+    git(dir, ['config', 'status.showUntrackedFiles', 'no']);
+    writeFile(dir, 'src/new/one.js', '1\n');
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files, [{ path: 'src/new/', status: '??' }]);
+  });
+
+  it('a repo inside the project\'s .workflows/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
+    const imported = initRepo(path.join(dir, '.workflows/pay/imports/checkout'));
+    writeFile(imported, 'lib.js', '1\n');
+    commitAll(imported, `${PREFIX}1 — an imported checkout`);
+    writeFile(imported, 'lib.js', '2\n');
+
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files, []);
+    assert.deepStrictEqual(harness.ok(dir, ['code', 'log', '--subject', PREFIX]).commits, []);
     assert.strictEqual(harness.output(dir, ['code', 'diff']), '');
   });
 
@@ -234,15 +365,17 @@ describe('engine code in a project of one repo: what git answers', () => {
       git(dir, ['diff', `${selected[0].sha}^`, 'HEAD', '--', 'src/app.js']));
   });
 
-  it('diff answers git diff HEAD, then each untracked file as git diff --no-index adds it; status answers the porcelain', () => {
+  it('diff answers git diff HEAD with the untracked files intent-to-add; status answers the porcelain', () => {
     writeFile(dir, 'src/app.js', '4\n');
     writeFile(dir, 'src/new.js', 'new\n');
 
-    assert.strictEqual(harness.output(dir, ['code', 'diff']), git(dir, ['diff', 'HEAD']) + addedByGit(dir, 'src/new.js'));
+    const patch = harness.output(dir, ['code', 'diff']);
     assert.deepStrictEqual(harness.ok(dir, ['code', 'status']).files, [
       { path: 'src/app.js', status: ' M' },
       { path: 'src/new.js', status: '??' },
     ]);
+    git(dir, ['add', '--intent-to-add', 'src/new.js']);
+    assert.strictEqual(patch, git(dir, ['diff', 'HEAD']));
   });
 });
 
@@ -360,9 +493,9 @@ describe('engine code in a project nested inside a larger repository: the projec
 
     assert.deepStrictEqual(headers(harness.output(project, ['code', 'diff'])), [
       'diff --git a/src/app.js b/src/app.js',
+      'diff --git a/src/new.js b/src/new.js',
       'diff --git a/api/src/handler.js b/api/src/handler.js',
       'diff --git a/kit/kit.js b/kit/kit.js',
-      'diff --git a/src/new.js b/src/new.js',
     ]);
     assert.deepStrictEqual(harness.ok(project, ['code', 'status']).files, [
       { path: 'src/app.js', status: ' M' },
