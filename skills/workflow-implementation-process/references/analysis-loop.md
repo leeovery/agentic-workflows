@@ -111,7 +111,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs code status
 
 #### Otherwise
 
-The checkpoint is a code commit — name the files, and the engine confines the commit to them. Read which dirty code files are which: the call's DATA names the `implementation_files` (touched by `impl({work_unit}):` commits) and the `unexpected_files` (not touched during implementation).
+The checkpoint is a code commit — name the files, and the engine confines the commit to them. Read which dirty code files are which: the render's DATA names the `implementation_files` (touched by `impl({work_unit}):` commits) and the `unexpected_files` (not touched during implementation).
 
 ```bash
 node .claude/skills/workflow-engine/scripts/engine.cjs render checkpoint-files-gate {work_unit}.implementation.{topic}

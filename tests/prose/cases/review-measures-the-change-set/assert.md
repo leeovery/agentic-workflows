@@ -75,10 +75,10 @@ Further claims:
 - the change-set verification is dispatched exactly once, after every
   task verifier has returned and coverage is pushed, and before findings
   prep — its section files exist before the prep payloads do
-- the section agents are given the specification path, the change-set,
-  the project's conventions — the root `CLAUDE.md` among them — the
-  finding floor path and the unsettled file path — never a per-task
-  report; the floor travels as a path, which the review itself never
+- the section agents are given the specification path, the work unit
+  and topic they read the change-set from, the project's conventions —
+  the root `CLAUDE.md` among them — the finding floor path and the
+  unsettled file path — never a per-task report; the floor travels as a path, which the review itself never
   reads
 - the working tree is checked after the section agents return, and the
   review continues only because nothing outside `.workflows/` is

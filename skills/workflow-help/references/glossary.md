@@ -194,7 +194,7 @@ The cue on a topic another session is working right now. Awareness only: it neve
 The one session per checkout allowed to be writing code at a time, since implementation and review change the same tree.
 
 **nested repo**:
-A git repository of its own inside the project's folder that holds code: a clone, or a submodule. Found every time, never configured: a code commit lands in each one it touches, and every read of the change spans them all.
+A git repository of its own inside the project's folder that holds code: a clone, or a submodule. Found every time, never configured — except one inside a git-ignored folder that is not itself a repo, which is never found. A code commit lands in each one it touches, and every read of the change spans them all.
 _Avoid_: child repo
 
 **mailbox**:

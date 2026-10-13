@@ -15,7 +15,7 @@ directly). Return to the caller: `STATUS: complete`, `FINDINGS_COUNT: 1`,
 
 SECTION: 1. Payment Intent
 
-SCOPE: the range from the parent of `impl(pay): Tpay-1-1 — create payment intent` to HEAD, filtered to src/checkout/payment-intent.js and tests/checkout/payment-intent.test.js, read in full against the section; the project's CLAUDE.md documents `npx jest <file>` as the way to confirm a single behaviour, no linters are declared and no build is named, so the one run was the intent test file by that command, to settle the rejection criterion
+SCOPE: one repo, the root (`.`), its base the parent of `impl(pay): Tpay-1-1 — create payment intent`; the change-set confined to the four files the task commits touched, of which src/checkout/payment-intent.js and tests/checkout/payment-intent.test.js were read in full against the section; the project's CLAUDE.md documents `npx jest <file>` as the way to confirm a single behaviour, no linters are declared and no build is named, so the one run was the intent test file by that command, to settle the rejection criterion
 
 MEASURED:
 - "gateway rejection surfaces as a user-visible checkout error" [1-1] — run: `npx jest tests/checkout/payment-intent.test.js` with `gateway.intents.create` stubbed to reject; the rejection propagated out of `createPaymentIntent` to the checkout error — holds

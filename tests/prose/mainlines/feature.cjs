@@ -320,7 +320,8 @@ function implement(h) {
   // setup steps then record the topic's project skills and linters —
   // none confirmed, stored as []. The code commits are declared as world
   // history (per-task messages in the task-loop's convention) so a
-  // materialised world's git log carries what the review scope-grep reads.
+  // materialised world's git log carries the task commits review reads
+  // through `engine code log`.
   h.engine('task', 'init', WU, WU);
   h.engine('manifest', 'set', `${WU}.implementation.${WU}`, 'project_skills', '[]');
   h.engine('manifest', 'set', `${WU}.implementation.${WU}`, 'linters', '[]');

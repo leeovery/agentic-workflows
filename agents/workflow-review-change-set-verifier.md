@@ -119,7 +119,7 @@ Every finding carries a `file:line` anchor, and every claim inside it must hold 
 - **Never name a symbol you have not located.** If your change calls a helper, confirm it exists and give its real path. If it does not exist, say so rather than naming what you expected to find.
 - **Assert no count or exclusivity you have not enumerated.** "The only site", "the single caller", "eleven call sites", "no production reader" — count them and state the true number, or drop the claim.
 - **Prove the edit you prescribe.** Your proposed change must be safe applied exactly as written: before saying an import or helper becomes unused, check every other line that could still use it.
-- **Repo-relative paths only.** An absolute path is wrong in every other checkout.
+- **Project-relative paths only** — named from the project, as the engine's `code` reads name them, never relative to a nested repo. An absolute path is wrong in every other checkout.
 
 ## Coverage Map
 

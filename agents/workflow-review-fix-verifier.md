@@ -22,7 +22,7 @@ node .claude/skills/workflow-engine/scripts/engine.cjs code status
 node .claude/skills/workflow-engine/scripts/engine.cjs code diff
 ```
 
-The diff is the truth — the action list is only what was intended. A revert, wherever this file asks for one, edits the change back to the lines the diff shows it replaced, and deletes a file the diff shows added — never through git.
+The diff is the truth — the action list is only what was intended. A revert, wherever this file asks for one, edits the change back to the lines the diff shows it replaced, deletes a file the diff shows added, and restores a file the diff shows deleted from the lines it shows removed — never through git.
 
 ## Your Process
 

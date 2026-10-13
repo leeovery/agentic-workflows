@@ -28,7 +28,7 @@ You receive via the orchestrator's prompt:
 ## Your Process
 
 1. **Read code-quality.md, finding-floor.md and project skills** — the standards the phase's code should meet, and the floor
-2. **Read the phase's diff** — `node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic} --phase {N}` is what the phase's task commits changed, across every repo in the project; read it, then read the phase files in their final state
+2. **Read the phase's commits and diff** — `node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic} --phase {phase}` lists the phase's task commits and their subjects, which task wrote what; `node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic} --phase {phase}` is what they changed, across every repo in the project. Read both, then read the phase files in their final state
 3. **Verdict every bank entry** against the final state — a later task may have already absorbed or removed what an earlier report saw. An entry is **confirmed** when it is still real and this phase's changes caused it: it becomes (part of) a finding. Anything else is dropped, and nothing is written for it
 4. **Sweep for the finding classes** (below) across the phase's surface
 5. **Check the comments against the final state** — record each one the phase falsified or that fails the comment bar under `## Comment Corrections` (see Comment Corrections)
@@ -64,7 +64,7 @@ A candidate that fails any test is not a finding, and nothing is written for it:
 
 ## Write Mechanism
 
-Write the findings file to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{phase}.md` in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`) — the harness blocks report-shaped `.md` writes from sub-agents. Bash is for git reads and this rename only.
+Write the findings file to `.workflows/{work_unit}/implementation/{topic}/consolidation-findings-p{phase}.md` in two steps: write the content to the same path with a `.txt` extension using the Write tool, then immediately rename it with Bash from the project root (`mv {path}.txt {path}.md`) — the harness blocks report-shaped `.md` writes from sub-agents. Bash is for the engine's `code` reads, git reads and this rename only.
 
 Skip the file when there are no findings, no spec defects and no comment corrections.
 

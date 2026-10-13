@@ -1011,6 +1011,12 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // lands in the clone's history and the root takes none.
   sim.write(`api/src/${topic}.js`, `module.exports = ${JSON.stringify(topic)};\n`);
   sim.write(`api/src/${topic}-untouched.js`, '// a file this task did not write\n');
+  // The product summary at the task gate (report-register.md) draws on the
+  // task's uncommitted change: the clone's untracked files read as
+  // additions, named from the project.
+  assert.match(sim.read(['code', 'diff']), new RegExp(`^diff --git a/api/src/${topic}\\.js b/api/src/${topic}\\.js$`, 'm'),
+    'the product summary reads the clone\'s new file');
+  assert.match(sim.render(['task-gate', `${wu}.implementation.${topic}`], { expect: 'content' }), /MENU: task gate/);
   // The task commit's file list (task-loop.md H) and the analysis loop's
   // checkpoint (analysis-loop.md B) read the uncommitted code from every
   // repo, named from the project — each untracked file on its own, never
@@ -1089,22 +1095,25 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   handoffEntry(sim, wu, 'review', topic);
   assert.strictEqual(sim.read(['manifest', 'get', `${wu}.review.${topic}`, 'status']), '', 'no review item — a first start');
   sim.run(['topic', 'start', wu, 'review', topic]);
+  // The verifiers' scope is read across every repo before any task is
+  // recorded reviewed — the task verifiers' files (invoke-task-verifiers.md
+  // A): the topic's task commit landed in the clone, so its files are the
+  // clone's, named from the project.
+  assert.deepStrictEqual(JSON.parse(sim.read(['code', 'log', wu, topic])).files, [`api/src/${topic}.js`]);
   sim.run(['manifest', 'push', `${wu}.review.${topic}`, 'reviewed_tasks', `${topic}-1-1`]);
   sim.render(['resume-gate', `${wu}.review.${topic}`, '--variant', 'review'], { expect: 'content' });
-  // The verifiers' scope is read across every repo — the task verifiers' files
-  // (invoke-task-verifiers.md A), and the commits, bases and change each
-  // change-set verifier reads for itself: the topic's task commit landed in
-  // the clone, so all of it is the clone's, named from the project.
+  // The change-set verification reads the declared linter names for its brief
+  // (invoke-change-set-verifiers.md B); each verifier it dispatches then reads
+  // the commits, bases and change for itself — all of it the clone's.
+  sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
   const taskLog = JSON.parse(sim.read(['code', 'log', wu, topic]));
   assert.deepStrictEqual(taskLog.commits.map((c) => [c.repo, c.subject]), [['api', `impl(${wu}): T${topic}-1-1 — the task`]]);
-  assert.deepStrictEqual(taskLog.files, [`api/src/${topic}.js`]);
   assert.deepStrictEqual(taskLog.repos, [{ repo: 'api', base: taskBase }], 'the change set starts at the clone\'s parent of the task commit');
   assert.deepStrictEqual(sim.read(['code', 'diff', wu, topic]).split('\n').filter((l) => l.startsWith('diff --git ')),
     [`diff --git a/api/src/${topic}.js b/api/src/${topic}.js`]);
-  // The change-set verification reads the declared linter names and writes one
-  // file per section per cycle beside the per-task reports; prep's checkpoint
-  // commit carries both classes under the review topic's scope.
-  sim.read(['manifest', 'get', `${wu}.implementation.${topic}`, 'linters']);
+  // The verifiers write one file per section per cycle beside the per-task
+  // reports; prep's checkpoint commit carries both classes under the review
+  // topic's scope.
   sim.write(`.workflows/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
   sim.write(`.workflows/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
   // The verifiers leave the tree as they found it: the check reads every
@@ -1141,12 +1150,12 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files, [{ path: `api/src/${topic}.js`, status: ' M' }]);
   assert.match(sim.read(['code', 'diff']), new RegExp(`^\\+module\\.exports = "${topic}"; // guarded$`, 'm'));
   const applied = sim.run(['commit', '--paths', `api/src/${topic}.js`,
-    '-m', `review(${wu}): apply do-now findings`, '--for', wu, `review/${topic}`]);
+    '-m', `review(${wu}): ${topic} cycle 1 — apply do-now findings`, '--for', wu, `review/${topic}`]);
   assert.deepStrictEqual(applied.committed.map((c) => c.repo), ['api'], 'the fixes land where the code lives');
-  assert.strictEqual(git(sim.api, ['log', '-1', '--format=%s']).trim(), `review(${wu}): apply do-now findings`);
+  assert.strictEqual(git(sim.api, ['log', '-1', '--format=%s']).trim(), `review(${wu}): ${topic} cycle 1 — apply do-now findings`);
   assert.deepStrictEqual(applied.left_dirty, [], 'the apply lane names everything it touched');
   // The report reads the apply commit back by its subject.
-  assert.match(sim.read(['code', 'diff', '--subject', `review(${wu}): apply do-now findings`]),
+  assert.match(sim.read(['code', 'diff', '--subject', `review(${wu}): ${topic} cycle 1 — apply do-now findings`]),
     new RegExp(`^\\+module\\.exports = "${topic}"; // guarded$`, 'm'));
   sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
