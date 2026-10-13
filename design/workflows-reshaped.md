@@ -27,6 +27,50 @@ interrupted for what Claude knows how they would answer, with the product
 coming out the way they want it rather than the way a model's priors would
 make it.
 
+## What the workflows are for
+
+The person's statement of purpose, 2026-10-13, distilled.
+
+Building anything complex surfaces gaps: questions about what the
+product should do that nobody has answered yet. They surface either
+early, while the person is in the zone of talking the product through, or
+late, as the code is written, when they are harder to answer and the
+person has moved on. The workflows exist to bring them out early.
+
+Without the workflows, a long early conversation feels thorough, but
+nothing checks that everything said was written down, nothing challenges
+it, and nothing looks for what was missed. Goosemates, built that way,
+went well at first; then the build met its gaps and stopped to ask,
+question after question, after the spark had gone. Run through the
+workflows, most of those questions would have been answered upfront —
+the design challenged, the gaps found, the decisions recorded — so the
+build runs in one go, and the few gaps left are mostly answered by what
+is already decided.
+
+So the workflows want more findings, not fewer. Reviews that challenge
+the design, look for gaps and enrich the record are the point, and more
+capable models find more. What the person cannot do is answer all of
+them: they tire, and Claude does not. The trust layer is what lets the
+findings grow: Claude answers most of them as the person would have,
+learned from the person's own answers and recorded so every call can be
+traced, overruled and learned from, and the system backs off where its
+calls start proving wrong and relearns, following the person's taste as
+it changes. The few that need the person reach them, with periodic
+checks that the work is still heading the right way. Of ten findings, the
+aim is one for the person, most answered by Claude and a couple sent
+where they belong; today's lanes often show the reverse ("three need
+nothing from you, six need your attention").
+
+The two halves need each other. A trust layer with the reviews cut has
+little left to decide and leaves the gaps for the build; reviews without
+the trust layer bury the person. Together they get what is in the
+person's head out of it — early, collaboratively, and recorded in a
+coherent, deterministic way the build can depend on — so strong
+conventions produce strong code, and the product comes out the way the
+person wants it.
+
+## About this record
+
 This record is shape-level by ruling: it names behaviour, not files. Each
 strand gets its own detailed design when it starts. It is written for the
 sessions that carry the programme, as its provenance and its survival
@@ -671,10 +715,28 @@ project's own measurements decide (R7).
   - **Tools:** deep dives to learn, spikes to see and feel (R12),
     experiments to measure (unchanged: a rigid laboratory for questions
     neither side can answer).
-  - **One closing review pass**, aimed at unsettled questions that need
-    the person, contradictions with other topics' records, and work the
-    decision creates that no topic owns (R10's gap analysis) — not a
-    background reviewer generating detail throughout the session.
+  - **The reviews stay, and the matrix routes what they find**, ruled by
+    the person 2026-10-13 (What the workflows are for). Today's review
+    machinery works and keeps running: the background review once the
+    conversation has got going, with its back-off; perspective agents;
+    the final review; findings slotted in at a natural pause while the
+    conversation carries on, never jumped to; the lanes. What changes is
+    who answers: a finding takes the path of any question — a fact is
+    checked, intent goes to the matrix and becomes Claude's call (in the
+    ledger, on the map under "since you last looked") or a question on
+    the person's map, another topic's goes there as a message, a gap is a
+    candidate on the ready-to-build screen. The gates inside the reviews
+    are process gates, learned (R40).
+  - **The closing pass** is the final review, run once nothing of the
+    person's is open, with two readers: a fresh agent, unanchored by the
+    conversation, reading this topic's entries and log, the other topics'
+    current records and the product record; and the Claude that was in
+    the conversation, checking every decision made in it has an entry. It
+    looks for a question the log raised that has no entry or map line, a
+    contradiction with another record, work the decision creates that no
+    topic owns (R10's gap analysis), product-record lines, and an entry
+    whose why is written nowhere. If it changed decisions, another pass
+    reads what changed, unasked, until one changes nothing.
 - **R12 — Spikes are encouraged, and their artifacts are evidence.** **A
   spike is code or design that is never wired into the product**; size
   does not decide it (FlowX's drafts are 323 files and still a spike;
@@ -1727,8 +1789,10 @@ think is a good sign."
   - **Process gates, learned.** Every gate answer is recorded by the gate's
     name (R25). A gate the person always answers the same way becomes an
     automatic step with a one-line report, and comes back if their answers
-    start to vary. The gates that served review loops (finding batches,
-    re-review, analysis cycles, per-task approval) go with the loops.
+    start to vary. The gates that served the build's and review's loops
+    (analysis cycles, per-task approval, their re-review) go with the
+    loops; decision's reviews stay (R11) and their gates are learned like
+    any other.
   - **A phase runs in one of three positions**, set once and switchable
     at any time — the person's idea, approved 2026-10-12: learned, the
     default (above); auto, where every process gate passes for the rest
@@ -1944,7 +2008,12 @@ person, one item at a time; the sections above hold the detail.
   with one of four reasons; the trust log keeps only what the matrix
   needs (R11, R23, R25); the map lists the person's questions and
   Claude's calls, done when nothing of the person's is open, Claude's new
-  calls shown each time (R11).
+  calls shown each time (R11); spikes fitted to the ledger — one assets
+  home, a lock as a map question, discovery may spike and is where an
+  epic-level spike happens (R12); the reviews stay and the matrix routes
+  what they find, the closing pass with two readers and re-reading what
+  it changed (R11, R40); the purpose of the workflows stated (What the
+  workflows are for). Decision is walked.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1964,8 +2033,6 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Decision (R11, R12): spikes and their
-  assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
   arguments on the start skill.
 - Specification (R14): assembly from the records, the phase-cut corridor,
