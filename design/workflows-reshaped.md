@@ -411,8 +411,7 @@ project's own measurements decide (R7).
   conversation is the strongest part of the workflows: the person talks
   the product through once and the conversation becomes the record the
   topics come out of. The product-level conversation on the roadmap, the
-  work-type commit, the discovery map, the briefs and the gap analysis all
-  stay. What changes:
+  work-type commit, the discovery map and the briefs stay. What changes:
   - **One phase, at whatever level the conversation reaches.** The person
     starts and talks; the conversation finds its level and moves between
     levels as it goes (the pivots run both ways). The type call comes down
@@ -498,7 +497,31 @@ project's own measurements decide (R7).
     - the name gate and the first-phase gate are gone, and the change
       routing and dead-end map operations with them (R10's no routing,
       R17); resume and the import prompt are process gates (R40); the
-      candidate gate belongs to the gap analysis.
+      candidate gate goes with the gap analysis's background run.
+  - **The gap analysis moves out of the background**, ruled by the person
+    2026-10-13. Today it runs at every return to the epic menu once a
+    topic's research or discussion changes and offers each candidate at
+    its own gate. On Fumi about 41 runs offered 14 candidates; the person
+    took 7, skipped 6 and questioned one, so the gate would never learn.
+    Of the 7, two mattered — status-and-alerts (about 10 of the person's
+    own calls) and search (about 8); platform-support was spreading the
+    macOS 15 floor into other documents ("can you make sensible choices
+    here. I dont really care"), privacy was cancelled after one "agree",
+    the rest were cancelled or never started. Most gaps followed from
+    decisions made after discovery. It now happens at two moments:
+    - when a topic finishes: its closing pass (R11) also asks whether the
+      decision creates work no topic owns, and a candidate shows on the
+      ready-to-build screen with its reason, beside the product record's
+      lines; the person's yes covers it, or they strike it;
+    - once every topic is decided, before the spec (R17): one sweep
+      across all the records for what falls between topics.
+
+    A candidate becomes a topic only when it holds a call the person
+    would make. Work that only carries a decision into other documents
+    goes to those topics as messages, and calls the person would leave go
+    to the builder. Nothing runs at the menu and no candidate gate stays
+    there; a gap visible from the map alone waits for a topic's close or
+    the sweep, which in Fumi's evidence were not the gaps that mattered.
   - **No routing.** Every topic of an epic, feature or cross-cutting unit
     goes to decision; none goes straight to the build. How much of the
     person a topic takes is set inside decision — by how much the product
@@ -590,7 +613,8 @@ project's own measurements decide (R7).
     experiments to measure (unchanged: a rigid laboratory for questions
     neither side can answer).
   - **One closing review pass**, aimed at unsettled questions that need
-    the person and contradictions with other topics' records — not a
+    the person, contradictions with other topics' records, and work the
+    decision creates that no topic owns (R10's gap analysis) — not a
     background reviewer generating detail throughout the session.
 - **R12 — Spikes are encouraged, and their artifacts are evidence.** **A
   spike is code or design that is never wired into the product**; size
@@ -1791,7 +1815,9 @@ person, one item at a time; the sections above hold the detail.
   view on a fork, Claude's lean comes next (R11); discovery's gates —
   starting work an authority gate, the map's screen holding the parks, no
   confirm on a change the person asked for, cancelling still confirmed
-  (R10, R40).
+  (R10, R40); the gap analysis at a topic's close and one sweep before
+  the spec, a candidate a topic only when it holds the person's call
+  (R10, R11). Discovery is walked.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Review (R16): every finding lands somewhere, out of scope to the inbox
@@ -1811,7 +1837,6 @@ person, one item at a time; the sections above hold the detail.
   summary per landing).
 
 **Shape only — agreed in outline, never walked in detail:**
-- Discovery (R10): the gap analysis, on the walk now.
 - Decision (R11, R12): record and log, the map as done, spikes and their
   assets, the closing pass.
 - Mailboxes (R13): the one-command open needs a command-line form or
@@ -1848,7 +1873,7 @@ rushed and are set aside. Uninstalling and reinstalling (Open) — raised
 by the person 2026-10-13, not yet discussed.
 
 **Still to come:** walk what is shape only, in the order the work
-depends on it — discovery and decision first, then specification, the
+depends on it — decision next (discovery walked 2026-10-13), then specification, the
 tracking layer, mailboxes, feature and cross-cutting — and confirm the
 settled-from-evidence items with the person; then the formal plan
 (Sequence steps 3–5).
@@ -1903,8 +1928,9 @@ settled-from-evidence items with the person; then the formal plan
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
-  2026-10-12 that the restructure takes it in, and the reworked menu (R17)
-  is checked not to carry it.
+  2026-10-12 that the restructure takes it in. It goes with the
+  background run (R10, ruled 2026-10-13): nothing runs at the menu, so
+  nothing counts sessions there.
 - **Shape review — evidence read 2026-10-12** (six read-only agents;
   picture redrawn at the artifact link above, version 2). On the
   workflows: Fumi, Portal, Tick, agntc, Mint. Without: Switchboard, FlowX,
