@@ -39,8 +39,8 @@ person has moved on. The workflows exist to bring them out early.
 
 Without the workflows, a long early conversation feels thorough, but
 nothing checks that everything said was written down, nothing challenges
-it, and nothing looks for what was missed. Goosemates, built that way,
-went well at first; then the build met its gaps and stopped to ask,
+it, and nothing looks for what was missed. An internal product the
+person built that way went well at first; then the build met its gaps and stopped to ask,
 question after question, after the spark had gone. Run through the
 workflows, most of those questions would have been answered upfront —
 the design challenged, the gaps found, the decisions recorded — so the
@@ -1254,6 +1254,20 @@ each call on a page that day.
   only makes Claude ask more. A verdict asked in the moment would cost a
   press just after a disagreement; asked later, it is one batch.
 - **R24 — Whether to ask is computed.**
+  - **One decision point, reached from everywhere Claude makes a call** —
+    the person's ruling, 2026-10-13: casually in conversation, a review
+    finding, the closing pass, a message, the build. Claude already makes
+    calls by rule and by reasoning; the matrix joins that reasoning to the
+    person's learned taste, and the work is weaving the touch points into
+    the workflows so the decision point is there whenever a call comes
+    up. The review lanes are the matrix's output: apply is what the record
+    or a fact settles, decide is Claude's call, the walked lane is the
+    person's question, route belongs elsewhere. The measure (R36): Fumi's
+    commercialization background review on 2026-10-13 came back 15
+    findings, 14 needing the person's call and 1 belonging elsewhere —
+    "I really can't be bothered to work through all of those"; usually
+    two or three are Claude's, ten or eleven the person's. The aim
+    reverses it: of ten, about one for the person.
   - **Facts are checked, intent is asked.** A question that reading the
     code, the record or running something can answer never reaches the
     person: Claude checks it. FlowX ranks the person last as a source of
@@ -1825,12 +1839,13 @@ think is a good sign."
 
 ## Measures and levers
 
-- **R36 — The system adjusts itself through five measures**, each moving one
+- **R36 — The system adjusts itself through six measures**, each moving one
   lever:
 
   | Measure | Lever |
   |---|---|
   | Overturn rate per kind of question | how often Claude asks |
+  | How a review's findings split across its lanes | whether the matrix answers what the reviews find |
   | Review findings per phase | where the build is cutting corners |
   | Bugs found after review | where verification has a gap |
   | Contracts slipping in prose tests | which contract needs a verb or a check |
