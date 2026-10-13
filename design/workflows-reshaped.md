@@ -1300,6 +1300,21 @@ each call on a page that day.
     two or three are Claude's, ten or eleven the person's. Calls that
     match the person's reverse it — of ten, about one for the person — an
     indicator of the matrix working, never a target.
+    - **The lanes measured** (2026-10-13, 46 reports with lanes from
+      2026-08-12, 389 findings): 71% announced as needing a call, 13%
+      apply, 9% decide, 7% route; half or more needed a call in 36 of the
+      46. Of 226 raises the person took Claude's lean unchanged on 64% of
+      first replies (106 in one word), 71% once their questions were
+      answered; amended 12%, overruled 10% (8 of those pointing at a
+      ruling already made), deferred 5% — about 1.3 to 1.7 findings in ten
+      where their judgement changed anything. All 95 batch screens were
+      approved unchanged. Opus 5.5 used decide for 22% against Opus 5's
+      4%, but its reports grew (median 7 to 12 findings), so calls per
+      report rose from 5 to 8. The calls come from the reviewer's
+      tie-break ("When a finding could read either way, it is `ask`"),
+      which is where the matrix plugs in; findings may only move toward
+      the person, so the matrix needs a sanctioned way to move one away.
+      Classifier-labelled, 82% coverage; the Opus 5.5 period is 9 reports.
   - **Facts are checked, intent is asked.** A question that reading the
     code, the record or running something can answer never reaches the
     person: Claude checks it. FlowX ranks the person last as a source of
