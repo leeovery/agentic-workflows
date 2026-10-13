@@ -28,12 +28,12 @@ The prose should have taken this path:
    records: the engine returns cycle 1, not over the cycle limit, gate
    gated. No cycle-limit display, no convergence analysis and no cycle
    gate menu are produced, and no scripted answer is consumed there
-6. the git checkpoint runs and finds nothing to checkpoint: the only
-   path the tree carries is the work unit's own manifest, dirtied by
-   the cycle record a moment earlier, and a `.workflows` path is never
-   named in this checkpoint. No checkpoint gate is rendered, no
+6. the git checkpoint runs `code status` and finds nothing to checkpoint:
+   the only dirty path is the work unit's own manifest, dirtied by
+   the cycle record a moment earlier, and `code status` holds out every
+   `.workflows` path. No checkpoint gate is rendered, no
    checkpoint commit runs, and no scripted answer is consumed
-7. scope comes from the git history grep for this topic's task commits
+7. scope comes from `code log pay pay`, this topic's task commits
    — the four source and test files across pay-1-1 and pay-1-2. All
    three analysis agents dispatch in parallel, each with the same eight
    inputs — the floor's path among them — and cycle number 1, and each

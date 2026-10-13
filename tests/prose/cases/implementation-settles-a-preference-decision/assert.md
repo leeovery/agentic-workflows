@@ -23,9 +23,9 @@ The prose should have taken this path:
    the cycle records: cycle 1, not over the cycle limit,
    gate gated. No cycle-limit display and no cycle gate menu are
    produced, and no scripted answer is consumed there
-6. the git checkpoint finds nothing outside .workflows dirty — no
-   checkpoint gate is rendered, no checkpoint commit runs, and no
-   scripted answer is consumed
+6. the git checkpoint's `code status` finds nothing outside .workflows
+   dirty — no checkpoint gate is rendered, no checkpoint commit runs,
+   and no scripted answer is consumed
 7. all three analysis agents dispatch in parallel with the same inputs
    and cycle number 1; the duplication and architecture stubs return
    clean, the standards stub returns its two findings — the unguarded

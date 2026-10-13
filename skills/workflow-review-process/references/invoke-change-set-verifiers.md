@@ -41,19 +41,15 @@ Skip any section whose `.workflows/{work_unit}/review/{topic}/change-set-c{N}-{s
 
 ## B. Gather the Brief
 
-Every agent receives the same change-set and the same project conventions.
+Every agent receives the same project conventions, and reads the change-set itself through the engine, from the work unit and topic.
 
-1. **The change-set** — the file list built in **A. Identify Scope** of **[invoke-task-verifiers.md](invoke-task-verifiers.md)**, and the range from the parent of the first task commit to `HEAD`; the first task commit is:
-   ```bash
-   git log --reverse --format=%H --grep="impl({work_unit}): T{topic}-" | head -1
-   ```
-2. **The linters** — the names the implementation declared (empty stdout or `[]` means none); each is run the way the project's own conventions say it is run:
+1. **The linters** — the names the implementation declared (empty stdout or `[]` means none); each is run the way the project's own conventions say it is run:
    ```bash
    node .claude/skills/workflow-engine/scripts/engine.cjs manifest get {work_unit}.implementation.{topic} linters
    ```
-3. **The project conventions** — the project's `CLAUDE.md` when one exists at the project root, and the project skill paths from Step 3
-4. **The finding floor** — the path `.claude/skills/workflow-implementation-process/references/finding-floor.md`, handed on unread; the agents load it
-5. **The unsettled criteria** — `.workflows/.cache/{work_unit}/review/{topic}/unsettled.txt`; absent means the task verifiers settled every criterion by reading, and the agents are told so
+2. **The project conventions** — the project's `CLAUDE.md` when one exists at the project root, and the project skill paths from Step 3
+3. **The finding floor** — the path `.claude/skills/workflow-implementation-process/references/finding-floor.md`, handed on unread; the agents load it
+4. **The unsettled criteria** — `.workflows/.cache/{work_unit}/review/{topic}/unsettled.txt`; absent means the task verifiers settled every criterion by reading, and the agents are told so
 
 → Proceed to **C. Dispatch**.
 
@@ -70,14 +66,13 @@ Each agent receives:
 1. **Section** — its name and its content
 2. **Specification path** — `.workflows/{work_unit}/specification/{topic}/specification.md`
 3. **Plan path** — the plan read in Step 2
-4. **Change-set** — the file list and the commit range from **B**
-5. **Project conventions** — the `CLAUDE.md` path, the project skill paths, and the linter names from **B**
-6. **Finding floor path** — from **B**
-7. **Unsettled criteria path** — from **B**, or the statement that there are none
-8. **Work unit** — the work unit name
-9. **Topic** — the plan topic name
-10. **Work type** — from the manifest
-11. **Output path** — `.workflows/{work_unit}/review/{topic}/change-set-c{N}-{slug}.md`
+4. **Project conventions** — the `CLAUDE.md` path, the project skill paths, and the linter names from **B**
+5. **Finding floor path** — from **B**
+6. **Unsettled criteria path** — from **B**, or the statement that there are none
+7. **Work unit** — the work unit name
+8. **Topic** — the plan topic name
+9. **Work type** — from the manifest
+10. **Output path** — `.workflows/{work_unit}/review/{topic}/change-set-c{N}-{slug}.md`
 
 Record each agent's status. If an agent fails (error, timeout), record the failure and continue — its section is named as not covered in the report, never silently absent.
 

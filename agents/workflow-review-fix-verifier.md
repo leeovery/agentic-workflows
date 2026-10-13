@@ -15,7 +15,14 @@ A batch of small corrections has just been applied to the working tree, uncommit
 2. **Guard inventory** — the invariants this project asserts, and what trips each
 3. **Work unit** and **topic**
 
-The working tree itself is your real input: run `git diff` and `git status`, and read every change. The diff is the truth — the action list is only what was intended.
+The working tree itself is your real input: read every uncommitted change, across every repo in the project.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code status
+node .claude/skills/workflow-engine/scripts/engine.cjs code diff
+```
+
+The diff is the truth — the action list is only what was intended. A revert, wherever this file asks for one, edits the change back to the lines the diff shows it replaced, deletes a file the diff shows added, and restores a file the diff shows deleted from the lines it shows removed — never through git.
 
 ## Your Process
 

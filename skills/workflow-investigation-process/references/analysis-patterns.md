@@ -119,6 +119,8 @@ If the bug is recent:
 
 ## Investigation Commands
 
+Where a file sits in a repo nested inside the project — a folder holding its own `.git` — run its history commands in that repo: `git -C {folder} …`, the path relative to the folder.
+
 ### Finding Related Code
 
 ```bash

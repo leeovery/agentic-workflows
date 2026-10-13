@@ -16,7 +16,7 @@ Return to the caller: `STATUS: complete`, `FINDINGS_COUNT: 0`,
 
 SECTION: {the dispatched section's name}
 
-SCOPE: the range from the parent of `impl(pay): Tpay-1-1 — create payment intent` to HEAD, filtered to src/checkout/payment-intent.js, src/webhooks/capture.js, tests/checkout/payment-intent.test.js and tests/webhooks/capture.test.js, each read in full against the section; the project's CLAUDE.md documents `npx jest <file>` as its test command, no linters are declared and no build is named, and with no defect in this section's remit suspected nothing was run — the files were read and searched
+SCOPE: one repo, the root (`.`), its base the parent of `impl(pay): Tpay-1-1 — create payment intent`; the change-set confined to the files the task commits touched — src/checkout/payment-intent.js, src/webhooks/capture.js, tests/checkout/payment-intent.test.js and tests/webhooks/capture.test.js — each read in full against the section; the project's CLAUDE.md documents `npx jest <file>` as its test command, no linters are declared and no build is named, and with no defect in this section's remit suspected nothing was run — the files were read and searched
 
 MEASURED:
 - None

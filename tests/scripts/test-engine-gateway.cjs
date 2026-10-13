@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
+const { initRepo } = require('./engine-harness.cjs');
 
 const {
   runGateway,
@@ -174,8 +175,8 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
 // A context-refresh recovery reads state and carries on with nothing shown;
 // the gate the flow resumes at is fetched by the step that shows it. Every
 // command a recovery names — a full `node .claude/skills/…` call, or an
-// `engine render` shorthand — is run over a world holding each phase's item
-// at the placeholder address, in the states a gate would be owed over: an
+// `engine render` shorthand — is run over a project repo holding each phase's
+// item at the placeholder address, in the states a gate would be owed over: an
 // undecided subtopic beside a decided one (the defer gate), threads on the
 // research register, several live experiments (the record pick), agents in
 // flight, a baseline mid-assessment, and a roadmap with waiting items.
@@ -196,7 +197,7 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
 
   let dir;
   beforeEach(() => {
-    dir = setupFixture();
+    dir = initRepo(setupFixture());
     createFile(dir, '.workflows/manifest.json', JSON.stringify({
       baseline: { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } },
       roadmap: {

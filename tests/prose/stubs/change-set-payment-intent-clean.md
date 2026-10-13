@@ -16,7 +16,7 @@ Return to the caller: `STATUS: complete`, `FINDINGS_COUNT: 0`,
 
 SECTION: {the dispatched section's name}
 
-SCOPE: the range from the parent of `impl(pay): Tpay-1-1 — create payment intent` to HEAD, filtered to src/checkout/payment-intent.js, read in full against the section; the project has no CLAUDE.md, no project skills, no declared linters and no documented test command, so nothing of the project's was run — the file was read and searched
+SCOPE: one repo, the root (`.`), its base the parent of `impl(pay): Tpay-1-1 — create payment intent`; the change-set confined to the four files the task commits touched, of which src/checkout/payment-intent.js was read in full against the section; the project has no CLAUDE.md, no project skills, no declared linters and no documented test command, so nothing of the project's was run — the file was read and searched
 
 MEASURED:
 - None

@@ -12,7 +12,7 @@ The prose should have taken this path:
 3. the change-set verification derives its sections from the
    specification's numbered headings — the payment-intent section, the
    capture section, and the test surface — gathers the brief (the
-   first task commit, the file list, no declared linters, the finding
+   declared linters — none — the finding
    floor, no unsettled file) and dispatches one agent per section,
    three in all — stubbed clean, each with a coverage map — then
    checks the tree with nothing outside `.workflows/` dirty and has

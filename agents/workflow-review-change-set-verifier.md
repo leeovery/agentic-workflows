@@ -15,19 +15,18 @@ You receive:
 1. **Section**: its name and its content — one of the specification's numbered sections, the `test surface` (the change-set's test files, held against everything the specification asks them to guard), or a quick-fix's whole specification
 2. **Specification path**: read your section in full, and the `## Corrigenda` section at the end of the document when one exists — corrigenda override the body
 3. **Plan path**: the plan, for context on how the work was staged
-4. **Change-set**: the list of files the task commits touched and the commit range — from the parent of the first task commit to `HEAD` — the boundary of everything you judge
-5. **Project conventions**: the `CLAUDE.md` path, the project skill paths under `.claude/skills/`, and the names of the linters the implementation declared
-6. **Finding floor path**: the floor every finding clears — read it in full before reporting anything
-7. **Unsettled criteria path**: the file the task verifiers' unsettled criteria were collected into — may be absent, which means there are none
-8. **Work unit**, **Topic**, **Work type**
-9. **Output path**: where your file goes
+4. **Project conventions**: the `CLAUDE.md` path, the project skill paths under `.claude/skills/`, and the names of the linters the implementation declared
+5. **Finding floor path**: the floor every finding clears — read it in full before reporting anything
+6. **Unsettled criteria path**: the file the task verifiers' unsettled criteria were collected into — may be absent, which means there are none
+7. **Work unit**, **Topic**, **Work type** — the work unit and topic select the change-set you read in Step 2
+8. **Output path**: where your file goes
 
 ## Your Task
 
 ```
 Section (the specification's intent)
     ↓
-    Read the Change-Set (the commit range and its files)
+    Read the Change-Set (the task commits, their files and their diff)
     ↓
     Measure What the Project Lets You Measure (linters, build, a package's tests)
     ↓
@@ -44,7 +43,14 @@ Read the section in full, then the corrigenda. From it: what must the product do
 
 ### Step 2: Read the Change-Set
 
-The scope is the commit range you were given — the parent of the first task commit to `HEAD` — filtered to the file list — `git log` and `git diff` over that range, then the files in their final state. Read every file the section's requirements touch; follow the behaviour into files the list does not name where the delivered code calls into them, because scope is decided at the level of behaviour, not files.
+The scope is the topic's task commits, read across every repo in the project with paths named from the project:
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code log {work_unit} {topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs code diff {work_unit} {topic}
+```
+
+`code log` answers the commits, the `files` they touched — the boundary of everything you judge — and each repo's `base`, the parent of its earliest task commit; `code diff` is the change from each repo's base to its `HEAD`, confined to those files. Read both, then the files in their final state. Read every file the section's requirements touch; follow the behaviour into files the list does not name where the delivered code calls into them, because scope is decided at the level of behaviour, not files.
 
 **The specification's intent and the product are your authority — never a task's criteria.** The task verifiers held each task against what its plan entry asked for. You hold the system against what the specification means, so the gaps between tasks are yours: a requirement no task carried, a behaviour two tasks built halves of, an edge the section names that nothing delivered.
 
@@ -113,7 +119,7 @@ Every finding carries a `file:line` anchor, and every claim inside it must hold 
 - **Never name a symbol you have not located.** If your change calls a helper, confirm it exists and give its real path. If it does not exist, say so rather than naming what you expected to find.
 - **Assert no count or exclusivity you have not enumerated.** "The only site", "the single caller", "eleven call sites", "no production reader" — count them and state the true number, or drop the claim.
 - **Prove the edit you prescribe.** Your proposed change must be safe applied exactly as written: before saying an import or helper becomes unused, check every other line that could still use it.
-- **Repo-relative paths only.** An absolute path is wrong in every other checkout.
+- **Project-relative paths only** — named from the project, as the engine's `code` reads name them, never relative to a nested repo. An absolute path is wrong in every other checkout.
 
 ## Coverage Map
 
@@ -128,7 +134,7 @@ A list heading with nothing under it carries `- None`. Use this format:
 ```
 SECTION: {the section's name}
 
-SCOPE: {the change-set range — first task commit to HEAD — the files it was filtered to, and how it was read: what was run, what was read}
+SCOPE: {each repo's base from `code log`, the files the change-set was confined to, and how it was read: what was run, what was read}
 
 MEASURED:
 - "{the acceptance criterion, quoted}" [{task suffix}] — {how it was measured, with the command} — holds | fails

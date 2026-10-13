@@ -32,7 +32,11 @@ This is an announcement, not a gate: the user reads it while the work proceeds.
 
 ## B. Apply
 
-Ensure the working tree is clean before the first batch — `git status`. A dirty tree makes the verification unattributable.
+Ensure the working tree is clean before the first batch — nothing uncommitted in any repo of the project, the call's `files` empty. A dirty tree makes the verification unattributable.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code status
+```
 
 Group the actions by **connected file sets**: any two actions sharing a file belong to the same set, transitively. An action already spans every file it must touch — synthesis collapsed coupled findings into one action precisely so a bound pair cannot be split — so a set never holds half of anything.
 
@@ -76,7 +80,11 @@ The dispatch runs in the background (`run_in_background: true`) and ends the tur
 
 ## D. Commit
 
-**The record is the outcome.** Before anything is written forward, confirm it: the diff shows the applied work, and a status claiming work the diff does not show is a discrepancy to surface, never to carry into the report.
+**The record is the outcome.** Before anything is written forward, confirm it: the uncommitted change across every repo in the project shows the applied work, and a status claiming work the diff does not show is a discrepancy to surface, never to carry into the report.
+
+```bash
+node .claude/skills/workflow-engine/scripts/engine.cjs code diff
+```
 
 #### If nothing was applied
 
@@ -86,13 +94,13 @@ Every action was skipped or reverted — there is nothing to commit. Carry that 
 
 #### Otherwise
 
-Commit the work as one body — the code commit takes the paths you name, validates each, and answers with `left_dirty`:
+Commit the work as one body — the code commit takes the paths you name, validates each, and answers with `left_dirty`. `{N}` is this review cycle's number, as **A. Derive Sections** of **[invoke-change-set-verifiers.md](invoke-change-set-verifiers.md)** derives it:
 
 ```bash
-node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {files the fixes touched} -m "review({work_unit}): apply do-now findings" --for {work_unit} review/{topic}
+node .claude/skills/workflow-engine/scripts/engine.cjs commit --paths {files the fixes touched} -m "review({work_unit}): {topic} cycle {N} — apply do-now findings" --for {work_unit} review/{topic}
 ```
 
-Anything in `left_dirty` that these fixes touched is a path you forgot: commit it now with a second `--paths` call before carrying the outcome forward.
+Anything in `left_dirty` that these fixes touched is a path you forgot: commit it now with a second `--paths` call carrying the same message, so the report's read of the apply commit finds it, before carrying the outcome forward.
 
 Carry the outcome forward for the report and the presentation: applied count, anything skipped or reverted with its reason, and the suite's final state.
 

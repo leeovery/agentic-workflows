@@ -73,6 +73,7 @@
       "task analysis-cycle pay pay",
       "-m \"impl(pay): analysis cycle",
       "-m \"impl(pay): pre-analysis checkpoint",
+      "code status",
       "render checkpoint-files-gate",
       "render tasks-overview",
       "render proposed-task",

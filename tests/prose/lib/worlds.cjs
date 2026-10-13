@@ -81,7 +81,7 @@ const ASSERT_PROMPT = '.assert-prompt.md';
 const HARNESS_FILES = [ACTION_LOG, WALK_LOG, DISPATCH_LOG, ASSERT_PROMPT];
 
 // A recipe's git history dies at the world's fresh init, so a fixture
-// that needs one (implementation commits the review scope-grep reads)
+// that needs one (the task commits review reads through `engine code log`)
 // declares it: the recipe writes this sidecar — [{"message", "files"}]
 // — the snapshot carries it, and materialise turns it into real
 // layered commits. The sidecar itself never lands in the world.
@@ -683,7 +683,8 @@ function buildWorld(caseId) {
 
   // Layer the declared history: one real commit per group, in order,
   // each carrying exactly its declared files — the shape the walk's
-  // git-history reads (scope greps, baselines) expect of a real run.
+  // git-history reads (review's `engine code log`, baselines) expect of a
+  // real run.
   for (const group of history) {
     for (const rel of group.files) {
       const real = path.basename(rel) === GITIGNORE_ESCAPED
