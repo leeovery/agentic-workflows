@@ -1115,13 +1115,15 @@ function checkFrameworkLoad(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 28 — every Bash grant in a frontmatter `allowed-tools` carries a `*`.
-// A grant is a Claude Code permission rule, and one without a wildcard
-// matches only that exact command with no arguments, so it never pre-approves
-// a call the skill makes. The value is read inline or as an indented list.
+// Check 28 — every Bash grant in a frontmatter `allowed-tools` carries a `*`,
+// and a grant for one of the workflows' own scripts ends in ` *`. A grant is
+// a Claude Code permission rule, and one without a trailing ` *` matches no
+// call with arguments, which every script call carries. The value is read
+// inline or as an indented list.
 // ---------------------------------------------------------------------------
 
 const BASH_GRANT = /Bash\(([^)]*)\)/g;
+const SCRIPT_GRANT = /^node \S+\.cjs\b/;
 
 function checkBashGrantsCarryWildcard(files) {
   const out = [];
@@ -1134,6 +1136,11 @@ function checkBashGrantsCarryWildcard(files) {
       if (/^\S/.test(line)) inGrants = line.startsWith('allowed-tools:');
       if (!inGrants) continue;
       for (const [, grant] of line.matchAll(BASH_GRANT)) {
+        if (SCRIPT_GRANT.test(grant)) {
+          if (grant.endsWith(' *')) continue;
+          out.push({ file, line: i + 1, message: `Bash(${grant}) is a script grant that does not end in \` *\` — it matches no call with arguments` });
+          continue;
+        }
         if (grant.includes('*')) continue;
         out.push({ file, line: i + 1, message: `Bash(${grant}) has no \`*\` — it matches only that exact command, never a call with arguments; a script grant ends in \` *\`` });
       }
@@ -2321,7 +2328,7 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
   });
 });
 
-test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or listed, permits a script grant ending in ` *`, a wildcard mid-path, other tools, and a grant outside the frontmatter', () => {
+test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or listed and a script grant whose `*` is not a trailing ` *`, permits a script grant ending in ` *`, a wildcard mid-path on another command, other tools, and a grant outside the frontmatter', () => {
   withTemp((dir) => {
     const ENGINE = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
     const starred = write(dir, 'skills/workflow-a-process/SKILL.md', [
@@ -2339,14 +2346,22 @@ test('check 28 (Bash grants carry a wildcard) — catches a bare grant inline or
     const listed = write(dir, 'skills/workflow-d-process/SKILL.md', [
       '---', 'name: workflow-d-process', 'allowed-tools:', `  - Bash(${ENGINE} manifest)`, '  - Read', 'user-invocable: false', '---', '',
     ].join('\n'));
-    const v = checkBashGrantsCarryWildcard([inline, listed]);
+    const misplaced = write(dir, 'skills/workflow-e-process/SKILL.md', [
+      '---', 'name: workflow-e-process',
+      `allowed-tools: Bash(node .claude/skills/*/scripts/engine.cjs), Bash(${ENGINE}*)`, '---', '',
+    ].join('\n'));
+    const v = checkBashGrantsCarryWildcard([inline, listed, misplaced]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
       ['workflow-c-process', 3],
       ['workflow-c-process', 3],
       ['workflow-d-process', 4],
-    ], `each bare grant is caught at its line, got ${report(v)}`);
-    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs\) has no `\*`/);
+      ['workflow-e-process', 3],
+      ['workflow-e-process', 3],
+    ], `each bare grant, and each script grant whose \`*\` is not a trailing \` *\`, is caught at its line, got ${report(v)}`);
+    assert.match(v[0].message, /^Bash\(node \.claude\/skills\/workflow-engine\/scripts\/engine\.cjs\) is a script grant that does not end in ` \*`/);
     assert.match(v[1].message, /^Bash\(git log\) has no `\*`/);
+    assert.match(v[3].message, /^Bash\(node \.claude\/skills\/\*\/scripts\/engine\.cjs\) is a script grant/);
+    assert.match(v[4].message, /engine\.cjs\*\) is a script grant/);
   });
 });
 
