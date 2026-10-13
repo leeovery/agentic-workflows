@@ -855,10 +855,10 @@ project's own measurements decide (R7).
 
 ### Work types
 
-- **R18 — Epic.** discovery → decision (discuss topics) → specification →
-  implementation → review.
-- **R19 — Feature.** An epic with one topic; decision is skipped when the
-  brief holds nothing for the person. Pivot and absorb stay.
+- **R18 — Epic.** discovery → decision → specification → implementation
+  → review.
+- **R19 — Feature.** An epic with one topic; its decision can be the view
+  and one answer (R11). Pivot and absorb stay.
 - **R20 — Bugfix.** discovery → investigation → specification →
   implementation → review. Investigation's rigour stays — symptoms, code
   analysis, root cause before fix — with its procedure loosened like every
