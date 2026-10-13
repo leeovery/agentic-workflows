@@ -59,7 +59,7 @@ The prose should have taken this path:
     staging, consolidated_phases and review staging reads print
     empty), sees no resume state, and dispatches the consolidation
     finder — the stub returns clean with no file, so no findings
-    commit runs; the clean announce renders
+    commit runs; the clean announcement is emitted
 16. the pass records the phase: the bank check finds no field (no
     entry was ever deposited) so nothing is deleted, consolidated_phases
     gains 1, the
