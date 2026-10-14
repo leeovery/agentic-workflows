@@ -664,7 +664,7 @@ project's own measurements decide (R7).
     the person handing it over ("your call"); a finding says how it is
     known instead. A Claude suggestion can never sit in the record as the
     person's decision — the spec review catches an unowned decision in the
-    golden record.
+    spec.
   - **A topic opens with Claude's view.** Nothing is written ahead. When
     the topic starts, Claude reads its brief and the record of every topic
     decided so far, checks what can be checked (R24), and shows its view
@@ -844,12 +844,18 @@ project's own measurements decide (R7).
 
 ### Specification
 
-- **R14 — Specification stays the golden record.** The spec is the document
-  the build reads and the knowledge base serves for later decisions.
+- **R14 — The spec is the build's working document; the ledger is the
+  truth.** The spec is the document the build reads. Ruled by the person
+  2026-10-14, after the ledger test: the ledger is the source of truth,
+  and the knowledge base indexes the records drawn from it, never the
+  spec; a finished spec is kept as history, like a plan, and never
+  corrected. It stays because building from records alone is a bigger
+  reasoning step: decisions into a coherent spec, then tasks, then code.
   Walked with the person 2026-10-13; 138 of their answers at spec gates
   across Portal, Tick, agntc and Mint, sign-off a yes 13 of 13.
   - Topics are grouped into buildable units, as today (the grouping now
-    runs in the epic menu), and the spec is assembled from their records —
+    runs in the epic menu; one spec for the whole work unit is under
+    discussion, Open: One build across an epic), and the spec is assembled from their records —
     assembly, not archaeology. Today Claude extracts exhaustively from the
     discussion documents, a gate per topic, with tracking files proving
     each source item incorporated.
@@ -883,9 +889,10 @@ project's own measurements decide (R7).
     and the phase cut (R15), replacing today's construction, finding,
     re-loop and sign-off gates. A topic's close is **decided** (R11); for a
     feature the two are one screen.
-  - Correcting a concluded spec is one verb doing three things: a ledger
-    entry superseding the decision, which updates the topic's record; the
-    spec's corrigendum; the re-index.
+  - A concluded spec is never corrected: a later change replaces the
+    entry on the ledger, and the entries that relied on it are flagged in
+    the work that made the change (R23). The corrigendum and the spec's
+    re-index go.
 
 ### Implementation
 
@@ -1179,12 +1186,13 @@ project's own measurements decide (R7).
   implementation → review. Investigation's rigour stays — symptoms, code
   analysis, root cause before fix — with its procedure loosened like every
   phase's. Investigation is the log of finding the cause, dead ends
-  included; the specification is what the builder works from and the
-  golden record the knowledge base keeps. The fix's test fails on the
+  included; the specification is what the builder works from, and the
+  root cause, findings and fix are ledger entries the knowledge base
+  reaches through the records. The fix's test fails on the
   unfixed code. A root cause that is really a design problem raises, and
   may become a feature; a bug folded into a feature skips investigation,
-  as the mailbox rework ruled. Investigation is not itself split into
-  record and log: it is the log, the specification is the record.
+  as the mailbox rework ruled. Investigation is the log; its record is
+  drawn from its entries, as for any topic.
 
   Walked on 2026-10-12 on Portal's `killing-all-sessions-wipes-restore-state`.
   The person likes today's bugfix — prove the bug, investigate, document —
@@ -1280,13 +1288,28 @@ each call on a page that day.
   for Claude to collect (the map's "since you last looked" is the same
   query); give the matrix its evidence (R25); and keep both sides'
   mistakes to learn from later, the person's included.
-  - **Each work unit keeps its own ledger**, ruled by the person
-    2026-10-14: entries numbered per work unit (L1, L2…), each tagged
-    with its topic, phase and session; a later unit's entry that
-    supersedes an earlier unit's names it with its unit. The build's calls
-    are entries too: they draw no record, and the same query shows them.
-    The product record is the entries scoped to the product (R10); where
-    those are kept, above the work units, is open.
+  - **One ledger for the project**, ruled 2026-10-13 and ratified by the
+    person 2026-10-14 after weighing one per work unit (which would need
+    a second, project-level ledger and a judgement over what is copied up
+    to it): entries numbered per project (L1, L2…), each tagged with its
+    work unit, topic, phase and session. A unit's ledger is its tagged
+    entries, written only by its own sessions; a later unit reads earlier
+    decisions directly. The build's calls are entries too: they draw no
+    record, and the same query shows them. The product record is the
+    entries marked product-wide (R10).
+  - **A later work unit replaces an older decision; it never records one
+    beside it**, ruled by the person 2026-10-14 — two current answers
+    that contradict each other are what no fold can see. Finding the
+    older decision is a judgement, made as mechanical as it can be: every
+    opening view reads the whole product record; a topic's opening view
+    searches earlier units' current entries in its area through the
+    knowledge base; the read for conflicts before the spec covers the
+    whole project's current entries in the areas the work touches. The
+    entries that relied on the replaced one — a finished unit's included
+    — are flagged in the work that made the change, which confirms or
+    changes each; the finished unit is never reopened. Size: nothing
+    reads the whole stream; a saved copy of the current state is kept
+    beside it only if reads slow, and the stream is never trimmed.
   - **The ledger is an event stream, and everything read from it is a
     projection**, agreed in outline by the person 2026-10-14 and being
     tested on real slices of Fumi and Switchboard (`walks/ledger-test/`).
@@ -1379,7 +1402,7 @@ each call on a page that day.
     earlier one was wrong; the last applies to the person's decisions as
     to Claude's. The superseded entry leaves the record and stays in the
     ledger.
-  - **Stored as JSON lines in the work unit's directory**, in `.workflows/` under git:
+  - **Stored as JSON lines in the project**, in `.workflows/` under git:
     one line per event, appended, each carrying its schema version. A
     later release changes the shape through a migration that brings every
     line to the current version (Migrations: runtime code never reads an
@@ -2209,7 +2232,8 @@ person, one item at a time; the sections above hold the detail.
   entry; the review hunts gaps and the matrix answers them, written into
   the topics' records; a re-review reads only what changed, unasked;
   "decided" closes a topic and "ready to build" is the spec's gate; a
-  correction is one verb doing three things (R14, R40). The goal stated:
+  concluded spec is never corrected, later changes replacing ledger
+  entries (R14, revised 2026-10-14) (R40). The goal stated:
   Claude deciding as the person would have, never asking less for its
   own sake (What the workflows are for).
 - From going back over the settled items (2026-10-14): the review phase's
