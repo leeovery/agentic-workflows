@@ -1308,6 +1308,31 @@ each call on a page that day.
     topic's log, one dated heading per session, free prose written as the
     conversation goes, enough for a fresh session to carry on alone, and
     pointing at entries by number rather than restating them.
+  - **What the test on real slices settled**, ruled by the person
+    2026-10-14 (`walks/ledger-test/`: a coherent spec came out of the
+    records alone — Fumi's slice covered 118 of 162 builder points and
+    21 in part, 41 of its 64 guesses being gaps in Fumi's own documents;
+    records and logs 35% of today's documents; the floor change flagged
+    its one dependent twelve days before the real correction). The loss
+    it found: an entry holding a whole answer is rewritten whole when
+    one part changes, and what the rewrite leaves out leaves the record
+    (Fumi's corner menu lost five details when its beak was removed; 23
+    of the 32 points the records lost). Three layers answer it:
+    - **The stream can never be edited, mechanically:** only the engine
+      writes it (a hook refuses any other edit), each line carries a
+      fingerprint of the line before so any change to history breaks
+      the chain the engine checks on every read, and the commit check
+      requires every existing line unchanged.
+    - **One thing per entry:** the engine refuses a decision that names
+      no question; whether an entry holds one rule is judged when it is
+      written by a separate model call — Jev or Clef, never the Claude
+      writing it — and an entry holding several is split before it
+      lands.
+    - **The chain is shown, never merged:** a record shows each current
+      answer with the answers it replaced folded beneath it; a
+      replacement is written beside the old answer and names what it
+      drops; the closing pass and the spec check each replacement
+      against what it replaced.
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
