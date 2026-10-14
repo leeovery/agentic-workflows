@@ -917,12 +917,15 @@ function stdoutOf(result: { result?: unknown }): string {
   return (result.result as { stdout: string }).stdout
 }
 
+/** What the band renders, without the plugin attribution Claude Code tags it with. */
+async function rendered($: Engine, input: RenderInput<'AbovePrompt', RenderSurface>) {
+  const { part: _, ...shown } = (await $.ui.render(input)) as RenderElement & { part?: unknown }
+  return shown
+}
+
 /** Whether the band draws a gate over what the engine draws beneath, on `surface`. */
 async function isDrawn($: Engine, surface: RenderSurface = 'terminal') {
-  return (
-    JSON.stringify(await $.ui.render({ ...DRAWING, surface })) !==
-    JSON.stringify(BENEATH)
-  )
+  return JSON.stringify(await rendered($, { ...DRAWING, surface })) !== JSON.stringify(BENEATH)
 }
 
 type Band = Mounted<(typeof BAND_SURFACES)[number], 'AbovePrompt'>
@@ -1508,7 +1511,7 @@ describe('register', () => {
 
     await presented($)
 
-    const drawn = await $.ui.render({
+    const drawn = await rendered($, {
       ...DRAWING,
       props: { ...BAND, hasSurvey: true },
     })
@@ -1526,7 +1529,7 @@ describe('register', () => {
     }
 
     for (const surface of ['vscode', 'mobile'] as const) {
-      expect(await $.ui.render({ ...DRAWING, surface }), surface).toEqual(BENEATH)
+      expect(await rendered($, { ...DRAWING, surface }), surface).toEqual(BENEATH)
     }
   })
 
