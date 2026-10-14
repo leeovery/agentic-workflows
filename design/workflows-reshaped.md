@@ -1333,6 +1333,13 @@ each call on a page that day.
       replacement is written beside the old answer and names what it
       drops; the closing pass and the spec check each replacement
       against what it replaced.
+    - **Every kind of entry links the same way:** a question, a finding
+      and a decision can each name what it relies on and be replaced,
+      always by a new event. A finding shown wrong is replaced with the
+      reason "it was wrong", and a change flags the questions and
+      findings that rely on it as well as the decisions — in the test
+      Fumi's floor change missed a question framed on 14 and a finding
+      restating it, the sentence behind the real 2 September error.
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
