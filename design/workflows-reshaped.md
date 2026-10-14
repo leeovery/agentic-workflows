@@ -2457,7 +2457,10 @@ an epic), which opened what stores what. Resolve each, then climb:
     feature; our own review agents or Claude Code's built-in code review
     (heavy on usage). Research: Switchboard's build under orchestrate,
     the orchestrate skill, and published practice
-    (`walks/build/review-cadence/`).
+    (`walks/build/review-cadence/`); the deep pass the person asked for
+    on 2026-10-14 (`review-cadence/deep/`) labels all 997 findings twice
+    independently and joins them with the build's implementer runs and
+    spend: its analysis is `deep/analysis/report.md`.
   - Still to discuss: the review phase across the unit. Pull requests
     prescribed, with a work unit landing as a stack — whether a task is a
     pull request and a phase a stack, or the stack keeps growing across
