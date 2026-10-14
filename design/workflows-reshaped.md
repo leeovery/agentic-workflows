@@ -1315,6 +1315,14 @@ each call on a page that day.
       which is where the matrix plugs in; findings may only move toward
       the person, so the matrix needs a sanctioned way to move one away.
       Classifier-labelled, 82% coverage; the Opus 5.5 period is 9 reports.
+      Folded into the restructure, ruled by the person 2026-10-14, with no
+      fix to the shipped workflows: the tie-break gives way to the matrix;
+      a finding a later decision has removed is dropped with a one-line
+      note; a finding coming to the person is rechecked against answers
+      given earlier in the same walk and against the record before it is
+      raised; a route names another topic, never a subtopic. A cap on
+      findings per report was rejected: more findings is the point, and
+      the measure is calls reaching the person.
   - **Facts are checked, intent is asked.** A question that reading the
     code, the record or running something can answer never reaches the
     person: Claude checks it. FlowX ranks the person last as a source of
