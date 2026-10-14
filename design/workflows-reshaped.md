@@ -2434,10 +2434,29 @@ an epic), which opened what stores what. Resolve each, then climb:
     words of decision documents; Fumi is at 416k.
   - Parked: whether the restructure fixes one task tracker and drops the
     plain-file plan format (the person, 2026-10-14).
-  - Still to discuss, one at a time: one build across the unit, phases
-    overlapping (a later phase starting while an earlier one is in
-    review), with worktrees and pull requests; the review phase across
-    the unit.
+  - **How one build runs**, ruled by the person 2026-10-14: parallel
+    tasks each in their own worktree, merged back by the orchestrator,
+    work on a shared file one task at a time; phases overlap where they
+    can — a phase that does not rely on the one before starts while that
+    one is in its phase review, one that does waits, the tasks'
+    dependencies and the ledger's links saying which; each phase on its
+    own branch, merged once its phase review passes, opened as a pull
+    request where the project works through them — recorded once in the
+    project's setup, like the verify setup. Ideas to take from the
+    person's orchestrate skill, proven on Switchboard, without depending
+    on it.
+  - **Reviews in the build, under research 2026-10-14:** implementer
+    agents at medium, high and extra high effort (never max, never below
+    medium), retried a level up when the result falls short; reviewers at
+    the same effort or higher; review often and small; a review finding
+    something major means review again, and fixes get at least a light
+    review so fixes add no bugs; whether per task, per phase, per unit
+    or all three; the review phase moving to the end of the epic or
+    feature; our own review agents or Claude Code's built-in code review
+    (heavy on usage). Research: Switchboard's build under orchestrate,
+    the orchestrate skill, and published practice
+    (`walks/build/review-cadence/`).
+  - Still to discuss: the review phase across the unit.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
