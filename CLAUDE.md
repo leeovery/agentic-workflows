@@ -141,7 +141,7 @@ Migrations keep existing projects' `.workflows/` in step with the current design
 
 ## Tests
 
-The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/workflow-gates*/`, `npm run typecheck:mod` and `npm run test:mod`.
+The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/workflow-gates*/`, `npm run test:mod`.
 
 - **Add or update a test alongside any change** to engine scripts (the knowledge base's among them), adapters, migrations, or the gate mods.
 - **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`; their headers carry the rules.
