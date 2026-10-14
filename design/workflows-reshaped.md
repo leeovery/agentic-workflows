@@ -1084,8 +1084,13 @@ project's own measurements decide (R7).
     what could not be run is reported not proven (R32). A bugfix's test is
     run on the unfixed code and must fail.
   - **Every finding lands somewhere.** Below the floor: dropped. Above it
-    and in scope: tasks in a closing phase, which that phase's review
-    checks; there is no second final review. Out of scope: Claude drops
+    and in scope: fix tasks, written as one more build phase and built in
+    the same loop as everything else; the review phase then runs again on
+    the new tasks only, with the whole change read against the spec once
+    more — today's flow, with planning's part done by the build. The small
+    fixes the review phase makes on the spot today become tasks too, since
+    no code changes outside a task. Ruled by the person 2026-10-14. Out of
+    scope: Claude drops
     what is not worth doing, groups related findings into one item, and
     files the rest to the inbox through a verb, with no keep-or-drop offer;
     the report lists what was filed and what was dropped. Ruled by the
@@ -2098,12 +2103,12 @@ person, one item at a time; the sections above hold the detail.
   own sake (What the workflows are for).
 - From going back over the settled items (2026-10-14): the review phase's
   out-of-scope findings are dropped, grouped or filed to the inbox by
-  Claude with no offer, listed in its report, and never flood the inbox
-  (R16).
+  Claude with no offer, listed in its report, and never flood the inbox;
+  its in-scope findings become fix tasks in one more build phase, and the
+  review phase reruns on those tasks only, as today (R16).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Review (R16): in-scope findings as a closing phase's tasks; the short
-  product-first report. Following from rulings already made: the final
+- Review (R16): the short product-first report. Following from rulings already made: the final
   review runs the product ("proven"); the loop gates learned (R40).
 - The epic menu (R17): what waits on the person first; topics by what they
   need; build units by phase; the rarer doors behind one; research and
