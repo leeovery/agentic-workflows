@@ -15,15 +15,19 @@
 // anything is labelled or recorded. Inside implementation, `task start` adds
 // the task in flight and that task's `task complete` takes it off; a
 // re-label of the same implementation keeps it, and any other place leaves
-// none. The start menu is no position: boot drops the calling conversation's
-// own before anything else it does, and `session repair` drops it too.
+// none. The gate mod's `conversation executor` adds the agent id of the
+// executor it saw dispatched, only while a task is in flight: it rides with
+// that task — a re-label of the same implementation and a `task start` re-run
+// for the same task keep it — and goes with it. The start menu is no
+// position: boot drops the calling conversation's own before anything else it
+// does, and `session repair` drops it too.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs the workflows: recording a position marks the conversation first
 // (conversation.cjs — a session id, a call run in a workflows project), since
 // a conversation a handoff began can arrive at its first place before any
-// other engine call has marked it. A position that cannot be written costs
-// the verb nothing.
+// other engine call has marked it; an executor is recorded only on a position
+// already there. A position that cannot be written costs the verb nothing.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -60,6 +64,7 @@ const [, ROADMAP_IDENTITY] = PROJECT_IDENTITIES;
  * @property {string} [phase]
  * @property {string} [topic]
  * @property {string} [task] the implementation task in flight, `{phase}.{task}`
+ * @property {string} [executor] the agent id of the task's executor
  */
 
 /** @typedef {Record<string, unknown>|null} Manifest  a work unit's manifest; null where the project has none */
@@ -67,6 +72,11 @@ const [, ROADMAP_IDENTITY] = PROJECT_IDENTITIES;
 /** Whether a place is a project-level one, named by its identity alone. @param {string} name @param {string} [phase] */
 function isProjectPlace(name, phase) {
   return phase === undefined && PROJECT_IDENTITIES.includes(name);
+}
+
+/** Whether a value reads as an agent id. @param {unknown} value @returns {value is string} */
+function isAgentId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]+$/.test(value);
 }
 
 /** @param {string} sessionId */
@@ -82,7 +92,10 @@ function positionPath(sessionId) {
 function readPosition(sessionId) {
   try {
     const parsed = JSON.parse(fs.readFileSync(positionPath(sessionId), 'utf8'));
-    if (isObject(parsed) && typeof parsed.name === 'string') return /** @type {Position} */ (parsed);
+    if (isObject(parsed) && typeof parsed.name === 'string') {
+      const { executor, ...rest } = parsed;
+      return /** @type {Position} */ (isAgentId(executor) ? parsed : rest);
+    }
   } catch { /* none recorded, or unreadable */ }
   return null;
 }
@@ -104,9 +117,14 @@ function arrivingConversation(cwd) {
   return ownConversation();
 }
 
-/** @param {string} sessionId @param {Position} position */
+/** Whether the position was written. @param {string} sessionId @param {Position} position @returns {boolean} */
 function writePosition(sessionId, position) {
-  try { writeJsonAtomic(positionPath(sessionId), position); } catch { /* a courtesy, never a failure */ }
+  try {
+    writeJsonAtomic(positionPath(sessionId), position);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -160,7 +178,10 @@ function recordPosition(cwd, name, phase, topic) {
   /** @type {Position} */
   const position = phase === undefined ? { name } : { name, phase, topic };
   const prior = readPosition(own);
-  if (phase === 'implementation' && samePlace(prior, position) && prior?.task) position.task = prior.task;
+  if (phase === 'implementation' && samePlace(prior, position) && prior?.task) {
+    position.task = prior.task;
+    if (prior.executor !== undefined) position.executor = prior.executor;
+  }
   writePosition(own, position);
 }
 
@@ -172,12 +193,27 @@ function recordTask(cwd, workUnit, topic, internalId) {
   const own = arrivingConversation(cwd);
   const step = taskStep(internalId);
   if (!own || step === null || !isPlace(cwd, workUnit, 'implementation', topic)) return;
-  writePosition(own, { name: workUnit, phase: 'implementation', topic, task: step });
+  /** @type {Position} */
+  const position = { name: workUnit, phase: 'implementation', topic, task: step };
+  const prior = readPosition(own);
+  if (samePlace(prior, position) && prior?.task === step && prior.executor !== undefined) position.executor = prior.executor;
+  writePosition(own, position);
 }
 
 /**
- * Take a completed task off the position — only the one it names, in that
- * topic's implementation.
+ * Record the executor dispatched for the conversation `sessionId`'s task in
+ * flight — only where its position holds one.
+ * @param {string} sessionId @param {string} agentId @returns {{recorded: boolean}}
+ */
+function recordExecutor(sessionId, agentId) {
+  const position = readPosition(sessionId);
+  if (position?.phase !== 'implementation' || !position.task) return { recorded: false };
+  return { recorded: writePosition(sessionId, { ...position, executor: agentId }) };
+}
+
+/**
+ * Take a completed task off the position, its executor with it — only the
+ * one it names, in that topic's implementation.
  * @param {string} workUnit @param {string} topic @param {string} internalId
  */
 function clearTask(workUnit, topic, internalId) {
@@ -350,7 +386,9 @@ function placeName(position, manifest) {
   if (phase === undefined) return unit;
   const at = topic === name ? `the ${phase} of ${unit}` : `the ${phase} of "${topic}" in ${unit}`;
   const internalId = internalIdOf(position);
-  return internalId === null ? at : `${at}, on task ${position.task} (internal id \`${internalId}\`)`;
+  if (internalId === null) return at;
+  const onTask = `${at}, on task ${position.task} (internal id \`${internalId}\`)`;
+  return position.executor === undefined ? onTask : `${onTask}, its executor agent \`${position.executor}\``;
 }
 
 /**
@@ -445,6 +483,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, clearTask, dropPosition,
-  placeLine, skillAt, positionReads, positionSections,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordExecutor, clearTask, dropPosition,
+  isAgentId, placeLine, skillAt, positionReads, positionSections,
 };

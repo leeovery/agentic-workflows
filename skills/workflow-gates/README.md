@@ -226,6 +226,24 @@ Code does, with nothing appended; so does a compaction Claude Code skips. The
 compaction Claude Code computes ahead of time passes through untouched, and
 the compaction that comes reuses it beneath the note.
 
+## How it keeps the task's executor
+
+The implementation phase dispatches one executor agent per task and sends the
+task's later rounds — a fix, a retry, a comment at the gate — to that same
+agent by its id, so it keeps what it learned. In a session that announced, in
+a conversation the engine has marked, when the main loop dispatches
+`workflow-implementation-task-executor`, the mod hands the agent id the
+dispatch answers with, foreground or background, to the engine's
+`conversation executor`, which records it on the position beside the task in
+flight; with no task in flight it records nothing. The id rides with that
+task and goes when the task completes, so a compaction's note names it
+beside the task (``on task 2.3 (internal id `ledger-2-3`), its executor agent
+`aa76bd7f82a2ef3e4` ``) and the next round continues that agent rather than
+dispatching a fresh one. Another agent, a subagent's own dispatch, a dispatch
+that was refused or errored, a plain conversation and a session that did not
+announce record nothing, and whatever the engine answers, the dispatch's
+result is Claude Code's own.
+
 ## Working on it
 
     npm run typecheck:mod   # tsc against the declarations Claude Code laid

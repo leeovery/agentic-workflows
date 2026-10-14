@@ -14,6 +14,12 @@ export const MARKER = 'workflow'
 /** The file the engine keeps the conversation's position in. */
 export const POSITION = 'position.json'
 
+/** The engine, where a project installs it, from the project's root. */
+export const ENGINE = '.claude/skills/workflow-engine/scripts/engine.cjs'
+
+/** How long a hook waits on the engine. */
+export const ENGINE_TIMEOUT_MS = 15_000
+
 /**
  * The folder of the conversation `id`, from the process's
  * `WORKFLOWS_CONFIG_DIR` and `HOME`; null where they name neither directory.

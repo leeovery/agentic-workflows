@@ -49,7 +49,7 @@ const { boot } = require('./domain/boot.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
-const { assertPlace, recordPosition, recordTask, clearTask, positionReads, positionSections } = require('./domain/position.cjs');
+const { assertPlace, recordPosition, recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
 const { completeWorkUnit, cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
@@ -203,6 +203,7 @@ Commands:
   session resume [session-id]
   conversation end
   conversation position [session-id]
+  conversation executor <session-id> <agent-id>
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -1025,7 +1026,16 @@ function runConversation(call, argv) {
       respondSections(call, positionSections(positionReads(call.cwd, sessionId)));
       return;
     }
-    throw new Error('Usage: engine conversation <end|position> …');
+    if (command === 'executor') {
+      // The gate mod's target, as an executor is dispatched.
+      const [sessionId, agentId] = rest;
+      if (rest.length !== 2 || !sessionId || !isAgentId(agentId)) {
+        throw new Error('Usage: engine conversation executor <session-id> <agent-id> — the agent id letters, digits, - and _ alone');
+      }
+      respond(call, recordExecutor(sessionId, agentId));
+      return;
+    }
+    throw new Error('Usage: engine conversation <end|position|executor> …');
   } catch (err) {
     failJson(call, err);
   }
