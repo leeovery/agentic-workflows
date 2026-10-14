@@ -1085,10 +1085,14 @@ project's own measurements decide (R7).
     run on the unfixed code and must fail.
   - **Every finding lands somewhere.** Below the floor: dropped. Above it
     and in scope: tasks in a closing phase, which that phase's review
-    checks; there is no second final review. Out of scope: the inbox,
-    through a verb, with no keep-or-drop offer — out-of-scope routing lost
-    a real agntc defect that never reached the inbox and is still in its
-    code.
+    checks; there is no second final review. Out of scope: Claude drops
+    what is not worth doing, groups related findings into one item, and
+    files the rest to the inbox through a verb, with no keep-or-drop offer;
+    the report lists what was filed and what was dropped. Ruled by the
+    person 2026-10-14, on the condition that the inbox is never flooded:
+    the earliest workflows filed hundreds of items. Of the 42 review
+    findings filed to the inbox so far, 12 became work and 17 were
+    archived later.
   - **The report is short and product first**: what the person can now do
     that they could not, what was proven by running it and what was not,
     what was fixed, what went to the inbox, Claude's calls worth a look.
@@ -2092,11 +2096,15 @@ person, one item at a time; the sections above hold the detail.
   correction is one verb doing three things (R14, R40). The goal stated:
   Claude deciding as the person would have, never asking less for its
   own sake (What the workflows are for).
+- From going back over the settled items (2026-10-14): the review phase's
+  out-of-scope findings are dropped, grouped or filed to the inbox by
+  Claude with no offer, listed in its report, and never flood the inbox
+  (R16).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Review (R16): every finding lands somewhere, out of scope to the inbox
-  by verb with no keep-or-drop offer; the short product-first report; the
-  final review runs the product; the loop gates learned.
+- Review (R16): in-scope findings as a closing phase's tasks; the short
+  product-first report. Following from rulings already made: the final
+  review runs the product ("proven"); the loop gates learned (R40).
 - The epic menu (R17): what waits on the person first; topics by what they
   need; build units by phase; the rarer doors behind one; research and
   planning items gone; cancelling moves mail to the inbox; "dead end"
