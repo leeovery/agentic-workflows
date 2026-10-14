@@ -2257,10 +2257,27 @@ person; then the formal plan (Sequence steps 3–5).
     the change, and whatever was written or built on the old answer is
     reworked by tasks. "If it has to stop and wait for me… that's okay,
     but that should happen less and less."
-  - Raised by the person the same day, to be discussed one at a time:
-    whether topics are needed at all (Switchboard was decided as one
-    conversation about the whole product; topics focus a conversation
-    and its gap-finding, and their seams get overlooked); one spec for
+  - **Topics stay, as the way to split the deciding conversation**, ruled
+    by the person 2026-10-14 after the research in
+    `walks/topics/`: discovery talks wide, the shaping makes the topics,
+    and each topic is decided in its own focused sessions — focused for
+    the person, and for Claude's context, which a whole product would
+    overrun. **Each topic owns its decisions**: a decision in one topic
+    that bears on another's goes to the owner through the mailbox, with
+    the sender's reasoning, and the owning topic decides it in its own
+    frame, since the same question can come out differently through
+    another topic's lens. Seams are caught by reading across: the gap
+    check at each topic's close and before the spec also looks for
+    conflicts between topics. Evidence: big designs were split with or
+    without the workflows — Switchboard V3's interface screen by screen,
+    Goosemates into numbered topics Claude made unasked; one
+    conversation strained (Switchboard's session, 30 compactions; Fumi's
+    records, 416k words over 70 sessions); the misses sat at seams
+    (Switchboard V3, 8 of 11; Fumi, 157 messages and 41 reopens); and
+    seams were caught by reading across (Claude's sweep of Switchboard's
+    eight specs, nine conflicts), while Fumi's per-topic reviews found
+    340 gaps, 25 of them touching another topic.
+  - Still to discuss, one at a time: one spec for
     the work unit with no grouping; an epic too big for one build split
     on the roadmap into versions; one build across the unit, phases
     overlapping (a later phase starting while an earlier one is in
