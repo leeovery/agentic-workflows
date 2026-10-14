@@ -1340,6 +1340,14 @@ each call on a page that day.
       findings that rely on it as well as the decisions — in the test
       Fumi's floor change missed a question framed on 14 and a finding
       restating it, the sentence behind the real 2 September error.
+    - **A change names what caused it**, by number — the other topic's
+      decision, the new fact, the message — and **a review finding goes
+      on the stream as a question the review asked**, so its answer is
+      linked to it like any other: Switchboard's test had 6 of 14
+      replacements citing another topic's decision with no way to name
+      it, and Fumi's documents cite the review finding behind a change
+      88 times, with no home in the test. Who moved whom was already on
+      every entry; the test's simplified entries left it out.
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
