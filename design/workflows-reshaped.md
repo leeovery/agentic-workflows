@@ -2192,11 +2192,26 @@ mod panels are spiked with the person later; the first sketches were
 rushed and are set aside. Uninstalling and reinstalling (Open) — raised
 by the person 2026-10-13, not yet discussed.
 
-**Still to come:** walk what is shape only, in the order the work
-depends on it — discovery, decision and specification walked
-2026-10-13; the tracking layer next, then mailboxes, feature and
-cross-cutting — and confirm the settled-from-evidence items with the
-person; then the formal plan (Sequence steps 3–5).
+**Still to come — the path back up**, set with the person 2026-10-14.
+Going back over the settled items reached the epic menu, which opened
+the epic moving through its phases as a whole (Open: One build across
+an epic), which opened what stores what. Resolve each, then climb:
+1. **What is stored where** — the ledger's level (one per project, as
+   ruled 2026-10-13, or per work unit, as changed 2026-10-14), a topic's
+   record and log, the product record, the trust log's events, the
+   matrix's levels, the record of the person — walked through one epic
+   as a worked example, then ratified as one piece.
+2. **The epic as a whole** — one spec for the work unit with no
+   grouping; an epic too big for one build split on the roadmap; one
+   build across the unit, phases overlapping, worktrees and pull
+   requests; the review phase across the unit.
+3. **The epic menu** — its layout, mail on cancel, "dead end", redrawn
+   for the above.
+4. **The remaining settled items** — bugfix (R20), the build (R15).
+5. **The tracking layer** — the start menu, the inbox, the roadmap
+   (research in `walks/tracking/01-tracking-today.md`).
+6. Mailboxes, feature and cross-cutting; then the formal plan (Sequence
+   steps 3–5).
 
 ## Open
 
