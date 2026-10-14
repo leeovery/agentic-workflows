@@ -1098,12 +1098,26 @@ project's own measurements decide (R7).
     the earliest workflows filed hundreds of items. Of the 42 review
     findings filed to the inbox so far, 12 became work and 17 were
     archived later.
-  - **The report is short and product first**: what the person can now do
-    that they could not, what was proven by running it and what was not,
-    what was fixed, what went to the inbox, Claude's calls worth a look.
-    Then finish, the authority gate. 8 of the person's 21 answers at
-    today's review gate were typed, mostly asking what a finding meant or
-    cost ("Can I now just safely reboot my computer…").
+  - **The report is short and product first**, ruled by the person
+    2026-10-14: what the person can now do that they could not, what was
+    proven by running it and what was not, what was fixed, what went to
+    the inbox and what was dropped, and one line counting the calls
+    decided for the person, by kind. The detailed checks are written to a
+    file, not shown. The report that closes a passing review phase covers
+    the whole topic — every round, broken up by round, and every call made
+    for the person across the topic, with the last build's share — and
+    stands as the certificate of the work. The person asks to see the
+    calls and gets them grouped by kind, the ones that change what the
+    product does first. Then finish, the authority gate, which invites
+    questions about what was built and answers them before finishing. 8
+    of the person's 21 answers at today's review gate were typed, mostly
+    asking what a finding meant or cost ("Can I now just safely reboot my
+    computer…").
+  - **The build runs straight into the review phase**, ruled by the person
+    2026-10-14, in an epic too: implementation's conclude gate and the
+    return to the epic menu between them go. A failing review's fix tasks
+    and the rerun go on without stopping; the finish gate is the stop, and
+    the epic menu follows it.
   - The task gate, the fix gate and task approval become learned (R40):
     auto was taken 42 of 49 and 40 of 44 times where offered.
 
@@ -2105,11 +2119,14 @@ person, one item at a time; the sections above hold the detail.
   out-of-scope findings are dropped, grouped or filed to the inbox by
   Claude with no offer, listed in its report, and never flood the inbox;
   its in-scope findings become fix tasks in one more build phase, and the
-  review phase reruns on those tasks only, as today (R16).
+  review phase reruns on those tasks only, as today; the report is short
+  and product first, the passing one the topic's certificate, its calls
+  a count by kind; the finish gate takes questions; the build runs
+  straight into the review phase, in an epic too (R16). Following from
+  rulings already made: the review phase runs the product ("proven");
+  its loop gates become learned (R40). Review is walked.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Review (R16): the short product-first report. Following from rulings already made: the final
-  review runs the product ("proven"); the loop gates learned (R40).
 - The epic menu (R17): what waits on the person first; topics by what they
   need; build units by phase; the rarer doors behind one; research and
   planning items gone; cancelling moves mail to the inbox; "dead end"
