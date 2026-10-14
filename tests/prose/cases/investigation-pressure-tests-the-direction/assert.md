@@ -53,8 +53,9 @@ EXPECTED WORLD — from an investigation whose analysis was complete:
 - the symptoms, hypothesis ledger, code trace, root cause, contributing
   factors and blast radius are unchanged — this session settled the fix,
   not the diagnosis
-- the phase cache holds both payloads the session rendered from: the fix
-  direction it presented, and the validation verdict it reported
+- the phase cache holds the payloads the session rendered from, among
+  them the fix direction it presented and the validation verdict it
+  reported
 - an agent row for the fix validation, closed, with its report on disk
 - the investigation still registered as in progress, no other phase
   touched
