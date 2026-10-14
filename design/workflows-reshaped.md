@@ -2284,7 +2284,9 @@ handoffs and compaction recovery beyond R35's note.
 **Unclear, or engineering for the plan:** how parallel worktrees in a
 build append to the ledger without forking its fingerprint chain or
 conflicting in git (one writer — the orchestrator recording what its
-agents report — or one file per event); where the phase cut lives on
+agents report — or one file per event), and how several builds running
+at once merge the ledger and the knowledge base (merge helpers wired in
+through git attributes, say); where the phase cut lives on
 disk and how a tracker shows a phase not yet written; how project skills
 reach the builder (R34); the per-task reviewer measurement (R16); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
@@ -2456,7 +2458,12 @@ an epic), which opened what stores what. Resolve each, then climb:
     (heavy on usage). Research: Switchboard's build under orchestrate,
     the orchestrate skill, and published practice
     (`walks/build/review-cadence/`).
-  - Still to discuss: the review phase across the unit.
+  - Still to discuss: the review phase across the unit. Pull requests
+    prescribed, with a work unit landing as a stack — whether a task is a
+    pull request and a phase a stack, or the stack keeps growing across
+    phases — raised by the person 2026-10-14 for later; the workflows
+    would carry their own stack instructions, since GitHub's are not on
+    every system.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
