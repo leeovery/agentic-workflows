@@ -1299,8 +1299,10 @@ each call on a page that day.
     entries); an index rebuilt from the lines is added only if queries
     slow.
   - Written by engine commands only, never by hand. The person reads it
-    when they choose; at a topic's decided screen they see the count and the few
-    calls worth a look, never the whole list. Every departure — an answer that amends or overrules
+    when they choose; at a topic's decided screen they see a count of the
+    calls made for them, by kind, and ask to see them if they want —
+    never a list picked out as "worth a look", which reads as Claude
+    doubting its own calls (the person, 2026-10-14). Every departure — an answer that amends or overrules
   Claude's lean — joins a verdict queue: a page like the one the person
   used for R29, where they say, when they choose, what the product would
   have lost had Claude built its own answer: nothing, a fix later, or a
