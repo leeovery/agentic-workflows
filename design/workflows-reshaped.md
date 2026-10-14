@@ -2215,6 +2215,21 @@ person; then the formal plan (Sequence steps 3–5).
     rerun the migrations that put the hooks in place. Deleting
     `.workflows/` takes the ledger and everything reinstalls. A better
     install process may be worth a look, or migrations may be fine.
+- **One build across an epic.** Raised by the person 2026-10-14, parked
+  for discussion before the plan. Once every topic is decided and every
+  spec is ready to build, the person says "implement" once: Claude
+  orders the work across all the specs, breaks it up however suits the
+  whole epic, runs through the review phase, and reports when everything
+  is fully reviewed. A question that needs the person parks what depends
+  on it, and Claude carries on with everything else. The person's
+  evidence is Switchboard, where Claude ran unattended for two days and
+  nights after the design was locked, putting what needed the person on
+  the board and carrying on: "That's my goal with the workflows: to
+  facilitate that autonomous work… It's very much gate after gate after
+  gate, topic after topic. Everything has to be started on purpose." It
+  rests on rulings already made: a spec waits until every topic is
+  decided (R17), one orchestrator runs a build across its phases, and
+  questions queue (R15).
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
