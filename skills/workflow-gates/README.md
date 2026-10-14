@@ -246,17 +246,13 @@ result is Claude Code's own.
 
 ## Working on it
 
-    npm run typecheck:mod   # tsc against the declarations Claude Code laid
     npm run test:mod        # claude plugin test
 
-Claude Code lays its own build's API declarations into a mod's
-`.claude-plugin/types/` whenever it loads the mod for development, with a
-`tsconfig.json` this mod's own extends; the folder ignores itself. Load the
-mods once in a session — `claude --plugin-dir skills/workflow-gates
---plugin-dir skills/workflow-gates-rows` — before the first typecheck, and
-every load lays them afresh for the Claude Code running; a worktree Claude
-Code creates starts with a copy (`.worktreeinclude`). `test:mod` needs
-none: it runs the suites against the installed Claude Code.
+`test:mod` runs the suites against the installed Claude Code. Claude Code
+lays its own build's API declarations into a mod's `.claude-plugin/types/`
+whenever it loads the mod for development, with a `tsconfig.json` this mod's
+own extends, so an editor reads the mod's types once a session has loaded it;
+the folder ignores itself.
 
 The suites run on Claude Code 2.1.287 or newer, where mods are on by
 default.

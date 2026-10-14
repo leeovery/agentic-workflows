@@ -137,8 +137,7 @@ A change lands in one place and is owed in several. Enumerate them.
   simulation is a decision to make, never something to paper over.
 - A test lands alongside any change to engine scripts (the knowledge
   base's among them), adapters, migrations, or the gate mods
-  (`skills/workflow-gates*/`, whose gates are `npm run typecheck:mod` and
-  `npm run test:mod`).
+  (`skills/workflow-gates*/`, whose gate is `npm run test:mod`).
 - New `.cjs` migrations have a matching node:test suite, registered in
   `package.json`, covering happy path, skip, idempotency, content
   preservation, and every defensive guard.

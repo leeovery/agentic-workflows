@@ -203,7 +203,7 @@ discover their interactions a PR later.
 
 Then run the gates the change touches — `npm test`, `npm run test:cli`,
 `npm run test:migrations`, `npm run typecheck`, and for a change under
-`skills/workflow-gates*/`, `npm run typecheck:mod` and `npm run test:mod` —
+`skills/workflow-gates*/`, `npm run test:mod` —
 and update the pipeline simulation if the change moved an engine verb, a
 prose call sequence, a phase ordering, or a manifest field. Where a finding
 describes a failure the tests would not have caught, add the case that
