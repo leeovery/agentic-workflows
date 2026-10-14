@@ -1359,6 +1359,12 @@ each call on a page that day.
       part on the map as its own question, linked to the first, so
       nothing open hides behind an answer.
     - Every event carries the time the engine wrote it.
+    - **Where an entry's text and the design it points at disagree**, one
+      standing rule: what exists and how it behaves, the record wins and
+      the design is out of date; how it looks, the design wins, because
+      it was drawn. Both projects had written their own (Switchboard:
+      "the frames hold"; Fumi: "the record decides; a board
+      demonstrates").
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
@@ -2251,7 +2257,10 @@ handoffs and compaction recovery beyond R35's note.
 
 **Still the person's to decide:** nothing open at present.
 
-**Unclear, or engineering for the plan:** where the phase cut lives on
+**Unclear, or engineering for the plan:** how parallel worktrees in a
+build append to the ledger without forking its fingerprint chain or
+conflicting in git (one writer — the orchestrator recording what its
+agents report — or one file per event); where the phase cut lives on
 disk and how a tracker shows a phase not yet written; how project skills
 reach the builder (R34); the per-task reviewer measurement (R16); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
