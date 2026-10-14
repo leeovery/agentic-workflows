@@ -1287,6 +1287,27 @@ each call on a page that day.
     are entries too: they draw no record, and the same query shows them.
     The product record is the entries scoped to the product (R10); where
     those are kept, above the work units, is open.
+  - **The ledger is an event stream, and everything read from it is a
+    projection**, agreed in outline by the person 2026-10-14 and being
+    tested on real slices of Fumi and Switchboard (`walks/ledger-test/`).
+    Five kinds of event: asked (a question goes on a topic's map), found
+    (a fact and how it is known), decided (an answer to a question: who,
+    why, what it rules out, what it relies on), replaced (a new answer,
+    naming the old and one of the four reasons), still holds (a topic
+    confirms an answer after something it relied on changed); a question
+    can also be moved to another topic. Nothing is updated; every change
+    is a new event. The links — which question an answer closes, what it
+    replaces, what it relies on — are fields the engine assigns, never
+    prose. The map, a topic's record and the product record are folds of
+    the stream, worked out when read, with no saved projection; an index
+    comes only if reads slow. When an answer is replaced, every entry
+    relying on it is affected, and that too is a fold — an entry relying
+    on a replaced one with no "still holds" or replacement since — so the
+    owning topic shows among what waits on the person until it answers,
+    even when it was closed. The journey stays out of the ledger: a
+    topic's log, one dated heading per session, free prose written as the
+    conversation goes, enough for a fresh session to carry on alone, and
+    pointing at entries by number rather than restating them.
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
