@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.18] - 2026-10-14
+
+✨ Added
+- The task's executor is now recorded when it's dispatched — the gate mod hands its agent id to the new `engine conversation executor` command, which stores it beside the task in flight.
+
+🔧 Changed
+- A compaction's note in implementation now names the task's executor agent — the next round continues that agent, which still holds what it learned, instead of a fresh one.
+- Re-running `task start` for the task in flight, or re-labelling the same implementation, keeps the recorded executor; completing the task clears it.
+- The compliance check now re-reads each file in full, never with an offset or limit.
+- The mods' `typecheck:mod` gate is dropped — `npm run test:mod` is now the only gate for the gate mods, and the docs, `CLAUDE.md` and `.worktreeinclude` follow.
+
+🐛 Fixed
+- The gate mod's band tests no longer fail on the plugin attribution Claude Code tags onto rendered output.
+
 ## [0.8.17] - 2026-10-13
 
 ✨ Added
