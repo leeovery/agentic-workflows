@@ -2412,9 +2412,29 @@ an epic), which opened what stores what. Resolve each, then climb:
     seams were caught by reading across (Claude's sweep of Switchboard's
     eight specs, nine conflicts), while Fumi's per-topic reviews found
     340 gaps, 25 of them touching another topic.
-  - Still to discuss, one at a time: one spec for
-    the work unit with no grouping; an epic too big for one build split
-    on the roadmap into versions; one build across the unit, phases
+  - **One spec and one build per epic**, ruled by the person 2026-10-14:
+    no grouping step; the spec is written in sections by area, each
+    from its topics' records; the phase cut is made from an outline of
+    the sections and the dependency graph the ledger's relies-on links
+    give; each phase's tasks are written from the sections it touches;
+    the orchestrator plans ahead and pulls work forward as it sees fit,
+    through the task tracker (Switchboard's way: its 14 stages came from
+    a 581-word outline). **No size limit**: no job needs the whole spec
+    read at once. Size costs in two softer ways — the read across for
+    seams nobody linked, and the outline the person approves at ready to
+    build — so splitting an epic is a judgement raised when either gets
+    unwieldy, never a number, with the link graph showing where it splits
+    cleanly (groups of topics linked within, little between). The split
+    moves topics not yet started, or part of a topic's questions as a new
+    topic, to a next epic on the roadmap; the project ledger keeps every
+    link working. Discovery shapes an epic by judgement, never a formula
+    (Nod: "the first epic here probably should be like the first
+    slice"). The roadmap is the level above: its epics are the versions,
+    and no new layer is added. Shipped and building epics ran 15–44k
+    words of decision documents; Fumi is at 416k.
+  - Parked: whether the restructure fixes one task tracker and drops the
+    plain-file plan format (the person, 2026-10-14).
+  - Still to discuss, one at a time: one build across the unit, phases
     overlapping (a later phase starting while an earlier one is in
     review), with worktrees and pull requests; the review phase across
     the unit.
