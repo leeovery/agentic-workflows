@@ -2234,8 +2234,8 @@ person; then the formal plan (Sequence steps 3–5).
     rerun the migrations that put the hooks in place. Deleting
     `.workflows/` takes the ledger and everything reinstalls. A better
     install process may be worth a look, or migrations may be fine.
-- **One build across an epic.** Raised by the person 2026-10-14, parked
-  for discussion before the plan. Once every topic is decided and every
+- **One build across an epic.** Raised by the person 2026-10-14 and taken
+  into discussion the same day, from the epic menu walk. Once every topic is decided and every
   spec is ready to build, the person says "implement" once: Claude
   orders the work across all the specs, breaks it up however suits the
   whole epic, runs through the review phase, and reports when everything
@@ -2249,6 +2249,23 @@ person; then the formal plan (Sequence steps 3–5).
   rests on rulings already made: a spec waits until every topic is
   decided (R17), one orchestrator runs a build across its phases, and
   questions queue (R15).
+  - The epic is in one phase at a time; the menu names it once at the
+    top, and its rows carry no phase (the person, 2026-10-14).
+  - **A decision that has to change after decision is over is settled
+    where it is found**, in the phase the epic is in, ruled by the person
+    2026-10-14: the epic never goes back to decision; the ledger records
+    the change, and whatever was written or built on the old answer is
+    reworked by tasks. "If it has to stop and wait for me… that's okay,
+    but that should happen less and less."
+  - Raised by the person the same day, to be discussed one at a time:
+    whether topics are needed at all (Switchboard was decided as one
+    conversation about the whole product; topics focus a conversation
+    and its gap-finding, and their seams get overlooked); one spec for
+    the work unit with no grouping; an epic too big for one build split
+    on the roadmap into versions; one build across the unit, phases
+    overlapping (a later phase starting while an earlier one is in
+    review), with worktrees and pull requests; the review phase across
+    the unit.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
