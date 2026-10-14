@@ -6,8 +6,8 @@
 // `<config>/projects/<project-key>/<session-id>/subagents/agent-<id>.jsonl`,
 // nested subagents flat beside the rest — and the runtime writes it, not
 // the agent. So it is the authority on what a payload does not state:
-// which world a walk ran in, which model it ran on, the turns it told,
-// and every agent it tried to dispatch or continue.
+// which world a walk ran in, which model it ran on, the turns it told and
+// the blocks it showed, and every agent it tried to dispatch or continue.
 //
 // Shared by the recorder (a stop names no world), the dispatch hold (a
 // dispatch's payload may name none), and `run.cjs stop` (a stop whose hook
@@ -23,6 +23,9 @@ const WORLD = /(^|[\s"'`])(\/[^\s"'`]*\/prose-world-[A-Za-z0-9]+)/;
 // that tells its walk through it leaves no text turn to lift, so the
 // message it hands back is a turn of the walk like any other.
 const HANDBACK = 'SubagentHandback';
+// The file a walker shows a block through: one Write per block, each
+// replacing the last.
+const SHOWN = '.walk-shown.txt';
 // The dispatch tool, under its current name and the one it replaced, and
 // the send that continues an agent a dispatch started.
 const SEND = 'SendMessage';
@@ -47,12 +50,24 @@ function worldIn(text) {
   return found ? found[2].replace(/\\+/g, '') : null;
 }
 
+/** Whether a tool input is a write to the show file. */
+function isShowWrite(toolName, input) {
+  return toolName === 'Write' && Boolean(input) && path.basename(String(input.file_path || '')) === SHOWN;
+}
+
+/** The entry a show write makes in the walk, or null for any other block. */
+function shownText(block) {
+  if (block.type !== 'tool_use' || !isShowWrite(block.name, block.input)) return null;
+  const { content } = block.input;
+  return typeof content === 'string' && content.trim() ? `SHOWN:\n${content}` : null;
+}
+
 /** What a transcript block told, or null for a block that told nothing. */
 function turnText(block) {
   if (!block) return null;
   const told = block.type === 'text' ? block.text
     : block.type === 'tool_use' && block.name === HANDBACK && block.input ? block.input.message
-      : null;
+      : shownText(block);
   return typeof told === 'string' && told.trim() ? told.trim() : null;
 }
 
@@ -149,5 +164,6 @@ function findAgentTranscript(agentId, { near = null, configDir = claudeConfigDir
 }
 
 module.exports = {
-  WORLD, HANDBACK, SEND, DISPATCH_TOOLS, dispatchRow, worldIn, turnText, fromTranscript, claudeConfigDir, findAgentTranscript,
+  WORLD, HANDBACK, SHOWN, SEND, DISPATCH_TOOLS, dispatchRow, worldIn, isShowWrite, turnText, fromTranscript, claudeConfigDir,
+  findAgentTranscript,
 };
