@@ -1348,6 +1348,17 @@ each call on a page that day.
       it, and Fumi's documents cite the review finding behind a change
       88 times, with no home in the test. Who moved whom was already on
       every entry; the test's simplified entries left it out.
+    - **The chain beneath an answer** also shows a question moved away to
+      another topic and any "still holds" confirmation, so every entry a
+      log names can be found from a record (in the test 37 of 169 log
+      references pointed at entries no record showed).
+    - **Two current answers that contradict each other** are no fold's
+      to see: the read for conflicts finds them, within a topic as well
+      as across topics (Switchboard's two state orders sat in one topic).
+    - **An answer that settles part of a question** puts the unsettled
+      part on the map as its own question, linked to the first, so
+      nothing open hides behind an answer.
+    - Every event carries the time the engine wrote it.
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
