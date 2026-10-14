@@ -76,7 +76,9 @@ any harness substitutions. Follow it exactly.
   or substitute an equivalent that lands the same state. A walk that
   reaches the right end by different calls has not tested the calls the
   prose prescribes, and the record it leaves says the prose does
-  something it does not.
+  something it does not. A write the prose names a tool for is made with
+  that tool, in a call of its own — never a shell redirect, and never
+  joined to the command after it.
 - **Copy every literal the prose gives you.** A commit message, a path, a
   flag, a name: copy it from the page, character for character. Never
   retype it from memory and never adapt it to the topic you are working
