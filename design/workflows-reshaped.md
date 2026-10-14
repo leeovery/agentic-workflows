@@ -1280,16 +1280,28 @@ each call on a page that day.
   for Claude to collect (the map's "since you last looked" is the same
   query); give the matrix its evidence (R25); and keep both sides'
   mistakes to learn from later, the person's included.
-  - **Entries are numbered per project** (L1, L2…), each tagged with its
-    work unit, topic, phase and session. The build's calls are entries
-    too: they draw no record, and the same query shows them. The product
-    record is the entries scoped to the product (R10).
+  - **Each work unit keeps its own ledger**, ruled by the person
+    2026-10-14: entries numbered per work unit (L1, L2…), each tagged
+    with its topic, phase and session; a later unit's entry that
+    supersedes an earlier unit's names it with its unit. The build's calls
+    are entries too: they draw no record, and the same query shows them.
+    The product record is the entries scoped to the product (R10); where
+    those are kept, above the work units, is open.
+  - **A decision is one entry**, ruled by the person 2026-10-14: the same
+    decision reached from another topic is that entry, never a second; a
+    duplicate found anywhere is merged where it is found. Every session
+    reads every entry. A topic's record shows other topics' current
+    answers rather than restating them, so a change leaves no stale copy
+    to correct — in Fumi 30 of 157 messages did nothing but correct one,
+    and 7 of 41 reopens carried nothing else. A change to a decision
+    another topic owns, where it needs discussing, goes to the owner
+    through the mailbox.
   - **Superseding appends:** a new entry names the one it supersedes and
     why — a new fact, another topic's decision, a changed mind, or the
     earlier one was wrong; the last applies to the person's decisions as
     to Claude's. The superseded entry leaves the record and stays in the
     ledger.
-  - **Stored as JSON lines in the project**, in `.workflows/` under git:
+  - **Stored as JSON lines in the work unit's directory**, in `.workflows/` under git:
     one line per event, appended, each carrying its schema version. A
     later release changes the shape through a migration that brings every
     line to the current version (Migrations: runtime code never reads an
@@ -1498,6 +1510,11 @@ each call on a page that day.
     from its predecessor's counts at half weight and earns the rest. The
     procedure stays fixed across model generations; only the numbers
     move.
+  - **The matrix is kept at two levels**, ruled by the person 2026-10-14:
+    the project's and the person's, so a call can follow the project's
+    taste where it differs from the person's overall; both are
+    projections of decisions across work units, apart from the ledgers.
+    How the two combine belongs to the trust layer's detail (parked).
   - **The trust log** is append-only, at user level in the person's
     workflows config directory (which already holds the system config and
     each conversation's state), across all their projects, reached through
