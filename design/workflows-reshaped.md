@@ -2136,17 +2136,18 @@ reach the builder (R34); the per-task reviewer measurement (R16); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
 labeller (unreachable here).
 
-**Parked:** the workflows board (Open) — low priority by the person's
+**Parked:** the merged phase's name (Open) — "decision" kept for now.
+The workflows board (Open) — low priority by the person's
 ruling, a visual tool rather than something that builds better products;
 mod panels are spiked with the person later; the first sketches were
 rushed and are set aside. Uninstalling and reinstalling (Open) — raised
 by the person 2026-10-13, not yet discussed.
 
 **Still to come:** walk what is shape only, in the order the work
-depends on it — decision next (discovery walked 2026-10-13), then specification, the
-tracking layer, mailboxes, feature and cross-cutting — and confirm the
-settled-from-evidence items with the person; then the formal plan
-(Sequence steps 3–5).
+depends on it — discovery, decision and specification walked
+2026-10-13; the tracking layer next, then mailboxes, feature and
+cross-cutting — and confirm the settled-from-evidence items with the
+person; then the formal plan (Sequence steps 3–5).
 
 ## Open
 
