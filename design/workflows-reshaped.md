@@ -2344,8 +2344,11 @@ an epic), which opened what stores what. Resolve each, then climb:
 4. **The remaining settled items** — bugfix (R20), the build (R15).
 5. **The tracking layer** — the start menu, the inbox, the roadmap
    (research in `walks/tracking/01-tracking-today.md`).
-6. Mailboxes, feature and cross-cutting; then the formal plan (Sequence
-   steps 3–5).
+6. Mailboxes, feature and cross-cutting.
+7. **Migrating existing projects** (R37–R39), revisited against everything
+   changed since, with directives for what only judgement can carry over;
+   raised by the person 2026-10-15.
+8. The formal plan (Sequence steps 3–5).
 
 ## Open
 
