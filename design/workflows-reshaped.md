@@ -438,6 +438,20 @@ project's own measurements decide (R7).
   brings every existing project fully onto the new shape. No second set of
   skills, no old units on old prose, no runtime code that recognises what
   an earlier version left (CLAUDE.md, Migrations). See Migration.
+- **R45 — Event-sourced, for engineers.** Ruled by the person 2026-10-15:
+  the workflows are built by an engineer for engineers, and their state is
+  event-sourced, named as an engineer would name it. Everything that
+  happens is an event on an immutable stream, appended and never edited:
+  a question asked, a fact found, a decision made, a decision replaced, a
+  decision confirmed after what it relied on changed. Each kind of event
+  has its own schema, and the engine holds every write to it. Everything
+  anyone reads — a topic's record, the map, the product record, "what
+  have you decided without me?", the matrix — is a projection of the
+  streams, worked out from them and never kept by hand. The project's
+  stream is the ledger (R23); the person's own, across all their
+  projects, is the trust log (R25); projections give the current view at
+  every level: topic, work unit, session, project and the person. The
+  product presents itself in these terms.
 
 ## Stages and phases
 
@@ -867,7 +881,11 @@ project's own measurements decide (R7).
     the builder's, recorded as such.
   - It ends with the **phase cut**: phases in build order, each an
     independently verifiable slice with acceptance criteria written as
-    scenarios. Those criteria are the test list (R33).
+    scenarios. Those criteria are the test list (R33). The sections stay
+    by area, ruled by the person 2026-10-15; for each phase the cut lists
+    its scenarios, the sections it draws on and what it relies on from
+    earlier phases, so a phase goes straight into the tracker and whoever
+    writes its tasks reads those sections whole, never the whole spec.
   - Each invariant names the hard check that enforces it where one can
     (R34).
   - Canonical assets are linked from it: the builder cannot build a design
@@ -1336,9 +1354,10 @@ each call on a page that day.
     reads the whole stream; a saved copy of the current state is kept
     beside it only if reads slow, and the stream is never trimmed.
   - **The ledger is an event stream, and everything read from it is a
-    projection**, agreed in outline by the person 2026-10-14 and being
-    tested on real slices of Fumi and Switchboard (`walks/ledger-test/`).
-    Five kinds of event: asked (a question goes on a topic's map), found
+    projection**, agreed by the person 2026-10-14, tested on real slices
+    of Fumi and Switchboard (`walks/ledger-test/`), and made a principle
+    2026-10-15 (R45). Five kinds of event, each with its own schema:
+    asked (a question goes on a topic's map), found
     (a fact and how it is known), decided (an answer to a question: who,
     why, what it rules out, what it relies on), replaced (a new answer,
     naming the old and one of the four reasons), still holds (a topic
@@ -2275,14 +2294,25 @@ person, one item at a time; the sections above hold the detail.
   task, closing each phase and the review phase; every review two
   independent Opus medium reviewers, never high, never another model;
   implementers at Opus medium; a finding serious unless the report names
-  the edge-list item it needs; the notes for later hold improvements only;
-  comments never the standard, a wrong one fixed without a finding; fixes
-  reviewed by the layer above (R16, Reviews in the build).
+  the edge-list item it needs; the notes for later hold what lies outside
+  the task; comments never the standard, a wrong one fixed without a
+  finding; the task loop — every finding but a nit back to the same
+  implementer, the changed task reviewed whole by the pair until a round
+  passes, no count; a nit fixed there and then with no round; a failed
+  review met as a senior engineer would, between keeping fixes small and
+  starting again; disagreeing reviewers reconciled by the implementer,
+  the orchestrator taking only the verdict; a phase's fixes reviewed by
+  the review phase; a build in auto or step (R15, R16, R40, Reviews in
+  the build).
 - The epic menu (2026-10-15, R17): the phase named at the top; what waits
   on the person first; topics by what they need, each with its progress;
   no spec row until every topic is decided; changing the map through
   discovery; cancelling moves mail to the inbox; "dead end" goes; drawn in
   the existing design system.
+- Event-sourced, for engineers (2026-10-15, R45): typed events on
+  immutable streams, every view a projection; the spec's sections by
+  area, the phase cut naming each phase's scenarios, sections and what it
+  relies on (R14).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Bugfix (R20): find out how comparable tools handle it before leaning;
@@ -2531,22 +2561,35 @@ an epic), which opened what stores what. Resolve each, then climb:
       back to the same implementer with both reports, and changed code is
       reviewed again, whole, by the pair, until a round passes with
       nothing serious and no bug; there is no count. A round with only
-      nits passes, its nits fixed as the task lands and read by the phase
-      review. A task stops looping only when a finding it already fixed
+      nits passes. A nit is mechanical with no ripple — a comment, a
+      name, a test's wording — and is fixed there and then, with no trip
+      back through the loop and no review round, so the tasks after it
+      build on the fixed code; the phase review reads it. A task stops looping only when a finding it already fixed
       comes back, and then parks with a report while the rest of the build
       runs. A task is reviewed whole; the phase review and the review
       phase split a large change by area, as Switchboard's release review
       did.
     - **A failed review is met as a senior engineer would**, ruled by the
-      person 2026-10-15: the implementer stops and asks whether its
-      approach was right, whether the finding is the symptom of a deeper
-      fault, and whether a fix will cause more problems, then fixes the
-      fault so it fits the design, the architecture and the data model,
-      never a patch on the place the reviewer named. The reviewer reviews
-      the task as a professional would, never one small thing.
-      Switchboard's #106 ran 12 rounds where each fix covered only the
-      places named and the orchestrator's fix briefs said "keep fixes
-      small". Where the two reviewers disagree, or the implementer rejects
+      person 2026-10-15 and placed that evening between two extremes. One
+      is Switchboard's: #106 ran 12 rounds where each fix covered only
+      the places named and the orchestrator's fix briefs said "keep fixes
+      small", leaving ripples unchecked. The other is starting again: a
+      sound build reworked breeds variations, the variations raise
+      decisions, and the build stops for the person. The starting point
+      is that the work stands — the decisions are made, the spec written,
+      the plan made — and a finding is often a plain oversight. The
+      implementer weighs each finding professionally: its cause, whether
+      it is the symptom of a deeper fault, and the right fix, which is
+      often the simple one; where its design and its build hold, it
+      stands by them. Whatever the fix's size, before it lands the
+      implementer checks the edge cases around it and whether it disturbs
+      the design, the architecture, the data model, the plan, later
+      phases' plans, or the considerations behind any decision. A gap it
+      finds beyond the task goes to the notes for later or through the ask
+      rule. The reviewer reviews the task as a professional would, never
+      one small thing. Every implementer and reviewer brief carries this,
+      so each agent is equipped to do the job well and pushed to neither
+      extreme. Where the two reviewers disagree, or the implementer rejects
       a finding, the implementer decides against the brief and the design
       and says why; the next round reads the whole task again, so a
       wrongly rejected finding comes back, and a product question in it
@@ -2561,14 +2604,17 @@ an epic), which opened what stores what. Resolve each, then climb:
       usual miss was calling a combination of ordinary-use parts an edge.
     - **The target is product quality against cost and time** (the person,
       2026-10-15): no serious bugs, real bugs that are not serious fixed
-      too, nits fixed or banked. A finding is one of three: serious; a
-      real bug that is not serious; a nit. The first two go through the
-      task loop; a nit is fixed if trivial, else banked.
-    - **The notes for later hold improvements only** (R15), ruled by the
-      person 2026-10-15: a wrong result in what the work does is always a
-      finding, even when its fix reaches beyond the task. In the replay
-      known serious defects went under For later 18 times and were raised
-      as findings 10 times. Banked nits and improvements are grouped at
+      too, nits fixed as they are found. A finding is one of three:
+      serious; a real bug that is not serious; a nit. The first two go
+      through the task loop; a nit is fixed in the moment and never kept
+      for the phase's end, where the code built on it since could make
+      the fix wrong or harder (the person, 2026-10-15).
+    - **The notes for later hold what lies outside the task** (R15),
+      ruled by the person 2026-10-15: improvements, and holes and edge
+      cases beyond the task's boundary. A wrong result in what the task's
+      work does is always a finding, even when its fix reaches beyond the
+      task. In the replay known serious defects went under For later 18
+      times and were raised as findings 10 times. The notes are grouped at
       the phase's end, de-duplicated and written as tasks, built in the
       same loop with their reviews, so a gap a reviewer saw never falls
       between scopes.
