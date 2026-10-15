@@ -853,10 +853,10 @@ project's own measurements decide (R7).
   reasoning step: decisions into a coherent spec, then tasks, then code.
   Walked with the person 2026-10-13; 138 of their answers at spec gates
   across Portal, Tick, agntc and Mint, sign-off a yes 13 of 13.
-  - Topics are grouped into buildable units, as today (the grouping now
-    runs in the epic menu; one spec for the whole work unit is under
-    discussion, Open: One build across an epic), and the spec is assembled from their records —
-    assembly, not archaeology. Today Claude extracts exhaustively from the
+  - One spec per work unit, ruled by the person 2026-10-14 (Open: the
+    epic as a whole): no grouping step; the spec is written in sections by
+    area, each assembled from its topics' records — assembly, not
+    archaeology. Today Claude extracts exhaustively from the
     discussion documents, a gate per topic, with tracking files proving
     each source item incorporated.
   - **Every statement traces to an entry**: it cites the ledger entry it
@@ -1151,20 +1151,39 @@ project's own measurements decide (R7).
   - **What waits on the person first** — an authority gate (start this work, approve the
     map, decided, ready to build, finish), a builder's question raised mid-phase,
     verdicts waiting (R23) — each with its door.
+  - **The phase heads the screen**, ruled by the person 2026-10-15, in
+    their words: "decision phase, everything gets done. We don't move out
+    of that phase until everything's finished. There is no menu for spec,
+    for example, until everything's done."
   - **Topics by what they need.** A topic in decision shows its progress
-    through its map; decided, in session, mail waiting and experiments
-    waiting stay. A build unit shows specification, phase N of M, final review, in
-    place of the plan rows.
+    through its map ("5 of 9 decided"); decided, in session, mail waiting
+    and experiments waiting stay. Starting a topic is "Start", with no
+    routing (R10). Once every topic is decided the menu offers the spec,
+    then shows the build's phase N of M, then the review, in place of the
+    plan rows; no spec or ready-to-build row shows while any topic is
+    undecided.
   - The recommended row first, in the foundations-first order (R41); a
     topic in session elsewhere stays struck, so several open at once.
-  - Grouping, discovery and back on the face; cancel, postpone,
-    reactivate, pull forward, resume a completed topic and a new topic
-    behind one door.
-  - Gone: everything that kept research apart from discussion and
-    everything about planning; the soft gates that remain become learned;
-    decision named throughout. Cancelling a topic moves its waiting mail to
-    the inbox; "dead end" goes — a topic that ends in not doing it is
+  - **Changing the map is discovery's**, ruled by the person 2026-10-15: a
+    new topic, cancelling, postponing to the roadmap, pulling forward,
+    reactivating and reopening a decided topic all go through the
+    discovery row, which says what it is for. The menu keeps the topics'
+    rows, discovery and back. Never picked from Fumi's menus: the
+    new-topic doors (offered 82 times), grouping (72), resume completed
+    (72), reactivate (37).
+  - Gone: everything that kept research apart from discussion, everything
+    about planning, and grouping (one spec per work unit, Open: the epic
+    as a whole); the soft gates that remain become learned; decision named
+    throughout. Cancelling a topic moves its waiting mail to the inbox
+    (three of Fumi's four cancelled topics show "Cancelled · mail
+    waiting"); "dead end" goes — a topic that ends in not doing it is
     decided with that as its decision, or cancelled.
+  - **Drawn in the engine's existing design system**, the tree, with this
+    content (Claude's call, 2026-10-15). The person: consistency matters
+    more than the form, and they are open to a new one; a new design
+    system would change every surface at once, never one menu. The gate
+    mod shows the rows as buttons, so the screen above them stays a
+    printed message the engine draws.
   - **A specification waits until every topic is decided**, ruled by the
     person 2026-10-12. Grouping reads the records: groups drawn from half
     of them come out differently once the rest are decided, and a topic
@@ -2255,12 +2274,13 @@ person, one item at a time; the sections above hold the detail.
   the edge-list item it needs; the notes for later hold improvements only;
   comments never the standard, a wrong one fixed without a finding; fixes
   reviewed by the layer above (R16, Reviews in the build).
+- The epic menu (2026-10-15, R17): the phase named at the top; what waits
+  on the person first; topics by what they need, each with its progress;
+  no spec row until every topic is decided; changing the map through
+  discovery; cancelling moves mail to the inbox; "dead end" goes; drawn in
+  the existing design system.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- The epic menu (R17): what waits on the person first; topics by what they
-  need; build units by phase; the rarer doors behind one; research and
-  planning items gone; cancelling moves mail to the inbox; "dead end"
-  goes.
 - Bugfix (R20): find out how comparable tools handle it before leaning;
   the spec assembled from the investigation; the first task proves the bug
   failing; the plan, check-in and conclude gates learned.
@@ -2319,8 +2339,8 @@ an epic), which opened what stores what. Resolve each, then climb:
    grouping; an epic too big for one build split on the roadmap; one
    build across the unit, phases overlapping, worktrees and pull
    requests; the review phase across the unit.
-3. **The epic menu** — its layout, mail on cancel, "dead end", redrawn
-   for the above.
+3. ~~The epic menu~~ — walked and ruled 2026-10-15 (R17): its layout,
+   mail on cancel, "dead end", map changes through discovery.
 4. **The remaining settled items** — bugfix (R20), the build (R15).
 5. **The tracking layer** — the start menu, the inbox, the roadmap
    (research in `walks/tracking/01-tracking-today.md`).
