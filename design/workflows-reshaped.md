@@ -2474,6 +2474,19 @@ an epic), which opened what stores what. Resolve each, then climb:
       high with its review, and extra high is reviewed at extra high;
       never max. No data yet on medium implementers or on reviewing a
       level above: a replay on a copy of Switchboard is proposed.
+    - **The target is product quality against cost and time** (the
+      person, 2026-10-15): no serious bugs, real bugs that are not
+      serious fixed too, nits fixed or banked. A finding is one of three:
+      serious (fixed, the whole unit reviewed again); a real bug that is
+      not serious (fixed, the layer above reviews it); a nit (fixed if
+      trivial, else banked). Banked and out-of-scope items are the notes
+      for later (R15): at the phase's end they are grouped, de-duplicated
+      and written as tasks, built in the same loop with their reviews,
+      so a gap a reviewer saw never falls between scopes.
+    - **Defaults with levers:** a default implementer effort and review
+      level, and higher-effort implementer and reviewer agents shipped in
+      the product for Claude to reach for, with guidelines drawn from
+      the measurements.
     - **Fixes are reviewed by the layer above**, never by a round of
       their own: a task's by the phase review, a phase's by the review
       phase; only the review phase's last fixes get a light review before
