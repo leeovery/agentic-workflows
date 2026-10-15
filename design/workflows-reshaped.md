@@ -2447,20 +2447,35 @@ an epic), which opened what stores what. Resolve each, then climb:
     project's setup, like the verify setup. Ideas to take from the
     person's orchestrate skill, proven on Switchboard, without depending
     on it.
-  - **Reviews in the build, under research 2026-10-14:** implementer
-    agents at medium, high and extra high effort (never max, never below
-    medium), retried a level up when the result falls short; reviewers at
-    the same effort or higher; review often and small; a review finding
-    something major means review again, and fixes get at least a light
-    review so fixes add no bugs; whether per task, per phase, per unit
-    or all three; the review phase moving to the end of the epic or
-    feature; our own review agents or Claude Code's built-in code review
-    (heavy on usage). Research: Switchboard's build under orchestrate,
-    the orchestrate skill, and published practice
-    (`walks/build/review-cadence/`); the deep pass the person asked for
-    on 2026-10-14 (`review-cadence/deep/`) labels all 997 findings twice
-    independently and joins them with the build's implementer runs and
-    spend: its analysis is `deep/analysis/report.md`.
+  - **Reviews in the build**, agreed in shape by the person 2026-10-15
+    from Switchboard's measured build (`walks/build/review-cadence/deep/
+    analysis/report.md`: 997 findings, each labelled twice
+    independently):
+    - **Three reviews, each with its own job:** one after each task, one
+      closing each build phase over the phase's whole diff, and the
+      review phase at the end over the whole change against the spec,
+      running the product. Each caught serious bugs the others missed;
+      the whole-change review found 9 after more than 75 per-PR reviews.
+    - **The workflows' own reviewer agent**, fresh, never the agent that
+      wrote the code and never the orchestrator's own read of a diff;
+      never Claude Code's built-in `/code-review`. It reads the diff, the
+      task's criteria, its spec section and the ledger's decided calls,
+      and runs the tests. Built from today's task reviewer and what
+      worked in Switchboard's reviewer brief.
+    - **Every finding** carries a user scenario and a serious-or-not call.
+      Not serious: fixed, no re-review. Serious: fixed, then the whole
+      unit reviewed again at the same level, until a round has nothing
+      serious; still serious after two re-reviews, the cause is fixed
+      instead of a fourth round. A task is reviewed whole; the phase
+      review and the review phase split a large change by area, as
+      Switchboard's release review did.
+    - **Effort:** implementers at medium by default (today's executor),
+      reviewers a level above; a complex task steps up to high or extra
+      high with its review, and extra high is reviewed at extra high;
+      never max. No data yet on medium implementers or on reviewing a
+      level above: a replay on a copy of Switchboard is proposed.
+    - **Open:** a light review over not-serious fixes at task level, or
+      only over the review phase's last fixes; the replay's go.
   - Still to discuss: the review phase across the unit. Pull requests
     prescribed, with a work unit landing as a stack — whether a task is a
     pull request and a phase a stack, or the stack keeps growing across
