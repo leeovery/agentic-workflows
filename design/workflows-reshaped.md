@@ -2248,6 +2248,13 @@ person, one item at a time; the sections above hold the detail.
   straight into the review phase, in an epic too (R16). Following from
   rulings already made: the review phase runs the product ("proven");
   its loop gates become learned (R40). Review is walked.
+- From the build's measurements (2026-10-15): three reviews, after each
+  task, closing each phase and the review phase; every review two
+  independent Opus medium reviewers, never high, never another model;
+  implementers at Opus medium; a finding serious unless the report names
+  the edge-list item it needs; the notes for later hold improvements only;
+  comments never the standard, a wrong one fixed without a finding; fixes
+  reviewed by the layer above (R16, Reviews in the build).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - The epic menu (R17): what waits on the person first; topics by what they
