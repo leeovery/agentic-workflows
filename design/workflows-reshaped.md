@@ -2474,8 +2474,14 @@ an epic), which opened what stores what. Resolve each, then climb:
       high with its review, and extra high is reviewed at extra high;
       never max. No data yet on medium implementers or on reviewing a
       level above: a replay on a copy of Switchboard is proposed.
-    - **Open:** a light review over not-serious fixes at task level, or
-      only over the review phase's last fixes; the replay's go.
+    - **Fixes are reviewed by the layer above**, never by a round of
+      their own: a task's by the phase review, a phase's by the review
+      phase; only the review phase's last fixes get a light review before
+      it seals. Ruled by the person 2026-10-15.
+    - **The replay**, given its go 2026-10-15: Switchboard slices rebuilt
+      at medium, high and extra high on an isolated copy (no remote, every
+      push refused), reviewed blind and checked against each slice's
+      known bugs (`walks/build/replay/`).
   - Still to discuss: the review phase across the unit. Pull requests
     prescribed, with a work unit landing as a stack — whether a task is a
     pull request and a phase a stack, or the stack keeps growing across
