@@ -1055,6 +1055,10 @@ project's own measurements decide (R7).
       when nothing left can proceed without an answer or a phase ends. An
       open question would stall the whole build; a parked task stalls only
       what depends on it;
+    - **any task's account on demand**, the person 2026-10-15: from the
+      mod menu at any time, for any task however long ago, its
+      description, a technical account Claude writes, and diagrams; in
+      step they stay on each task's gate, as today. Its surface is open;
     - when nothing can proceed, the build stops with a report: what was
       built, what waits on the person and why, what runs after the answer.
       Danger and the authority gates stop what depends on them in every
@@ -1074,8 +1078,8 @@ project's own measurements decide (R7).
   sets off are in Reviews in the build (Open). Switchboard is the evidence
   against open-ended rounds: a reviewer reading code returns a full list
   every time, and the bugs that mattered were found by running the
-  product. A reading round runs again only on a serious finding, the whole
-  unit at most twice; extra assurance otherwise goes into verification
+  product. Changed code is read again until the pair passes it (the task
+  loop, Reviews in the build); extra assurance otherwise goes into verification
   (strand C) and, for slices where a subtle bug passes the tests (time,
   concurrency), tests aimed at that risk.
 
@@ -2027,17 +2031,17 @@ think is a good sign."
     (analysis cycles, per-task approval, their re-review) go with the
     loops; decision's reviews stay (R11) and their gates are learned like
     any other.
-  - **A phase runs in one of three positions**, set once and switchable
-    at any time — the person's idea, approved 2026-10-12: learned, the
-    default (above); auto, where every process gate passes for the rest
-    of the phase; step, where every process gate stops (Folio, where the
-    person reviews and tests the work as it lands). A switch is stated
-    intent, recorded in the trust log (R25), and outranks the learned
-    counts; Folio shows one gate answered differently by purpose, which
-    counts alone would blur. In every position the authority gates and
-    danger questions (R24) stop. Where a gate offers auto, the person
-    takes it at the first chance (task approval 32 of 36, task gate 20 of
-    24, fix gate 15 of 22).
+  - **A phase runs auto or step**, ruled by the person 2026-10-15,
+    replacing three positions: auto, the default, where process gates are
+    learned and the ask rule decides, the person bothered only when it
+    judges they would want to be, the way Claude Code's auto mode
+    classifies; and step, where every process gate stops (Folio, where the
+    person reviews and tests the work as it lands). Today's bounded mode
+    and the separate learned position go. The build's is chosen once at
+    ready to build, auto by default, then hands off; any phase's is
+    switchable at any time. A switch is stated intent, recorded in the
+    trust log (R25), and outranks the learned counts. In both positions
+    the authority gates and danger questions (R24) stop.
 - **R41 — Foundations first.** Discovery orders the map's topics by what
   depends on what, and research whose results other topics rest on comes
   first. The reason is the cone (R24): the topics everything rests on are
@@ -2522,13 +2526,33 @@ an epic), which opened what stores what. Resolve each, then climb:
       on serious, would rarely turn. Outside models such as DeepSeek are
       not used (the person: "That's just adding complications, isn't
       it?").
-    - **Every finding** carries a user scenario and a serious-or-not call.
-      Not serious: fixed, no re-review. Serious: fixed, then the whole
-      unit reviewed again by the pair, until a round has nothing serious;
-      still serious after two re-reviews, the cause is fixed instead of a
-      fourth round. A task is reviewed whole; the phase review and the
-      review phase split a large change by area, as Switchboard's release
-      review did.
+    - **The task loop**, ruled by the person 2026-10-15. Every finding
+      carries a user scenario and a call. Every finding but a nit goes
+      back to the same implementer with both reports, and changed code is
+      reviewed again, whole, by the pair, until a round passes with
+      nothing serious and no bug; there is no count. A round with only
+      nits passes, its nits fixed as the task lands and read by the phase
+      review. A task stops looping only when a finding it already fixed
+      comes back, and then parks with a report while the rest of the build
+      runs. A task is reviewed whole; the phase review and the review
+      phase split a large change by area, as Switchboard's release review
+      did.
+    - **A failed review is met as a senior engineer would**, ruled by the
+      person 2026-10-15: the implementer stops and asks whether its
+      approach was right, whether the finding is the symptom of a deeper
+      fault, and whether a fix will cause more problems, then fixes the
+      fault so it fits the design, the architecture and the data model,
+      never a patch on the place the reviewer named. The reviewer reviews
+      the task as a professional would, never one small thing.
+      Switchboard's #106 ran 12 rounds where each fix covered only the
+      places named and the orchestrator's fix briefs said "keep fixes
+      small". Where the two reviewers disagree, or the implementer rejects
+      a finding, the implementer decides against the brief and the design
+      and says why; the next round reads the whole task again, so a
+      wrongly rejected finding comes back, and a product question in it
+      goes through the ask rule. The orchestrator takes only the verdict,
+      never the reports. The workflows own both briefs and keep improving
+      them: the implementer and reviewer work as a team.
     - **The serious call**, ruled by the person 2026-10-15: a finding is
       serious unless its scenario needs an item from the edge list and the
       report names that item. A scenario built only from ordinary use is
@@ -2537,10 +2561,9 @@ an epic), which opened what stores what. Resolve each, then climb:
       usual miss was calling a combination of ordinary-use parts an edge.
     - **The target is product quality against cost and time** (the person,
       2026-10-15): no serious bugs, real bugs that are not serious fixed
-      too, nits fixed or banked. A finding is one of three: serious
-      (fixed, the whole unit reviewed again); a real bug that is not
-      serious (fixed, the layer above reviews it); a nit (fixed if
-      trivial, else banked).
+      too, nits fixed or banked. A finding is one of three: serious; a
+      real bug that is not serious; a nit. The first two go through the
+      task loop; a nit is fixed if trivial, else banked.
     - **The notes for later hold improvements only** (R15), ruled by the
       person 2026-10-15: a wrong result in what the work does is always a
       finding, even when its fix reaches beyond the task. In the replay
@@ -2561,7 +2584,7 @@ an epic), which opened what stores what. Resolve each, then climb:
       and two reviews took a correct comment for a stale one and the
       defect for the intended behaviour.
     - **Fixes are reviewed by the layer above**, never by a round of their
-      own: a task's by the phase review, a phase's by the review phase;
+      own: a task's by its pair (the task loop), a phase's by the review phase;
       only the review phase's last fixes get a light review before it
       seals. Ruled by the person 2026-10-15.
     - **The replay**, run 2026-10-15 (`walks/build/replay/`; results page
