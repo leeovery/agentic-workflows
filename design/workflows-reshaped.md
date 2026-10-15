@@ -1065,17 +1065,19 @@ project's own measurements decide (R7).
 
 ### Review
 
-- **R16 — Review layers go from five to two.** The phase review (R15) and a
-  final review: the whole change-set against the spec's intent by
-  independent agents, with the ledger read as a whole for calls that
-  looked fine one phase at a time and are wrong in combination. The
-  per-task reviewer goes only after a measured comparison on a real phase:
-  one phase run with the phase review alone, and what it catches compared.
-  Switchboard is the evidence against rounds: a reviewer reading code
-  returns a full list every time, and the bugs that mattered were found by
-  running the product. Extra assurance goes into verification (strand C)
-  and, for slices where a subtle bug passes the tests (time, concurrency),
-  tests aimed at that risk — never another reading round.
+- **R16 — Review layers go from five to three.** A review after each task,
+  the phase review (R15), and a final review: the whole change-set against
+  the spec's intent by independent agents, with the ledger read as a whole
+  for calls that looked fine one phase at a time and are wrong in
+  combination. Each finds serious bugs the others miss (Switchboard's
+  measured build); who reviews, how a finding is called and what each kind
+  sets off are in Reviews in the build (Open). Switchboard is the evidence
+  against open-ended rounds: a reviewer reading code returns a full list
+  every time, and the bugs that mattered were found by running the
+  product. A reading round runs again only on a serious finding, the whole
+  unit at most twice; extra assurance otherwise goes into verification
+  (strand C) and, for slices where a subtle bug passes the tests (time,
+  concurrency), tests aimed at that risk.
 
   Walked on 2026-10-12. Today's five layers are the per-task reviewer, the
   phase consolidation finder, the analysis loop's three agents until all
@@ -2288,7 +2290,7 @@ agents report — or one file per event), and how several builds running
 at once merge the ledger and the knowledge base (merge helpers wired in
 through git attributes, say); where the phase cut lives on
 disk and how a tracker shows a phase not yet written; how project skills
-reach the builder (R34); the per-task reviewer measurement (R16); whether
+reach the builder (R34); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
 labeller (unreachable here).
 
@@ -2449,58 +2451,110 @@ an epic), which opened what stores what. Resolve each, then climb:
     on it.
   - **Reviews in the build**, agreed in shape by the person 2026-10-15
     from Switchboard's measured build (`walks/build/review-cadence/deep/
-    analysis/report.md`: 997 findings, each labelled twice
-    independently):
+    analysis/report.md`: 997 findings, each labelled twice independently),
+    its rules ruled the same day from the effort replay below. Every
+    study, its results and these rulings are indexed in
+    `walks/build/README.md`:
     - **Three reviews, each with its own job:** one after each task, one
-      closing each build phase over the phase's whole diff, and the
-      review phase at the end over the whole change against the spec,
-      running the product. Each caught serious bugs the others missed;
-      the whole-change review found 9 after more than 75 per-PR reviews.
+      closing each build phase over the phase's whole diff, and the review
+      phase at the end over the whole change against the spec, running the
+      product. Each caught serious bugs the others missed; the
+      whole-change review found 9 after more than 75 per-PR reviews.
     - **The workflows' own reviewer agent**, fresh, never the agent that
       wrote the code and never the orchestrator's own read of a diff;
       never Claude Code's built-in `/code-review`. It reads the diff, the
       task's criteria, its spec section and the ledger's decided calls,
-      and runs the tests. Built from today's task reviewer and what
-      worked in Switchboard's reviewer brief.
+      and runs the tests. Built from today's task reviewer and what worked
+      in Switchboard's reviewer brief.
+    - **Two reviewers, Opus at medium**, ruled by the person 2026-10-15:
+      every review is two independent reviewer agents run side by side,
+      both Opus at medium effort, never high and never max; the same pair
+      reviews again after a serious finding. One review is a sample: of 21
+      known serious defects in the replay's first builds, one medium
+      review of each first build raised 4 of them and, run again, 5, the
+      two runs sharing one; together they raised 8, as many as a medium
+      and an extra-high review together at 55% of the cost. High raised
+      none in either run and put 9 under For later both times. Measured on
+      first builds of task-sized slices; the pair's re-reviews are an
+      extension of that data.
+    - **Implementers at Opus medium**, ruled by the person 2026-10-15.
+      Extra-high builds cost twice what medium builds did and carried the
+      same known defects; what medium leaves behind is caught by the two
+      reviewers. Higher-effort implementer agents stay in the product for
+      Claude to reach for, with guidelines drawn from the measurements;
+      reviewers have no level above medium.
+    - **No other reviewer model**, ruled by the person 2026-10-15. Two
+      Sonnet reviews raised 9 of the 21 known serious defects against two
+      Opus medium reviews' 8, for a third of the cost, but 19 of the 128
+      known defects against 27; they ran code for a quarter of their
+      findings against about half, and called a known serious defect
+      serious 2 of the 11 times they raised one, so the loop, which runs
+      on serious, would rarely turn. Outside models such as DeepSeek are
+      not used (the person: "That's just adding complications, isn't
+      it?").
     - **Every finding** carries a user scenario and a serious-or-not call.
       Not serious: fixed, no re-review. Serious: fixed, then the whole
-      unit reviewed again at the same level, until a round has nothing
-      serious; still serious after two re-reviews, the cause is fixed
-      instead of a fourth round. A task is reviewed whole; the phase
-      review and the review phase split a large change by area, as
-      Switchboard's release review did.
-    - **Effort:** implementers at medium by default (today's executor),
-      reviewers a level above; a complex task steps up to high or extra
-      high with its review, and extra high is reviewed at extra high;
-      never max. No data yet on medium implementers or on reviewing a
-      level above: a replay on a copy of Switchboard is proposed.
-    - **The target is product quality against cost and time** (the
-      person, 2026-10-15): no serious bugs, real bugs that are not
-      serious fixed too, nits fixed or banked. A finding is one of three:
-      serious (fixed, the whole unit reviewed again); a real bug that is
-      not serious (fixed, the layer above reviews it); a nit (fixed if
-      trivial, else banked). Banked and out-of-scope items are the notes
-      for later (R15): at the phase's end they are grouped, de-duplicated
-      and written as tasks, built in the same loop with their reviews,
-      so a gap a reviewer saw never falls between scopes.
-    - **Defaults with levers:** a default implementer effort and review
-      level, and higher-effort implementer and reviewer agents shipped in
-      the product for Claude to reach for, with guidelines drawn from
-      the measurements.
-    - **Fixes are reviewed by the layer above**, never by a round of
-      their own: a task's by the phase review, a phase's by the review
-      phase; only the review phase's last fixes get a light review before
-      it seals. Ruled by the person 2026-10-15.
-    - **The replay**, given its go 2026-10-15: Switchboard slices rebuilt
-      at medium, high and extra high on an isolated copy (no remote, every
-      push refused), reviewed blind and checked against each slice's
-      known bugs (`walks/build/replay/`).
+      unit reviewed again by the pair, until a round has nothing serious;
+      still serious after two re-reviews, the cause is fixed instead of a
+      fourth round. A task is reviewed whole; the phase review and the
+      review phase split a large change by area, as Switchboard's release
+      review did.
+    - **The serious call**, ruled by the person 2026-10-15: a finding is
+      serious unless its scenario needs an item from the edge list and the
+      report names that item. A scenario built only from ordinary use is
+      serious, however many of its parts combine. Reviewers in the replay
+      called 17 of 49 serious defects serious and over-called none; the
+      usual miss was calling a combination of ordinary-use parts an edge.
+    - **The target is product quality against cost and time** (the person,
+      2026-10-15): no serious bugs, real bugs that are not serious fixed
+      too, nits fixed or banked. A finding is one of three: serious
+      (fixed, the whole unit reviewed again); a real bug that is not
+      serious (fixed, the layer above reviews it); a nit (fixed if
+      trivial, else banked).
+    - **The notes for later hold improvements only** (R15), ruled by the
+      person 2026-10-15: a wrong result in what the work does is always a
+      finding, even when its fix reaches beyond the task. In the replay
+      known serious defects went under For later 18 times and were raised
+      as findings 10 times. Banked nits and improvements are grouped at
+      the phase's end, de-duplicated and written as tasks, built in the
+      same loop with their reviews, so a gap a reviewer saw never falls
+      between scopes.
+    - **Comments are never the standard**, ruled by the person 2026-10-15:
+      the reviewer judges code against the brief and the design, never
+      against its comments. Where a comment and the code disagree and the
+      code matches the brief, the comment is adjusted; where the comment
+      is right and the code wrong, the brief and the design show it; where
+      they don't settle it, it is a decision. A wrong comment is not a
+      finding and starts no review: the reviewer may point it out, and the
+      builder or the orchestrator fixes it in the task in flight. In the
+      replay a tenth of all findings were about comments, every one a nit,
+      and two reviews took a correct comment for a stale one and the
+      defect for the intended behaviour.
+    - **Fixes are reviewed by the layer above**, never by a round of their
+      own: a task's by the phase review, a phase's by the review phase;
+      only the review phase's last fixes get a light review before it
+      seals. Ruled by the person 2026-10-15.
+    - **The replay**, run 2026-10-15 (`walks/build/replay/`; results page
+      https://claude.ai/artifact/97Trj3Wi35bULh3AgEfMNd): six Switchboard
+      slices rebuilt from their original briefs at medium, high and extra
+      high on an isolated copy (no remote, every push refused), each
+      through the loop and a final extra-high audit; every first build
+      reviewed blind once at each level, the medium and high reviews run a
+      second time, and two Sonnet reviews of each; every review matched
+      and labelled blind, twice, against the slice's known bugs. 264
+      agents, $606 at API prices.
   - Still to discuss: the review phase across the unit. Pull requests
     prescribed, with a work unit landing as a stack — whether a task is a
     pull request and a phase a stack, or the stack keeps growing across
     phases — raised by the person 2026-10-14 for later; the workflows
     would carry their own stack instructions, since GitHub's are not on
     every system.
+  - Still to discuss, raised by the person 2026-10-15: **brief control**.
+    Briefs are fixed at the workflow level; any addition the orchestrator
+    makes to a subagent's brief needs a strict prescription, since Claude
+    telling a reviewer what to look for poisons the review. **Brief
+    quality** is proposed as the next measurement: the same implementer
+    and reviewers on a thin brief against a full one.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
@@ -2572,4 +2626,3 @@ an epic), which opened what stores what. Resolve each, then climb:
 - **Where the phase cut lives on disk,** and how today's plan formats carry
   per-phase task writing.
 - **How project skills reach the builder** (R34).
-- **The per-task reviewer measurement** (R16).
