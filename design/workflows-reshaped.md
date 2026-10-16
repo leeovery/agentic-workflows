@@ -1326,9 +1326,9 @@ project's own measurements decide (R7).
     on today's epic rows becomes mail waiting); the glossary says so. The
     list shows items by kind, each with its age. When the person picks
     items, Claude names others that fit with them, and the person adjusts
-    the set by saying so — today's add, drop and view rows were never
-    pressed, and the person asked in words whether others fit (Portal
-    2026-10-01, agntc 2026-10-05). Three outcomes and back, keyed by
+    the set with c change (below) — today's add, drop and view rows
+    were never pressed, and the person asked in words whether others fit
+    (Portal 2026-10-01, agntc 2026-10-05). Three outcomes and back, keyed by
     their words: w work them now, as one unit through discovery; r put
     them on the roadmap, on a horizon the person has named, bugs and
     quick-fixes included — Claude never names a horizon (Fumi's
@@ -1358,6 +1358,27 @@ project's own measurements decide (R7).
       that" (Portal 2026-09-17).
     - **The home shows each item on one line** with its kind and where it
       came from; its summary shows when picked or asked for.
+    - **Its menu is explicit rows**, ruled by the person 2026-10-16: w
+      work, n new (Claude asks what and which horizon), m move, a
+      archive, p plan the product (discovery at the product level, R10:
+      the one row that is a conversation, named for what it does), h
+      help, b back. Today's "converse" row went: with the gate mod every
+      row is a button, and a button that only says "talk" still leaves
+      the person to say what they meant.
+  - **Menus are explicit and keyed alike**, ruled by the person
+    2026-10-16, for consistency across the workflows' output: anything
+    with a fixed shape is its own row, and typing stays open at any menu
+    for a question. The same action keeps the same key on every menu (a
+    archive, w work, b back). Triage gains c change (which items the set
+    holds; Claude asks which), so its menu is w work, r roadmap, a
+    archive, c change, h help, b back.
+  - **Every menu screen has h help**, the person's addition 2026-10-16:
+    a few lines on what this screen is for and what each row does — what
+    discovery, the roadmap or triage is, where the screen needs it — then
+    an invitation to ask about anything else. Help is always one press
+    away rather than something the person has to know they can ask for.
+    The start menu's help opens the same, with the full walkthrough
+    reached from it.
 
 ### Work types
 
@@ -2522,6 +2543,9 @@ person, one item at a time; the sections above hold the detail.
 - Triage (2026-10-16, R17): "Triage the inbox" on the start menu; Claude
   names items that fit; w work, r roadmap, a archive, b back; Claude never
   names a horizon.
+- The roadmap (2026-10-16, R17): roadmapping one step from anywhere, the
+  horizon always the person's; work through discovery, any type; one line
+  per item. Menus explicit and keyed alike, every menu with h help.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2584,8 +2608,9 @@ an epic), which opened what stores what. Resolve each, then climb:
    R15): bugfix steps back before fix options, writes the common spec,
    proves the bug by a check, its routine gates follow the position; the
    build's doors, dependencies and what it prints.
-5. **The tracking layer** — the start menu, the inbox, the roadmap
-   (research in `walks/tracking/01-tracking-today.md`).
+5. ~~The tracking layer~~ — walked and ruled 2026-10-16 (R17): the start
+   menu, the inbox kept true, triage, the roadmap, explicit menus with
+   help (research in `walks/tracking/01-tracking-today.md`).
 6. Mailboxes, feature and cross-cutting.
 7. **Migrating existing projects** (R37–R39), revisited against everything
    changed since, with directives for what only judgement can carry over;
