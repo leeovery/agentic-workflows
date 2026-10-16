@@ -481,8 +481,8 @@ project's own measurements decide (R7).
     starts and talks; the conversation finds its level and moves between
     levels as it goes (the pivots run both ways). The type call comes down
     to five: the product across time (the roadmap, where nothing is
-    created until an item is pulled, and the pull makes an epic or a
-    feature), building something in one topic (feature) or several
+    created until an item is pulled, and the pull goes through discovery
+    to whatever type the work is, R17), building something in one topic (feature) or several
     (epic), defining a pattern or principle (cross-cutting), fixing
     something broken (bugfix), a small known change (quick-fix). A
     separate product-level phase was considered and rejected: it would
@@ -1336,6 +1336,28 @@ project's own measurements decide (R7).
     person, 2026-10-09: "Those items then get triaged. Either they get
     archived … or they get put on the roadmap", and "I could group a
     couple of bugs and roll straight into work with them."
+  - **The roadmap**, ruled by the person 2026-10-16, who holds it the way
+    forward though little used yet (14 items in 4 projects, all parked;
+    never a pull, a move from the inbox, a harvest or a product
+    session):
+    - **Roadmapping is one step from anywhere**: "roadmap it" puts the
+      item on a horizon and reports it in one line, without opening the
+      roadmap (Folio 2026-09-21: "I told you to roadmap it … without
+      invoking the whole ceremony"). The horizon is always the person's:
+      named in their words, or asked — even when only one horizon exists,
+      since the one there may be the backlog when the person wants the
+      item next, in a horizon they would name. Claude never names one.
+    - **Starting work from the roadmap goes through discovery**, as Start
+      and triage's work do, the picked items its seeds; discovery finds
+      the type, any type, quick-fixes included (the person, 2026-10-09:
+      "You can pull through multiple quick fixes"), replacing R10's "the
+      pull makes an epic or a feature" and today's pull, which creates the
+      unit itself and skips the opener. An item can also join an epic in
+      progress as a new topic, through that epic's discovery (R17's map
+      changes), answering the person's "Do I need an existing epic to do
+      that" (Portal 2026-09-17).
+    - **The home shows each item on one line** with its kind and where it
+      came from; its summary shows when picked or asked for.
 
 ### Work types
 
