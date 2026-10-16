@@ -1282,9 +1282,22 @@ project's own measurements decide (R7).
     at a time in April, May and October — and every investigation that
     named the premise stayed a bugfix.
 
-  Settled with them: before leaning on a fix direction, Claude finds out
-  how comparable tools handle the problem (the person had to ask how other
-  tmux plugins save state); the specification is assembled from the
+  - **Before setting out fix options, Claude steps back from the bug**,
+    ruled by the person 2026-10-16, with the same stance as a failed
+    review in the build (Reviews in the build): is the bug there because
+    the implementation was wrong, or was it right and an edge case has
+    turned up; is there another way to do it, a different abstraction or
+    mechanism, that higher-level thinking reveals. The options show what
+    that found. It replaces a proposed step of finding out how comparable
+    tools handle the problem, which the person rejected as specific to
+    one case: the workflows handle any work, so the rule is the general
+    one (R2), and looking at other tools is one way Claude may reach for
+    it. On Portal's kill-all case the person asked "How do the other tmux
+    plugins which save state handle this?" because they sensed there had
+    to be another mechanism; the direction chosen after it combined the
+    first two options.
+
+  Settled with them: the specification is assembled from the
   investigation — root cause, the fix, the rules it keeps with their
   checks, the phase cut — with one review pass and ready to build from an
   outline; the first task runs a test on the unfixed code and records it
@@ -2338,10 +2351,12 @@ person, one item at a time; the sections above hold the detail.
 - The review phase across a unit (2026-10-16, R15, R16): split by the
   spec's areas, each read by a pair; seams between phases read at each
   phase review; after fixes, only the areas they changed read again.
+- Bugfix (2026-10-16, R20): before fix options, Claude steps back — was
+  the implementation wrong or an edge case found, is there another way —
+  never a case-specific step such as looking at comparable tools.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Bugfix (R20): find out how comparable tools handle it before leaning;
-  the spec assembled from the investigation; the first task proves the bug
+- Bugfix (R20): the spec assembled from the investigation; the first task proves the bug
   failing; the plan, check-in and conclude gates learned.
 - The build (R15): one verb per door, a door for the agent writing a task;
   the commit door checks for a task and refuses a raw commit; dependencies
