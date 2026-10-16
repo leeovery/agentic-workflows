@@ -836,13 +836,17 @@ project's own measurements decide (R7).
   discussion merged, a topic has one mailbox, so the choice of which
   phase a message lands in goes. What changes is the ceremony of
   answering:
-  - the report after a send ends with one command that opens the target
-    topic directly on that message, to run in another pane or later. None
-    exists today: the report says only where the message landed. The
-    engine already composes a continuation for its handoff, but phase
+  - **the start skill takes an optional work unit and topic**, ruled by
+    the person 2026-10-16: `/workflow-start {work unit} {topic}` opens
+    that topic directly, as picking it through the menus would, and a
+    topic that opens with mail waiting raises the mail first. Every send's
+    report ends with that command for the target, to paste in another
+    pane now or use later; without it the menus show mail waiting as
+    today. The command opens any topic by name, not only for mail. None
+    exists today: the report says only where the message landed, phase
     skills cannot be typed as commands and the start skill takes no
-    arguments, so the open needs either a command-line form that starts a
-    session with the continuation or arguments on the start skill;
+    arguments. In Fumi 30 of 157 messages only corrected another topic's
+    stale copy, which the ledger ends (R23);
   - a target already in session raises the message from its loop, as
     today.
 
@@ -2546,13 +2550,13 @@ person, one item at a time; the sections above hold the detail.
 - The roadmap (2026-10-16, R17): roadmapping one step from anywhere, the
   horizon always the person's; work through discovery, any type; one line
   per item. Menus explicit and keyed alike, every menu with h help.
+- Mailboxes (2026-10-16, R13): `/workflow-start {unit} {topic}` opens a
+  topic directly, given at the end of every send; waiting mail raised first.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
 
 **Shape only — agreed in outline, never walked in detail:**
-- Mailboxes (R13): the one-command open needs a command-line form or
-  arguments on the start skill.
 - Feature (R19) and cross-cutting (R22).
 - The deterministic core (R35): which verbs, the layout hook, the
   checklists.
