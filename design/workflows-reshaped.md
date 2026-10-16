@@ -1277,6 +1277,27 @@ project's own measurements decide (R7).
     postponed, and postponing a topic to the roadmap is how an epic moves
     on without it. Rejected: grouping a decided subset early — Fumi's
     decided topics were reopened up to 10 times by later ones.
+  - **The start menu**, ruled by the person 2026-10-16 after a before and
+    after drawn over Portal's real records. It lists work units; the
+    person steps into one before picking anything in it. Each unit's row
+    shows its type, phase and progress ("decision, 1 of 4 topics
+    decided"; "build, phase 2 of 3"), never its topics, and marks what
+    waits on the person in it as a count ("1 question waiting for you"),
+    those units first; inside, the unit's own menu lists what waits first.
+    No separate waiting section and no row that jumps past the unit,
+    which the person rejected: with several things waiting it repeats
+    each unit's menu. Continue rows name the type first: "Continue epic:
+    Tagging And Filtering", "Continue bugfix: …". One Start row, discovery
+    finding the type as the person talks; the five start-by-type rows go.
+    The inbox is one line with its count by kind, in place of a row per
+    item (30 in Portal). Roadmap, completed and cancelled units, manage and
+    help stay. The verdict queue (R23), which spans units, is a project
+    row beside the inbox and roadmap, shown only while verdicts wait.
+    From 144 answers across 7 projects: 82% continued a unit; start 5 of
+    143, each type row 0 of 143; inbox 13 of 60, roadmap 2 of 26;
+    completed 0 of 53, help 0 of 24, manage 1 of 138. The person,
+    2026-10-13: "I can just start the workflow and use the 'start' option
+    that takes me straight into just talking".
 
 ### Work types
 
@@ -2432,6 +2453,9 @@ person, one item at a time; the sections above hold the detail.
 - What the build prints (2026-10-16, R15): a headline as work starts, one
   block per batch, a product summary per landing, review reports kept
   off the screen and reachable through the task's account.
+- The start menu (2026-10-16, R17): units with type, phase and progress and
+  a count of what waits in each, waiting units first; "Continue epic: …";
+  one Start row; the inbox one counted line; verdicts a project row.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
