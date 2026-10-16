@@ -480,11 +480,12 @@ project's own measurements decide (R7).
   - **One phase, at whatever level the conversation reaches.** The person
     starts and talks; the conversation finds its level and moves between
     levels as it goes (the pivots run both ways). The type call comes down
-    to five: the product across time (the roadmap, where nothing is
+    to four: the product across time (the roadmap, where nothing is
     created until an item is pulled, and the pull goes through discovery
-    to whatever type the work is, R17), building something in one topic (feature) or several
-    (epic), defining a pattern or principle (cross-cutting), fixing
-    something broken (bugfix), a small known change (quick-fix). A
+    to whatever type the work is, R17; principles are talked through
+    here, R22), building something in one topic (feature) or several
+    (epic), fixing something broken (bugfix), a small known change
+    (quick-fix). A
     separate product-level phase was considered and rejected: it would
     make the person name the level before they start. Ruled by the person
     2026-10-13.
@@ -1523,11 +1524,23 @@ project's own measurements decide (R7).
   100 lines; the two with surviving sessions took about 3h20m each over
   three sessions and two handoffs, more than an hour of each build session
   spent waiting at gates that always got the same answer.
-- **R22 — Cross-cutting.** discovery → decision → specification, ending
-  there: a project-level record later topics read. Kept for mature
-  projects; unused so far. A unit promoted from an epic's specification
-  has no discovery log and its moved topics read promoted; the decision
-  phase meets them as they are.
+- **R22 — Cross-cutting goes as a type**, ruled by the person 2026-10-16.
+  Its point was a terminal spec later work reads; the product record
+  (R10) now does that job — product-wide ledger entries every opening
+  view reads — and a spec is the build's working document (R14), which a
+  unit with no build never needs. The person never started one: agntc's
+  one cross-cutting unit (naming-and-identity, a 163-word spec of the
+  name and its forms, cited by three later plans) came from an epic's
+  spec grouping promoting a topic, and grouping goes (R14). A principle
+  is decided where it arises and marked product-wide; one the person
+  wants to talk through on purpose is a product-level conversation (the
+  roadmap's plan the product, R17), logged per session like discovery
+  and the roadmap, its decisions written as product-wide entries — a
+  folder for such conversations can be added if it is ever wanted. A
+  design system or similar convention more often belongs in a project
+  skill or CLAUDE.md, which the workflow sessions pull in anyway (the
+  person). Existing cross-cutting units migrate: their specs become
+  product-wide entries (R37).
 
 ## Strand B — trust
 
@@ -2565,12 +2578,13 @@ person, one item at a time; the sections above hold the detail.
   topic directly, given at the end of every send; waiting mail raised first.
 - Feature (2026-10-16, R19): "Continue feature" goes straight to where it
   stands, bugfix and quick-fix alike; revisiting moves to manage.
+- Cross-cutting goes as a type (2026-10-16, R22): principles decided where
+  they arise or in the product conversation, as product-wide entries.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
 
 **Shape only — agreed in outline, never walked in detail:**
-- Feature (R19) and cross-cutting (R22).
 - The deterministic core (R35): which verbs, the layout hook, the
   checklists.
 - Verification beyond its definition (R31–R34): adequacy by mutation or
@@ -2626,7 +2640,9 @@ an epic), which opened what stores what. Resolve each, then climb:
 5. ~~The tracking layer~~ — walked and ruled 2026-10-16 (R17): the start
    menu, the inbox kept true, triage, the roadmap, explicit menus with
    help (research in `walks/tracking/01-tracking-today.md`).
-6. Mailboxes, feature and cross-cutting.
+6. ~~Mailboxes, feature and cross-cutting~~ — walked and ruled 2026-10-16
+   (R13, R19, R22): a topic opened by `/workflow-start {unit} {topic}`;
+   continuing a linear unit goes straight in; cross-cutting goes.
 7. **Migrating existing projects** (R37–R39), revisited against everything
    changed since, with directives for what only judgement can carry over;
    raised by the person 2026-10-15.
