@@ -1035,7 +1035,8 @@ project's own measurements decide (R7).
     sends the person is raised through an engine gate when it arises,
     mid-phase or at its end, while other tasks run on; the person answers
     when they visit the session and the build carries on.
-  - **No code change without a task.** When something outside the plan
+  - **No code change without a task**, ruled by the person 2026-10-16.
+    When something outside the plan
     turns up — a bug the person reports, a gap the builder finds — Claude
     judges where it goes and it lands through a verb, one per door: a task
     in this phase or a later one, a note for later, a ledger entry (a
@@ -2385,10 +2386,12 @@ person, one item at a time; the sections above hold the detail.
   the bug proven failing on the unfixed code, a check the commit door holds;
   investigation's plan, check-in and conclude gates following the phase's
   position (R40).
+- The build's doors (2026-10-16, R15): no code change without a task, one
+  verb per destination, an agent's find landed by the orchestrator, the
+  commit door refusing a code commit that names no task.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- The build (R15): one verb per door, a door for the agent writing a task;
-  the commit door checks for a task and refuses a raw commit; dependencies
+- The build (R15): dependencies
   per phase; the tracker telling done from not yet written; the transcript
   keeping the story (a headline per start, one block per batch, a product
   summary per landing).
