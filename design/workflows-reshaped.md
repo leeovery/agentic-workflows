@@ -1392,6 +1392,17 @@ project's own measurements decide (R7).
   in decision an epic with one topic: its decision can be the view and
   one answer (R11). Discovery leans one topic (R10); pivot and absorb
   stay.
+  - **"Continue feature: X" goes straight to where it stands**, ruled by
+    the person 2026-10-16: into its current phase, or onto what waits on
+    the person there, with no menu between; the same for bugfix and
+    quick-fix. Today's in-between menu ("Proceed to {phase}" or "Revisit
+    an earlier phase") was "Proceed" 20 of 20 for features and 11 of 11
+    for bugfixes; revisit was never picked. Revisiting moves to manage on
+    the start menu beside pivot, absorb and cancel; in the new shape it
+    is mostly reopening the decision, and a later change to a decision
+    replaces its entry on the ledger (R23). A feature stops for the
+    person at start this work, decided and ready to build (one screen,
+    R14), finish, and what the ask rule sends.
 - **R20 — Bugfix.** discovery → investigation → specification →
   implementation → review. Investigation's rigour stays — symptoms, code
   analysis, root cause before fix — with its procedure loosened like every
@@ -2552,6 +2563,8 @@ person, one item at a time; the sections above hold the detail.
   per item. Menus explicit and keyed alike, every menu with h help.
 - Mailboxes (2026-10-16, R13): `/workflow-start {unit} {topic}` opens a
   topic directly, given at the end of every send; waiting mail raised first.
+- Feature (2026-10-16, R19): "Continue feature" goes straight to where it
+  stands, bugfix and quick-fix alike; revisiting moves to manage.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
