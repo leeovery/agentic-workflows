@@ -1298,6 +1298,27 @@ project's own measurements decide (R7).
     completed 0 of 53, help 0 of 24, manage 1 of 138. The person,
     2026-10-13: "I can just start the workflow and use the 'start' option
     that takes me straight into just talking".
+  - **The inbox stays true**, ruled by the person 2026-10-16:
+    - **A capture commits its own file**, with plain git and a message the
+      capture skill fixes, committing that one path and nothing else
+      staged. The capture skills stay self-contained and know nothing of
+      the engine: a capture is often made from a session in another
+      project ("let's log that as a bug" about Mint while working in
+      Switchboard), and the person will not have engine knowledge poison
+      a context that only logs and moves on. A build's hook lets a commit
+      that touches only the inbox through (R35). Today captures are never
+      committed by the skill; the person asked for them committed three
+      times (Portal 2026-08-16 and 2026-10-05, Mint 2026-07-20).
+    - **Finished work closes the inbox items it resolved**: when a unit
+      finishes, Claude checks the inbox against what was built and
+      archives each item the work resolved through a verb recording the
+      unit that did it; the finish report lists every closure, so nothing
+      is silently discarded (the person, 2026-09-16) and a wrong closure
+      can be reopened. The same verb closes an item fixed straight away
+      ("lets just do the fix now and remove inbox item", Portal
+      2026-10-01). Today 49 items wait, 12 of Portal's over 90 days; the
+      person's triage visits were checks for work already done, and 11
+      items were deleted by hand inside fix commits.
 
 ### Work types
 
@@ -2456,6 +2477,9 @@ person, one item at a time; the sections above hold the detail.
 - The start menu (2026-10-16, R17): units with type, phase and progress and
   a count of what waits in each, waiting units first; "Continue epic: …";
   one Start row; the inbox one counted line; verdicts a project row.
+- The inbox stays true (2026-10-16, R17): a capture commits its own file
+  with plain git, the skills knowing nothing of the engine; finished work
+  closes the items it resolved, each listed in the finish report.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
