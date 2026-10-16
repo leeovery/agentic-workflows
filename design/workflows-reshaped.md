@@ -1319,6 +1319,23 @@ project's own measurements decide (R7).
       2026-10-01). Today 49 items wait, 12 of Portal's over 90 days; the
       person's triage visits were checks for work already done, and 11
       items were deleted by hand inside fix commits.
+  - **Triage**, ruled by the person 2026-10-16. The inbox is where items
+    live; triage is the act, and the start menu's row is "t/triage →
+    Triage the inbox". The word is free since messages between topics
+    became mail (R13), and its last use for mail goes ("triage waiting"
+    on today's epic rows becomes mail waiting); the glossary says so. The
+    list shows items by kind, each with its age. When the person picks
+    items, Claude names others that fit with them, and the person adjusts
+    the set by saying so — today's add, drop and view rows were never
+    pressed, and the person asked in words whether others fit (Portal
+    2026-10-01, agntc 2026-10-05). Three outcomes and back, keyed by
+    their words: w work them now, as one unit through discovery; r put
+    them on the roadmap, on a horizon the person has named, bugs and
+    quick-fixes included — Claude never names a horizon (Fumi's
+    "after-launch" renamed back to "next"); a archive them; b back. The
+    person, 2026-10-09: "Those items then get triaged. Either they get
+    archived … or they get put on the roadmap", and "I could group a
+    couple of bugs and roll straight into work with them."
 
 ### Work types
 
@@ -2480,6 +2497,9 @@ person, one item at a time; the sections above hold the detail.
 - The inbox stays true (2026-10-16, R17): a capture commits its own file
   with plain git, the skills knowing nothing of the engine; finished work
   closes the items it resolved, each listed in the finish report.
+- Triage (2026-10-16, R17): "Triage the inbox" on the start menu; Claude
+  names items that fit; w work, r roadmap, a archive, b back; Claude never
+  names a horizon.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
