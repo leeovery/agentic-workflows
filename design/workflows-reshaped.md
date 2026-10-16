@@ -1038,8 +1038,10 @@ project's own measurements decide (R7).
   - **No code change without a task.** When something outside the plan
     turns up — a bug the person reports, a gap the builder finds — Claude
     judges where it goes and it lands through a verb, one per door: a task
-    in this phase or a later one, a note for the phase review, a spec
-    correction, a message to another topic, the inbox, the roadmap. An
+    in this phase or a later one, a note for later, a ledger entry (a
+    call, or a question for the person through the ask rule — the spec
+    is never corrected, R14), a message to another topic, the inbox, the
+    roadmap. An
     agent writing a task reports a find outside its task and Claude lands
     it; today such a find has no route at all. Today the doors are mostly
     prose plus direct manifest writes and agents (only the topic send and
