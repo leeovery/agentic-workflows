@@ -1054,7 +1054,12 @@ project's own measurements decide (R7).
     the phase review. The machinery around banking (the flag, the deposit
     reference, the separate judge) goes.
   - **One independent phase review** closes each phase: each task's
-    criteria, the phase's coherence, what should be consolidated. Its
+    criteria, the phase's coherence, what should be consolidated, and
+    where the phase meets what it relies on from earlier phases, which
+    the phase cut names (R14) — so a fault between phases is found as the
+    next phase closes, before more is built on it, not at the end. Ruled
+    by the person 2026-10-16 (the person, 2026-10-14: "if you review often
+    and small, it's quicker, cheaper, and you catch issues quicker"). Its
     fixes land before the phase closes.
   - **What the person sees during the build**, agreed 2026-10-12. The
     person's aim: wide collaboration early in the cone, fewer touches as
@@ -1114,11 +1119,28 @@ project's own measurements decide (R7).
   - The final review runs the product wherever the project has a way to;
     what could not be run is reported not proven (R32). A bugfix's test is
     run on the unfixed code and must fail.
+  - **The final review is split by the spec's areas**, ruled by the person
+    2026-10-16, for an epic and every other type alike. The spec is
+    written by area (R14), so each area is a ready slice; each gets the
+    pair every review gets, reading its area and where it meets the
+    others, and running what touches it. The number of areas follows the
+    spec; today's merge down to four sections and a test-surface agent
+    goes. Switchboard's release review ran the same way over four areas
+    and found 9 serious bugs more than 75 PR reviews had missed: a
+    session's model named two ways across views, a cap dated from another
+    window's event where two subsystems meet, views cut off at 80×24. An
+    epic too big for one build is split on the roadmap into versions,
+    each with its own review phase (R14). Seams between phases are read
+    earlier, by each phase review (R15).
   - **Every finding lands somewhere.** Below the floor: dropped. Above it
     and in scope: fix tasks, written as one more build phase and built in
-    the same loop as everything else; the review phase then runs again on
-    the new tasks only, with the whole change read against the spec once
-    more — today's flow, with planning's part done by the build. The small
+    the same loop as everything else, the task loop reviewing each. Then
+    every area whose code the fix tasks changed is read again whole by
+    its pair, until a round passes; an area nothing changed is not read
+    again. Ruled by the person 2026-10-16, following the task loop ("if
+    the code's been changed, then it needs to be re-reviewed"), in place
+    of the whole change read against the spec once more, which at an
+    epic's size rereads everything for a fix in one corner. The small
     fixes the review phase makes on the spot today become tasks too, since
     no code changes outside a task. Ruled by the person 2026-10-14. Out of
     scope: Claude drops
@@ -2313,6 +2335,9 @@ person, one item at a time; the sections above hold the detail.
   immutable streams, every view a projection; the spec's sections by
   area, the phase cut naming each phase's scenarios, sections and what it
   relies on (R14).
+- The review phase across a unit (2026-10-16, R15, R16): split by the
+  spec's areas, each read by a pair; seams between phases read at each
+  phase review; after fixes, only the areas they changed read again.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Bugfix (R20): find out how comparable tools handle it before leaning;
@@ -2369,10 +2394,13 @@ an epic), which opened what stores what. Resolve each, then climb:
 1. ~~What is stored where~~ — walked and ratified 2026-10-14 (R23,
    R14): one project ledger as an uneditable event stream, records as
    folds, the test's fixes, the spec as the build's working document.
-2. **The epic as a whole** — one spec for the work unit with no
-   grouping; an epic too big for one build split on the roadmap; one
-   build across the unit, phases overlapping, worktrees and pull
-   requests; the review phase across the unit.
+2. ~~The epic as a whole~~ — walked and ruled 2026-10-14 to 2026-10-16
+   (R14, R15, R16): one spec for the work unit with no grouping; an epic
+   too big for one build split on the roadmap; one build across the
+   unit, phases overlapping, worktrees and pull requests; the review
+   phase split by the spec's areas, seams between phases read at each
+   phase review, only changed areas read again. Pull-request stacks stay
+   for later (Reviews in the build).
 3. ~~The epic menu~~ — walked and ruled 2026-10-15 (R17): its layout,
    mail on cancel, "dead end", map changes through discovery.
 4. **The remaining settled items** — bugfix (R20), the build (R15).
@@ -2630,9 +2658,10 @@ an epic), which opened what stores what. Resolve each, then climb:
       and two reviews took a correct comment for a stale one and the
       defect for the intended behaviour.
     - **Fixes are reviewed by the layer above**, never by a round of their
-      own: a task's by its pair (the task loop), a phase's by the review phase;
-      only the review phase's last fixes get a light review before it
-      seals. Ruled by the person 2026-10-15.
+      own: a task's by its pair (the task loop), a phase's by the review
+      phase; the review phase's own fix tasks go through the task loop,
+      and each area they changed is read again whole by its pair (R16).
+      Ruled by the person 2026-10-15 and 2026-10-16.
     - **The replay**, run 2026-10-15 (`walks/build/replay/`; results page
       https://claude.ai/artifact/97Trj3Wi35bULh3AgEfMNd): six Switchboard
       slices rebuilt from their original briefs at medium, high and extra
@@ -2642,8 +2671,10 @@ an epic), which opened what stores what. Resolve each, then climb:
       second time, and two Sonnet reviews of each; every review matched
       and labelled blind, twice, against the slice's known bugs. 264
       agents, $606 at API prices.
-  - Still to discuss: the review phase across the unit. Pull requests
-    prescribed, with a work unit landing as a stack — whether a task is a
+  - The review phase across the unit, ruled by the person 2026-10-16: split
+    by the spec's areas, seams between phases read at each phase review,
+    only changed areas read again after fixes (R15, R16).
+  - Still to discuss: pull requests prescribed, with a work unit landing as a stack — whether a task is a
     pull request and a phase a stack, or the stack keeps growing across
     phases — raised by the person 2026-10-14 for later; the workflows
     would carry their own stack instructions, since GitHub's are not on
