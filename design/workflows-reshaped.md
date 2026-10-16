@@ -884,7 +884,7 @@ project's own measurements decide (R7).
     scenarios. Those criteria are the test list (R33). The sections stay
     by area, ruled by the person 2026-10-15; for each phase the cut lists
     its scenarios, the sections it draws on and what it relies on from
-    earlier phases, so a phase goes straight into the tracker and whoever
+    earlier phases or another work unit (R15, Dependencies), so a phase goes straight into the tracker and whoever
     writes its tasks reads those sections whole, never the whole spec.
   - Each invariant names the hard check that enforces it where one can
     (R34).
@@ -1015,10 +1015,35 @@ project's own measurements decide (R7).
     into code earlier phases changed; the template's fields never needed
     amending, and 46% of all delivered tasks were already written mid-build
     against the code with only the template, the tracker's adapter and a
-    short writer agent. Dependencies are recorded within the phase as its
-    tasks are written: the plan-wide pass that clears and rebuilds every
-    dependency goes, and the tracker's readers tell "every task is done"
-    from "the next phase is not written yet".
+    short writer agent.
+  - **Dependencies**, ruled by the person 2026-10-16. Today they come in
+    three layers: between an epic's specs (each spec's Dependencies
+    section, copied to the manifest as unresolved, linked to a task in
+    another plan, checked by a gate when a topic's build starts, beside
+    an advisory build order of the specs); within a plan (an agent clears
+    and rebuilds every task link and priority once all phases are
+    written, the person approving); and in the build (the tracker's
+    "ready" hands over the next unblocked task). In the person's projects
+    the first layer was almost unused — 6 dependencies between specs, in
+    two epics, one task of 3,299 blocked by another plan, no build order
+    ever set — and of 408 task links in five Tick stores 232 sat within a
+    phase, 175 on an earlier phase and none on a later one; the rebuild's
+    approval was "Proceed" 13 of 13. The new shape:
+    - inside a work unit the machinery between specs goes — the
+      Dependencies section, its states, the check at a build's start and
+      the build order: there is one spec, and its phase cut (R14) orders
+      every phase across the unit, each naming what it relies on, another
+      work unit's delivery included, which the build checks before that
+      phase starts; with phases overlapping (Open: One build across an
+      epic), a phase starts once what it relies on is done;
+    - a phase's tracker links are set as its tasks are written, within the
+      phase and onto unfinished tasks of earlier phases; the plan-wide
+      rebuild and its approval go;
+    - the next task still comes from the tracker's dependencies, the
+      orchestrator running ready tasks side by side where they share no
+      files, and the build reads the phase cut before treating "nothing
+      ready" as finished, so a phase not yet written is never taken for a
+      finished one.
   - **Shared design is settled first.** A design question several tasks
     touch is settled when the tasks are written, never by two builders
     separately.
@@ -2389,10 +2414,13 @@ person, one item at a time; the sections above hold the detail.
 - The build's doors (2026-10-16, R15): no code change without a task, one
   verb per destination, an agent's find landed by the orchestrator, the
   commit door refusing a code commit that names no task.
+- Dependencies (2026-10-16, R15): the cut orders the unit and names what
+  each phase relies on; the machinery between specs and the plan-wide
+  rebuild go; tracker links set per phase; the build reads the cut
+  before treating "nothing ready" as finished.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- The build (R15): dependencies
-  per phase; the tracker telling done from not yet written; the transcript
+- The build (R15): the transcript
   keeping the story (a headline per start, one block per batch, a product
   summary per landing).
 
