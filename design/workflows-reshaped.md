@@ -1318,8 +1318,18 @@ project's own measurements decide (R7).
     checked it against the old code, where it failed in 1 of 11 trials.
     Specific to bugfix because proving the bug is what the type is.
 
-  Settled with them: the plan, check-in and conclude
-  gates become learned. The ask rule asked the case's kill-versus-detach
+  - **Investigation's plan, check-in and conclude gates follow the
+    phase's position (R40)**, ruled by the person 2026-10-16: learned in
+    auto, stopping in step; ready to build stays the authority gate
+    before any code. Across the person's bugfixes: the plan gate
+    "proceed" 5 of 6, check-ins "continue" 5 of 6, conclude 7 of 7. The
+    one typed plan answer was a constraint ("you must not use the
+    current tmux server at all for testing. Its massively in use!!"):
+    testing against a live server is danger, which stops in both
+    positions, and the per-project verify setup (R32) holds how to run
+    the product safely, given once.
+
+  The ask rule asked the case's kill-versus-detach
   question because forgetting killed sessions deletes saved scrollback,
   which is danger; as behaviour alone it would have been Claude's call on
   the person's record (1 real loss in 69), and the person's verdict on
@@ -2370,10 +2380,11 @@ person, one item at a time; the sections above hold the detail.
   the implementation wrong or an edge case found, is there another way —
   never a case-specific step such as looking at comparable tools; its
   spec the spec every type writes, assembled from the investigation (R14);
-  the bug proven failing on the unfixed code, a check the commit door holds.
+  the bug proven failing on the unfixed code, a check the commit door holds;
+  investigation's plan, check-in and conclude gates following the phase's
+  position (R40).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Bugfix (R20): the plan, check-in and conclude gates learned.
 - The build (R15): one verb per door, a door for the agent writing a task;
   the commit door checks for a task and refuses a raw commit; dependencies
   per phase; the tracker telling done from not yet written; the transcript
