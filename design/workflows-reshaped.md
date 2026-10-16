@@ -1095,10 +1095,21 @@ project's own measurements decide (R7).
     stopping only where the shape says it must — a stop for good reason is
     a good outcome, not a failure. Engine-drawn, whatever order Claude
     works in:
-    - when a task lands, its summary: what changed, which criteria its
-      tests prove, the review's verdict, how many calls went to the
-      ledger. Whether it then stops at a gate follows the phase's position
-      (R40): learned by default, every task in step, none in auto;
+    - **the story stays in the transcript**, ruled by the person
+      2026-10-16: a headline as work starts — a task's title, number,
+      phase, what it is about to change and what to watch when it lands
+      — with one block for tasks started together, never one each; and
+      when a task lands, its product summary: what changed, which
+      criteria its tests prove, the pair's verdict and its rounds, how
+      many calls went to the ledger. The review reports are not printed:
+      they go to the implementer, the orchestrator keeps the verdict, and
+      the person reaches them through the task's account. Whether a gate
+      follows is the phase's position (R40): every task in step, in auto
+      only where the ask rule stops it. The person, 2026-10-12, of
+      today's headline: "I can see this is the task title, the task
+      number, and a summary of what's being worked on"; of parallel
+      work: "five printouts… I would have to scroll back up to see
+      what's being worked on";
     - **questions queue.** A task that needs the person parks, with
       whatever depends on it, and everything else carries on. The question
       waits in a queue the engine holds — a count on the progress view and
@@ -2418,11 +2429,12 @@ person, one item at a time; the sections above hold the detail.
   each phase relies on; the machinery between specs and the plan-wide
   rebuild go; tracker links set per phase; the build reads the cut
   before treating "nothing ready" as finished.
+- What the build prints (2026-10-16, R15): a headline as work starts, one
+  block per batch, a product summary per landing, review reports kept
+  off the screen and reachable through the task's account.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- The build (R15): the transcript
-  keeping the story (a headline per start, one block per batch, a product
-  summary per landing).
+- Nothing at present.
 
 **Shape only — agreed in outline, never walked in detail:**
 - Mailboxes (R13): the one-command open needs a command-line form or
@@ -2478,7 +2490,10 @@ an epic), which opened what stores what. Resolve each, then climb:
    for later (Reviews in the build).
 3. ~~The epic menu~~ — walked and ruled 2026-10-15 (R17): its layout,
    mail on cancel, "dead end", map changes through discovery.
-4. **The remaining settled items** — bugfix (R20), the build (R15).
+4. ~~The remaining settled items~~ — walked and ruled 2026-10-16 (R20,
+   R15): bugfix steps back before fix options, writes the common spec,
+   proves the bug by a check, its routine gates follow the position; the
+   build's doors, dependencies and what it prints.
 5. **The tracking layer** — the start menu, the inbox, the roadmap
    (research in `walks/tracking/01-tracking-today.md`).
 6. Mailboxes, feature and cross-cutting.
