@@ -2554,8 +2554,6 @@ person, one item at a time; the sections above hold the detail.
 - Mailboxes (R13): the one-command open needs a command-line form or
   arguments on the start skill.
 - Feature (R19) and cross-cutting (R22).
-- The tracking layer beyond the epic menu (R17): the start menu, the
-  inbox, the roadmap.
 - The deterministic core (R35): which verbs, the layout hook, the
   checklists.
 - Verification beyond its definition (R31–R34): adequacy by mutation or
