@@ -1297,10 +1297,17 @@ project's own measurements decide (R7).
     to be another mechanism; the direction chosen after it combined the
     first two options.
 
-  Settled with them: the specification is assembled from the
-  investigation — root cause, the fix, the rules it keeps with their
-  checks, the phase cut — with one review pass and ready to build from an
-  outline; the first task runs a test on the unfixed code and records it
+  - **A bugfix's spec is the spec every type writes (R14)**, ruled by the
+    person 2026-10-16: assembled from the investigation's entries — the
+    root cause, the fix, the existing rules it keeps with their checks —
+    ending with the phase cut; its review hunts gaps and reads again only
+    what changed, usually one pass at this size; ready to build shows a
+    short outline and the cut. No rule of its own. On the case,
+    specification and planning drew 14 presses with nothing typed and
+    restated the fix in a 6.6k-word spec and a 14.9k-word plan, plus
+    10.7k words of review tracking.
+
+  Settled with them: the first task runs a test on the unfixed code and records it
   failing before any fix (on the case the reproducing test was task 8 of
   phase 1, and only the final review checked it against the old code,
   where it failed in 1 of 11 trials); the plan, check-in and conclude
@@ -2353,11 +2360,11 @@ person, one item at a time; the sections above hold the detail.
   phase review; after fixes, only the areas they changed read again.
 - Bugfix (2026-10-16, R20): before fix options, Claude steps back — was
   the implementation wrong or an edge case found, is there another way —
-  never a case-specific step such as looking at comparable tools.
+  never a case-specific step such as looking at comparable tools; its
+  spec the spec every type writes, assembled from the investigation (R14).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Bugfix (R20): the spec assembled from the investigation; the first task proves the bug
-  failing; the plan, check-in and conclude gates learned.
+- Bugfix (R20): the first task proves the bug failing; the plan, check-in and conclude gates learned.
 - The build (R15): one verb per door, a door for the agent writing a task;
   the commit door checks for a task and refuses a raw commit; dependencies
   per phase; the tracker telling done from not yet written; the transcript
