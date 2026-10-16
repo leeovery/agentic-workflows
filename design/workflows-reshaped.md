@@ -1307,10 +1307,18 @@ project's own measurements decide (R7).
     restated the fix in a 6.6k-word spec and a 14.9k-word plan, plus
     10.7k words of review tracking.
 
-  Settled with them: the first task runs a test on the unfixed code and records it
-  failing before any fix (on the case the reproducing test was task 8 of
-  phase 1, and only the final review checked it against the old code,
-  where it failed in 1 of 11 trials); the plan, check-in and conclude
+  - **The bug is proven before it is fixed, by a check**, ruled by the
+    person 2026-10-16: the first task writes the test that reproduces the
+    bug, and the engine records it run on the unfixed code, several
+    times, failing every time; the commit door refuses a fix commit until
+    that run is recorded; after the fix the same test passes in the
+    build's own gates. Today it is guidance ("the first task always
+    reproduces the bug with a failing test"), and on the case the
+    reproducing test was task 8 of phase 1, and only the final review
+    checked it against the old code, where it failed in 1 of 11 trials.
+    Specific to bugfix because proving the bug is what the type is.
+
+  Settled with them: the plan, check-in and conclude
   gates become learned. The ask rule asked the case's kill-versus-detach
   question because forgetting killed sessions deletes saved scrollback,
   which is danger; as behaviour alone it would have been Claude's call on
@@ -2361,10 +2369,11 @@ person, one item at a time; the sections above hold the detail.
 - Bugfix (2026-10-16, R20): before fix options, Claude steps back — was
   the implementation wrong or an edge case found, is there another way —
   never a case-specific step such as looking at comparable tools; its
-  spec the spec every type writes, assembled from the investigation (R14).
+  spec the spec every type writes, assembled from the investigation (R14);
+  the bug proven failing on the unfixed code, a check the commit door holds.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
-- Bugfix (R20): the first task proves the bug failing; the plan, check-in and conclude gates learned.
+- Bugfix (R20): the plan, check-in and conclude gates learned.
 - The build (R15): one verb per door, a door for the agent writing a task;
   the commit door checks for a task and refuses a raw commit; dependencies
   per phase; the tracker telling done from not yet written; the transcript
