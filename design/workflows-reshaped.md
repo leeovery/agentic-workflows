@@ -1014,8 +1014,8 @@ project's own measurements decide (R7).
 
   Per phase:
   - **Tasks are written when the phase starts**, in a short corridor,
-    against the code the previous phase left, and recorded in the plan's
-    task tracker with their dependencies — and which can run in parallel —
+    against the code the previous phase left, and recorded through the
+    engine's task verbs (R35) with their dependencies — and which can run in parallel —
     before anything runs. Each uses the task template (problem, solution,
     outcome, acceptance criteria as scenarios, spec reference) and names
     no mechanism the record did not decide. What went stale in tasks
@@ -2269,6 +2269,31 @@ each call on a page that day.
     document to re-read; the decision phase's note names the record and
     the log, the build's its log and where the phase stands.
   - Anything that can use the mod to make the system better should.
+  - **Tasks go through the engine to a driver**, ruled by the person
+    2026-10-17, replacing three plan formats chosen per plan.
+    - The engine's `task` verbs — create a phase, create a task with the
+      template's fields, link, ready, start, done, close, list a phase,
+      show a task — are the only way anything in the workflows touches a
+      tracker. A driver is code behind them, loaded by one project
+      setting chosen at setup, Tick by default; changing the setting
+      changes the tracker with nothing else touched.
+    - Every driver provides parents, blocking and a ready answer that
+      returns several tasks at once; what a tracker lacks natively its
+      driver makes up for in code, once.
+    - A conformance suite is the contract. A new driver is a pull request
+      to the workflows that passes it, never one loaded from elsewhere.
+      Only the Tick driver ships; plain files and Linear's MCP route go.
+      A driver for a hosted tracker calls its API with a key kept at user
+      level, never an MCP.
+    - Nothing relies on task state travelling with a commit, since a
+      hosted tracker's does not.
+    - **The tracker is named only in its driver**, the user docs and
+      design notes — never in a skill, a reference or engine code outside
+      the driver. The person's rule, non-negotiable: even their own tool
+      sits at the workflows' edge, never woven through them.
+    - In the person's 13 projects 97 of 101 plans used Tick, 4 plain
+      files (all in completed units of Tick's own repo) and none Linear;
+      the migration sets every project to the default driver.
 
 ### Layout on disk
 
@@ -2356,7 +2381,7 @@ think is a good sign."
   space-homing's sat seventh while engine-architecture designed around a
   permission restart its research showed did not exist.
 - **R42 — What is kept.** The record, the log, the spec, evidence and a
-  short review report; the build's log joins them (R15). Tasks live in the plan's tracker. Tracking files,
+  short review report; the build's log joins them (R15). Tasks live in the project's tracker, behind its driver (R35). Tracking files,
   analysis files and per-task report files go: in every project only the
   spec was read downstream.
 
@@ -2505,9 +2530,8 @@ own detection finds nothing in either.
       `assets/`; the topics keep their states; the unit sits in decision
       until every topic is decided, and then one spec is written fresh
       from the records, through the new review and the ready-to-build
-      gate. Tasks a plan already put in a tracker are closed by the
-      directive through the format's own commands: a directive runs in a
-      live session and can reach a tracker where migration code cannot.
+      gate. Tasks a plan already put in the tracker are closed by the
+      directive through the engine's task verbs (R35).
       Evvi v1 is the case: eight unbuilt specs, two discussions reopened
       after their specs, five concluded discussions no spec covers.
     - **Building started.** A spec past its gate is history and never
@@ -2772,6 +2796,11 @@ person, one item at a time; the sections above hold the detail.
   all 13 projects cut from their remotes, with built variants. The layout
   on disk (The deterministic core); the knowledge base indexes rendered
   records, never the ledger (R44).
+- The task tracker (2026-10-17, R35): tasks through the engine's `task`
+  verbs to a driver set per project, Tick by default and the only one
+  shipped; new drivers by pull request against a conformance suite;
+  hosted trackers through their API, never an MCP; the tracker named only
+  in its driver, the docs and design notes.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2794,9 +2823,10 @@ handoffs and compaction recovery beyond R35's note.
 **Unclear, or engineering for the plan:** how parallel worktrees in a
 build append to the ledger without forking its fingerprint chain or
 conflicting in git (one writer — the orchestrator recording what its
-agents report — or one file per event), and how several builds running
+agents report — or one file per event), the same question for a tracker
+that keeps its state in the repo, and how several builds running
 at once merge the ledger and the knowledge base (merge helpers wired in
-through git attributes, say); how a tracker shows a phase not yet
+through git attributes, say); how the driver shows a phase not yet
 written; how project skills
 reach the builder (R34); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
@@ -2840,7 +2870,10 @@ an epic), which opened what stores what. Resolve each, then climb:
    directives in one sequence, records for every topic, specs joined or
    written fresh by whether building has started, rehearsal on copies of
    every project; the layout on disk.
-8. **The formal plan** (Sequence steps 3–5).
+8. **The formal plan** (Sequence steps 3–5). Four calls first, one at a
+   time: ~~one task tracker~~ (ruled 2026-10-17, R35); pull-request
+   stacks; how strictly the orchestrator adds to a subagent's brief; the
+   trust layer's detail. Then the whole release as one numbered document.
 
 ## Open
 
@@ -2958,8 +2991,9 @@ an epic), which opened what stores what. Resolve each, then climb:
     slice"). The roadmap is the level above: its epics are the versions,
     and no new layer is added. Shipped and building epics ran 15–44k
     words of decision documents; Fumi is at 416k.
-  - Parked: whether the restructure fixes one task tracker and drops the
-    plain-file plan format (the person, 2026-10-14).
+  - One task tracker, raised by the person 2026-10-14 and ruled
+    2026-10-17: tasks go through the engine to a driver, Tick the only
+    one shipped (R35).
   - **How one build runs**, ruled by the person 2026-10-14: parallel
     tasks each in their own worktree, merged back by the orchestrator,
     work on a shared file one task at a time; phases overlap where they
@@ -3183,6 +3217,6 @@ an epic), which opened what stores what. Resolve each, then climb:
     evidence only for what the person reviewed; the feature map groups
     bugs by area so tracking can flag a hotspot; the knowledge base's value
     over plain search joins the measurements.
-- **How today's plan formats carry per-phase task writing.** The cut
+- **How the task driver carries per-phase task writing** (R35). The cut
   itself lives at the end of `spec.md` (Layout on disk).
 - **How project skills reach the builder** (R34).
