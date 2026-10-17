@@ -510,11 +510,12 @@ project's own measurements decide (R7).
     the boundary needs no more confidence than the rest of the type call;
     today's detection asks for more, holding that the boundary has no
     safety net. Ruled by the person 2026-10-13.
-  - **Product-level discovery writes the product record.** One short
-    document per project beside the roadmap, owned by the workflows: what
-    the product is, who it is for, what it values, and the standing rules
-    that cut across topics. It is a record, rewritten in place, and each
-    line says who decided it and where. Every topic's opening view reads
+  - **Product-level discovery writes the product record.** The project's
+    product-wide ledger entries, read as one view and owned by the
+    workflows: what the product is, who it is for, what it values, and the
+    standing rules that cut across topics. It is a projection, never a
+    file (R23, R45): an entry is replaced, never edited, and each says who
+    decided it and where. Every topic's opening view reads
     it with the decided records (R11), so a new epic's first topic starts
     narrower (R24). Several of Claude's misses in the replay were the
     product's character, not facts (R24). The roadmap keeps capabilities
@@ -528,14 +529,14 @@ project's own measurements decide (R7).
     the person's line. It is never a phase, and Claude never asks to fill
     it; three moments touch it:
     - discovery starts it: what a conversation about the product as a
-      whole settles goes in, a line only when something product-wide was
-      said;
+      whole settles goes in, an entry only when something product-wide
+      was said;
     - decisions add to it: a topic that settles something bigger than
       itself (Fumi's "updates never install themselves", decided inside
-      engine-architecture) lists the lines on its decided screen,
+      engine-architecture) lists the entries on its decided screen,
       and the person's yes there covers them — no gate of its own, while
       the person still sees Claude widen a topic's call into a rule for
-      the product. Lines written in a product conversation need no
+      the product. Entries written in a product conversation need no
       approval; the person was in it. A project with no product
       conversation, such as Portal, starts empty and fills from its
       decisions;
@@ -795,7 +796,8 @@ project's own measurements decide (R7).
 
   Fitted to the ledger, ruled by the person 2026-10-13:
   - **One home for what informs a decision.** A work unit's `assets/`
-    replaces `imports/`, whoever made the file; each asset is linked from
+    (Layout on disk) replaces `imports/`, whoever made the file; each
+    asset is linked from
     the ledger entry it informs (R23) — canonical from a decision,
     reference from a finding or the log. Something living in an outside
     tool is kept as its live link and an exported image.
@@ -834,8 +836,9 @@ project's own measurements decide (R7).
   the back-and-forth between topics produced better decisions. The mailbox
   stays a queue of files, one message each (it was once a section of the
   discussion document; moving it out was right). With research and
-  discussion merged, a topic has one mailbox, so the choice of which
-  phase a message lands in goes. What changes is the ceremony of
+  discussion merged, a topic has one mailbox, in the topic's own folder
+  beside its brief and log (Layout on disk), so the choice of which
+  phase a message lands in goes and a topic's path names no phase. What changes is the ceremony of
   answering:
   - **the start skill takes an optional work unit and topic**, ruled by
     the person 2026-10-16: `/workflow-start {work unit} {topic}` opens
@@ -1595,8 +1598,15 @@ each call on a page that day.
     is a new event. The links — which question an answer closes, what it
     replaces, what it relies on — are fields the engine assigns, never
     prose. The map, a topic's record and the product record are folds of
-    the stream, worked out when read, with no saved projection; an index
-    comes only if reads slow. When an answer is replaced, every entry
+    the stream, worked out when read, with no saved projection in the
+    work unit; an index comes only if reads slow. The knowledge base's
+    copy is the one rendering kept, ruled by the person 2026-10-17: when
+    a topic's entries change, the engine renders its record and the
+    knowledge base indexes it, the copy living in the gitignored
+    `.workflows/.knowledge/` and rebuilt from the ledger, so a replaced
+    answer drops out of search the moment it is replaced. The ledger
+    itself is never indexed: it holds replaced answers, which search
+    would return as current. When an answer is replaced, every entry
     relying on it is affected, and that too is a fold — an entry relying
     on a replaced one with no "still holds" or replacement since — so the
     owning topic shows among what waits on the person until it answers,
@@ -1675,8 +1685,9 @@ each call on a page that day.
     earlier one was wrong; the last applies to the person's decisions as
     to Claude's. The superseded entry leaves the record and stays in the
     ledger.
-  - **Stored as JSON lines in the project**, in `.workflows/` under git:
-    one line per event, appended, each carrying its schema version. A
+  - **Stored as JSON lines in the project**, in `.workflows/.ledger.jsonl`
+    under git (Layout on disk): one line per event, appended, each
+    carrying its schema version. A
     later release changes the shape through a migration that brings every
     line to the current version (Migrations: runtime code never reads an
     older shape). A database was weighed and rejected: a database file
@@ -2259,6 +2270,46 @@ each call on a page that day.
     the log, the build's its log and where the phase stands.
   - Anything that can use the mod to make the system better should.
 
+### Layout on disk
+
+Ruled by the person 2026-10-17, in the migration walk. A topic exists
+only before the spec; from the spec on, everything is the work unit's.
+The hook in R35 refuses writes outside this layout.
+
+```
+.workflows/
+├── manifest.json               registry, defaults, roadmap
+├── .ledger.jsonl               the project's stream (R23)
+├── .inbox/ .roadmap/ .baseline/ .state/ .knowledge/
+├── .cache/{unit}/…             gitignored session state, mirroring the unit's tree
+└── {unit}/
+    ├── manifest.json           status, the map's topics and order, where the build stands
+    ├── discovery/session-NNN.md
+    ├── topics/{topic}/
+    │   ├── brief.md            discovery's brief for the topic
+    │   ├── log.md              the journey, one dated heading per session
+    │   └── mail/NNN-*.md       messages waiting for it (R13)
+    ├── assets/                 what informs a decision (R12)
+    ├── seeds/  .state/
+    ├── spec.md                 the areas, then the phase cut (R14)
+    ├── build/
+    │   ├── log.md              in flight, tried and dropped, left for the next phase
+    │   ├── notes.md            notes for later
+    │   └── tasks/{task}.md     each task's account
+    └── review/                 one report per round; the passing one is the certificate
+```
+
+- An epic has many topics; a feature one, named after the unit; a bugfix
+  one, whose log is the investigation; a quick-fix none and no spec —
+  `build/` and `summary.md`, the short record after the work (R21).
+- Never files: a topic's record and its map, the product record, the
+  verdict queue, "what have you decided without me" — projections of the
+  ledger (R45). The knowledge base's rendered copies of records sit in
+  `.knowledge/` (R44).
+- The person's own stream, the trust log (R25), and the record of the
+  person (R27) live at user level, in `~/.config/workflows/`.
+- The phase cut lives at the end of `spec.md`.
+
 ## Shape review rulings
 
 Ruled by the person on 2026-10-12 after the shape review (Open), on the
@@ -2350,72 +2401,204 @@ think is a good sign."
 - **R44 — The knowledge base stays, as the first look.** Ruled by the
   person on 2026-10-12 on the R29 evidence. The knowledge base is the
   cheap first pointer and the reach across work units, indexing records
-  (current decisions), never logs. Plain search, when depth matters, runs
-  in a helper agent so its cost stays out of the conversation (R43).
+  (current decisions), never logs and never the ledger, which holds
+  replaced answers. A record is rendered from the ledger when its
+  topic's entries change and indexed from a copy in the gitignored
+  `.workflows/.knowledge/` (R23, ruled by the person 2026-10-17). Plain
+  search, when depth matters, runs in a helper agent so its cost stays
+  out of the conversation (R43).
 
 ## Migration
 
-- **R37 — Every existing project migrates fully.** One canonical path (R8).
-  Two kinds of change:
-  - **Mechanical, as code migrations:**
-    - research and discussion items become decision items, and their
-      directories move; map routing of research or discussion is
-      dropped (R10);
-    - a plan's phases become the specification's phase cut; tasks already
-      written stay as tasks, which the builder revises at phase start like
-      any other;
-    - state the design drops is deleted: banking, staging, review-cycle
-      tracking, scoping state;
-    - session machinery in the cache is cleared, and sessions resume from
-      the artifacts, as they already do after compaction;
-    - a review or spec-review cycle in flight is closed out, and the next
-      entry runs the single pass;
-    - a topic's research and discussion mailboxes merge into one,
-      messages renumbered (an earlier migration's collision rule is the
-      precedent); fields added since this record was first written —
-      promoted topics, unstarted messages, what a specification
-      incorporates, where a topic came from, a roadmap item's kind — carry
-      over unchanged;
-    - the trust log is new and starts empty; the ledger starts with the
-      entries the directive below writes.
-  - **Judgment, as one directive (R38): every decision topic gets a
-    record.** Today's discussion file interleaves decisions with the
-    journey, so code cannot split it. The existing discussion file is the
-    log — it is the journey — and moves verbatim, with the topic's
-    research file joining it; that part is mechanical. Only the record
-    needs judgment: Claude derives the current decisions from the log as
-    ledger entries (R23), every entry citing the log section it came from
-    and who decided it where the log shows it, inventing nothing; a point
-    the log leaves unsettled is recorded open. Every topic gets a
-    record, concluded ones included, so the new design never meets a
-    topic without one. The knowledge base re-indexes, records ranked
-    ahead of logs.
-- **R38 — Directives.** A new migration kind whose transform is judgment,
-  extending today's verification addenda (judgment checks workflow-start
-  runs before the migration commit) from a check after a transform to the
-  transform itself. Its shape, from the dex product:
-  - it is the engine's decision, written, reviewed and rehearsed before
-    release;
-  - it names the files it may touch;
-  - its check must pass before it is recorded done, through an engine
-    verb: mechanical (every record entry cites a log anchor that exists;
-    every decided map item appears) plus an independent verifier agent
-    for coverage;
-  - its unit is the topic: each record is committed once it passes; an
-    interrupted topic is discarded and redone from the start, never
-    resumed from half a judgment;
-  - it never asks; uncertainty lands as open;
-  - the migration is recorded only when every topic has passed, and boot
-    refuses to continue past an unfinished migration, so no session ever
-    works in a half-migrated project;
-  - a large epic's topics may each go to their own agent.
-- **R39 — Rehearsal before release.** The migration runs first against
-  copies of Fumi, Portal and Tick in throwaway worlds built the way the
-  prose-test harness builds them. Fumi is the hardest real case: 9
-  concluded discussions and 2 in progress get their logs moved and records
-  derived, and the two in progress resume in decision with both; its 2
-  unstarted messages stay in their mailboxes; its 3 completed research
-  files join their topics' logs.
+Walked with the person 2026-10-16 and 2026-10-17 on a read-only survey of
+every project that uses the workflows
+(`workflows-reshaped-measure/walks/migration/01-survey.md`): 13 projects,
+108 units — 91 completed, 12 in progress, 4 cancelled. 95 move by code
+alone, 2 need only their records derived (mint token-aware-diff-sizing,
+portal tagging-and-filtering), and 11 need judgment beyond that. The
+survey's finding that pigeon and evvi, epics older than the discovery map,
+need the legacy split is wrong: run forward to 072 on copies, the split's
+own detection finds nothing in either.
+
+- **R37 — Every existing project migrates fully, as if it had always had
+  this shape.** One canonical path (R8). A project migrates when the
+  person updates its skills and next runs `/workflow-start`; a dormant one
+  migrates whenever it is brought back. Only the current shape is migrated
+  from, ruled by the person 2026-10-16: the existing chain brings an older
+  project up first, and the reshape is written against today's shape
+  alone. The migration never touches a project's code.
+  - **One numbered sequence**, code steps and directives (R38)
+    interleaved, each grouped by its job:
+    1. **Guard** (code). The migration refuses while another session is
+       live in the project — read from the old skills' presence files,
+       whose paths only the migration may know — and while `.workflows/`
+       has uncommitted changes, which the migration commit would otherwise
+       sweep in. A major upgrade under a running session is declined
+       outright (the person, 2026-10-16).
+    2. **The legacy split** (code, directive, code). Today a skill run on
+       opening an epic: it cuts broad research that migration 038 seeded,
+       still in progress, into topic-sized files and map items,
+       interviewing the person per file. It becomes a directive just
+       before the reshape, written against today's shape — the shape it
+       already runs on, since today it runs only after every migration up
+       to 072 has. Code detection walks every epic; where nothing
+       qualifies the step is recorded with nothing done and never reaches
+       the session. Where something does, the interview runs per epic and
+       code applies the split. The skill folder goes. Proven 2026-10-17:
+       codeintel at `ce5323c` and galley at `5d4679e`, each taken from the
+       commit before its first split and migrated from 044 and 039 to
+       072, detect exactly the sources they split for real (codeintel six,
+       galley its exploration), and git holds the person's real choices to
+       check the directive against. Every other epic in the 13 projects
+       detects nothing.
+    3. **The move** (code), into the layout (Layout on disk):
+       - a topic's log is its research then its discussion, each verbatim
+         under its own heading, the repetition between them kept (a
+         discussion's inherited position restates its research); a
+         bugfix's investigation is its topic's log;
+       - research feeding one topic joins that topic's log; research
+         feeding several goes to the unit's discovery log, where epic-wide
+         research belongs;
+       - each topic's mail moves to its own folder as one sequence,
+         renumbered where the topic had mail in both its research and its
+         discussion box; mail for a cancelled topic goes to the inbox, as
+         cancelling does from now on (R17) — Fumi's three such messages
+         still bear on the product;
+       - briefs move into their topics, `imports/` becomes `assets/`, and
+         roadmap items' source paths are rewritten;
+       - retired state is dropped: map routing, staging, review-cycle and
+         plan-review tracking, scoping state, the Dependencies machinery
+         and build order (R15); fields added since this record was first
+         written — promoted topics, unstarted messages, where a topic came
+         from, a roadmap item's kind — carry over;
+       - the old cache is left alone: nothing reads it, and completion
+         deletes `.cache/{unit}` whole without knowing what is inside.
+         Anything still pending in it — a review not folded in,
+         carry-notes waiting — is folded into its topic's log by the
+         records directive; Fumi has none.
+    4. **The records** (directive), below.
+    5. **The cut and the merges** (directive): phase-cut entries for
+       builds under way, cross-cutting units into product-wide entries
+       (R22), and the topics that must leave a building unit.
+    6. **Finish** (code): the records indexed (R44), then one migration
+       commit, on the person's yes, as today.
+  - **Every topic gets a record, completed units included**, ruled by the
+    person 2026-10-16: everything moves forward in one shape, so
+    reopening or revisiting a completed unit meets nothing special, the
+    knowledge base reaches shipped decisions, and a mature product's
+    ledger is not empty where most of its decisions sit in finished work.
+    The stream starts at the migration, ruled by the person 2026-10-17:
+    one current answer per question, each citing the log section it came
+    from, the earlier answers left in the log — in the ledger test the
+    replacements were where detail was lost. Specs are read as well as
+    logs: decisions made at the spec stage (review gaps decided in the
+    spec, amendments, corrigenda) exist nowhere else, and each becomes an
+    entry on the topic it belongs to. An entry says who decided it where
+    the log shows it and "carried over" where it does not, so a migrated
+    entry never passes as the person's decision. Measured results become
+    findings saying how they are known; items still exploring or pending
+    become open questions on the topic's map; nothing is invented. The
+    entries the directive marks product-wide start the product record.
+  - **Specs: the line is whether building has started**, ruled by the
+    person 2026-10-17.
+    - **Nothing built.** The old specs and any plans become reference in
+      `assets/`; the topics keep their states; the unit sits in decision
+      until every topic is decided, and then one spec is written fresh
+      from the records, through the new review and the ready-to-build
+      gate. Tasks a plan already put in a tracker are closed by the
+      directive through the format's own commands: a directive runs in a
+      live session and can reach a tracker where migration code cannot.
+      Evvi v1 is the case: eight unbuilt specs, two discussions reopened
+      after their specs, five concluded discussions no spec covers.
+    - **Building started.** A spec past its gate is history and never
+      corrected (R14), the tasks cite its sections, and a merge is a
+      restatement, so the specs are joined verbatim into `spec.md`, one
+      part each, in build order, never merged. The plans' phases become
+      the phase cut: a built phase gets its name, its goal and "built"; a
+      phase not started or partly done gets its full entry — scenarios,
+      the sections it draws on, what it relies on — written by the
+      directive from the plan's phase and its acceptance criteria, the
+      dependencies between the old specs becoming relies-on lines. Tasks
+      keep their ids and tracker state; the tracker is left untouched and
+      the cut names each phase's existing tracker parent. Banked findings
+      become notes for later and approved staging goes; a spec built but
+      never reviewed needs nothing, since the review phase reads the whole
+      unit. Where the manifest and the tracker disagree, the tracker wins
+      and the disagreement is an open note. Folio (one spec built, one at
+      167 of 210 tasks, 156 banked findings) and pigeon (three specs, one
+      at 100 of 116, its manifest crediting a task the tracker has open)
+      are the cases.
+    - **Mixed.** A building unit cannot take a topic its spec does not
+      cover: topics not started, in progress, or decided but in no spec
+      leave it, and the directive asks the person, per unit, where they
+      go — a new epic the person names, the topics moving whole and
+      starting in decision, or the roadmap as postponed topics, a later
+      pull opening a fresh topic that reads the earlier record. The
+      building unit is then whole: every topic decided, its specs joined,
+      one build. None of the person's projects has this.
+    - **Completed units** stay as history, their specs joined; tick v1's
+      two concluded discussions that never reached a spec stay decided
+      topics in the finished unit.
+  - The trust log is new and starts empty; the author's log is seeded
+    from R29's history (Sequence, step 3).
+- **R38 — Directives.** A migration kind whose transform is judgment,
+  ruled by the person 2026-10-16 over stretching today's verification
+  addenda, which check after a code transform, fire once and live in the
+  start session's context. The legacy split was one under another name.
+  - A directive is one file of instructions, numbered in the same sequence
+    as the migrations, written against the shape at its number and frozen
+    once released, like any migration. It runs in order because a
+    directive written for one shape cannot run on the shape months later.
+    Directives are grouped by job — neither one doing everything nor one
+    per action — and code steps may sit before and after each: as much as
+    can be mechanical is.
+  - The runner runs code migrations until it reaches a directive, stops,
+    and hands it to the start session, which carries it out — a large
+    unit's topics each to their own agent, the session the ledger's only
+    writer — and records it once its check passes, then carries on. One
+    start may meet several.
+  - It names the files it may touch. Its check passes before it is
+    recorded: mechanical, through an engine verb (every entry cites a log
+    section that exists; every decided map item has its entry), plus an
+    independent verifier per topic hunting, against the log, detail the
+    record dropped.
+  - It may ask the person, ruled by the person 2026-10-16: dex's
+    directives run unattended, but here the person started the migration
+    and is watching. Each directive's file says what it asks. The split
+    keeps its interview; the records directive asks nothing per entry and
+    raises what no log settles in one batch at the end, each point
+    answered or left open.
+  - Nothing is committed before the one migration commit. Progress
+    survives a session that dies: the work is on disk and the check tells
+    finished topics from unfinished, so an interrupted topic is redone
+    from the start, never resumed from half a judgment. Boot refuses to
+    continue past an unfinished directive, so no session works in a
+    half-migrated project.
+- **R39 — Rehearsal before release**, ruled by the person 2026-10-17. The
+  migration runs on copies of all 13 projects in scratch repositories cut
+  from their remotes — git remotes removed, pushing made impossible and
+  proven to fail before anything runs — the real projects never touched,
+  and it is adjusted until every project migrates cleanly. Variants are
+  built for the cases no project holds: the codeintel and galley
+  pre-split copies for the split, a Fumi variant with a spec started, and
+  one mid-build, simulated through tasks since the migration never
+  touches code. Moving files is mechanical and easy to check; the focus
+  is the ledger's completeness and the logs' shape.
+  - **Fumi** is the largest derivation: 430,066 words across 13
+    discussions and 4 research files, 173 decided items, roughly 600–900
+    answers and 200-odd findings, an estimated hour of the first start
+    that the rehearsal measures. Every decision is there with high
+    confidence — the manifest lists them all and the check refuses a topic
+    missing one; every detail, not fully — the ledger test's blind spec
+    covered 118 of 162 builder points and 21 in part, 23 of its 32 losses
+    from restating — which is what the verifier hunts.
+  - Fumi after migrating, as it stands: six topics decided, six in
+    progress (five waiting only on mail, commercialization on one open
+    question), three not started with their mail (build-and-release 17,
+    licensing-and-trial-integrity 10, support-and-diagnostics), four
+    cancelled; then one spec and one build. The person holds Fumi at
+    decision until this release, so it moves forward as one spec and one
+    build.
 
 ## Sequence
 
@@ -2580,6 +2763,15 @@ person, one item at a time; the sections above hold the detail.
   stands, bugfix and quick-fix alike; revisiting moves to manage.
 - Cross-cutting goes as a type (2026-10-16, R22): principles decided where
   they arise or in the product conversation, as product-wide entries.
+- Migration (2026-10-16 and 2026-10-17, R37–R39): one sequence of code
+  steps and directives in order — guard, the legacy split, the move, the
+  records, the cut and the merges, finish; directives may ask the person;
+  every topic gets a record, completed units included, the stream
+  starting at the migration; specs joined where building has started,
+  written fresh from the records where it has not; rehearsal on copies of
+  all 13 projects cut from their remotes, with built variants. The layout
+  on disk (The deterministic core); the knowledge base indexes rendered
+  records, never the ledger (R44).
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2590,7 +2782,7 @@ person, one item at a time; the sections above hold the detail.
 - Verification beyond its definition (R31–R34): adequacy by mutation or
   deliberate breaks, habit hooks, hard checks, how project skills reach
   the builder.
-- Measures (R36); migration, directives and rehearsal (R37–R39).
+- Measures (R36).
 
 **Not touched at all:** the brownfield assessment; the start skill's
 setup gates and environment setup; the help walkthrough and glossary; the
@@ -2604,8 +2796,8 @@ build append to the ledger without forking its fingerprint chain or
 conflicting in git (one writer — the orchestrator recording what its
 agents report — or one file per event), and how several builds running
 at once merge the ledger and the knowledge base (merge helpers wired in
-through git attributes, say); where the phase cut lives on
-disk and how a tracker shows a phase not yet written; how project skills
+through git attributes, say); how a tracker shows a phase not yet
+written; how project skills
 reach the builder (R34); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
 labeller (unreachable here).
@@ -2643,10 +2835,12 @@ an epic), which opened what stores what. Resolve each, then climb:
 6. ~~Mailboxes, feature and cross-cutting~~ — walked and ruled 2026-10-16
    (R13, R19, R22): a topic opened by `/workflow-start {unit} {topic}`;
    continuing a linear unit goes straight in; cross-cutting goes.
-7. **Migrating existing projects** (R37–R39), revisited against everything
-   changed since, with directives for what only judgement can carry over;
-   raised by the person 2026-10-15.
-8. The formal plan (Sequence steps 3–5).
+7. ~~Migrating existing projects~~ — walked and ruled 2026-10-16 and
+   2026-10-17 (R37–R39), on a survey of all 13 projects: code steps and
+   directives in one sequence, records for every topic, specs joined or
+   written fresh by whether building has started, rehearsal on copies of
+   every project; the layout on disk.
+8. **The formal plan** (Sequence steps 3–5).
 
 ## Open
 
@@ -2989,6 +3183,6 @@ an epic), which opened what stores what. Resolve each, then climb:
     evidence only for what the person reviewed; the feature map groups
     bugs by area so tracking can flag a hotspot; the knowledge base's value
     over plain search joins the measurements.
-- **Where the phase cut lives on disk,** and how today's plan formats carry
-  per-phase task writing.
+- **How today's plan formats carry per-phase task writing.** The cut
+  itself lives at the end of `spec.md` (Layout on disk).
 - **How project skills reach the builder** (R34).
