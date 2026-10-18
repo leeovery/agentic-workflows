@@ -2979,7 +2979,9 @@ an epic), which opened what stores what. Resolve each, then climb:
    orchestrator adds to a subagent's brief~~ (ruled 2026-10-18, Reviews
    in the build); ~~the trust layer's detail~~ — designed from the kinds
    of question and ruled on 2026-10-12 (R23–R29), the parked item left
-   open by mistake. Then the whole release as one numbered document.
+   open by mistake. Then the whole release as one numbered document:
+   written 2026-10-18 as `design/workflows-reshaped-plan.md`, the
+   person's comments by number to come.
 
 ## Open
 
