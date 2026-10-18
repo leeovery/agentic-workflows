@@ -1208,8 +1208,10 @@ project's own measurements decide (R7).
     for the person across the topic, with the last build's share — and
     stands as the certificate of the work. The person asks to see the
     calls and gets them grouped by kind, the ones that change what the
-    product does first. Then finish, the authority gate, which invites
-    questions about what was built and answers them before finishing. 8
+    product does first. Then finish, the authority gate, which asks a
+    verdict on each call the person changed in the build and the review
+    phase (R23), and invites questions about what was built and answers
+    them before finishing. 8
     of the person's 21 answers at today's review gate were typed, mostly
     asking what a finding meant or cost ("Can I now just safely reboot my
     computer…").
@@ -1509,7 +1511,8 @@ project's own measurements decide (R7).
     corrigendum to what it left out); the plans never were.
   - **No review step.** A change to behaviour is proven by running the
     product where the project has a way to, and the close says what was
-    proven; the person can ask for a review. Reviewing whenever behaviour
+    proven and asks a verdict on each call the person changed (R23); the
+    person can ask for a review. Reviewing whenever behaviour
     changed would have reviewed about 11 of 20; the person chose review on
     2, and neither found anything that had to change.
   - Work that needs a decision from the person beyond a quick call moves to
@@ -1747,8 +1750,11 @@ each call on a page that day.
   changed in that topic, with skip beside them — ruled by the person
   2026-10-18, since a verdict left to a page they must open is a verdict
   not given ("I certainly won't be opening documents that aren't on the
-  screen", 2026-10-07). A skipped verdict, and a departure made outside a
-  topic's decision, waits in the verdict queue: a page like the one the
+  screen", 2026-10-07). The finish gate asks the same, before the
+  person's finish yes, for the calls they changed in the build and the
+  review phase, and a quick-fix's close for the calls changed in it —
+  ruled by the person 2026-10-18; where they changed none, nothing is
+  added. A skipped verdict waits in the verdict queue: a page like the one the
   person used for R29, answered when they choose. Until judged, a
   departure counts as a real loss, so a backlog only makes Claude ask
   more.

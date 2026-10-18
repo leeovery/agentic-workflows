@@ -293,7 +293,8 @@ the frozen anchor.
 
 4.3 **Verdicts** (R23). The topic's decided screen asks a verdict on each
 call the person changed in that topic: nothing, a fix later, a real loss,
-or skip. A skipped one, and a departure outside a topic's decision, waits
+or skip. The finish gate asks the same for calls changed in the build and
+the review phase, and a quick-fix's close for its own. A skipped one waits
 in the verdict queue. A departure counts as a real loss until judged.
 
 4.4 **The ask rule** (R24).
