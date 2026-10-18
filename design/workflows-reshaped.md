@@ -2297,6 +2297,9 @@ each call on a page that day.
     it also requires a task for code. The task in flight is already
     recorded per conversation, so the door has one to read.
   - Checklists are engine-held.
+  - The workflows' own agents get only briefs the engine issued; a hook
+    refuses any other dispatch of them (brief control, Reviews in the
+    build).
   - Every surface the person sees is an engine surface — the ledger, the
     matrix, raises, blind questions — under the display lint that already
     fails a templated display in skill prose; a plain line made only of
@@ -2892,6 +2895,10 @@ person, one item at a time; the sections above hold the detail.
 - Pushing (2026-10-18, R23, R35): the workflows push across the board —
   the state branch on every commit, task branches as their pull requests
   open — and merge through the driver after review.
+- Brief control (2026-10-18, R35, Reviews in the build): every brief from
+  a template the engine fills; additions only onto the task or the
+  ledger, recorded and seen by the reviewers; fix rounds carry the
+  reports verbatim; a hook refuses a brief the engine did not issue.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2967,8 +2974,9 @@ an epic), which opened what stores what. Resolve each, then climb:
 8. **The formal plan** (Sequence steps 3–5). Four calls first, one at a
    time: ~~one task tracker~~ (ruled 2026-10-17, R35); ~~pull-request
    stacks~~ (ruled 2026-10-18, R35); ~~where state lives~~, raised by
-   the person after it (ruled 2026-10-18, R23); how strictly the orchestrator adds to a subagent's brief; the
-   trust layer's detail. Then the whole release as one numbered document.
+   the person after it (ruled 2026-10-18, R23); ~~how strictly the
+   orchestrator adds to a subagent's brief~~ (ruled 2026-10-18, Reviews
+   in the build); the trust layer's detail. Then the whole release as one numbered document.
 
 ## Open
 
@@ -3235,12 +3243,40 @@ an epic), which opened what stores what. Resolve each, then climb:
   - Pull requests, raised by the person 2026-10-14 and ruled 2026-10-18:
     prescribed, a task a pull request, a phase a stack merged when its
     phase review passes, landing behind a driver (R35).
-  - Still to discuss, raised by the person 2026-10-15: **brief control**.
-    Briefs are fixed at the workflow level; any addition the orchestrator
-    makes to a subagent's brief needs a strict prescription, since Claude
-    telling a reviewer what to look for poisons the review. **Brief
-    quality** is proposed as the next measurement: the same implementer
-    and reviewers on a thin brief against a full one.
+  - **Brief control**, raised by the person 2026-10-15 ("he basically
+    poisons the context by telling the review agent what to look for,
+    where that's the review job's purpose") and ruled 2026-10-18.
+    - Every brief the workflows give their own agents — implementers,
+      reviewer pairs, the task writer, decision's readers, the
+      migration's agents and verifiers — comes from a template the
+      workflows own, filled by the engine from the records (the task, its
+      spec sections, the ledger's decided calls, the diff, earlier reports
+      verbatim) and handed over unchanged.
+    - Anything else an agent should know goes onto the task through the
+      task verbs, or into the ledger when it is a decision, marked as the
+      orchestrator's or the person's, before the dispatch: the person's
+      instruction, a fact about the code the task was written before, an
+      answer to the implementer's question — never approach, focus or
+      size. Reviewers read the task, so they see every addition and judge
+      the work against it; nothing reaches a reviewer any other way.
+      Recording the addition makes it a deliberate act, which gives a bad
+      one pause.
+    - Fix rounds carry the two reviewers' reports verbatim and nothing of
+      the orchestrator's, which takes only the verdict.
+    - A hook refuses a dispatch of one of the workflows' agents whose
+      brief the engine did not issue; Claude's other subagents are
+      untouched. A refusal is recorded, so a template that keeps getting
+      in the way is improved rather than worked around.
+    - Deterministic here while the restructure loosens elsewhere, the
+      person weighing it: the field gives Claude the path, not a way
+      around review's independence; a steered review reads like a passing
+      one, so the failure is invisible afterwards; and a more capable
+      orchestrator steers more persuasively, not less. Switchboard's fix
+      briefs ("keep fixes small", #106, 12 rounds) and the person's own
+      builds improved once briefs were ruled.
+    - **Brief quality** stays proposed as a measurement — the same
+      implementer and reviewers on a thin brief against a full one; it
+      tunes the templates.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
