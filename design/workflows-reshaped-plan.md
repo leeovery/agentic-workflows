@@ -28,9 +28,9 @@ reached (9).
   migration is one sequence (R37), and no project may sit on half a shape
   (R8).
 - The ask rule is built last, as Sequence step 5 orders, but it ships in
-  the release. An empty trust log asks every call Claude has a lean on,
-  which is where today's workflows are. The person's own log is seeded
-  from their R29 history.
+  the release. Everyone starts with an empty trust log, the person
+  included (R25, ruled 2026-10-18), so every call Claude has a lean on
+  asks until its kind loosens.
 - Where a decision model fits (Jev, Clef) is still to be discussed (10.10).
 
 1.4 **Proposed — when the release is ready.**
@@ -291,9 +291,10 @@ the frozen anchor.
 - The engine merges a second clone itself, never git, with ids derived from
   facts two clones could both record.
 
-4.3 **The verdict queue** (R23). Every departure waits for the person's
-verdict (nothing, a fix later, a real loss) and counts as a real loss until
-given.
+4.3 **Verdicts** (R23). The topic's decided screen asks a verdict on each
+call the person changed in that topic: nothing, a fix later, a real loss,
+or skip. A skipped one, and a departure outside a topic's decision, waits
+in the verdict queue. A departure counts as a real loss until judged.
 
 4.4 **The ask rule** (R24).
 - One decision point, reached from everywhere Claude makes a call.
@@ -304,6 +305,8 @@ given.
   - 20%, halved where a change would be hard to undo;
   - lowered where the person cares;
   - danger always asks.
+- A kind goes quiet below the threshold and asks again only a quarter above
+  it (25% at 20%), so one loss reopens it only while its evidence is thin.
 - The cone narrows as the product takes shape. Convergence offers to settle
   the rest.
 - A raise reaches the person product first, with "I don't follow" as a
@@ -312,14 +315,15 @@ given.
 4.5 **Kinds, evidence and the trust log** (R25).
 - Twelve narrow questions compose the kind in code. The labeller is never
   the Claude that wants to proceed.
-- Evidence is weighted by what it proves. Answers count half at six months
-  old, and a new model inherits counts at half weight.
+- Evidence is weighted by what it proves. Two starting values, retuned by
+  replay: answers count half at six months old, and a new model inherits
+  counts at half weight.
 - The matrix is kept at the person's level and the project's, merged as
   prior and update.
 - The trust log is append-only at user level.
 - The matrix screen is tuned by replay.
-- What ships is the procedure, never anyone's counts; the author's log is
-  seeded.
+- What ships is the procedure, never anyone's counts. Everyone starts
+  empty, the author included.
 
 4.6 **Blind questions** (R26), drawn by the engine at a fixed share.
 
@@ -725,8 +729,8 @@ the decided screen carry the per-unit lines.
     needs: how to run the product, what cannot run concurrently (R15), the
     verify setup's location (7.1), and the skills, rules and linters with
     the areas they apply to (7.7). It is asked once, at the first ready to
-    build, and its confirmations are learned process gates (R29 seeded them
-    automatic).
+    build, and its confirmations are learned process gates, asking until the
+    person's own answers loosen them (R25).
   - Boot also adds the state worktree on a fresh clone (10.5).
   - The floor, walkthrough offer, session labels, knowledge gate and
     migration review stay as they are.
@@ -948,8 +952,8 @@ cases, its walks and its share of the pipeline simulation.
 
 11.4 **Step 3 — the ask rule.** The arithmetic, the labeller, the verdict
 page, blind questions, convergence, the matrix screen, replay tuning,
-verification's place in reversal cost (7.8), and the person's log seeded
-from R29. How the matrix starts and how fast it moves are to be discussed.
+and verification's place in reversal cost (7.8). Five starting numbers
+the person has not ruled are still to be discussed (the record's Open).
 
 11.5 **Step 4 — rehearsal and the release.** The rehearsal on all 13
 projects and their variants (R39), adjusted until clean. Then the dress

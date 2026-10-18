@@ -1741,12 +1741,17 @@ each call on a page that day.
     calls made for them, by kind, and ask to see them if they want —
     never a list picked out as "worth a look", which reads as Claude
     doubting its own calls (the person, 2026-10-14). Every departure — an answer that amends or overrules
-  Claude's lean — joins a verdict queue: a page like the one the person
-  used for R29, where they say, when they choose, what the product would
-  have lost had Claude built its own answer: nothing, a fix later, or a
-  real loss. Until then the departure counts as a real loss, so a backlog
-  only makes Claude ask more. A verdict asked in the moment would cost a
-  press just after a disagreement; asked later, it is one batch.
+  Claude's lean — gets a verdict: what the product would have lost had
+  Claude built its own answer, nothing, a fix later, or a real loss. The
+  topic's decided screen asks it, one press each, for the calls the person
+  changed in that topic, with skip beside them — ruled by the person
+  2026-10-18, since a verdict left to a page they must open is a verdict
+  not given ("I certainly won't be opening documents that aren't on the
+  screen", 2026-10-07). A skipped verdict, and a departure made outside a
+  topic's decision, waits in the verdict queue: a page like the one the
+  person used for R29, answered when they choose. Until judged, a
+  departure counts as a real loss, so a backlog only makes Claude ask
+  more.
 - **R24 — Whether to ask is computed.**
   - **One decision point, reached from everywhere Claude makes a call** —
     the person's ruling, 2026-10-13: casually in conversation, a review
@@ -1822,7 +1827,7 @@ each call on a page that day.
       distribution over the counts of R25). Few answers leave the range
       wide, so the system keeps asking: with no loss, 13 answers bring it
       under 20%, 18 under 15%, 28 under 10%; one loss among 20 answers
-      puts it back at 21%.
+      puts the bound at 21%.
     - **The threshold** — one number the person picks from a replay of
       their own history (R29): 20%, the person's pick. Set higher
       mid-build, where a question blocks work, once the build's own
@@ -1833,6 +1838,18 @@ each call on a page that day.
       going through. **The person cares about it** lowers it for a kind
       (visual design in Fumi: the person had a picture of it and wanted
       it their way).
+    - **Going quiet and asking again sit apart**, ruled by the person
+      2026-10-18: a kind goes quiet when its bound falls below the
+      threshold, and asks again only once the bound rises a quarter above
+      it — 25% at 20%, 12.5% where hard to undo. One bad call reopens a
+      kind only while its evidence is thin: at 20%, a loss among fewer
+      than 16 clean answers reopens it, and from 16 on it stays quiet;
+      where hard to undo the line is 35. In the person's words: "one
+      decision that doesn't match up with history shouldn't trigger a
+      complete cascade in change, but we also shouldn't be waiting a year
+      before things start to shift" (2026-10-18); "if decisions start
+      proving wrong, we scale it back, and then it relearns again"
+      (2026-10-13). Blind questions (R26) keep sampling a quiet kind.
     - **Danger always asks:** an option that could destroy, overwrite or
       expose the person's data or secrets, or weaken permissions or
       security. No count loosens it — 2 real losses in 28 decided, the
@@ -1842,9 +1859,10 @@ each call on a page that day.
       94% of contract questions coming to the person. Fumi's tags were
       hard to reverse and, by the person's account, did not matter.
     - Worked, at 20%: behaviour goes quiet after 13 answers without a
-      loss; one loss among its next answers puts it back over the line,
-      and it asks again until the count outweighs it. A contract question
-      that would be hard to undo needs the bound under 10%.
+      loss. A loss while it holds 13 to 15 clean answers puts it over 25%,
+      and it asks again until 20 clean answers outweigh the loss; a loss
+      after 16 or more leaves it quiet. A contract question that would be
+      hard to undo needs the bound under 10%.
   - **The cone of collaboration narrows as the product takes shape**,
     not phase by phase — the person's framing, 2026-10-13: widest on a
     blank page, where the person drives and the framework goes in early,
@@ -1977,16 +1995,20 @@ each call on a page that day.
     their own replay (R24, R29). Each person's counts are learned from
     their own answers; what transfers between people is the method, not
     decisions. A new user starts with an empty log, so every question
-    Claude has a lean on asks — where today's workflows are — and each
-    kind loosens on that person's evidence (about 13 clean answers, 28
-    where a change would be hard to undo; danger never). A user of
+    Claude has a lean on asks — as today's discussions do, and the review
+    findings Claude settles itself today (22%, R24's lanes) ask too — and
+    each kind loosens on that person's evidence (about 13 clean answers,
+    28 where a change would be hard to undo; danger never). A user of
     today's workflows starts empty too: importing their transcripts
     (labelling, two checks, a verdict page — about $10–20 of model calls
-    and an hour) stays out of the first release, added only if the first
-    weeks of asking prove heavy. The person who designed this seeds their
-    own log at build from the measured history (R29: the 410 questions
-    both checks read alike, the 60 verdicts, the 1,744 gate answers), so
-    it starts where the replay ended (the person's call, 2026-10-12).
+    and an hour) stays out of the release, added only if the first weeks
+    of asking prove heavy. So does the person who designed this, ruled by
+    the person 2026-10-18 over their 2026-10-12 call to seed their own log
+    from R29's history: "simpler I think to start clean and lets me
+    experience the trust matrix system cleanly", and "newer models make
+    different decisions and better ones at that". The author meets the
+    first weeks every user meets; R29's history stays the replay set the
+    defaults are tuned against.
 - **R26 — Blind questions.** The person's idea (2026-10-12), replacing
   after-the-fact spot checks, which anchor the person on Claude's answer
   and ask them to judge later without the context they had. Now and then
@@ -2167,7 +2189,7 @@ each call on a page that day.
       call, not whether it differs from what they said. The judgement was
       made after seeing both answers, the anchoring R26 discounts, so it
       is strong direction rather than a count.
-  - **Seeding the process gates (R40).** 1,744 gate answers since June: 953
+  - **The process gates (R40).** 1,744 gate answers since June: 953
     at process gates, 482 at review-loop gates, 309 at navigation menus.
     The rule: a gate goes automatic once the one-sided 95% upper bound on
     leaving its usual answer falls below a threshold, with blind asks at
@@ -2175,10 +2197,11 @@ each call on a page that day.
     skipped (23%) and 5 would have gone against the person — all five
     challenges to the premise (three reroute pushbacks, two conclude
     challenges), not another option picked; at 10%, 10% skipped, 2 wrong.
-    Seeded automatic at 20%: resume (63, none different), conclude (99,
+    Automatic at 20% in the replay: resume (63, none different), conclude (99,
     3), revisit, wrap-up, reroute, next phase, the project-skills and
     linters confirmations, correction, plan format, dependency approval.
-    Spec sign-off qualifies by count and stays an authority gate. Where a
+    No gate ships automatic: each asks until the person's own answers
+    loosen it, the author's included (R25). Spec sign-off qualifies by count and stays an authority gate. Where a
     gate offers auto, auto is the person's usual pick (task approval 32 of
     36, task gate 20 of 24, fix gate 15 of 22).
     - **The long tail:** 193 gate names, most answered fewer than ten
@@ -2647,8 +2670,8 @@ own detection finds nothing in either.
     - **Completed units** stay as history, their specs joined; tick v1's
       two concluded discussions that never reached a spec stay decided
       topics in the finished unit.
-  - The trust log is new and starts empty; the author's log is seeded
-    from R29's history (Sequence, step 3).
+  - The trust log is new and starts empty for everyone, the author
+    included (R25).
 - **R38 — Directives.** A migration kind whose transform is judgment,
   ruled by the person 2026-10-16 over stretching today's verification
   addenda, which check after a code transform, fire once and live in the
@@ -2724,8 +2747,7 @@ own detection finds nothing in either.
    What remains before the plan is in Where things stand. Nothing in the
    workflows changed.
 3. **Foundations shared by A and B.** The ledger, raise and gate-answer
-   logging, the verdict queue, the user-level store, and the author's log
-   seeded from R29's history. Logging collects from the day it ships,
+   logging, the verdict queue and the user-level store. Logging collects from the day it ships,
    before anything depends on it.
 4. **Restructure (A)**, the record-and-log split first, with its
    migration and directive, and
@@ -2748,7 +2770,8 @@ person, one item at a time; the sections above hold the detail.
   in it.
 - The trust layer, each call approved on a page (R23–R28, R40's
   positions, auto or step since 2026-10-15); the threshold, 20% halved where hard to undo; what ships is
-  the procedure, never anyone's counts, with the author's log seeded.
+  the procedure, never anyone's counts; everyone starts empty, the
+  author included (2026-10-18).
 - From the walks: quick-fix in one session, a short record after the
   work, no review step (R21); a specification waits until every topic is
   decided (R17); bugfix validations acted on by Claude, the
@@ -3022,10 +3045,12 @@ an epic), which opened what stores what. Resolve each, then climb:
   12 and 14 October ("we haven't dug into fully yet… we can circle back to
   that") and never worked through: labelling a question's kind (R25, R28),
   the one-thing-per-entry check (R23), reading typed gate answers (R29).
-- **How the trust matrix starts and how fast it moves.** Raised again by
-  the person 2026-10-18 to reconfirm: empty for everyone with their own
-  log seeded (R25), against their numbers as everyone's defaults; and how
-  far one answer moves it, by project and by person.
+- **The matrix's starting numbers.** Set by Claude and never ruled by the
+  person: a shown answer at full weight (R25), the person's other
+  projects capped at 20 answers' weight as a project's prior, an answer
+  at half weight once six months old, a new model starting from its
+  predecessor's counts at half weight, and one call in ten asked blind
+  (R26).
 - **The merged phase's name.** "Decision" names the outcome, not the
   activity, as discovery, research and discussion do; kept for now.
   Rejected by the person 2026-10-13: deliberation (wrong for what the
