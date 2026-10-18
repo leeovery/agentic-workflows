@@ -680,33 +680,37 @@ project's own measurements decide (R7).
     known instead. A Claude suggestion can never sit in the record as the
     person's decision — the spec review catches an unowned decision in the
     spec.
-  - **A topic opens with Claude's view.** Nothing is written ahead. When
-    the topic starts, Claude reads its brief and the record of every topic
-    decided so far, checks what can be checked (R24), and shows its view
-    on one screen, in product terms:
-    - what earlier decisions already settle, each with where it comes
-      from;
-    - how Claude sees the rest — the shape;
-    - the forks: where there is more than one sensible way and the choice
-      shows in the product.
-
-    Where nothing decided constrains a fork, the view shows the options
-    and what the person would notice with each, and Claude gives its lean
-    only after the person has said how they see it: a shown answer pulls
-    agreement (82% shown against 51% blind, R29), and the shape of the
-    first topics is where the person wants the product to be theirs.
-    Where the person has no view, the lean comes next, so the topic never
-    stalls. Where earlier decisions point one way, the lean comes first. The
-    conversation that follows is about the shape, and what the person
-    decides enters the record as theirs. The least a topic takes is the
-    view and one answer — Fumi's build-and-release in October is minutes:
-    most of it follows from earlier topics, and the view names the four
-    things that need the person. The person's design, 2026-10-13: "Here's
-    how I see this. How do you see it?"
+  - **A topic opens with Claude starting the conversation**, ruled by the
+    person 2026-10-18. Nothing is written ahead. The prose prescribes the
+    steps before it — reading the brief and the record of every topic
+    decided so far, checking what can be checked (R24), the engine's
+    commands — and then Claude opens the conversation itself, never
+    stopping in silence once it has read ("almost like walking into a
+    room and just staring at someone and not saying hello"). What it says
+    is its own and fits the topic: the shape of what has been said, a
+    perspective from the brief or beyond it, what earlier decisions
+    already settle and where from, the open questions with its lean on
+    any where a logical one exists, and perhaps a steer towards where to
+    start. Opening decides nothing: the conversation is about the shape,
+    and what the person decides enters the record as theirs.
+    - **A conversation, never a conveyor belt**, in the person's words,
+      2026-10-18: "the decision process isn't a conveyor belt of
+      decisions. Those decisions are meant to be collaborated on and
+      answered through conversation… challenging ideas, playing devil's
+      advocate, throwing thoughts around… It's meant to be fun." The map
+      tracks what is open and never sets the conversation's order, and
+      the prose never prescribes the conversation itself (a field, R2):
+      prescribed too rigidly, Claude drills through questions for
+      answers. Early topics are mostly conversation; as the product fills
+      out there is less to discuss and more to bolt on, and one piece can
+      open the discussion wide again.
+    - The least a topic takes is Claude's opening and one answer — Fumi's
+      build-and-release in October is minutes: most of it follows from
+      earlier topics, and four things need the person.
   - **The map is the definition of done**, agreed by the person
     2026-10-13. It stores nothing: it is the topic's list of what is being
     decided and where each stands, drawn from the ledger. The person's
-    questions — seeded from the view's forks, joined by any met
+    questions — seeded from the open questions in Claude's opening, joined by any met
     mid-conversation, arriving as a message or a finding, or added by the
     person — sit beside Claude's calls, one line each. Only the person's
     hold the topic open: Claude's are decided when made, and the topic is
@@ -2855,8 +2859,9 @@ person, one item at a time; the sections above hold the detail.
   feature and epic two types with a light call between them (R10, R19);
   the product record — the workflows' own file, never CLAUDE.md, started
   in discovery, added to from decisions at a topic's decided screen, read by every
-  opening view, apart from the feature map (R10); where the person has no
-  view on a fork, Claude's lean comes next (R11); discovery's gates —
+  opening view, apart from the feature map (R10); a topic opens with
+  Claude starting the conversation, its lean given wherever a logical one
+  exists (R11, 2026-10-18); discovery's gates —
   starting work an authority gate, the map's screen holding the parks, no
   confirm on a change the person asked for, cancelling still confirmed
   (R10, R40); the gap analysis at a topic's close and one sweep before

@@ -140,9 +140,11 @@ the frozen anchor.
   through the engine; the topic's record is the engine's view of its
   current entries. The log keeps the journey, one dated heading per
   session, per topic. Every entry says who decided it.
-- **A topic opens with Claude's view:** what is settled and where from, the
-  shape, the forks. Its lean is held back where nothing decided constrains
-  a fork, and comes next where the person has no view.
+- **A topic opens with Claude starting the conversation** once it has read
+  the brief and the records: in its own words, with its lean wherever a
+  logical one exists. A conversation, never a conveyor belt of questions:
+  the map tracks what is open, never the order, and the prose prescribes
+  the steps around the conversation, never the conversation.
 - **The map is the definition of done.** The person's questions sit beside
   Claude's calls, and only the person's hold the topic open. Each showing
   lists Claude's calls since the person last looked.
