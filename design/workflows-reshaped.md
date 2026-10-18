@@ -1636,8 +1636,8 @@ each call on a page that day.
       requires every existing line unchanged.
     - **One thing per entry:** the engine refuses a decision that names
       no question; whether an entry holds one rule is judged when it is
-      written by a separate model call — Jev or Clef, never the Claude
-      writing it — and an entry holding several is split before it
+      written by a separate Claude call, never the Claude writing it
+     — and an entry holding several is split before it
       lands.
     - **The chain is shown, never merged:** a record shows each current
       answer with the answers it replaced folded beneath it; a
@@ -1936,8 +1936,8 @@ each call on a page that day.
     a user goes through split them, so flow is part of behaviour. "Would
     a later change reach beyond the piece" also halves the threshold, and
     "could Claude find out" routes a question to checking (R24). The
-    labeller is never the Claude that wants to proceed — a separate model
-    call, Jev later (R28) — since a self-labelled question can drift into
+    labeller is never the Claude that wants to proceed — a separate
+    Claude call (R28) — since a self-labelled question can drift into
     a trusted kind. Gate answers are keyed by the gate's name. Claude's
     own stated confidence never gates: in REFLEX, wrong calls averaged
     0.78; in the Fumi replay right and wrong calls overlapped (R29).
@@ -2052,22 +2052,15 @@ each call on a page that day.
   memory cannot do this job: it is keyed to the project directory, so
   what one project learns never reaches another. What transfers between
   projects is taste and principle, not specific decisions.
-- **R28 — Decision models come later, as labellers.** The bare loop ships
-  first: the log, the ledger, the counts, the arithmetic in the engine,
-  and the twelve questions of R25 answered by a separate Claude call. A
-  decision model joins later as that labeller — Jev reads narrow yes/no
-  questions, the shape the kinds now take — never as the ask oracle — decision models are weakest at exactly "should I ask"
-  (REFLEX: 68.8% right on clarification decisions, 51.2% on risk):
-  - one provider interface written to Jev's API, Jev the default as the
-    cheapest, Clef behind the same interface (open weights, self-hostable);
-    the engine's knowledge-base providers are the precedent;
-  - which model labels which kind is chosen by running both on the
-    person's labelled history, never from vendor tables;
-  - neutral option names; a threshold per kind set from about 100 of the
-    person's labels by the lower-bound rule and checked on held-out items;
-  - probabilities recalibrated on the person's labels before they steer
-    anything; fine-tuning a model on the trust log is the last rung;
-  - measured 2026-10-18, Jev (jev-1.13.0) on the 150 exchanges Opus and
+- **R28 — No decision model in the release.** Ruled by the person
+  2026-10-18, after measuring. A separate Claude call — never the Claude
+  that wants to proceed — does the three jobs a decision model was
+  proposed for: labelling a question's kind from the twelve questions of
+  R25, judging whether a ledger entry holds one decision (R23), and
+  reading a typed gate answer (R29). A decision model was never to decide
+  whether to ask; they are weakest exactly there (REFLEX: 68.8% right on
+  clarification decisions, 51.2% on risk).
+  - **Jev measured** 2026-10-18 (jev-1.13.0) (jev-1.13.0) on the 150 exchanges Opus and
     Sonnet labelled (R29), three runs: the composed kind agrees with their
     consensus 75% (kappa 0.70) on the record's wording and 72% on one
     rewording in the dex lab's style, measured on 100 held out, against
@@ -2080,12 +2073,19 @@ each call on a page that day.
     gave identical probabilities on 12–23% of answers, and its kinds held
     across runs 90–93% of the time, as Opus's did. $0.00007 an exchange,
     a quarter of a second, about 130 times cheaper than Opus. Records in
-    `workflows-reshaped-measure/trust/labeller/`;
-  - a per-question signal — how likely the person is to agree with this
-    particular answer — refines the per-kind counts last; counts come
-    first because they explain themselves;
-  - the loop adjusts only on evidence larger than noise, checked against
-    held-out data.
+    `workflows-reshaped-measure/trust/labeller/`.
+  - **Clef not run**, skipped by the person: it would have had to rise
+    from Jev's 75% to about 91%, where every report had it level with Jev
+    or below on accuracy (Better Stack: 83% against 86%).
+  - **Offered later only once one labels as well as a Claude call.** The
+    same scripts rerun on a new Jev or Clef version; if it matches, setup
+    offers it as the person's choice ("we can very much let the user
+    decide", 2026-10-18): each label names the labeller that wrote it,
+    and a switch relabels the log from the questions' text, so the counts
+    follow. Kept for that day: neutral wording; a threshold per question
+    from the person's labels by the lower-bound rule, checked on held-out
+    items; a per-question signal refining the per-kind counts last; the
+    loop adjusting only on evidence larger than noise.
 - **R29 — Starting numbers.** Measured 2026-10-12, once the shape review
   settled, over the person's transcripts for Fumi, Portal, Tick, agntc and
   Mint (298 sessions; 28 headless ones dropped) from 2026-08-31 unless
@@ -2781,7 +2781,7 @@ own detection finds nothing in either.
    **verification (C)** alongside — C stands on its own and is useful
    under today's workflows.
 5. **The ask rule on (B)**, calibrated to ask what is asked today and
-   loosening only as evidence supports; the decision model last.
+   loosening only as evidence supports.
 
 ## Where things stand
 
@@ -2981,8 +2981,7 @@ worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
 phase not yet written; how project skills
 reach the builder (R34); whether
-two mods' panes share Claude Code's tab row (untested); Jev as the
-labeller (unreachable here).
+two mods' panes share Claude Code's tab row (untested).
 
 **Parked:** the merged phase's name (Open) — "decision" kept for now.
 The workflows board (Open) — low priority by the person's
@@ -3068,10 +3067,6 @@ an epic), which opened what stores what. Resolve each, then climb:
   it while Claude works — jumping to other work units, the inbox, the
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. Sketches per phase come next.
-- **Where a decision model fits (Jev, Clef).** Raised by the person on 6,
-  12 and 14 October ("we haven't dug into fully yet… we can circle back to
-  that") and never worked through: labelling a question's kind (R25, R28),
-  the one-thing-per-entry check (R23), reading typed gate answers (R29).
 - **The merged phase's name.** "Decision" names the outcome, not the
   activity, as discovery, research and discussion do; kept for now.
   Rejected by the person 2026-10-13: deliberation (wrong for what the

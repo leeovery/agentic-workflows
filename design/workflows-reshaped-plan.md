@@ -31,7 +31,7 @@ reached (9).
   the release. Everyone starts with an empty trust log, the person
   included (R25, ruled 2026-10-18), so every call Claude has a lean on
   asks until its kind loosens.
-- Where a decision model fits (Jev, Clef) is still to be discussed (10.10).
+- No decision model ships (R28, ruled 2026-10-18).
 
 1.4 **Proposed — when the release is ready.**
 - Today: a change is ready when the gates pass and its review is done; walks
@@ -333,8 +333,11 @@ call draws on its own from its id, at random across projects, with no tally.
 4.7 **The record of the person** (R27), at user level, confirmed at a gate
 before it steers.
 
-4.8 **Decision models later, as labellers** (R28), behind one provider
-interface.
+4.8 **No decision model in the release** (R28, ruled 2026-10-18). A
+separate Claude call labels kinds, checks one decision per entry and reads
+typed gate answers. Jev measured 75% against a Claude call's 91%; Clef was
+not run. A decision model is offered later, as the person's choice, only
+once a rerun shows it labels as well.
 
 4.9 **Starting numbers** (R29), measured 2026-10-12 and the source of
 every default above.
@@ -892,13 +895,6 @@ project.
 
 10.9 **Two mods' panes in one tab row.** This is untested, and it matters
 only to the workflows board (12.2). It is tested when the board is taken up.
-
-10.10 **Where a decision model fits.** Jev and Clef were raised by the
-person (6, 12 and 14 October) and never worked through. To be discussed
-before the plan settles: where a decision model helps (labelling a
-question's kind, R25 and R28; the one-thing-per-entry check, R23; reading
-typed gate answers, R29), whether each can be reached, its cost, and how the
-two are compared on the person's labelled history (R28).
 
 ## 11. Proposed — the build order
 
