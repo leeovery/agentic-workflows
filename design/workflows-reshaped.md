@@ -2980,8 +2980,10 @@ an epic), which opened what stores what. Resolve each, then climb:
    in the build); ~~the trust layer's detail~~ — designed from the kinds
    of question and ruled on 2026-10-12 (R23–R29), the parked item left
    open by mistake. Then the whole release as one numbered document:
-   written 2026-10-18 as `design/workflows-reshaped-plan.md`, the
-   person's comments by number to come.
+   written 2026-10-18 as `design/workflows-reshaped-plan.md`. The person
+   ruled one release the same day, and asked that the plan be checked
+   against the whole conversation and every gap, glossed-over call or
+   unagreed ruling be raised with them before it settles.
 
 ## Open
 
@@ -3016,6 +3018,14 @@ an epic), which opened what stores what. Resolve each, then climb:
   it while Claude works — jumping to other work units, the inbox, the
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. Sketches per phase come next.
+- **Where a decision model fits (Jev, Clef).** Raised by the person on 6,
+  12 and 14 October ("we haven't dug into fully yet… we can circle back to
+  that") and never worked through: labelling a question's kind (R25, R28),
+  the one-thing-per-entry check (R23), reading typed gate answers (R29).
+- **How the trust matrix starts and how fast it moves.** Raised again by
+  the person 2026-10-18 to reconfirm: empty for everyone with their own
+  log seeded (R25), against their numbers as everyone's defaults; and how
+  far one answer moves it, by project and by person.
 - **The merged phase's name.** "Decision" names the outcome, not the
   activity, as discovery, research and discussion do; kept for now.
   Rejected by the person 2026-10-13: deliberation (wrong for what the

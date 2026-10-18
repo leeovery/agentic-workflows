@@ -5,8 +5,8 @@ The whole release in one numbered document, drawn from the design record
 
 - **Ruled** sections (2–5) restate what the person has ruled, one item to a
   few lines, and point at the record for the detail and the evidence.
-- **Proposed** items (1.3–1.4, 6–11) are new. Each shows today against what
-  is proposed.
+- **Proposed** items (1.4, 6–11) are new. Each shows today against what is
+  proposed.
 - The person comments by number; a line with no comment is agreed.
 - Nothing in the workflows changes until the plan is approved.
 
@@ -23,32 +23,17 @@ that and is never the aim (What the workflows are for).
 brings every project onto the new shape (5); and the areas the record never
 reached (9).
 
-1.3 **Proposed — how it ships.**
-- Today: each change is its own pull request into `main`. The person
-  releases from `main` when they choose, and each release's migrations run
-  at the next `/workflow-start`.
-- Proposed: two releases, then a later addition.
-  - **Release 1, the reshape:** everything in sections 3, 5, 6, 7 and 9,
-    together. The migration is one sequence (R37) and no project may sit
-    on half a shape (R8), so it cannot ship in parts. The decision point
-    (R24) is in place at every touch point but decides as today's
-    ask-or-decide reference does, asking what is asked today. Every call,
-    raise, answer, departure and gate answer is logged to the ledger and
-    the trust log from the first day.
-  - **Release 2, the ask rule on:** the arithmetic replaces Claude's
-    judgement at the decision point, with the labeller, the verdict page,
-    blind questions, convergence, the matrix screen and replay tuning; the
-    author's log is seeded from R29's history. It is engine code and
-    screens only, since release 1 already routes every call through the
-    decision point. The rule starts from release 1's logged evidence, and
-    the measures (R36) get a clean before and after.
-  - **Later, decision models as labellers** (R28), once about 100 of the
-    person's labels exist per kind.
-- This is Sequence steps 3–5 (the record's Sequence section) made into
-  releases: foundations are built first but ship inside release 1, since
-  nothing outside the reshape would call them.
+1.3 **One release.** Ruled by the person on 2026-10-18.
+- Everything in sections 3 to 9 ships together, with the ask rule on. The
+  migration is one sequence (R37), and no project may sit on half a shape
+  (R8).
+- The ask rule is built last, as Sequence step 5 orders, but it ships in
+  the release. An empty trust log asks every call Claude has a lean on,
+  which is where today's workflows are. The person's own log is seeded
+  from their R29 history.
+- Where a decision model fits (Jev, Clef) is still to be discussed (10.10).
 
-1.4 **Proposed — when release 1 is ready.**
+1.4 **Proposed — when the release is ready.**
 - Today: a change is ready when the gates pass and its review is done; walks
   run on the person's word.
 - Proposed: all of the following hold.
@@ -64,7 +49,7 @@ reached (9).
     through every phase on a rehearsal copy, live, from start to finish
     report.
 
-1.5 **The size of it, today.** Release 1 rewrites most of the product:
+1.5 **The size of it, today.** The release rewrites most of the product:
 - 280,000 words of skill prose in 327 files, and 43,000 words across 34
   agents;
 - 44,000 lines of engine and 72 migrations;
@@ -414,8 +399,8 @@ Ruled in shape (R35, R2):
   - `ledger` (new): ask, find, decide, replace, hold, move; reads the
     record, the map, the product record, "since you last looked", and what
     a replacement affects.
-  - `raise` (new): puts a call through the decision point and returns ask
-    or proceed (ask blind from release 2); records the person's answer,
+  - `raise` (new): puts a call through the decision point and returns ask,
+    proceed or ask blind; records the person's answer,
     "I don't follow" included.
   - `verdict` (new): the queue, and giving a verdict.
   - `task`, rebuilt as the driver's verbs (ruled), plus a note for later.
@@ -623,7 +608,7 @@ tasks.**
   a finding.
 - Either way the cost is bounded by the phase's diff.
 
-7.5 **No habit hooks in release 1** (R33).
+7.5 **No habit hooks in the release** (R33).
 - A smell the reviews keep naming becomes a hard check where one can catch
   it (7.6). Otherwise it becomes a project rule handed to the builder
   (7.7).
@@ -650,8 +635,8 @@ open in the record).
 - Rules that can be checked become checks (7.6). The rest stay guidance in
   the brief.
 
-7.8 **Ruled, built in release 2:** verification lowers reversal cost in the
-ask rule (R32). Its arithmetic is designed with the rule.
+7.8 **Ruled:** verification lowers reversal cost in the ask rule (R32). Its
+arithmetic is designed with the rule (11.4).
 
 ## 8. Proposed — measures
 
@@ -664,7 +649,7 @@ are computed from what is already recorded, never kept by hand (R45).
 
 | Measure | Computed from | Shown | Moves |
 |---|---|---|---|
-| Overturn rate per kind | the trust log | the matrix screen (release 2) | the ask rule, by its own arithmetic |
+| Overturn rate per kind | the trust log | the matrix screen | the ask rule, by its own arithmetic |
 | How a review's findings split | the ledger: each finding, and who answered it | a line in the decided screen and the finish report | the person's threshold; this repo's review briefs |
 | Review findings per phase | the pairs' recorded verdicts and rounds | the finish report, by phase | this repo's builder briefs and principles |
 | Bugs found after review | bugfix units, each relying on the unit whose code it fixes, grouped by the feature map's areas | the area's hotspot flag (ruled, R32) | the verify setup's drives for that area |
@@ -673,9 +658,8 @@ are computed from what is already recorded, never kept by hand (R45).
 
 8.2 **Two audiences.** The first four are the product's, seen
 by anyone using the workflows. The last two are this repo's, seen in the
-prose harness. No new screen in release 1: the finish report and the
-decided screen carry the per-unit lines, and the matrix screen comes with
-release 2.
+prose harness. No new screen beyond the matrix: the finish report and
+the decided screen carry the per-unit lines.
 
 8.3 **The counter-measures.**
 - The ask rule is checked by blind questions and verdicts.
@@ -685,7 +669,7 @@ release 2.
   while bugs after review rise means the reviews are weakening, not the
   code improving.
 
-8.4 **The brief-quality measurement runs before release 1.**
+8.4 **The brief-quality measurement runs before the release.**
 - The same builder and reviewers run on a thin brief and on the full
   template, over the replay's Switchboard slices (`walks/build/replay/`).
 - It runs once the templates exist and is used to tune them. Its cost is
@@ -756,7 +740,7 @@ release 2.
     things: research and discussion as phases, scoping, planning,
     cross-cutting, build order, dead end, document.
 - Proposed:
-  - Rewritten in release 1, after the phases. The samples keep rendering
+  - Rewritten in the release, after the phases. The samples keep rendering
     through the real projections, from new fixtures: the decision map, the
     new start and epic menus, the build's progress.
   - The glossary drops the retired terms and gains, in the engineer's terms
@@ -773,7 +757,7 @@ release 2.
   centre on retired things (research and discussion, planning, work types)
   and five more lean on them.
 - Proposed:
-  - Rewritten in release 1 from the shipped skills, last, since the skills
+  - Rewritten in the release from the shipped skills, last, since the skills
     are the source of truth.
   - The new book: work types; discovery; decision (replacing research and
     discussion); experiments; investigation; specification; the build
@@ -807,8 +791,8 @@ release 2.
     checklist item asserted at least once. The mainlines are rebuilt for
     epic, feature, bugfix, quick-fix and roadmap; cross-cutting goes.
   - **Walks run on the product's models** (R4). The walker's model and
-    effort are set per run, and release 1's walks run at each model and
-    effort the prose runs at. Every walk records the context spent before
+    effort are set per run, and the release's walks run at each model
+    and effort the prose runs at. Every walk records the context spent before
     its first question (R43).
   - **The pipeline simulation is rebuilt** for the new verbs and phases, as
     CLAUDE.md requires of any change to the workflows.
@@ -902,15 +886,12 @@ project.
 10.9 **Two mods' panes in one tab row.** This is untested, and it matters
 only to the workflows board (12.2). It is tested when the board is taken up.
 
-10.10 **Jev as the labeller.** Unreachable from here, and not needed until
-after release 2: release 2's labeller is a separate Claude call (R28).
-
-10.11 **The one-thing-per-entry check in release 1.**
-- R23 has it judged by Jev or Clef, never the Claude writing the entry.
-  Neither is reachable from here.
-- Proposed: in release 1 a separate Claude call makes the check, behind the
-  provider interface Jev and Clef join later (R28). It is still never the
-  Claude that wrote the entry.
+10.10 **Where a decision model fits.** Jev and Clef were raised by the
+person (6, 12 and 14 October) and never worked through. To be discussed
+before the plan settles: where a decision model helps (labelling a
+question's kind, R25 and R28; the one-thing-per-entry check, R23; reading
+typed gate answers, R29), whether each can be reached, its cost, and how the
+two are compared on the person's labelled history (R28).
 
 ## 11. Proposed — the build order
 
@@ -937,9 +918,9 @@ part lands with its tests.
    check.
 3. **The trust log and logging:** raises, calls, departures, gate answers
    (from the mod) and position switches.
-4. **The decision point** at release 1's calibration: asks what is asked
-   today, with its answers already shaped for release 2 (ask, proceed, ask
-   blind).
+4. **The decision point:** the raise verb and its three answers (ask,
+   proceed, ask blind). Until the rule is built (11.4) it asks every call
+   Claude has a lean on, so the phases can be built and walked against it.
 5. **The drivers:** the task verbs, the Tick driver and their conformance
    suite; the landing verbs, the GitHub and local drivers and theirs.
 6. **Briefs:** the templates, the fill verb and the dispatch hook.
@@ -965,17 +946,17 @@ cases, its walks and its share of the pipeline simulation.
 9. Setup (9.2), help and the glossary (9.3), the brief-quality measurement
    (8.4), then the docs (9.4) and the CLAUDE.md map.
 
-11.4 **Step 3 — rehearsal and release 1.** The rehearsal on all 13 projects
-and their variants (R39), adjusted until clean. Then the dress rehearsal
-(1.4), the merge into `main`, and the person's release.
+11.4 **Step 3 — the ask rule.** The arithmetic, the labeller, the verdict
+page, blind questions, convergence, the matrix screen, replay tuning,
+verification's place in reversal cost (7.8), and the person's log seeded
+from R29. How the matrix starts and how fast it moves are to be discussed.
 
-11.5 **Step 4 — release 2, the ask rule on.** The arithmetic, the labeller,
-the verdict page, blind questions, convergence, the matrix screen, replay
-tuning, verification's place in reversal cost (7.8), and the author's log
-seeded from R29.
+11.5 **Step 4 — rehearsal and the release.** The rehearsal on all 13
+projects and their variants (R39), adjusted until clean. Then the dress
+rehearsal (1.4), the merge into `main`, and the person's release.
 
-11.6 **Later:** decision models as labellers (R28); importing an existing
-user's transcripts, only if the first weeks of asking prove heavy (R25).
+11.6 **Later:** importing an existing user's transcripts, only if the first
+weeks of asking prove heavy (R25).
 
 ## 12. Parked
 
