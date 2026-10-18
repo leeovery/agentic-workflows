@@ -1636,9 +1636,8 @@ each call on a page that day.
       requires every existing line unchanged.
     - **One thing per entry:** the engine refuses a decision that names
       no question; whether an entry holds one rule is judged when it is
-      written by a separate Claude call, never the Claude writing it
-     — and an entry holding several is split before it
-      lands.
+      written by a separate Claude call, never the Claude writing it,
+      and an entry holding several is split before it lands.
     - **The chain is shown, never merged:** a record shows each current
       answer with the answers it replaced folded beneath it; a
       replacement is written beside the old answer and names what it
