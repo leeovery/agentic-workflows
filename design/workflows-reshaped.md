@@ -1994,10 +1994,10 @@ each call on a page that day.
     their questions, the arithmetic and the defaults the person set from
     their own replay (R24, R29). Each person's counts are learned from
     their own answers; what transfers between people is the method, not
-    decisions. A new user starts with an empty log, so every question
-    Claude has a lean on asks — as today's discussions do, and the review
-    findings Claude settles itself today (22%, R24's lanes) ask too — and
-    each kind loosens on that person's evidence (about 13 clean answers,
+    decisions. A new user starts with an empty log, so every question of
+    taste or intent asks — where today's workflows are: the calls they
+    settle themselves, today's apply and decide lanes (22%, R24), have one
+    defensible answer and stay Claude's — and each kind loosens on that person's evidence (about 13 clean answers,
     28 where a change would be hard to undo; danger never). A user of
     today's workflows starts empty too: importing their transcripts
     (labelling, two checks, a verdict page — about $10–20 of model calls
