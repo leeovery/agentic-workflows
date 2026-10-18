@@ -2067,9 +2067,20 @@ each call on a page that day.
     person's labels by the lower-bound rule and checked on held-out items;
   - probabilities recalibrated on the person's labels before they steer
     anything; fine-tuning a model on the trust log is the last rung;
-  - a decision model does not sample, so the same question gets the same
-    number every time — the determinism a probability asked of Claude
-    cannot give;
+  - measured 2026-10-18, Jev (jev-1.13.0) on the 150 exchanges Opus and
+    Sonnet labelled (R29), three runs: the composed kind agrees with their
+    consensus 75% (kappa 0.70) on the record's wording and 72% on one
+    rewording in the dex lab's style, measured on 100 held out, against
+    91% (kappa 0.89) for a fresh Opus or Sonnet run. At 0.5 it says yes
+    far too often (hard to undo 97 against 25, words 44 against 10, danger
+    29 against 15) and reads literally ("deletes every fumi they own" read
+    as danger); its probabilities rank well (AUC mostly 0.9 or more), but
+    the cut differs by question, and even cuts fitted on the held-out
+    answers themselves stop at 83%. Not deterministic: identical requests
+    gave identical probabilities on 12–23% of answers, and its kinds held
+    across runs 90–93% of the time, as Opus's did. $0.00007 an exchange,
+    a quarter of a second, about 130 times cheaper than Opus. Records in
+    `workflows-reshaped-measure/trust/labeller/`;
   - a per-question signal — how likely the person is to agree with this
     particular answer — refines the per-kind counts last; counts come
     first because they explain themselves;
