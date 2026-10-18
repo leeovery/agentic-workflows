@@ -360,7 +360,8 @@ a project's code.
    its own.
 4. The records.
 5. The cut and the merges.
-6. Finish, with one migration commit on the person's yes.
+6. Finish: the records indexed, then the migration's commit on the
+   person's yes, now two (6.3).
 
 5.3 **Every topic gets a record,** completed units included. The stream
 starts at the migration, with one current answer per question, each citing
