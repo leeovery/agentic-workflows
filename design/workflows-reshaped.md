@@ -2294,6 +2294,36 @@ each call on a page that day.
     - In the person's 13 projects 97 of 101 plans used Tick, 4 plain
       files (all in completed units of Tick's own repo) and none Linear;
       the migration sets every project to the default driver.
+  - **Code lands through the engine to a driver**, ruled by the person
+    2026-10-18, by the same rule as the tracker.
+    - Pull requests are prescribed. A task is a pull request — the change
+      the reviewer pair already reviews — squash-merged, so the default
+      branch gets one commit per task with its review behind it.
+    - A phase is a stack: its tasks' pull requests chained in the order
+      the orchestrator merges them back, parallel tasks included, merged
+      whole once its phase review passes (in step, that merge stops like
+      any process gate). A phase that relies on the one before waits for
+      that merge, so every stack starts from the default branch; one that
+      does not runs beside it as its own stack. The review phase's fix
+      tasks are the last stack, merged at finish.
+    - Not one stack for the unit: Switchboard's build would have been
+      about 125 deep, every change landing on the default branch would
+      rebase the whole chain, overlapping phases and phase-review fixes
+      sit badly in one chain, and nothing usable would land before
+      finish.
+    - Two drivers ship: GitHub's, holding the stack mechanics in its own
+      code so no one needs GitHub's stack skill, its CLI and stack
+      extension checked at setup; and a local one for a project with no
+      remote — a branch per task merged into the phase's branch, the
+      phase merged into the default branch, the same shape without pull
+      requests. The rehearsal copies and the prose-test worlds have no
+      remote, so the local driver is needed regardless. The code host's
+      CLI is named only in its driver.
+    - Today the workflows never branch or open a pull request: Portal's
+      default branch took 4,488 commits since June and 5 pull-request
+      merges, Tick and Mint none; Switchboard, under the person's
+      orchestrate skill, opened 125 pull requests in three weeks, 36 of
+      them stacked.
 
 ### Layout on disk
 
@@ -2801,6 +2831,10 @@ person, one item at a time; the sections above hold the detail.
   shipped; new drivers by pull request against a conformance suite;
   hosted trackers through their API, never an MCP; the tracker named only
   in its driver, the docs and design notes.
+- Pull requests (2026-10-18, R35): prescribed; a task a pull request, a
+  phase a stack merged whole when its phase review passes, a relying
+  phase waiting for that merge; landing behind a driver, GitHub's and a
+  local one for projects with no remote.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2871,8 +2905,8 @@ an epic), which opened what stores what. Resolve each, then climb:
    written fresh by whether building has started, rehearsal on copies of
    every project; the layout on disk.
 8. **The formal plan** (Sequence steps 3–5). Four calls first, one at a
-   time: ~~one task tracker~~ (ruled 2026-10-17, R35); pull-request
-   stacks; how strictly the orchestrator adds to a subagent's brief; the
+   time: ~~one task tracker~~ (ruled 2026-10-17, R35); ~~pull-request
+   stacks~~ (ruled 2026-10-18, R35); how strictly the orchestrator adds to a subagent's brief; the
    trust layer's detail. Then the whole release as one numbered document.
 
 ## Open
@@ -2998,11 +3032,10 @@ an epic), which opened what stores what. Resolve each, then climb:
     tasks each in their own worktree, merged back by the orchestrator,
     work on a shared file one task at a time; phases overlap where they
     can — a phase that does not rely on the one before starts while that
-    one is in its phase review, one that does waits, the tasks'
-    dependencies and the ledger's links saying which; each phase on its
-    own branch, merged once its phase review passes, opened as a pull
-    request where the project works through them — recorded once in the
-    project's setup, like the verify setup. Ideas to take from the
+    one is in its phase review, one that does waits for its merge, the
+    tasks' dependencies and the ledger's links saying which; each phase a
+    stack of its tasks' pull requests, merged whole once its phase review
+    passes (R35, ruled 2026-10-18). Ideas to take from the
     person's orchestrate skill, proven on Switchboard, without depending
     on it.
   - **Reviews in the build**, agreed in shape by the person 2026-10-15
@@ -3138,11 +3171,9 @@ an epic), which opened what stores what. Resolve each, then climb:
   - The review phase across the unit, ruled by the person 2026-10-16: split
     by the spec's areas, seams between phases read at each phase review,
     only changed areas read again after fixes (R15, R16).
-  - Still to discuss: pull requests prescribed, with a work unit landing as a stack — whether a task is a
-    pull request and a phase a stack, or the stack keeps growing across
-    phases — raised by the person 2026-10-14 for later; the workflows
-    would carry their own stack instructions, since GitHub's are not on
-    every system.
+  - Pull requests, raised by the person 2026-10-14 and ruled 2026-10-18:
+    prescribed, a task a pull request, a phase a stack merged when its
+    phase review passes, landing behind a driver (R35).
   - Still to discuss, raised by the person 2026-10-15: **brief control**.
     Briefs are fixed at the workflow level; any addition the orchestrator
     makes to a subagent's brief needs a strict prescription, since Claude
