@@ -1715,7 +1715,10 @@ each call on a page that day.
     entries); an index rebuilt from the lines is added only if queries
     slow.
   - **The workflows' state lives on a branch of its own**, ruled by the
-    person 2026-10-18, once pull requests and stacks running side by side
+    person 2026-10-18 and confirmed the same day once its consequences
+    were laid out ("I can't think of an alternative that gives us
+    everything we need… it feels a little grubby. But I think it works
+    and I think it holds up"), once pull requests and stacks running side by side
     (R35) left state no single code branch to ride on.
     - `.workflows/` is a worktree of an orphan branch, checked out inside
       the main checkout and ignored by code branches. Code branches and
