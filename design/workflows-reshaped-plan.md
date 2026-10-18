@@ -325,7 +325,8 @@ in the verdict queue. A departure counts as a real loss until judged.
 - What ships is the procedure, never anyone's counts. Everyone starts
   empty, the author included.
 
-4.6 **Blind questions** (R26), drawn by the engine at a fixed share.
+4.6 **Blind questions** (R26), drawn by the engine at a fixed share: each
+call draws on its own from its id, at random across projects, with no tally.
 
 4.7 **The record of the person** (R27), at user level, confirmed at a gate
 before it steers.

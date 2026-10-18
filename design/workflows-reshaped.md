@@ -2017,8 +2017,12 @@ each call on a page that day.
   moment, in context. Afterwards it shows what Claude would have picked.
   - The engine draws them by a fixed share — one in ten of the calls
     Claude would make alone to start, more where a kind's range is wide
-    (little history, a new model); Claude never chooses which. Every draw
-    is logged. In the replay a twentieth or a fifth moved the outcome by
+    (little history, a new model); Claude never chooses which. Each call
+    draws on its own, ruled by the person 2026-10-18: the engine turns the
+    call's id into a number, so blind questions fall at random across
+    projects at the same rate, with no tally kept per project or per
+    person, and the same call always draws the same way. Every draw is
+    logged. In the replay a twentieth or a fifth moved the outcome by
     one or two questions.
   - Mid-build, for a call cheap to undo, Claude proceeds on its own answer
     while the question waits; a disagreement undoes it.
