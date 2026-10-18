@@ -1940,7 +1940,8 @@ each call on a page that day.
     the project's and the person's, so a call can follow the project's
     taste where it differs from the person's overall; both are
     projections of decisions across work units, apart from the ledgers.
-    How the two combine belongs to the trust layer's detail (parked).
+    They combine as the trust log's merge below: the person's counts the
+    prior, the project's own answers moving it.
   - **The trust log** is append-only, at user level in the person's
     workflows config directory (which already holds the system config and
     each conversation's state), across all their projects, reached through
@@ -2745,8 +2746,8 @@ person, one item at a time; the sections above hold the detail.
   base as the first look (R44).
 - Gates, corridors and fields (R2): whatever Claude does in a field stays
   in it.
-- The trust layer, each call approved on a page (R23–R28, R40's three
-  positions); the threshold, 20% halved where hard to undo; what ships is
+- The trust layer, each call approved on a page (R23–R28, R40's
+  positions, auto or step since 2026-10-15); the threshold, 20% halved where hard to undo; what ships is
   the procedure, never anyone's counts, with the author's log seeded.
 - From the walks: quick-fix in one session, a short record after the
   work, no review step (R21); a specification waits until every topic is
@@ -2976,7 +2977,9 @@ an epic), which opened what stores what. Resolve each, then climb:
    stacks~~ (ruled 2026-10-18, R35); ~~where state lives~~, raised by
    the person after it (ruled 2026-10-18, R23); ~~how strictly the
    orchestrator adds to a subagent's brief~~ (ruled 2026-10-18, Reviews
-   in the build); the trust layer's detail. Then the whole release as one numbered document.
+   in the build); ~~the trust layer's detail~~ — designed from the kinds
+   of question and ruled on 2026-10-12 (R23–R29), the parked item left
+   open by mistake. Then the whole release as one numbered document.
 
 ## Open
 
