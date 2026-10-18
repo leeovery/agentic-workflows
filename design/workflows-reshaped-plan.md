@@ -319,7 +319,8 @@ in the verdict queue. A departure counts as a real loss until judged.
   replay: answers count half at six months old, and a new model inherits
   counts at half weight.
 - The matrix is kept at the person's level and the project's, merged as
-  prior and update.
+  prior and update, the person's other projects capped at 10 answers'
+  weight.
 - The trust log is append-only at user level.
 - The matrix screen is tuned by replay.
 - What ships is the procedure, never anyone's counts. Everyone starts
@@ -953,8 +954,7 @@ cases, its walks and its share of the pipeline simulation.
 
 11.4 **Step 3 — the ask rule.** The arithmetic, the labeller, the verdict
 page, blind questions, convergence, the matrix screen, replay tuning,
-and verification's place in reversal cost (7.8). Five starting numbers
-the person has not ruled are still to be discussed (the record's Open).
+and verification's place in reversal cost (7.8).
 
 11.5 **Step 4 — rehearsal and the release.** The rehearsal on all 13
 projects and their variants (R39), adjusted until clean. Then the dress

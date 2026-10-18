@@ -1937,7 +1937,8 @@ each call on a page that day.
     0.78; in the Fumi replay right and wrong calls overlapped (R29).
   - **Evidence is weighted by what it proves:**
     - a blind question (R26) answered cold — full weight;
-    - an answer to a recommendation the person was shown — full weight.
+    - an answer to a recommendation the person was shown — full weight,
+      ruled by the person 2026-10-18.
       A shown answer can steer agreement (shown 82%, blind 51%, R29), but
       the rule counts real loss, and the blind replay's misses cost the
       product one questionable call in 37, the same 3% as shown answers;
@@ -1948,8 +1949,8 @@ each call on a page that day.
     - "didn't follow" — no weight, and a first-class answer: a yes to a
       question the person could not follow is not agreement.
 
-    Two starting values with no evidence yet — six weeks of one model —
-    retuned by replay once the log holds it: an answer counts half once
+    Two starting values, ruled as such by the person 2026-10-18, with no
+    evidence yet — six weeks of one model — retuned by replay once the log holds it: an answer counts half once
     it is six months old, so a change of taste shows; a new model starts
     from its predecessor's counts at half weight and earns the rest. The
     procedure stays fixed across model generations; only the numbers
@@ -1979,8 +1980,12 @@ each call on a page that day.
     point, and the project's own answers move it as they accumulate — a
     new project starts from the person's general taste; a project where
     they care about the UI soon shows it. In the arithmetic, the
-    person's counts from their other projects, capped at 20 answers'
-    weight, are the prior the project's counts update; the pessimistic
+    person's counts from their other projects, capped at 10 answers'
+    weight — ruled by the person 2026-10-18: a new project starts at a 24%
+    bound, just over the line, so each kind asks there about three times
+    before going quiet and one bad call reopens it; at 20 it started
+    quiet and needed three bad calls — are the prior the project's
+    counts update; the pessimistic
     rate of R24 is read from the merged range. The same merge lets gates
     of one kind share evidence (the long tail, R29) and lets a new model
     inherit its predecessor's counts at a discount. Counts are derived
@@ -2015,7 +2020,8 @@ each call on a page that day.
   the engine holds back a call Claude would have made silently, keeps
   Claude's answer sealed, and asks the person the question cold — in the
   moment, in context. Afterwards it shows what Claude would have picked.
-  - The engine draws them by a fixed share — one in ten of the calls
+  - The engine draws them by a fixed share, ruled by the person
+    2026-10-18 — one in ten of the calls
     Claude would make alone to start, more where a kind's range is wide
     (little history, a new model); Claude never chooses which. Each call
     draws on its own, ruled by the person 2026-10-18: the engine turns the
@@ -3049,12 +3055,6 @@ an epic), which opened what stores what. Resolve each, then climb:
   12 and 14 October ("we haven't dug into fully yet… we can circle back to
   that") and never worked through: labelling a question's kind (R25, R28),
   the one-thing-per-entry check (R23), reading typed gate answers (R29).
-- **The matrix's starting numbers.** Set by Claude and never ruled by the
-  person: a shown answer at full weight (R25), the person's other
-  projects capped at 20 answers' weight as a project's prior, an answer
-  at half weight once six months old, a new model starting from its
-  predecessor's counts at half weight, and one call in ten asked blind
-  (R26).
 - **The merged phase's name.** "Decision" names the outcome, not the
   activity, as discovery, research and discussion do; kept for now.
   Rejected by the person 2026-10-13: deliberation (wrong for what the
