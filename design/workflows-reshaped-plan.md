@@ -281,11 +281,15 @@ the frozen anchor.
   still holds and moved.
 - Entries are identified by nanoids and shown by short ids, and tagged with
   unit, topic, phase and session.
-- The chain is fingerprinted and written only by the engine. One thing per
-  entry, judged by a separate model call.
+- Written only by the engine, by appending. On every read and at every
+  commit the ledger must start, byte for byte, with the last committed one;
+  no fingerprint chain. One thing per entry, judged by a separate Claude
+  call.
 - Replacing appends, with one of four reasons; a later unit replaces an
   older decision, and the entries relying on it are flagged.
-- Stored as versioned JSON lines.
+- Stored as versioned JSON lines. An added field is optional with a
+  default and needs nothing; a real break is a migration writing a
+  converted copy, every event through in order.
 
 4.2 **State on its own branch** (R23).
 - `.workflows/` is a worktree of an orphan branch inside the main checkout,
@@ -806,7 +810,7 @@ the decided screen carry the per-unit lines.
   - **The harness stays, adapted.** Worlds gain the state branch as a
     worktree, and code worktrees for the build. They use the local landing
     driver, since they have no remote (R35). Invariants gain the ledger:
-    events appended, their kinds and links, the chain intact.
+    events appended, their kinds and links, the append-only check passing.
   - **The corpus is rebuilt, not ported.** Today's cases assert today's
     steps. Every phase's rewrite lands with its cases, each door and each
     checklist item asserted at least once. The mainlines are rebuilt for
@@ -926,7 +930,7 @@ only to the workflows board (12.2). It is tested when the board is taken up.
 part lands with its tests.
 1. **State on its own branch:** the worktree, the lock, commit and push,
    the second-clone merge, and section 10's defaults.
-2. **The ledger:** events and their schemas, ids, the chain, the write
+2. **The ledger:** events and their schemas, ids, the append-only check, the write
    hook, the projections (record, map, product record, "since you last
    looked", entries affected by a replacement), and the one-thing-per-entry
    check.

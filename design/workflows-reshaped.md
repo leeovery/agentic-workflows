@@ -1630,11 +1630,18 @@ each call on a page that day.
     one part changes, and what the rewrite leaves out leaves the record
     (Fumi's corner menu lost five details when its beak was removed; 23
     of the 32 points the records lost). Three layers answer it:
-    - **The stream can never be edited, mechanically:** only the engine
-      writes it (a hook refuses any other edit), each line carries a
-      fingerprint of the line before so any change to history breaks
-      the chain the engine checks on every read, and the commit check
-      requires every existing line unchanged.
+    - **The stream can never be edited, mechanically**, ruled by the
+      person 2026-10-18: no verb edits an event; only the engine writes
+      the file, by appending, and a hook refuses any other edit. The
+      engine checks append-only on every read — the ledger on disk must
+      start, byte for byte, with the ledger the state branch last
+      committed, and anything changed, removed or reordered stops it
+      with the line it found — and the same against the parent at every
+      commit. Each append replaces the file whole under the lock, so a
+      read never meets half a line. A fingerprint chain was dropped
+      (2026-10-18): unsigned, it caught only the accidents this check
+      catches, and every migration and merge would have had to
+      recompute it.
     - **One thing per entry:** the engine refuses a decision that names
       no question; whether an entry holds one rule is judged when it is
       written by a separate Claude call, never the Claude writing it,
@@ -1692,10 +1699,17 @@ each call on a page that day.
     ledger.
   - **Stored as JSON lines in the project**, in `.workflows/.ledger.jsonl`
     under git (Layout on disk): one line per event, appended, each
-    carrying its schema version. A
-    later release changes the shape through a migration that brings every
-    line to the current version (Migrations: runtime code never reads an
-    older shape). A database was weighed and rejected: a database file
+    carrying its schema version. Ruled by the person 2026-10-18: a field
+    a later release adds is optional in the schema with a stated default,
+    so older lines are already valid lines of the current shape and need
+    nothing. A real break — a rename, a split, a change of meaning — is a
+    migration writing a converted copy of the whole stream, event
+    sourcing's copy-and-transform rather than upcasting on every read:
+    one reviewed migration with its tests, its check refusing unless
+    every event comes through, same ids in the same order; the one commit
+    the append-only check lets differ; git keeps the original file byte
+    for byte. Projections read one shape only (Migrations: runtime code
+    never reads an older shape). A database was weighed and rejected: a database file
     neither diffs nor merges in git, one outside git loses the history,
     and the volume is small (Fumi's 13 topics come to hundreds of
     entries); an index rebuilt from the lines is added only if queries
@@ -1710,14 +1724,15 @@ each call on a page that day.
       through the common git directory; nothing ever creates a
       `.workflows/` inside a code worktree. The engine serialises writes
       with a lock held for each verb, never a daemon, so the stream stays
-      one chain. The tracker's driver keeps the tracker's state there too.
+      one line of appends on one linear branch that nothing merges into. The tracker's driver keeps the tracker's state there too.
     - The engine pushes the state branch after every commit wherever the
       project has a remote, a failed push a warning, never a stop (the
       person, 2026-10-18: today the workflows never push, which is risky).
     - A second clone, on another machine, diverges only on the state
       branch, and the engine merges it, never git: fetch, union by id,
-      replay this clone's unpublished entries on the remote's tip,
-      re-chaining them (nothing published is ever rewritten), push with
+      append this clone's unpushed entries after the remote's, in a commit
+      whose parent is the remote's tip, so the append-only check holds
+      and nothing pushed is ever rewritten, push with
       lease, and retry if the remote moved. No merge driver, so nothing
       to install per clone or to decay. A fact two clones could record
       independently — a migration applied, a phase concluded — takes an
