@@ -48,6 +48,8 @@ reached (9).
   - **A dress rehearsal:** the person takes one small piece of real work
     through every phase on a rehearsal copy, live, from start to finish
     report.
+  - The epic menu no longer shows a topic's own session as still running
+    after the session ends (the person asked for this check on 2026-10-12).
 
 1.5 **The size of it, today.** The release rewrites most of the product:
 - 280,000 words of skill prose in 327 files, and 43,000 words across 34
@@ -148,7 +150,10 @@ the frozen anchor.
   count of Claude's calls by kind, the product-record lines, any new-topic
   candidates.
 - **The reviews stay, and the matrix routes what they find.** The closing
-  pass has two readers and re-reads what it changed.
+  pass has two readers and re-reads what it changed. A finding a later
+  decision made moot is dropped with a one-line note; one coming to the
+  person is first rechecked against earlier answers and the record; a route
+  names another topic, never a subtopic (R24).
 - **Spikes are evidence.** They live in `assets/` as canonical or
   reference; a lock is a question on the map; discovery may spike.
 - **Mailboxes:** `/workflow-start {unit} {topic}` opens a topic directly,
@@ -229,7 +234,7 @@ the frozen anchor.
   areas they changed are read again. Out-of-scope findings are dropped,
   grouped or filed to the inbox by Claude, with no offer.
 - The report is short and product first, and the passing one is the
-  topic's certificate. Finish takes questions.
+  work's certificate. Finish takes questions.
 
 3.11 **The tracking layer** (R17).
 - **The start menu:** units with type, phase, progress and a count of what
@@ -483,10 +488,13 @@ Ruled in shape (R35, R2):
     - every question of the person's closed;
     - the closing pass run, and its last re-read changing nothing;
     - every decision in the conversation has an entry;
+    - each replacement checked against what it replaced (R23);
+    - the read for conflicting answers run within the topic (R23);
     - the product-record lines and any candidates are on the screen.
   - **Ready to build:**
     - every topic decided, cancelled or postponed;
     - the sweep between topics run;
+    - the spec has checked each replacement against what it replaced (R23);
     - every statement traced;
     - the review's last pass changed nothing;
     - each phase in the cut has its scenarios, sections and relies-on;
@@ -758,6 +766,8 @@ the decided screen carry the per-unit lines.
     record, phase cut, builder, task loop, reviewer pair, notes for later,
     stack, the ask rule, kind, verdict, blind question, auto and step,
     proven and not proven, verify setup, feature map, driver, state branch.
+  - "Review" names three things today (the review phase, a phase's review in
+    the build, a document's closing review); each gets its own term.
   - h help on every menu (R17): each menu's help is an engine content file
     beside the screen's projection, so a menu and its help change together.
 
@@ -780,6 +790,7 @@ the decided screen carry the per-unit lines.
     to configuration and the build.
   - The docs are one of the three places a driver's tool may be named
     (R35).
+  - The person's internal products are never named, only described.
 
 9.5 **The prose-test harness and the test suites.**
 - Today:

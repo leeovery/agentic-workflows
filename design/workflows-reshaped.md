@@ -114,7 +114,7 @@ review (Open).
   by hand: five days of design rounds in Paper (about 40 rounds, 77 frames
   signed off, frames drawn by generators as terminal-cell grids), "no
   build before sign-off", a 14-stage plan approved from a 600-word
-  outline, then a build by the person's `orchestrate` skill (481 agent
+  outline, then an orchestrated build (481 agent
   launches, up to 10 slices in parallel, the stage order held). The build
   has reopened only UI edge cases where a frame and the spec disagreed;
   the data model is what keeps being re-decided (the day-summary format is
@@ -145,7 +145,7 @@ review (Open).
   a strictly prescribed process, validated design and collaboration — "if
   we don't collaborate together on the product decisions, then how on
   earth could you possibly build something that I'm going to agree to?"
-  Goosemates, also vibed (229 commits, 27 Sep – 1 Oct), has stalled on
+  The internal product, also vibed (229 commits, 27 Sep – 1 Oct), has stalled on
   Claude surfacing questions — the person is burnt out answering — while
   code was written before the product was designed. Fumi and Switchboard
   are the same failure from opposite sides: decisions made at the wrong
@@ -391,9 +391,7 @@ project's own measurements decide (R7).
 
   What matters is that the documents' structure, where imports go, the
   logging, the outputs and the process the person sees are the same every
-  time; how a plan gets made, or how Claude reasons, does not. The
-  person's own skills (`pr`, `orchestrate`) already have this shape: house
-  rules fixed, the work left to Claude.
+  time; how a plan gets made, or how Claude reasons, does not.
 
   The person's picture of the result, 2026-10-12: gates, corridors and
   fields. A phase is entered and left through gates. Some stretches are
@@ -523,7 +521,7 @@ project's own measurements decide (R7).
     creates its topic; the product record sums up character, not items,
     so that rule stands. It is not CLAUDE.md, which loads into every
     session and subagent and is the person's to write: Portal's and
-    Switchboard's hold only how to work on the code, and Goosemates, run by
+    Switchboard's hold only how to work on the code, and the internal product, run by
     hand, kept its settled decisions in their own file with CLAUDE.md
     pointing at it. The workflows never write CLAUDE.md; a pointer there is
     the person's line. It is never a phase, and Claude never asks to fill
@@ -589,7 +587,7 @@ project's own measurements decide (R7).
     to the builder. Nothing runs at the menu and no candidate gate stays
     there; a gap visible from the map alone waits for a topic's close or
     the sweep, which in Fumi's evidence were not the gaps that mattered.
-  - **No routing.** Every topic of an epic, feature or cross-cutting unit
+  - **No routing.** Every topic of an epic or feature
     goes to decision; none goes straight to the build. How much of the
     person a topic takes is set inside decision — by how much the product
     already settles and by the ask rule (R11, R24) — never by a label
@@ -609,7 +607,7 @@ project's own measurements decide (R7).
       placing notes at launch, the macOS 15 floor, no kill switch — came
       out of its research;
     - a build label would have sent undecided calls to the builder,
-      Goosemates' failure (the shape review's evidence, Open).
+      the internal product's failure (the shape review's evidence, Open).
   - **The brief feeds the topic's opening view** (R11): what discovery
     found — soft decisions, rejected paths, open questions — is Claude's
     input when the topic opens, not the list of what the person will be
@@ -643,8 +641,9 @@ project's own measurements decide (R7).
     the manifest. Linking comes free, superseding stays append-only, and
     nothing is edited in place. The engine holds only identity, links and
     supersession, never the content: an entry's why can run to
-    paragraphs, the shape agreed after the opening view is itself an entry
-    in free prose, superseded whole when it changes, and spikes and their
+    paragraphs, a scope call agreed after the opening view (what the topic
+    covers) is an entry like any other, one thing to an entry (R23), and
+    spikes and their
     assets are files an entry points at (R12) — Claude writes freely and
     the structure stays out of its way. This absorbs the record-and-log programme (folded
     in by the person 2026-10-12, built first in strand A) and ends the
@@ -658,10 +657,9 @@ project's own measurements decide (R7).
     "Inherited position — from research"; a reopened decision sitting on
     its earlier version, the fallback revised three times in three days).
     The split moves from by phase to outcome against journey. A changed
-    mind rewrites the record's entry with no trace of the earlier answer,
-    beyond naming it among what the entry rules out where a reader needs
-    telling not to go back; the change and its why are appended to the
-    log. Ruled by the person 2026-10-13:
+    mind is a new entry replacing the earlier one; the record shows the
+    current answer with the answers it replaced folded beneath it (R23),
+    and the change and its why are appended to the log. Ruled by the person 2026-10-13:
     - **A decision log is kept per topic**, one dated heading per
       session. The mailbox rule (R13) keeps a decision session to one
       topic, so the topic's whole journey sits in one file beside its
@@ -670,7 +668,8 @@ project's own measurements decide (R7).
       their conversations are about the whole epic or product.
     - **The record holds findings beside decisions,** in their own
       section, each saying how it is known (measured, documented, seen in
-      a spike) and when, rewritten in place when superseded. With research
+      a spike) and when, replaced by a new entry when superseded, as
+      decisions are. With research
       merged in, its results need a home other topics read: an opening
       view reads records, not logs (Fumi's measured "no Accessibility
       permission is needed" turns up across six other topics' documents,
@@ -722,10 +721,10 @@ project's own measurements decide (R7).
     commercialization for one or two questions that needed the person.
     The epic menu shows the person's count ("2 of 3 decided").
   - **When nothing of the person's is open**, the closing pass runs (below)
-    and the **decided** screen shows what the person decided, how many
-    calls Claude made with only the few worth a look (hard to undo, thin
-    evidence, least sure first), the proposed product-record lines and any
-    new-topic candidates; the person's yes is the authority gate. It
+    and the **decided** screen shows what the person decided, a count of
+    the calls Claude made by kind, which the person can open (R23), a
+    verdict asked on each call the person changed, the proposed
+    product-record lines and any new-topic candidates; the person's yes is the authority gate. It
     replaces today's closing sequence — calls flush, landed-input check,
     wait gate, map gate, closing gates — whose conclude gate took a yes
     about 50 times on Fumi, the typed answers questions the screen now
@@ -814,7 +813,8 @@ project's own measurements decide (R7).
     attach to Claude's ledger entry as its evidence, so "what have you
     decided without me" shows how Claude found out.
   - **A spike for the whole epic happens in discovery**, through the epic
-    menu's discovery door — no surface of its own, since discovery is
+    menu's discovery door (key d, agreed with the person 2026-10-14) — no
+    surface of its own, since discovery is
     already the epic-level conversation with a log, and can add topics and
     send messages. Its result lands as a new topic (the brief pointing at
     the spike), messages to the topics it affects (a decided one reopens
@@ -922,8 +922,7 @@ project's own measurements decide (R7).
 
 ### Implementation
 
-- **R15 — The builder runs the build.** Its shape is the person's
-  `orchestrate` skill, proven on Switchboard: Claude orchestrates, agents
+- **R15 — The builder runs the build.** Claude orchestrates, agents
   at a chosen model and effort write each slice, review sits between
   every slice and its merge, and the one gate before building is the
   person approving the phase cut as a short outline — Switchboard's
@@ -974,7 +973,7 @@ project's own measurements decide (R7).
     resurrection built scaffolding, saving, restore and hooks and joined
     them in phase 5; it drew 12 fixes within a month, most of them broken
     contracts between its own phases. FlowX's drafts never ran end to end;
-    Goosemates left its screens late and the person found a dashboard of
+    the internal product left its screens late and the person found a dashboard of
     three cards that did nothing. In every project the defects that
     mattered were found by running the product, after tests and review had
     passed.
@@ -1551,7 +1550,9 @@ project's own measurements decide (R7).
 ## Strand B — trust
 
 Whether Claude asks is arithmetic the engine computes over the person's
-own answers, never Claude's judgement. Designed on 2026-10-12 from the
+own answers; Claude supplies the question and its lean, not the decision
+("make as much of that mathematical as we can. It shouldn't be Claude
+deciding", the person, 2026-10-12). Designed on 2026-10-12 from the
 person's history and their verdicts on it (R29); the person approved
 each call on a page that day.
 
@@ -2186,7 +2187,7 @@ each call on a page that day.
     - Same 15, equivalent 4, partial 5, different 13: the person's call
       19 of 37 (51%). Different 35% on both doors (6 of 17 one-way, 7 of
       20 two-way). Shown, the person agreed 82%; blind, the match is 51% —
-      shown agreement overstates, as R25's half weight assumes.
+      shown agreement overstates agreement, though not real loss (R25).
     - Claude's "would check with the person" caught 6 of its 13 wrong
       calls and fired on 2 of its 19 right ones: Claude cannot be the
       judge of when to ask (R24). Asking on every one-way question would
@@ -2285,7 +2286,8 @@ each call on a page that day.
   it, what proves it works. It is run once end to end before it counts
   and kept honest against drift. The builder verifies each task through
   the user's real path; review reads the evidence; the mod can show it.
-  - **Proven**, defined by the person's ruling 2026-10-12: a phase's
+  - **Proven**, Claude's definition agreed by the person 2026-10-12: a
+    phase's
     acceptance scenarios were performed on the running product, through
     the path a user — or, for a product with no interface, a caller —
     takes, and a script checked the result (a captured screen compared, a
@@ -2499,7 +2501,7 @@ think is a good sign."
   first. The reason is the cone (R24): the topics everything rests on are
   decided while the page is blank and the person is most involved, and
   later topics arrive mostly settled; nothing is built on an undecided
-  model (Goosemates' skipped core model). Reasoned again 2026-10-13 on the
+  model (the internal product's skipped core model). Reasoned again 2026-10-13 on the
   discovery walk: ordering does not stop topics bouncing. Fumi's map was
   ordered foundations first at discovery and 73 of 155 messages still
   went to an earlier topic, with about 37 reopens — decisions nobody could
@@ -2587,7 +2589,7 @@ own detection finds nothing in either.
        whose paths only the migration may know — and while `.workflows/`
        has uncommitted changes, which the migration commit would otherwise
        sweep in. A major upgrade under a running session is declined
-       outright (the person, 2026-10-16).
+       outright (the person, 2026-10-17).
     2. **The legacy split** (code, directive, code). Today a skill run on
        opening an epic: it cuts broad research that migration 038 seeded,
        still in progress, into topic-sized files and map items,
@@ -2641,7 +2643,7 @@ own detection finds nothing in either.
     6. **Finish** (code): the records indexed (R44), then one migration
        commit, on the person's yes, as today.
   - **Every topic gets a record, completed units included**, ruled by the
-    person 2026-10-16: everything moves forward in one shape, so
+    person 2026-10-17: everything moves forward in one shape, so
     reopening or revisiting a completed unit meets nothing special, the
     knowledge base reaches shipped decisions, and a mature product's
     ledger is not empty where most of its decisions sit in finished work.
@@ -2699,7 +2701,7 @@ own detection finds nothing in either.
   - The trust log is new and starts empty for everyone, the author
     included (R25).
 - **R38 — Directives.** A migration kind whose transform is judgment,
-  ruled by the person 2026-10-16 over stretching today's verification
+  ruled by the person 2026-10-17 over stretching today's verification
   addenda, which check after a code transform, fire once and live in the
   start session's context. The legacy split was one under another name.
   - A directive is one file of instructions, numbered in the same sequence
@@ -2711,7 +2713,8 @@ own detection finds nothing in either.
     can be mechanical is.
   - The runner runs code migrations until it reaches a directive, stops,
     and hands it to the start session, which carries it out — a large
-    unit's topics each to their own agent, the session the ledger's only
+    unit's topics each to their own agent, at Opus medium (the person was
+    told 2026-10-17), the session the ledger's only
     writer — and records it once its check passes, then carries on. One
     start may meet several.
   - It names the files it may touch. Its check passes before it is
@@ -2719,7 +2722,7 @@ own detection finds nothing in either.
     section that exists; every decided map item has its entry), plus an
     independent verifier per topic hunting, against the log, detail the
     record dropped.
-  - It may ask the person, ruled by the person 2026-10-16: dex's
+  - It may ask the person, ruled by the person 2026-10-17: dex's
     directives run unattended, but here the person started the migration
     and is watching. Each directive's file says what it asks. The split
     keeps its interview; the records directive asks nothing per entry and
@@ -2853,8 +2856,8 @@ person, one item at a time; the sections above hold the detail.
   out-of-scope findings are dropped, grouped or filed to the inbox by
   Claude with no offer, listed in its report, and never flood the inbox;
   its in-scope findings become fix tasks in one more build phase, and the
-  review phase reruns on those tasks only, as today; the report is short
-  and product first, the passing one the topic's certificate, its calls
+  review phase reads again only the areas they changed (R16); the report
+  is short and product first, the passing one the work's certificate, its calls
   a count by kind; the finish gate takes questions; the build runs
   straight into the review phase, in an epic too (R16). Following from
   rulings already made: the review phase runs the product ("proven");
@@ -2966,7 +2969,7 @@ setup gates and environment setup; the help walkthrough and glossary; the
 user-facing docs; the prose-test harness for the new shape (R4); session
 handoffs and compaction recovery beyond R35's note.
 
-**Still the person's to decide:** nothing open at present.
+**Still the person's to decide:** the items under Open.
 
 **Unclear, or engineering for the plan:** the state worktree in
 practice (R23) — a session working in a code worktree has no
@@ -3044,7 +3047,7 @@ an epic), which opened what stores what. Resolve each, then climb:
   exists is good, the process may need thought. Evidence to weigh: the
   workflow projects (Fumi, Portal, Tick, agntc, mint, galley, codeintel,
   nod, pigeon, quiz-biz), the projects run without them (Switchboard,
-  FlowX, Goosemates), and this repository's own design history. Spikes,
+  FlowX, the internal product), and this repository's own design history. Spikes,
   trust and verification are sanity-checked against the same evidence.
   Output: diagrams of the shape, and this record revised.
 - **The workflows board.** The story of the work stays in the
@@ -3122,7 +3125,7 @@ an epic), which opened what stores what. Resolve each, then climb:
     check at each topic's close and before the spec also looks for
     conflicts between topics. Evidence: big designs were split with or
     without the workflows — Switchboard V3's interface screen by screen,
-    Goosemates into numbered topics Claude made unasked; one
+    the internal product into numbered topics Claude made unasked; one
     conversation strained (Switchboard's session, 30 compactions; Fumi's
     records, 416k words over 70 sessions); the misses sat at seams
     (Switchboard V3, 8 of 11; Fumi, 157 messages and 41 reopens); and
@@ -3159,9 +3162,7 @@ an epic), which opened what stores what. Resolve each, then climb:
     one is in its phase review, one that does waits for its merge, the
     tasks' dependencies and the ledger's links saying which; each phase a
     stack of its tasks' pull requests, merged whole once its phase review
-    passes (R35, ruled 2026-10-18). Ideas to take from the
-    person's orchestrate skill, proven on Switchboard, without depending
-    on it.
+    passes (R35, ruled 2026-10-18).
   - **Reviews in the build**, agreed in shape by the person 2026-10-15
     from Switchboard's measured build (`walks/build/review-cadence/deep/
     analysis/report.md`: 997 findings, each labelled twice independently),
@@ -3341,7 +3342,7 @@ an epic), which opened what stores what. Resolve each, then climb:
 - **Shape review — evidence read 2026-10-12** (six read-only agents;
   picture redrawn at the artifact link above, version 2). On the
   workflows: Fumi, Portal, Tick, agntc, Mint. Without: Switchboard, FlowX,
-  Goosemates. Plus this repo's hand-run process and the workflows' history
+  the internal product. Plus this repo's hand-run process and the workflows' history
   back to Evvi.
   - **Gates.** Process gates take the default 60–82% of the time (Fumi
     since 08-31: 201 of 246; conclude 25/25, wrap-up 20/20, resume 24/25,
@@ -3371,16 +3372,16 @@ an epic), which opened what stores what. Resolve each, then climb:
     coupled topics concluded and reopened up to 10 times with about 145
     messages between them.
   - **Questions.** About one reply in five to Claude's questions is not an
-    answer (Switchboard 15 of 69, Goosemates 17%, Tick about 28 of 123
+    answer (Switchboard 15 of 69, the internal product 17%, Tick about 28 of 123
     substantive). Over-asking in every project ("Aren't these just obvious
-    decisions?"); five of Goosemates' last seven questions cited an earlier
+    decisions?"); five of the internal product's last seven questions cited an earlier
     decision. The person: "What's the product consequence of this? That's
     the only thing that should be surfaced to me, other than complex
     coding architectural stuff." The opposite failure in this repo: acting
     before a go is the largest correction class (31 of 93 feedback
     memories are communication or authority, 13 of them that one fault),
     and memory-by-incident does not generalise.
-  - **Goosemates** stalled because its core model was handed to the
+  - **The internal product** stalled because its core model was handed to the
     builders: an overnight build filled 22 undecided points with defaults
     and questions became sign-offs of built code. **FlowX**: undecided
     things read as decided (documented ahead, undiscussed draft code cited
