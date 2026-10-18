@@ -1708,6 +1708,9 @@ each call on a page that day.
       `.workflows/` inside a code worktree. The engine serialises writes
       with a lock held for each verb, never a daemon, so the stream stays
       one chain. The tracker's driver keeps the tracker's state there too.
+    - The engine pushes the state branch after every commit wherever the
+      project has a remote, a failed push a warning, never a stop (the
+      person, 2026-10-18: today the workflows never push, which is risky).
     - A second clone, on another machine, diverges only on the state
       branch, and the engine merges it, never git: fetch, union by id,
       replay this clone's unpublished entries on the remote's tip,
@@ -2357,11 +2360,14 @@ each call on a page that day.
       requests. The rehearsal copies and the prose-test worlds have no
       remote, so the local driver is needed regardless. The code host's
       CLI is named only in its driver.
-    - Today the workflows never branch or open a pull request: Portal's
-      default branch took 4,488 commits since June and 5 pull-request
-      merges, Tick and Mint none; Switchboard, under the person's
-      orchestrate skill, opened 125 pull requests in three weeks, 36 of
-      them stacked.
+    - The workflows push across the board, ruled by the person
+      2026-10-18: the state branch on every commit (R23), each task's
+      branch as its pull request opens, and merging the driver's, after
+      the review that clears it.
+    - Today the workflows never branch, push or open a pull request:
+      Portal's default branch took 4,488 commits since June and 5
+      pull-request merges, Tick and Mint none; Switchboard opened 125 pull
+      requests in three weeks, 36 of them stacked.
 
 ### Layout on disk
 
@@ -2883,6 +2889,9 @@ person, one item at a time; the sections above hold the detail.
   out as a worktree at `.workflows/`, never in a code branch or pull
   request; entries identified by nanoids and shown by short ids; a
   second clone merged by the engine, never a merge driver.
+- Pushing (2026-10-18, R23, R35): the workflows push across the board —
+  the state branch on every commit, task branches as their pull requests
+  open — and merge through the driver after review.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2903,7 +2912,10 @@ handoffs and compaction recovery beyond R35's note.
 **Still the person's to decide:** nothing open at present.
 
 **Unclear, or engineering for the plan:** the state worktree in
-practice (R23) — git hooks fire inside it, so every engine git call
+practice (R23) — a session working in a code worktree has no
+`.workflows/` beneath it, so the skills stop assuming the folder sits
+under the session's own and the engine hands out where it is; git hooks
+fire inside it, so every engine git call
 skips them and clears inherited git environment; the branch's name
 guarded against matching a code branch; where `.workflows/` sits when
 the repository is bare with worktrees; a fresh clone's setup adding the
