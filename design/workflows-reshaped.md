@@ -1566,8 +1566,10 @@ each call on a page that day.
   - **One ledger for the project**, ruled 2026-10-13 and ratified by the
     person 2026-10-14 after weighing one per work unit (which would need
     a second, project-level ledger and a judgement over what is copied up
-    to it): entries numbered per project (L1, L2…), each tagged with its
-    work unit, topic, phase and session. A unit's ledger is its tagged
+    to it): each entry identified by a nanoid and shown by a short form
+    of it, the way git shows a short hash — sequential numbers collide
+    wherever two writers append (ruled by the person 2026-10-18) — and
+    tagged with its work unit, topic, phase and session. A unit's ledger is its tagged
     entries, written only by its own sessions; a later unit reads earlier
     decisions directly. The build's calls are entries too: they draw no
     record, and the same query shows them. The product record is the
@@ -1695,6 +1697,42 @@ each call on a page that day.
     and the volume is small (Fumi's 13 topics come to hundreds of
     entries); an index rebuilt from the lines is added only if queries
     slow.
+  - **The workflows' state lives on a branch of its own**, ruled by the
+    person 2026-10-18, once pull requests and stacks running side by side
+    (R35) left state no single code branch to ride on.
+    - `.workflows/` is a worktree of an orphan branch, checked out inside
+      the main checkout and ignored by code branches. Code branches and
+      pull requests never carry state, and GitHub never merges it. Every
+      session, whichever worktree it runs in, writes that one copy, found
+      through the common git directory; nothing ever creates a
+      `.workflows/` inside a code worktree. The engine serialises writes
+      with a lock held for each verb, never a daemon, so the stream stays
+      one chain. The tracker's driver keeps the tracker's state there too.
+    - A second clone, on another machine, diverges only on the state
+      branch, and the engine merges it, never git: fetch, union by id,
+      replay this clone's unpublished entries on the remote's tip,
+      re-chaining them (nothing published is ever rewritten), push with
+      lease, and retry if the remote moved. No merge driver, so nothing
+      to install per clone or to decay. A fact two clones could record
+      independently — a migration applied, a phase concluded — takes an
+      id derived from the fact, so both record the one entry; anything
+      local to a machine stays off the branch.
+    - Rejected: state on code branches made mergeable, since every shared
+      file would need reshaping and any one missed surfaces as a conflict
+      in the middle of a stack — GitHub's merge never runs a repository's
+      merge drivers, `union` included; a hidden ref written by plumbing,
+      since clones don't fetch it, mirrors delete it, some hosts refuse
+      it, and agents read state as files; the engine writing in the main
+      checkout on the default branch, which ties state to that checkout,
+      needs a pull before every push and fails where the default branch
+      is protected.
+    - Beads ran this shape from November 2025 to February 2026, before
+      moving to a database whose data rides in a hidden ref
+      (`walks/ledger-branches/01-beads.md`). Its failures came from a
+      second copy of state in the main tree, a daemon, git hooks firing
+      inside the state worktree and per-clone merge-driver settings
+      decaying, not from the separate branch; it too gave up sequential
+      ids for concurrent writers within three weeks.
   - Written by engine commands only, never by hand. The person reads it
     when they choose; at a topic's decided screen they see a count of the
     calls made for them, by kind, and ask to see them if they want —
@@ -2329,7 +2367,8 @@ each call on a page that day.
 
 Ruled by the person 2026-10-17, in the migration walk. A topic exists
 only before the spec; from the spec on, everything is the work unit's.
-The hook in R35 refuses writes outside this layout.
+The hook in R35 refuses writes outside this layout. `.workflows/` is a
+worktree of the state's own branch, never part of a code branch (R23).
 
 ```
 .workflows/
@@ -2527,7 +2566,12 @@ own detection finds nothing in either.
          written — promoted topics, unstarted messages, where a topic came
          from, a roadmap item's kind — carry over;
        - the old cache is left alone: nothing reads it, and completion
-         deletes `.cache/{unit}` whole without knowing what is inside.
+         deletes `.cache/{unit}` whole without knowing what is inside;
+       - `.workflows/` leaves the default branch (R23): the new layout
+         becomes the first commit of the state's own branch, checked out
+         where `.workflows/` was, and the default branch drops the folder
+         and ignores it — the migration's commit is these two, on the
+         person's yes.
          Anything still pending in it — a review not folded in,
          carry-notes waiting — is folded into its topic's log by the
          records directive; Fumi has none.
@@ -2727,8 +2771,8 @@ person, one item at a time; the sections above hold the detail.
   discovery's and the roadmap's per session; the record holds findings
   beside decisions, each saying how it is known (R11); a decision is
   written once, as a ledger entry, and the record drawn from the ledger;
-  the ledger holds every decision by either side, numbered per project,
-  stored as versioned JSON lines in the project, superseding by appending
+  the ledger holds every decision by either side, each entry with its own
+  id, stored as versioned JSON lines in the project, superseding by appending
   with one of four reasons; the trust log keeps only what the matrix
   needs (R11, R23, R25); the map lists the person's questions and
   Claude's calls, done when nothing of the person's is open, Claude's new
@@ -2835,6 +2879,10 @@ person, one item at a time; the sections above hold the detail.
   phase a stack merged whole when its phase review passes, a relying
   phase waiting for that merge; landing behind a driver, GitHub's and a
   local one for projects with no remote.
+- Where state lives (2026-10-18, R23): on a branch of its own, checked
+  out as a worktree at `.workflows/`, never in a code branch or pull
+  request; entries identified by nanoids and shown by short ids; a
+  second clone merged by the engine, never a merge driver.
 
 **Settled from evidence, shown to the person, never explicitly agreed:**
 - Nothing at present.
@@ -2854,14 +2902,14 @@ handoffs and compaction recovery beyond R35's note.
 
 **Still the person's to decide:** nothing open at present.
 
-**Unclear, or engineering for the plan:** how parallel worktrees in a
-build append to the ledger without forking its fingerprint chain or
-conflicting in git (one writer — the orchestrator recording what its
-agents report — or one file per event), the same question for a tracker
-that keeps its state in the repo, and how several builds running
-at once merge the ledger and the knowledge base (merge helpers wired in
-through git attributes, say); how the driver shows a phase not yet
-written; how project skills
+**Unclear, or engineering for the plan:** the state worktree in
+practice (R23) — git hooks fire inside it, so every engine git call
+skips them and clears inherited git environment; the branch's name
+guarded against matching a code branch; where `.workflows/` sits when
+the repository is bare with worktrees; a fresh clone's setup adding the
+worktree; unit manifests in a second clone's merge, derived from the
+ledger or merged field by field by the engine; how the driver shows a
+phase not yet written; how project skills
 reach the builder (R34); whether
 two mods' panes share Claude Code's tab row (untested); Jev as the
 labeller (unreachable here).
@@ -2906,7 +2954,8 @@ an epic), which opened what stores what. Resolve each, then climb:
    every project; the layout on disk.
 8. **The formal plan** (Sequence steps 3–5). Four calls first, one at a
    time: ~~one task tracker~~ (ruled 2026-10-17, R35); ~~pull-request
-   stacks~~ (ruled 2026-10-18, R35); how strictly the orchestrator adds to a subagent's brief; the
+   stacks~~ (ruled 2026-10-18, R35); ~~where state lives~~, raised by
+   the person after it (ruled 2026-10-18, R23); how strictly the orchestrator adds to a subagent's brief; the
    trust layer's detail. Then the whole release as one numbered document.
 
 ## Open
