@@ -297,6 +297,11 @@ the frozen anchor.
 - There is one copy, found through the common git directory, with a lock
   per verb.
 - The state branch is pushed on every commit; a failed push is a warning.
+- The branch is protected: the engine locks the worktree; the hook before
+  Bash refuses unlocking or removing it, deleting the branch locally or
+  remotely, and force-pushing it; boot checks both every time and restores
+  a lost local branch from the remote; on GitHub, setup offers a rule
+  against deleting or force-pushing it, on the person's yes.
 - The engine merges a second clone itself, never git, with ids derived from
   facts two clones could both record.
 
@@ -474,7 +479,7 @@ Ruled in shape (R35, R2):
     the fix until the bug-proven run is recorded (7.3).
   - A raw `git commit` in a code worktree during a build is refused by a
     hook before Bash (ruled); a commit touching only the inbox passes
-    (R17).
+    (R17). The same hook guards the state branch (4.2).
   - The migration commit stays on the person's yes, now two commits: the
     default branch dropping `.workflows/`, and the state branch's first
     (R37).
@@ -749,7 +754,8 @@ the decided screen carry the per-unit lines.
     the areas they apply to (7.7). It is asked once, at the first ready to
     build, and its confirmations are learned process gates, asking until the
     person's own answers loosen them (R25).
-  - Boot also adds the state worktree on a fresh clone (10.5).
+  - Boot also adds the state worktree on a fresh clone (10.5), locked, and
+    checks it and the state branch on every run (4.2).
   - The floor, walkthrough offer, session labels, knowledge gate and
     migration review stay as they are.
 

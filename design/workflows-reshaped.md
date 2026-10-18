@@ -1731,6 +1731,21 @@ each call on a page that day.
     - The engine pushes the state branch after every commit wherever the
       project has a remote, a failed push a warning, never a stop (the
       person, 2026-10-18: today the workflows never push, which is risky).
+    - **The branch is protected**, ruled by the person 2026-10-18 after
+      they asked what stops an inadvertent delete or an agent cleaning
+      up. Git refuses to delete a branch a worktree has checked out, and
+      a locked worktree survives `git worktree remove --force` and a
+      prune after its folder is deleted (tested on git 2.56; only
+      `remove -f -f` or an unlock gets through). So: the engine locks
+      the worktree when it creates it ("workflows state, do not
+      remove"); the hook before Bash refuses unlocking or removing
+      `.workflows/`, deleting the state branch locally or on the remote,
+      and force-pushing it; boot checks the worktree and the branch every
+      time, restores a lost local branch from the remote, and stops
+      saying so when both are gone; and on GitHub setup offers, on the
+      person's yes, a rule against deleting or force-pushing the branch,
+      for anything run outside Claude Code. Without a remote the lock and
+      the hook are the protection.
     - A second clone, on another machine, diverges only on the state
       branch, and the engine merges it, never git: fetch, union by id,
       append this clone's unpushed entries after the remote's, in a commit
