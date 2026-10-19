@@ -637,7 +637,7 @@ project's own measurements decide (R7).
     **A decision is written once**, ruled by the person 2026-10-13: every
     decision and finding is a ledger entry (R23) written through an
     engine command, and the record is the engine's view of the topic's
-    current entries, each shown with its number — as menus are drawn from
+    current entries, each shown with its short id — as menus are drawn from
     the manifest. Linking comes free, superseding stays append-only, and
     nothing is edited in place. The engine holds only identity, links and
     supersession, never the content: an entry's why can run to
@@ -663,15 +663,17 @@ project's own measurements decide (R7).
     - **A decision log is kept per topic**, one dated heading per
       session. The mailbox rule (R13) keeps a decision session to one
       topic, so the topic's whole journey sits in one file beside its
-      record — for its next session, the knowledge base and the person
-      asking why. Discovery and the roadmap keep their logs per session:
+      record — for its next session and the person asking why; the
+      knowledge base indexes records, never logs (R44). Discovery and the roadmap keep their logs per session:
       their conversations are about the whole epic or product.
     - **The record holds findings beside decisions,** in their own
       section, each saying how it is known (measured, documented, seen in
       a spike) and when, replaced by a new entry when superseded, as
       decisions are. With research
       merged in, its results need a home other topics read: an opening
-      view reads records, not logs (Fumi's measured "no Accessibility
+      view reads other topics' records, not their logs, as put to the
+      person 2026-10-13, and a topic opening with a log of its own reads
+      it (R43) (Fumi's measured "no Accessibility
       permission is needed" turns up across six other topics' documents,
       and engine-architecture designed around a restart for a permission
       that was not needed).
@@ -897,7 +899,9 @@ project's own measurements decide (R7).
     by area, ruled by the person 2026-10-15; for each phase the cut lists
     its scenarios, the sections it draws on and what it relies on from
     earlier phases or another work unit (R15, Dependencies), so a phase goes straight into the tracker and whoever
-    writes its tasks reads those sections whole, never the whole spec.
+    writes its tasks reads those sections in full, and reads further
+    wherever it meets a seam (the person, 2026-10-15: "He can plan ahead
+    if he sees fit").
   - Each invariant names the hard check that enforces it where one can
     (R34).
   - Canonical assets are linked from it: the builder cannot build a design
@@ -933,8 +937,8 @@ project's own measurements decide (R7).
   14-stage plan was approved from 600 words, and the person never read
   the 41k it became. The workflows carry the shape in their own prose,
   self-contained; they never depend on a personal skill. What planning's
-  set-up writes today (the plan's context and its cross-cutting
-  references) moves to the spec or the phase start.
+  set-up writes today (the plan's context) moves to the spec or the phase
+  start — Claude's engineering note.
 
   The phase cut is made in a corridor at the end of specification (R2,
   R14): phases in build order, each independently verifiable, with
@@ -1523,8 +1527,9 @@ project's own measurements decide (R7).
     no route. The size check before the work goes: it never stopped one,
     though about half changed behaviour and two made a design call inside
     scoping.
-  - A set from the inbox runs in one sitting, each fix keeping its own
-    unit, record and commit. It stays a tracked work unit on the start menu
+  - A set from the inbox runs in one sitting as one unit (triage's w,
+    ruled by the person 2026-10-16, later than this walk), each fix
+    keeping its own commit and short record. It stays a tracked work unit on the start menu
     that closes.
 
   Walked and ruled by the person on 2026-10-12, replacing the earlier "no
@@ -1623,7 +1628,7 @@ each call on a page that day.
     even when it was closed. The journey stays out of the ledger: a
     topic's log, one dated heading per session, free prose written as the
     conversation goes, enough for a fresh session to carry on alone, and
-    pointing at entries by number rather than restating them.
+    pointing at entries by short id rather than restating them.
   - **What the test on real slices settled**, ruled by the person
     2026-10-14 (`walks/ledger-test/`: a coherent spec came out of the
     records alone — Fumi's slice covered 118 of 162 builder points and
@@ -1662,7 +1667,7 @@ each call on a page that day.
       findings that rely on it as well as the decisions — in the test
       Fumi's floor change missed a question framed on 14 and a finding
       restating it, the sentence behind the real 2 September error.
-    - **A change names what caused it**, by number — the other topic's
+    - **A change names what caused it**, by short id — the other topic's
       decision, the new fact, the message — and **a review finding goes
       on the stream as a question the review asked**, so its answer is
       linked to it like any other: Switchboard's test had 6 of 14
@@ -1690,7 +1695,8 @@ each call on a page that day.
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
     duplicate found anywhere is merged where it is found. Every session
-    reads every entry. A topic's record shows other topics' current
+    can read every entry, by unit, topic or area and current entries
+    only; nothing reads the whole stream. A topic's record shows other topics' current
     answers rather than restating them, so a change leaves no stale copy
     to correct — in Fumi 30 of 157 messages did nothing but correct one,
     and 7 of 41 reopens carried nothing else. A change to a decision
@@ -1699,8 +1705,8 @@ each call on a page that day.
   - **Superseding appends:** a new entry names the one it supersedes and
     why — a new fact, another topic's decision, a changed mind, or the
     earlier one was wrong; the last applies to the person's decisions as
-    to Claude's. The superseded entry leaves the record and stays in the
-    ledger.
+    to Claude's. The superseded entry folds beneath the current one in the
+    record (the chain, above) and stays in the ledger.
   - **Stored as JSON lines in the project**, in `.workflows/.ledger.jsonl`
     under git (Layout on disk): one line per event, appended, each
     carrying its schema version. Ruled by the person 2026-10-18: a field
@@ -1830,8 +1836,9 @@ each call on a page that day.
       fix to the shipped workflows: the tie-break gives way to the matrix;
       a finding a later decision has removed is dropped with a one-line
       note; a finding coming to the person is rechecked against answers
-      given earlier in the same walk and against the record before it is
-      raised; a route names another topic, never a subtopic. A cap on
+      given earlier in the same walk, and against the record — Claude's
+      addition, since 8 overrules pointed at a ruling already made —
+      before it is raised; a route names another topic, never a subtopic. A cap on
       findings per report was rejected: more findings is the point, and
       the measure is calls reaching the person.
   - **Facts are checked, intent is asked.** A question that reading the
@@ -1853,7 +1860,7 @@ each call on a page that day.
     would have been bad was of this kind (R29).
   - **Three parties.** Claude supplies the question and its own answer,
     sealed where the person cannot see it. The engine decides whether to
-    ask, from stored counts; the same inputs always give the same
+    ask, from counts derived from the log; the same inputs always give the same
     decision. The person supplies answers, and each becomes evidence.
   - **The rule:** ask when the pessimistic rate of real loss for the
     question's kind exceeds the person's threshold.
@@ -2355,9 +2362,10 @@ each call on a page that day.
   - **The feature map groups bugs by area,** so the tracking layer can
     flag an area that keeps breaking for a design look (Portal: six
     bugfixes around restore, five around resume hooks).
-  - **Verified work is cheaper to get wrong**, so verification lowers
-    reversal cost in the ask rule: history is one lever on how often
-    Claude asks, verification the other.
+  - **Verified work is cheaper to get wrong** — proposed under the
+    earlier formula, never put into the rule the person approved on
+    2026-10-12, which has no reversal-cost term (R24); whether
+    verification adjusts it is open (the questions page).
 - **R33 — Test adequacy by outcome.** Every acceptance criterion has a test.
   Test quality is checked by machine: mutation testing where the language
   has a tool, otherwise deliberate breaks that must turn the tests red.
@@ -2658,7 +2666,8 @@ own detection finds nothing in either.
          bugfix's investigation is its topic's log;
        - research feeding one topic joins that topic's log; research
          feeding several goes to the unit's discovery log, where epic-wide
-         research belongs;
+         research belongs, until the cut-and-merges directive places it
+         by judgment (step 5, ratified by the person 2026-10-17);
        - each topic's mail moves to its own folder as one sequence,
          renumbered where the topic had mail in both its research and its
          discussion box; mail for a cancelled topic goes to the inbox, as
@@ -2683,7 +2692,8 @@ own detection finds nothing in either.
          records directive; Fumi has none.
     4. **The records** (directive), below.
     5. **The cut and the merges** (directive): phase-cut entries for
-       builds under way, cross-cutting units into product-wide entries
+       builds under way, research that does not map one-to-one onto a
+       topic placed where it bears, cross-cutting units into product-wide entries
        (R22), and the topics that must leave a building unit.
     6. **Finish** (code): the records indexed (R44), then one migration
        commit, on the person's yes, as today.
@@ -2821,12 +2831,11 @@ own detection finds nothing in either.
    What remains before the plan is in Where things stand. Nothing in the
    workflows changed.
 3. **Foundations shared by A and B.** The ledger, raise and gate-answer
-   logging, the verdict queue and the user-level store. Logging collects from the day it ships,
-   before anything depends on it.
+   logging, the verdict queue and the user-level store.
 4. **Restructure (A)**, the record-and-log split first, with its
    migration and directive, and
-   **verification (C)** alongside — C stands on its own and is useful
-   under today's workflows.
+   **verification (C)** alongside. All of it ships as one release (the
+   person, 2026-10-18); these steps are the build's order.
 5. **The ask rule on (B)**, calibrated to ask what is asked today and
    loosening only as evidence supports.
 
@@ -2858,14 +2867,14 @@ person, one item at a time; the sections above hold the detail.
   the restructure.
 - From the discovery walk (2026-10-13): no routing — every topic goes
   through decision, none straight to the build (R10); a topic opens with
-  Claude's view, the forks laid out, its lean held back where nothing
-  decided constrains a fork (R11); the brief feeds that view and approving
+  Claude starting the conversation, its lean given wherever a logical
+  one exists (R11, 2026-10-18); the brief feeds that view and approving
   the map stays topics and order (R10); the cone narrows as the product
   takes shape, not phase by phase (R24); foundations first for the cone's
   sake, with research others rest on first (R41); discovery one phase at
   whatever level the conversation reaches, no detail questions in it,
   feature and epic two types with a light call between them (R10, R19);
-  the product record — the workflows' own file, never CLAUDE.md, started
+  the product record — a projection of the ledger, never a file and never CLAUDE.md, started
   in discovery, added to from decisions at a topic's decided screen, read by every
   opening view, apart from the feature map (R10); a topic opens with
   Claude starting the conversation, its lean given wherever a logical one

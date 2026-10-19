@@ -664,8 +664,9 @@ open in the record).
 - Rules that can be checked become checks (7.6). The rest stay guidance in
   the brief.
 
-7.8 **Ruled:** verification lowers reversal cost in the ask rule (R32). Its
-arithmetic is designed with the rule (11.4).
+7.8 **Open:** whether verification adjusts the ask rule (R32). The rule the
+person approved has no reversal-cost term, and a mistake verification
+catches early already earns a "fix later" verdict. On the questions page.
 
 ## 8. Proposed — measures
 
