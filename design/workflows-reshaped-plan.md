@@ -94,8 +94,8 @@ runtime code never recognises an older shape.
 2.9 **Event-sourced, for engineers** (R45). Everything that happens is an
 event on an immutable stream; everything read is a projection.
 
-2.10 **A context budget** (R43). Questions before reading; resuming reads
-the record, never the log; prescription lives in code.
+2.10 **A context budget** (R43). Questions before reading; resuming a topic
+reads its record and its log; prescription lives in code (R2).
 
 2.11 **The knowledge base stays, as the first look** (R44). It indexes
 records rendered from the ledger, never logs and never the ledger.
@@ -848,17 +848,14 @@ the decided screen carry the per-unit lines.
   - One orchestrator across a build, with no handoff at phase boundaries
     (R15). A quick-fix is one session with no handoffs (R21).
   - The note names the skill and each document to re-read (R35).
-  - Resuming reads the record, never the log (R43).
+  - Resuming a topic reads its record and its log (R43, 2026-10-19).
 - Proposed:
   - The mechanism stays. Its table of moves follows the new phases: start
     this work into the first topic, decided into the next topic or the
     spec, ready to build into the build, finish back to the menus. Nothing
     hands off inside a build, a quick-fix or a topic.
-  - After a compaction, the note names the record and only this session's
-    heading of the log, so the conversation carries on where it was. A new
-    session resuming a topic reads the record and none of the log. That
-    reconciles R11's log written "enough for a fresh session to carry on
-    alone" with R43.
+  - After a compaction, a crash or a new session alike, the note names the
+    topic's record and log, so the conversation carries on where it was.
   - The position holds every task in flight with its builder's id, not
     one, so after a compaction a fix round still goes back to the same
     builder.

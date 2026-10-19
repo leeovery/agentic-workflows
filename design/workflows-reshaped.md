@@ -2565,15 +2565,23 @@ think is a good sign."
   | Bugs found after review | where verification has a gap |
   | Contracts slipping in prose tests | which contract needs a verb or a check |
   | Context spent before the first question, per phase | what a phase loads, and when |
-- **R43 — A context budget.** Ruled by the person on 2026-10-12. The
-  context a phase spends before its first question to the person is a
-  measured number, per phase, with a budget; the walks record it, so a
-  change that grows it shows. Three rules hold it down:
+- **R43 — A context budget.** Ruled by the person on 2026-10-12, in the
+  words they approved: "measure what each phase loads before its first
+  question, and read records only after the question". The context a
+  phase spends before its first question to the person is a measured
+  number, per phase, with a budget; the walks record it, so a change that
+  grows it shows. What holds it down:
   - **The question comes before the reading.** A gate needs only what the
     engine holds. Records are read after the answer, never before a
     question whose answer may discard them.
-  - **Resuming reads the record, never the log** (R11).
-  - **Prescription lives in code.** What the person sees and what is
+  - **Resuming a topic reads its record and its log**, after any question
+    whose answer may discard them, ruled by the person 2026-10-19: the log
+    is how a session knows the conversation's history ("that's the point
+    of the log"; 2026-10-14: "The artifact there is how we get back to
+    where we were at"). A "never the log" rule written here earlier was
+    Claude's, never agreed.
+  - **Prescription lives in code** — R2's principle, not part of the
+    approval above. What the person sees and what is
     recorded is held by engine verbs, a few hundred tokens a call; prose
     keeps goals, done-conditions and conversation guidance (R2), and a
     phase loads no shared reference it does not use.
@@ -2586,7 +2594,7 @@ think is a good sign."
   discussion document, read whole before asking whether to delete it,
   about 35k. Of its 104KB the current decisions are about 35KB, and one
   decision carried four dated revisions. The workflows' share, about
-  58k, falls to about 15k under these rules. The harness's share is
+  58k, falls to about 15k before the topic's log is read. The harness's share is
   outside the workflows; which MCP servers load where is the person's
   setup. The person's compaction point is 467k.
 
