@@ -5,8 +5,9 @@ The whole release in one numbered document, drawn from the design record
 
 - **Ruled** sections (2–5) restate what the person has ruled, one item to a
   few lines, and point at the record for the detail and the evidence.
-- **Proposed** items (1.4, 6–11) are new. Each shows today against what is
-  proposed.
+- **Proposed** items (1.4, 1.6, 6–11) are new. Each shows today against what
+  is proposed.
+- **Open** marks a question still waiting on the person.
 - The person comments by number; a line with no comment is agreed.
 - Nothing in the workflows changes until the plan is approved.
 
@@ -26,7 +27,8 @@ reached (9).
 1.3 **One release.** Ruled by the person on 2026-10-18.
 - Everything in sections 3 to 9 ships together, with the ask rule on. The
   migration is one sequence (R37), and no project may sit on half a shape
-  (R8).
+  (R8). What is not integral comes as a fast follow straight after, never a
+  partial product (the person, 2026-10-19; listed in 12).
 - The ask rule is built last, as Sequence step 5 orders, but it ships in
   the release. Everyone starts with an empty trust log, the person
   included (R25, ruled 2026-10-18), so every call Claude has a lean on
@@ -62,6 +64,15 @@ What goes whole: the research, discussion, planning and scoping skills, the
 plan formats, the analysis loops, grouping, the dependencies between specs,
 the cross-cutting type and, if 9.1 is agreed, the baseline skill.
 
+1.6 **Proposed — the weight check** (Claude's, 2026-10-19).
+- Today: each part was ruled on its own; the engine's total was never
+  weighed against the person's bar of rope, not walls (R2).
+- Proposed: a table in this plan, today against proposed: prose words,
+  engine lines, command families and commands, hooks, checklists, agents,
+  screens, and gates the person answers. Each new engine piece gets one line
+  naming the failure it prevents and how often that failure happened.
+  Anything with no failure behind it comes to the person as a cut.
+
 ## 2. Ruled — principles
 
 2.1 **Control moves up a level** (R1). Standard operating procedures for
@@ -71,14 +82,20 @@ capable staff, not supervision of incapable ones.
 contract (held by an engine verb or a hard check), required procedure (an
 engine-held checklist) or how-to (deleted, leaving a goal and a
 done-condition). The sort is strand A's work plan. Gates, corridors and
-fields: whatever Claude does in a field stays in it.
+fields: whatever Claude does in a field stays in it. In the build a question
+for the person goes out only through the engine's doors, and one asked in
+plain prose is a slip the walks catch; in decision questions are asked in
+conversation, and the walks check that every answer was recorded (ruled
+2026-10-19).
 
 2.3 **Explicitness, not length** (R3). Control flow lives in the engine,
 never in prose.
 
 2.4 **Drift is caught by outcomes** (R4). Prose tests assert outcomes. A
 contract that keeps slipping gets a verb or a check, never more prose. The
-prose is evaluated on each model and effort it runs at.
+prose is walked on each model it runs on, at the effort it is dispatched
+at. When the workflows adopt a new model, the prose is walked on it and
+what that model no longer needs is cut (ruled 2026-10-19).
 
 2.5 **About 90%** (R5). One closing pass replaces every loop that runs
 until nothing is found.
@@ -124,9 +141,17 @@ the frozen anchor.
 3.3 **Discovery** (R10, R41).
 - One phase, at whatever level the conversation reaches. No detail
   questions.
+- Nothing in discovery is a decision (the person, 2026-10-19). The brief
+  carries leans, rejected paths, open questions and what a spike showed, as
+  input that the decision phase decides.
+- An inbox item that already pins the work is confirmed in one line, never
+  shaped again; a known cause with a mechanical fix is a quick-fix (ruled
+  2026-10-19).
 - Feature and epic stay two types, with a light call between them.
 - The product record is a projection of product-wide entries. Discovery
   starts it, decided screens add to it, and every opening view reads it.
+  The engine keeps a rendered copy of it, so a line the person adds to
+  CLAUDE.md can point there (ruled 2026-10-19; where it sits is Claude's).
   The workflows never write CLAUDE.md.
 - Its gates: start this work; one screen to approve the map with its parks;
   no confirm on a change the person asked for; cancelling still confirmed.
@@ -157,7 +182,12 @@ the frozen anchor.
   person is first rechecked against earlier answers and the record; a route
   names another topic, never a subtopic (R24).
 - **Spikes are evidence.** They live in `assets/` as canonical or
-  reference; a lock is a question on the map; discovery may spike.
+  reference; a lock is a question on the map; discovery may spike. A
+  spike's source is kept in `assets/` as it is written; its dependencies,
+  builds and run output go in the gitignored cache (Claude's, 2026-10-19).
+- **Each topic owns its decisions.** Every change to another topic's
+  decision goes to its owner through the mailbox; only a duplicate giving
+  the same answer is merged where it is found (the person, 2026-10-14).
 - **Mailboxes:** `/workflow-start {unit} {topic}` opens a topic directly,
   waiting mail raised first; every send ends with that command.
 
@@ -176,7 +206,10 @@ the frozen anchor.
 3.6 **The build** (R15).
 - One orchestrator runs the build across its phases and delegates: a task
   writer, builders, reviewer pairs. The build keeps a log.
-- Six principles and the task template replace planning's teaching.
+- Six principles and the task template replace planning's teaching. The
+  task rule carries an upper size guide: a task likely to run past about
+  10,000 changed lines is probably two. There is no lower bound (the person,
+  2026-10-15).
 - Tasks are written as a phase starts, through the task verbs, with their
   links. The cut orders the unit and names what each phase relies on; the
   machinery between specs and the plan-wide rebuild go.
@@ -190,26 +223,49 @@ the frozen anchor.
 - One independent phase review closes each phase, including where it meets
   earlier phases.
 - **What the person sees:** a headline as work starts (one block per batch),
-  a product summary as each task lands, a question queue, any task's
-  account on demand, and a stop report when nothing can proceed.
+  a product summary as each task lands, a question queue, and a stop report
+  when nothing can proceed.
+- **The build's live panel and any task's account** ship in the release
+  (ruled 2026-10-19). The panel shows the build only: tasks building, in
+  review, landed and parked; questions waiting; phases not yet written. It
+  is spiked with the person first. Any task's account is printed into the
+  conversation from the mod menu.
 
 3.7 **Reviews in the build** (R15, R16, Reviews in the build).
 - Three reviews: after each task, closing each phase, and the review phase.
 - Each is the workflows' own reviewer agent, run as a pair at Opus medium.
-  Builders also run at Opus medium, and no other model is used.
+  Builders also run at Opus medium.
+- **Everything at medium** (ruled 2026-10-19): no higher-effort builders or
+  reviewers for Claude to reach for. The medium defaults were measured on
+  one project and are re-tested with data later.
+  - **Open:** whether an extra-high reviewer runs at prescribed points, such
+    as a phase's end. If it does, it is always prescribed, never Claude's
+    pick.
+- **Models:** builders and reviewers run Opus. The labeller runs Sonnet
+  (4.8), and every other job runs Opus until a measurement says otherwise
+  (Claude's, 2026-10-19).
 - **The task loop:** every finding but a nit goes back to the same builder
   with both reports; the changed task is reviewed whole by the pair until
-  a round passes, with no count. A nit is fixed there and then.
+  a round passes, with no count. A nit is fixed there and then by the
+  orchestrator, reading it from the report (the person, 2026-10-15).
 - A failed review is met as a senior engineer would.
 - A finding is serious unless the report names the edge-list item it
   needs.
-- Notes for later hold what lies outside the task.
+- **Banking stays as it works today** (the person, 2026-10-15). Notes for
+  later hold what lies outside the task. At a phase's end a separate agent
+  reads them against the finished code, groups and de-duplicates them, and
+  drops what the code settled with a reason; the rest become tasks in the
+  same phase, built through the same loop.
 - Comments are never the standard.
 - Fixes are reviewed by the layer above.
 - **Brief control:** every brief comes from a template the engine fills.
   Additions go only onto the task or into the ledger, recorded. Fix rounds
   carry the reports verbatim. A hook refuses a brief the engine did not
   issue.
+  - **Open:** whether the implementer may write onto its own task. As
+    recorded, only the orchestrator writes onto a task, and the
+    implementer's own variations go to the ledger as its calls, which the
+    reviewers read.
 
 3.8 **Code lands as pull requests** (R35).
 - A task is a pull request, squash-merged. A phase is a stack, merged whole
@@ -232,9 +288,13 @@ the frozen anchor.
 - The build runs straight into it.
 - It is split by the spec's areas, each read by a pair, running the product
   wherever the project has a way to.
+- Today's test-surface agent stays: one reader over all the change's tests,
+  held against everything the spec asks them to guard (ruled 2026-10-19).
 - In-scope findings become fix tasks in one more build phase; only the
   areas they changed are read again. Out-of-scope findings are dropped,
-  grouped or filed to the inbox by Claude, with no offer.
+  grouped or filed to the inbox by Claude, with no offer. A drop is neither
+  raised nor listed; each call is recorded, one engine call away (the
+  person, 2026-10-14).
 - The report is short and product first, and the passing one is the
   work's certificate. Finish takes questions.
 
@@ -243,14 +303,23 @@ the frozen anchor.
   waits, waiting units first; one Start row; the inbox as one counted line;
   verdicts as a project row.
 - **The epic menu:** the phase heads it, what waits first, topics by what
-  they need; no spec row until every topic is decided; map changes through
-  discovery.
-- **The inbox stays true:** a capture commits its own file with plain git,
-  and finished work closes the items it resolved.
+  they need, with no count of a topic's questions (the person, 2026-10-14);
+  no spec row until every topic is decided; map changes through discovery,
+  reopening a decided topic and bringing back a cancelled one included. A
+  feature, bugfix or quick-fix does both through manage (the person,
+  2026-10-15 and 2026-10-16).
+- **The inbox stays true:** a capture ends with one fixed engine line that
+  writes the item into the inbox, commits under the lock and pushes, so the
+  capture skill needs no engine knowledge (the person, 2026-10-16); finished
+  work closes the items it resolved.
 - **Triage** is w, r, a, c, b; Claude never names a horizon.
 - **The roadmap:** one step from anywhere; work starts through discovery;
-  explicit rows.
+  explicit rows. A product-wide talk starts from Start or the roadmap's
+  "plan the product" (the person, 2026-10-16).
 - **Menus** are explicit and keyed alike, and every menu has h help.
+- **Open:** when the new design system the person wants (2026-10-15) is
+  made: inside the release, or as its own piece of work straight after it,
+  which is Claude's lean.
 
 3.12 **Work types** (R18–R22).
 - **Epic.**
@@ -273,8 +342,8 @@ the frozen anchor.
   the build's log. Tasks live in the tracker.
 - Tracking, analysis and per-task report files go.
 - The layout is the record's tree. Never files: a topic's record and map,
-  the product record, the verdict queue, "what have you decided without
-  me".
+  the product record (beyond its rendered copy, 3.3), the verdict queue,
+  "what have you decided without me".
 
 ## 4. Ruled — trust
 
@@ -320,18 +389,24 @@ in the verdict queue. A departure counts as a real loss until judged.
 - Ask when the pessimistic rate of real loss for the question's kind
   exceeds the threshold:
   - 20%, halved where a change would be hard to undo;
-  - lowered where the person cares;
-  - danger always asks.
+  - danger always asks;
+  - so does a kind the person cares about, while a care entry stands. An
+    entry names one project and one kind, never every project; a "don't
+    care" answer settles that one question, and Claude proposes dropping an
+    entry the answers keep saying the person does not mind (ruled
+    2026-10-19).
 - A kind goes quiet below the threshold and asks again only a quarter above
   it (25% at 20%), so one loss reopens it only while its evidence is thin.
 - The cone narrows as the product takes shape. Convergence offers to settle
   the rest.
 - A raise reaches the person product first, with "I don't follow" as a
-  button.
+  button. Questions come one at a time; in decision they are slotted into
+  the conversation (the person, 2026-10-14 and 2026-10-18).
 
 4.5 **Kinds, evidence and the trust log** (R25).
 - Twelve narrow questions compose the kind in code. The labeller is never
-  the Claude that wants to proceed.
+  the Claude that wants to proceed. Every label keeps all twelve answers,
+  not only the kind (ruled 2026-10-19).
 - Evidence is weighted by what it proves. Two starting values, retuned by
   replay: answers count half at six months old, and a new model inherits
   counts at half weight.
@@ -346,14 +421,33 @@ in the verdict queue. A departure counts as a real loss until judged.
 4.6 **Blind questions** (R26), drawn by the engine at a fixed share: each
 call draws on its own from its id, at random across projects, with no tally.
 
-4.7 **The record of the person** (R27), at user level, confirmed at a gate
-before it steers.
+4.7 **The record of the person** (R27), at user level, ships in the release
+(ruled 2026-10-19).
+- The person's preferences in words, each with its reason and examples.
+  Claude proposes an entry when it sees a pattern or the person states one;
+  it steers nothing until the person says yes on the screen where it is
+  proposed.
+- It shapes what Claude picks. Its one effect on whether Claude asks is
+  its care entries (4.4), which live in it.
+- Search across other projects' decisions is dropped: projects differ by
+  purpose, and it would bring another project's text into a session.
 
 4.8 **No decision model in the release** (R28, ruled 2026-10-18). A
 separate Claude call labels kinds, checks one decision per entry and reads
-typed gate answers. Jev measured 75% against a Claude call's 91%; Clef was
-not run. A decision model is offered later, as the person's choice, only
-once a rerun shows it labels as well.
+typed gate answers.
+- It is a raw call the engine makes itself, never a subagent (ruled
+  2026-10-19): `claude -p` with no tools, MCP servers, settings sources,
+  hooks, skills or auto-memory, started from an empty folder, so nothing of
+  the person's reaches it. `--bare` cannot serve: it reads no subscription
+  or setup-token login.
+- It runs on Sonnet (Claude's, 2026-10-19). Rerun on 2026-10-19 in the raw
+  form: against the Opus–Sonnet consensus, raw Opus 97% and raw Sonnet 96%,
+  where the 12 Oct runs, with about 58,000 tokens of the person's context
+  in each call, scored 91%. Raw Opus and raw Sonnet agree 87%, and Sonnet
+  costs 55% of Opus.
+- Jev measured 75% against the same consensus; Clef was not run. A decision
+  model is offered later, as the person's choice, only once a rerun shows
+  it labels as well.
 
 4.9 **Starting numbers** (R29), measured 2026-10-12 and the source of
 every default above.
@@ -480,8 +574,7 @@ Ruled in shape (R35, R2):
     It runs the project's checks first (7.6), and for a bugfix it refuses
     the fix until the bug-proven run is recorded (7.3).
   - A raw `git commit` in a code worktree during a build is refused by a
-    hook before Bash (ruled); a commit touching only the inbox passes
-    (R17). The same hook guards the state branch (4.2).
+    hook before Bash (ruled). The same hook guards the state branch (4.2).
   - The migration commit stays on the person's yes, now two commits: the
     default branch dropping `.workflows/`, and the state branch's first
     (R37).
@@ -517,7 +610,8 @@ Ruled in shape (R35, R2):
     - every task passed its pair;
     - the phase review passed and its fixes landed;
     - each scenario proven or reported not proven;
-    - the notes for later made into tasks or dropped with a reason;
+    - the notes for later read by the consolidation agent, then made into tasks
+      or dropped with a reason;
     - the stack merged, or waiting at its gate in step.
   - **Finish:**
     - the review phase passed and its report is written;
@@ -544,10 +638,12 @@ Ruled in shape (R35, R2):
     matched by id and content. A refusal is recorded with its reason.
   - A fix round is issued the same way: the two reports verbatim, nothing
     added.
-  - **The roster shrinks with the loops,** from 34 agents to about 13:
+  - **The roster shrinks with the loops,** from 34 agents to about 15:
     - builder;
     - reviewer, one agent run as a pair at all three reviews, with a
       template for each;
+    - the consolidation agent, today's, which reads a phase's notes for later (3.7);
+    - the review phase's test-surface agent (3.10);
     - task writer;
     - deep dive;
     - decision's perspective and review agents;
@@ -558,8 +654,7 @@ Ruled in shape (R35, R2):
     - the product researcher (9.1);
     - the migration's verifier.
 
-    Analysis, planning, consolidation and the review phase's finding
-    agents go.
+    Analysis, planning and the review phase's finding agents go.
 
 6.6 **Gate answers and the mod.**
 - Today: the mod sees a click but nothing records gate answers durably,
@@ -637,13 +732,15 @@ tasks.**
   a finding.
 - Either way the cost is bounded by the phase's diff.
 
-7.5 **No habit hooks in the release** (R33).
-- A smell the reviews keep naming becomes a hard check where one can catch
-  it (7.6). Otherwise it becomes a project rule handed to the builder
+7.5 **Habit hooks are measured before they ship** (R33, ruled 2026-10-19).
+- The person agreed them on 2026-10-07 on a condition: "let's make sure we
+  run our own tests to validate. Let's not just blindly trust what we
+  read."
+- A habit hook runs over the replay's slices alongside the brief-quality
+  measurement (8.4), and ships if it cuts review findings.
+- Either way, a smell the reviews keep naming becomes a hard check where one
+  can catch it (7.6), and otherwise a project rule handed to the builder
   (7.7).
-- A hook that injects fixes waits until the measures show rules failing to
-  hold (8.1, review findings per phase). That follows R7: our measurements
-  decide.
 
 7.6 **Hard checks in the cut and at the door** (R34).
 - The task that adds an invariant's check goes in the phase that introduces
@@ -664,9 +761,9 @@ open in the record).
 - Rules that can be checked become checks (7.6). The rest stay guidance in
   the brief.
 
-7.8 **Open:** whether verification adjusts the ask rule (R32). The rule the
-person approved has no reversal-cost term, and a mistake verification
-catches early already earns a "fix later" verdict. On the questions page.
+7.8 **Verification does not adjust the ask rule** (R32, ruled 2026-10-19).
+The rule the person approved has no reversal-cost term, and a mistake
+verification catches early already earns a "fix later" verdict.
 
 ## 8. Proposed — measures
 
@@ -680,16 +777,18 @@ are computed from what is already recorded, never kept by hand (R45).
 | Measure | Computed from | Shown | Moves |
 |---|---|---|---|
 | Overturn rate per kind | the trust log | the matrix screen | the ask rule, by its own arithmetic |
-| How a review's findings split | the ledger: each finding, and who answered it | a line in the decided screen and the finish report | the person's threshold; this repo's review briefs |
-| Review findings per phase | the pairs' recorded verdicts and rounds | the finish report, by phase | this repo's builder briefs and principles |
-| Bugs found after review | bugfix units, each relying on the unit whose code it fixes, grouped by the feature map's areas | the area's hotspot flag (ruled, R32) | the verify setup's drives for that area |
+| How a review's findings split | the ledger: each finding, and who answered it | the matrix screen, beside the overturn rate | the person's threshold; this repo's review briefs |
+| Review findings per phase | the pairs' recorded verdicts and rounds | a query this repo's authors run over their own projects | this repo's builder briefs and principles |
+| Bugs found after review | bugfix units, each relying on the unit whose code it fixes, grouped by the feature map's areas | no flag of its own; the grouping is Claude's (ruled 2026-10-19) | the verify setup's drives for that area; the bugfix's "rework the area as a feature" option |
 | Contracts slipping in walks | the walks' invariant failures, by contract | the harness's run summary | a verb or a check for that contract (R4) |
 | Context before the first question | the walks, per phase | the harness's run summary, against the budget | what a phase loads (R43) |
 
-8.2 **Two audiences.** The first four are the product's, seen
-by anyone using the workflows. The last two are this repo's, seen in the
-prose harness. No new screen beyond the matrix: the finish report and
-the decided screen carry the per-unit lines.
+8.2 **Two audiences.** The overturn rate, the findings split and bugs after
+review are the product's. Findings per phase, contracts slipping and the
+context before the first question are this repo's, seen in queries and the
+prose harness. No measure adds a line to the decided screen or the finish
+report; each is computed, and shown on the matrix screen or one question
+away (ruled 2026-10-19).
 
 8.3 **The counter-measures.**
 - The ask rule is checked by blind questions and verdicts.
@@ -705,6 +804,10 @@ the decided screen carry the per-unit lines.
 - It runs once the templates exist and is used to tune them. Its cost is
   bounded by the replay's: $606 for 264 agents at API prices, of which this
   needs a fraction.
+- Two more run alongside it on the same slices: a habit hook (7.5), and the
+  task-size test, a large task against the same work split in two (the
+  person, 2026-10-15: "the more data we can get on our decisions, the
+  better"; running it here is Claude's).
 
 ## 9. Proposed — the areas not yet touched
 
@@ -730,7 +833,8 @@ the decided screen carry the per-unit lines.
     reference by the migration. None of the person's projects has any.
   - The reason: R10 makes discovery one phase at whatever level the
     conversation reaches, and this is that conversation started from code.
-    Nothing was ever used, so no habit breaks.
+  - A v1 built fast outside the workflows is the person's call: "It'll be
+    me" (2026-10-12). Installing the workflows on it later comes in here.
 
 9.2 **The setup gates and environment setup.**
 - Today:
@@ -834,7 +938,8 @@ the decided screen carry the per-unit lines.
     projects and re-judging its queries against the rendered records. The
     old baseline stays as the comparison: R29 found the knowledge base
     ranking replaced answers inside long documents, and the records should
-    end that.
+    end that. It gains a third arm: one to three quick searches, judged
+    blind beside the other two (Claude's, 2026-10-19).
 
 9.6 **Handoffs and compaction recovery.**
 - Today:
@@ -915,7 +1020,7 @@ checked; if it needs a change, that is the person's call on their own
 project.
 
 10.9 **Two mods' panes in one tab row.** This is untested, and it matters
-only to the workflows board (12.2). It is tested when the board is taken up.
+to the build's live panel (3.6). It is tested when that panel is spiked.
 
 ## 11. Proposed — the build order
 
@@ -933,7 +1038,9 @@ only to the workflows board (12.2). It is tested when the board is taken up.
   - The branch merges into `main` once 1.4 holds, and the person releases.
 
 11.2 **Step 1 — foundations.** Engine and mod only; no skill prose. Each
-part lands with its tests.
+part lands with its tests. Before it starts, the merged phase's name is
+settled with the person in one conversation, since the engine's phase
+tables carry it from the first step (ruled 2026-10-19).
 1. **State on its own branch:** the worktree, the lock, commit and push,
    the second-clone merge, and section 10's defaults.
 2. **The ledger:** events and their schemas, ids, the append-only check, the write
@@ -954,25 +1061,32 @@ part lands with its tests.
 11.3 **Step 2 — the restructure, with verification alongside.** Prose and
 engine surfaces, phase by phase. Each phase lands with its prose-test
 cases, its walks and its share of the pipeline simulation.
-1. **CONVENTIONS.md** rewritten for the new shape: what a phase skill holds
+1. **The model check** (Claude's, promised 2026-10-12): a one-time table of
+   every part of this plan with its layer and what changes when the next
+   model lands. Anything whose answer is an engine or structure change is
+   moved, or brought to the person.
+2. **CONVENTIONS.md** rewritten for the new shape: what a phase skill holds
    (goal, done-condition, guidance, the verbs it names, its checklist).
    The sort (R2) is then done skill by skill as each is rewritten.
-2. **Decision, first,** with the record-and-log split and its migration
+3. **Decision, first,** with the record-and-log split and its migration
    steps (the move and the records directive), as Sequence step 4 orders.
-3. Discovery, with the baseline folded in (9.1).
-4. Specification and the phase cut.
-5. The build and the review phase, with verification inside them (7).
-6. The work types: feature, bugfix, quick-fix; cross-cutting removed.
-7. The tracking layer: the start menu, the epic menu, the inbox, triage,
+4. Discovery, with the baseline folded in (9.1).
+5. Specification and the phase cut.
+6. The build and the review phase, with verification inside them (7), and
+   the build's live panel and task accounts, spiked with the person first
+   (3.6).
+7. The work types: feature, bugfix, quick-fix; cross-cutting removed.
+8. The tracking layer: the start menu, the epic menu, the inbox, triage,
    the roadmap, help on every menu.
-8. The rest of the migration: the guard, the legacy split, the cut and the
+9. The rest of the migration: the guard, the legacy split, the cut and the
    merges, the finish.
-9. Setup (9.2), help and the glossary (9.3), the brief-quality measurement
-   (8.4), then the docs (9.4) and the CLAUDE.md map.
+10. Setup (9.2), help and the glossary (9.3), the brief-quality measurement
+    with the habit hook and the task-size test (8.4), then the docs (9.4)
+    and the CLAUDE.md map.
 
-11.4 **Step 3 — the ask rule.** The arithmetic, the labeller, the verdict
-page, blind questions, convergence, the matrix screen, replay tuning,
-and verification's place in reversal cost (7.8).
+11.4 **Step 3 — the ask rule.** The arithmetic, the labeller as a raw call
+(4.8), the verdict page, blind questions, convergence, the matrix screen,
+replay tuning, and the record of the person with its care entries (4.7).
 
 11.5 **Step 4 — rehearsal and the release.** The rehearsal on all 13
 projects and their variants (R39), adjusted until clean. Then the dress
@@ -981,18 +1095,25 @@ rehearsal (1.4), the merge into `main`, and the person's release.
 11.6 **Later:** importing an existing user's transcripts, only if the first
 weeks of asking prove heavy (R25).
 
-## 12. Parked
+## 12. Parked and fast follows
 
-12.1 **The merged phase's name.** "Decision" is kept for now.
+12.1 **The rest of the workflows board,** a fast follow (ruled 2026-10-19):
+any panels the other phases need, discussed and spiked with the person.
+The build's panel ships in the release (3.6).
 
-12.2 **The workflows board,** with the live progress view and the surface
-for any task's account (R15). It is low priority by the person's ruling;
-mod panels are to be spiked with the person later.
+12.2 **Splitting kinds from the stored twelve answers** (4.5), a fast
+follow. How it works and when it triggers is parked by the person
+(2026-10-19), to come back to.
 
-12.3 **Uninstalling and reinstalling.** It waits on agntc's remove.
+12.3 **Uninstalling and reinstalling,** parked by the person (2026-10-13)
+for a proper conversation, raised when the work reaches install.
 
 12.4 **The mailbox fallback:** a subagent that answers a message in the
 target's terms, only if the one-command open still feels clunky (R13).
 
 12.5 **A folder for product conversations,** only if one is ever wanted
 (R22).
+
+12.6 **A questions page as a workflows surface:** the person's idea of
+2026-10-19, a batch of questions worked through at their own pace and
+submitted, parked for discussion.

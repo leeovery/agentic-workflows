@@ -405,17 +405,28 @@ project's own measurements decide (R7).
   reaches the person, what gets recorded and every question to the person
   go out only through the engine's verbs and gates. The layout hook, the
   commit door and the engine's checklists refuse anything else; what they
-  cannot refuse — a question asked in plain prose, an extra review round —
-  prose walks catch, since they assert outcomes (R4).
+  cannot refuse — a question asked in plain prose in the build, an extra
+  review round — prose walks catch, since they assert outcomes (R4). In
+  decision, questions are asked in conversation (the person, 2026-10-18:
+  "Those decisions are meant to be collaborated on and answered through
+  conversation, ideally"), so there the walks check that every answer was
+  recorded (R11).
 - **R3 — Explicitness, not length.** Obedience comes from explicit rules and
   single doors, not from volume; length dilutes. A one-line rule naming a
   verb is more explicit than pages of steps around it. Control flow lives
-  in the engine, never in prose.
+  in the engine, never in prose. A rule carries what was measured behind
+  it only as today's authoring rule allows: one line, where it changes
+  what Claude does at the rule's edge (Claude's call, 2026-10-19, on the
+  person's thought of 2026-10-15: "It gives Claude a real reason to
+  follow the rules. Maybe. I don't know.").
 - **R4 — Drift is caught by outcomes.** Prose tests assert outcomes (calls
   made, write order, the world afterwards), never steps. A contract that
-  keeps slipping in walks gets a verb or a check, never more prose. The
-  prose is evaluated on each model it runs on, at the effort levels it
-  runs at, and re-audited after each model release.
+  keeps slipping in walks gets a verb or a check, never more prose. When
+  the workflows move to a new model, the prose is walked on it at the
+  efforts the workflows dispatch, and one pass cuts what that model no
+  longer needs (the person, 2026-10-06: "we have to make sure that we
+  loosen the reins as the model gets more intelligent"; agreed
+  2026-10-19).
 - **R5 — About 90%.** The target is 90–95% and then iteration; a product is
   never perfect. One closing pass replaces every loop that runs until
   nothing is found: a keen reviewer always finds something, and much of it
@@ -508,12 +519,27 @@ project's own measurements decide (R7).
     the boundary needs no more confidence than the rest of the type call;
     today's detection asks for more, holding that the boundary has no
     safety net. Ruled by the person 2026-10-13.
+  - **Two shaping rules**, Claude's, covered by the person's yes on
+    2026-10-13 ("On the whole, I think that sounds good"):
+    - an inbox item that already pins the work, cause and fix known, is
+      confirmed in one line, not shaped again (on projects-filter the
+      person said there was nothing to add and still went through two
+      more gates);
+    - a known cause with a mechanical fix is a quick-fix, not a bugfix
+      (five such units went different ways: two as quick-fixes, three
+      through a full investigation).
   - **Product-level discovery writes the product record.** The project's
     product-wide ledger entries, read as one view and owned by the
     workflows: what the product is, who it is for, what it values, and the
-    standing rules that cut across topics. It is a projection, never a
-    file (R23, R45): an entry is replaced, never edited, and each says who
-    decided it and where. Every topic's opening view reads
+    standing rules that cut across topics. It is a projection of ledger
+    entries (R23, R45): an entry is replaced, never edited, and each says
+    who decided it and where. The engine renders it to a file whenever a
+    product-wide entry changes, so a CLAUDE.md line can point at it (the
+    person, 2026-10-13, agreeing a file the workflows own: "yes ok"); the
+    file is gitignored and sits beside the knowledge base's rendered
+    records (Claude's call, R44). Its three forks — where it grows, who
+    approves a line, apart from the feature map — are as below, agreed by
+    the person 2026-10-13 ("Okay, cool. That sounds good."). Every topic's opening view reads
     it with the decided records (R11), so a new epic's first topic starts
     narrower (R24). Several of Claude's misses in the replay were the
     product's character, not facts (R24). The roadmap keeps capabilities
@@ -608,10 +634,15 @@ project's own measurements decide (R7).
       out of its research;
     - a build label would have sent undecided calls to the builder,
       the internal product's failure (the shape review's evidence, Open).
-  - **The brief feeds the topic's opening view** (R11): what discovery
-    found — soft decisions, rejected paths, open questions — is Claude's
-    input when the topic opens, not the list of what the person will be
-    asked. Briefs predicted that poorly: they matched where discovery
+  - **Nothing in discovery is a decision**, ruled by the person
+    2026-10-19: "Nothing during discovery is a decision. That's the whole
+    point, discovery is about discovery, decision phase is about
+    decision." The brief carries what was said — the person's leans,
+    rejected paths, open questions, what a spike showed about the
+    direction — as input.
+  - **The brief feeds the topic's opening view** (R11): the topic opens
+    with Claude bringing up what discovery found, and it is decided there,
+    in decision; it is not the list of what the person will be asked. Briefs predicted that poorly: they matched where discovery
     measured a running product (Portal's project-link, 7 of its 8
     subtopics) and missed for most of greenfield Fumi, where the questions
     came from research results and other topics' decisions. Approving the
@@ -736,7 +767,8 @@ project's own measurements decide (R7).
     about 50 times on Fumi, the typed answers questions the screen now
     answers ("Did you fix all those items then or not?").
   - **Once the shape is agreed, Claude fills in the rest.** The ask rule
-    sends the person the few calls that need them, in one batch; the rest
+    sends the person the few calls that need them, one at a time in the
+    conversation (R24); the rest
     are Claude's, on the map and in the ledger; the topic goes to its
     decided screen (R24's convergence). "Don't care"
     hands a call to the builder and is recorded as the builder's.
@@ -806,6 +838,14 @@ project's own measurements decide (R7).
     the ledger entry it informs (R23) — canonical from a decision,
     reference from a finding or the log. Something living in an outside
     tool is kept as its live link and an exported image.
+  - **Where a spike's files go** (Claude's call, 2026-10-19, after the
+    experiment's precedent): its source — draft code, a generator, a
+    design export and its live link — is kept in `assets/` as it is
+    written, so nothing is left in a session folder; its dependencies,
+    builds and run output go in the gitignored cache. A product-level
+    spike's files go in `.roadmap/assets/`, which replaces
+    `.roadmap/imports/` as a unit's `assets/` replaces `imports/`, each
+    linked from the product-wide decision it informs.
   - **A lock is a question on the map** ("which design?"), closed by the
     person's choice: a ledger entry with the design as its canonical
     asset, no gate of its own. Rejected designs stay reference, the reason
@@ -830,9 +870,14 @@ project's own measurements decide (R7).
     storage-and-sync and reshaped three topics.
 
   Whether a product gets the workflows at all is the person's decision,
-  made by installing them; the workflows never ask it. Building a v1 fast
-  is done outside them, and a later install starts from the existing
-  brownfield assessment, which reads what was built.
+  made by installing them; the workflows never ask it (the person,
+  2026-10-12: "I don't think it's the workflow's responsibility to decide
+  if the workflows are required. It'll be me."). Building a v1 fast is
+  done outside them, and a later install comes in through the roadmap's
+  plan the product (R17): discovery is one conversation at whatever level
+  it reaches, and an existing codebase is that conversation started from
+  code. Today's brownfield assessment folds into it, agreed by the person
+  2026-10-19.
 
 ### Between topics
 
@@ -965,7 +1010,12 @@ project's own measurements decide (R7).
      allows; where it is too interconnected, cut so the pieces meet as
      early as they can.
   5. A task is one piece of work an agent can finish and prove in one go —
-     not a single test cycle, not a grab-bag of unrelated changes.
+     not a single test cycle, not a grab-bag of unrelated changes. One
+     likely to run past about 10,000 changed lines is probably two, since
+     past that a reviewer's yield dropped sharply; there is no lower bound
+     (agreed by the person 2026-10-15: "We definitely don't want every
+     task to be 100 lines of code"; "the more data we can get on our
+     decisions, the better").
   6. Tasks are written at the phase start against the code, at product
      altitude, naming no mechanism the record did not decide.
 
@@ -1093,9 +1143,17 @@ project's own measurements decide (R7).
     corrections, the checkpoint before analysis); comment corrections fold
     into the task in flight, and a raw `git commit` during a build is
     refused by the hook (R35).
-  - **Notes for later** (today's banking) are written by a verb and read by
-    the phase review. The machinery around banking (the flag, the deposit
-    reference, the separate judge) goes.
+  - **Notes for later** are today's banking, kept as it works today, ruled
+    by the person 2026-10-15 ("the banking system still has value"; "the
+    banking system seems to work relatively well at the moment"). A note
+    is deposited as it arrives; at the phase's end today's consolidation agent reads
+    every note against the phase's finished code, analyses, groups and
+    de-duplicates them, and drops what the code already settled, with its
+    reason; the rest become tasks in the same phase, built through the
+    same loop. In the person's words: "those get picked up, analysed,
+    synthesised, de-duplicated, and cleaned up before being then broken up
+    into tasks at the end of the phase, and then implemented with the same
+    loop."
   - **One independent phase review** closes each phase: each task's
     criteria, the phase's coherence, what should be consolidated, and
     where the phase meets what it relies on from earlier phases, which
@@ -1135,14 +1193,19 @@ project's own measurements decide (R7).
     - **any task's account on demand**, the person 2026-10-15: from the
       mod menu at any time, for any task however long ago, its
       description, a technical account Claude writes, and diagrams; in
-      step they stay on each task's gate, as today. Its surface is open;
+      step they stay on each task's gate, as today. It ships in the
+      release, ruled by the person 2026-10-19;
     - when nothing can proceed, the build stops with a report: what was
       built, what waits on the person and why, what runs after the answer.
       Danger and the authority gates stop what depends on them in every
       position.
 
-    How the live progress (each task building, landed, parked) is shown is
-    open (Open): the transcript cannot redraw it.
+    The live progress (each task building, landed, parked; questions
+    waiting; phases not yet written) shows on a build panel drawn by the
+    mod, since the transcript cannot redraw it. It ships in the release,
+    ruled by the person 2026-10-19, spiked with the person first; the
+    other phases' panels follow straight after the release, discussed and
+    spiked then (the workflows board, Open).
 
 ### Review
 
@@ -1178,8 +1241,10 @@ project's own measurements decide (R7).
     written by area (R14), so each area is a ready slice; each gets the
     pair every review gets, reading its area and where it meets the
     others, and running what touches it. The number of areas follows the
-    spec; today's merge down to four sections and a test-surface agent
-    goes. Switchboard's release review ran the same way over four areas
+    spec; today's merge down to four sections goes. Today's test-surface
+    agent stays (the person, 2026-10-19): one reader over all the change's
+    test files, held against everything the spec asks them to guard.
+    Switchboard's release review ran the same way over four areas
     and found 9 serious bugs more than 75 PR reviews had missed: a
     session's model named two ways across views, a cap dated from another
     window's event where two subsystems meet, views cut off at 80×24. An
@@ -1199,8 +1264,13 @@ project's own measurements decide (R7).
     no code changes outside a task. Ruled by the person 2026-10-14. Out of
     scope: Claude drops
     what is not worth doing, groups related findings into one item, and
-    files the rest to the inbox through a verb, with no keep-or-drop offer;
-    the report lists what was filed and what was dropped. Ruled by the
+    files the rest to the inbox through a verb, with no keep-or-drop offer.
+    The report lists what was filed; a drop is not raised or listed (the
+    person, 2026-10-14: "If they're not worth going in the inbox, and
+    they're not worth fixing now, then they're not worth raising"). Each
+    file-or-drop call is recorded in the ledger as a call Claude made, with
+    its reason, and counted in the report's line of calls decided for the
+    person, so any drop is one engine call away. Ruled by the
     person 2026-10-14, on the condition that the inbox is never flooded:
     the earliest workflows filed hundreds of items. Of the 42 review
     findings filed to the inbox so far, 12 became work and 17 were
@@ -1208,7 +1278,7 @@ project's own measurements decide (R7).
   - **The report is short and product first**, ruled by the person
     2026-10-14: what the person can now do that they could not, what was
     proven by running it and what was not, what was fixed, what went to
-    the inbox and what was dropped, and one line counting the calls
+    the inbox, and one line counting the calls
     decided for the person, by kind. The detailed checks are written to a
     file, not shown. The report that closes a passing review phase covers
     the whole topic — every round, broken up by round, and every call made
@@ -1255,9 +1325,9 @@ project's own measurements decide (R7).
     their words: "decision phase, everything gets done. We don't move out
     of that phase until everything's finished. There is no menu for spec,
     for example, until everything's done."
-  - **Topics by what they need.** A topic in decision shows its progress
-    through its map ("5 of 9 decided"); decided, in session, mail waiting
-    and experiments waiting stay. Starting a topic is "Start", with no
+  - **Topics by what they need:** in progress, decided, in session, mail
+    waiting, experiments waiting. No count of a topic's questions (the
+    person, 2026-10-14: "I think it's noise. I don't care."). Starting a topic is "Start", with no
     routing (R10). Once every topic is decided the menu offers the spec,
     then shows the build's phase N of M, then the review, in place of the
     plan rows; no spec or ready-to-build row shows while any topic is
@@ -1267,8 +1337,10 @@ project's own measurements decide (R7).
   - **Changing the map is discovery's**, ruled by the person 2026-10-15: a
     new topic, cancelling, postponing to the roadmap, pulling forward,
     reactivating and reopening a decided topic all go through the
-    discovery row, which says what it is for. The menu keeps the topics'
-    rows, discovery and back. Never picked from Fumi's menus: the
+    discovery row, which says what it is for. One door per kind of unit:
+    an epic's go through discovery; a feature, bugfix or quick-fix has no
+    menu of its own, so reopening its decision goes through manage on the
+    start menu (R19). The menu keeps the topics' rows, discovery and back. Never picked from Fumi's menus: the
     new-topic doors (offered 82 times), grouping (72), resume completed
     (72), reactivate (37).
   - Gone: everything that kept research apart from discussion, everything
@@ -1278,12 +1350,16 @@ project's own measurements decide (R7).
     (three of Fumi's four cancelled topics show "Cancelled · mail
     waiting"); "dead end" goes — a topic that ends in not doing it is
     decided with that as its decision, or cancelled.
-  - **Drawn in the engine's existing design system**, the tree, with this
-    content (Claude's call, 2026-10-15). The person: consistency matters
-    more than the form, and they are open to a new one; a new design
-    system would change every surface at once, never one menu. The gate
-    mod shows the rows as buttons, so the screen above them stays a
-    printed message the engine draws.
+  - **A new design system is wanted** by the person (2026-10-15: "What we
+    will want to do, though, is come up with a new design system, because
+    it's more about consistency than anything else"). It changes every
+    surface at once, never one menu. **Open, for the person:** whether it
+    is made inside the release or as its own piece of work straight after
+    it (Claude's lean: straight after, designed against the full set of
+    screens). Until it exists, screens are drawn in the engine's existing
+    design system, the tree (Claude's call, 2026-10-15). The gate mod shows
+    the rows as buttons, so the screen above them stays a printed message
+    the engine draws.
   - **A specification waits until every topic is decided**, ruled by the
     person 2026-10-12. Grouping reads the records: groups drawn from half
     of them come out differently once the rest are decided, and a topic
@@ -1316,14 +1392,17 @@ project's own measurements decide (R7).
     2026-10-13: "I can just start the workflow and use the 'start' option
     that takes me straight into just talking".
   - **The inbox stays true**, ruled by the person 2026-10-16:
-    - **A capture commits its own file**, with plain git and a message the
-      capture skill fixes, committing that one path and nothing else
-      staged. The capture skills stay self-contained and know nothing of
-      the engine: a capture is often made from a session in another
-      project ("let's log that as a bug" about Mint while working in
-      Switchboard), and the person will not have engine knowledge poison
-      a context that only logs and moves on. A build's hook lets a commit
-      that touches only the inbox through (R35). Today captures are never
+    - **A capture commits its own file**: each capture skill ends with one
+      fixed engine line that takes the item's text, writes it into the
+      inbox wherever the state lives, commits under the lock and pushes
+      (the person, 2026-10-16: "if we can do that as a one-liner so that
+      Claude has no knowledge, then fine"). The capture skills stay
+      self-contained and know nothing of the engine: a capture is often
+      made from a session in another project ("let's log that as a bug"
+      about Mint while working in Switchboard), and the person will not
+      have engine knowledge poison a context that only logs and moves on.
+      It works from any checkout or worktree, and every state commit is
+      the engine's (R23). Today captures are never
       committed by the skill; the person asked for them committed three
       times (Portal 2026-08-16 and 2026-10-05, Mint 2026-07-20).
     - **Finished work closes the inbox items it resolved**: when a unit
@@ -1547,8 +1626,12 @@ project's own measurements decide (R7).
   name and its forms, cited by three later plans) came from an epic's
   spec grouping promoting a topic, and grouping goes (R14). A principle
   is decided where it arises and marked product-wide; one the person
-  wants to talk through on purpose is a product-level conversation (the
-  roadmap's plan the product, R17), logged per session like discovery
+  wants to talk through on purpose is a product-level conversation,
+  reached through Start, where discovery meets it at the level it
+  reaches, or the roadmap's plan the product (R17; the person,
+  2026-10-16: "or we go into discovery, or, as I said, in the product
+  roadmap, we can talk about something that's product-wide"), logged per
+  session like discovery
   and the roadmap, its decisions written as product-wide entries — a
   folder for such conversations can be added if it is ever wanted. A
   design system or similar convention more often belongs in a project
@@ -1694,14 +1777,18 @@ each call on a page that day.
       demonstrates").
   - **A decision is one entry**, ruled by the person 2026-10-14: the same
     decision reached from another topic is that entry, never a second; a
-    duplicate found anywhere is merged where it is found. Every session
+    duplicate that gives the same answer is merged where it is found,
+    leaving the owner's entry as it stands. Every session
     can read every entry, by unit, topic or area and current entries
     only; nothing reads the whole stream. A topic's record shows other topics' current
     answers rather than restating them, so a change leaves no stale copy
     to correct — in Fumi 30 of 157 messages did nothing but correct one,
-    and 7 of 41 reopens carried nothing else. A change to a decision
-    another topic owns, where it needs discussing, goes to the owner
-    through the mailbox.
+    and 7 of 41 reopens carried nothing else. Every change to a decision
+    another topic owns goes to the owner through the mailbox, and the
+    owner's session writes the replacing entry (stated 2026-10-14 in
+    answer to the person's question, "does that go back to the
+    originating topic that made the original decision?"), so a decision
+    is only ever changed through the lens of the topic that owns it.
   - **Superseding appends:** a new entry names the one it supersedes and
     why — a new fact, another topic's decision, a changed mind, or the
     earlier one was wrong; the last applies to the person's decisions as
@@ -1861,7 +1948,10 @@ each call on a page that day.
   - **Three parties.** Claude supplies the question and its own answer,
     sealed where the person cannot see it. The engine decides whether to
     ask, from counts derived from the log; the same inputs always give the same
-    decision. The person supplies answers, and each becomes evidence.
+    decision, and the session receives only that decision, never text from
+    the log (the person, 2026-10-19: "I want it to be algorithmic. I want
+    it to be numbers-based"). The person supplies answers, and each
+    becomes evidence.
   - **The rule:** ask when the pessimistic rate of real loss for the
     question's kind exceeds the person's threshold.
     - **Real loss** — what the product would have lost had Claude built
@@ -1885,9 +1975,20 @@ each call on a page that day.
       later change that would reach beyond the piece — halves it: a
       quarter of such departures were real losses, against a tenth of the
       rest, and in the replay the halving alone kept two real losses from
-      going through. **The person cares about it** lowers it for a kind
-      (visual design in Fumi: the person had a picture of it and wanted
-      it their way).
+      going through.
+    - **The person cares about it**, ruled by the person 2026-10-19: a
+      care entry in the record of the person (R27) names one project and
+      one kind ("Aircon: look"), and while it stands that kind always asks
+      in that project, as danger does, however well Claude's calls have
+      matched (visual design in Fumi: the person had a picture of it and
+      wanted it their way). "I agree that the caring part should always
+      ask, otherwise I think it has less value." A "don't care" answer
+      settles that one question; if they keep coming, Claude proposes
+      dropping the entry. The answers still count meanwhile, so dropping
+      it leaves the counts knowing how Claude does on that kind. There is
+      no every-project scope: what the person cares about depends on what
+      the project is for ("I do care about different things in different
+      projects").
     - **Going quiet and asking again sit apart**, ruled by the person
       2026-10-18: a kind goes quiet when its bound falls below the
       threshold, and asks again only once the bound rises a quarter above
@@ -1940,7 +2041,7 @@ each call on a page that day.
     many points are open, how many it would settle, and which still come
     to the person by the rule ("12 open: I'd settle 9; 3 come to you — 2
     contracts, 1 look"). On yes, Claude settles them in the ledger, asks
-    the rest in one batch and brings the topic to its decided screen,
+    the rest one at a time in the conversation and brings the topic to its decided screen,
     where the person signs off with the ledger in view. Declined, it waits for
     the next run. The run only times the offer: after 5 agreements in a
     row in a session, the person's next answers departed 18% of the time,
@@ -1953,7 +2054,11 @@ each call on a page that day.
     decided, Claude's lean, what the person would notice either way, and
     why it asks (the kind, or the rule's reason). The mechanism sits
     behind a toggle. "I don't follow" is a button, counted as no answer.
-    Raises ready at once arrive as one batch. The person could not follow
+    Questions come one at a time, ruled by the person (2026-10-14: "drop
+    things to me one at a time"; 2026-10-18: "the decision process isn't a
+    conveyor belt of decisions"): in decision each is slotted into the
+    conversation at a natural pause; where several wait at once they come
+    back to back, each answered before the next shows. The person could not follow
     31% of the questions about internals, 20% on danger and 16% on
     contracts — questions written in mechanism, as Switchboard's
     non-answers were; the verdict page (R29) used this shape.
@@ -1975,7 +2080,10 @@ each call on a page that day.
     would one option be a mistake on its merits; does answering need the
     code's insides. The engine composes the kind in code: process,
     danger, contract, scope; then, for what a user sees, look, words or
-    behaviour; else internals. Two models agree on the composed kind
+    behaviour; else internals. Every label stores all twelve answers, not
+    only the composed kind, ruled by the person 2026-10-19 ("store the 12
+    answers because it's good data"); splitting a kind along them is
+    parked by the person to come back to. Two models agree on the composed kind
     85–89% of the time, against 50% picking from a list (R29); the steps
     a user goes through split them, so flow is part of behaviour. "Would
     a later change reach beyond the piece" also halves the threshold, and
@@ -2087,15 +2195,23 @@ each call on a page that day.
     on error handling".
   - Reading the ledger as a whole, at the final review, still looks for
     calls that are fine alone and wrong in combination.
-- **R27 — The record of the person.** The person's preferences, each with
-  its reason and examples — not a decision tree, which breaks on the
-  first case it did not anticipate. Claude proposes an entry when it sees
-  a pattern or the person states a preference outright; it steers nothing
-  until confirmed at a gate. It lives at user level, ships empty for a new
-  user, and fills from that person's raises and overturns. Claude Code's
-  memory cannot do this job: it is keyed to the project directory, so
-  what one project learns never reaches another. What transfers between
-  projects is taste and principle, not specific decisions.
+- **R27 — The record of the person**, in the release, ruled by the person
+  2026-10-06 ("where you've said a record of you across projects, I'd
+  build it") and 2026-10-19. The person's preferences, each with its
+  reason and examples — not a decision tree, which breaks on the first
+  case it did not anticipate. Claude proposes an entry when it sees a
+  pattern or the person states a preference outright; it steers nothing
+  until the person says yes on the screen where Claude proposes it. It
+  shapes what Claude picks, whether Claude decides or gives its lean as
+  it asks, never whether Claude asks; its one effect on asking is a care
+  entry (R24). It lives at user level, ships empty for a new user, and
+  fills from that person's raises and overturns. Claude Code's memory
+  cannot do this job: it is keyed to the project directory, so what one
+  project learns never reaches another. Searching the person's decisions
+  in other projects is dropped, ruled by the person 2026-10-19: it would
+  put other projects' text into a session, and projects differ by what
+  they are for ("I do care about different things in different
+  projects").
 - **R28 — No decision model in the release.** Ruled by the person
   2026-10-18, after measuring. A separate Claude call — never the Claude
   that wants to proceed — does the three jobs a decision model was
@@ -2104,11 +2220,39 @@ each call on a page that day.
   reading a typed gate answer (R29). A decision model was never to decide
   whether to ask; they are weakest exactly there (REFLEX: 68.8% right on
   clarification decisions, 51.2% on risk).
+  - **The call is raw, made by the engine itself**, ruled by the person
+    2026-10-19 ("It should be as raw as possible"): never a subagent, so
+    nothing the session writes reaches it but the question. The engine
+    runs `claude -p --system-prompt <fixed> --tools "" --strict-mcp-config
+    --setting-sources "" --settings
+    '{"disableAllHooks":true,"autoMemoryEnabled":false}'
+    --disable-slash-commands --no-session-persistence --json-schema …`
+    with `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, started from an empty
+    folder. `--bare` cannot be used: it reads only an API key, never a
+    subscription or setup-token login. Measured 2026-10-19: the 12 Oct
+    labelling runs carried about 58k tokens of the person's context in
+    each call (their CLAUDE.md, sitrep's hook text, this repository's
+    CLAUDE.md); the raw form carries about 830, Claude Code's own email
+    and environment lines; a call takes about 4 seconds, almost all of it
+    the model.
+  - **Rerun in the raw form** 2026-10-19, on the same 150 exchanges and
+    wording: against the Opus–Sonnet consensus, raw Opus 97% (kappa
+    0.96) and raw Sonnet 96% (0.95), where the 12 Oct fresh runs scored
+    91% (0.89); a run sharing a model with the consensus reads high, so
+    the cleaner figure is the pair: raw Opus against raw Sonnet 87%
+    (0.85), against 88.7% (0.86) on 12 Oct. Nothing was lost by taking the
+    person's context out. Sonnet cost 55% of Opus for the same labels.
+    Records `workflows-reshaped-measure/trust/label_raw.py` and
+    `raw_compare.py`.
+  - **Sonnet runs the labeller** (Claude's call, on that rerun);
+    builders and reviewers stay Opus at medium, and every other job runs
+    Opus until a measurement says otherwise.
   - **Jev measured** 2026-10-18 (jev-1.13.0) (jev-1.13.0) on the 150 exchanges Opus and
     Sonnet labelled (R29), three runs: the composed kind agrees with their
     consensus 75% (kappa 0.70) on the record's wording and 72% on one
     rewording in the dex lab's style, measured on 100 held out, against
-    91% (kappa 0.89) for a fresh Opus or Sonnet run. At 0.5 it says yes
+    91% (kappa 0.89) for a fresh Opus or Sonnet run carrying the person's
+    context, and 96–97% for a raw one (above). At 0.5 it says yes
     far too often (hard to undo 97 against 25, words 44 against 10, danger
     29 against 15) and reads literally ("deletes every fumi they own" read
     as danger); its probabilities rank well (AUC mostly 0.9 or more), but
@@ -2119,7 +2263,7 @@ each call on a page that day.
     a quarter of a second, about 130 times cheaper than Opus. Records in
     `workflows-reshaped-measure/trust/labeller/`.
   - **Clef not run**, skipped by the person: it would have had to rise
-    from Jev's 75% to about 91%, where every report had it level with Jev
+    from Jev's 75% to the 91–97% a Claude call reaches, where every report had it level with Jev
     or below on accuracy (Better Stack: 83% against 86%).
   - **Offered later only once one labels as well as a Claude call.** The
     same scripts rerun on a new Jev or Clef version; if it matches, setup
@@ -2309,7 +2453,7 @@ each call on a page that day.
       queried (116 searches and 155 reads against 84 queries).
     - Not measured: what one to three quick plain searches find, the
       comparison that matters if the call turns on cost. Budgets were not
-      matched.
+      matched. The re-made eval measures it (R44).
 - **R30 — Every optimising loop has a counter-measure** and R24's
   frozen anchor, danger, so trust cannot drift by optimising its own metric.
 
@@ -2359,17 +2503,24 @@ each call on a page that day.
   - **Evidence is computed, never narrated.** Scripts produce verdicts;
     Claude never types a count. Zero tests is "not proven"; a criterion
     whose tests were skipped is "named, not run".
-  - **The feature map groups bugs by area,** so the tracking layer can
-    flag an area that keeps breaking for a design look (Portal: six
-    bugfixes around restore, five around resume hooks).
-  - **Verified work is cheaper to get wrong** — proposed under the
-    earlier formula, never put into the rule the person approved on
-    2026-10-12, which has no reversal-cost term (R24); whether
-    verification adjusts it is open (the questions page).
+  - **The feature map groups bugs found after review by area**, for
+    Claude: it steers the verify setup's checks for that area and feeds
+    the bugfix's "rework the area as a feature" option (R20), which puts
+    the design look in front of the person when it matters (Portal: six
+    bugfixes around restore, five around resume hooks). No flag the
+    person sees.
+  - Verification never lowers how often Claude asks: the ask rule (R24)
+    matches the person's judgement, and their verdicts already count what
+    a mistake cost.
 - **R33 — Test adequacy by outcome.** Every acceptance criterion has a test.
   Test quality is checked by machine: mutation testing where the language
   has a tool, otherwise deliberate breaks that must turn the tests red.
-  Habit hooks catch named smells and inject their fix.
+  Habit hooks, which catch named smells and inject their fix, are tested
+  before they ship, on the person's condition when they agreed this
+  (2026-10-07: "let's make sure we run our own tests to validate. Let's
+  not just blindly trust what we read"): measured on the replay's slices
+  alongside the brief-quality measurement, they ship if they cut review
+  findings.
 - **R34 — Hard checks over soft rules.** A spec invariant names the check
   that enforces it — an architecture test, a lint, an import-graph rule —
   where one can, so a decision holds even for builders who never read the
@@ -2505,7 +2656,8 @@ worktree of the state's own branch, never part of a code branch (R23).
 - Never files: a topic's record and its map, the product record, the
   verdict queue, "what have you decided without me" — projections of the
   ledger (R45). The knowledge base's rendered copies of records sit in
-  `.knowledge/` (R44).
+  `.knowledge/` (R44), and so does the product record's rendered file,
+  for a CLAUDE.md line to point at (R10; Claude's call).
 - The person's own stream, the trust log (R25), and the record of the
   person (R27) live at user level, in `~/.config/workflows/`.
 - The phase cut lives at the end of `spec.md`.
@@ -2573,6 +2725,13 @@ think is a good sign."
   | Bugs found after review | where verification has a gap |
   | Contracts slipping in prose tests | which contract needs a verb or a check |
   | Context spent before the first question, per phase | what a phase loads, and when |
+
+  The measures are computed, never added to what the person reads at a
+  gate: a topic's decided screen and the finish report keep the contents
+  agreed for them, since a list they never asked for is one "I end up
+  ignoring" (the person, 2026-10-14). How a review's findings split shows
+  on the matrix's screen (R25); review findings per phase is an engine
+  query the workflows' authors run.
 - **R43 — A context budget.** Ruled by the person on 2026-10-12, in the
   words they approved: "measure what each phase loads before its first
   question, and read records only after the question". The context a
@@ -2614,7 +2773,11 @@ think is a good sign."
   topic's entries change and indexed from a copy in the gitignored
   `.workflows/.knowledge/` (R23, ruled by the person 2026-10-17). Plain
   search, when depth matters, runs in a helper agent so its cost stays
-  out of the conversation (R43).
+  out of the conversation (R43). The knowledge eval, re-made against the
+  new records, gains a third arm: one to three quick plain searches,
+  judged blind beside the other two, so the comparison R29 left
+  unmeasured settles whether the index earns its place (Claude's call,
+  2026-10-19).
 
 ## Migration
 
@@ -2781,8 +2944,8 @@ own detection finds nothing in either.
     directives run unattended, but here the person started the migration
     and is watching. Each directive's file says what it asks. The split
     keeps its interview; the records directive asks nothing per entry and
-    raises what no log settles in one batch at the end, each point
-    answered or left open.
+    raises what no log settles at the end, one point at a time, each
+    answered or left open (R24).
   - Nothing is committed before the one migration commit. Progress
     survives a session that dies: the work is on disk and the check tells
     finished topics from unfinished, so an interrupted topic is redone
@@ -2874,7 +3037,7 @@ person, one item at a time; the sections above hold the detail.
   sake, with research others rest on first (R41); discovery one phase at
   whatever level the conversation reaches, no detail questions in it,
   feature and epic two types with a light call between them (R10, R19);
-  the product record — a projection of the ledger, never a file and never CLAUDE.md, started
+  the product record — a projection of the ledger with a rendered file a CLAUDE.md line can point at, never CLAUDE.md itself, started
   in discovery, added to from decisions at a topic's decided screen, read by every
   opening view, apart from the feature map (R10); a topic opens with
   Claude starting the conversation, its lean given wherever a logical one
@@ -2909,7 +3072,8 @@ person, one item at a time; the sections above hold the detail.
   own sake (What the workflows are for).
 - From going back over the settled items (2026-10-14): the review phase's
   out-of-scope findings are dropped, grouped or filed to the inbox by
-  Claude with no offer, listed in its report, and never flood the inbox;
+  Claude with no offer, only what was filed listed in its report, each
+  call in the ledger, and never flood the inbox;
   its in-scope findings become fix tasks in one more build phase, and the
   review phase reads again only the areas they changed (R16); the report
   is short and product first, the passing one the work's certificate, its calls
@@ -2920,22 +3084,22 @@ person, one item at a time; the sections above hold the detail.
 - From the build's measurements (2026-10-15): three reviews, after each
   task, closing each phase and the review phase; every review two
   independent Opus medium reviewers, never high, never another model;
-  implementers at Opus medium; a finding serious unless the report names
+  implementers at Opus medium, and no higher-effort agents (2026-10-19); a finding serious unless the report names
   the edge-list item it needs; the notes for later hold what lies outside
   the task; comments never the standard, a wrong one fixed without a
   finding; the task loop — every finding but a nit back to the same
   implementer, the changed task reviewed whole by the pair until a round
-  passes, no count; a nit fixed there and then with no round; a failed
-  review met as a senior engineer would, between keeping fixes small and
-  starting again; disagreeing reviewers reconciled by the implementer,
-  the orchestrator taking only the verdict; a phase's fixes reviewed by
+  passes, no count; a nit fixed there and then by the orchestrator with no
+  round; a failed review met as a senior engineer would, between keeping
+  fixes small and starting again; disagreeing reviewers reconciled by the
+  implementer, the orchestrator taking the verdict and the nits; a phase's fixes reviewed by
   the review phase; a build in auto or step (R15, R16, R40, Reviews in
   the build).
 - The epic menu (2026-10-15, R17): the phase named at the top; what waits
-  on the person first; topics by what they need, each with its progress;
-  no spec row until every topic is decided; changing the map through
-  discovery; cancelling moves mail to the inbox; "dead end" goes; drawn in
-  the existing design system.
+  on the person first; topics by what they need, with no question count
+  (2026-10-14); no spec row until every topic is decided; changing the map
+  through discovery; cancelling moves mail to the inbox; "dead end" goes;
+  drawn in the existing design system until a new one is made (Open).
 - Event-sourced, for engineers (2026-10-15, R45): typed events on
   immutable streams, every view a projection; the spec's sections by
   area, the phase cut naming each phase's scenarios, sections and what it
@@ -2964,7 +3128,7 @@ person, one item at a time; the sections above hold the detail.
   a count of what waits in each, waiting units first; "Continue epic: …";
   one Start row; the inbox one counted line; verdicts a project row.
 - The inbox stays true (2026-10-16, R17): a capture commits its own file
-  with plain git, the skills knowing nothing of the engine; finished work
+  through one fixed engine line, the skills knowing nothing of the engine; finished work
   closes the items it resolved, each listed in the finish report.
 - Triage (2026-10-16, R17): "Triage the inbox" on the start menu; Claude
   names items that fit; w work, r roadmap, a archive, b back; Claude never
@@ -3019,7 +3183,7 @@ person, one item at a time; the sections above hold the detail.
   the builder.
 - Measures (R36).
 
-**Not touched at all:** the brownfield assessment; the start skill's
+**Not touched at all:** the start skill's
 setup gates and environment setup; the help walkthrough and glossary; the
 user-facing docs; the prose-test harness for the new shape (R4); session
 handoffs and compaction recovery beyond R35's note.
@@ -3040,12 +3204,17 @@ phase not yet written; how project skills
 reach the builder (R34); whether
 two mods' panes share Claude Code's tab row (untested).
 
-**Parked:** the merged phase's name (Open) — "decision" kept for now.
-The workflows board (Open) — low priority by the person's
-ruling, a visual tool rather than something that builds better products;
-mod panels are spiked with the person later; the first sketches were
-rushed and are set aside. Uninstalling and reinstalling (Open) — raised
-by the person 2026-10-13, not yet discussed.
+**Parked:** the merged phase's name (Open) — "decision" kept until a
+conversation before the build's first step. The workflows board (Open)
+— the build's panel ships in the release, spiked with the person first;
+the other phases' panels follow straight after it; the first sketches
+were rushed and are set aside. Uninstalling and reinstalling (Open) —
+raised by the person 2026-10-13, parked for a proper conversation.
+Splitting kinds of question from the labeller's stored answers (R25) —
+parked by the person 2026-10-19 to come back to. A questions page as a
+surface in the workflows — a batch of questions worked through at the
+person's own pace, commented on and submitted, round after round to
+zero — the person's idea, parked 2026-10-19 to discuss.
 
 **Still to come — the path back up**, set with the person 2026-10-14.
 Going back over the settled items reached the epic menu, which opened
@@ -3093,6 +3262,12 @@ an epic), which opened what stores what. Resolve each, then climb:
 
 ## Open
 
+- **Waiting on the person, from the 2026-10-19 round:** may the
+  implementer write onto its own task (Brief control); the design system,
+  in the release or straight after (R17); an extra-high reviewer at
+  prescribed points (Reviews in the build); and whether a product-level
+  conversation writes product-wide entries, now that nothing in discovery
+  is a decision (R10, R22).
 - **The shape review.** The person asked on 2026-10-12, before any trust
   detail, to zoom out and confirm the workflows' shape is right and built
   to evolve across model generations without another rewrite: the
@@ -3123,15 +3298,21 @@ an epic), which opened what stores what. Resolve each, then climb:
   pending what the mod surface allows. The person also pictures browsing
   it while Claude works — jumping to other work units, the inbox, the
   roadmap, whatever the workflows hold for the project — without
-  interrupting the session. Sketches per phase come next.
+  interrupting the session. The build's panel and any task's account
+  ship in the release, ruled by the person 2026-10-19, the panel spiked
+  with the person first (R15); the other phases' panels follow straight
+  after the release, discussed and spiked then.
 - **The merged phase's name.** "Decision" names the outcome, not the
   activity, as discovery, research and discussion do; kept for now.
   Rejected by the person 2026-10-13: deliberation (wrong for what the
   phase is), design (confused with visual design), refinement (the phase
   goes wide before it gets to detail; refinement polishes something that
-  exists). To come back to.
+  exists). The person, 2026-10-14: "we really do need a better name for
+  that phase". Settled in a conversation with the person before the
+  build's first step writes the engine's phase tables.
 - **Uninstalling and reinstalling.** Parked by the person 2026-10-13 for
-  a proper conversation later; recorded as raised, nothing decided.
+  a proper conversation later; recorded as raised, nothing decided. It is
+  raised with the person when the work reaches install.
   - Removing the workflows with agntc leaves the hooks and the rest of
     what the migrations put in place. The workflows need a way to
     uninstall: remove the hooks, then either tell the user how to remove
@@ -3249,9 +3430,16 @@ an epic), which opened what stores what. Resolve each, then climb:
     - **Implementers at Opus medium**, ruled by the person 2026-10-15.
       Extra-high builds cost twice what medium builds did and carried the
       same known defects; what medium leaves behind is caught by the two
-      reviewers. Higher-effort implementer agents stay in the product for
-      Claude to reach for, with guidelines drawn from the measurements;
-      reviewers have no level above medium.
+      reviewers.
+    - **Everything at medium**, ruled by the person 2026-10-19: no
+      higher-effort implementer or reviewer agents for Claude to reach for
+      by a slice's complexity, which would have Claude reaching for extra
+      high more often than needed ("leaving everything at medium is going
+      to make for a better or more efficient system"; "I think there's
+      value in keeping it simple"). To be tested again with data.
+      **Open, to discuss with the person:** whether an extra-high reviewer
+      runs at prescribed points, at the end or the end of each phase, say
+      — "it should always be prescribed", never Claude's pick.
     - **No other reviewer model**, ruled by the person 2026-10-15. Two
       Sonnet reviews raised 9 of the 21 known serious defects against two
       Opus medium reviews' 8, for a third of the cost, but 19 of the 128
@@ -3267,9 +3455,13 @@ an epic), which opened what stores what. Resolve each, then climb:
       reviewed again, whole, by the pair, until a round passes with
       nothing serious and no bug; there is no count. A round with only
       nits passes. A nit is mechanical with no ripple — a comment, a
-      name, a test's wording — and is fixed there and then, with no trip
-      back through the loop and no review round, so the tasks after it
-      build on the fixed code; the phase review reads it. A task stops looping only when a finding it already fixed
+      name, a test's wording — and the orchestrator fixes it there and
+      then, reading the nit from the report, with no trip back to the
+      implementer and no review round, so the tasks after it build on the
+      fixed code; the phase review reads it (the person, 2026-10-15: "the
+      reviewer should pick them up, but the orchestrator will fix that";
+      "That doesn't need to go back to the implementer; that just gets
+      done"). A task stops looping only when a finding it already fixed
       comes back, and then parks with a report while the rest of the build
       runs. A task is reviewed whole; the phase review and the review
       phase split a large change by area, as Switchboard's release review
@@ -3298,8 +3490,8 @@ an epic), which opened what stores what. Resolve each, then climb:
       a finding, the implementer decides against the brief and the design
       and says why; the next round reads the whole task again, so a
       wrongly rejected finding comes back, and a product question in it
-      goes through the ask rule. The orchestrator takes only the verdict,
-      never the reports. The workflows own both briefs and keep improving
+      goes through the ask rule. The orchestrator takes the verdict and a
+      report's nits, never the rest of the reports. The workflows own both briefs and keep improving
       them: the implementer and reviewer work as a team.
     - **The serious call**, ruled by the person 2026-10-15: a finding is
       serious unless its scenario needs an item from the edge list and the
@@ -3319,18 +3511,19 @@ an epic), which opened what stores what. Resolve each, then climb:
       cases beyond the task's boundary. A wrong result in what the task's
       work does is always a finding, even when its fix reaches beyond the
       task. In the replay known serious defects went under For later 18
-      times and were raised as findings 10 times. The notes are grouped at
-      the phase's end, de-duplicated and written as tasks, built in the
-      same loop with their reviews, so a gap a reviewer saw never falls
-      between scopes.
+      times and were raised as findings 10 times. At the phase's end a
+      separate agent reads the notes against the phase's code, groups and
+      de-duplicates them and drops what the code settled; the rest are
+      written as tasks, built in the same loop with their reviews, so a gap
+      a reviewer saw never falls between scopes (R15).
     - **Comments are never the standard**, ruled by the person 2026-10-15:
       the reviewer judges code against the brief and the design, never
       against its comments. Where a comment and the code disagree and the
       code matches the brief, the comment is adjusted; where the comment
       is right and the code wrong, the brief and the design show it; where
       they don't settle it, it is a decision. A wrong comment is not a
-      finding and starts no review: the reviewer may point it out, and the
-      builder or the orchestrator fixes it in the task in flight. In the
+      finding and starts no review: the reviewer points it out as a nit,
+      and the orchestrator fixes it in the task in flight. In the
       replay a tenth of all findings were about comments, every one a nit,
       and two reviews took a correct comment for a stale one and the
       defect for the intended behaviour.
@@ -3373,7 +3566,16 @@ an epic), which opened what stores what. Resolve each, then climb:
       Recording the addition makes it a deliberate act, which gives a bad
       one pause.
     - Fix rounds carry the two reviewers' reports verbatim and nothing of
-      the orchestrator's, which takes only the verdict.
+      the orchestrator's, which takes only the verdict and the nits it
+      fixes.
+    - **Open, for the person:** whether the implementer may write onto
+      its own task. On 2026-10-18 the person read the rule as giving the
+      implementer that ability and approved it as "the facility for
+      tweaking things as we go, but in a way that's recorded"; the rule as
+      written has only the orchestrator writing onto a task, and the
+      implementer's own variations go to the ledger as its calls, which
+      the reviewers read. Either way the variation is recorded. Claude's
+      lean: keep the task the fixed thing the reviewers judge against.
     - A hook refuses a dispatch of one of the workflows' agents whose
       brief the engine did not issue; Claude's other subagents are
       untouched. A refusal is recorded, so a template that keeps getting
@@ -3387,7 +3589,10 @@ an epic), which opened what stores what. Resolve each, then climb:
       builds improved once briefs were ruled.
     - **Brief quality** stays proposed as a measurement — the same
       implementer and reviewers on a thin brief against a full one; it
-      tunes the templates.
+      tunes the templates. Two tests run alongside it on the replay's
+      slices: the habit hooks (R33), and task size, the same work cut
+      into tasks either side of the 10,000-line guide, which moves where
+      the guide sits; when the task-size test runs is Claude's call.
 - **The gap analysis counts the person's own session as another** (Fumi,
   2026-09-01: "I don't believe I have another session in progress"). A
   bug in the released epic menu, not fixed on its own: the person ruled
