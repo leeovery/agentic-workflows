@@ -218,6 +218,12 @@ the frozen anchor.
   changes only the tasks it touches, never re-running the phase (agreed
   2026-10-19, from Mint's 12-hour planning run). The cut orders the unit and names what each phase relies on; the
   machinery between specs and the plan-wide rebuild go.
+- The task writer runs Opus at medium, fixed in its own definition (ruled
+  2026-10-19, from a measurement on Mint's phases). Medium caught as many
+  real spec gaps as extra-high, at half the cost and well under half the
+  time. There is no second pass over a phase's tasks: what one writer
+  misses, the builder meets with the code in hand, and it takes any gap's
+  route (agreed 2026-10-19).
 - Claude schedules: order, parallel worktrees, merging back. There is no
   prescribed red-green loop.
 - **The doors:** no code change without a task, and one verb per
@@ -250,9 +256,10 @@ the frozen anchor.
 - Three reviews: after each task, closing each phase, and the review phase.
 - Each is the workflows' own reviewer agent, run as a pair at Opus medium.
   Builders also run at Opus medium.
-- **Everything at medium** (ruled 2026-10-19): no higher-effort builders or
-  reviewers for Claude to reach for. The medium defaults were measured on
-  one project and are re-tested with data later.
+- **Everything at medium** (ruled 2026-10-19): no higher-effort builders,
+  reviewers or task writers for Claude to reach for. The medium defaults
+  were measured on two projects (the replay on Switchboard, the task
+  writer on Mint) and are re-tested with data later.
   - An extra-high reviewer at prescribed points is parked until data
     says it adds something (12.7).
 - **Models:** builders and reviewers run Opus. The labeller runs Sonnet

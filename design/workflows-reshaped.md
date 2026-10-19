@@ -1112,6 +1112,46 @@ project's own measurements decide (R7).
     Every one of the run's 1,003 sub-agent requests ran at extra-high: the
     planning agents' definitions set no effort, so they inherit the
     session's.
+  - **The task writer runs Opus at medium**, fixed in its own
+    definition, never chosen by the orchestrator and never raised by a
+    phase's size or difficulty. Ruled by the person 2026-10-19 from a
+    measurement (`walks/build/task-writer/REPORT.md`, design fixed before
+    any result):
+    - the setup:
+      - 27 writers on Mint's phases 3, 6 and 7, at medium, high and
+        extra-high, three runs each;
+      - each phase's spec was taken as it stood before its own
+        corrections;
+      - the key was the corrections Mint's extra-high planning made
+        while writing them; two blind labellers agreed 10 of the 18 were
+        real and 5 were not.
+    - the result:
+      - medium caught 16 of 30 real gaps, and high and extra-high 17 of
+        30 each. One gap in 30 is the size of the labelling noise.
+      - medium cost $2.03 and 4.4 minutes a phase, and extra-high $4.34
+        and 11.8.
+      - extra-high's five times the thinking went into raising gaps that
+        weren't real: 2.7 a list against medium's 1.4.
+      - the same four narrow gaps were missed at every effort.
+      - a medium review of the written list caught nothing more, at more
+        than extra-high's cost.
+  - **No second pass over a phase's tasks**, agreed by the person
+    2026-10-19.
+    - A single writer catches about half of what Mint's planning found.
+      Mint found the rest over 3.5 hours for those three phases. Every
+      phase there was designed twice and written twice, each time by
+      agents reading the whole spec, so the extra gaps came from the
+      repeated passes, not from effort.
+    - What a writer misses are narrow edges: an empty flag value, closed
+      input at one prompt, two rules meeting in one mode, a pasted line
+      meeting an existing key. The builder meets each one with the code
+      in front of it, and it takes the route any gap takes: the builder's
+      call to the ledger, or the person's question while other tasks run
+      on. The reviewers then hold the code to it.
+    - The measure (R36) records where each gap was found, so it will show
+      whether gaps left to the build cost more than finding them ahead.
+    - Each writer also raised about 1.5 real gaps a list that Mint's
+      planning never found.
   - **Dependencies**, ruled by the person 2026-10-16. Today they come in
     three layers: between an epic's specs (each spec's Dependencies
     section, copied to the manifest as unresolved, linked to a task in
@@ -3484,7 +3524,9 @@ an epic), which opened what stores what. Resolve each, then climb:
       by a slice's complexity, which would have Claude reaching for extra
       high more often than needed ("leaving everything at medium is going
       to make for a better or more efficient system"; "I think there's
-      value in keeping it simple"). To be tested again with data.
+      value in keeping it simple"). To be tested again with data. The task
+      writer joined them at medium on 2026-10-19, from its own
+      measurement (R15).
       An extra-high reviewer at prescribed points (the end, or each
       phase's end) is parked by the person 2026-10-19 until data says it
       adds something — in the replay two medium reviews raised 8 of the 21
