@@ -3221,7 +3221,9 @@ Splitting kinds of question from the labeller's stored answers (R25) —
 parked by the person 2026-10-19 to come back to. A questions page as a
 surface in the workflows — a batch of questions worked through at the
 person's own pace, commented on and submitted, round after round to
-zero — the person's idea, parked 2026-10-19 to discuss.
+zero — the person's idea, parked 2026-10-19 to discuss. An extra-high
+reviewer at prescribed points (Reviews in the build) — parked by the
+person 2026-10-19 until data says it adds something.
 
 **Still to come — the path back up**, set with the person 2026-10-14.
 Going back over the settled items reached the epic menu, which opened
@@ -3269,8 +3271,6 @@ an epic), which opened what stores what. Resolve each, then climb:
 
 ## Open
 
-- **Waiting on the person, from the 2026-10-19 round:** an extra-high
-  reviewer at prescribed points (Reviews in the build).
 - **The shape review.** The person asked on 2026-10-12, before any trust
   detail, to zoom out and confirm the workflows' shape is right and built
   to evolve across model generations without another rewrite: the
@@ -3440,9 +3440,12 @@ an epic), which opened what stores what. Resolve each, then climb:
       high more often than needed ("leaving everything at medium is going
       to make for a better or more efficient system"; "I think there's
       value in keeping it simple"). To be tested again with data.
-      **Open, to discuss with the person:** whether an extra-high reviewer
-      runs at prescribed points, at the end or the end of each phase, say
-      — "it should always be prescribed", never Claude's pick.
+      An extra-high reviewer at prescribed points (the end, or each
+      phase's end) is parked by the person 2026-10-19 until data says it
+      adds something — in the replay two medium reviews raised 8 of the 21
+      known serious defects, as many as a medium and an extra-high review
+      together; if it ever comes in, "it should always be prescribed",
+      never Claude's pick.
     - **No other reviewer model**, ruled by the person 2026-10-15. Two
       Sonnet reviews raised 9 of the 21 known serious defects against two
       Opus medium reviews' 8, for a third of the cost, but 19 of the 128

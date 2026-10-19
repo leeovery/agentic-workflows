@@ -240,9 +240,8 @@ the frozen anchor.
 - **Everything at medium** (ruled 2026-10-19): no higher-effort builders or
   reviewers for Claude to reach for. The medium defaults were measured on
   one project and are re-tested with data later.
-  - **Open:** whether an extra-high reviewer runs at prescribed points, such
-    as a phase's end. If it does, it is always prescribed, never Claude's
-    pick.
+  - An extra-high reviewer at prescribed points is parked until data
+    says it adds something (12.7).
 - **Models:** builders and reviewers run Opus. The labeller runs Sonnet
   (4.8), and every other job runs Opus until a measurement says otherwise
   (Claude's, 2026-10-19).
@@ -1122,3 +1121,9 @@ target's terms, only if the one-command open still feels clunky (R13).
 12.6 **A questions page as a workflows surface:** the person's idea of
 2026-10-19, a batch of questions worked through at their own pace and
 submitted, parked for discussion.
+
+12.7 **An extra-high reviewer at prescribed points** (a phase's end, say),
+parked by the person (2026-10-19) until data says it adds something: in
+the replay two medium reviews raised 8 of the 21 known serious defects,
+as many as a medium and an extra-high review together. If it ever comes
+in, it is prescribed, never Claude's pick.
