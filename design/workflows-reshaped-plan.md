@@ -229,9 +229,12 @@ the frozen anchor.
   when nothing can proceed.
 - **The build's live panel and any task's account** ship in the release
   (ruled 2026-10-19). The panel shows the build only: tasks building, in
-  review, landed and parked; questions waiting; phases not yet written. It
-  is spiked with the person first. Any task's account is printed into the
-  conversation from the mod menu.
+  review, landed and parked; questions waiting; phases not yet written.
+  **It is spiked with the person before this release's specification is
+  written** (ruled 2026-10-19), and the locked panel is drawn in the
+  specification: it is the one new screen, and every new screen or variant
+  is drawn there (3.11). The spike also settles 10.9. Any task's account
+  is printed into the conversation from the mod menu.
 
 3.7 **Reviews in the build** (R15, R16, Reviews in the build).
 - Three reviews: after each task, closing each phase, and the review phase.
@@ -1024,7 +1027,8 @@ checked; if it needs a change, that is the person's call on their own
 project.
 
 10.9 **Two mods' panes in one tab row.** This is untested, and it matters
-to the build's live panel (3.6). It is tested when that panel is spiked.
+to the build's live panel (3.6). It is tested in that panel's spike,
+before the specification is written.
 
 ## 11. Proposed — the build order
 
@@ -1077,8 +1081,8 @@ cases, its walks and its share of the pipeline simulation.
 4. Discovery, with the baseline folded in (9.1).
 5. Specification and the phase cut.
 6. The build and the review phase, with verification inside them (7), and
-   the build's live panel and task accounts, spiked with the person first
-   (3.6).
+   the build's live panel, built to the design locked in its spike before
+   the specification, and task accounts (3.6).
 7. The work types: feature, bugfix, quick-fix; cross-cutting removed.
 8. The tracking layer: the start menu, the epic menu, the inbox, triage,
    the roadmap, help on every menu.

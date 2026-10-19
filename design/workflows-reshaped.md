@@ -1205,9 +1205,14 @@ project's own measurements decide (R7).
     The live progress (each task building, landed, parked; questions
     waiting; phases not yet written) shows on a build panel drawn by the
     mod, since the transcript cannot redraw it. It ships in the release,
-    ruled by the person 2026-10-19, spiked with the person first; the
-    other phases' panels follow straight after the release, discussed and
-    spiked then (the workflows board, Open).
+    ruled by the person 2026-10-19. **It is spiked with the person before
+    the release's specification is written** (ruled 2026-10-19): it is
+    the one new screen, every new screen or variant is drawn in the
+    specification (R17), and whether two mods' panes share Claude Code's
+    tab row is untested, so the specification would otherwise rest on it.
+    The locked panel is drawn in the specification. The other phases'
+    panels follow straight after the release, discussed and spiked then
+    (the workflows board, Open).
 
 ### Review
 
@@ -3209,12 +3214,13 @@ worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
 phase not yet written; how project skills
 reach the builder (R34); whether
-two mods' panes share Claude Code's tab row (untested).
+two mods' panes share Claude Code's tab row (untested; settled in the
+build panel's spike, before the specification).
 
 **Parked:** the merged phase's name (Open) — "decision" kept until a
 conversation before the build's first step. The workflows board (Open)
-— the build's panel ships in the release, spiked with the person first;
-the other phases' panels follow straight after it; the first sketches
+— the build's panel ships in the release, spiked with the person before
+the specification is written; the other phases' panels follow straight after it; the first sketches
 were rushed and are set aside. Uninstalling and reinstalling (Open) —
 raised by the person 2026-10-13, parked for a proper conversation.
 Splitting kinds of question from the labeller's stored answers (R25) —
@@ -3303,7 +3309,8 @@ an epic), which opened what stores what. Resolve each, then climb:
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. The build's panel and any task's account
   ship in the release, ruled by the person 2026-10-19, the panel spiked
-  with the person first (R15); the other phases' panels follow straight
+  with the person before the specification is written (R15); the other
+  phases' panels follow straight
   after the release, discussed and spiked then.
 - **The merged phase's name.** "Decision" names the outcome, not the
   activity, as discovery, research and discussion do; kept for now.
