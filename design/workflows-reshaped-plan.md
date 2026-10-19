@@ -264,10 +264,12 @@ the frozen anchor.
   Additions go only onto the task or into the ledger, recorded. Fix rounds
   carry the reports verbatim. A hook refuses a brief the engine did not
   issue.
-  - **Open:** whether the implementer may write onto its own task. As
-    recorded, only the orchestrator writes onto a task, and the
-    implementer's own variations go to the ledger as its calls, which the
-    reviewers read.
+  - **The implementer never edits its task** (ruled 2026-10-19). The
+    orchestrator edits tasks in place of ad hoc messages. On a problem the
+    implementer stops and reports; the orchestrator decides (the person,
+    the ask rule, or thinking it through), updates the task and sends it
+    back in. A feasible other way the implementer takes is its ledger
+    call, which the reviewers pick up.
 
 3.8 **Code lands as pull requests** (R35).
 - A task is a pull request, squash-merged. A phase is a stack, merged whole

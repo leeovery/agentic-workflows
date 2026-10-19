@@ -3267,8 +3267,7 @@ an epic), which opened what stores what. Resolve each, then climb:
 
 ## Open
 
-- **Waiting on the person, from the 2026-10-19 round:** may the
-  implementer write onto its own task (Brief control); the design system,
+- **Waiting on the person, from the 2026-10-19 round:** the design system,
   in the release or straight after (R17); an extra-high reviewer at
   prescribed points (Reviews in the build).
 - **The shape review.** The person asked on 2026-10-12, before any trust
@@ -3571,14 +3570,18 @@ an epic), which opened what stores what. Resolve each, then climb:
     - Fix rounds carry the two reviewers' reports verbatim and nothing of
       the orchestrator's, which takes only the verdict and the nits it
       fixes.
-    - **Open, for the person:** whether the implementer may write onto
-      its own task. On 2026-10-18 the person read the rule as giving the
-      implementer that ability and approved it as "the facility for
-      tweaking things as we go, but in a way that's recorded"; the rule as
-      written has only the orchestrator writing onto a task, and the
-      implementer's own variations go to the ledger as its calls, which
-      the reviewers read. Either way the variation is recorded. Claude's
-      lean: keep the task the fixed thing the reviewers judge against.
+    - **The implementer never edits its task**, ruled by the person
+      2026-10-19: "I don't think the implementer should ever edit the
+      task." The orchestrator edits tasks in place of ad hoc messages to
+      the implementer. The implementer builds to the task; if it hits a
+      problem, it stops and reports to the orchestrator, which decides
+      what to do — raising it to the person, by the ask rule, or stepping
+      back and thinking it through — updates the task and sends the
+      implementer back in. "This is all the sort of thing that you would
+      do naturally, and that's the whole point of us loosening the
+      prescribed flow within the build process." A feasible other way the
+      implementer takes on its own is recorded in the ledger as its call,
+      and the reviewers pick it up.
     - A hook refuses a dispatch of one of the workflows' agents whose
       brief the engine did not issue; Claude's other subagents are
       untouched. A refusal is recorded, so a template that keeps getting
