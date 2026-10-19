@@ -1026,9 +1026,12 @@ live in the state worktree. Whether Tick takes a store path today is to be
 checked; if it needs a change, that is the person's call on their own
 project.
 
-10.9 **Two mods' panes in one tab row.** This is untested, and it matters
-to the build's live panel (3.6). It is tested in that panel's spike,
-before the specification is written.
+10.9 **Two mods' panes in one tab row.** Settled in the build panel's
+spike (2026-10-19, Claude Code 2.1.303): a second mod's pane joins the same
+tab row, one tab per pane under its own title, and a click on a tab shows
+that pane. Docked beside a fullscreen transcript the panel has the full
+height; inline above the prompt (the main-screen layout) it gets about a
+third, so the inline drawing must fit or scroll.
 
 ## 11. Proposed — the build order
 

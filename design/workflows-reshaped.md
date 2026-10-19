@@ -1208,9 +1208,9 @@ project's own measurements decide (R7).
     ruled by the person 2026-10-19. **It is spiked with the person before
     the release's specification is written** (ruled 2026-10-19): it is
     the one new screen, every new screen or variant is drawn in the
-    specification (R17), and whether two mods' panes share Claude Code's
-    tab row is untested, so the specification would otherwise rest on it.
-    The locked panel is drawn in the specification. The other phases'
+    specification (R17). The locked panel is drawn in the specification.
+    The spike measured that two mods' panes share Claude Code's tab row,
+    one tab each (2026-10-19, Claude Code 2.1.303). The other phases'
     panels follow straight after the release, discussed and spiked then
     (the workflows board, Open).
 
@@ -3213,9 +3213,7 @@ the repository is bare with worktrees; a fresh clone's setup adding the
 worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
 phase not yet written; how project skills
-reach the builder (R34); whether
-two mods' panes share Claude Code's tab row (untested; settled in the
-build panel's spike, before the specification).
+reach the builder (R34).
 
 **Parked:** the merged phase's name (Open) — "decision" kept until a
 conversation before the build's first step. The workflows board (Open)
@@ -3303,8 +3301,9 @@ an epic), which opened what stores what. Resolve each, then climb:
   review: agents and findings). It sits apart from the person's sitrep
   board, which works across projects and sessions a level above and is
   updated by Claude through its own plugin, never by the workflows. Only
-  one board shows at a time, so the two need a way to switch; how is open,
-  pending what the mod surface allows. The person also pictures browsing
+  one board shows at a time; the two share Claude Code's pane tab row, one
+  tab each, and a click on a tab switches (measured in the build panel's
+  spike, 2026-10-19, Claude Code 2.1.303). The person also pictures browsing
   it while Claude works — jumping to other work units, the inbox, the
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. The build's panel and any task's account
