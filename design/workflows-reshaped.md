@@ -552,18 +552,20 @@ project's own measurements decide (R7).
     pointing at it. The workflows never write CLAUDE.md; a pointer there is
     the person's line. It is never a phase, and Claude never asks to fill
     it; three moments touch it:
-    - discovery starts it: what a conversation about the product as a
-      whole settles goes in, an entry only when something product-wide
-      was said;
+    - a conversation about the product as a whole feeds it, and decides
+      nothing, ruled by the person 2026-10-19: it is discovery at the
+      product level, so a principle said there ("updates never install
+      themselves") is the person's stated view, carried as input; it is
+      decided in the first topic it bears on, where Claude opens with it as
+      the position, and goes in as a product-wide entry; one no topic
+      touches yet waits until one does;
     - decisions add to it: a topic that settles something bigger than
       itself (Fumi's "updates never install themselves", decided inside
       engine-architecture) lists the entries on its decided screen,
       and the person's yes there covers them — no gate of its own, while
       the person still sees Claude widen a topic's call into a rule for
-      the product. Entries written in a product conversation need no
-      approval; the person was in it. A project with no product
-      conversation, such as Portal, starts empty and fills from its
-      decisions;
+      the product. A project with no product conversation, such as Portal,
+      starts empty and fills from its decisions;
     - every topic's opening view reads it, and the settled part cites it.
 
     It stays apart from the feature map (R32): the build writes that and
@@ -1632,8 +1634,10 @@ project's own measurements decide (R7).
   2026-10-16: "or we go into discovery, or, as I said, in the product
   roadmap, we can talk about something that's product-wide"), logged per
   session like discovery
-  and the roadmap, its decisions written as product-wide entries — a
-  folder for such conversations can be added if it is ever wanted. A
+  and the roadmap. It is discovery, so it decides nothing (the person,
+  2026-10-19): its principles are carried as input and decided in the
+  first topic each bears on, as product-wide entries (R10) — a folder for
+  such conversations can be added if it is ever wanted. A
   design system or similar convention more often belongs in a project
   skill or CLAUDE.md, which the workflow sessions pull in anyway (the
   person). Existing cross-cutting units migrate: their specs become
@@ -3141,7 +3145,8 @@ person, one item at a time; the sections above hold the detail.
 - Feature (2026-10-16, R19): "Continue feature" goes straight to where it
   stands, bugfix and quick-fix alike; revisiting moves to manage.
 - Cross-cutting goes as a type (2026-10-16, R22): principles decided where
-  they arise or in the product conversation, as product-wide entries.
+  they arise, as product-wide entries; the product conversation is
+  discovery and decides nothing (2026-10-19).
 - Migration (2026-10-16 and 2026-10-17, R37–R39): one sequence of code
   steps and directives in order — guard, the legacy split, the move, the
   records, the cut and the merges, finish; directives may ask the person;
@@ -3265,9 +3270,7 @@ an epic), which opened what stores what. Resolve each, then climb:
 - **Waiting on the person, from the 2026-10-19 round:** may the
   implementer write onto its own task (Brief control); the design system,
   in the release or straight after (R17); an extra-high reviewer at
-  prescribed points (Reviews in the build); and whether a product-level
-  conversation writes product-wide entries, now that nothing in discovery
-  is a decision (R10, R22).
+  prescribed points (Reviews in the build).
 - **The shape review.** The person asked on 2026-10-12, before any trust
   detail, to zoom out and confirm the workflows' shape is right and built
   to evolve across model generations without another rewrite: the

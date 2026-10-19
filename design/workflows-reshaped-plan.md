@@ -148,8 +148,10 @@ the frozen anchor.
   shaped again; a known cause with a mechanical fix is a quick-fix (ruled
   2026-10-19).
 - Feature and epic stay two types, with a light call between them.
-- The product record is a projection of product-wide entries. Discovery
-  starts it, decided screens add to it, and every opening view reads it.
+- The product record is a projection of product-wide entries. Decided
+  screens add to it and every opening view reads it. A conversation about
+  the whole product is discovery and decides nothing (ruled 2026-10-19):
+  a principle said there is decided in the first topic it bears on.
   The engine keeps a rendered copy of it, so a line the person adds to
   CLAUDE.md can point there (ruled 2026-10-19; where it sits is Claude's).
   The workflows never write CLAUDE.md.
@@ -824,8 +826,8 @@ away (ruled 2026-10-19).
 - Proposed: it becomes product-level discovery on an existing codebase.
   - The roadmap's "plan the product" (R17) opens with the baseline's
     research when the code predates the workflows.
-  - What the person states lands as product-wide entries, the product
-    record's start (R10). What is observed in the code lands as findings
+  - What the person states is input, decided in the first topic it bears
+    on (R10; nothing in discovery is a decision). What is observed in the code lands as findings
     saying how they are known. What stays open goes on the map.
   - The skill, its files and its status fields go. The start menu's offer
     stays, pointing at "plan the product".
