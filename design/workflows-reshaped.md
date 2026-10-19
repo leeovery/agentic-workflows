@@ -1186,12 +1186,19 @@ project's own measurements decide (R7).
       work: "five printouts… I would have to scroll back up to see
       what's being worked on";
     - **questions queue.** A task that needs the person parks, with
-      whatever depends on it, and everything else carries on. The question
-      waits in a queue the engine holds — a count on the progress view and
-      first on the epic menu — and is drawn one at a time, product first,
-      when nothing left can proceed without an answer or a phase ends. An
-      open question would stall the whole build; a parked task stalls only
-      what depends on it;
+      whatever depends on it, and everything else carries on. Claude says
+      so in one line in the transcript, and the question waits in a queue
+      the engine holds, on the build panel until it is answered. The
+      person may take one up whenever they like: a press on the panel
+      puts it in the prompt box, and sending it has Claude raise it in
+      full, product first, while the other tasks carry on. Otherwise
+      questions are drawn one at a time when nothing left can proceed
+      without an answer or a phase ends, and the build never concludes
+      over one. They stay inside the build, in every work type that
+      builds, ruled by the person 2026-10-19: "we shouldn't really ever
+      get back to the Epic menu once build has started." An open question
+      would stall the whole build; a parked task stalls only what depends
+      on it;
     - **any task's account on demand**, the person 2026-10-15: from the
       mod menu at any time, for any task however long ago, its
       description, a technical account Claude writes, and diagrams; in
@@ -1202,10 +1209,13 @@ project's own measurements decide (R7).
       Danger and the authority gates stop what depends on them in every
       position.
 
-    The live progress (each task building, landed, parked; questions
-    waiting; phases not yet written) shows on a build panel drawn by the
-    mod, since the transcript cannot redraw it. It ships in the release,
-    ruled by the person 2026-10-19. **It is spiked with the person before
+    The live progress (each task building, landed, parked; the questions
+    waiting on the person; phases not yet written) shows on a build panel
+    drawn by the mod, since the transcript cannot redraw it. It ships in
+    the release, ruled by the person 2026-10-19. The panel is an
+    addition: the build reaches the person in full without it, ruled by
+    the person 2026-10-19 ("you don't have to open the mod panel to get
+    the benefit of the workflows"). **It is spiked with the person before
     the release's specification is written** (ruled 2026-10-19): it is
     the one new screen, every new screen or variant is drawn in the
     specification (R17). The locked panel is drawn in the specification.

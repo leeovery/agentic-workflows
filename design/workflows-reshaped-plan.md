@@ -221,7 +221,12 @@ the frozen anchor.
   destination. A find by an agent is landed by the orchestrator. The
   commit door refuses a code commit that names no task.
 - The builder's calls go to the ledger. A question for the person parks
-  what depends on it, and everything else carries on.
+  what depends on it, and everything else carries on. Claude says so in
+  one line; the question waits on the build panel until it is answered,
+  where a press takes it up into the conversation at any time; otherwise
+  it is asked when nothing else can proceed or a phase ends, and the build
+  never concludes over one. Questions stay inside the build, never on the
+  epic menu (ruled 2026-10-19).
 - One independent phase review closes each phase, including where it meets
   earlier phases.
 - **What the person sees:** a headline as work starts (one block per batch),
@@ -229,7 +234,9 @@ the frozen anchor.
   when nothing can proceed.
 - **The build's live panel and any task's account** ship in the release
   (ruled 2026-10-19). The panel shows the build only: tasks building, in
-  review, landed and parked; questions waiting; phases not yet written.
+  review, landed and parked; the questions waiting on the person, each
+  taken up with a press; phases not yet written. It is an addition: the
+  build reaches the person in full without it (ruled 2026-10-19).
   **It is spiked with the person before this release's specification is
   written** (ruled 2026-10-19), and the locked panel is drawn in the
   specification: it is the one new screen, and every new screen or variant
