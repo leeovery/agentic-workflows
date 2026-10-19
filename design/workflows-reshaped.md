@@ -1352,16 +1352,17 @@ project's own measurements decide (R7).
     (three of Fumi's four cancelled topics show "Cancelled · mail
     waiting"); "dead end" goes — a topic that ends in not doing it is
     decided with that as its decision, or cancelled.
-  - **A new design system is wanted** by the person (2026-10-15: "What we
-    will want to do, though, is come up with a new design system, because
-    it's more about consistency than anything else"). It changes every
-    surface at once, never one menu. **Open, for the person:** whether it
-    is made inside the release or as its own piece of work straight after
-    it (Claude's lean: straight after, designed against the full set of
-    screens). Until it exists, screens are drawn in the engine's existing
-    design system, the tree (Claude's call, 2026-10-15). The gate mod shows
-    the rows as buttons, so the screen above them stays a printed message
-    the engine draws.
+  - **Every screen follows the existing design system**, ruled by the
+    person 2026-10-19: "I don't really have any desire to redesign the
+    screens. I like how they look at the moment." New screens and edits to
+    existing ones keep to its standards, the tree included; most screens
+    are engine-drawn, so most of the release's screens fall out of it.
+    Edits and variants that fit are fine — "it needs to be consistent" —
+    and every variant or change is drawn in the spec, so the person sees
+    it before it is built. A new look, if one is ever wanted, is made
+    across the whole product as its own release, never part of this one.
+    The gate mod shows the rows as buttons, so the screen above them stays
+    a printed message the engine draws.
   - **A specification waits until every topic is decided**, ruled by the
     person 2026-10-12. Grouping reads the records: groups drawn from half
     of them come out differently once the rest are decided, and a topic
@@ -3103,7 +3104,8 @@ person, one item at a time; the sections above hold the detail.
   on the person first; topics by what they need, with no question count
   (2026-10-14); no spec row until every topic is decided; changing the map
   through discovery; cancelling moves mail to the inbox; "dead end" goes;
-  drawn in the existing design system until a new one is made (Open).
+  drawn in the existing design system, variants shown in the spec
+  (2026-10-19).
 - Event-sourced, for engineers (2026-10-15, R45): typed events on
   immutable streams, every view a projection; the spec's sections by
   area, the phase cut naming each phase's scenarios, sections and what it
@@ -3267,9 +3269,8 @@ an epic), which opened what stores what. Resolve each, then climb:
 
 ## Open
 
-- **Waiting on the person, from the 2026-10-19 round:** the design system,
-  in the release or straight after (R17); an extra-high reviewer at
-  prescribed points (Reviews in the build).
+- **Waiting on the person, from the 2026-10-19 round:** an extra-high
+  reviewer at prescribed points (Reviews in the build).
 - **The shape review.** The person asked on 2026-10-12, before any trust
   detail, to zoom out and confirm the workflows' shape is right and built
   to evolve across model generations without another rewrite: the

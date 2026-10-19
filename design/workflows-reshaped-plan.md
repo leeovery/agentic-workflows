@@ -321,9 +321,10 @@ the frozen anchor.
   explicit rows. A product-wide talk starts from Start or the roadmap's
   "plan the product" (the person, 2026-10-16).
 - **Menus** are explicit and keyed alike, and every menu has h help.
-- **Open:** when the new design system the person wants (2026-10-15) is
-  made: inside the release, or as its own piece of work straight after it,
-  which is Claude's lean.
+- **Every screen follows the existing design system** (ruled
+  2026-10-19): new screens and edits keep to it; variants that fit are
+  fine, and each is drawn in the spec for the person to see. A new look,
+  if ever wanted, is the whole product's own release.
 
 3.12 **Work types** (R18–R22).
 - **Epic.**
