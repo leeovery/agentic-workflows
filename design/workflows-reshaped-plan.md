@@ -120,6 +120,20 @@ records rendered from the ledger, never logs and never the ledger.
 2.12 **Every optimising loop has a counter-measure** (R30), with danger as
 the frozen anchor.
 
+2.13 **Agents write what the workflows prescribe; the person sets the
+session** (R46, agreed 2026-10-19).
+- **Named agents, model and effort fixed in each definition**, write every
+  prescribed artifact: the spec, the phase cut, the tasks, reviews, deep
+  dives, gap analysis and experiment write-ups. All are Opus at medium
+  until measured otherwise, and their decisions come back to the
+  orchestrator.
+- **The conversation, the routed calls and the build's orchestration**
+  stay in the main session, at the person's effort.
+- **That effort is recommended, never set.** The minimum recommended is
+  medium, and `workflow-start` says so once when a session runs below it.
+  A skill can't hold it, since its `effort:` lasts one turn. Setting it in
+  the project's settings would override everyone's own choice.
+
 ## 3. Ruled — the shape of the work
 
 3.1 **Stages and phases** (R9).

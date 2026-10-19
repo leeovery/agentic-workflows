@@ -461,6 +461,43 @@ project's own measurements decide (R7).
   projects, is the trust log (R25); projections give the current view at
   every level: topic, work unit, session, project and the person. The
   product presents itself in these terms.
+- **R46 — Agents write what the workflows prescribe; the person sets the
+  session.** Agreed by the person 2026-10-19.
+  - **Every prescribed artifact is written by a named agent** whose
+    model and effort are fixed in its own definition: the spec
+    (assembled from the ledger), the phase cut, the tasks, reviews, deep
+    dives, gap analysis and experiment write-ups. All are Opus at medium
+    until a measurement says otherwise.
+    - Each agent's one job is that artifact, with its rules and
+      references boxed inside it.
+    - Its decisions come back to the orchestrator and take the trust
+      matrix's route.
+    - It works from the record, not the conversation, which also tests
+      that the record holds everything (R14).
+    - It keeps the main session's context small, and it is what the
+      measurements test.
+  - **The conversation stays in the main session**, at the person's
+    effort: decision and research conversations, the calls the matrix
+    routes, and the build's orchestration.
+  - **The main session's effort is recommended, never set.** The
+    recommended minimum is medium, Opus 5.5's own default, stated in
+    the docs. `workflow-start` reads the session's level and says so
+    once if it runs below that, then carries on.
+  - **Why it is split this way**, measured 2026-10-19:
+    - A skill's `effort:` holds only for the turn it is invoked in,
+      whether by slash command or by Claude, and the next message runs
+      at the session's level again. So no skill can hold a conversation's
+      effort. A probe across four turns showed it.
+    - An agent definition's effort holds whatever the session runs at.
+    - A top-level `effortLevel` in the project's `.claude/settings.json`
+      would outrank the person's own saved level in every session there.
+      The file is committed, so it would override everyone's choice;
+      that is why the workflows only recommend.
+  - **Every job measured so far performs as well at medium:**
+    - builders and reviewers on Switchboard's replay;
+    - the task writer on Mint (R15).
+
+    Nothing yet measures conversation or decisions by effort.
 
 ## Stages and phases
 
