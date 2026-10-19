@@ -213,7 +213,10 @@ the frozen anchor.
   10,000 changed lines is probably two. There is no lower bound (the person,
   2026-10-15).
 - Tasks are written as a phase starts, through the task verbs, with their
-  links. The cut orders the unit and names what each phase relies on; the
+  links. The writer records each task as it goes, its text taken from a
+  file; reads only the sections its phase draws on; and a gap it finds
+  changes only the tasks it touches, never re-running the phase (agreed
+  2026-10-19, from Mint's 12-hour planning run). The cut orders the unit and names what each phase relies on; the
   machinery between specs and the plan-wide rebuild go.
 - Claude schedules: order, parallel worktrees, merging back. There is no
   prescribed red-green loop.

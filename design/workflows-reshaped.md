@@ -1083,6 +1083,35 @@ project's own measurements decide (R7).
     amending, and 46% of all delivered tasks were already written mid-build
     against the code with only the template, the tracker's adapter and a
     short writer agent.
+  - **How a phase's tasks are written**, agreed by the person 2026-10-19
+    from Mint's planning run (`walks/build/mint-planning/REPORT.md`):
+    - the task writer records each task through the task verb as it
+      goes, one call per task, never a file it rewrites whole; the verb
+      takes the task's text from a file, so no one types it twice;
+    - a gap the writer finds is decided like any other gap and changes
+      only the tasks it touches; it never re-runs the phase;
+    - the writer reads only the spec sections its phase draws on, which
+      the phase cut names.
+    
+    The evidence: today's planning of an eight-phase plan in Mint (Claude
+    Code, 2026-10-19) ran 12.1 hours and was still writing phase 8's
+    tasks, before the plan review. Claude worked 9.7 of those hours and
+    waited on the person 2.4, every one of them before midday. Of the
+    sub-agents' 7.3 hours:
+    - 5.7 were task authoring, at 21.2k output tokens a task for about
+      1.2k tokens of text that survived;
+    - 2.9 were whole phases re-designed and re-authored after a spec
+      defect. 27 of 32 hand-backs named one, 49 corrections landed on the
+      concluded spec, and every phase from the second on ran twice;
+    - about 1.5 went on the author rewriting its whole file for each
+      task (483 KB written for a 60 KB file in one phase);
+    - every agent read the whole 127 KB spec.
+
+    The orchestrator spent about 50 more minutes retyping every task into
+    Tick, since Tick's adapter forbids reading a description from a file.
+    Every one of the run's 1,003 sub-agent requests ran at extra-high: the
+    planning agents' definitions set no effort, so they inherit the
+    session's.
   - **Dependencies**, ruled by the person 2026-10-16. Today they come in
     three layers: between an epic's specs (each spec's Dependencies
     section, copied to the manifest as unresolved, linked to a task in
