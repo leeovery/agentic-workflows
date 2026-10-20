@@ -292,7 +292,13 @@ session** (R46, agreed 2026-10-19).
   (ruled 2026-10-19). The panel shows the build only: tasks building, in
   review, landed and parked; the questions waiting on the person, each
   with a press that says the person is ready to talk about it, never a
-  way to answer one (ruled 2026-10-20); phases not yet written. It is an addition: the
+  way to answer one (ruled 2026-10-20); phases not yet written. It
+  supplements the conversation and never replaces it (ruled 2026-10-20):
+  every output agreed for the transcript stays, panel open or not; the
+  panel adds read-only browsing — tasks, phases, a page per task with each
+  review round summarised (Claude writes the summaries as the task lands)
+  — and its one action is saying the person is ready to discuss a
+  question; nothing in it sends its content into the conversation. It is an addition: the
   build reaches the person in full without it (ruled 2026-10-19).
   **It is spiked with the person before this release's specification is
   written** (ruled 2026-10-19), and the locked panel is drawn in the

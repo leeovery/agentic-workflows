@@ -1417,7 +1417,24 @@ project's own measurements decide (R7).
     the release, ruled by the person 2026-10-19. The panel is an
     addition: the build reaches the person in full without it, ruled by
     the person 2026-10-19 ("you don't have to open the mod panel to get
-    the benefit of the workflows"). **It is spiked with the person before
+    the benefit of the workflows"). **It supplements the conversation and
+    never replaces it**, ruled by the person 2026-10-20: every output
+    agreed for the transcript stays there whether or not the panel is
+    open — the headline, each landing's summary with the questions waiting
+    beneath it, the stop report with the questions front and centre ("I
+    want to be able to scroll up and see what was done and when it
+    happened… the mod panel shouldn't change what we've already agreed in
+    terms of output"). What the panel adds is read-only browsing: the
+    build's tasks and phases, a page per task (what it does, what was
+    done, each review round as a summary with its full report a press
+    away, the calls it made), and later the unit and the project. Its one
+    action is the person saying they are ready to discuss a question;
+    nothing in it sends its content into the conversation. Whether it
+    later drives the workflows' menus is not yet discussed. For the task
+    page, Claude writes a short summary of each review round as the task
+    lands and stores it with the task's account (the person, 2026-10-19:
+    "writing a summary of the notes and storing that somewhere… so that
+    it's surfaceable into this panel"). **It is spiked with the person before
     the release's specification is written** (ruled 2026-10-19): it is
     the one new screen, every new screen or variant is drawn in the
     specification (R17). The locked panel is drawn in the specification.
