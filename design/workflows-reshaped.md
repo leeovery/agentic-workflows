@@ -1579,7 +1579,20 @@ project's own measurements decide (R7).
     it before it is built. A new look, if one is ever wanted, is made
     across the whole product as its own release, never part of this one.
     The gate mod shows the rows as buttons, so the screen above them stays
-    a printed message the engine draws.
+    a printed message the engine draws. **The mod's panel is not held to
+    it**, the person 2026-10-20: the rule meant the workflows' own screens
+    — "epic menus, gates, headings, titles" — and the panel should
+    mirror the conversation's design while leveraging "what's possible
+    there". Agreed in the spike the same day: a tab row, one line per
+    task with its state in a column, the epic dashboard's ── dividers with
+    a summary at their right, landed phases folding, and colour with one
+    meaning each — peach needs the person, seafoam runs now, sage is done,
+    rose failed, slate has not started, lavender marks the view the
+    person is on. The person ("love it") after rejecting the terminal's
+    eight basic colours as "too basic". Needs-you is warm so it agrees
+    with Sitrep's asks when the two panes sit side by side; the menus'
+    ⚑ keeps its colour in the transcript. The locked panel, colours
+    included, is drawn in the spec.
   - **A specification waits until every topic is decided**, ruled by the
     person 2026-10-12. Grouping reads the records: groups drawn from half
     of them come out differently once the rest are decided, and a topic

@@ -391,7 +391,11 @@ session** (R46, agreed 2026-10-19).
 - **Every screen follows the existing design system** (ruled
   2026-10-19): new screens and edits keep to it; variants that fit are
   fine, and each is drawn in the spec for the person to see. A new look,
-  if ever wanted, is the whole product's own release.
+  if ever wanted, is the whole product's own release. The mod's panel is
+  not held to it (ruled 2026-10-20): it mirrors the conversation's design
+  and uses what a pane can do — tabs, columns, folding, and colour with
+  one meaning each (peach needs you, seafoam running, sage done, rose
+  failed, slate not started, lavender this view), agreed in the spike.
 
 3.12 **Work types** (R18–R22).
 - **Epic.**
