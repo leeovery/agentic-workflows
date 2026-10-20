@@ -139,9 +139,15 @@ session** (R46, agreed 2026-10-19).
   - Every run missed the same 14 points, which were preferences the
     record does not imply.
 - **No extra-high agent without a use case** (ruled 2026-10-20).
-  Investigation's root-cause validation is the one candidate. It is
-  measured against past bugfixes whose first cause was overturned, and
-  any level it earns is fixed in its definition.
+- **The one exception is investigation's root-cause validation, at
+  extra-high.**
+  - The level is inferred, not measured, and is fixed in its definition.
+  - It reasons through code to a cause, the one kind of work where
+    extra-high gained.
+  - It runs once per bug.
+  - A wrong cause is a bugfix's costliest miss.
+  - A check on clones of Portal was judged too heavy, and could have
+    reached the person's live tmux server.
 - **Prose at medium is tested live** (ruled 2026-10-20). The person runs
   medium from release, and the recommendation follows what they find.
 
@@ -680,8 +686,9 @@ Ruled in shape (R35, R2):
     displays.
   - `brief` fills it from the records and stores the filled brief with an
     id. The records it draws on: the task, its spec sections, the ledger's
-    decided calls, the diff, earlier reports verbatim, and the rules that
-    apply (7.7).
+    decided calls, the diff, earlier reports verbatim, and the project's
+    linters (9.2). Project skills and CLAUDE.md reach the agent without
+    the brief (7.7).
   - A hook before Agent and SendMessage refuses a dispatch or message to
     one of the workflows' agents unless it carries an issued brief,
     matched by id and content. A refusal is recorded with its reason.
@@ -788,8 +795,8 @@ tasks.**
 - A habit hook runs over the replay's slices alongside the brief-quality
   measurement (8.4), and ships if it cuts review findings.
 - Either way, a smell the reviews keep naming becomes a hard check where one
-  can catch it (7.6), and otherwise a project rule handed to the builder
-  (7.7).
+  can catch it (7.6), and otherwise a project rule in CLAUDE.md or a
+  project skill (7.7).
 
 7.6 **Hard checks in the cut and at the door** (R34).
 - The task that adds an invariant's check goes in the phase that introduces
@@ -801,14 +808,19 @@ tasks.**
 - A finding the pairs raise in two tasks becomes a note for later
   proposing a check, and the phase's end turns it into a task.
 
-7.7 **How project skills and rules reach the builder** (R34,
-open in the record).
-- The environment setup lists the project's skills and rules, each with the
-  areas of the code it applies to.
-- The engine fills the builder's and the reviewers' briefs with the ones
-  that apply to the task's files, as paths the agent reads.
-- Rules that can be checked become checks (7.6). The rest stay guidance in
-  the brief.
+7.7 **How project skills and rules reach the builder** (R34, ruled
+2026-10-20).
+- Today, every implementation start asks which project skills to pass, and
+  their paths go into each builder's and reviewer's brief.
+- **Project skills aren't configured.**
+  - Builders and reviewers are sub-agents, and Claude Code lets them find
+    and invoke the project's skills through the Skill tool. They also load
+    the project's CLAUDE.md.
+  - There is no list, no mapping to areas of the code, and no question.
+  - If a build shows a skill being ignored, preloading it is a small change
+    then.
+- Rules that can be checked become checks (7.6). The rest stay in the
+  project's skills and CLAUDE.md.
 
 7.8 **Verification does not adjust the ask rule** (R32, ruled 2026-10-19).
 The rule the person approved has no reversal-cost term, and a mistake
@@ -905,11 +917,14 @@ away (ruled 2026-10-19).
     person has walked away from. A missing tool stops with what is missing,
     never an install command.
   - The environment setup becomes per project and holds everything a build
-    needs: how to run the product, what cannot run concurrently (R15), the
-    verify setup's location (7.1), and the skills, rules and linters with
-    the areas they apply to (7.7). It is asked once, at the first ready to
-    build, and its confirmations are learned process gates, asking until the
-    person's own answers loosen them (R25).
+    needs:
+    - how to run the product;
+    - what cannot run concurrently (R15);
+    - the verify setup's location (7.1);
+    - the linters.
+  - It is asked once, at the first ready to build, and never again at a
+    build. It is changed from manage on the start menu (ruled 2026-10-20).
+  - Project skills aren't part of it (7.7).
   - Boot also adds the state worktree on a fresh clone (10.5), locked, and
     checks it and the state branch on every run (4.2).
   - The floor, walkthrough offer, session labels, knowledge gate and

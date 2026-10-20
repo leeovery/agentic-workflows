@@ -513,14 +513,25 @@ project's own measurements decide (R7).
     2026-10-20. A gap checker at every phase was considered and dropped:
     on the task writer and the reviewers, extra-high's extra findings were
     mostly not real or minor.
-  - **The one candidate is investigation's root-cause validation (R20).**
-    - It fits the case where reasoning pays: the answer is in the code,
-      many steps lead to it, and a wrong step compounds.
-    - The person ruled 2026-10-20 that it is "worth running a check". It
-      will be measured against past bugfixes whose first proposed cause
-      was overturned, at medium and extra-high.
-    - If it earns extra-high, the level is fixed in that agent's
-      definition, never Claude's pick.
+  - **Investigation's root-cause validation runs at extra-high (R20)**,
+    inferred, not measured. The person ruled 2026-10-20 to infer it from
+    the measurements so far rather than run a check.
+    - The check sketched would have been 78 validator runs on clones of
+      Portal and Tick, at about $150–250. The person judged it too heavy.
+    - Portal's investigations test against tmux, and a validator with
+      Bash could have reached the person's live server.
+    - **Why extra-high:**
+      - The job reasons through code to a conclusion. That is the one
+        kind of work where extra-high measurably gained: the implementer
+        wrote half the bugs.
+      - It runs once per bug.
+      - A wrong root cause is the costliest miss a bugfix makes, because
+        the fix, its test and the spec are all built on it.
+    - Its extra objections cost little, since Claude acts on what the
+      validation finds and drops what does not hold up.
+    - The level is fixed in the agent's definition, never Claude's pick.
+    - Fix validation stays at medium. It checks a fix against a cause
+      already settled.
   - **Following the workflow's prose at medium is not yet measured.**
     - The person ruled 2026-10-20 against a dedicated test: they move to
       medium at release, perhaps sooner, run it live, and the
@@ -1668,7 +1679,8 @@ project's own measurements decide (R7).
   nothing typed and restated the fix twice (6.6k and 14.9k words, plus
   10.7k of spec review tracking). Ruled by the person:
   - **Both validations always run, and Claude acts on what they find,**
-    recording it in the investigation. The address-or-dismiss gates after
+    recording it in the investigation. The root-cause validation runs
+    at extra-high, fixed in its definition (R46). The address-or-dismiss gates after
     them go: answered 16 times, never dismissed, and the person did not
     know what "address" meant. A finding that changes what the fix does
     for the person reaches them as a product question; the case's
@@ -2684,10 +2696,31 @@ each call on a page that day.
   coming back each cycle. The person's coding rules (for Laravel: thin
   controllers, the action pattern, data objects, never passing primitives)
   split: what can be checked becomes an architecture test (Pest supports
-  them); the rest stays guidance handed to the builder. How project skills
-  and rules reach the builder is redesigned within this strand. The more
+  them); the rest stays guidance handed to the builder. The more
   hard structure a codebase already has, the less up-front decision it
   needs.
+  - **Project skills are not configured**, ruled by the person
+    2026-10-20.
+    - Builders and reviewers are sub-agents. Claude Code lets a
+      sub-agent find and invoke the project's skills through the Skill
+      tool without being handed them. It also loads the project's
+      CLAUDE.md in every custom sub-agent (sub-agents docs, read
+      2026-10-20).
+    - Today's question at each build arrived on 2026-02-01, when
+      building moved into agents. It assumed agents would not use skills
+      unless passed them.
+    - No list and no mapping of skills to areas of the code.
+    - The risk left is a builder passing over a skill whose description
+      does not obviously fit its task. The rules that matter most are
+      already checks (above). If a build shows a skill ignored,
+      preloading it then is a small change.
+  - **Linters are asked once per project**, ruled by the person
+    2026-10-20.
+    - They are found and confirmed at the first ready to build, and
+      recorded in the project's environment setup.
+    - They are never asked again at a build, and are changed from manage
+      on the start menu.
+    - Today they are confirmed at every implementation start.
 
 ## The deterministic core
 
@@ -3337,12 +3370,12 @@ person, one item at a time; the sections above hold the detail.
 - The deterministic core (R35): which verbs, the layout hook, the
   checklists.
 - Verification beyond its definition (R31–R34): adequacy by mutation or
-  deliberate breaks, habit hooks, hard checks, how project skills reach
-  the builder.
+  deliberate breaks, habit hooks, hard checks.
 - Measures (R36).
 
 **Not touched at all:** the start skill's
-setup gates and environment setup; the help walkthrough and glossary; the
+setup gates and environment setup, beyond linters being asked once per
+project and project skills not configured (R34); the help walkthrough and glossary; the
 user-facing docs; the prose-test harness for the new shape (R4); session
 handoffs and compaction recovery beyond R35's note.
 
@@ -3358,8 +3391,7 @@ guarded against matching a code branch; where `.workflows/` sits when
 the repository is bare with worktrees; a fresh clone's setup adding the
 worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
-phase not yet written; how project skills
-reach the builder (R34).
+phase not yet written.
 
 **Parked:** the merged phase's name (Open) — "decision" kept until a
 conversation before the build's first step. The workflows board (Open)
@@ -3827,4 +3859,3 @@ an epic), which opened what stores what. Resolve each, then climb:
     over plain search joins the measurements.
 - **How the task driver carries per-phase task writing** (R35). The cut
   itself lives at the end of `spec.md` (Layout on disk).
-- **How project skills reach the builder** (R34).
