@@ -495,9 +495,39 @@ project's own measurements decide (R7).
       that is why the workflows only recommend.
   - **Every job measured so far performs as well at medium:**
     - builders and reviewers on Switchboard's replay;
-    - the task writer on Mint (R15).
-
-    Nothing yet measures conversation or decisions by effort.
+    - the task writer on Mint (R15);
+    - decisions, measured 2026-10-19 on the Fumi replay.
+      - The set: 37 of the person's recorded calls, posed blind to an
+        Opus with no tools, at medium, high and extra-high, two runs
+        each, every run graded blind by two graders.
+      - Calls matching the person's: medium 19.2 of 37, high 16.0,
+        extra-high 18.8. Medium's own two runs gave 21.0 and 17.5.
+      - Extra-high cost twice as much and took three times as long. No
+        level cleared the bar fixed before the runs.
+      - Every run missed the same 14 points. Each was a preference the
+        record does not imply.
+      - "Would check with the person first" fired on about 45% of wrong
+        calls at every effort, and on none of 6 of those 14.
+      - What fails is knowing when to ask, not depth of reasoning.
+  - **No extra-high agent without a use case**, ruled by the person
+    2026-10-20. A gap checker at every phase was considered and dropped:
+    on the task writer and the reviewers, extra-high's extra findings were
+    mostly not real or minor.
+  - **The one candidate is investigation's root-cause validation (R20).**
+    - It fits the case where reasoning pays: the answer is in the code,
+      many steps lead to it, and a wrong step compounds.
+    - The person ruled 2026-10-20 that it is "worth running a check". It
+      will be measured against past bugfixes whose first proposed cause
+      was overturned, at medium and extra-high.
+    - If it earns extra-high, the level is fixed in that agent's
+      definition, never Claude's pick.
+  - **Following the workflow's prose at medium is not yet measured.**
+    - The person ruled 2026-10-20 against a dedicated test: they move to
+      medium at release, perhaps sooner, run it live, and the
+      recommendation moves on what that shows.
+    - The design bet is that the engine deciding what comes next, and
+      refusing a wrong move, makes the main session's adherence matter
+      less than it does today.
 
 ## Stages and phases
 

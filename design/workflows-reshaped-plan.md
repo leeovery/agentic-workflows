@@ -133,6 +133,17 @@ session** (R46, agreed 2026-10-19).
   medium, and `workflow-start` says so once when a session runs below it.
   A skill can't hold it, since its `effort:` lasts one turn. Setting it in
   the project's settings would override everyone's own choice.
+- **Decisions don't improve with effort** (measured 2026-10-19).
+  - Out of 37 of the person's calls, medium matched 19.2, high 16.0 and
+    extra-high 18.8.
+  - Every run missed the same 14 points, which were preferences the
+    record does not imply.
+- **No extra-high agent without a use case** (ruled 2026-10-20).
+  Investigation's root-cause validation is the one candidate. It is
+  measured against past bugfixes whose first cause was overturned, and
+  any level it earns is fixed in its definition.
+- **Prose at medium is tested live** (ruled 2026-10-20). The person runs
+  medium from release, and the recommendation follows what they find.
 
 ## 3. Ruled — the shape of the work
 
