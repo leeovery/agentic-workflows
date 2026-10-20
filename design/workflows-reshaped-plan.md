@@ -84,7 +84,7 @@ engine-held checklist) or how-to (deleted, leaving a goal and a
 done-condition). The sort is strand A's work plan. Gates, corridors and
 fields: whatever Claude does in a field stays in it. In the build a question
 for the person goes out only through the engine's doors, and one asked in
-plain prose is a slip the walks catch; in decision questions are asked in
+plain prose is a slip the walks catch; in discussion, questions are asked in
 conversation, and the walks check that every answer was recorded (ruled
 2026-10-19).
 
@@ -158,10 +158,12 @@ session** (R46, agreed 2026-10-19).
 ## 3. Ruled — the shape of the work
 
 3.1 **Stages and phases** (R9).
-- Discovery stage: discovery, decision, experiment, investigation.
+- Discovery stage: discovery, discussion, experiment, investigation.
 - Definition stage: specification.
 - Delivery stage: implementation, review.
-- Research folds into decision. Planning splits: the phase cut moves into
+- The merged phase is called discussion (ruled 2026-10-20): research is
+  one of its tools, and experiment is invoked from it.
+- Research folds into discussion. Planning splits: the phase cut moves into
   specification, and tasks are written as each build phase starts. Scoping
   goes. The implementer is called the builder.
 
@@ -178,7 +180,7 @@ session** (R46, agreed 2026-10-19).
   questions.
 - Nothing in discovery is a decision (the person, 2026-10-19). The brief
   carries leans, rejected paths, open questions and what a spike showed, as
-  input that the decision phase decides.
+  input that the discussion phase decides.
 - An inbox item that already pins the work is confirmed in one line, never
   shaped again; a known cause with a mechanical fix is a quick-fix (ruled
   2026-10-19).
@@ -193,11 +195,11 @@ session** (R46, agreed 2026-10-19).
 - Its gates: start this work; one screen to approve the map with its parks;
   no confirm on a change the person asked for; cancelling still confirmed.
 - The gap analysis runs at a topic's close and in one sweep before the
-  spec, never in the background. No routing: every topic goes to decision.
+  spec, never in the background. No routing: every topic goes to discussion.
 - The brief feeds the opening view. The map is ordered foundations first,
   research others rest on first.
 
-3.4 **Decision** (R11, R12, R13).
+3.4 **Discussion** (R11, R12, R13).
 - **Record and log.** Every decision and finding is a ledger entry written
   through the engine; the topic's record is the engine's view of its
   current entries. The log keeps the journey, one dated heading per
@@ -459,7 +461,7 @@ in the verdict queue. A departure counts as a real loss until judged.
 - The cone narrows as the product takes shape. Convergence offers to settle
   the rest.
 - A raise reaches the person product first, with "I don't follow" as a
-  button. Questions come one at a time; in decision they are slotted into
+  button. Questions come one at a time; in discussion they are slotted into
   the conversation (the person, 2026-10-14 and 2026-10-18).
 
 4.5 **Kinds, evidence and the trust log** (R25).
@@ -706,7 +708,7 @@ Ruled in shape (R35, R2):
     - the review phase's test-surface agent (3.10);
     - task writer;
     - deep dive;
-    - decision's perspective and review agents;
+    - discussion's perspective and review agents;
     - synthesis;
     - the closing-pass reader;
     - the spec reviewer;
@@ -940,17 +942,18 @@ away (ruled 2026-10-19).
     words), with sample surfaces rendered from fixtures through the real
     projections.
   - The glossary holds 56 terms. About 20 of them are tied to retired
-    things: research and discussion as phases, scoping, planning,
+    things: research and discussion as separate phases, scoping, planning,
     cross-cutting, build order, dead end, document.
 - Proposed:
   - Rewritten in the release, after the phases. The samples keep rendering
-    through the real projections, from new fixtures: the decision map, the
-    new start and epic menus, the build's progress.
+    through the real projections, from new fixtures: the discussion phase's
+    map, the new start and epic menus, the build's progress.
   - The glossary drops the retired terms and gains, in the engineer's terms
-    R45 asks for: decision, record, log, ledger, entry, map, product
-    record, phase cut, builder, task loop, reviewer pair, notes for later,
-    stack, the ask rule, kind, verdict, blind question, auto and step,
-    proven and not proven, verify setup, feature map, driver, state branch.
+    R45 asks for: discussion as the merged phase, record, log, ledger,
+    entry, map, product record, phase cut, builder, task loop, reviewer
+    pair, notes for later, stack, the ask rule, kind, verdict, blind
+    question, auto and step, proven and not proven, verify setup, feature
+    map, driver, state branch.
   - "Review" names three things today (the review phase, a phase's review in
     the build, a document's closing review); each gets its own term.
   - h help on every menu (R17): each menu's help is an engine content file
@@ -964,8 +967,8 @@ away (ruled 2026-10-19).
 - Proposed:
   - Rewritten in the release from the shipped skills, last, since the skills
     are the source of truth.
-  - The new book: work types; discovery; decision (replacing research and
-    discussion); experiments; investigation; specification; the build
+  - The new book: work types; discovery; discussion (replacing today's
+    research and discussion); experiments; investigation; specification; the build
     (tasks, reviews, pull requests, the drivers); review; trust (new: the
     ledger, the ask rule, verdicts, the matrix); verification (new); state
     and git (new: the state branch, pushing, a second machine); tracking;
@@ -1110,9 +1113,9 @@ third, so the inline drawing must fit or scroll.
   - The branch merges into `main` once 1.4 holds, and the person releases.
 
 11.2 **Step 1 — foundations.** Engine and mod only; no skill prose. Each
-part lands with its tests. Before it starts, the merged phase's name is
-settled with the person in one conversation, since the engine's phase
-tables carry it from the first step (ruled 2026-10-19).
+part lands with its tests. The engine's phase tables carry the merged
+phase's name from the first step, and it is settled: discussion (ruled
+2026-10-20, R9).
 1. **State on its own branch:** the worktree, the lock, commit and push,
    the second-clone merge, and section 10's defaults.
 2. **The ledger:** events and their schemas, ids, the append-only check, the write
@@ -1140,7 +1143,7 @@ cases, its walks and its share of the pipeline simulation.
 2. **CONVENTIONS.md** rewritten for the new shape: what a phase skill holds
    (goal, done-condition, guidance, the verbs it names, its checklist).
    The sort (R2) is then done skill by skill as each is rewritten.
-3. **Decision, first,** with the record-and-log split and its migration
+3. **Discussion, first,** with the record-and-log split and its migration
    steps (the move and the records directive), as Sequence step 4 orders.
 4. Discovery, with the baseline folded in (9.1).
 5. Specification and the phase cut.

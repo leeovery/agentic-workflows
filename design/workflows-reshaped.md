@@ -407,7 +407,7 @@ project's own measurements decide (R7).
   commit door and the engine's checklists refuse anything else; what they
   cannot refuse — a question asked in plain prose in the build, an extra
   review round — prose walks catch, since they assert outcomes (R4). In
-  decision, questions are asked in conversation (the person, 2026-10-18:
+  discussion, questions are asked in conversation (the person, 2026-10-18:
   "Those decisions are meant to be collaborated on and answered through
   conversation, ideally"), so there the walks check that every answer was
   recorded (R11).
@@ -481,7 +481,7 @@ project's own measurements decide (R7).
     - It keeps the main session's context small, and it is what the
       measurements test.
   - **The conversation stays in the main session**, at the person's
-    effort: decision and research conversations, the calls the matrix
+    effort: discussion conversations, research included, the calls the matrix
     routes, and the build's orchestration.
   - **The main session's effort is recommended, never set.** The
     recommended minimum is medium, Opus 5.5's own default, stated in
@@ -548,16 +548,27 @@ project's own measurements decide (R7).
 
 - **R9 — Stages stay; phases change.** The stages remain Discovery,
   Definition and Delivery. The phases:
-  - **Discovery stage:** discovery, decision, experiment, investigation.
+  - **Discovery stage:** discovery, discussion, experiment, investigation.
   - **Definition stage:** specification.
   - **Delivery stage:** implementation, review.
 
-  Research folds into **decision**, as one of its tools. Planning splits:
+  Research folds into **discussion**, as one of its tools. Planning splits:
   the phase cut moves into specification, and tasks are written at the
   start of each build phase. Scoping goes with the quick-fix ceremony
   (R21). The phase names `implementation` and `review` stay; the
-  implementer's role is called **the builder**. The merged phase's name
-  is open (Open).
+  implementer's role is called **the builder**.
+
+  The merged phase is called **discussion**, ruled by the person
+  2026-10-20: research is one of its tools, and experiment is invoked
+  from it, its results coming back to be discussed. In their words: "You
+  can have a discussion. You can be in discussion. You can't be in
+  workshop." And: "As a result of discussion, we make decisions." The
+  way there: deliberation, design and refinement were rejected
+  2026-10-13 (wrong for what the phase is; confused with visual design;
+  polishing something that exists, where the phase goes wide first);
+  decision was kept as a placeholder, since it names the outcome rather
+  than the activity; workshop was considered and rejected 2026-10-20, as
+  it names a place, not something you are in.
 
 ## Strand A — restructure
 
@@ -581,7 +592,7 @@ project's own measurements decide (R7).
     make the person name the level before they start. Ruled by the person
     2026-10-13.
   - **Claude asks no detail questions in discovery.** It shapes scope and
-    what the work touches; detail is decision's. Today's guidance invites
+    what the work touches; detail is discussion's. Today's guidance invites
     decisions in an epic's second conversation, and the person pushed back
     every time it did: "Why are you asking that question? We're in
     discovery"; "the whole point of this process is to surface topics…
@@ -651,7 +662,7 @@ project's own measurements decide (R7).
     - every topic's opening view reads it, and the settled part cites it.
 
     It stays apart from the feature map (R32): the build writes that and
-    proving the work reads it; decision writes this and the opening view
+    proving the work reads it; discussion writes this and the opening view
     reads it. Adopted, with its forks, by the person 2026-10-13.
   - **Discovery's gates**, ruled by the person 2026-10-13 from the
     answers recorded since July:
@@ -698,11 +709,11 @@ project's own measurements decide (R7).
     there; a gap visible from the map alone waits for a topic's close or
     the sweep, which in Fumi's evidence were not the gaps that mattered.
   - **No routing.** Every topic of an epic or feature
-    goes to decision; none goes straight to the build. How much of the
-    person a topic takes is set inside decision — by how much the product
+    goes to discussion; none goes straight to the build. How much of the
+    person a topic takes is set inside discussion — by how much the product
     already settles and by the ask rule (R11, R24) — never by a label
-    fixed at the map. This replaces routing to research or discussion
-    everywhere that routing reaches today: the map, the first-phase gate,
+    fixed at the map. This replaces today's routing to research or
+    discussion everywhere that routing reaches: the map, the first-phase gate,
     where a message sent to a topic lands, and the epic menu's new-topic
     doors. Quick-fix (R21) and bugfix (R20) keep their own paths. Ruled
     by the person 2026-10-13 on the discovery walk, replacing a proposed
@@ -726,7 +737,7 @@ project's own measurements decide (R7).
     direction — as input.
   - **The brief feeds the topic's opening view** (R11): the topic opens
     with Claude bringing up what discovery found, and it is decided there,
-    in decision; it is not the list of what the person will be asked. Briefs predicted that poorly: they matched where discovery
+    in discussion; it is not the list of what the person will be asked. Briefs predicted that poorly: they matched where discovery
     measured a running product (Portal's project-link, 7 of its 8
     subtopics) and missed for most of greenfield Fumi, where the questions
     came from research results and other topics' decisions. Approving the
@@ -737,9 +748,10 @@ project's own measurements decide (R7).
   the size of the change; a public command surface is two-way until
   something depends on it.
 
-### Decision
+### Discussion
 
-- **R11 — One conversational phase.** Research and discussion merge.
+- **R11 — One conversational phase.** Today's research and discussion
+  merge into one phase, called discussion (R9).
   Research is done to give a decision its data and belongs in the same log
   as the decision. The phase:
   - **Record and log.** Each topic keeps a **record** — current decisions
@@ -775,8 +787,8 @@ project's own measurements decide (R7).
     mind is a new entry replacing the earlier one; the record shows the
     current answer with the answers it replaced folded beneath it (R23),
     and the change and its why are appended to the log. Ruled by the person 2026-10-13:
-    - **A decision log is kept per topic**, one dated heading per
-      session. The mailbox rule (R13) keeps a decision session to one
+    - **A discussion log is kept per topic**, one dated heading per
+      session. The mailbox rule (R13) keeps a discussion session to one
       topic, so the topic's whole journey sits in one file beside its
       record — for its next session and the person asking why; the
       knowledge base indexes records, never logs (R44). Discovery and the roadmap keep their logs per session:
@@ -888,7 +900,7 @@ project's own measurements decide (R7).
   not a spike). A spike is anything that can be looked at or pressed: a
   design board, a constrained design generator (Switchboard's
   terminal-cell generators are the example), draft code, a format trial,
-  a working prototype to scroll and feel. Spikes live inside decision
+  a working prototype to scroll and feel. Spikes live inside discussion
   conversations and may come early, in the first ones; FlowX — discussion
   with a spike, free process, prescribed documentation — is the model.
   What informs a decision — an exported image with its live source link,
@@ -1042,7 +1054,7 @@ project's own measurements decide (R7).
     person's, in product terms and never by section number ("you're
     referencing specification section numbers, which mean nothing to me")
     — and written as an entry in the topic it belongs to, so the record
-    stays the source. Gaps at the spec mean decision missed them; the
+    stays the source. Gaps at the spec mean discussion missed them; the
     measure (R36) shows where.
   - **A re-review reads only what changed, unasked**, and stops when a pass
     changes nothing. Today each cycle rereads the whole spec and asks the
@@ -1513,8 +1525,8 @@ project's own measurements decide (R7).
     (72), reactivate (37).
   - Gone: everything that kept research apart from discussion, everything
     about planning, and grouping (one spec per work unit, Open: the epic
-    as a whole); the soft gates that remain become learned; decision named
-    throughout. Cancelling a topic moves its waiting mail to the inbox
+    as a whole); the soft gates that remain become learned; the merged
+    phase named discussion throughout. Cancelling a topic moves its waiting mail to the inbox
     (three of Fumi's four cancelled topics show "Cancelled · mail
     waiting"); "dead end" goes — a topic that ends in not doing it is
     decided with that as its decision, or cancelled.
@@ -1542,7 +1554,7 @@ project's own measurements decide (R7).
   - **The start menu**, ruled by the person 2026-10-16 after a before and
     after drawn over Portal's real records. It lists work units; the
     person steps into one before picking anything in it. Each unit's row
-    shows its type, phase and progress ("decision, 1 of 4 topics
+    shows its type, phase and progress ("discussion, 1 of 4 topics
     decided"; "build, phase 2 of 3"), never its topics, and marks what
     waits on the person in it as a count ("1 question waiting for you"),
     those units first; inside, the unit's own menu lists what waits first.
@@ -1647,10 +1659,10 @@ project's own measurements decide (R7).
 
 ### Work types
 
-- **R18 — Epic.** discovery → decision → specification → implementation
+- **R18 — Epic.** discovery → discussion → specification → implementation
   → review.
 - **R19 — Feature.** Its own type — linear, with the simpler menus — and
-  in decision an epic with one topic: its decision can be the view and
+  in discussion an epic with one topic: its decision can be the view and
   one answer (R11). Discovery leans one topic (R10); pivot and absorb
   stay.
   - **"Continue feature: X" goes straight to where it stands**, ruled by
@@ -2199,7 +2211,7 @@ each call on a page that day.
     work does:
     - Discovery stays conversation: the person brings the idea, it is
       shaped together, and Claude never decides there alone.
-    - In decision, a topic's opening view (R11) carries it: the part
+    - In discussion, a topic's opening view (R11) carries it: the part
       earlier decisions settle grows with every topic decided, so the
       forks shrink on their own. Where research is still open the person
       is needed most — research questions departed 35% of the time
@@ -2228,7 +2240,7 @@ each call on a page that day.
     behind a toggle. "I don't follow" is a button, counted as no answer.
     Questions come one at a time, ruled by the person (2026-10-14: "drop
     things to me one at a time"; 2026-10-18: "the decision process isn't a
-    conveyor belt of decisions"): in decision each is slotted into the
+    conveyor belt of decisions"): in discussion each is slotted into the
     conversation at a natural pause; where several wait at once they come
     back to back, each answered before the next shows. The person could not follow
     31% of the questions about internals, 20% on danger and 16% on
@@ -2751,7 +2763,7 @@ each call on a page that day.
     person may want. It also carries phase words (its spinner) that a
     phase rename changes.
   - After a compaction the engine's recovery note names the skill and each
-    document to re-read; the decision phase's note names the record and
+    document to re-read; the discussion phase's note names the record and
     the log, the build's its log and where the phase stands.
   - Anything that can use the mod to make the system better should.
   - **Tasks go through the engine to a driver**, ruled by the person
@@ -2873,7 +2885,7 @@ think is a good sign."
     automatic step with a one-line report, and comes back if their answers
     start to vary. The gates that served the build's and review's loops
     (analysis cycles, per-task approval, their re-review) go with the
-    loops; decision's reviews stay (R11) and their gates are learned like
+    loops; discussion's reviews stay (R11) and their gates are learned like
     any other.
   - **A phase runs auto or step**, ruled by the person 2026-10-15,
     replacing three positions: auto, the default, where process gates are
@@ -3073,7 +3085,7 @@ own detection finds nothing in either.
   - **Specs: the line is whether building has started**, ruled by the
     person 2026-10-17.
     - **Nothing built.** The old specs and any plans become reference in
-      `assets/`; the topics keep their states; the unit sits in decision
+      `assets/`; the topics keep their states; the unit sits in discussion
       until every topic is decided, and then one spec is written fresh
       from the records, through the new review and the ready-to-build
       gate. Tasks a plan already put in the tracker are closed by the
@@ -3102,7 +3114,7 @@ own detection finds nothing in either.
       cover: topics not started, in progress, or decided but in no spec
       leave it, and the directive asks the person, per unit, where they
       go — a new epic the person names, the topics moving whole and
-      starting in decision, or the roadmap as postponed topics, a later
+      starting in discussion, or the roadmap as postponed topics, a later
       pull opening a fresh topic that reads the earlier record. The
       building unit is then whole: every topic decided, its specs joined,
       one build. None of the person's projects has this.
@@ -3167,8 +3179,8 @@ own detection finds nothing in either.
     progress (five waiting only on mail, commercialization on one open
     question), three not started with their mail (build-and-release 17,
     licensing-and-trial-integrity 10, support-and-diagnostics), four
-    cancelled; then one spec and one build. The person holds Fumi at
-    decision until this release, so it moves forward as one spec and one
+    cancelled; then one spec and one build. The person holds Fumi in
+    discussion until this release, so it moves forward as one spec and one
     build.
 
 ## Sequence
@@ -3222,7 +3234,7 @@ person, one item at a time; the sections above hold the detail.
   per-project verify setup (R32); the gap-analysis session bug goes with
   the restructure.
 - From the discovery walk (2026-10-13): no routing — every topic goes
-  through decision, none straight to the build (R10); a topic opens with
+  through discussion, none straight to the build (R10); a topic opens with
   Claude starting the conversation, its lean given wherever a logical
   one exists (R11, 2026-10-18); the brief feeds that view and approving
   the map stays topics and order (R10); the cone narrows as the product
@@ -3240,7 +3252,7 @@ person, one item at a time; the sections above hold the detail.
   (R10, R40); the gap analysis at a topic's close and one sweep before
   the spec, a candidate a topic only when it holds the person's call
   (R10, R11). Discovery is walked.
-- From the decision walk (2026-10-13): a decision log per topic,
+- From the discussion walk (2026-10-13): a discussion log per topic,
   discovery's and the roadmap's per session; the record holds findings
   beside decisions, each saying how it is known (R11); a decision is
   written once, as a ledger entry, and the record drawn from the ledger;
@@ -3254,7 +3266,7 @@ person, one item at a time; the sections above hold the detail.
   epic-level spike happens (R12); the reviews stay and the matrix routes
   what they find, the closing pass with two readers and re-reading what
   it changed (R11, R40); the purpose of the workflows stated (What the
-  workflows are for). Decision is walked.
+  workflows are for). Discussion is walked.
 - From the specification walk (2026-10-13): every statement traces to an
   entry; the review hunts gaps and the matrix answers them, written into
   the topics' records; a re-review reads only what changed, unasked;
@@ -3397,9 +3409,8 @@ worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
 phase not yet written.
 
-**In discussion:** the merged phase's name and the product's name
-(Open), settled together; discussion leads for the phase, with workshop
-held open. **Parked:** the workflows board (Open)
+**In discussion:** the product's name (Open), explored with the person
+2026-10-20 in `design/name-exploration.md`. **Parked:** the workflows board (Open)
 — the build's panel ships in the release, spiked with the person before
 the specification is written; the other phases' panels follow straight after it; the first sketches
 were rushed and are set aside. Uninstalling and reinstalling (Open) —
@@ -3478,7 +3489,7 @@ an epic), which opened what stores what. Resolve each, then climb:
   drawn by the mod — on the whole a picture of what the manifest holds,
   driven by engine code, with room for Claude to put things on it that the
   engine does not hold. Wanted by the person 2026-10-12 for every phase,
-  not only the build (decision:
+  not only the build (discussion:
   the map; specification: its sections and review; build: tasks
   building, landed and parked, questions waiting, each phase's proof;
   review: agents and findings). It sits apart from the person's sitrep
@@ -3494,26 +3505,10 @@ an epic), which opened what stores what. Resolve each, then climb:
   with the person before the specification is written (R15); the other
   phases' panels follow straight
   after the release, discussed and spiked then.
-- **The merged phase's name.** "Decision" names the outcome, not the
-  activity, as discovery, research and discussion do; kept for now.
-  Rejected by the person 2026-10-13: deliberation (wrong for what the
-  phase is), design (confused with visual design), refinement (the phase
-  goes wide before it gets to detail; refinement polishes something that
-  exists). The person, 2026-10-14: "we really do need a better name for
-  that phase".
-  - **Leading on 2026-10-20: discussion**, with workshop held open.
-  - The person: "It is ultimately a discussion. It moves towards
-    decision, but you make decisions through discussion, and the whole
-    point of that phase is meant to be collaboration."
-  - It is settled together with the product's name, before the build's
-    first step writes the engine's phase tables.
-- **The product's name.** "Agentic workflows" names a category; the
-  person, 2026-10-20: "these have grown now into an actual product…
-  a real way of developing software".
-  - The name is for the method: the cone of collaboration, and deciding
-    up front with Claude. Claude then decides on the person's behalf from
-    their learned taste, needing them less as the work moves right.
-  - Of interest so far: Dandori, Sumi.
+- **The product's name.** Still open. Explored with the person on
+  2026-10-20; every option and the person's reaction to it is recorded in
+  `design/name-exploration.md`. Nothing is off the table, and it may stay
+  "the workflows".
   - How deep the rename goes is decided with it. The product, repository,
     docs and help are cheap to rename. The `workflow-*` skill names and
     the `.workflows/` folder are a migration.
@@ -3549,9 +3544,9 @@ an epic), which opened what stores what. Resolve each, then climb:
   questions queue (R15).
   - The epic is in one phase at a time; the menu names it once at the
     top, and its rows carry no phase (the person, 2026-10-14).
-  - **A decision that has to change after decision is over is settled
+  - **A decision that has to change after discussion is over is settled
     where it is found**, in the phase the epic is in, ruled by the person
-    2026-10-14: the epic never goes back to decision; the ledger records
+    2026-10-14: the epic never goes back to discussion; the ledger records
     the change, and whatever was written or built on the old answer is
     reworked by tasks. "If it has to stop and wait for me… that's okay,
     but that should happen less and less."
@@ -3763,7 +3758,7 @@ an epic), which opened what stores what. Resolve each, then climb:
     poisons the context by telling the review agent what to look for,
     where that's the review job's purpose") and ruled 2026-10-18.
     - Every brief the workflows give their own agents — implementers,
-      reviewer pairs, the task writer, decision's readers, the
+      reviewer pairs, the task writer, discussion's readers, the
       migration's agents and verifiers — comes from a template the
       workflows own, filled by the engine from the records (the task, its
       spec sections, the ledger's decided calls, the diff, earlier reports
@@ -3844,7 +3839,7 @@ an epic), which opened what stores what. Resolve each, then climb:
     converged". Review earns its place on large surfaces (Mint's first
     pass found crashes).
   - **Linear types always complete** (Portal bugfix 26/26, quick-fix
-    16/16). Epics stall in decision: Fumi 12 weeks, 361k words, no spec,
+    16/16). Epics stall in discussion: Fumi 12 weeks, 361k words, no spec,
     coupled topics concluded and reopened up to 10 times with about 145
     messages between them.
   - **Questions.** About one reply in five to Claude's questions is not an
