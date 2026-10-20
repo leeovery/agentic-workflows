@@ -1287,9 +1287,10 @@ project's own measurements decide (R7).
     (R33). Code quality is held by boundaries — where things live and
     belong — through the project's rules and hard checks (R34).
   - **The builder's calls go to the ledger.** A question the ask rule
-    sends the person is raised through an engine gate when it arises,
-    mid-phase or at its end, while other tasks run on; the person answers
-    when they visit the session and the build carries on.
+    sends the person waits in the build's queue while other tasks run on,
+    never as a gate, and is raised in full once the person says they are
+    ready (questions queue, below); the build carries on once it is
+    answered.
   - **No code change without a task**, ruled by the person 2026-10-16.
     When something outside the plan
     turns up — a bug the person reports, a gap the builder finds — Claude
@@ -1339,7 +1340,12 @@ project's own measurements decide (R7).
       — with one block for tasks started together, never one each; and
       when a task lands, its product summary: what changed, which
       criteria its tests prove, the pair's verdict and its rounds, how
-      many calls went to the ledger. The review reports are not printed:
+      many calls went to the ledger; and beneath it, every time, the
+      questions waiting on the person: how many, and a line each (two or
+      three at most), so the person sees them without the panel (ruled by
+      the person 2026-10-20: "even if the mod panel's not open, I can
+      still see every now and again when task execution is being done,
+      that there are questions awaiting my response"). The review reports are not printed:
       they go to the implementer, the orchestrator keeps the verdict, and
       the person reaches them through the task's account. Whether a gate
       follows is the phase's position (R40): every task in step, in auto
@@ -1348,16 +1354,26 @@ project's own measurements decide (R7).
       number, and a summary of what's being worked on"; of parallel
       work: "five printouts… I would have to scroll back up to see
       what's being worked on";
-    - **questions queue.** A task that needs the person parks, with
-      whatever depends on it, and everything else carries on. Claude says
-      so in one line in the transcript, and the question waits in a queue
-      the engine holds, on the build panel until it is answered. The
-      person may take one up whenever they like: a press on the panel
-      puts it in the prompt box, and sending it has Claude raise it in
-      full, product first, while the other tasks carry on. Otherwise
-      questions are drawn one at a time when nothing left can proceed
-      without an answer or a phase ends, and the build never concludes
-      over one. They stay inside the build, in every work type that
+    - **questions queue, as a mailbox**, ruled by the person 2026-10-20.
+      A task that needs the person parks, with whatever depends on it,
+      and everything else carries on. Claude says so in one line in the
+      transcript, and the question waits in a queue the engine holds, on
+      the build panel until it is answered, for the person's attention
+      when they are ready to give it. It never stands as a gate: a build
+      can run ten hours or more while the person is away or asleep, and a
+      gate raised hours and several compactions earlier is brittle and
+      answered without context (the person: "that gate that you produce
+      there has no context. If I come back hours later, I have no real
+      idea what I'm answering there. You may as well just make the choice
+      for me"). The person says when they are ready to talk about one, or
+      all of them — in their own words, or with a press on the build
+      panel — and Claude raises it then, in full and product first, from
+      the work as it stands, while the other tasks carry on. The panel
+      never answers a question; it is the person's way of saying "I'm
+      here, and I'm ready to offer you my attention" (the person). When
+      nothing left can proceed without an answer, the build stops with
+      its report and the questions still wait for the person; the build
+      never concludes over one. They stay inside the build, in every work type that
       builds, ruled by the person 2026-10-19: "we shouldn't really ever
       get back to the Epic menu once build has started." An open question
       would stall the whole build; a parked task stalls only what depends

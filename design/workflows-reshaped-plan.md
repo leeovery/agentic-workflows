@@ -268,20 +268,24 @@ session** (R46, agreed 2026-10-19).
   commit door refuses a code commit that names no task.
 - The builder's calls go to the ledger. A question for the person parks
   what depends on it, and everything else carries on. Claude says so in
-  one line; the question waits on the build panel until it is answered,
-  where a press takes it up into the conversation at any time; otherwise
-  it is asked when nothing else can proceed or a phase ends, and the build
-  never concludes over one. Questions stay inside the build, never on the
-  epic menu (ruled 2026-10-19).
+  one line. The question waits in the build's queue, never as a gate,
+  until the person says they are ready to talk about it, in their own
+  words or with a press on the panel; Claude then raises it in full from
+  the work as it stands (ruled 2026-10-20). When nothing else can proceed
+  the build stops with its report, and it never concludes over a
+  question. Questions stay inside the build, never on the epic menu
+  (ruled 2026-10-19).
 - One independent phase review closes each phase, including where it meets
   earlier phases.
 - **What the person sees:** a headline as work starts (one block per batch),
-  a product summary as each task lands, a question queue, and a stop report
-  when nothing can proceed.
+  a product summary as each task lands with the questions waiting beneath
+  it, counted with a line each, every time (ruled 2026-10-20), and a stop
+  report when nothing can proceed.
 - **The build's live panel and any task's account** ship in the release
   (ruled 2026-10-19). The panel shows the build only: tasks building, in
   review, landed and parked; the questions waiting on the person, each
-  taken up with a press; phases not yet written. It is an addition: the
+  with a press that says the person is ready to talk about it, never a
+  way to answer one (ruled 2026-10-20); phases not yet written. It is an addition: the
   build reaches the person in full without it (ruled 2026-10-19).
   **It is spiked with the person before this release's specification is
   written** (ruled 2026-10-19), and the locked panel is drawn in the
