@@ -556,8 +556,8 @@ project's own measurements decide (R7).
   the phase cut moves into specification, and tasks are written at the
   start of each build phase. Scoping goes with the quick-fix ceremony
   (R21). The phase names `implementation` and `review` stay; the
-  implementer's role is called **the builder**. The merged phase is never
-  called "discussion".
+  implementer's role is called **the builder**. The merged phase's name
+  is open (Open).
 
 ## Strand A — restructure
 
@@ -3397,8 +3397,9 @@ worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
 phase not yet written.
 
-**Parked:** the merged phase's name (Open) — "decision" kept until a
-conversation before the build's first step. The workflows board (Open)
+**In discussion:** the merged phase's name and the product's name
+(Open), settled together; discussion leads for the phase, with workshop
+held open. **Parked:** the workflows board (Open)
 — the build's panel ships in the release, spiked with the person before
 the specification is written; the other phases' panels follow straight after it; the first sketches
 were rushed and are set aside. Uninstalling and reinstalling (Open) —
@@ -3499,8 +3500,23 @@ an epic), which opened what stores what. Resolve each, then climb:
   phase is), design (confused with visual design), refinement (the phase
   goes wide before it gets to detail; refinement polishes something that
   exists). The person, 2026-10-14: "we really do need a better name for
-  that phase". Settled in a conversation with the person before the
-  build's first step writes the engine's phase tables.
+  that phase".
+  - **Leading on 2026-10-20: discussion**, with workshop held open.
+  - The person: "It is ultimately a discussion. It moves towards
+    decision, but you make decisions through discussion, and the whole
+    point of that phase is meant to be collaboration."
+  - It is settled together with the product's name, before the build's
+    first step writes the engine's phase tables.
+- **The product's name.** "Agentic workflows" names a category; the
+  person, 2026-10-20: "these have grown now into an actual product…
+  a real way of developing software".
+  - The name is for the method: the cone of collaboration, and deciding
+    up front with Claude. Claude then decides on the person's behalf from
+    their learned taste, needing them less as the work moves right.
+  - Of interest so far: Dandori, Sumi.
+  - How deep the rename goes is decided with it. The product, repository,
+    docs and help are cheap to rename. The `workflow-*` skill names and
+    the `.workflows/` folder are a migration.
 - **Uninstalling and reinstalling.** Parked by the person 2026-10-13 for
   a proper conversation later; recorded as raised, nothing decided. It is
   raised with the person when the work reaches install.
