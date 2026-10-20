@@ -427,6 +427,10 @@ project's own measurements decide (R7).
   longer needs (the person, 2026-10-06: "we have to make sure that we
   loosen the reins as the model gets more intelligent"; agreed
   2026-10-19).
+  - **Among the rebuilt cases** (agreed by the person 2026-10-20): the
+    task writer meets a gap partway through a phase's tasks, and only the
+    tasks the gap touches change. It guards against the whole-phase
+    rewrite that today's prose prescribes and Mint ran (R15).
 - **R5 — About 90%.** The target is 90–95% and then iteration; a product is
   never perfect. One closing pass replaces every loop that runs until
   nothing is found: a keen reviewer always finds something, and much of it
