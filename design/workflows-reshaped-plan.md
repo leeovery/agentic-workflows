@@ -268,10 +268,17 @@ session** (R46, agreed 2026-10-19).
   commit door refuses a code commit that names no task.
 - The builder's calls go to the ledger. A question for the person parks
   what depends on it, and everything else carries on. Claude says so in
-  one line. The question waits in the build's queue, never as a gate,
+  one line. The question waits in the project's ledger, never as a gate,
   until the person says they are ready to talk about it, in their own
   words or with a press on the panel; Claude then raises it in full from
-  the work as it stands (ruled 2026-10-20). When nothing else can proceed
+  the work as it stands (ruled 2026-10-20). The ledger holds the question
+  and its answer as lines of their own, so what waits survives a
+  compaction or a new session, and every surface that shows it reads it
+  from there; an answer is an engine verb, so a later surface could
+  record one (not built). A raised question whose options are clear end
+  states ends on the usual gate, recommended option first with Comment
+  beside it; an open one ends in conversation; typing sets the gate
+  aside (agreed 2026-10-20). When nothing else can proceed
   the build stops with its report, and it never concludes over a
   question. Questions stay inside the build, never on the epic menu
   (ruled 2026-10-19).
@@ -408,6 +415,7 @@ session** (R46, agreed 2026-10-19).
 - Tracking, analysis and per-task report files go.
 - The layout is the record's tree. Never files: a topic's record and map,
   the product record (beyond its rendered copy, 3.3), the verdict queue,
+  the questions waiting on the person (held in the ledger, 3.6),
   "what have you decided without me".
 
 ## 4. Ruled — trust

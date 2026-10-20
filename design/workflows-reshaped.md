@@ -1357,9 +1357,23 @@ project's own measurements decide (R7).
     - **questions queue, as a mailbox**, ruled by the person 2026-10-20.
       A task that needs the person parks, with whatever depends on it,
       and everything else carries on. Claude says so in one line in the
-      transcript, and the question waits in a queue the engine holds, on
-      the build panel until it is answered, for the person's attention
-      when they are ready to give it. It never stands as a gate: a build
+      transcript, and the question waits in the project's ledger (R23),
+      on the build panel until it is answered, for the person's attention
+      when they are ready to give it. The engine appends the question as
+      its task parks — what it asks, why it needs the person, its options
+      with Claude's lean, the task it parks — and the answer as a line of
+      its own. What waits is the questions with no answer yet: a
+      projection like the verdict queue, never a file, read by every
+      surface that shows it (the panel, the waiting lines under each
+      landing, the stop report, the start menu's count), so nothing
+      waiting on the person lives only in the conversation, and a
+      compaction or a new session finds it whole (agreed with the person
+      2026-10-20, who asked that the questions "survive any destructive
+      or lossy event, like compaction"). An answer is recorded through an
+      engine verb, so a later surface — the panel, an app outside Claude
+      Code — could record one and the session's mod tell Claude it
+      arrived; not built (the person: "we can pivot towards that later").
+      It never stands as a gate: a build
       can run ten hours or more while the person is away or asleep, and a
       gate raised hours and several compactions earlier is brittle and
       answered without context (the person: "that gate that you produce
@@ -1368,7 +1382,16 @@ project's own measurements decide (R7).
       for me"). The person says when they are ready to talk about one, or
       all of them — in their own words, or with a press on the build
       panel — and Claude raises it then, in full and product first, from
-      the work as it stands, while the other tasks carry on. The panel
+      the work as it stands, while the other tasks carry on. A question
+      whose options are clear product end states ends on the engine's
+      gate, the options as rows with the recommended one first and
+      Comment beside them, as an executor block's does today; an open
+      question ends in conversation; anything typed sets the gate aside,
+      as at any gate (the person, 2026-10-20: "if there's a clean
+      structure here, a gate menu could appear"). That gate is raised
+      only once the person has said they are ready, with the question's
+      context right above it; a question left half-answered stays
+      waiting in the ledger and on the panel. The panel
       never answers a question; it is the person's way of saying "I'm
       here, and I'm ready to offer you my attention" (the person). When
       nothing left can proceed without an answer, the build stops with
@@ -2875,7 +2898,8 @@ worktree of the state's own branch, never part of a code branch (R23).
   one, whose log is the investigation; a quick-fix none and no spec —
   `build/` and `summary.md`, the short record after the work (R21).
 - Never files: a topic's record and its map, the product record, the
-  verdict queue, "what have you decided without me" — projections of the
+  verdict queue, the questions waiting on the person, "what have you
+  decided without me" — projections of the
   ledger (R45). The knowledge base's rendered copies of records sit in
   `.knowledge/` (R44), and so does the product record's rendered file,
   for a CLAUDE.md line to point at (R10; Claude's call).
