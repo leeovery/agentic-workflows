@@ -1485,7 +1485,16 @@ project's own measurements decide (R7).
     specification waiting on the topics still open — then the topics set
     aside and what happened lately; a topic opens on its own page, and
     the topic the session is in is This session. At the epic's menu This
-    session is the epic's page, saying so. Its one
+    session is the epic's page, saying so. The specification's round was
+    locked by the person the same day as spiked over Mint ("looks
+    good"). In a specification This session shows what waits on the
+    person (asked in the conversation, never queued), Claude's calls
+    since they last looked, the review's passes — each reading only what
+    the one before changed, the review stopping once a pass changes
+    nothing — each section with the passes that changed it, the phase
+    cut with each phase's scenarios and the sections it draws on, and
+    Ready to build; once the person's yes lands, This session follows the
+    session into the build. Its one
     action is the person queuing the questions they are ready to discuss
     and sending the queue; nothing in it sends its content into the
     conversation. Whether it
