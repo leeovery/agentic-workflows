@@ -1469,9 +1469,12 @@ project's own measurements decide (R7).
     position the workflows already record on arriving anywhere (the
     tmux label's); a page the person is reading stays until they go
     back. So every phase the session can be in has a view of its own on
-    This session, each spiked with the person in its own round over a
-    real project's record before the specification: discussion first,
-    over Fumi's epic, then the specification and the review over Mint's.
+    This session, each spiked with the person over a real project's
+    record before the specification: discussion first, over Fumi's epic,
+    then the specification and the review over Mint's, each in its own
+    round, then the four left — discovery, a bug's investigation, an
+    experiment and a quick-fix's one session — in one round together,
+    the person's choice 2026-10-21 ("2").
     Discussion's round was locked by the person 2026-10-21 as spiked over
     Fumi ("This is great!!"). In a discussion This session shows the
     topic: what of the person's is still open, messages waiting to be
@@ -1504,8 +1507,35 @@ project's own measurements decide (R7).
     press from its page. A round that fails shows its fix tasks as the
     build's next phase, and the next round reads only the areas those
     tasks changed, the rest marked unchanged; once the person finishes,
-    This session follows the session to All work at the start menu. Its one
-    action is the person queuing the questions they are ready to discuss
+    This session follows the session to All work at the start menu. The
+    round of the four was locked by the person the same day ("all looks
+    great"), spiked over Fumi's discovery, Portal's kill-all investigation
+    and Portal's m-marks quick-fix; no project had run an experiment, so
+    that view was drawn over a real question from Fumi's scale topic with
+    the experiment itself made up. In discovery This session shows the
+    map so far in its order, each topic opening on its brief (leans,
+    paths not taken, open questions — decided in its discussion, not
+    here), what goes to the roadmap, the directions not taken with their
+    reasons, the spikes, and the person's views of the product carried
+    into the topics; approve the map waits on the person, and once it
+    lands This session follows the session to the epic's menu. In an
+    investigation it shows a question a validation raised, the symptoms,
+    the hypotheses each confirmed or ruled out, the experiments with what
+    each showed, the root cause, both validations, what is decided, and
+    the fix direction once the root cause is validated, its options
+    after Claude has stepped back; each hypothesis, experiment, option
+    and call a press from its page. In an experiment it shows the
+    question and the topic it came from, the design frozen at the
+    person's approval with its pre-registered rule, the runs, the
+    verdict the rule gives, and the topic that waits on it; once the
+    verdict is in, This session follows the session to the epic's menu,
+    where that topic says the report waits. In a quick-fix it shows the
+    change the person's note pins, confirmed in one line, the work step
+    by step with the tests, linters and the proof by running the
+    product, Claude's calls, the earlier decision it replaces, and once
+    committed its short record; close waits on the person, and once it
+    lands This session follows the session to All work at the start menu.
+    Its one action is the person queuing the questions they are ready to discuss
     and sending the queue; nothing in it sends its content into the
     conversation. Whether it
     later drives the workflows' menus is not yet discussed. For the task
