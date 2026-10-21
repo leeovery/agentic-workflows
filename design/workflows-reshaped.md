@@ -1494,7 +1494,17 @@ project's own measurements decide (R7).
     nothing — each section with the passes that changed it, the phase
     cut with each phase's scenarios and the sections it draws on, and
     Ready to build; once the person's yes lands, This session follows the
-    session into the build. Its one
+    session into the build. The review's round was locked by the person
+    the same day as spiked over Mint's review ("looks good"). In a review
+    This session shows the round under way: how many of its areas are
+    read — one per specification section, and one reader over the tests —
+    what each area ran and found, the findings in scope, the checks that
+    could not be run (not proven), what went to the inbox as Claude's
+    call, and the verdict, each finding, fix task and unproven check a
+    press from its page. A round that fails shows its fix tasks as the
+    build's next phase, and the next round reads only the areas those
+    tasks changed, the rest marked unchanged; once the person finishes,
+    This session follows the session to All work at the start menu. Its one
     action is the person queuing the questions they are ready to discuss
     and sending the queue; nothing in it sends its content into the
     conversation. Whether it
@@ -1507,10 +1517,7 @@ project's own measurements decide (R7).
     the one new screen, every new screen or variant is drawn in the
     specification (R17). The locked panel is drawn in the specification.
     The spike measured that two mods' panes share Claude Code's tab row,
-    one tab each (2026-10-19, Claude Code 2.1.303). Whether the other
-    phases get views of their own in the release is being discussed with
-    the person (2026-10-21: "If we're going to ship it, we need to ship it
-    right").
+    one tab each (2026-10-19, Claude Code 2.1.303).
 
 ### Review
 
