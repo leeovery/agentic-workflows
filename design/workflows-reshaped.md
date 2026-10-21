@@ -1811,6 +1811,12 @@ project's own measurements decide (R7).
       progress as a new topic, through that epic's discovery (R17's map
       changes), answering the person's "Do I need an existing epic to do
       that" (Portal 2026-09-17).
+    - **An item leaves the roadmap once work starts from it**, ruled by
+      the person 2026-10-21: it goes with the work as a seed, the way
+      triaged items leave the inbox, and from then on the work shows its
+      progress. Cancelling the work, or the topic the item became, puts
+      the item back on the horizon it came from. The roadmap shows what is
+      waiting; work under way is listed as its own units.
     - **The home shows each item on one line** with its kind and where it
       came from; its summary shows when picked or asked for.
     - **Its menu is explicit rows**, ruled by the person 2026-10-16: w
