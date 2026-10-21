@@ -825,7 +825,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - replaced: a new answer, naming the old one and one of the four reasons (5.6.2);
 - still holds: a topic confirms an answer after something it relied on changed.
 
-[R23, R45, plan 4.1; Claude's derivation, O16, PLAN.md]
+[R23, R45, plan 4.1; Claude's derivation, O16]
 
 5.3.3 A question can also be moved to another topic, which is written as an event of its own (moved); its schema is the builder's. [R23, plan 4.1, plan 6.1; Claude's derivation, O16]
 
@@ -1551,7 +1551,7 @@ goes. [R10; ruled by the person 2026-10-13]
 8.4.5 An inbox item that already pins the work, cause and fix known, is
 confirmed in one line, not shaped again. [R10, plan 3.3; Claude's, covered by
 the person's yes 2026-10-13; the plan dates it ruled 2026-10-19; Claude's
-derivation, PLAN.md]
+derivation]
 
 8.4.6 A known cause with a mechanical fix is a quick-fix, not a bugfix.
 [R10, plan 3.3; Claude's, covered by the person's yes 2026-10-13; the plan
@@ -1875,7 +1875,7 @@ there is the person's stated view, carried as input. The principle is decided
 in the first topic it bears on, where Claude opens with it as the position,
 and goes in as a product-wide entry; a principle no topic touches yet waits
 until one does. [R10, R22, plan 3.3; ruled by the person 2026-10-19; Claude's
-derivation, PLAN.md]
+derivation]
 
 8.9.7 Decisions add to the product record: a topic that settles something
 bigger than itself lists the product-wide entries on its decided screen
@@ -2003,7 +2003,7 @@ agreed by the person; Claude's derivation, O32]
 its agendas, its interview procedure and its area scoping, since discovery's
 conversation is a field; the baseline's research survives as the product
 researcher's (8.12.4). [plan 9.1, plan 1.5; agreed by the person; Claude's
-derivation, O32, PLAN.md]
+derivation, O32]
 
 8.12.7 The start menu's offer stays, pointing at plan the product. [plan 9.1;
 agreed by the person]
@@ -2011,7 +2011,7 @@ agreed by the person]
 8.12.8 A project holding `.baseline/` docs has them moved to
 `.roadmap/assets/` as reference by the migration, the move dropping the
 baseline's status fields (§21 §21). [plan 9.1; agreed by the person;
-Claude's derivation, O32, PLAN.md]
+Claude's derivation, O32]
 
 8.12.9 Left to the builder: how a finding observed in the code is tagged in the
 ledger when no work unit exists (8.12.5). [Claude's sort, B25]
@@ -2558,7 +2558,7 @@ answer. [R23]
 its own bookkeeping, goes. [R11, plan 6.1]
 
 9.5.9 The epic menu shows no count of a topic's questions (§18). [R17, plan 3.11; the person 2026-10-14; Claude's
-derivation, PLAN.md]
+derivation]
 
 9.5.10 A lock on a design is a question on the map (9.10.12). [R12]
 
@@ -9359,7 +9359,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 ### 21.11 The brownfield docs
 
-21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.roadmap/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32, PLAN.md]
+21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.roadmap/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32]
 
 ### 21.12 Rehearsal before release
 
