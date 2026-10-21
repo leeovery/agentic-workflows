@@ -1472,7 +1472,20 @@ project's own measurements decide (R7).
     This session, each spiked with the person in its own round over a
     real project's record before the specification: discussion first,
     over Fumi's epic, then the specification and the review over Mint's.
-    Its one
+    Discussion's round was locked by the person 2026-10-21 as spiked over
+    Fumi ("This is great!!"). In a discussion This session shows the
+    topic: what of the person's is still open, messages waiting to be
+    raised, Claude's calls since the person last looked (opening the
+    panel is not looking; the conversation's map is), the reviews (one
+    running with its clock, each round's findings taken in or waiting),
+    what is decided, each marked the person's or Claude's call, and what
+    the topic sent other topics, each section a press from any entry,
+    message or report in full. An epic's tab lists its topics under the
+    epic dashboard's stages — where a session is, what messages wait, the
+    specification waiting on the topics still open — then the topics set
+    aside and what happened lately; a topic opens on its own page, and
+    the topic the session is in is This session. At the epic's menu This
+    session is the epic's page, saying so. Its one
     action is the person queuing the questions they are ready to discuss
     and sending the queue; nothing in it sends its content into the
     conversation. Whether it
