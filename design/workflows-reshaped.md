@@ -2371,6 +2371,20 @@ each call on a page that day.
       28 answers without a loss, and in the replay the evidence alone kept
       94% of contract questions coming to the person. Fumi's tags were
       hard to reverse and, by the person's account, did not matter.
+    - **Replacing the person's own decision always asks**, ruled by the
+      person 2026-10-21: an entry the person decided is never replaced on
+      a quiet kind's count; the replacement comes to them, as danger and a
+      care entry do, whatever the counts. The kinds are learned from
+      Claude's leans on questions still open; overturning an answer the
+      person already gave is a different act. The engine records who
+      decided each entry, so it is a check, not a judgement; in a build it
+      parks only what depends on the entry.
+    - **Claude's one-answer calls have a count of their own**, ruled by
+      the person 2026-10-21: a call Claude judges to have one defensible
+      answer still reaches the decision point, labelled, logged and
+      drawable blind; overrules of such calls count apart, and once they
+      lift that count past the threshold those calls ask like any other.
+      It catches Claude's own sorting drifting.
     - Worked, at 20%: behaviour goes quiet after 13 answers without a
       loss. A loss while it holds 13 to 15 clean answers puts it over 25%,
       and it asks again until 20 clean answers outweigh the loss; a loss
@@ -2394,6 +2408,14 @@ each call on a page that day.
       forks shrink on their own. Where research is still open the person
       is needed most — research questions departed 35% of the time
       (6 of 17), decision questions 17% (42 of 242).
+    - **Until a topic's shape is agreed, Claude makes no call of intent
+      or taste alone**, ruled by the person 2026-10-21, carrying their
+      2026-10-12 call that research stays conversation into the merged
+      phase: Claude works such calls through with the person in the
+      conversation — where several ways are open, ideas and what the
+      person thinks; where one way is clear, its view set out for the
+      person to pull apart and pressure-test — never in set phrases ("early
+      on, it should always be collaborative … it's contextual").
     - Hard to undo halves the threshold (above), which tends to bite on
       early calls, the ones later work builds on.
     - Convergence hands a topic's remaining calls to Claude's settling,
