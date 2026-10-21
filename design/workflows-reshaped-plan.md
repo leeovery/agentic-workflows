@@ -315,7 +315,10 @@ session** (R46, agreed 2026-10-19).
   written** (ruled 2026-10-19), and the locked panel is drawn in the
   specification: it is the one new screen, and every new screen or variant
   is drawn there (3.11). The spike also settles 10.9. Any task's account
-  is printed into the conversation from the mod menu.
+  is printed into the conversation from the mod menu. Claude writes it as
+  the task lands: what was done, where in the code, what the tests prove,
+  and every way the work differs from the task as written (agreed
+  2026-10-21).
 
 3.7 **Reviews in the build** (R15, R16, Reviews in the build).
 - Three reviews: after each task, closing each phase, and the review phase.

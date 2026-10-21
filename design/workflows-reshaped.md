@@ -1421,7 +1421,15 @@ project's own measurements decide (R7).
       mod menu at any time, for any task however long ago, its
       description, a technical account Claude writes, and diagrams; in
       step they stay on each task's gate, as today. It ships in the
-      release, ruled by the person 2026-10-19;
+      release, ruled by the person 2026-10-19. Claude writes the account
+      as the task lands, into the task's file beside the task as written:
+      what was done in product terms, where in the code, what the tests
+      prove, and every way the work differs from the task — something
+      done that it never asked for, or done another way. Agreed with the
+      person 2026-10-21, after a spike found every one of five real
+      Mint tasks' commits differing from its task somewhere, which
+      nothing today records (a commit carries one subject line, and the
+      reviewers' reports are not kept);
     - when nothing can proceed, the build stops with a report: what was
       built, what waits on the person and why, what runs after the answer.
       Danger and the authority gates stop what depends on them in every
