@@ -1448,10 +1448,21 @@ project's own measurements decide (R7).
     beneath it, the stop report with the questions front and centre ("I
     want to be able to scroll up and see what was done and when it
     happened… the mod panel shouldn't change what we've already agreed in
-    terms of output"). What the panel adds is read-only browsing: the
-    build's tasks and phases, a page per task (what it does, what was
-    done, each review round as a summary with its full report a press
-    away, the calls it made), and later the unit and the project. Its one
+    terms of output"). What the panel adds is read-only browsing, built
+    out in full (the person, 2026-10-20), on three tabs: this session's
+    work; its unit, with what it is for, what waits on the person, each
+    phase from discovery to review with the finished ones readable in full,
+    and what happened lately; and all the project's work, with every unit
+    under way (what waits in each, which a session is in), the roadmap,
+    the inbox and the complete units. On the build the session's tab
+    shows the build's tasks and phases and a page per task (what it does
+    and the task as written, what was done, how it differs from the task,
+    each review round as a summary with its full report a press away, the
+    calls it made). Locked by the person 2026-10-21 as spiked over a
+    snapshot of Mint's real build; still to settle before the
+    specification: the session's tab's name, what it shows as the session
+    moves through phases, topics and menus, and whether every phase gets a
+    view of its own. Its one
     action is the person queuing the questions they are ready to discuss
     and sending the queue; nothing in it sends its content into the
     conversation. Whether it
@@ -1464,9 +1475,10 @@ project's own measurements decide (R7).
     the one new screen, every new screen or variant is drawn in the
     specification (R17). The locked panel is drawn in the specification.
     The spike measured that two mods' panes share Claude Code's tab row,
-    one tab each (2026-10-19, Claude Code 2.1.303). The other phases'
-    panels follow straight after the release, discussed and spiked then
-    (the workflows board, Open).
+    one tab each (2026-10-19, Claude Code 2.1.303). Whether the other
+    phases get views of their own in the release is being discussed with
+    the person (2026-10-21: "If we're going to ship it, we need to ship it
+    right").
 
 ### Review
 
