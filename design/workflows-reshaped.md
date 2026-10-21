@@ -1459,10 +1459,20 @@ project's own measurements decide (R7).
     and the task as written, what was done, how it differs from the task,
     each review round as a summary with its full report a press away, the
     calls it made). Locked by the person 2026-10-21 as spiked over a
-    snapshot of Mint's real build; still to settle before the
-    specification: the session's tab's name, what it shows as the session
-    moves through phases, topics and menus, and whether every phase gets a
-    view of its own. Its one
+    snapshot of Mint's real build. Its names and how it follows the
+    session were agreed the same day: the pane's tab in Claude Code's row
+    is "workflows", beside sitrep's, and the panel's first tab is
+    "⌂ This session", never renamed, the phase named in the page's header
+    instead. This session shows the most specific place the session is —
+    a phase's view while it is in a phase, the unit's page at the unit's
+    menu, All work at the start menu — and follows the session by the
+    position the workflows already record on arriving anywhere (the
+    tmux label's); a page the person is reading stays until they go
+    back. So every phase the session can be in has a view of its own on
+    This session, each spiked with the person in its own round over a
+    real project's record before the specification: discussion first,
+    over Fumi's epic, then the specification and the review over Mint's.
+    Its one
     action is the person queuing the questions they are ready to discuss
     and sending the queue; nothing in it sends its content into the
     conversation. Whether it
@@ -3521,9 +3531,9 @@ phase not yet written.
 
 **In discussion:** the product's name (Open), explored with the person
 2026-10-20 in `design/name-exploration.md`. **Parked:** the workflows board (Open)
-— the build's panel ships in the release, spiked with the person before
-the specification is written; the other phases' panels follow straight after it; the first sketches
-were rushed and are set aside. Uninstalling and reinstalling (Open) —
+— the panel ships in the release with a view for every phase, each
+spiked with the person before the specification is written; the first
+sketches were rushed and are set aside. Uninstalling and reinstalling (Open) —
 raised by the person 2026-10-13, parked for a proper conversation.
 Splitting kinds of question from the labeller's stored answers (R25) —
 parked by the person 2026-10-19 to come back to. A questions page as a
@@ -3612,9 +3622,10 @@ an epic), which opened what stores what. Resolve each, then climb:
   roadmap, whatever the workflows hold for the project — without
   interrupting the session. The build's panel and any task's account
   ship in the release, ruled by the person 2026-10-19, the panel spiked
-  with the person before the specification is written (R15); the other
-  phases' panels follow straight
-  after the release, discussed and spiked then.
+  with the person before the specification is written (R15). Its first
+  tab follows the session into every phase, so every phase's view ships
+  with it, each spiked in its own round first (agreed by the person
+  2026-10-21).
 - **The product's name.** Still open. Explored with the person on
   2026-10-20; every option and the person's reaction to it is recorded in
   `design/name-exploration.md`. Nothing is off the table, and it may stay

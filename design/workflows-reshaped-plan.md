@@ -296,8 +296,15 @@ session** (R46, agreed 2026-10-19).
   a product summary as each task lands with the questions waiting beneath
   it, counted with a line each, every time (ruled 2026-10-20), and a stop
   report when nothing can proceed.
-- **The build's live panel and any task's account** ship in the release
-  (ruled 2026-10-19). The panel shows the build only: tasks building, in
+- **The live panel and any task's account** ship in the release
+  (ruled 2026-10-19). The pane's tab is "workflows", beside sitrep's; the
+  panel's tabs are ⌂ This session, the unit, and All work (agreed
+  2026-10-21). This session shows the most specific place the session
+  is — a phase's view, the unit's page at its menu, All work at the start
+  menu — following the position the workflows record on arrival, so every
+  phase has a view, each spiked in its own round (discussion over Fumi
+  first, then the specification and the review over Mint). In the build
+  it shows the build: tasks building, in
   review, done and parked, a phase whose tasks are all done "complete"
   (the workflows' own statuses, ruled 2026-10-21); the questions waiting
   on the person, each queued with a press for the person to send when
@@ -1184,8 +1191,8 @@ cases, its walks and its share of the pipeline simulation.
 4. Discovery, with the baseline folded in (9.1).
 5. Specification and the phase cut.
 6. The build and the review phase, with verification inside them (7), and
-   the build's live panel, built to the design locked in its spike before
-   the specification, and task accounts (3.6).
+   the live panel with every phase's view, built to the design locked in
+   its spike before the specification, and task accounts (3.6).
 7. The work types: feature, bugfix, quick-fix; cross-cutting removed.
 8. The tracking layer: the start menu, the epic menu, the inbox, triage,
    the roadmap, help on every menu.
@@ -1208,9 +1215,9 @@ weeks of asking prove heavy (R25).
 
 ## 12. Parked and fast follows
 
-12.1 **The rest of the workflows board,** a fast follow (ruled 2026-10-19):
-any panels the other phases need, discussed and spiked with the person.
-The build's panel ships in the release (3.6).
+12.1 **The rest of the workflows board** moved into the release (3.6),
+agreed 2026-10-21: This session follows the session into every phase, so
+every phase's view ships with the panel, each spiked first.
 
 12.2 **Splitting kinds from the stored twelve answers** (4.5), a fast
 follow. How it works and when it triggers is parked by the person
