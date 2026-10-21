@@ -1380,9 +1380,25 @@ project's own measurements decide (R7).
       there has no context. If I come back hours later, I have no real
       idea what I'm answering there. You may as well just make the choice
       for me"). The person says when they are ready to talk about one, or
-      all of them — in their own words, or with a press on the build
-      panel — and Claude raises it then, in full and product first, from
-      the work as it stands, while the other tasks carry on. A question
+      all of them — in their own words, or from the build panel — and
+      Claude raises it then, in full and product first, from the work as
+      it stands, while the other tasks carry on. On the panel it takes two
+      steps, ruled by the person 2026-10-21: a press queues a question in
+      a Ready to discuss box at the panel's foot, and nothing reaches the
+      conversation until the person sends the queue, as one message in the
+      order they queued it; "discuss all" queues the rest as the panel
+      lists them, oldest first. One press that raised a question at once
+      put a raise into Claude's context the person may never have meant to
+      have (the person: "it kind of pollutes the context, even though I
+      didn't actually want to answer it"). Staging the message in the
+      prompt box instead was rejected ("We explored that option for sitrep
+      and disregarded it"). Claude takes the questions one at a time,
+      recording each through the verb, whose answer is a one-line receipt
+      in one format — what became of it, how many still wait, the next to
+      raise — that Claude shows as it is. Skipping a question, or
+      cancelling the rest, puts one line in the conversation, so Claude
+      hears it and the discussion closes in the record (the person: "so
+      that you can then react and say acknowledging the cancel"). A question
       whose options are clear product end states ends on the engine's
       gate, the options as rows with the recommended one first and
       Comment beside them, as an executor block's does today; an open
@@ -1411,7 +1427,7 @@ project's own measurements decide (R7).
       Danger and the authority gates stop what depends on them in every
       position.
 
-    The live progress (each task building, landed, parked; the questions
+    The live progress (each task building, in review, done, parked; the questions
     waiting on the person; phases not yet written) shows on a build panel
     drawn by the mod, since the transcript cannot redraw it. It ships in
     the release, ruled by the person 2026-10-19. The panel is an
@@ -1428,8 +1444,9 @@ project's own measurements decide (R7).
     build's tasks and phases, a page per task (what it does, what was
     done, each review round as a summary with its full report a press
     away, the calls it made), and later the unit and the project. Its one
-    action is the person saying they are ready to discuss a question;
-    nothing in it sends its content into the conversation. Whether it
+    action is the person queuing the questions they are ready to discuss
+    and sending the queue; nothing in it sends its content into the
+    conversation. Whether it
     later drives the workflows' menus is not yet discussed. For the task
     page, Claude writes a short summary of each review round as the task
     lands and stores it with the task's account (the person, 2026-10-19:
@@ -1602,14 +1619,17 @@ project's own measurements decide (R7).
     mirror the conversation's design while leveraging "what's possible
     there". Agreed in the spike the same day: a tab row, one line per
     task with its state in a column, the epic dashboard's ── dividers with
-    a summary at their right, landed phases folding, and colour with one
+    a summary at their right, complete phases folding, and colour with one
     meaning each — peach needs the person, seafoam runs now, sage is done,
     rose failed, slate has not started, lavender marks the view the
     person is on. The person ("love it") after rejecting the terminal's
     eight basic colours as "too basic". Needs-you is warm so it agrees
     with Sitrep's asks when the two panes sit side by side; the menus'
-    ⚑ keeps its colour in the transcript. The locked panel, colours
-    included, is drawn in the spec.
+    ⚑ keeps its colour in the transcript. A state reads as the workflows'
+    own statuses, never a word coined for the panel: a task "done", a
+    phase whose tasks are all done "complete" (the person 2026-10-21:
+    "We already have a set of statuses. Let's use the real status"). The
+    locked panel, colours included, is drawn in the spec.
   - **A specification waits until every topic is decided**, ruled by the
     person 2026-10-12. Grouping reads the records: groups drawn from half
     of them come out differently once the rest are decided, and a topic
@@ -3561,7 +3581,7 @@ an epic), which opened what stores what. Resolve each, then climb:
   engine does not hold. Wanted by the person 2026-10-12 for every phase,
   not only the build (discussion:
   the map; specification: its sections and review; build: tasks
-  building, landed and parked, questions waiting, each phase's proof;
+  building, done and parked, questions waiting, each phase's proof;
   review: agents and findings). It sits apart from the person's sitrep
   board, which works across projects and sessions a level above and is
   updated by Claude through its own plugin, never by the workflows. Only

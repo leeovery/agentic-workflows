@@ -270,8 +270,16 @@ session** (R46, agreed 2026-10-19).
   what depends on it, and everything else carries on. Claude says so in
   one line. The question waits in the project's ledger, never as a gate,
   until the person says they are ready to talk about it, in their own
-  words or with a press on the panel; Claude then raises it in full from
-  the work as it stands (ruled 2026-10-20). The ledger holds the question
+  words or from the panel; Claude then raises it in full from the work as
+  it stands (ruled 2026-10-20). On the panel it is two steps (ruled
+  2026-10-21): a press queues a question in a Ready to discuss box, and
+  nothing reaches the conversation until the person sends the queue, as
+  one message in their order ("discuss all" queues the rest oldest
+  first); a press that raised at once polluted Claude's context, and
+  staging in the prompt box was rejected. Claude takes them one at a
+  time; each answer's recording verb answers a one-line receipt Claude
+  shows as it is, and a skip or a cancel puts one line in the
+  conversation. The ledger holds the question
   and its answer as lines of their own, so what waits survives a
   compaction or a new session, and every surface that shows it reads it
   from there; an answer is an engine verb, so a later surface could
@@ -290,15 +298,18 @@ session** (R46, agreed 2026-10-19).
   report when nothing can proceed.
 - **The build's live panel and any task's account** ship in the release
   (ruled 2026-10-19). The panel shows the build only: tasks building, in
-  review, landed and parked; the questions waiting on the person, each
-  with a press that says the person is ready to talk about it, never a
-  way to answer one (ruled 2026-10-20); phases not yet written. It
+  review, done and parked, a phase whose tasks are all done "complete"
+  (the workflows' own statuses, ruled 2026-10-21); the questions waiting
+  on the person, each queued with a press for the person to send when
+  ready to talk about it, never a way to answer one (ruled 2026-10-20,
+  2026-10-21); phases not yet written. It
   supplements the conversation and never replaces it (ruled 2026-10-20):
   every output agreed for the transcript stays, panel open or not; the
   panel adds read-only browsing — tasks, phases, a page per task with each
   review round summarised (Claude writes the summaries as the task lands)
-  — and its one action is saying the person is ready to discuss a
-  question; nothing in it sends its content into the conversation. It is an addition: the
+  — and its one action is queuing the questions the person is ready to
+  discuss and sending the queue; nothing in it sends its content into the
+  conversation. It is an addition: the
   build reaches the person in full without it (ruled 2026-10-19).
   **It is spiked with the person before this release's specification is
   written** (ruled 2026-10-19), and the locked panel is drawn in the
