@@ -525,7 +525,7 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 4.2.3 The state worktree's path is held in the repository's own git config, which every worktree shares, and the engine reads it from there in every layout of the repository. [plan 10.4; Claude's]
 
-4.2.4 Left to the builder: the name of the git config key that holds the state worktree's path. [plan 10, engineering the build settles; Claude's proposal]
+4.2.4 The key is `workflows.stateWorktree`, holding the state worktree's absolute path, set in the repository's own config (`git config --local`) and never in a worktree's own. Git config is not pushed, so each clone's boot writes its own (4.5.1). [plan 10; Claude's proposal]
 
 ### 4.3 Locks and pushing
 
@@ -608,7 +608,7 @@ n/no  → Leave it unset — setup carries on without it
 
 4.6.1 Where the repository is bare with worktrees, there is no main checkout to sit in, so the state worktree is added beside the code worktrees, its path held in the repository's git config (4.2.3). [plan 10.4; Claude's]
 
-4.6.2 Left to the builder: where exactly beside the code worktrees the state worktree is added, and its folder's name. [plan 10.4, engineering the build settles; Claude's proposal]
+4.6.2 The state worktree goes where the bare repository sits. A bare repository named with a leading dot, `.bare` or `.git`, sits in the project's own folder, and the state worktree is added there as `.workflows/`, beside the code worktrees: `portal/.bare` gives `portal/.workflows/` beside `portal/main/`. One named for the project, `portal.git` among other repositories, takes `portal.workflows/` beside it. The hook before Bash guards the state worktree by the path in git config (4.2.4), whatever its folder is called. [plan 10.4; Claude's proposal]
 
 ### 4.7 A second clone
 
@@ -618,7 +618,7 @@ n/no  → Leave it unset — setup carries on without it
 
 4.7.3 No merge driver is used, so nothing is installed per clone. [R23]
 
-4.7.4 A fact two clones could record independently — a migration applied, a phase concluded — takes an id derived from the fact, so both clones record the one entry. [R23, plan 4.2]
+4.7.4 A fact two clones could record independently is recorded the same way by both: an applied migration is its id on a line of `.state/migrations`, and the merge keeps one line for it; a phase concluded is a field on the unit's manifest, set alike on both. [R23, plan 4.2; the record of migrations, Claude's proposal]
 
 4.7.5 The engine merges manifests field by field against their common ancestor. [plan 10.6; Claude's]
 
@@ -669,7 +669,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 ### 4.10 What is kept
 
-4.10.1 What is kept is the record (a projection of the ledger, 4.11.9), the log, the spec, evidence and a short review report, and the build's log and each task's account with its review rounds' reports (12.14) join them. [R42; ruled by the person 2026-10-12; plan 3.13; the person 2026-10-16; Claude's derivation, O20]
+4.10.1 What is kept is the record (a projection of the ledger, 4.11.9), the log, the spec, evidence and a short review report, and the build's log, each task's account with its review rounds' reports (12.14) and each phase review's reports (4.11.5) join them. [R42; ruled by the person 2026-10-12; plan 3.13; the person 2026-10-16; Claude's derivation, O20; the phase review's reports, Claude's proposal]
 
 4.10.2 Tasks live in the project's tracker, behind its driver (§7). [R42, plan 3.13]
 
@@ -682,32 +682,38 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.11.2 A topic exists only before the spec; from the spec on, everything is the work unit's. [Layout on disk]
 
 4.11.3 `.workflows/` holds:
-- `manifest.json`: the registry, defaults and the roadmap;
+- `manifest.json`: the registry and defaults; the environment setup (22.5.12); the roadmap, its archived items among them (18.8.13); the unit that closed each archived inbox item (18.6.4); the answer to the brownfield offer (8.12.11); and each directive's checklist (6.4.12);
 - `.ledger.jsonl`: the project's stream (§5);
-- `.inbox/`, `.roadmap/`, `.state/` and `.knowledge/`;
-- `.cache/{unit}/…`: gitignored session state, mirroring the unit's tree;
-- one folder per work unit, `{unit}/`.
+- `.inbox/`, `.roadmap/` and `.state/` (4.11.16);
+- `.knowledge/` (4.11.10);
+- `.cache/`: machine-local session state: `{unit}/…` mirroring each unit's tree, `.roadmap/…` for product-level spikes' builds (4.11.13), and the tmux label store (22.1.1);
+- `.gitignore`, ignoring `.knowledge/`, `.cache/`, the engine's lock (4.3.1) and any files the tracker keeps local;
+- the tracker's store, where the task driver keeps one there: Tick's `.tick/` (7.5.2);
+- one folder per work unit, `{unit}/` (4.11.5).
 
-[Layout on disk; plan 9.1; ruled by the person 2026-10-22]
+[Layout on disk; plan 9.1; ruled by the person 2026-10-22; the manifest's contents beyond the registry, defaults and roadmap, the cache's contents, `.gitignore` and the tracker's store, Claude's proposal]
 
 4.11.4 The layout has no `.baseline/`: a project holding `.baseline/` docs has them moved to assets as reference by the migration (§8, §21). [plan 9.1; ruled by the person 2026-10-22; Claude's derivation]
 
 4.11.5 A work unit's folder, `{unit}/`, holds:
-- `manifest.json`: status, the map's topics and order, and where the build stands;
+- `manifest.json`: status; the map's topics and order, each topic with its experiment series and its decided checklist; the unit's seeds; and where the build stands, with the unit's checklists (6.4.12);
 - `discovery/session-NNN.md`: discovery's log, one file per session;
+- `seeds/`: what the work started from (4.11.16);
 - `topics/{topic}/brief.md`: discovery's brief for the topic;
 - `topics/{topic}/log.md`: the journey, one dated heading per session;
 - `topics/{topic}/mail/NNN-*.md`: messages waiting for the topic (§10);
+- `topics/{topic}/experiments/`: the topic's experiment records (4.11.15);
 - `assets/`: what informs a decision (§9);
-- `seeds/` and `.state/`;
 - `spec.md`: the areas, then the phase cut (§11);
 - `spec-review.md`: the record of the person's review of the spec, when they took one (11.11.9);
 - `build/log.md`: what is in flight, what was tried and dropped, what is left for the next phase;
 - `build/notes.md`: notes for later;
-- `build/tasks/{task}.md`: each task's account;
-- `review/`: one report per round, the passing one being the certificate.
+- `build/tasks/{task}.md`: each task's account, and in `build/tasks/{task}/` each review round's two full reports, `round-N-a.md` and `round-N-b.md` (12.14.7);
+- `build/phases/phase-N/`: the phase review's two reports, `review-a.md` and `review-b.md`, or a pair for each area where the review was split, `{area}-a.md` and `{area}-b.md` (13.1.4);
+- `build/runs/`: the verification runs (4.11.15);
+- `review/round-N.md`: the review phase's report for each round, the passing one being the certificate, with its detailed checks beside it in `round-N-checks.md` (14.4.2).
 
-[Layout on disk, R11, R13, R12, R14, R15, R16]
+[Layout on disk, R11, R13, R12, R14, R15, R16; the experiments, the reports' and runs' places and names, Claude's proposal]
 
 4.11.6 By work type: an epic has many topics; a feature one, named after the unit; a bugfix one, whose log is the investigation; a quick-fix none and no spec, holding `build/` and `summary.md`, the short record after the work (§19). [Layout on disk, R21]
 
@@ -717,7 +723,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.11.9 Never files: a topic's record and its map, the product record, the verdict queue, the questions waiting on the person, and "what have you decided without me" are projections of the ledger (5.8). [Layout on disk, R45, plan 3.13]
 
-4.11.10 The knowledge base's rendered copies of records sit in `.knowledge/`, and so does the product record's rendered file, for a CLAUDE.md line to point at. [Layout on disk, R44, R10; where the product record's file sits is Claude's call]
+4.11.10 `.knowledge/` holds the knowledge base's rendered copy of each topic's record, `records/{unit}/{topic}.md`; the product record's rendered file, `product.md`, for a CLAUDE.md line to point at (8.9.13); and the knowledge base's own store, its metadata and its config, local to the checkout as today. [Layout on disk, R44, R10; where the product record's file sits is Claude's call; the paths, Claude's proposal]
 
 4.11.11 `.knowledge/` and `.cache/` are gitignored. [Layout on disk, R23, R44]
 
@@ -725,11 +731,94 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.11.13 A spike's dependencies, builds and run output go in the gitignored cache. [R12; Claude's call, 2026-10-19; plan 3.4]
 
-4.11.14 The person's own stream, the trust log, and the record of the person live at user level, in `~/.config/workflows/` (§16). [Layout on disk, R25, R27]
+4.11.14 At user level, `~/.config/workflows/` holds:
+- `config.json`: the knowledge base's provider settings, and the person's own settings, the threshold and its mid-build raise (16.13.7);
+- `credentials.json`: the keys the workflows call with, for the knowledge base's provider and a hosted tracker (7.1.8);
+- `trust.jsonl`: the trust log, the person's own stream across all their projects (§16);
+- `person.md`: the record of the person (16.18.8);
+- `brief-refusals.jsonl`: the brief hook's refusals, across the person's projects (6.5.12);
+- `conversations/{session-id}/`: what belongs to one conversation, as today, with `position.json`, every task in flight with its builder's id (6.3.3, 24.2.4), and `briefs/`, the briefs it issued (6.5.12).
 
-4.11.15 The layout has a home for each topic's experiment records, and for each verification run's record and its text evidence; recordings and images stay in the gitignored cache, their hash recorded with the run. The paths are the builder's. [R11, R9, plan 7.2, Layout on disk; Claude's derivation, O12]
+[Layout on disk, R25, R27; the files and their names, Claude's proposal]
 
-4.11.16 Left to the builder: the inner layout of `.inbox/`, `.roadmap/` and `.state/`, and of a unit's `seeds/` and `.state/`. [Claude's sort, B20]
+4.11.15 A topic's experiments sit in `topics/{topic}/experiments/`, one folder per record, `E{n}-{slug}/`, holding what a record holds today: `problem.md`, `design.md` frozen at its approval, `report.md` with its corrections appended, and `data/` with its instruments; a sub-experiment, `E{n}.{m}-{slug}/`, nests in its parent's folder. A verification run is `build/runs/{scenario}/run-NNN.json`, written by `verify`: the verdict the script wrote and the run's text evidence (15.4.1, 15.4.4). Its recordings and images sit at the same path under the unit's cache, their hash in the run's file, and go with the cache when the unit completes; the verdict and the text evidence stay. [R11, R9, plan 7.2, Layout on disk; Claude's derivation, O12; the paths, Claude's proposal]
+
+4.11.16 Inside the project's own folders:
+- `.inbox/`: one file per capture, `{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, as today; an archived item moves to `.inbox/.archived/{kind}/`, its name kept, and the unit that closed it is recorded on the project manifest (18.6.4);
+- `.roadmap/`: the session logs, `sessions/session-NNN.md`, discovery's before the work-type commit among them (8.14.3); each note an inbox item brought onto the roadmap, `notes/{YYYY-MM-DD}--{slug}.md`, its inbox name kept (18.8.15); and `assets/` (4.11.12). The items themselves are on the project manifest;
+- `.state/migrations`: each migration applied, its id on a line of its own (4.7.4);
+- a unit's `seeds/`: each seed's file under the name it had, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and, for a roadmap item, the item as it stood, its horizon included, so cancelling the work can put it back (18.8.20);
+- no unit has a `.state/`: nothing writes one once tracking and analysis files go (4.10.3).
+
+[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today]
+
+4.11.17 The whole layout, as one tree: every path the workflows write is in it, each entry naming the line that sets it. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal]
+
+```text
+.workflows/                  the state worktree (4.1.2, 4.6.2)
+├── .git                     git's link to the repository
+├── .gitignore               4.11.3
+├── .lock                    the writer lock (4.3.1)
+├── manifest.json            4.11.3
+├── .ledger.jsonl            the project's stream (5.7.1)
+├── .inbox/                  4.11.16
+│   ├── ideas/ bugs/ quickfixes/
+│   │   └── {YYYY-MM-DD}--{slug}.md
+│   └── .archived/{kind}/{YYYY-MM-DD}--{slug}.md
+├── .roadmap/                4.11.16
+│   ├── sessions/session-NNN.md
+│   ├── notes/{YYYY-MM-DD}--{slug}.md
+│   └── assets/
+├── .state/
+│   └── migrations           4.7.4
+├── .tick/                   the tracker's store, with Tick (7.5.2)
+├── .knowledge/              gitignored (4.11.10)
+│   ├── records/{unit}/{topic}.md
+│   ├── product.md           8.9.13
+│   └── the store, its metadata and its config
+├── .cache/                  gitignored (4.11.3)
+│   ├── {unit}/…             mirrors the unit's tree
+│   │   └── last-looked.json 5.8.15
+│   ├── .roadmap/…           product-level spikes' builds
+│   └── .session-labels/
+└── {unit}/                  4.11.5
+    ├── manifest.json
+    ├── discovery/session-NNN.md
+    ├── seeds/               4.11.16
+    ├── topics/{topic}/
+    │   ├── brief.md
+    │   ├── log.md
+    │   ├── mail/NNN-*.md
+    │   └── experiments/E{n}-{slug}/        4.11.15
+    │       ├── problem.md, design.md, report.md
+    │       ├── data/
+    │       └── E{n}.{m}-{slug}/            a sub-experiment
+    ├── assets/
+    ├── spec.md
+    ├── spec-review.md
+    ├── summary.md           a quick-fix's (4.11.6, 19.5.17)
+    ├── build/
+    │   ├── log.md
+    │   ├── notes.md
+    │   ├── tasks/{task}.md
+    │   ├── tasks/{task}/round-N-a.md, round-N-b.md
+    │   ├── phases/phase-N/review-a.md, review-b.md
+    │   └── runs/{scenario}/run-NNN.json    4.11.15
+    └── review/
+        ├── round-N.md
+        └── round-N-checks.md
+
+~/.config/workflows/         user level (4.11.14)
+├── config.json
+├── credentials.json
+├── trust.jsonl
+├── person.md
+├── brief-refusals.jsonl
+└── conversations/{session-id}/
+    ├── position.json
+    ├── briefs/{id}.md
+    └── the conversation's other files, as today
+```
 
 ## 4-S. Scenarios for §4
 
@@ -763,7 +852,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S15 Given the remote moved between the fetch and the push of a sync, when the push with lease fails, then the sync retries. (4.7.2)
 
-4.S16 Given both clones recorded the same fact independently (the same migration applied), when they sync, then the ledger holds one entry for it. (4.7.4)
+4.S16 Given both clones applied the same migration independently, when they sync, then `.state/migrations` holds one line for it. (4.7.4)
 
 4.S17 Given two clones that changed different fields of one manifest, when they sync, then the merged manifest holds both changes; given both changed the same field, then the merge stops and shows both values, and once the person picks one the merged manifest holds it and the sync finishes. (4.7.5, 4.7.6, 4.7.11)
 
@@ -775,7 +864,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S21 Given a unit that has finished its build, when its folder is listed, then it holds the topics' logs, the spec, the build's log, each task's account with its review rounds' reports, and the review's reports, no tracking files or analysis files, and its tasks are found in the tracker. (4.10.1, 4.10.2, 4.10.3)
 
-4.S22 Given an epic past its spec, when its folder is listed, then it matches 4.11.5: `manifest.json`, `discovery/session-NNN.md` files, `topics/{topic}/` each with `brief.md`, `log.md` and `mail/`, `assets/`, `seeds/`, `.state/`, `spec.md` ending with the phase cut, `build/` with `log.md`, `notes.md` and `tasks/`, and `review/`; with discovery's log one file per session, each topic one log, and nothing of the build or review under `topics/`; and `.workflows/` holds no `.baseline/`. (4.11.1, 4.11.2, 4.11.3, 4.11.4, 4.11.5, 4.11.7, 4.11.8)
+4.S22 Given an epic past its spec, when its folder is listed, then it matches 4.11.5: `manifest.json`, `discovery/session-NNN.md` files, `seeds/`, `topics/{topic}/` each with `brief.md`, `log.md` and `mail/`, `assets/`, `spec.md` ending with the phase cut, `build/` with `log.md`, `notes.md`, `tasks/` and `phases/`, and `review/`, and no `.state/`; with discovery's log one file per session, each topic one log, and nothing of the build or review under `topics/`; and `.workflows/` holds no `.baseline/`. (4.11.1, 4.11.2, 4.11.3, 4.11.4, 4.11.5, 4.11.7, 4.11.8, 4.11.16)
 
 4.S23 Given a quick-fix unit after its work, when its folder is listed, then it holds `build/` and `summary.md`, and no `topics/` and no `spec.md`; given a feature, then it holds one topic named after the unit. (4.11.6)
 
@@ -785,9 +874,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S26 Given a product-level spike, when its source is kept, then it sits in `.roadmap/assets/`, and its dependencies, builds and run output sit in the gitignored cache. (4.11.12, 4.11.13)
 
-4.S27 Given a project in use, when the trust log and the record of the person are written, then they are written under `~/.config/workflows/`, never under `.workflows/`. (4.11.14, 5.1.7)
+4.S27 Given a project in use, when the trust log and the record of the person are written, then they are `~/.config/workflows/trust.jsonl` and `~/.config/workflows/person.md`, never under `.workflows/`. (4.11.14, 5.1.7, 16.13.7, 16.18.8)
 
-4.S28 Given a topic that ran an experiment and a build that recorded a verification run, when their files are written, then the layout hook lets the experiment's records and the run's record and text evidence through to their homes in the layout, and the run's recordings and images sit in the cache, their hash in the run's record. (4.11.15)
+4.S28 Given topic `pricing` ran experiment E1 with a sub-experiment, and a build recorded a run of scenario 3.S2, when their files are written, then `topics/pricing/experiments/E1-{slug}/` holds `problem.md`, `design.md`, `report.md`, `data/` and the sub-experiment's `E1.1-{slug}/`; `build/runs/3.S2/run-001.json` holds the verdict and the text evidence; and the run's recordings and images sit under `.cache/{unit}/build/runs/3.S2/`, their hash in the run's file. (4.11.15)
 
 4.S29 Given the state branch present locally with its worktree removed, or with the worktree found unlocked, when boot runs, then the worktree is in place and locked. (4.4.9)
 
@@ -796,6 +885,12 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.S31 Given the state branch gone from the remote and from this clone but present in another clone, when boot runs in that other clone, then it pushes the branch back to the remote; when boot next runs in this clone, it restores the branch from the remote and nothing is lost. (4.4.4, 4.4.5, 4.4.12)
 
 4.S32 Given the state branch gone from this clone and the remote with no other copy, when boot runs, then it stops, saying what was lost and that the code is untouched; given the person's yes, then a fresh state branch is created and plan the product opens with the product researcher's read of the code; given a no, then nothing is written. (4.4.5)
+
+4.S33 Given a bare repository at `portal/.bare` with its code worktrees in `portal/`, when the state worktree is created, then it is `portal/.workflows/`, and `git config --local workflows.stateWorktree` gives its absolute path from every worktree; given a bare `portal.git` among other repositories, then the state worktree is `portal.workflows/` beside it, and the hook before Bash refuses removing it. (4.2.4, 4.4.2, 4.6.2)
+
+4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.roadmap/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
+
+4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their own names and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
 
 ## 5. The ledger
 
@@ -995,7 +1090,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.8.14 "Since you last looked" counts from the last time the map showed in the conversation: the person has looked when the map shows there, and opening the board is not looking. When the map shows is §9's. [R11, R23; Claude's derivation, O8]
 
-5.8.15 Left to the builder: where the last-looked mark is kept. [Claude's sort, B6]
+5.8.15 The last-looked mark is kept on each machine, in the unit's cache: `.cache/{unit}/last-looked.json` holds, for each topic and for the spec, the id of the newest ledger entry its screen has shown. It stays off the state branch, so looking never makes a commit, and two machines each count from their own look (4.1.7). [Claude's sort, B6; Claude's proposal]
 
 5.8.16 Left to the builder: how a read by area works; it goes through the knowledge base's search (record 2044–2048, R23), never a tag on the entry. [Claude's sort, B10]
 
@@ -1070,6 +1165,8 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 5.S31 Given a question answered by three entries, one rule each, when one of them is replaced, then the question's current answer is the replacing entry and the two untouched siblings, and the record shows all three; given an entry split before it lands, then each part names the question the whole answered. (5.3.13, 5.5.3)
 
 5.S32 Given an epic with a cancelled topic and a postponed topic, when another topic's opening view is drawn, the knowledge base is searched or the read for conflicts runs, then neither topic's entries appear; when the postponed topic is pulled back into its own epic, its entries are current again, and the ledger held them throughout. (5.8.17)
+
+5.S33 Given a project on two machines, when a topic's map shows in a conversation on one, then that machine's `.cache/{unit}/last-looked.json` moves to the newest entry shown and the state branch gains no commit; on the other machine, "since you last looked" still counts from its own last look. (5.8.14, 5.8.15)
 
 ## 6. The engine's doors
 
@@ -1147,7 +1244,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.3.10 The hook before Bash, and the hook before Agent and SendMessage (6.5.7), are installed so they hold with or without the mod, as the layout hook does (6.2.2). [plan 6.2, R23; Claude's derivation, O11]
 
-6.3.11 Left to the builder: where the hooks before Bash, Agent and SendMessage are installed. [Claude's sort, B22]
+6.3.11 Boot installs the hooks before Bash, and before Agent and SendMessage, into the project's `.claude/settings.json`, beside the layout hook and the session hooks, and commits them with its other changes there on the branch checked out (6.3.15). [Claude's sort, B22; today's product; Claude's proposal]
 
 6.3.12 Left to the builder: how the hook before Bash knows a build is in progress; it reads the task in flight the engine records per conversation (record 2956–2957, R35). [Claude's sort, B14]
 
@@ -1220,7 +1317,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.4.11 A directive: its check (§21). [plan 6.4; Claude's; R38]
 
-6.4.12 Left to the builder: where checklist progress is held. [Claude's sort, B21]
+6.4.12 Checklist progress is held on the manifest of the work it closes: a topic's decided list on the topic in the unit's manifest; ready to build, each phase's start and close, and finish on the unit's manifest; a directive's on the project manifest. Each item is held done, or skipped with its reason, so a skip outlasts the session and any compaction until the gate that shows it (6.4.5). [Claude's sort, B21; today's product; Claude's proposal]
 
 ### 6.5 Briefs
 
@@ -1246,7 +1343,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.5.11 Which agents the workflows own is §26's. [plan 6.5; Claude's proposal]
 
-6.5.12 Left to the builder: where filled briefs and the brief hook's refusals are stored. [Claude's sort, B16]
+6.5.12 A filled brief is kept in the folder of the conversation that issued it, `~/.config/workflows/conversations/{session-id}/briefs/{id}.md`, where the hook before Agent and SendMessage finds it whether or not a work unit exists, and it goes with that folder (22.1.1). The hook's refusals are appended, each with its reason, to `~/.config/workflows/brief-refusals.jsonl`, across the person's projects, since the templates are the workflows' own (6.5.9). [Claude's sort, B16; Claude's proposal]
 
 ### 6.6 Gate answers and the mod
 
@@ -1337,6 +1434,12 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 6.S29 Given the mod sent the answer to a gate, when the transcript draws that row, then it shows the question and the answer; given a handoff's continuation, the row shows its line. (6.6.12)
 
 6.S30 Given a session on Claude Code's web app, then the mod draws nothing and the workflows run on the engine's text; given Remote Control attached to a terminal session, the mod draws nothing while it is attached. (6.6.13, 6.6.9)
+
+6.S31 Given boot runs in a project, then its `.claude/settings.json` holds the hook before Bash and the hook before Agent and SendMessage beside the layout hook, committed on the branch checked out; given a later session with the mod off, then a raw `git commit` during a build and a dispatch of one of the workflows' agents with no brief are still refused. (6.3.7, 6.3.10, 6.3.11, 6.5.7)
+
+6.S32 Given a build phase's close that skipped an item with a reason, when the session compacts and the build reaches finish in a later session, then finish's screen shows the skip and its reason, read from the unit's manifest. (6.4.5, 6.4.12)
+
+6.S33 Given a brief issued for the product researcher in a conversation with no work unit, when Claude dispatches the agent, then the hook finds the brief in that conversation's `briefs/` and lets it through; given a dispatch whose content differs from its brief, then the hook refuses it and a line with the reason is appended to `~/.config/workflows/brief-refusals.jsonl`. (6.5.7, 6.5.9, 6.5.12)
 
 ## 7. Tasks, landing and their drivers
 
@@ -1943,8 +2046,10 @@ session logs until a pull creates its topic. [R10]
 it; discussion writes the product record and the opening view reads it. [R10,
 R32; agreed by the person 2026-10-13]
 
-8.9.13 Left to the builder: the product record's rendered file's name and
-format (8.9.4). [Claude's sort, B23]
+8.9.13 The product record's rendered file is `.workflows/.knowledge/product.md`,
+in markdown. A CLAUDE.md line pointing at it names its full path, since a
+code worktree holds no `.workflows/` (4.1.4). [Claude's sort, B23; Claude's
+proposal]
 
 ### 8.10 The gap analysis
 
@@ -2064,8 +2169,8 @@ sort, B26]
 
 8.12.11 The offer is made once per project, as today. A decline, or the judgment
 that the project grew up on the workflows, is remembered and never asked again.
-Where it is remembered is the builder's (8.12.10). [today's product; Claude's
-sort, T26]
+It is remembered on the project manifest (4.11.3). [today's product; Claude's
+sort, T26; where, Claude's proposal]
 
 ### 8.13 One-way doors
 
@@ -2215,8 +2320,8 @@ the person's yes adds them to the product record with no gate of their own.
 (8.9.1, 8.9.7, 9.7.3)
 
 8.S26 Given a product-wide entry is added or replaced, then the engine renders
-the product record to its file in `.workflows/.knowledge/`, the file is
-gitignored, and it shows the current entry. (8.9.2, 8.9.4)
+the product record to `.workflows/.knowledge/product.md`, the file is
+gitignored, and it shows the current entry. (8.9.2, 8.9.4, 8.9.13)
 
 8.S27 Given any session of the workflows, then no change is written to the
 project's CLAUDE.md. (8.9.5)
@@ -2678,8 +2783,8 @@ derivation]
 
 9.5.11 The person has looked when the map shows in the conversation; opening
 the board is not looking. The map shows in the conversation at natural
-pauses, at Claude's judgement, and whenever the person asks. Where the
-last-looked mark is kept is the builder's. [R11, R23, record 1481–1482;
+pauses, at Claude's judgement, and whenever the person asks. The
+last-looked mark is kept on each machine (5.8.15). [R11, R23, record 1481–1482;
 Claude's derivation, O8]
 
 ### 9.6 Once the shape is agreed
@@ -4540,8 +4645,9 @@ can show it (§20 §20). [R15; the person 2026-10-19; plan
 3.6]
 
 12.14.7 Each review round's two full reports are kept beside the task's
-account, a press away on the task's page on the board. Where they are kept is
-the builder's. [R15; Claude's derivation, O40]
+account, a press away on the task's page on the board. They sit in
+`build/tasks/{task}/` as `round-N-a.md` and `round-N-b.md` (4.11.5). [R15;
+Claude's derivation, O40; where, Claude's proposal]
 
 12.14.8 Left to the builder: which agent writes a task's account and its round
 summaries, the orchestrator taking no more of a report than the verdict and
@@ -5220,7 +5326,7 @@ captured screen · 41 lines                              ▸ open
 
 15.4.3 The phase review reads the recorded runs. A scenario with no passing run reads "not proven" in every report. [plan 7.2; Claude's, agreed]
 
-15.4.4 Text evidence (a captured screen, a response) is kept with the run. Each verification run's record and its text evidence have a home in the layout on disk, the paths the builder's (§4 §4). Recordings and images stay in the gitignored cache with their hash recorded, since the state branch is pushed on every commit. [plan 7.2; Claude's, agreed; Claude's derivation, O12]
+15.4.4 Text evidence (a captured screen, a response) is kept with the run. Each verification run's record, holding its text evidence, sits in the unit's `build/runs/` (4.11.15). Recordings and images stay in the gitignored cache with their hash recorded, since the state branch is pushed on every commit. [plan 7.2; Claude's, agreed; Claude's derivation, O12]
 
 ### 15.5 The bug-proven check
 
@@ -5755,7 +5861,7 @@ b/back    → Back to the start menu — the rest keep waiting
 
 16.13.6 Counts are derived from the trust log, never stored. [R25]
 
-16.13.7 Left to the builder: the trust log's file, format and event schemas, the guard against Claude editing it, and where its settings live (16.13.2); its events carry the model, since the bound is per model (16.4.4). [Claude's sort, B52]
+16.13.7 The trust log is `~/.config/workflows/trust.jsonl`, and the person's settings — the threshold (16.4.6) and its mid-build raise (16.4.7) — sit in `~/.config/workflows/config.json`, beside the knowledge base's provider settings (4.11.14). Left to the builder: the event schemas and the guard against Claude editing either (16.13.2); the events carry the model, since the bound is per model (16.4.4). [Claude's sort, B52; the files, Claude's proposal]
 
 ### 16.14 The matrix at two levels, and the merge
 
@@ -5966,7 +6072,7 @@ Comment → Tell me how to word it
 
 16.18.7 No session searches the person's decisions in other projects: that would put another project's text into a session, and projects differ by what they are for. [R27, plan 4.7; ruled by the person 2026-10-19: "I do care about different things in different projects"]
 
-16.18.8 Left to the builder: the record of the person's format, kept in `~/.config/workflows/`, and when a session reads it. [Claude's sort, B53]
+16.18.8 The record of the person is `~/.config/workflows/person.md` (4.11.14). Left to the builder: how its entries are laid out, and when a session reads it. [Claude's sort, B53; the file, Claude's proposal]
 
 ### 16.19 The separate Claude call
 
@@ -6764,7 +6870,7 @@ On the roadmap: "A Shortcuts Action To Make A Fumi" → later.
 
 18.8.12 m move puts a roadmap item on another horizon the person names. [R17; Claude's derivation, O72]
 
-18.8.13 Left to the builder: where an archived roadmap item goes. [Claude's sort, B60]
+18.8.13 An archived roadmap item stays on the project manifest, marked archived and off its horizon, with its pointers, and its note stays in `.roadmap/notes/`. The roadmap's home leaves it out, and it goes back on a horizon when the person asks in words, as the roadmap's other edits are made (18.8.19). [Claude's sort, B60; Claude's proposal]
 
 18.8.14 Outside a topic's map (9.5.4), where the person's words put an item aside without saying where ("backlog that", "later", "not now", naming no horizon), Claude asks whether it goes on the roadmap or into the inbox, and never chooses. [today's product; Claude's sort, T53]
 
@@ -6999,6 +7105,8 @@ Ask    → Ask anything about triage or the inbox
 
 18.S66 Given two items waiting on the horizon "later", when work starts from both, then neither shows on the roadmap's home and the work holds both as seeds; when that work is cancelled, both show again on "later". Given a topic made from a roadmap item, removed before it starts, then the item shows again on its horizon; given that horizon since removed, Claude asks which horizon it goes on. (18.8.20, 8.8.16, 18.8.2)
 
+18.S67 Given a waiting roadmap item with a note, when the person archives it, then it stays on the project manifest marked archived and off its horizon, the roadmap's home no longer shows it, and its note is still in `.roadmap/notes/`; when the person asks for it back on a horizon, then it is there with its note and pointers. (18.8.13)
+
 ## 19. Work types
 
 ### 19.1 The types
@@ -7173,7 +7281,7 @@ Ask      → Ask about the change before it closes
 
 19.5.16 Left to the builder: what the quick-fix's move verb carries into the feature or bugfix. [Claude's sort, B61]
 
-19.5.17 Left to the builder: where a quick-fix set's several short records sit beside `summary.md`. [Claude's sort, B62]
+19.5.17 A set's `summary.md` holds each fix's short record under a heading of its own, in the order the fixes landed, so the knowledge base finds each on its own. [Claude's sort, B62; Claude's proposal]
 
 19.5.18 A quick-fix's work takes its turn in the checkout (12.7.8). [today's product; Claude's sort, T25]
 
@@ -7270,6 +7378,8 @@ Ask      → Ask about the change before it closes
 19.S36 Given a start whose seeds mix a bug with ideas, when discovery makes a feature, then Claude says the bug gets no investigation of its own. (19.4.25)
 
 19.S37 Given a quick-fix's opener, when it runs, then one knowledge-base query for earlier work on the area it touches runs before the work starts. (19.5.19)
+
+19.S38 Given a set of three inbox fixes run as one quick-fix, when the work closes, then `summary.md` holds three short records, each under its own heading in the order the fixes landed, and a knowledge query for one fix finds its own record. (19.5.11, 19.5.17)
 
 ## 20. The workflows board
 
@@ -9448,7 +9558,14 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.15 A completed quick-fix's scoping spec becomes its `summary.md`, and its plan goes. [R37, R21; Claude's derivation, O78]
 
-21.5.16 Left to the builder: the move's destinations the sources do not name — discovery session paths, old plan files, implementation folders, existing review reports, and where the carried-over fields (21.5.9) live. [Claude's sort, B63]
+21.5.16 The move's other destinations:
+- discovery's sessions, `discovery/sessions/session-NNN.md`, become `discovery/session-NNN.md`, their numbers kept;
+- plans, built or not, go to `assets/plans/{topic}/` as reference, their files' names kept; where nothing is built, the old specs go to `assets/specs/{topic}.md` (21.8.2);
+- an implementation folder holds tracking and analysis files only, so it goes whole (21.5.17);
+- review folders go to `assets/reviews/{topic}/` as reference, their files' names kept; the review phase writes its own rounds from then on;
+- the carried-over fields (21.5.9) go on the manifest entry they describe: a topic's on its topic in the unit's manifest, a roadmap item's on its item in the project manifest.
+
+[Claude's sort, B63; Claude's proposal]
 
 21.5.17 The move drops tracking and analysis files (4.10.3); task accounts and their review rounds' reports are kept (4.10.1). [R42, plan 3.13; Claude's derivation]
 
@@ -9732,6 +9849,8 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S48 Given a code migration after the reshape that returns a verification addendum or a notice, when it runs at boot, then the addendum's checks are performed and the notice shown, as today. (21.10.13)
 
+21.S49 Given an epic whose building started, with discovery sessions, plans, implementation folders and review reports, when the move runs, then its sessions are `discovery/session-NNN.md` with their numbers, its plans are under `assets/plans/{topic}/` and its review folders under `assets/reviews/{topic}/` with their files' names, no implementation folder remains, and a promoted topic and a roadmap item's kind are on their manifest entries. (21.5.9, 21.5.16, 21.5.17)
+
 ## 22. Setup, environment and the knowledge base
 
 ### 22.1 Boot
@@ -9955,8 +10074,12 @@ plan 9.2; Claude's derivation, O84]
 22.5.11 The migration carries an existing environment-setup file and the
 linters recorded today into the project's environment setup (§21). [plan 9.2; Claude's derivation, O85]
 
-22.5.12 Left to the builder: where the per-project environment setup lives
-and in what form. [Claude's sort, B69]
+22.5.12 The environment setup lives on the project manifest, each part a field
+the engine reads — how to run the product, what cannot run concurrently, the
+verify setup's place and its five parts, the linters, the preparation steps —
+so the brief, the commit door and `verify` read it (6.5.4, 6.3.5, 15.4.1), and
+two clones merge it field by field (4.7.5). [Claude's sort, B69; Claude's
+proposal]
 
 22.5.13 Left to the builder: the verb with which a build records what cannot
 run concurrently. [Claude's sort, B70]
@@ -10184,6 +10307,11 @@ to confirm. (22.5.1, 22.5.7, 22.5.9)
 22.S36 Given a topic's entries change and the indexing of its record fails,
 then the entry stands, a warning shows, and the next start re-indexes the
 record. (22.6.15)
+
+22.S37 Given the environment setup recorded at the first ready to build, then
+it is on the project manifest, and a brief takes its linters from there;
+given two machines changed different parts of it, then after a sync the
+manifest holds both changes. (4.7.5, 22.5.12)
 
 ## 23. Help, the glossary and the user docs
 
@@ -10879,9 +11007,9 @@ was raised, none of it decided:
 - removing the skills is agntc's job, and agntc is being changed so the
   workflows can call its remove, which is why this waits;
 - install runs through migrations at boot, on a new or an existing project;
-- removal keeps `.workflows/`, the work and the migrations ledger with it,
-  so a later reinstall would find the ledger and not rerun the migrations
-  that put the hooks in place; deleting `.workflows/` takes the ledger, and
+- removal keeps `.workflows/`, the work and the record of migrations with it,
+  so a later reinstall would find the record and not rerun the migrations
+  that put the hooks in place; deleting `.workflows/` takes the record, and
   everything reinstalls;
 - a better install process may be worth a look, or migrations may be fine.
 
@@ -11027,7 +11155,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.2.8 Relies on: none. [R14; Claude's derivation]
 
-29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S13, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32 (23). [R14; Claude's derivation]
+29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S13, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S33 (24). [R14; Claude's derivation]
 
 ### 29.3 The ledger
 
@@ -11043,7 +11171,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.3.6 Relies on: 29.2. [R14; Claude's derivation]
 
-29.3.7 Proven by: 2.S11, 4.S14, 4.S16, 4.S24, 4.S25, 5.S1, 5.S2, 5.S3, 5.S4, 5.S5, 5.S6, 5.S7, 5.S8, 5.S9, 5.S10, 5.S12, 5.S13, 5.S14, 5.S15, 5.S16, 5.S17, 5.S18, 5.S19, 5.S20, 5.S21, 5.S22, 5.S24, 5.S25, 5.S28, 5.S29, 5.S31, 5.S32, 8.S26, 22.S16, 22.S18, 22.S19, 22.S20, 22.S24, 22.S36 (39). [R14; Claude's derivation]
+29.3.7 Proven by: 2.S11, 4.S14, 4.S16, 4.S24, 4.S25, 5.S1, 5.S2, 5.S3, 5.S4, 5.S5, 5.S6, 5.S7, 5.S8, 5.S9, 5.S10, 5.S12, 5.S13, 5.S14, 5.S15, 5.S16, 5.S17, 5.S18, 5.S19, 5.S20, 5.S21, 5.S22, 5.S24, 5.S25, 5.S28, 5.S29, 5.S31, 5.S32, 8.S26, 22.S16, 22.S18, 22.S19, 22.S20, 22.S24, 22.S36, 5.S33 (40). [R14; Claude's derivation]
 
 ### 29.4 The trust log and logging
 
@@ -11093,7 +11221,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.7.3 Relies on: 29.3, 29.6. [R14; Claude's derivation]
 
-29.7.4 Proven by: 6.S15, 6.S16, 6.S17, 13.S20 (4). [R14; Claude's derivation]
+29.7.4 Proven by: 6.S15, 6.S16, 6.S17, 13.S20, 6.S33 (5). [R14; Claude's derivation]
 
 ### 29.8 The doors
 
@@ -11105,7 +11233,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.8.4 Relies on: 29.2 to 29.7. [R14; Claude's derivation]
 
-29.8.5 Proven by: 2.S1, 2.S2, 4.S7, 4.S20, 6.S4, 6.S5, 6.S6, 6.S7, 6.S8, 6.S9, 6.S11, 6.S13, 6.S14, 6.S21, 6.S22, 6.S24, 6.S25, 6.S26, 6.S27, 6.S28, 6.S29, 6.S30, 27.S3 (23). [R14; Claude's derivation]
+29.8.5 Proven by: 2.S1, 2.S2, 4.S7, 4.S20, 6.S4, 6.S5, 6.S6, 6.S7, 6.S8, 6.S9, 6.S11, 6.S13, 6.S14, 6.S21, 6.S22, 6.S24, 6.S25, 6.S26, 6.S27, 6.S28, 6.S29, 6.S30, 27.S3, 6.S31, 6.S32 (25). [R14; Claude's derivation]
 
 ### 29.9 The model check
 
@@ -11147,7 +11275,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.11.6 Relies on: 29.2 to 29.8, 29.10. [R14; Claude's derivation]
 
-29.11.7 Proven by: 2.S5, 2.S12, 2.S13, 2.S14, 2.S15, 2.S16, 2.S17, 3.S2, 5.S11, 5.S26, 6.S1, 6.S2, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S14, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 16.S69, 17.S5, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 24.S18, 25.S2, 25.S3, 25.S4, 25.S9, 25.S13, 26.S3, 27.S4 (127). [R14; Claude's derivation]
+29.11.7 Proven by: 2.S5, 2.S12, 2.S13, 2.S14, 2.S15, 2.S16, 2.S17, 3.S2, 5.S11, 5.S26, 6.S1, 6.S2, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S14, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 16.S69, 17.S5, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 24.S18, 25.S2, 25.S3, 25.S4, 25.S9, 25.S13, 26.S3, 27.S4, 21.S49 (128). [R14; Claude's derivation]
 
 ### 29.12 Discovery
 
@@ -11201,7 +11329,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.15.4 Relies on: 29.2 to 29.8, 29.11 to 29.14. [R14; Claude's derivation]
 
-29.15.5 Proven by: 1.S9, 3.S1, 3.S5, 4.S23, 6.S10, 8.S9, 8.S18, 9.S23, 11.S14, 11.S19, 15.S8, 15.S20, 16.S36, 17.S4, 17.S6, 19.S1, 19.S5, 19.S6, 19.S7, 19.S8, 19.S9, 19.S10, 19.S11, 19.S12, 19.S13, 19.S14, 19.S15, 19.S16, 19.S18, 19.S20, 19.S21, 19.S22, 19.S23, 19.S24, 19.S26, 19.S28, 19.S29, 19.S30, 19.S31, 19.S32, 19.S33, 19.S34, 19.S35, 19.S36, 19.S37, 20.S18, 20.S19, 20.S20, 20.S23, 22.S21, 22.S22, 24.S8, 24.S17, 26.S10, 27.S8 (55). [R14; Claude's derivation]
+29.15.5 Proven by: 1.S9, 3.S1, 3.S5, 4.S23, 6.S10, 8.S9, 8.S18, 9.S23, 11.S14, 11.S19, 15.S8, 15.S20, 16.S36, 17.S4, 17.S6, 19.S1, 19.S5, 19.S6, 19.S7, 19.S8, 19.S9, 19.S10, 19.S11, 19.S12, 19.S13, 19.S14, 19.S15, 19.S16, 19.S18, 19.S20, 19.S21, 19.S22, 19.S23, 19.S24, 19.S26, 19.S28, 19.S29, 19.S30, 19.S31, 19.S32, 19.S33, 19.S34, 19.S35, 19.S36, 19.S37, 20.S18, 20.S19, 20.S20, 20.S23, 22.S21, 22.S22, 24.S8, 24.S17, 26.S10, 27.S8, 19.S38 (56). [R14; Claude's derivation]
 
 ### 29.16 The tracking layer
 
@@ -11209,11 +11337,11 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.16.2 Help reaches every menu, each menu's help an engine content file beside the menu's projection (23.2). [plan 11.3, plan 9.3; Claude's proposal]
 
-29.16.3 Draws on: §18, §23.2, §1.4, §5.8, §7.4, §8.1, §8.5, §8.6, §8.8, §8.10, §8.12, §9.2, §9.5, §10.1, §10.4, §12.13, §12.15, §19.1, §19.3, §19.5, §19.6, §22.6, §24.1, §25.2, §6.1, §14.6, §19.2, §20.3, §20.8, §20.11, §20.13, §20.14, §28.2, §9.7, §27.2, §10.2. [R14; Claude's derivation]
+29.16.3 Draws on: §18, §23.2, §1.4, §5.8, §7.4, §8.1, §8.5, §8.6, §8.8, §8.10, §8.12, §9.2, §9.5, §10.1, §10.4, §12.13, §12.15, §19.1, §19.3, §19.5, §19.6, §22.6, §24.1, §25.2, §6.1, §14.6, §19.2, §20.3, §20.8, §20.11, §20.13, §20.14, §28.2, §9.7, §27.2, §10.2, §4.11. [R14; Claude's derivation]
 
 29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1 (100). [R14; Claude's derivation]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67 (103). [R14; Claude's derivation]
 
 ### 29.17 The rest of the migration
 
@@ -11237,11 +11365,11 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.18.4 Then the user docs are rewritten (23.4), and the CLAUDE.md map. [plan 11.3, plan 9.4; Claude's proposal]
 
-29.18.5 Draws on: §22.1 to §22.5, §23, §13.12, §15.7, §17.4, §2.7, §7.1, §7.2, §12.7, §15.2, §15.9, §18.9, §24.2, §25.2, §25.4, §26.2, §28.1, §2.4, §8.12. [R14; Claude's derivation]
+29.18.5 Draws on: §22.1 to §22.5, §23, §13.12, §15.7, §17.4, §2.7, §7.1, §7.2, §12.7, §15.2, §15.9, §18.9, §24.2, §25.2, §25.4, §26.2, §28.1, §2.4, §8.12, §4.7. [R14; Claude's derivation]
 
 29.18.6 Relies on: 29.2 to 29.8, 29.12 to 29.17. [R14; Claude's derivation]
 
-29.18.7 Proven by: 2.S7, 7.S1, 7.S2, 7.S14, 7.S18, 8.S38, 8.S61, 12.S18, 13.S18, 15.S3, 15.S14, 15.S16, 17.S7, 18.S40, 22.S1, 22.S4, 22.S5, 22.S6, 22.S7, 22.S8, 22.S9, 22.S10, 22.S11, 22.S12, 22.S13, 22.S14, 22.S15, 22.S25, 22.S26, 22.S27, 22.S28, 22.S29, 22.S31, 22.S32, 22.S33, 22.S34, 22.S35, 23.S1, 23.S2, 23.S3, 23.S6, 23.S8, 23.S9, 23.S10, 23.S11, 23.S12, 23.S13, 23.S14, 23.S15, 23.S16, 23.S17, 24.S14, 25.S5, 25.S6, 25.S10, 26.S4, 26.S5, 26.S6 (58). [R14; Claude's derivation]
+29.18.7 Proven by: 2.S7, 7.S1, 7.S2, 7.S14, 7.S18, 8.S38, 8.S61, 12.S18, 13.S18, 15.S3, 15.S14, 15.S16, 17.S7, 18.S40, 22.S1, 22.S4, 22.S5, 22.S6, 22.S7, 22.S8, 22.S9, 22.S10, 22.S11, 22.S12, 22.S13, 22.S14, 22.S15, 22.S25, 22.S26, 22.S27, 22.S28, 22.S29, 22.S31, 22.S32, 22.S33, 22.S34, 22.S35, 23.S1, 23.S2, 23.S3, 23.S6, 23.S8, 23.S9, 23.S10, 23.S11, 23.S12, 23.S13, 23.S14, 23.S15, 23.S16, 23.S17, 24.S14, 25.S5, 25.S6, 25.S10, 26.S4, 26.S5, 26.S6, 22.S37 (59). [R14; Claude's derivation]
 
 ### 29.19 The ask rule
 

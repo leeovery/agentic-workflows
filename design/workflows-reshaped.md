@@ -3090,26 +3090,69 @@ The hook in R35 refuses writes outside this layout. `.workflows/` is a
 worktree of the state's own branch, never part of a code branch (R23).
 
 ```
-.workflows/
-├── manifest.json               registry, defaults, roadmap
-├── .ledger.jsonl               the project's stream (R23)
-├── .inbox/ .roadmap/ .baseline/ .state/ .knowledge/
-├── .cache/{unit}/…             gitignored session state, mirroring the unit's tree
-└── {unit}/
-    ├── manifest.json           status, the map's topics and order, where the build stands
+.workflows/                  the state worktree (4.1.2, 4.6.2)
+├── .git                     git's link to the repository
+├── .gitignore               4.11.3
+├── .lock                    the writer lock (4.3.1)
+├── manifest.json            4.11.3
+├── .ledger.jsonl            the project's stream (5.7.1)
+├── .inbox/                  4.11.16
+│   ├── ideas/ bugs/ quickfixes/
+│   │   └── {YYYY-MM-DD}--{slug}.md
+│   └── .archived/{kind}/{YYYY-MM-DD}--{slug}.md
+├── .roadmap/                4.11.16
+│   ├── sessions/session-NNN.md
+│   ├── notes/{YYYY-MM-DD}--{slug}.md
+│   └── assets/
+├── .state/
+│   └── migrations           4.7.4
+├── .tick/                   the tracker's store, with Tick (7.5.2)
+├── .knowledge/              gitignored (4.11.10)
+│   ├── records/{unit}/{topic}.md
+│   ├── product.md           8.9.13
+│   └── the store, its metadata and its config
+├── .cache/                  gitignored (4.11.3)
+│   ├── {unit}/…             mirrors the unit's tree
+│   │   └── last-looked.json 5.8.15
+│   ├── .roadmap/…           product-level spikes' builds
+│   └── .session-labels/
+└── {unit}/                  4.11.5
+    ├── manifest.json
     ├── discovery/session-NNN.md
+    ├── seeds/               4.11.16
     ├── topics/{topic}/
-    │   ├── brief.md            discovery's brief for the topic
-    │   ├── log.md              the journey, one dated heading per session
-    │   └── mail/NNN-*.md       messages waiting for it (R13)
-    ├── assets/                 what informs a decision (R12)
-    ├── seeds/  .state/
-    ├── spec.md                 the areas, then the phase cut (R14)
+    │   ├── brief.md
+    │   ├── log.md
+    │   ├── mail/NNN-*.md
+    │   └── experiments/E{n}-{slug}/        4.11.15
+    │       ├── problem.md, design.md, report.md
+    │       ├── data/
+    │       └── E{n}.{m}-{slug}/            a sub-experiment
+    ├── assets/
+    ├── spec.md
+    ├── spec-review.md
+    ├── summary.md           a quick-fix's (4.11.6, 19.5.17)
     ├── build/
-    │   ├── log.md              in flight, tried and dropped, left for the next phase
-    │   ├── notes.md            notes for later
-    │   └── tasks/{task}.md     each task's account
-    └── review/                 one report per round; the passing one is the certificate
+    │   ├── log.md
+    │   ├── notes.md
+    │   ├── tasks/{task}.md
+    │   ├── tasks/{task}/round-N-a.md, round-N-b.md
+    │   ├── phases/phase-N/review-a.md, review-b.md
+    │   └── runs/{scenario}/run-NNN.json    4.11.15
+    └── review/
+        ├── round-N.md
+        └── round-N-checks.md
+
+~/.config/workflows/         user level (4.11.14)
+├── config.json
+├── credentials.json
+├── trust.jsonl
+├── person.md
+├── brief-refusals.jsonl
+└── conversations/{session-id}/
+    ├── position.json
+    ├── briefs/{id}.md
+    └── the conversation's other files, as today
 ```
 
 - An epic has many topics; a feature one, named after the unit; a bugfix
@@ -3124,6 +3167,17 @@ worktree of the state's own branch, never part of a code branch (R23).
 - The person's own stream, the trust log (R25), and the record of the
   person (R27) live at user level, in `~/.config/workflows/`.
 - The phase cut lives at the end of `spec.md`.
+- Every place in the tree beyond the 2026-10-17 ruling is Claude's
+  proposal, asked by the person 2026-10-22 ("why is this decision left
+  to the builder? We should probably prescribe this type of thing"), in
+  the spec for their tick: the inbox's, the roadmap's and `.state/`'s
+  insides, seeds, experiments and verification runs, the reports'
+  names, the bare-repository placement and git config key, the
+  last-looked mark, the hooks' home, checklist progress, briefs and
+  their refusals, the product record's file, the user-level files, the
+  archived roadmap item, a quick-fix set's records, the move's
+  destinations and the environment setup on the project manifest. A
+  unit has no `.state/`.
 
 ## Shape review rulings
 
