@@ -1501,6 +1501,10 @@ roadmap item takes that item in, never a twin beside it, and the item leaves
 the roadmap (18.8.20). [today's product; Claude's sort, T40; ruled by the
 person 2026-10-21]
 
+8.1.7 Discovery is where the product is talked through, explored and shaped
+before any work is committed to, as important as any phase; settling the
+work's type is only its last step. [ruled by the person 2026-10-22]
+
 ### 8.2 One phase, at whatever level the conversation reaches
 
 8.2.1 Discovery is one phase at whatever level the conversation reaches. The
@@ -1568,16 +1572,8 @@ moves on to topics only when the person says so (8.8.19). [ruled by the person 2
 reading, surveying what exists. What it finds is input, logged with its
 sources. [ruled by the person 2026-10-22; logged with its sources, Claude's derivation]
 
-8.3.8 Everything in discovery is recorded from its first exchange: each
-session's log holds what was explored at whatever depth, the research with
-its sources, and a link to every spike and shared file. Before the
-work-type commit a session is logged with the roadmap's session logs, the
-one home that exists before a unit, and it stays there: one product-level
-session can shape a prototype, a V1 and a V2. When start this work creates a
-unit, the unit's first discovery log points back at the sections of the
-roadmap's logs that shaped it, as a roadmap item's pointers do (18.8.15).
-[ruled by the person 2026-10-22; where it is logged before the commit,
-Claude's proposal]
+8.3.8 Everything in discovery is recorded from its first exchange (8.14).
+[ruled by the person 2026-10-22]
 
 ### 8.4 The type call
 
@@ -1871,9 +1867,8 @@ their own words needs no confirm (8.8.6), and a session in which Claude
 changes the topics or their order beyond that ends on approve the map again.
 [R10, R17; Claude's derivation, O22]
 
-8.8.15 Before approve the map, Claude re-reads the session's discovery log
-against the conversation and adds what is missing. [today's product; Claude's
-sort, T43]
+8.8.15 Before approve the map, the session's log is checked as at every step
+that moves things on (8.14.4). [today's product; Claude's sort, T43]
 
 8.8.16 Removing an unstarted topic moves any mail waiting for it to the inbox,
 as cancelling does (18.4.14), and the one-line report says so. A roadmap item
@@ -2078,6 +2073,43 @@ sort, T26]
 persisted data, external contracts, decisions stacked on it — not by the size
 of the change; a public command surface is two-way until something depends on
 it. [R10]
+
+### 8.14 Discovery's record
+
+8.14.1 Nothing talked about in discovery is lost when the work comes: everything
+relevant is recorded, and everything can be reached from the work it shaped.
+[ruled by the person 2026-10-22]
+
+8.14.2 Claude keeps discovery's log as the conversation goes, recording
+everything relevant to come back and build from: what was explored at whatever
+depth, the person's leans (nothing in discovery is decided, 8.3.4), false
+paths, open questions, the research with its sources, and a link to every spike
+and file. How Claude writes it is Claude's: an instruction to follow, with no
+loop or cadence prescribed. [ruled by the person 2026-10-22]
+
+8.14.3 Before the work-type commit a session is logged with the roadmap's
+session logs, the one home that exists before a unit, and it stays there: one
+product-level session can shape a prototype, a V1 and a V2. When start this
+work creates a unit, the unit's first discovery log points back at the parts
+of the roadmap's logs that shaped it, as a roadmap item's pointers do
+(18.8.15). [ruled by the person 2026-10-22; where it is logged before the commit, Claude's proposal]
+
+8.14.4 Before each step that moves things on (plan the product's close, start
+this work, approve the map) and at a session's end, Claude re-reads the log
+against the conversation and adds what is missing. [ruled by the person 2026-10-22; today's check
+before approve the map extended]
+
+8.14.5 Every way back is kept: roadmap items point into the logs (18.8.15), a
+unit's first discovery log points back (8.14.3), and each point in a topic's
+brief links the part of the log it came from (8.7), so a topic can reach
+everything discovery explored about it. [ruled by the person 2026-10-22]
+
+8.14.6 After a compaction the recovery note brings back the skill, and with it
+the instruction to keep the log, and names the session's log (24.2.2, 24.2.8).
+[ruled by the person 2026-10-22; Claude's derivation]
+
+8.14.7 The knowledge base never indexes the logs (9.2.2): they are reached
+through these pointers. [R11, R44; the person 2026-10-22]
 
 ## 8-S. Scenarios for §8
 
@@ -2352,7 +2384,25 @@ first exchange happens, then its log is written with the roadmap's session
 logs; when start this work creates the unit, then that log stays with the
 roadmap's and the unit's first discovery log points at the sections that
 shaped it; given one session that shaped a prototype and a V1, then both
-units point into the same log, each at its own sections. (8.3.8, 24.2.8)
+units point into the same log, each at its own sections. (8.14.3, 24.2.8)
+
+8.S65 Given a plan-the-product session that ran all afternoon, when the person
+calls for its close, then before the screen proposing roadmap items Claude has
+re-read the session's log against the conversation and added what was missing;
+given a session that simply ends, the same check runs. (8.14.4)
+
+8.S66 Given a topic whose brief carries a lean from discovery, when the topic's
+discussion opens, then the lean links the part of the discovery log it came
+from, and the full exploration behind it can be read. (8.7.3, 8.14.5)
+
+8.S67 Given a discovery session that compacts mid-conversation, when it
+carries on, then the recovery note has brought back the skill and named the
+session's log, and the log goes on being kept. (8.14.6, 24.2.2)
+
+8.S68 Given a discovery session, when its log is read, then it holds what was
+explored, the leans, false paths and open questions, the research with its
+sources and links to the spikes and files the session produced, and no
+decision. (8.3.4, 8.14.2)
 
 ## 9. Discussion
 
@@ -10439,7 +10489,7 @@ session wherever the workflows run (24.2.1). [Claude's sort, B74, T61]
 24.2.8 In discovery, once the work-type commit has run, the recovery note
 names the active discovery log and the unit's map; at the product level, the
 roadmap's session log. Before the commit, it names the session's log with the
-roadmap's (8.3.8). [today's product; Claude's sort, T42; before the commit,
+roadmap's (8.14.3). [today's product; Claude's sort, T42; before the commit,
 ruled by the person 2026-10-22]
 
 ## 24-S. Scenarios for §24
@@ -10516,7 +10566,7 @@ from the epic menu's experiments-waiting row, or a feature's Continue.
 24.S19 Given a discovery session past the work-type commit, when the context
 compacts, then the recovery note names the active discovery log and the
 unit's map; given a session before the commit, the note names the session's
-log with the roadmap's. (8.3.8, 24.2.8)
+log with the roadmap's. (8.14.3, 24.2.8)
 
 ## 25. Prose tests and the test suites
 
@@ -11109,7 +11159,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.12.4 Relies on: 29.2 to 29.8, 29.11. [R14; Claude's derivation]
 
-29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64 (54). [R14; Claude's derivation]
+29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64, 8.S65, 8.S66, 8.S67, 8.S68 (58). [R14; Claude's derivation]
 
 ### 29.13 Specification and the phase cut
 

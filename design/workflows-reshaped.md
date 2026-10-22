@@ -616,7 +616,16 @@ project's own measurements decide (R7).
     with the roadmap's session logs and stays there, since one
     product-level session can shape a prototype, a V1 and a V2; a unit's
     first discovery log points back at the sections that shaped it —
-    Claude's proposal for where. The length stays:
+    Claude's proposal for where. Discovery's record is a rule of its own,
+    ruled by the person 2026-10-22: nothing talked about is lost when the
+    work comes; Claude keeps the log as the conversation goes, recording
+    everything relevant, how it writes it left to Claude ("Claude is
+    pretty good now at documenting stuff, so we don't need to
+    over-prescribe how, as long as everything gets done"); it is checked
+    against the conversation before each step that moves things on and
+    at a session's end; every way back is kept, each point in a brief
+    linking the part of the log it came from; and the compaction re-read
+    the gate mod brings keeps the instruction alive. The length stays:
     Fumi's discovery ran to about 150 of the person's replies over two
     sessions.
   - **Feature and epic stay two types, and the call between them is
