@@ -3874,8 +3874,9 @@ takes the next free number in its section. [Claude's derivation]
 11.11.4 The person can stop at any time and ask at any time. Claude answers a
 comment beneath its line, the person can answer back as many times as they
 like, and a tick on the line agrees Claude's last answer. The page steps the
-person through the lines Claude has answered. [ruled by the person
-2026-10-22]
+person through the lines Claude has answered, and takes them to the earliest
+line still waiting on them: never marked, changed since its tick, or answered
+by Claude. [ruled by the person 2026-10-22]
 
 11.11.5 Claude reads the page's comments when the person asks: once the page
 is open, ready to build's review row reads them, as a word in the conversation
@@ -3884,8 +3885,12 @@ does. [Claude's derivation]
 11.11.6 An agreed answer that changes what the spec decides is written as an
 entry in the topic it belongs to, decided by the person, and the spec is
 rewritten from it, as a gap's answer is (11.7.4); an answer that changes only
-the wording changes the spec. The page is republished with every mark kept.
-[Claude's derivation]
+the wording changes the spec. The page is republished with every mark kept,
+but a tick agrees a line as it is worded: a line whose wording has changed
+since its tick, by a change the person agreed to or any other, reads unticked
+and marked changed until they tick the new wording. A change to a line's
+sources alone keeps its tick. [Claude's derivation; a tick holds the wording,
+ruled by the person 2026-10-22]
 
 11.11.7 Picking the build's position ends the review. Each ticked line is
 recorded as approved by the person; every line not ticked is carried through
@@ -4062,6 +4067,12 @@ without review, and the trust matrix's counts are unchanged. (11.11.7, 11.11.9,
 
 11.S27 Given a session that cannot publish a page, when ready to build shows,
 then it offers no review. (11.11.11)
+
+11.S28 Given a line the person ticked after Claude's answer to their comment,
+when the change lands and the page is republished, then the line reads
+unticked and marked changed, its conversation kept, and the step to the
+earliest line waiting on them lands on it ahead of any later line; given a
+change to the line's sources alone, then its tick stands. (11.11.4, 11.11.6)
 
 ## 12. The build
 
@@ -11301,7 +11312,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.13.5 Relies on: 29.2 to 29.8, 29.11, 29.12. [R14; Claude's derivation]
 
-29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3 (28). [R14; Claude's derivation]
+29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28 (29). [R14; Claude's derivation]
 
 29.13.7 The person's review of the spec, offered at ready to build, comes with it (11.11). [ruled by the person 2026-10-22]
 
