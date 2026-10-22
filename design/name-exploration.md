@@ -176,6 +176,24 @@ The method, in the person's words:
 | Brief | what an architect or barrister is handed before acting for you | No: too general and common |
 | Mandate | the authority to act for someone | No reaction |
 
+**Round 13 (2026-10-22): the room given, and sailing (leeway is a sailing word).** The person: "We're finally dialled into some space… I'm not sure any of those are quite right, but they're definitely good directionally." Out-of-the-box names that land on something cute are welcome: "It's kind of that out-of-the-box thinking that I quite like, which could cause us to land on a cute name."
+
+| Name | Meaning | Outcome |
+|---|---|---|
+| Headroom | the room left before a limit: how much Claude may decide before it must ask | No reaction |
+| Latitude | the freedom to act on your own judgement | No: "that is a festival near where I live, so it doesn't ring right to me" |
+| Purview | the range of what someone has authority over | No reaction |
+| Headway | a ship's progress forward, the partner of leeway | "Headway is cool" |
+| Sea room | open water enough to manoeuvre safely, away from the rocks | Made the person laugh: "I'm not saying it's right, but it's directionally correct" |
+
+**Round 14 (2026-10-22): sailing, leaning cute.** The person: "Not really keen on the nautical theme." Bosun (runs the deck crew for the captain), Slipway (where a ship is built and launched), Spinnaker (the sail flown when the wind is behind you), Underway, Fair Wind: no, for the theme.
+
+**Round 15 (2026-10-22): everyday words, no sea.** The person: "no, try some more." Shorthand (what collaborators develop: less needs saying), Legwork (the work done for you while you decide), Wavelength (understanding without spelling it out), The Usual (what the barman pours a regular), Wiggle Room (Leeway's cheekier cousin): no.
+
+**Round 16 (2026-10-22): the authority handed over, everyday English.** The person: "These are drifting slightly off-centre now. Need to course correct a little way back." Behalf (decide and build on your behalf), Upfront (the person's own word for the method), Forethought, Sway ("holds sway"), Instead (the wildcard): off-centre, none taken. The centre is round 13's: the room given and the way made, as Leeway and Headway are.
+
+**Round 17 (2026-10-22): back to the room given and earned.** The person: "no." Clearance (permission and room, earned in levels), Allowance (pocket money that grows as you prove yourself), Runway (where speed is gathered before lifting off), Elbow Room, Headstart: no.
+
 ### Facts found along the way
 
 - **Sumi is in use** by a Claude Code design plugin (github.com/phazurlabs/sumi, started with `/sumi:start`) and by a dictation app, Sumi Voice. The person isn't bothered.
