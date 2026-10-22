@@ -1572,10 +1572,12 @@ sources. [ruled by the person 2026-10-22; logged with its sources, Claude's deri
 session's log holds what was explored at whatever depth, the research with
 its sources, and a link to every spike and shared file. Before the
 work-type commit a session is logged with the roadmap's session logs, the
-one home that exists before a unit; start this work moves it into the new
-unit as its first discovery log, so the unit holds its whole history, and a
-conversation that never becomes work keeps its log with the roadmap's.
-[ruled by the person 2026-10-22; where it is logged before the commit, Claude's proposal]
+one home that exists before a unit, and it stays there: one product-level
+session can shape a prototype, a V1 and a V2. When start this work creates a
+unit, the unit's first discovery log points back at the sections of the
+roadmap's logs that shaped it, as a roadmap item's pointers do (18.8.15).
+[ruled by the person 2026-10-22; where it is logged before the commit,
+Claude's proposal]
 
 ### 8.4 The type call
 
@@ -2347,9 +2349,10 @@ input, and nothing is decided from it. (8.3.4, 8.3.7)
 
 8.S64 Given a discovery conversation before the work-type commit, when its
 first exchange happens, then its log is written with the roadmap's session
-logs; when start this work creates the unit, then that log moves into the unit
-as its first discovery log; given a conversation that never becomes work,
-then its log stays with the roadmap's. (8.3.8, 24.2.8)
+logs; when start this work creates the unit, then that log stays with the
+roadmap's and the unit's first discovery log points at the sections that
+shaped it; given one session that shaped a prototype and a V1, then both
+units point into the same log, each at its own sections. (8.3.8, 24.2.8)
 
 ## 9. Discussion
 

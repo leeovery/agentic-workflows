@@ -613,8 +613,10 @@ project's own measurements decide (R7).
     into a topic-based exploration"); and everything in it is recorded
     from its first exchange ("it's a very important phase, arguably one of
     the most important"). Before the work-type commit a session is logged
-    with the roadmap's session logs and start this work moves it into the
-    unit — Claude's proposal for where. The length stays:
+    with the roadmap's session logs and stays there, since one
+    product-level session can shape a prototype, a V1 and a V2; a unit's
+    first discovery log points back at the sections that shaped it —
+    Claude's proposal for where. The length stays:
     Fumi's discovery ran to about 150 of the person's replies over two
     sessions.
   - **Feature and epic stay two types, and the call between them is
