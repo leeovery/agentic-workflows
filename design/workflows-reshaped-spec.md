@@ -3941,6 +3941,11 @@ the review. [Claude's derivation]
 marks are read back, starting from the page and scripts this release's own
 spec was reviewed with. [Claude's sort]
 
+11.11.13 The page is one fixed page in every project: its controls and its
+filters are the workflows' own, drawn from the kinds of line §11 fixes for
+every spec, and never adapted for a project. A view a spec needs is added to
+the workflows' page, for every project. [ruled by the person 2026-10-22]
+
 ## 11-S. Scenarios for §11
 
 11.S1 Given an epic with three topics decided and one neither decided,
