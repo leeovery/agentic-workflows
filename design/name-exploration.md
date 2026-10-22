@@ -38,9 +38,10 @@ The method, in the person's words:
 
 ### Where it stands
 
-- **Sumi** is the closest, but not chosen: "Sumi is the best of a bad bunch, is what I'm feeling."
-- **The direction that came closest** is "someone who acts for you" (round 10). Round 11 dug into it: "Some are definitely a no, some are a maybe. Nothing particularly jumps out." The person hasn't yet marked which.
-- **How deep a rename goes** is decided with the name. The product, the repository, the docs and help are cheap to rename. The `workflow-*` skill names and each project's `.workflows/` folder are a migration.
+- **Leeway** is liked, and parked (round 12, 2026-10-22): "I like leeway, park it." Remit is a maybe.
+- **Sumi** was the closest before it: "Sumi is the best of a bad bunch, is what I'm feeling."
+- **The direction that came closest** is "someone who acts for you" (round 10). Round 11 dug into it: "Some are definitely a no, some are a maybe. Nothing particularly jumps out." The person hasn't yet marked which. Round 12 turned it round, naming what you give the one who acts for you rather than the person.
+- **How deep a rename goes** is decided with the name. The product, the repository, the docs and help are cheap to rename. The rest follows the name: the install (`leeovery/agentic-workflows`), the command typed (`/workflow-start`, which could become `/leeway`), the `workflow-*` skill names, each project's `.workflows/` folder, the state branch `workflows-state` (spec 4.9.1), `~/.config/workflows/` and the `WORKFLOWS_*` environment variables. Before the reshape's build these cost a word: its migration already moves every project's `.workflows/` onto the new state branch and its skills are rewritten. After the release they are a second migration of every project.
 - **An observation, not a ruling:** the person's other tools are named for an everyday thing doing the tool's job: Switchboard, Turnstile, Mint, Tick, Portal, SitRep, and Fumi ("note"). The early rounds chased the method's philosophy instead.
 
 ### Every option, round by round
@@ -165,6 +166,15 @@ The method, in the person's words:
 - **The role, in English:** Deputy, Envoy, Squire, Aide, Regent, Reeve, Proxy, Second, Understudy, Herald, Concierge, Factor, Delegate, Emissary, Legate, Liaison, Attaché, Vicar, Proctor, Trustee, Warden, Keeper, Provost, Purser, Chamberlain, Seneschal, Majordomo, Adjutant, Marshal, Retainer, Surrogate, Factotum (does everything for you), Locum (the doctor who stands in for yours), Lieutenant ("place-holder"), Intendant (the king's agent running a province), Ward (Old English "keeper", the root of steward).
 - **The role, in another language:** Banto (番頭, the head clerk who ran a merchant house for its owner), Wakili (Swahili: the agent or advocate who acts for you), Wakil (Arabic: one entrusted to act for another), Vizier, Diwan (the minister who ran a state for its ruler), Munshi (the trusted secretary and scribe), Mantri (Sanskrit: counsellor), Fattore (Italian: estate steward), Castaldo (medieval Italian estate steward), Meier (German manor steward), Vogt (German steward, bailiff), Vilicus (Latin: ran the farm while the owner was away), Procurator, Legatus (an envoy with full powers), Proxenos (Greek: looked after another city's interests; the root of "proxy"), Oikonomos (Greek: the household's steward; the root of "economy").
 - **A person who plays the role:** Jeeves, Friday, Mentor (Odysseus left his household in his care), Nestor (Homer's counsellor; Haddock's butler), Sancho, Passepartout, Bunter, Samwise, Watson, Hudson, Carson, Alfred.
+
+**Round 12 (2026-10-22): what you give the one who acts for you.** Claude decides more on your behalf as it learns your taste, so the name is the room it is given. The person: "I like leeway, park it. remit is a maybe. brief is too general and common."
+
+| Name | Meaning | Outcome |
+|---|---|---|
+| Leeway | the freedom to act on someone's behalf, and how much of it is earned; also "Lee's way", never leaned on | Liked, parked |
+| Remit | what someone has been given to decide and do for you | Maybe |
+| Brief | what an architect or barrister is handed before acting for you | No: too general and common |
+| Mandate | the authority to act for someone | No reaction |
 
 ### Facts found along the way
 
