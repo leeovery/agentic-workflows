@@ -112,7 +112,7 @@ How to read it:
 
 1.4.5 Each phase's context before its first question is within its budget (2.10). [plan 1.4; Claude's; R43]
 
-1.4.6 A dress rehearsal has run: the person takes one small piece of real work through every phase on a rehearsal copy, live, from start to finish report. [plan 1.4; Claude's]
+1.4.6 A test project has been taken through the parts of the process that run without a real conversation — the engine's commands, the migration, the gates and the screens — beside the prose tests. No whole run with a live conversation is required before the release: the first full runs are live, on the person's real projects, after it. [plan 1.4; ruled by the person 2026-10-22]
 
 1.4.7 The epic menu no longer shows a topic's own session as still running after the session ends; the person asked for this check on 2026-10-12. [plan 1.4; Claude's]
 
@@ -162,7 +162,7 @@ How to read it:
 
 1.S6 Given every other condition holding, when a rebuilt prose-test case fails for one work type, its agents' prose walked at the efforts their definitions fix and the main session's prose at the walker's effort set for the run, then the release is not ready. (1.4.1, 1.4.4)
 
-1.S7 Given a rehearsal copy, when the person takes one small piece of real work through every phase live, then it runs from start to finish report before the release is ready. (1.4.6)
+1.S7 Given the test project, when the parts of the process that run without a real conversation are taken through it, then each behaves as the spec says before the release is ready; and nothing waits on a whole live run. (1.4.6)
 
 1.S8 Given an epic whose topic session has ended, when the epic menu renders, then it does not show that topic's session as still running. (1.4.7)
 
@@ -10998,7 +10998,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.20.1 Step 4 runs the rehearsal on copies of all 13 projects and their variants, adjusting the migration until every copy migrates cleanly (21.12). [plan 11.5; R39]
 
-29.20.2 Then the dress rehearsal (1.4.6), the merge into `main`, and the person's release (1.7.6). [plan 11.5; Claude's proposal]
+29.20.2 Then the test project's run (1.4.6), the merge into `main`, and the person's release (1.7.6). [plan 11.5; Claude's proposal; ruled by the person 2026-10-22]
 
 29.20.3 Draws on: §1.2 to §1.4, §1.7, §21.12, §26.2. [R14; Claude's derivation]
 

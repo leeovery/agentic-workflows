@@ -3382,6 +3382,14 @@ own detection finds nothing in either.
   one mid-build, simulated through tasks since the migration never
   touches code. Moving files is mechanical and easy to check; the focus
   is the ledger's completeness and the logs' shape.
+  - **No whole live run before the release**, ruled by the person
+    2026-10-22, replacing the plan's dress rehearsal: a test project
+    takes the parts of the process that run without a real
+    conversation — the engine's commands, the migration, the gates and
+    the screens — beside the prose tests, and the first full runs are
+    live on the person's real projects after the release ("At some
+    point, we have to take the leap of faith and then test it live with
+    real projects").
   - **Fumi** is the largest derivation: 430,066 words across 13
     discussions and 4 research files, 173 decided items, roughly 600–900
     answers and 200-odd findings, an estimated hour of the first start
