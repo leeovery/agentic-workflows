@@ -1535,10 +1535,16 @@ Start or through plan the product. [R22, plan 3.11; ruled by the person
 together, and Claude never decides there alone. [R24; the person's framing
 2026-10-13]
 
-### 8.3 No detail, and nothing decided
+### 8.3 Any depth, and nothing decided
 
-8.3.1 Claude asks no detail questions in discovery. It shapes scope and what
-the work touches; detail is discussion's. [R10, plan 3.3]
+8.3.1 Discovery is exploration, as deep as the person takes it, area by area:
+high level where they keep it, deep where they go, ideas thrown around,
+designs and code spiked, a rough proposal, the frameworks and every moving
+part explored, the person setting the intent and Claude honouring it. Claude
+follows the person into detail and explores it with
+them, but never asks a question to settle a point: settling is discussion's,
+where it is talked through for real because the spec and the build come
+next (8.3.4). [R10, plan 3.3; ruled by the person 2026-10-22]
 
 8.3.2 Discovery's guidance no longer invites decisions, in an epic's second
 discovery conversation as anywhere else. [R10]
@@ -1549,9 +1555,27 @@ discovery conversation as anywhere else. [R10]
 2026-10-19]
 
 8.3.5 The brief carries what was said in discovery — the person's leans,
-rejected paths, open questions, and what a spike showed about the direction —
-as input, which the discussion phase decides. [R10, plan 3.3; ruled by the
-person 2026-10-19]
+rejected paths, open questions, the detail explored, and what a spike showed —
+as input, which the discussion phase decides, opening from it rather than
+starting again. [R10, plan 3.3; ruled by the person 2026-10-19; the detail
+explored, ruled by the person 2026-10-22]
+
+8.3.6 Discovery is never rushed toward discussion. It runs as long as the
+person wants, in one sitting or over days or weeks of sessions, and the work
+moves on to topics only when the person says so (8.8.19). [ruled by the person 2026-10-22]
+
+8.3.7 Discovery may research to feed the exploration: searching online,
+reading, surveying what exists. What it finds is input, logged with its
+sources. [ruled by the person 2026-10-22; logged with its sources, Claude's derivation]
+
+8.3.8 Everything in discovery is recorded from its first exchange: each
+session's log holds what was explored at whatever depth, the research with
+its sources, and a link to every spike and shared file. Before the
+work-type commit a session is logged with the roadmap's session logs, the
+one home that exists before a unit; start this work moves it into the new
+unit as its first discovery log, so the unit holds its whole history, and a
+conversation that never becomes work keeps its log with the roadmap's.
+[ruled by the person 2026-10-22; where it is logged before the commit, Claude's proposal]
 
 ### 8.4 The type call
 
@@ -1980,11 +2004,11 @@ today's dismissed topics the same way. [R10, R24; Claude's derivation, T21]
 
 ### 8.11 Spikes in discovery
 
-8.11.1 Discovery may spike to see the shape. A discovery spike settles shape,
-not detail, so the no-detail rule stands. What it shows about the direction
-is input the brief carries, its files land as reference assets (9.10), and the
+8.11.1 Discovery may spike to see the shape, and a discovery spike goes as
+far as it needs, full code examples included (8.3.1). What it shows is input
+the brief carries, its files land as reference assets (9.10), and the
 first topics' opening views read them. [R12, R10; ruled by the person
-2026-10-13 and 2026-10-19; Claude's derivation]
+2026-10-13 and 2026-10-19; as far as it needs, ruled by the person 2026-10-22; Claude's derivation]
 
 8.11.2 A spike for the whole epic happens in discovery, reached through the
 epic menu's discovery row (key d), with no surface of its own. [R12; key d
@@ -2069,8 +2093,9 @@ discovery meets it at the product level and logs it per session in the
 roadmap's session logs. (8.2.5)
 
 8.S4 Given an epic's discovery conversation, when the person's talk turns to
-detail, then Claude asks no detail question and what the person said goes into
-the brief as input, not as a decision. (8.2.6, 8.3.1, 8.3.2, 8.3.4, 8.3.5,
+detail, then Claude explores it with them, spikes included, and asks no
+question to settle a point; what was explored goes into the brief as input,
+not as a decision, and the topic's discussion opens from it. (8.2.6, 8.3.1, 8.3.2, 8.3.4, 8.3.5,
 8.7.2)
 
 8.S5 Given a conversation showing one piece of work, when Claude makes the
@@ -2310,6 +2335,21 @@ person asks for one as a new topic, it is added. (8.10.11)
 
 8.S61 Given a project where the person declined the brownfield offer, when start
 runs again, then the offer is not made. (8.12.11)
+
+8.S62 Given a discovery conversation the person carries over several days,
+when they come back, then it resumes from its log, nothing has moved it on to
+topics or the map, and the map is proposed only when the person calls for it.
+(8.3.6, 8.8.19)
+
+8.S63 Given the person asks what already exists, when Claude researches in
+discovery, then what it found is in the session's log with its sources, as
+input, and nothing is decided from it. (8.3.4, 8.3.7)
+
+8.S64 Given a discovery conversation before the work-type commit, when its
+first exchange happens, then its log is written with the roadmap's session
+logs; when start this work creates the unit, then that log moves into the unit
+as its first discovery log; given a conversation that never becomes work,
+then its log stays with the roadmap's. (8.3.8, 24.2.8)
 
 ## 9. Discussion
 
@@ -2854,9 +2894,12 @@ live link — is kept in `assets/` as it is written, so nothing is left in a
 session folder; its dependencies, builds and run output go in the gitignored
 cache. [R12, plan 3.4; Claude's call 2026-10-19]
 
-9.10.11 A product-level spike's files go in `.roadmap/assets/`, which replaces
-`.roadmap/imports/` as a unit's `assets/` replaces `imports/`, each linked from
-the product-wide decision it informs. [R12; Claude's call 2026-10-19]
+9.10.11 A product-level spike's files, and files the person shares at the
+product level, go in `.roadmap/assets/`, which replaces `.roadmap/imports/` as
+a unit's `assets/` replaces `imports/`. Each is linked from the roadmap session
+log that brought it in, since nothing is decided at the product level (8.3.4),
+and from a product-wide decision once one cites it. [R12; Claude's call
+2026-10-19; linked from the log, Claude's derivation]
 
 9.10.12 A design spike runs in rounds and ends in a lock. A lock is a question
 on the map ("which design?"), closed by the person's choice: a ledger entry
@@ -3047,8 +3090,10 @@ as evidence. (9.10.17)
 9.S38 Given a spike carried scaffolding nobody discussed, then no entry or spec
 statement cites it as decided. (9.10.15)
 
-9.S39 Given a product-level spike, then its files are in `.roadmap/assets/`,
-linked from the product-wide decision they inform. (9.10.11)
+9.S39 Given a product-level spike, or a file the person shares in plan the
+product, then its files are in `.roadmap/assets/`, linked from the roadmap
+session log that brought them in; given a later topic's decision cites one,
+then it is linked from that decision too. (9.10.11)
 
 9.S40 Given a topic in discussion, when a deep dive or the closing pass's fresh
 reader runs, then a named agent does it, and the conversation stays in the main
@@ -4066,6 +4111,10 @@ task new, and a change they ask for lands before anything is built on it.
 Running tasks side by side (12.7.3) is auto's. [ruled by the person
 2026-10-22]
 
+12.7.10 Where the project's code lives in child repos (7.2.17), a task's
+worktree holds a worktree of each child repo, laid out as the project is, so
+tasks run side by side there as anywhere. Left to the builder: how. [ruled by the person 2026-10-22]
+
 ### 12.8 How the builder works
 
 12.8.1 No red-green loop is prescribed. Tests are written from the acceptance
@@ -4709,6 +4758,11 @@ what blocks it. (12.12.11)
 12.S52 Given a build in step with two ready tasks sharing no files, when the
 orchestrator takes them, then the first runs alone and its gate stops, and the
 second starts only after the person's go. (12.7.3, 12.7.9)
+
+12.S53 Given a project whose code lives in child repos and two ready tasks
+sharing no files, when they run side by side in auto, then each task's
+worktree holds every child repo laid out as the project is, and each task's
+change lands in the repos it touched. (7.2.17, 12.7.3, 12.7.10)
 
 ## 13. Reviews in the build
 
@@ -10381,8 +10435,9 @@ session wherever the workflows run (24.2.1). [Claude's sort, B74, T61]
 
 24.2.8 In discovery, once the work-type commit has run, the recovery note
 names the active discovery log and the unit's map; at the product level, the
-roadmap's session log. Before the commit nothing is on disk, and shaping
-carries on from the conversation. [today's product; Claude's sort, T42]
+roadmap's session log. Before the commit, it names the session's log with the
+roadmap's (8.3.8). [today's product; Claude's sort, T42; before the commit,
+ruled by the person 2026-10-22]
 
 ## 24-S. Scenarios for §24
 
@@ -10457,8 +10512,8 @@ from the epic menu's experiments-waiting row, or a feature's Continue.
 
 24.S19 Given a discovery session past the work-type commit, when the context
 compacts, then the recovery note names the active discovery log and the
-unit's map; given a session before the commit, shaping carries on from the
-conversation. (24.2.8)
+unit's map; given a session before the commit, the note names the session's
+log with the roadmap's. (8.3.8, 24.2.8)
 
 ## 25. Prose tests and the test suites
 
@@ -11051,7 +11106,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.12.4 Relies on: 29.2 to 29.8, 29.11. [R14; Claude's derivation]
 
-29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5 (51). [R14; Claude's derivation]
+29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64 (54). [R14; Claude's derivation]
 
 ### 29.13 Specification and the phase cut
 
@@ -11081,7 +11136,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.14.5 Relies on: 29.2 to 29.8, 29.11 to 29.13. [R14; Claude's derivation]
 
-29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52 (155). [R14; Claude's derivation]
+29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52, 12.S53 (156). [R14; Claude's derivation]
 
 ### 29.15 The work types
 

@@ -591,16 +591,32 @@ project's own measurements decide (R7).
     separate product-level phase was considered and rejected: it would
     make the person name the level before they start. Ruled by the person
     2026-10-13.
-  - **Claude asks no detail questions in discovery.** It shapes scope and
-    what the work touches; detail is discussion's. Today's guidance invites
-    decisions in an epic's second conversation, and the person pushed back
-    every time it did: "Why are you asking that question? We're in
-    discovery"; "the whole point of this process is to surface topics…
-    It's not for making decisions or shaping CLI" (Fumi); "rather than
-    making granular decisions at this discovery stage, we should be
-    thinking about what else is affected" (Portal's
-    tagging-and-filtering). The length stays: Fumi's discovery ran to
-    about 150 of the person's replies over two sessions.
+  - **Discovery goes as deep as the person takes it, and decides
+    nothing**, ruled by the person 2026-10-22: ideas thrown around, designs
+    and code spiked, a rough proposal, the frameworks and every moving part
+    explored ("I don't necessarily think it's bad to go into detail… I
+    don't think we should be making firm decisions. That's what the
+    discussion phase is for, where we actually bring it forward and now we
+    talk about it for real"). Claude follows into detail but never asks a
+    question to settle a point: today's guidance invites decisions in an
+    epic's second conversation, and the person pushed back every time it
+    did: "Why are you asking that question? We're in discovery"; "the whole
+    point of this process is to surface topics… It's not for making
+    decisions or shaping CLI" (Fumi); "rather than making granular
+    decisions at this discovery stage, we should be thinking about what
+    else is affected" (Portal's tagging-and-filtering). The detail explored
+    rides in the brief, and discussion opens from it.
+    Discovery is exploration, high level in some areas and deep in others
+    as the person sets the intent; it may research online; it is never
+    rushed toward discussion and can run for days or weeks ("It could go
+    on for hours, days, or weeks before you're ready to actually proceed
+    into a topic-based exploration"); and everything in it is recorded
+    from its first exchange ("it's a very important phase, arguably one of
+    the most important"). Before the work-type commit a session is logged
+    with the roadmap's session logs and start this work moves it into the
+    unit — Claude's proposal for where. The length stays:
+    Fumi's discovery ran to about 150 of the person's replies over two
+    sessions.
   - **Feature and epic stay two types, and the call between them is
     light.** A feature is linear by definition and its menus are simpler.
     Discovery leans one topic; the work becomes an epic only when the
@@ -939,18 +955,20 @@ project's own measurements decide (R7).
     design export and its live link — is kept in `assets/` as it is
     written, so nothing is left in a session folder; its dependencies,
     builds and run output go in the gitignored cache. A product-level
-    spike's files go in `.roadmap/assets/`, which replaces
-    `.roadmap/imports/` as a unit's `assets/` replaces `imports/`, each
-    linked from the product-wide decision it informs.
+    spike's files, and files shared at the product level, go in
+    `.roadmap/assets/`, which replaces `.roadmap/imports/` as a unit's
+    `assets/` replaces `imports/`, each linked from the roadmap session log
+    that brought it in, and from a product-wide decision once one cites it.
   - **A lock is a question on the map** ("which design?"), closed by the
     person's choice: a ledger entry with the design as its canonical
     asset, no gate of its own. Rejected designs stay reference, the reason
     they lost in the log; a later spike that challenges a lock supersedes
     it like any decision, with its reason.
   - **Discovery may spike to see the shape** and decide the direction of
-    travel — "a valid use of discovery" (the person, Fumi). It settles
-    shape, not detail, so the no-detail rule stands; what it shows lands
-    as reference and the first topics' opening views read it.
+    travel — "a valid use of discovery" (the person, Fumi). It goes as
+    far as it needs, full code examples included (the person 2026-10-22);
+    what it shows lands as reference and the first topics' opening views
+    read it.
   - **Claude's own spikes back its calls** (R24): the reference assets
     attach to Claude's ledger entry as its evidence, so "what have you
     decided without me" shows how Claude found out.
@@ -3484,7 +3502,7 @@ person, one item at a time; the sections above hold the detail.
   the map stays topics and order (R10); the cone narrows as the product
   takes shape, not phase by phase (R24); foundations first for the cone's
   sake, with research others rest on first (R41); discovery one phase at
-  whatever level the conversation reaches, no detail questions in it,
+  whatever level the conversation reaches, as deep as the person takes it and deciding nothing,
   feature and epic two types with a light call between them (R10, R19);
   the product record — a projection of the ledger with a rendered file a CLAUDE.md line can point at, never CLAUDE.md itself, started
   in discovery, added to from decisions at a topic's decided screen, read by every
@@ -3839,7 +3857,9 @@ an epic), which opened what stores what. Resolve each, then climb:
     2026-10-17: tasks go through the engine to a driver, Tick the only
     one shipped (R35).
   - **How one build runs**, ruled by the person 2026-10-14: parallel
-    tasks each in their own worktree, merged back by the orchestrator,
+    tasks each in their own worktree (in a project whose code lives in
+    child repos, holding a worktree of each, laid out as the project is —
+    the person 2026-10-22), merged back by the orchestrator,
     work on a shared file one task at a time; phases overlap where they
     can — a phase that does not rely on the one before starts while that
     one is in its phase review, one that does waits for its merge, the
