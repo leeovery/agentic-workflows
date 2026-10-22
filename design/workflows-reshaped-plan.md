@@ -1103,12 +1103,6 @@ in a code worktree works the same as one in the main checkout.
   commit door refuses a code commit on it, and the landing driver never
   targets it.
 
-10.4 **A bare repository with worktrees.**
-- There is no main checkout to sit in, so the state worktree is added
-  beside the code worktrees.
-- Its path is held in the repository's own git config, which every
-  worktree shares, and the engine reads it from there in every layout.
-
 10.5 **A fresh clone.** Boot finds the remote's state branch with no
 worktree and adds one. Finding neither, on a project being set up, it
 creates the orphan branch.

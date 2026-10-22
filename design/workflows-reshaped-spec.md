@@ -523,7 +523,7 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 4.2.2 The skills never assume `.workflows/` sits under the session's own folder, so a session working in a code worktree works the same as one in the main checkout. [plan 10.1; Claude's; record, engineering still unclear]
 
-4.2.3 The state worktree's path is held in the repository's own git config, which every worktree shares, and the engine reads it from there in every layout of the repository. [plan 10.4; Claude's]
+4.2.3 The state worktree's path is held in the repository's own git config, which every worktree shares, and the engine reads it from there in every worktree of the repository. [plan 10.1; Claude's]
 
 4.2.4 The key is `workflows.stateWorktree`, holding the state worktree's absolute path, set in the repository's own config (`git config --local`) and never in a worktree's own. Git config is not pushed, so each clone's boot writes its own (4.5.1). [plan 10; Claude's proposal]
 
@@ -603,12 +603,6 @@ n/no  → Leave it unset — setup carries on without it
 4.5.1 Boot finds the remote's state branch with no worktree and adds the worktree, locked. [plan 10.5, plan 9.2; Claude's]
 
 4.5.2 Finding neither a state worktree nor a state branch on the remote, on a project being set up, boot creates the orphan branch. [plan 10.5; Claude's]
-
-### 4.6 A bare repository with worktrees
-
-4.6.1 Where the repository is bare with worktrees, there is no main checkout to sit in, so the state worktree is added beside the code worktrees, its path held in the repository's git config (4.2.3). [plan 10.4; Claude's]
-
-4.6.2 The state worktree goes where the bare repository sits. A bare repository named with a leading dot, `.bare` or `.git`, sits in the project's own folder, and the state worktree is added there as `.workflows/`, beside the code worktrees: `portal/.bare` gives `portal/.workflows/` beside `portal/main/`. One named for the project, `portal.git` among other repositories, takes `portal.workflows/` beside it. The hook before Bash guards the state worktree by the path in git config (4.2.4), whatever its folder is called. [plan 10.4; Claude's proposal]
 
 ### 4.7 A second clone
 
@@ -755,7 +749,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.11.17 The whole layout, as one tree: every path the workflows write is in it, each entry naming the line that sets it. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal]
 
 ```text
-.workflows/                  the state worktree (4.1.2, 4.6.2)
+.workflows/                  the state worktree (4.1.2)
 ├── .git                     git's link to the repository
 ├── .gitignore               4.11.3
 ├── .lock                    the writer lock (4.3.1)
@@ -846,8 +840,6 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S12 Given a project being set up with no state worktree and no state branch on the remote, when boot runs, then an orphan `workflows-state` branch exists afterwards. (4.5.2, 4.9.1)
 
-4.S13 Given a bare repository with worktrees, when the state worktree is created, then it sits beside the code worktrees, its path is in the repository's git config, and the engine run from any of the code worktrees resolves the same state. (4.2.3, 4.6.1)
-
 4.S14 Given two clones that each appended ledger entries since their last push, when the clone that is behind runs `state sync`, then its ledger holds the remote's entries first and its own unpushed entries after them in their order, the new commit's parent is the remote's tip, the push is made with lease, the append-only check passes on both clones afterwards, and neither clone's config holds a merge driver for the state. (4.7.1, 4.7.2, 4.7.3, 4.7.8)
 
 4.S15 Given the remote moved between the fetch and the push of a sync, when the push with lease fails, then the sync retries. (4.7.2)
@@ -885,8 +877,6 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.S31 Given the state branch gone from the remote and from this clone but present in another clone, when boot runs in that other clone, then it pushes the branch back to the remote; when boot next runs in this clone, it restores the branch from the remote and nothing is lost. (4.4.4, 4.4.5, 4.4.12)
 
 4.S32 Given the state branch gone from this clone and the remote with no other copy, when boot runs, then it stops, saying what was lost and that the code is untouched; given the person's yes, then a fresh state branch is created and plan the product opens with the product researcher's read of the code; given a no, then nothing is written. (4.4.5)
-
-4.S33 Given a bare repository at `portal/.bare` with its code worktrees in `portal/`, when the state worktree is created, then it is `portal/.workflows/`, and `git config --local workflows.stateWorktree` gives its absolute path from every worktree; given a bare `portal.git` among other repositories, then the state worktree is `portal.workflows/` beside it, and the hook before Bash refuses removing it. (4.2.4, 4.4.2, 4.6.2)
 
 4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.roadmap/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
 
@@ -11212,17 +11202,17 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.2.3 This part puts the state on its own branch: the state worktree, the lock, commit and push, and the second clone's merge (§4). [plan 11.2; Claude's proposal]
 
-29.2.4 It carries section 10's defaults for the state: finding the state, git inside the state worktree, the branch's name, a bare repository with worktrees, a fresh clone, and manifests in a second clone's merge (4.2, 4.5 to 4.9). [plan 11.2, plan 10.1–10.6; Claude's proposal]
+29.2.4 It carries section 10's defaults for the state: finding the state, git inside the state worktree, the branch's name, a fresh clone, and manifests in a second clone's merge (4.2, 4.5, 4.7 to 4.9). [plan 11.2, plan 10.1–10.3, plan 10.5, plan 10.6; Claude's proposal]
 
 29.2.5 Boot adds the state worktree on a fresh clone, locked, and checks the state worktree and the state branch on every run (22.1.2). [plan 9.2, plan 10.5, plan 4.2; Claude's proposal]
 
 29.2.6 The weight check is made against the assembled spec before this first phase starts, and each cut it finds is brought to the person (1.6). [plan 1.6; Claude's derivation]
 
-29.2.7 Draws on: §1.6, §4.1 to §4.9, §22.1. [R14; Claude's derivation]
+29.2.7 Draws on: §1.6, §4.1 to §4.5, §4.7 to §4.9, §22.1. [R14; Claude's derivation]
 
 29.2.8 Relies on: none. [R14; Claude's derivation]
 
-29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S13, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S33 (24). [R14; Claude's derivation]
+29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32 (22). [R14; Claude's derivation]
 
 ### 29.3 The ledger
 
@@ -11472,7 +11462,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 825 listed are the 825 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 823 listed are the 823 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 

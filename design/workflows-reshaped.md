@@ -3106,7 +3106,7 @@ The hook in R35 refuses writes outside this layout. `.workflows/` is a
 worktree of the state's own branch, never part of a code branch (R23).
 
 ```
-.workflows/                  the state worktree (4.1.2, 4.6.2)
+.workflows/                  the state worktree (4.1.2)
 ├── .git                     git's link to the repository
 ├── .gitignore               4.11.3
 ├── .lock                    the writer lock (4.3.1)
@@ -3193,7 +3193,7 @@ worktree of the state's own branch, never part of a code branch (R23).
   to the builder? We should probably prescribe this type of thing"), in
   the spec for their tick: the inbox's, the roadmap's and `.state/`'s
   insides, seeds, experiments and verification runs, the reports'
-  names, the bare-repository placement and git config key, the
+  names, the git config key, the
   last-looked mark, the hooks' home, checklist progress, briefs and
   their refusals, the product record's file, the user-level files, the
   archived roadmap item, a quick-fix set's records, the move's
@@ -3753,9 +3753,8 @@ practice (R23) — a session working in a code worktree has no
 under the session's own and the engine hands out where it is; git hooks
 fire inside it, so every engine git call
 skips them and clears inherited git environment; the branch's name
-guarded against matching a code branch; where `.workflows/` sits when
-the repository is bare with worktrees; a fresh clone's setup adding the
-worktree; unit manifests in a second clone's merge, derived from the
+guarded against matching a code branch; a fresh clone's setup adding
+the worktree; unit manifests in a second clone's merge, derived from the
 ledger or merged field by field by the engine; how the driver shows a
 phase not yet written.
 
