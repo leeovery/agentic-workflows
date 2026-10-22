@@ -80,7 +80,7 @@ How to read it:
 
 ### 1.2 What it covers
 
-1.2.1 The release covers strand A, the restructure; strand B, trust; strand C, verification; the measures; the migration that brings every project onto the new shape; and the areas the design record never reached: the brownfield assessment, the setup gates and environment setup, help and the glossary, the user docs, the prose-test harness and the test suites, and handoffs and compaction recovery. [plan 1.2, plan 9]
+1.2.1 The release covers strand A, the restructure; strand B, trust; strand C, verification; the measures; the migration that brings every project onto the new shape; and the areas the design record never reached: the brownfield assessment, the setup gates and environment setup, help and the glossary, the user docs, the prose-test harness and the test suites, and handoffs and compaction recovery. [plan 1.2, plan 9; Claude's proposal]
 
 ### 1.3 One release
 
@@ -120,9 +120,9 @@ How to read it:
 
 ### 1.5 The size of it
 
-1.5.1 The release rewrites most of the product, which at the plan's writing holds 280,000 words of skill prose in 327 files and 43,000 words across 34 agents; 44,000 lines of engine and 72 migrations; about 125 verbs and 150 rendered surfaces; and 208 prose-test cases and a pipeline simulation of 54 scenarios. [plan 1.5]
+1.5.1 The release rewrites most of the product, which at the plan's writing holds 280,000 words of skill prose in 327 files and 43,000 words across 34 agents; 44,000 lines of engine and 72 migrations; about 125 verbs and 150 rendered surfaces; and 208 prose-test cases and a pipeline simulation of 54 scenarios. [plan 1.5; Claude's proposal]
 
-1.5.2 These go whole: today's research, discussion, planning and scoping skills; the plan formats; the analysis loops; grouping; the dependencies between specs; the cross-cutting type; and the baseline skill (§8 for the brownfield assessment). [plan 1.5, plan 9.1]
+1.5.2 These go whole: today's research, discussion, planning and scoping skills; the plan formats; the analysis loops; grouping; the dependencies between specs; the cross-cutting type; and the baseline skill (§8 for the brownfield assessment). [plan 1.5, plan 9.1; the baseline ruled by the person 2026-10-22]
 
 ### 1.6 The weight check
 
@@ -525,7 +525,7 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 4.2.3 The state worktree's path is held in the repository's own git config, which every worktree shares, and the engine reads it from there in every layout of the repository. [plan 10.4; Claude's]
 
-4.2.4 Left to the builder: the name of the git config key that holds the state worktree's path. [plan 10, engineering the build settles]
+4.2.4 Left to the builder: the name of the git config key that holds the state worktree's path. [plan 10, engineering the build settles; Claude's proposal]
 
 ### 4.3 Locks and pushing
 
@@ -592,7 +592,7 @@ n/no  → Leave it unset — setup carries on without it
 
 4.6.1 Where the repository is bare with worktrees, there is no main checkout to sit in, so the state worktree is added beside the code worktrees, its path held in the repository's git config (4.2.3). [plan 10.4; Claude's]
 
-4.6.2 Left to the builder: where exactly beside the code worktrees the state worktree is added, and its folder's name. [plan 10.4, engineering the build settles]
+4.6.2 Left to the builder: where exactly beside the code worktrees the state worktree is added, and its folder's name. [plan 10.4, engineering the build settles; Claude's proposal]
 
 ### 4.7 A second clone
 
@@ -639,7 +639,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.8.1 Every engine git call in the state worktree runs with hooks off and the inherited git environment cleared (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`), so a hook in the person's code repository never fires on a state commit, and a git call made from inside a hook never writes the wrong tree. [plan 10.2; Claude's; record, engineering still unclear]
 
-4.8.2 Left to the builder: how the engine turns hooks off for its git calls in the state worktree. [plan 10.2, engineering the build settles]
+4.8.2 Left to the builder: how the engine turns hooks off for its git calls in the state worktree. [plan 10.2, engineering the build settles; Claude's proposal]
 
 ### 4.9 The branch's name
 
@@ -672,9 +672,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `.cache/{unit}/…`: gitignored session state, mirroring the unit's tree;
 - one folder per work unit, `{unit}/`.
 
-[Layout on disk; plan 9.1]
+[Layout on disk; plan 9.1; ruled by the person 2026-10-22]
 
-4.11.4 The layout has no `.baseline/`: a project holding `.baseline/` docs has them moved to assets as reference by the migration (§8, §21). [plan 9.1; Claude's; Claude's derivation]
+4.11.4 The layout has no `.baseline/`: a project holding `.baseline/` docs has them moved to assets as reference by the migration (§8, §21). [plan 9.1; ruled by the person 2026-10-22; Claude's derivation]
 
 4.11.5 A work unit's folder, `{unit}/`, holds:
 - `manifest.json`: status, the map's topics and order, and where the build stands;
@@ -950,7 +950,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.8.2 The map, a topic's record and the product record are folds of the stream, worked out when read, with no saved projection in the work unit; an index comes only if reads slow. [R23]
 
-5.8.3 The `ledger` verbs read: the record, the map, the product record, "since you last looked", and what a replacement affects (6.1.4). [plan 6.1, plan 11.2]
+5.8.3 The `ledger` verbs read: the record, the map, the product record, "since you last looked", and what a replacement affects (6.1.4). [plan 6.1, plan 11.2; Claude's proposal]
 
 5.8.4 A topic's record shows each current answer with the answers it replaced folded beneath it (5.6.5), and shows other topics' current answers rather than restating them, so a change leaves no stale copy to correct. What else a record holds is §9's. [R23, R11]
 
@@ -1211,7 +1211,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.5.4 The records a brief draws on are the task, its spec sections, the ledger's decided calls, the diff, earlier reports verbatim, and the project's linters (§22). [plan 6.5; Claude's; Brief control]
 
-6.5.5 Project skills and CLAUDE.md reach the agent without the brief (§15). [plan 6.5, plan 7.7]
+6.5.5 Project skills and CLAUDE.md reach the agent without the brief (§15). [plan 6.5, plan 7.7; Claude's proposal]
 
 6.5.6 Anything else an agent should know goes onto the task or into the ledger, never into the brief (§13). [Brief control; plan 3.7]
 
@@ -1219,11 +1219,11 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.5.8 Claude's other subagents are untouched by that hook. [Brief control]
 
-6.5.9 A refusal is recorded with its reason, so a template that keeps getting in the way is improved rather than worked around. [plan 6.5, Brief control]
+6.5.9 A refusal is recorded with its reason, so a template that keeps getting in the way is improved rather than worked around. [plan 6.5, Brief control; Claude's proposal]
 
-6.5.10 A fix round is issued the same way: its brief carries the two reviewers' reports verbatim and nothing added — nothing of the orchestrator's, which takes from the reports only the verdict and the nits it fixes. [plan 6.5; Brief control]
+6.5.10 A fix round is issued the same way: its brief carries the two reviewers' reports verbatim and nothing added — nothing of the orchestrator's, which takes from the reports only the verdict and the nits it fixes. [plan 6.5; Brief control; Claude's proposal]
 
-6.5.11 Which agents the workflows own is §26's. [plan 6.5]
+6.5.11 Which agents the workflows own is §26's. [plan 6.5; Claude's proposal]
 
 6.5.12 Left to the builder: where filled briefs and the brief hook's refusals are stored. [Claude's sort, B16]
 
@@ -1984,33 +1984,33 @@ made by installing them; the workflows never ask it. [R12; the person
 
 8.12.2 Building a v1 fast is done outside the workflows; a later install comes
 in through the roadmap's plan the product (§18 §18). [R12,
-plan 9.1]
+plan 9.1; ruled by the person 2026-10-22]
 
 8.12.3 Today's brownfield assessment folds into discovery: on an existing
 codebase it becomes product-level discovery, the conversation started from
-code. [R12, plan 9.1; agreed by the person 2026-10-19]
+code. [R12, plan 9.1; ruled by the person 2026-10-22]
 
 8.12.4 The roadmap's plan the product opens with the baseline's research when
 the code predates the workflows. The product researcher, one of the
-workflows' named agents, does that research (§26). [plan 9.1, plan 6.5; agreed by the person]
+workflows' named agents, does that research (§26). [plan 9.1, plan 6.5; ruled by the person 2026-10-22]
 
 8.12.5 In that conversation, what the person states is input, decided in the
 first topic it bears on; what is observed in the code lands as findings saying
 how they are known; what stays open goes on the roadmap. [plan 9.1, R10;
-agreed by the person; Claude's derivation, O32]
+ruled by the person 2026-10-22; Claude's derivation, O32]
 
 8.12.6 The baseline skill, its files and its status fields go, and with them
 its agendas, its interview procedure and its area scoping, since discovery's
 conversation is a field; the baseline's research survives as the product
-researcher's (8.12.4). [plan 9.1, plan 1.5; agreed by the person; Claude's
+researcher's (8.12.4). [plan 9.1, plan 1.5; ruled by the person 2026-10-22; Claude's
 derivation, O32]
 
 8.12.7 The start menu's offer stays, pointing at plan the product. [plan 9.1;
-agreed by the person]
+ruled by the person 2026-10-22]
 
 8.12.8 A project holding `.baseline/` docs has them moved to
 `.roadmap/assets/` as reference by the migration, the move dropping the
-baseline's status fields (§21 §21). [plan 9.1; agreed by the person;
+baseline's status fields (§21 §21). [plan 9.1; ruled by the person 2026-10-22;
 Claude's derivation, O32]
 
 8.12.9 Left to the builder: how a finding observed in the code is tagged in the
@@ -2316,7 +2316,7 @@ session, at the person's effort (§26 §26). [R46, plan
 
 9.1.6 Today's research and discussion skills go whole. The verbs that served
 research threads and today's discussion map go (§6 §6).
-[plan 1.5, plan 6.1]
+[plan 1.5, plan 6.1; Claude's proposal]
 
 9.1.7 A feature in discussion is an epic with one topic: its decision can be
 the opening view and one answer. [R19]
@@ -4708,13 +4708,13 @@ what blocks it. (12.12.11)
 
 ### 13.12 Brief quality, measured
 
-13.12.1 Brief quality is a measurement: the same builder and reviewers run on a thin brief and on the full template, over the replay's Switchboard slices (`walks/build/replay/`). It tunes the templates. [Brief control; plan 8.4]
+13.12.1 Brief quality is a measurement: the same builder and reviewers run on a thin brief and on the full template, over the replay's Switchboard slices (`walks/build/replay/`). It tunes the templates. [Brief control; plan 8.4; Claude's proposal]
 
 13.12.2 The measurement runs before the release, once the templates exist. [plan 8.4; Claude's, agreed]
 
 13.12.3 Its cost is bounded by the replay's: $606 for 264 agents at API prices. [plan 8.4; Claude's, agreed]
 
-13.12.4 Two tests run alongside it on the same slices: a habit hook (15.7), and the task-size test, the same work cut into tasks either side of the 10,000-line guide (a large task against the same work split in two), which moves where the guide sits (the guide: see §12, §12). Running the task-size test here is Claude's call. [Brief control; plan 8.4]
+13.12.4 Two tests run alongside it on the same slices: a habit hook (15.7), and the task-size test, the same work cut into tasks either side of the 10,000-line guide (a large task against the same work split in two), which moves where the guide sits (the guide: see §12, §12). Running the task-size test here is Claude's call. [Brief control; plan 8.4; Claude's proposal]
 
 13.12.5 Left to the builder: what a thin brief is, and how the measurement changes a template. [Claude's sort, B44]
 
@@ -4890,11 +4890,11 @@ what blocks it. (12.12.11)
 
 15.2.9 The verify setup lives in the product's code and is built by tasks: the first phase's tasks build it (the first phase's principle: see §12, §12), and each later phase adds the drives for its own scenarios. [plan 7.1; R15]
 
-15.2.10 Because the verify setup drives the product and changes with it, it rides the same pull requests and reviews as the code. [plan 7.1]
+15.2.10 Because the verify setup drives the product and changes with it, it rides the same pull requests and reviews as the code. [plan 7.1; Claude's proposal]
 
-15.2.11 The project's environment setup records where the verify setup is and how to call its five parts (the environment setup: see §22). The feature map sits beside the verify setup. [plan 7.1]
+15.2.11 The project's environment setup records where the verify setup is and how to call its five parts (the environment setup: see §22). The feature map sits beside the verify setup. [plan 7.1; Claude's proposal]
 
-15.2.12 The verify setup is not kept on the state branch, where a phase's drives would land outside the phase's stack. [plan 7.1]
+15.2.12 The verify setup is not kept on the state branch, where a phase's drives would land outside the phase's stack. [plan 7.1; Claude's proposal]
 
 15.2.13 The verify setup holds how to run the product safely, given once. [R20]
 
@@ -5935,11 +5935,11 @@ Comment → Tell me how to word it
 
 ### 17.2 Two audiences, and where the measures show
 
-17.2.1 The overturn rate, the findings split and bugs after review are the product's measures. Review findings per phase, contracts slipping and context before the first question are this repo's, seen in queries and the prose harness. [plan 8.2]
+17.2.1 The overturn rate, the findings split and bugs after review are the product's measures. Review findings per phase, contracts slipping and context before the first question are this repo's, seen in queries and the prose harness. [plan 8.2; Claude's proposal]
 
 17.2.2 The measures are computed, never added to what the person reads at a gate: no measure adds a line to a topic's decided screen or the finish report, which keep the contents agreed for them. Each is shown on the matrix screen or one question away. [R36, plan 8.2; ruled by the person 2026-10-14 (a list they never asked for is one "I end up ignoring") and 2026-10-19]
 
-17.2.3 Screen: the prose harness's run summary shows contracts slipping, by contract, and the context each phase spent before its first question, against the budget (§25). [plan 8.1]
+17.2.3 Screen: the prose harness's run summary shows contracts slipping, by contract, and the context each phase spent before its first question, against the budget (§25). [plan 8.1; Claude's proposal]
 
 17.2.4 Screen: the authors' engine query of review findings per phase shows the findings for each phase of the pipeline (17.1.5) over the projects it is run on, from the ledger's findings and the pairs' recorded verdicts and rounds. [R36, plan 8.1; Claude's derivation]
 
@@ -7086,7 +7086,7 @@ measured 2026-10-19 on Claude Code 2.1.303]
 20.2.2 Docked beside a fullscreen transcript the pane has the full height.
 Inline above the prompt (the main-screen layout) it gets about a third, and
 draws the same lines spread to its width, leaving the scrolling to Claude
-Code. [plan 10.9; the locked spike]
+Code. [plan 10.9; the locked spike; Claude's proposal]
 
 20.2.3 A banner — one line in the band above the prompt — names the work and
 where it stands, and carries a button that shows or hides the board:
@@ -9359,7 +9359,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 ### 21.11 The brownfield docs
 
-21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.roadmap/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32]
+21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.roadmap/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32; ruled by the person 2026-10-22]
 
 ### 21.12 Rehearsal before release
 
@@ -9505,7 +9505,7 @@ walkthrough offer, session labels, the knowledge gate and the migration
 review. [plan 9.2; Claude's]
 
 22.2.2 Start's offer of the brownfield assessment stays, pointing at the
-roadmap's "plan the product"; the baseline skill it pointed at goes (§8). [plan 9.1; Claude's]
+roadmap's "plan the product"; the baseline skill it pointed at goes (§8). [plan 9.1; ruled by the person 2026-10-22]
 
 22.2.3 When the session runs below medium, the recommended minimum effort,
 start says so once and carries on (§26 §26).
@@ -10726,19 +10726,19 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.1 Where the work lands
 
-29.1.1 The reshape is built on one long-lived branch cut from `main`. [plan 11.1]
+29.1.1 The reshape is built on one long-lived branch cut from `main`. [plan 11.1; Claude's proposal]
 
-29.1.2 Each step lands on the reshape branch as a stack, reviewed as usual. [plan 11.1]
+29.1.2 Each step lands on the reshape branch as a stack, reviewed as usual. [plan 11.1; Claude's proposal]
 
-29.1.3 The design record and the plan stay on PR #1480 until the end. [plan 11.1]
+29.1.3 The design record and the plan stay on PR #1480 until the end. [plan 11.1; Claude's proposal]
 
-29.1.4 `main` takes fixes only while the reshape is built, and each fix is merged into the reshape branch as it lands. [plan 11.1]
+29.1.4 `main` takes fixes only while the reshape is built, and each fix is merged into the reshape branch as it lands. [plan 11.1; Claude's proposal]
 
-29.1.5 A new migration on `main` moves the shape the reshape migrates from, so the reshape's migration is rebased onto it. [plan 11.1]
+29.1.5 A new migration on `main` moves the shape the reshape migrates from, so the reshape's migration is rebased onto it. [plan 11.1; Claude's proposal]
 
-29.1.6 The reshape branch merges into `main` once every condition of 1.4 holds, and the person releases (29.20). [plan 11.1]
+29.1.6 The reshape branch merges into `main` once every condition of 1.4 holds, and the person releases (29.20). [plan 11.1; Claude's proposal]
 
-29.1.7 The build runs in four steps, its phases in the order numbered here: step 1, the foundations (29.2 to 29.8); step 2, the restructure with verification alongside (29.9 to 29.18); step 3, the ask rule (29.19); step 4, rehearsal and the release (29.20). What comes later is 29.21. [plan 11.2–11.6]
+29.1.7 The build runs in four steps, its phases in the order numbered here: step 1, the foundations (29.2 to 29.8); step 2, the restructure with verification alongside (29.9 to 29.18); step 3, the ask rule (29.19); step 4, rehearsal and the release (29.20). What comes later is 29.21. [plan 11.2–11.6; Claude's proposal]
 
 29.1.8 Each phase lists the sections it draws on, the earlier phases it relies on and the scenarios that prove it. Whoever writes a phase's tasks reads the sections it draws on in full, and reads further wherever they meet a seam. [R14; plan 3.5]
 
@@ -10748,15 +10748,15 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.2 State on its own branch
 
-29.2.1 Step 1 is the foundations: engine and mod only, with no skill prose. Each of its seven parts (29.2 to 29.8) lands with its tests. [plan 11.2]
+29.2.1 Step 1 is the foundations: engine and mod only, with no skill prose. Each of its seven parts (29.2 to 29.8) lands with its tests. [plan 11.2; Claude's proposal]
 
 29.2.2 The engine's phase tables carry the merged phase's name, discussion, from this first step. [plan 11.2; R9, ruled 2026-10-20]
 
-29.2.3 This part puts the state on its own branch: the state worktree, the lock, commit and push, and the second clone's merge (§4). [plan 11.2]
+29.2.3 This part puts the state on its own branch: the state worktree, the lock, commit and push, and the second clone's merge (§4). [plan 11.2; Claude's proposal]
 
-29.2.4 It carries section 10's defaults for the state: finding the state, git inside the state worktree, the branch's name, a bare repository with worktrees, a fresh clone, and manifests in a second clone's merge (4.2, 4.5 to 4.9). [plan 11.2, plan 10.1–10.6]
+29.2.4 It carries section 10's defaults for the state: finding the state, git inside the state worktree, the branch's name, a bare repository with worktrees, a fresh clone, and manifests in a second clone's merge (4.2, 4.5 to 4.9). [plan 11.2, plan 10.1–10.6; Claude's proposal]
 
-29.2.5 Boot adds the state worktree on a fresh clone, locked, and checks the state worktree and the state branch on every run (22.1.2). [plan 9.2, plan 10.5, plan 4.2]
+29.2.5 Boot adds the state worktree on a fresh clone, locked, and checks the state worktree and the state branch on every run (22.1.2). [plan 9.2, plan 10.5, plan 4.2; Claude's proposal]
 
 29.2.6 The weight check is made against the assembled spec before this first phase starts, and each cut it finds is brought to the person (1.6). [plan 1.6; Claude's derivation]
 
@@ -10768,11 +10768,11 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.3 The ledger
 
-29.3.1 Step 1's second part builds the ledger: the events and their schemas, ids, the append-only check, the write hook, and the projections — the record, the map, the product record, "since you last looked", the entries a replacement affects, and the verdict queue (§5). [plan 11.2]
+29.3.1 Step 1's second part builds the ledger: the events and their schemas, ids, the append-only check, the write hook, and the projections — the record, the map, the product record, "since you last looked", the entries a replacement affects, and the verdict queue (§5). [plan 11.2; Claude's proposal]
 
-29.3.2 It builds the one-thing-per-entry check, judged by a separate Claude call as an entry is written (5.5, 16.19). [plan 11.2, plan 4.8]
+29.3.2 It builds the one-thing-per-entry check, judged by a separate Claude call as an entry is written (5.5, 16.19). [plan 11.2, plan 4.8; Claude's proposal]
 
-29.3.3 The `ledger` verbs are its door (6.1.4). [plan 6.1]
+29.3.3 The `ledger` verbs are its door (6.1.4). [plan 6.1; Claude's proposal]
 
 29.3.4 When a topic's entries change, the engine renders the topic's record into `.workflows/.knowledge/` and the knowledge base indexes it, and the product record is rendered beside it (5.8.12, 5.8.13, §22.6). [R23, R44]
 
@@ -10784,9 +10784,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.4 The trust log and logging
 
-29.4.1 Step 1's third part builds the trust log, in the user-level workflows config directory, and logs into it the raises, the calls, the departures, the gate answers from the mod, and the position switches (§16.13). [plan 11.2, plan 4.5]
+29.4.1 Step 1's third part builds the trust log, in the user-level workflows config directory, and logs into it the raises, the calls, the departures, the gate answers from the mod, and the position switches (§16.13). [plan 11.2, plan 4.5; Claude's proposal]
 
-29.4.2 The `gate` verb takes the person's answer at any gate, logs it under the gate's name with the mod running or not, and returns what happens next (§6.6). [plan 6.1, plan 6.6]
+29.4.2 The `gate` verb takes the person's answer at any gate, logs it under the gate's name with the mod running or not, and returns what happens next (§6.6). [plan 6.1, plan 6.6; Claude's proposal]
 
 29.4.3 Draws on: §16.12, §16.13, §6.6, §3.2, §3.3, §4.11. [R14; Claude's derivation]
 
@@ -10796,11 +10796,11 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.5 The decision point
 
-29.5.1 Step 1's fourth part builds the decision point: the `raise` verb and its three answers, ask, proceed and ask blind (§16.2, 6.1.5). [plan 11.2]
+29.5.1 Step 1's fourth part builds the decision point: the `raise` verb and its three answers, ask, proceed and ask blind (§16.2, 6.1.5). [plan 11.2; Claude's proposal]
 
-29.5.2 Until the ask rule is built (29.19), the decision point asks every call Claude has a lean on, so the phases can be built and walked against it. [plan 11.2]
+29.5.2 Until the ask rule is built (29.19), the decision point asks every call Claude has a lean on, so the phases can be built and walked against it. [plan 11.2; Claude's proposal]
 
-29.5.3 A raise is drawn by an engine command, and one command records its answer, "I don't follow" included, in the ledger and the trust log (16.9, 16.13). [plan 4.4, plan 6.1]
+29.5.3 A raise is drawn by an engine command, and one command records its answer, "I don't follow" included, in the ledger and the trust log (16.9, 16.13). [plan 4.4, plan 6.1; Claude's proposal]
 
 29.5.4 Draws on: §16.1, §16.2, §16.3, §16.9, §16.12, §16.13, §5.1, §5.3, §6.1. [R14; Claude's derivation]
 
@@ -10810,9 +10810,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.6 The drivers
 
-29.6.1 Step 1's fifth part builds the task verbs, the Tick driver and their conformance suite (7.1, 7.3). [plan 11.2, plan 6.7]
+29.6.1 Step 1's fifth part builds the task verbs, the Tick driver and their conformance suite (7.1, 7.3). [plan 11.2, plan 6.7; Claude's proposal]
 
-29.6.2 It builds the landing verbs, GitHub's driver and the local driver, and their conformance suite (7.2, 7.3). [plan 11.2, plan 6.7]
+29.6.2 It builds the landing verbs, GitHub's driver and the local driver, and their conformance suite (7.2, 7.3). [plan 11.2, plan 6.7; Claude's proposal]
 
 29.6.3 It carries section 10's defaults for the tracker: a phase not yet written, and the tracker's state on the state branch (7.4, 7.5). The plan lists section 10's defaults under the state (plan 11.2); these two need the tracker's driver, which this part builds. [plan 10.7, plan 10.8, plan 11.2; Claude's derivation]
 
@@ -10824,7 +10824,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.7 Briefs
 
-29.7.1 Step 1's sixth part builds the brief templates, the fill verb, `brief`, and the dispatch hook (§6.5). [plan 11.2]
+29.7.1 Step 1's sixth part builds the brief templates, the fill verb, `brief`, and the dispatch hook (§6.5). [plan 11.2; Claude's proposal]
 
 29.7.2 Draws on: §6.5, §13.11, §13.9. [R14; Claude's derivation]
 
@@ -10834,9 +10834,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.8 The doors
 
-29.8.1 Step 1's seventh part builds the layout hook, the commit door's task check, and the checklists (6.2, 6.3, 6.4). [plan 11.2]
+29.8.1 Step 1's seventh part builds the layout hook, the commit door's task check, and the checklists (6.2, 6.3, 6.4). [plan 11.2; Claude's proposal]
 
-29.8.2 It builds the remaining door verbs of section 6 (6.1). [plan 11.2]
+29.8.2 It builds the remaining door verbs of section 6 (6.1). [plan 11.2; Claude's proposal]
 
 29.8.3 Draws on: §6, §2.2, §2.3, §4.4, §4.9, §4.11, §27.2, §21.9. [R14; Claude's derivation]
 
@@ -10846,11 +10846,11 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.9 The model check
 
-29.9.1 Step 2 is the restructure, with verification alongside: prose and engine surfaces, phase by phase (29.9 to 29.18). Each phase lands with its prose-test cases, its walks and its share of the pipeline simulation. [plan 11.3]
+29.9.1 Step 2 is the restructure, with verification alongside: prose and engine surfaces, phase by phase (29.9 to 29.18). Each phase lands with its prose-test cases, its walks and its share of the pipeline simulation. [plan 11.3; Claude's proposal]
 
-29.9.2 The model check is Claude's, promised 2026-10-12: a one-time table of every part of the plan with its layer and what changes when the next model lands. [plan 11.3]
+29.9.2 The model check is Claude's, promised 2026-10-12: a one-time table of every part of the plan with its layer and what changes when the next model lands. [plan 11.3; Claude's proposal]
 
-29.9.3 Anything whose answer is an engine or structure change is moved, or brought to the person. [plan 11.3]
+29.9.3 Anything whose answer is an engine or structure change is moved, or brought to the person. [plan 11.3; Claude's proposal]
 
 29.9.4 Draws on: §1 to §28, each read for its layer; §2.4. [R14; Claude's derivation]
 
@@ -10860,7 +10860,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.10 CONVENTIONS.md
 
-29.10.1 CONVENTIONS.md is rewritten for the new shape: what a phase skill holds — its goal, its done-condition, its guidance, the verbs it names, and its checklist. [plan 11.3]
+29.10.1 CONVENTIONS.md is rewritten for the new shape: what a phase skill holds — its goal, its done-condition, its guidance, the verbs it names, and its checklist. [plan 11.3; Claude's proposal]
 
 29.10.2 The sort of every rule into contract, required procedure or how-to (2.2) is then done skill by skill, as each skill is rewritten in the phases after this one. [plan 11.3; R2]
 
@@ -10874,7 +10874,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.11.1 Discussion is rewritten first, with the record-and-log split, as the record's Sequence step 4 orders (§9). [plan 11.3; record: Sequence step 4]
 
-29.11.2 Its migration steps land with it: the move and the records directive, with the directive machinery the records directive runs under (21.5, 21.6, 21.10). [plan 11.3]
+29.11.2 Its migration steps land with it: the move and the records directive, with the directive machinery the records directive runs under (21.5, 21.6, 21.10). [plan 11.3; Claude's proposal]
 
 29.11.3 The mailboxes between topics come with it (§10). [plan 3.4]
 
@@ -10890,7 +10890,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.12.1 Discovery is rewritten as one phase at whatever level the conversation reaches (§8). [plan 11.3; R10]
 
-29.12.2 The baseline is folded in: the roadmap's "plan the product" opens with the baseline's research when the code predates the workflows, and the baseline skill goes (8.12). [plan 11.3, plan 9.1]
+29.12.2 The baseline is folded in: the roadmap's "plan the product" opens with the baseline's research when the code predates the workflows, and the baseline skill goes (8.12). [plan 11.3, plan 9.1; ruled by the person 2026-10-22]
 
 29.12.3 Draws on: §8, §4.11, §9.3, §9.7, §9.10, §10.1, §16.7, §16.13, §24.1, §26.1, §26.5, §27.2, §24.2. [R14; Claude's derivation]
 
@@ -10900,7 +10900,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.13 Specification and the phase cut
 
-29.13.1 The specification is rewritten: one spec per work unit, written once every topic is decided, cancelled or postponed, in sections by area assembled from the records, ending with the phase cut (§11, §18.5). [plan 11.3, plan 3.5]
+29.13.1 The specification is rewritten: one spec per work unit, written once every topic is decided, cancelled or postponed, in sections by area assembled from the records, ending with the phase cut (§11, §18.5). [plan 11.3, plan 3.5; Claude's proposal]
 
 29.13.2 Ready to build is its gate, once per spec, showing the short outline and the phase cut and offering the build's position (11.8, 3.3). [plan 3.5]
 
@@ -10914,11 +10914,11 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.14 The build and the review phase
 
-29.14.1 The build and the review phase are rewritten together, with verification inside them (§12 to §15). [plan 11.3]
+29.14.1 The build and the review phase are rewritten together, with verification inside them (§12 to §15). [plan 11.3; Claude's proposal]
 
-29.14.2 The live panel comes with them, with every phase's view, built to the design locked in its spike before the specification (§20). [plan 11.3]
+29.14.2 The live panel comes with them, with every phase's view, built to the design locked in its spike before the specification (§20). [plan 11.3; Claude's proposal]
 
-29.14.3 The task accounts come with them (12.14). [plan 11.3, plan 3.6]
+29.14.3 The task accounts come with them (12.14). [plan 11.3, plan 3.6; Claude's proposal]
 
 29.14.4 Draws on: §12, §13, §14, §15, §20, §26, §2.2, §2.4, §2.6, §3.1, §3.2, §3.3, §4.10, §4.11, §5.8, §6.4, §7.1, §7.2, §7.4, §9.5, §11.3, §11.5, §11.10, §16.10, §16.17, §17.1, §17.2, §22.6, §24.1, §24.2, §25.1, §25.2, §27.2, §28.2, §19.5, §21.10. [R14; Claude's derivation]
 
@@ -10928,9 +10928,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.15 The work types
 
-29.15.1 The work types are rebuilt: feature, bugfix and quick-fix (19.3 to 19.5). [plan 11.3]
+29.15.1 The work types are rebuilt: feature, bugfix and quick-fix (19.3 to 19.5). [plan 11.3; Claude's proposal]
 
-29.15.2 Cross-cutting goes as a type (19.6). [plan 11.3]
+29.15.2 Cross-cutting goes as a type (19.6). [plan 11.3; Claude's proposal]
 
 29.15.3 Draws on: §19, §1.5, §3.1, §3.2, §4.11, §6.1, §6.3, §8.5, §8.8, §9.7, §11.1, §11.8, §15.5, §16.10, §17.1, §17.3, §18.3, §20.12, §20.14, §22.6, §24.1, §26.4, §27.2. [R14; Claude's derivation]
 
@@ -10940,9 +10940,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.16 The tracking layer
 
-29.16.1 The tracking layer is rebuilt: the start menu, the epic menu, the inbox, triage and the roadmap (§18). [plan 11.3]
+29.16.1 The tracking layer is rebuilt: the start menu, the epic menu, the inbox, triage and the roadmap (§18). [plan 11.3; Claude's proposal]
 
-29.16.2 Help reaches every menu, each menu's help an engine content file beside the menu's projection (23.2). [plan 11.3, plan 9.3]
+29.16.2 Help reaches every menu, each menu's help an engine content file beside the menu's projection (23.2). [plan 11.3, plan 9.3; Claude's proposal]
 
 29.16.3 Draws on: §18, §23.2, §1.4, §5.8, §7.4, §8.1, §8.5, §8.6, §8.8, §8.10, §8.12, §9.2, §9.5, §10.1, §10.4, §12.13, §12.15, §19.1, §19.3, §19.5, §19.6, §22.6, §24.1, §25.2, §6.1, §14.6, §19.2, §20.3, §20.8, §20.11, §20.13, §20.14, §28.2, §9.7, §27.2, §10.2. [R14; Claude's derivation]
 
@@ -10952,7 +10952,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.17 The rest of the migration
 
-29.17.1 The rest of the migration is built: the guard, the legacy split, the cut and the merges, and the finish, which with the move and the records directive (29.11) make the one sequence (§21). [plan 11.3, plan 5.2]
+29.17.1 The rest of the migration is built: the guard, the legacy split, the cut and the merges, and the finish, which with the move and the records directive (29.11) make the one sequence (§21). [plan 11.3, plan 5.2; Claude's proposal]
 
 29.17.2 The knowledge eval is re-made by migrating its three frozen projects, once the whole sequence can migrate them (25.5). [plan 9.5; Claude's derivation]
 
@@ -10964,13 +10964,13 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.18 Setup, help, the glossary, the brief-quality measurement and the docs
 
-29.18.1 Setup is rebuilt: boot, start's setup gates, the drivers' defaults and their checks, and the per-project environment setup (22.1 to 22.5), apart from boot's state checks and setup's state-branch steps (22.1.2; 4.4.6, 4.4.7, 4.9.2), built with the state (29.2). [plan 11.3, plan 9.2]
+29.18.1 Setup is rebuilt: boot, start's setup gates, the drivers' defaults and their checks, and the per-project environment setup (22.1 to 22.5), apart from boot's state checks and setup's state-branch steps (22.1.2; 4.4.6, 4.4.7, 4.9.2), built with the state (29.2). [plan 11.3, plan 9.2; Claude's proposal]
 
-29.18.2 Help and the glossary are rewritten (23.1, 23.3). [plan 11.3, plan 9.3]
+29.18.2 Help and the glossary are rewritten (23.1, 23.3). [plan 11.3, plan 9.3; Claude's proposal]
 
-29.18.3 The brief-quality measurement runs, with the habit hook and the task-size test alongside it on the same slices (13.12, 15.7, 17.4). [plan 11.3, plan 8.4]
+29.18.3 The brief-quality measurement runs, with the habit hook and the task-size test alongside it on the same slices (13.12, 15.7, 17.4). [plan 11.3, plan 8.4; Claude's proposal]
 
-29.18.4 Then the user docs are rewritten (23.4), and the CLAUDE.md map. [plan 11.3, plan 9.4]
+29.18.4 Then the user docs are rewritten (23.4), and the CLAUDE.md map. [plan 11.3, plan 9.4; Claude's proposal]
 
 29.18.5 Draws on: §22.1 to §22.5, §23, §13.12, §15.7, §17.4, §2.7, §7.1, §7.2, §12.7, §15.2, §15.9, §18.9, §24.2, §25.2, §25.4, §26.2, §28.1, §2.4, §8.12. [R14; Claude's derivation]
 
@@ -10980,9 +10980,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.19 The ask rule
 
-29.19.1 Step 3 builds the ask rule: the arithmetic, the labeller as a raw call (16.19), the verdict page, blind questions, convergence, the matrix screen, replay tuning, and the record of the person with its care entries (§16). [plan 11.4]
+29.19.1 Step 3 builds the ask rule: the arithmetic, the labeller as a raw call (16.19), the verdict page, blind questions, convergence, the matrix screen, replay tuning, and the record of the person with its care entries (§16). [plan 11.4; Claude's proposal]
 
-29.19.2 From here the decision point asks by the rule, no longer every call Claude has a lean on (29.5.2). [plan 11.2, plan 11.4]
+29.19.2 From here the decision point asks by the rule, no longer every call Claude has a lean on (29.5.2). [plan 11.2, plan 11.4; Claude's proposal]
 
 29.19.3 The rule ships calibrated to ask what is asked today, and loosens only as evidence supports (1.3.4). [plan 1.3]
 
@@ -10996,7 +10996,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.20.1 Step 4 runs the rehearsal on copies of all 13 projects and their variants, adjusting the migration until every copy migrates cleanly (21.12). [plan 11.5; R39]
 
-29.20.2 Then the dress rehearsal (1.4.6), the merge into `main`, and the person's release (1.7.6). [plan 11.5]
+29.20.2 Then the dress rehearsal (1.4.6), the merge into `main`, and the person's release (1.7.6). [plan 11.5; Claude's proposal]
 
 29.20.3 Draws on: §1.2 to §1.4, §1.7, §21.12, §26.2. [R14; Claude's derivation]
 

@@ -1826,6 +1826,14 @@ project's own measurements decide (R7).
       help, b back. Today's "converse" row went: with the gate mod every
       row is a button, and a button that only says "talk" still leaves
       the person to say what they meant.
+    - **The brownfield assessment folds into plan the product**, ruled by
+      the person 2026-10-22: on code that predates the workflows, plan
+      the product opens with the same research of the code the baseline
+      skill runs today. What it sees lands as findings every later topic
+      reads, what the person says is input to the topic it bears on, and
+      what stays open goes on the map. The separate skill, its documents
+      and its status fields go, and start's offer points at plan the
+      product.
   - **Menus are explicit and keyed alike**, ruled by the person
     2026-10-16, for consistency across the workflows' output: anything
     with a fixed shape is its own row, and typing stays open at any menu
