@@ -9712,7 +9712,9 @@ run concurrently. [Claude's sort, B70]
 and the reach across work units. [R44, plan 2.11; ruled by the person
 2026-10-12]
 
-22.6.2 The knowledge base indexes records, which hold current decisions; the
+22.6.2 The knowledge base indexes records, which hold current decisions,
+through the one file each is written to: the rendered copy in the gitignored
+`.workflows/.knowledge/`, kept for indexing alone (22.6.7). The
 entries of a cancelled topic or unit, and of a postponed topic while it
 waits, are not current and are not indexed (5.8.17). [R44; ruled by the
 person 2026-10-12; Claude's derivation, T4]
