@@ -1063,7 +1063,7 @@ project's own measurements decide (R7).
     do you mean portal exits with an error? Thats not what we agreed").
   - It marks what it leaves to the builder: only what the matrix makes
     the builder's, recorded as such.
-  - It ends with the **phase cut**: phases in build order, each an
+  - It has a **phase cut**: phases in build order, each an
     independently verifiable slice with acceptance criteria written as
     scenarios. Those criteria are the test list (R33). The sections stay
     by area, ruled by the person 2026-10-15; for each phase the cut lists
@@ -1072,6 +1072,17 @@ project's own measurements decide (R7).
     writes its tasks reads those sections in full, and reads further
     wherever it meets a seam (the person, 2026-10-15: "He can plan ahead
     if he sees fit").
+  - **The cut is data, the statements prose**, ruled by the person
+    2026-10-22. The engine reads the cut more than any other part of the
+    spec — `verify` takes its scenarios from it, the build orders its
+    phases and finds what is ready from it — so it lives on the unit's
+    manifest, written only through an engine verb that refuses a
+    scenario or section not in `spec.md`, a scenario placed twice or not
+    at all, and a relies-on that points forward. Ready to build, the
+    board and the briefs render it from there; `spec.md` keeps the areas
+    and the scenarios' text. Its statements stay markdown, prose for the
+    builder, in a fixed line shape the engine checks for each one's
+    entry citation; a line the check cannot read fails it.
   - Each invariant names the hard check that enforces it where one can
     (R34).
   - Canonical assets are linked from it: the builder cannot build a design
@@ -1105,8 +1116,13 @@ project's own measurements decide (R7).
     was reviewed on, as it is: a tick and a comment per numbered line,
     Claude's calls marked, Claude answering comments beneath their lines,
     stop or ask at any time. What the person ticks is recorded as
-    approved; the rest is carried through implicitly. The marks feed the
-    trust matrix after the release, not in it.
+    approved; the rest is carried through implicitly. The record is
+    `spec-review.json` beside the spec, each line's state and its
+    conversation by line number, written by the engine from the page's
+    marks when the person picks the build's position: Claude never
+    writes it, and the layout hook refuses Claude's writes to it as it
+    does the manifests. The marks feed the trust matrix after the
+    release, not in it.
   - A concluded spec is never corrected: a later change replaces the
     entry on the ledger, and the entries that relied on it are flagged in
     the work that made the change (R23). The corrigendum and the spec's
@@ -1965,12 +1981,12 @@ project's own measurements decide (R7).
   - **A bugfix's spec is the spec every type writes (R14)**, ruled by the
     person 2026-10-16: assembled from the investigation's entries — the
     root cause, the fix, the existing rules it keeps with their checks —
-    ending with the phase cut; its review hunts gaps and reads again only
-    what changed, usually one pass at this size; ready to build shows a
-    short outline and the cut. No rule of its own. On the case,
-    specification and planning drew 14 presses with nothing typed and
-    restated the fix in a 6.6k-word spec and a 14.9k-word plan, plus
-    10.7k words of review tracking.
+    with its phase cut on the unit's manifest; its review hunts gaps and
+    reads again only what changed, usually one pass at this size; ready
+    to build shows a short outline and the cut. No rule of its own. On
+    the case, specification and planning drew 14 presses with nothing
+    typed and restated the fix in a 6.6k-word spec and a 14.9k-word
+    plan, plus 10.7k words of review tracking.
 
   - **The bug is proven before it is fixed, by a check**, ruled by the
     person 2026-10-16: the first task writes the test that reproduces the
@@ -3130,7 +3146,7 @@ worktree of the state's own branch, never part of a code branch (R23).
     │       └── E{n}.{m}-{slug}/            a sub-experiment
     ├── assets/
     ├── spec.md
-    ├── spec-review.md
+    ├── spec-review.json
     ├── summary.md           a quick-fix's (4.11.6, 19.5.17)
     ├── build/
     │   ├── log.md
@@ -3166,7 +3182,12 @@ worktree of the state's own branch, never part of a code branch (R23).
   for a CLAUDE.md line to point at (R10; Claude's call).
 - The person's own stream, the trust log (R25), and the record of the
   person (R27) live at user level, in `~/.config/workflows/`.
-- The phase cut lives at the end of `spec.md`.
+- The phase cut lives on the unit's manifest, written only through an
+  engine verb; `spec.md` keeps the areas and the scenarios' text (ruled
+  by the person 2026-10-22).
+- The record of the person's review of the spec is `spec-review.json`
+  beside the spec, written by the engine alone (ruled by the person
+  2026-10-22).
 - Every place in the tree beyond the 2026-10-17 ruling is Claude's
   proposal, asked by the person 2026-10-22 ("why is this decision left
   to the builder? We should probably prescribe this type of thing"), in
@@ -3412,7 +3433,9 @@ own detection finds nothing in either.
       phase not started or partly done gets its full entry — scenarios,
       the sections it draws on, what it relies on — written by the
       directive from the plan's phase and its acceptance criteria, the
-      dependencies between the old specs becoming relies-on lines. Tasks
+      scenarios' text going into `spec.md` beside the joined specs so the
+      cut's verb finds them, and the dependencies between the old specs
+      becoming relies-on lines. Tasks
       keep their ids and tracker state; the tracker is left untouched and
       the cut names each phase's existing tracker parent. Banked findings
       become notes for later and approved staging goes; a spec built but
@@ -4203,4 +4226,4 @@ an epic), which opened what stores what. Resolve each, then climb:
     bugs by area so tracking can flag a hotspot; the knowledge base's value
     over plain search joins the measurements.
 - **How the task driver carries per-phase task writing** (R35). The cut
-  itself lives at the end of `spec.md` (Layout on disk).
+  itself lives on the unit's manifest (Layout on disk).

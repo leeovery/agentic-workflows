@@ -696,7 +696,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.11.4 The layout has no `.baseline/`: a project holding `.baseline/` docs has them moved to assets as reference by the migration (§8, §21). [plan 9.1; ruled by the person 2026-10-22; Claude's derivation]
 
 4.11.5 A work unit's folder, `{unit}/`, holds:
-- `manifest.json`: status; the map's topics and order, each topic with its experiment series and its decided checklist; the unit's seeds; and where the build stands, with the unit's checklists (6.4.12);
+- `manifest.json`: status; the map's topics and order, each topic with its experiment series and its decided checklist; the unit's seeds; the phase cut (11.5.8); and where the build stands, with the unit's checklists (6.4.12);
 - `discovery/session-NNN.md`: discovery's log, one file per session;
 - `seeds/`: what the work started from (4.11.16);
 - `topics/{topic}/brief.md`: discovery's brief for the topic;
@@ -704,8 +704,8 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `topics/{topic}/mail/NNN-*.md`: messages waiting for the topic (§10);
 - `topics/{topic}/experiments/`: the topic's experiment records (4.11.15);
 - `assets/`: what informs a decision (§9);
-- `spec.md`: the areas, then the phase cut (§11);
-- `spec-review.md`: the record of the person's review of the spec, when they took one (11.11.9);
+- `spec.md`: the areas, with their scenarios (§11);
+- `spec-review.json`: the record of the person's review of the spec, when they took one (11.11.9);
 - `build/log.md`: what is in flight, what was tried and dropped, what is left for the next phase;
 - `build/notes.md`: notes for later;
 - `build/tasks/{task}.md`: each task's account, and in `build/tasks/{task}/` each review round's two full reports, `round-N-a.md` and `round-N-b.md` (12.14.7);
@@ -713,11 +713,11 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `build/runs/`: the verification runs (4.11.15);
 - `review/round-N.md`: the review phase's report for each round, the passing one being the certificate, with its detailed checks beside it in `round-N-checks.md` (14.4.2).
 
-[Layout on disk, R11, R13, R12, R14, R15, R16; the experiments, the reports' and runs' places and names, Claude's proposal]
+[Layout on disk, R11, R13, R12, R14, R15, R16; the experiments, the reports' and runs' places and names, Claude's proposal; the phase cut on the manifest and the review's record as `spec-review.json`, ruled by the person 2026-10-22]
 
 4.11.6 By work type: an epic has many topics; a feature one, named after the unit; a bugfix one, whose log is the investigation; a quick-fix none and no spec, holding `build/` and `summary.md`, the short record after the work (§19). [Layout on disk, R21]
 
-4.11.7 The phase cut lives at the end of `spec.md`. [Layout on disk; Open, how the task driver carries per-phase task writing]
+4.11.7 The phase cut lives on the unit's manifest, not in `spec.md` (11.5.8). [Layout on disk; Open, how the task driver carries per-phase task writing; ruled by the person 2026-10-22]
 
 4.11.8 Discovery and the roadmap keep their logs per session; a topic keeps one log. [R11; ruled by the person 2026-10-13]
 
@@ -795,7 +795,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
     │       └── E{n}.{m}-{slug}/            a sub-experiment
     ├── assets/
     ├── spec.md
-    ├── spec-review.md
+    ├── spec-review.json
     ├── summary.md           a quick-fix's (4.11.6, 19.5.17)
     ├── build/
     │   ├── log.md
@@ -864,7 +864,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S21 Given a unit that has finished its build, when its folder is listed, then it holds the topics' logs, the spec, the build's log, each task's account with its review rounds' reports, and the review's reports, no tracking files or analysis files, and its tasks are found in the tracker. (4.10.1, 4.10.2, 4.10.3)
 
-4.S22 Given an epic past its spec, when its folder is listed, then it matches 4.11.5: `manifest.json`, `discovery/session-NNN.md` files, `seeds/`, `topics/{topic}/` each with `brief.md`, `log.md` and `mail/`, `assets/`, `spec.md` ending with the phase cut, `build/` with `log.md`, `notes.md`, `tasks/` and `phases/`, and `review/`, and no `.state/`; with discovery's log one file per session, each topic one log, and nothing of the build or review under `topics/`; and `.workflows/` holds no `.baseline/`. (4.11.1, 4.11.2, 4.11.3, 4.11.4, 4.11.5, 4.11.7, 4.11.8, 4.11.16)
+4.S22 Given an epic past its spec, when its folder is listed, then it matches 4.11.5: `manifest.json` holding the phase cut, `discovery/session-NNN.md` files, `seeds/`, `topics/{topic}/` each with `brief.md`, `log.md` and `mail/`, `assets/`, `spec.md`, `build/` with `log.md`, `notes.md`, `tasks/` and `phases/`, and `review/`, and no `.state/`; with discovery's log one file per session, each topic one log, and nothing of the build or review under `topics/`; and `.workflows/` holds no `.baseline/`. (4.11.1, 4.11.2, 4.11.3, 4.11.4, 4.11.5, 4.11.7, 4.11.8, 4.11.16)
 
 4.S23 Given a quick-fix unit after its work, when its folder is listed, then it holds `build/` and `summary.md`, and no `topics/` and no `spec.md`; given a feature, then it holds one topic named after the unit. (4.11.6)
 
@@ -1210,13 +1210,15 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.1.19 Left to the builder: which verbs the kept families lose, and which of today's families, named neither kept nor new, go; those serving what the release removes go (6.1.17). [Claude's sort, B19]
 
+6.1.20 `cut` (new): writes the unit's phase cut onto its manifest, refusing what 11.5.9 names (11.5). [ruled by the person 2026-10-22; its name, Claude's proposal]
+
 ### 6.2 The layout hook
 
 6.2.1 A hook refuses writes under `.workflows/` to paths outside the layout (4.11): no ad hoc directories. [R35, R2]
 
 6.2.2 It is a Claude Code hook before Write, Edit and NotebookEdit, installed by boot into the project's settings as the session hooks are, so it holds with or without the mod. [plan 6.2; Claude's; Claude's derivation, O17]
 
-6.2.3 It refuses any path under `.workflows/` outside the layout, every manifest, and the ledger. [plan 6.2; Claude's; R23]
+6.2.3 It refuses any path under `.workflows/` outside the layout, every manifest, the ledger, and a unit's `spec-review.json` (11.11.9). [plan 6.2; Claude's; R23; `spec-review.json`, ruled by the person 2026-10-22]
 
 6.2.4 The mod's manifest guard folds into the hook. [plan 6.2; Claude's; R35; Claude's derivation, O17]
 
@@ -1379,11 +1381,11 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.S2 Given a verb whose response carries a value, when the prose needs that value, then the walk records no separate manifest read for it. (6.1.3)
 
-6.S3 Given the engine, when its command catalogue is read, then it has the families `ledger`, `raise`, `verdict`, `task`, `land`, `brief`, `checklist`, `asset`, `verify`, `gate`, `state` and `inbox` with the verbs 6.1.4 to 6.1.15 name, and the kept families of 6.1.16, and no verb serving research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness or promotion to cross-cutting. (6.1.4, 6.1.5, 6.1.6, 6.1.7, 6.1.8, 6.1.9, 6.1.10, 6.1.11, 6.1.12, 6.1.13, 6.1.14, 6.1.15, 6.1.16, 6.1.17)
+6.S3 Given the engine, when its command catalogue is read, then it has the families `ledger`, `raise`, `verdict`, `task`, `land`, `brief`, `checklist`, `asset`, `verify`, `gate`, `state`, `inbox` and `cut` with the verbs 6.1.4 to 6.1.15 and 6.1.20 name, and the kept families of 6.1.16, and no verb serving research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness or promotion to cross-cutting. (6.1.4, 6.1.5, 6.1.6, 6.1.7, 6.1.8, 6.1.9, 6.1.10, 6.1.11, 6.1.12, 6.1.13, 6.1.14, 6.1.15, 6.1.16, 6.1.17, 6.1.20)
 
 6.S4 Given a session with the mod not running, when Claude uses Write to create `.workflows/{unit}/scratch/notes.md`, then the hook refuses; when it writes `.workflows/{unit}/topics/{topic}/log.md`, the write goes through. (6.2.1, 6.2.2, 6.2.3)
 
-6.S5 Given a session, when Claude uses Edit on `.workflows/manifest.json`, `.workflows/{unit}/manifest.json` or `.workflows/.ledger.jsonl`, then the hook refuses each, with or without the mod. (6.2.3, 6.2.4)
+6.S5 Given a session, when Claude uses Edit on `.workflows/manifest.json`, `.workflows/{unit}/manifest.json`, `.workflows/{unit}/spec-review.json` or `.workflows/.ledger.jsonl`, then the hook refuses each, with or without the mod. (6.2.3, 6.2.4)
 
 6.S6 Given a shell command created `.workflows/{unit}/tmp/x.md`, when a verb next makes its state commit, then the commit is refused and the refusal names `tmp/x.md`. (6.2.5)
 
@@ -3556,9 +3558,10 @@ person 2026-10-14]
 11.1.3 A finished spec is kept as history and never corrected (11.9). [R14;
 ruled by the person 2026-10-14]
 
-11.1.4 The spec is one file, `spec.md`, in the work unit's folder: the areas,
-then the phase cut at its end (§4 §4). [Layout
-on disk; R14]
+11.1.4 The spec is one file, `spec.md`, in the work unit's folder, holding the
+areas with their scenarios; the phase cut is not in it but on the unit's
+manifest (4.11.7, 11.5.8). [Layout on disk; R14; the cut apart from it, ruled
+by the person 2026-10-22]
 
 11.1.5 The spec and the phase cut are each written by a named agent whose model
 and effort are fixed in its own definition, working from the record and not
@@ -3623,11 +3626,15 @@ the builder's, recorded as such (§16 §16). [R14]
 11.4.4 Left to the builder: how a spec statement is marked the builder's; it
 cites the "don't care" entry. [Claude's sort, B28]
 
+11.4.5 The spec's statements stay markdown, prose for the builder, each on a
+line of a fixed shape the engine reads to check the entry it cites (6.4.7); a
+line the check cannot read fails that check. [ruled by the person 2026-10-22]
+
 ### 11.5 The phase cut
 
-11.5.1 The spec ends with the phase cut, made in a corridor at the end of
-specification. Planning splits: the phase cut moves into specification, and
-tasks are written as each build phase starts (12.5). [R14; R15; R2; R9]
+11.5.1 The phase cut is made in a corridor at the end of specification.
+Planning splits: the phase cut moves into specification, and tasks are written
+as each build phase starts (12.5). [R14; R15; R2; R9]
 
 11.5.2 The cut lists the phases in build order, each an independently
 verifiable slice with acceptance criteria written as scenarios. [R14; R15]
@@ -3650,6 +3657,19 @@ epic; ruled by the person 2026-10-14]
 
 11.5.7 The cut follows the principles for breaking up work in 12.3.
 [R15; ruled by the person 2026-10-12]
+
+11.5.8 The phase cut is data on the unit's manifest, written only through the
+engine's `cut` verb (6.1.20). [ruled by the person 2026-10-22; the verb's name,
+Claude's proposal]
+
+11.5.9 The `cut` verb refuses a scenario or a section that is not in `spec.md`,
+a scenario placed in two phases or in none, and a phase relying on one that
+comes after it. [ruled by the person 2026-10-22]
+
+11.5.10 Whatever shows or follows the cut reads it from the manifest: ready to
+build, the board and the briefs render it from there, `verify` takes its
+scenarios from it, and the build orders its phases and finds what is ready from
+it. [ruled by the person 2026-10-22]
 
 ### 11.6 Invariants and canonical assets
 
@@ -3927,12 +3947,14 @@ Comment  → Ask for a change — to what you decided, a
 start the build: Claude answers the comment first and puts ready to build
 back. [Claude's derivation]
 
-11.11.9 The review's record is written beside the spec as `spec-review.md`, by
-line number: what the person approved explicitly, what they approved after a
-comment, any comment still open, and what passed without review. A comment
-answered but never ticked leaves its line as written and is listed open. A
-spec the person did not review has no record. [ruled by the person 2026-10-22;
-where it sits and its name, Claude's derivation]
+11.11.9 The review's record is `spec-review.json` beside the spec, written by
+the engine from the page's marks when the person picks the build's position,
+and never by Claude. By line number, it holds each line's state — approved
+explicitly, approved after a comment, still open, or passed without review —
+and the line's conversation. A comment answered but never ticked leaves its
+line as written and is listed open. A spec the person did not review has none.
+[ruled by the person 2026-10-22; where it sits and its name, Claude's
+derivation]
 
 11.11.10 In this release the marks feed nothing else: the trust matrix does not
 read them (27.1.2). [ruled by the person 2026-10-22]
@@ -3975,10 +3997,11 @@ ledger entry or is marked the builder's. (11.4.1, 11.4.3)
 builder's, when the spec's review runs, then the review reports it as
 invented. (11.4.2)
 
-11.S5 Given a written spec, when its end is read, then it carries the phase
-cut: phases in build order, each listing its scenarios, the sections it draws
-on, and what it relies on from earlier phases or another work unit; the
-sections above it stay by area. (11.3.3, 11.5.1, 11.5.2, 11.5.4, 11.5.5)
+11.S5 Given a written spec, when the unit's manifest is read, then it carries
+the phase cut: phases in build order, each listing its scenarios, the sections
+it draws on, and what it relies on from earlier phases or another work unit;
+`spec.md` holds no cut, and its sections stay by area. (11.1.4, 11.3.3, 11.5.1,
+11.5.2, 11.5.4, 11.5.5, 11.5.8)
 
 11.S6 Given a phase in the cut, when the phase is built, then every acceptance
 scenario it lists has a test. (11.5.3)
@@ -4038,8 +4061,8 @@ discovery, on the horizon the person names, toward a next epic, and every
 ledger link still resolves. (11.10.1, 11.10.2, 11.10.3)
 
 11.S19 Given a bugfix whose investigation has concluded, when its spec is
-written, then it has the same shape as any spec, ending with the phase cut;
-given a quick-fix, then no `spec.md` is written. (11.1.6)
+written, then it has the same shape as any spec, its phase cut on the unit's
+manifest; given a quick-fix, then no `spec.md` is written. (11.1.6)
 
 11.S20 Given a decided entry whose why the topic's log does not hold, when the
 spec is assembled, then the missing why is decided as a gap at the spec.
@@ -4073,11 +4096,11 @@ position, then the build does not start: Claude answers the comment and ready
 to build comes back. (11.11.8)
 
 11.S26 Given a review with some lines ticked, one comment answered but not
-ticked, and the rest untouched, when the person picks a position, then
-`spec-review.md` beside the spec lists the ticked lines as approved explicitly,
-the one comment as open with its line left as written, and the rest as passed
-without review, and the trust matrix's counts are unchanged. (11.11.7, 11.11.9,
-11.11.10)
+ticked, and the rest untouched, when the person picks a position, then the
+engine writes `spec-review.json` beside the spec, holding the ticked lines as
+approved explicitly, the one comment's line as open and left as written, with
+its conversation, and the rest as passed without review, and the trust matrix's
+counts are unchanged. (11.11.7, 11.11.9, 11.11.10)
 
 11.S27 Given a session that cannot publish a page, when ready to build shows,
 then it offers no review. (11.11.11)
@@ -4099,6 +4122,13 @@ line again, then the page opens that comment to edit rather than adding
 another; given Claude has answered it, then it can no longer be edited or
 removed; given the line is ticked, then it takes no comment until they untick
 it. (11.11.14)
+
+11.S31 Given a spec whose `spec.md` holds scenarios 3.S1 and 3.S2, when the
+phase cut is written through the `cut` verb placing a scenario 3.S9 that
+`spec.md` does not hold, or placing 3.S1 in two phases, then the verb refuses
+each and the cut on the unit's manifest is unchanged; when each scenario is
+placed in exactly one phase, then the cut is written to the unit's manifest and
+ready to build shows it from there. (11.5.8, 11.5.9, 11.5.10)
 
 ## 12. The build
 
@@ -7202,7 +7232,7 @@ Ask    → Ask anything about triage or the inbox
 
 19.4.14 No step prescribes finding out how comparable tools handle the problem: the rule is the general one (§2), and looking at other tools is one way Claude may reach for it. [R20; ruled by the person 2026-10-16]
 
-19.4.15 A bugfix's spec is the spec every type writes (§11), with no rule of its own: assembled from the investigation's entries — the root cause, the fix, the existing rules it keeps with their checks — and ending with the phase cut. Its review hunts gaps and reads again only what changed, usually one pass at this size. Ready to build shows a short outline and the cut. [R20, plan 3.12; ruled by the person 2026-10-16]
+19.4.15 A bugfix's spec is the spec every type writes (§11), with no rule of its own: assembled from the investigation's entries — the root cause, the fix, the existing rules it keeps with their checks — with its phase cut on the unit's manifest (11.5.8). Its review hunts gaps and reads again only what changed, usually one pass at this size. Ready to build shows a short outline and the cut. [R20, plan 3.12; ruled by the person 2026-10-16; the cut on the manifest, ruled by the person 2026-10-22]
 
 19.4.16 The bug is proven before it is fixed, by a check. The first task writes the test that reproduces the bug. [R20, plan 3.12; ruled by the person 2026-10-16]
 
@@ -7370,7 +7400,7 @@ Ask      → Ask about the change before it closes
 
 19.S14 Given a root cause that is really a design problem, when Claude finds it, then it raises it to the person, with becoming a feature among the ways forward. (19.4.5)
 
-19.S15 Given a bugfix whose investigation is decided, when its spec is written, then it is assembled from the investigation's entries — root cause, fix, existing rules kept with their checks — ending with the phase cut, and ready to build shows a short outline and the cut. (19.4.15)
+19.S15 Given a bugfix whose investigation is decided, when its spec is written, then it is assembled from the investigation's entries — root cause, fix, existing rules kept with their checks — with its phase cut on the unit's manifest, and ready to build shows a short outline and the cut. (19.4.15)
 
 19.S16 Given a bugfix build whose first task wrote the reproducing test, when Claude tries to commit the fix before the engine has recorded the test failing on the unfixed code, then the commit door refuses; once the failing runs are recorded, it takes the commit, and after the fix the test passes in the build's gates. (19.4.16, 19.4.17, 19.4.18)
 
@@ -9632,7 +9662,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 ### 21.7 Step 5: the cut and the merges
 
-21.7.1 The cut-and-merges step is a directive. It writes the phase-cut entries for builds under way (21.8.6–21.8.7). [R37, plan 5.2]
+21.7.1 The cut-and-merges step is a directive. It writes the phase cut for builds under way onto the unit's manifest, through the `cut` verb (21.8.6–21.8.7, 11.5.8). [R37, plan 5.2; the cut through the verb, ruled by the person 2026-10-22]
 
 21.7.2 It places research that does not map one-to-one onto a topic where it bears (21.5.4). [R37]
 
@@ -9656,7 +9686,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.8.6 Building started: the plans' phases become the phase cut. A built phase gets its name, its goal and "built". [R37, plan 5.4; ruled by the person 2026-10-17]
 
-21.8.7 Building started: a phase not started or partly done gets its full cut entry — scenarios, the sections it draws on, what it relies on — written by the directive from the plan's phase and its acceptance criteria; the dependencies between the old specs become relies-on lines. [R37; ruled by the person 2026-10-17]
+21.8.7 Building started: a phase not started or partly done gets its full cut entry — scenarios, the sections it draws on, what it relies on — written by the directive from the plan's phase and its acceptance criteria, the scenarios' text into `spec.md` beside the joined specs, where the `cut` verb finds them (11.5.9); the dependencies between the old specs become relies-on lines. [R37; ruled by the person 2026-10-17; the scenarios' text in `spec.md`, Claude's derivation]
 
 21.8.8 Building started: tasks keep their ids and their tracker state, the tracker is left untouched, and the cut names each phase's existing tracker parent. Banked findings become notes for later; approved staging goes. A spec built but never reviewed needs nothing, since the review phase reads the whole unit. Where the manifest and the tracker disagree, the tracker wins and the disagreement becomes an open note. [R37; ruled by the person 2026-10-17]
 
@@ -11131,11 +11161,11 @@ name]
 
 ### 28.2 Per-phase task writing in the task driver
 
-28.2.1 How the task driver carries per-phase task writing, open in the
-record, is settled by plan 10.7: the tracker holds only the phases whose
-tasks are written, and the views draw the rest from the phase cut, which
-lives at the end of `spec.md` (§7 §7).
-[Open, R35, Layout on disk, plan 10.7; Claude's derivation, O91]
+28.2.1 How the task driver carries per-phase task writing, open in the record,
+is settled by plan 10.7: the tracker holds only the phases whose tasks are
+written, and the views draw the rest from the phase cut, which lives on the
+unit's manifest (4.11.7, §7). [Open, R35, Layout on disk, plan 10.7; Claude's
+derivation, O91; the cut on the manifest, ruled by the person 2026-10-22]
 
 ### 28.3 Uninstalling and reinstalling
 
@@ -11146,7 +11176,7 @@ lives at the end of `spec.md` (§7 §7).
 
 28.S1 Given a build whose later phases' tasks are not yet written, when the
 tracker is read, then it holds only the written phases, and the views draw
-the rest from the phase cut at the end of `spec.md`. (28.2.1)
+the rest from the phase cut on the unit's manifest. (28.2.1)
 
 §28.1 and §28.3 state only what is undecided, and have no scenarios.
 
@@ -11328,7 +11358,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 ### 29.13 Specification and the phase cut
 
-29.13.1 The specification is rewritten: one spec per work unit, written once every topic is decided, cancelled or postponed, in sections by area assembled from the records, ending with the phase cut (§11, §18.5). [plan 11.3, plan 3.5; Claude's proposal]
+29.13.1 The specification is rewritten: one spec per work unit, written once every topic is decided, cancelled or postponed, in sections by area assembled from the records, with the phase cut on the unit's manifest (§11, §18.5). [plan 11.3, plan 3.5; Claude's proposal; the cut on the manifest, ruled by the person 2026-10-22]
 
 29.13.2 Ready to build is its gate, once per spec, showing the short outline and the phase cut and offering the build's position (11.8, 3.3). [plan 3.5]
 
@@ -11338,7 +11368,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.13.5 Relies on: 29.2 to 29.8, 29.11, 29.12. [R14; Claude's derivation]
 
-29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28, 11.S29, 11.S30 (31). [R14; Claude's derivation]
+29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28, 11.S29, 11.S30, 11.S31 (32). [R14; Claude's derivation]
 
 29.13.7 The person's review of the spec, offered at ready to build, comes with it (11.11). [ruled by the person 2026-10-22]
 
@@ -11442,7 +11472,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 722 listed are the 722 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 825 listed are the 825 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
