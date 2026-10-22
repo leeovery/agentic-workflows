@@ -1064,6 +1064,10 @@ project's own measurements decide (R7).
     and the phase cut (R15), replacing today's construction, finding,
     re-loop and sign-off gates. A topic's close is **decided** (R11); for a
     feature the two are one screen.
+  - **In step, tasks run one at a time**, ruled by the person 2026-10-22:
+    a task lands, its gate stops, and the next starts on the person's go,
+    so what they test has only that task new and a change they ask for
+    lands before anything builds on it; side-by-side worktrees are auto's.
   - **The person's review of the spec**, ruled by the person 2026-10-22:
     ready to build offers it, plainly optional — all of it, the parts the
     person cares about, or none ("I can review the risky bits if I want.
@@ -3392,6 +3396,13 @@ own detection finds nothing in either.
   one mid-build, simulated through tasks since the migration never
   touches code. Moving files is mechanical and easy to check; the focus
   is the ledger's completeness and the logs' shape.
+  - **A state branch gone here and on the remote**, ruled by the person
+    2026-10-22: boot stops with two ways on. Another clone still holding
+    the branch pushes it back (boot pushes a state branch the remote
+    lacks), and this clone restores it; otherwise, on the person's yes, a
+    fresh state branch, and plan the product reads the code as the
+    baseline did ("use what was called the baseline system to
+    reconstitute some type of state").
   - **No whole live run before the release**, ruled by the person
     2026-10-22, replacing the plan's dress rehearsal: a test project
     takes the parts of the process that run without a real

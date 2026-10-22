@@ -545,7 +545,7 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 4.4.4 Boot restores a lost local state branch from the remote. [R23, plan 4.2]
 
-4.4.5 Screen: where the state branch is gone both locally and on the remote, boot stops and says so. The sources give no further content for this stop. [R23; Claude's derivation, O10]
+4.4.5 Where the state branch is gone both locally and on the remote, boot stops and says so, with two ways on. Another clone still holding the branch, on this machine or another, puts it back: boot there pushes it to the remote (4.4.12), and this clone restores it at its next boot (4.4.4). Otherwise, on the person's yes, boot creates a fresh state branch and plan the product opens with the product researcher's read of the code, as for code that predates the workflows (8.12.4). The earlier decisions, logs and ledger are gone; the code and its history are not. [R23; ruled by the person 2026-10-22]
 
 Screen, drawn by Claude: boot's stop, the state branch gone here and on the remote. [Claude's derivation, O94]
 
@@ -553,7 +553,21 @@ Screen, drawn by Claude: boot's stop, the state branch gone here and on the remo
 ⚑ Boot stopped: the workflows' state branch is gone
 > Portal keeps its workflows state on a branch of its own,
 > workflows-state. Boot found it neither in this clone nor on
-> the remote, so there is no state to open.
+> the remote.
+>
+> If another clone of Portal still has it, on this machine or
+> another, run the workflows there: boot pushes it back to the
+> remote, and this clone restores it when it next starts.
+>
+> Otherwise the state is lost: the decisions, the logs and the
+> ledger. Portal's code and its history are untouched.
+
+◆ Start again with a fresh state?
+
+s/start → Start again — a fresh state branch, then plan the
+          product reads Portal's code to rebuild what it can
+n/no    → Not now — look for another clone first; nothing is
+          written
 ```
 
 4.4.6 On GitHub, setup offers a rule against deleting or force-pushing the state branch, for anything run outside Claude Code, and sets it only on the person's yes. [R23; ruled by the person 2026-10-18; plan 4.2]
@@ -581,6 +595,8 @@ n/no  → Leave it unset — setup carries on without it
 4.4.10 Left to the builder: how boot re-adds and re-locks the worktree. [Claude's sort, B13]
 
 4.4.11 A no to setup's offer of the GitHub rule (4.4.7) sets no rule, and setup carries on without it. [R23, plan 4.2; Claude's derivation, O94]
+
+4.4.12 Boot, finding the state branch in this clone but not on the remote, pushes it back. [R23; ruled by the person 2026-10-22]
 
 ### 4.5 A fresh clone
 
@@ -776,6 +792,10 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.S29 Given the state branch present locally with its worktree removed, or with the worktree found unlocked, when boot runs, then the worktree is in place and locked. (4.4.9)
 
 4.S30 Given setup's offer of the GitHub rule, when the person declines it, then no rule is set and setup carries on. (4.4.6, 4.4.11)
+
+4.S31 Given the state branch gone from the remote and from this clone but present in another clone, when boot runs in that other clone, then it pushes the branch back to the remote; when boot next runs in this clone, it restores the branch from the remote and nothing is lost. (4.4.4, 4.4.5, 4.4.12)
+
+4.S32 Given the state branch gone from this clone and the remote with no other copy, when boot runs, then it stops, saying what was lost and that the code is untouched; given the person's yes, then a fresh state branch is created and plan the product opens with the product researcher's read of the code; given a no, then nothing is written. (4.4.5)
 
 ## 5. The ledger
 
@@ -3649,8 +3669,10 @@ hangs on a number. A number never changes while the review runs: a line added
 takes the next free number in its section. [Claude's derivation]
 
 11.11.4 The person can stop at any time and ask at any time. Claude answers a
-comment beneath its line, and a tick on a line Claude answered agrees the
-answer. [ruled by the person 2026-10-22]
+comment beneath its line, the person can answer back as many times as they
+like, and a tick on the line agrees Claude's last answer. The page steps the
+person through the lines Claude has answered. [ruled by the person
+2026-10-22]
 
 11.11.5 Claude reads the page's comments when the person asks: once the page
 is open, ready to build's review row reads them, as a word in the conversation
@@ -4037,6 +4059,12 @@ return. The review phase leaves the working tree as it found it: dirt outside
 `.workflows/` after its runs stops for the person and is never reverted blind.
 [today's product (`code-session-gate.md`,
 `invoke-change-set-verifiers.md:96–116`); Claude's sort, T25]
+
+12.7.9 In step, tasks run one at a time: a task lands, its gate stops, and the
+next starts only after the person's go there, so what they test has only that
+task new, and a change they ask for lands before anything is built on it.
+Running tasks side by side (12.7.3) is auto's. [ruled by the person
+2026-10-22]
 
 ### 12.8 How the builder works
 
@@ -4507,8 +4535,8 @@ is done, then it starts. (12.6.2, 12.6.3)
 then each runs within the phase or onto an unfinished task of an earlier
 phase. (12.6.4)
 
-12.S15 Given two ready tasks sharing no files, when the orchestrator takes
-them, then they run side by side, each in its own worktree, and are merged
+12.S15 Given a build in auto and two ready tasks sharing no files, when the
+orchestrator takes them, then they run side by side, each in its own worktree, and are merged
 back by the orchestrator; given two tasks on one shared file, then they run
 one at a time. (12.3.4, 12.6.6, 12.7.1, 12.7.3)
 
@@ -4677,6 +4705,10 @@ anyway and back to return. (12.7.8, 14.1.5, 19.5.18)
 12.S51 Given a build under way, when the person asks in words for its phases and
 tasks, then they are printed into the conversation, each task with its state and
 what blocks it. (12.12.11)
+
+12.S52 Given a build in step with two ready tasks sharing no files, when the
+orchestrator takes them, then the first runs alone and its gate stops, and the
+second starts only after the person's go. (12.7.3, 12.7.9)
 
 ## 13. Reviews in the build
 
@@ -10887,7 +10919,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.2.8 Relies on: none. [R14; Claude's derivation]
 
-29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S13, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3 (21). [R14; Claude's derivation]
+29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S13, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32 (23). [R14; Claude's derivation]
 
 ### 29.3 The ledger
 
@@ -11049,7 +11081,7 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.14.5 Relies on: 29.2 to 29.8, 29.11 to 29.13. [R14; Claude's derivation]
 
-29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7 (154). [R14; Claude's derivation]
+29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52 (155). [R14; Claude's derivation]
 
 ### 29.15 The work types
 
