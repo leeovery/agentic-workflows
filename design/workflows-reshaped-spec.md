@@ -3873,10 +3873,9 @@ takes the next free number in its section. [Claude's derivation]
 
 11.11.4 The person can stop at any time and ask at any time. Claude answers a
 comment beneath its line, the person can answer back as many times as they
-like, and a tick on the line agrees Claude's last answer. The page steps the
-person through the lines Claude has answered, and takes them to the earliest
-line still waiting on them: never marked, changed since its tick, or answered
-by Claude. [ruled by the person 2026-10-22]
+like, and a tick on the line agrees Claude's last answer. The page takes the
+person to the earliest line still waiting on them: never marked, changed
+since its tick, or answered by Claude. [ruled by the person 2026-10-22]
 
 11.11.5 Claude reads the page's comments when the person asks: once the page
 is open, ready to build's review row reads them, as a word in the conversation
