@@ -1064,6 +1064,16 @@ project's own measurements decide (R7).
     and the phase cut (R15), replacing today's construction, finding,
     re-loop and sign-off gates. A topic's close is **decided** (R11); for a
     feature the two are one screen.
+  - **The person's review of the spec**, ruled by the person 2026-10-22:
+    ready to build offers it, plainly optional — all of it, the parts the
+    person cares about, or none ("I can review the risky bits if I want.
+    I can review everything. I can review nothing"). Taking it publishes
+    the spec as a private claude.ai page, the one this release's own spec
+    was reviewed on, as it is: a tick and a comment per numbered line,
+    Claude's calls marked, Claude answering comments beneath their lines,
+    stop or ask at any time. What the person ticks is recorded as
+    approved; the rest is carried through implicitly. The marks feed the
+    trust matrix after the release, not in it.
   - A concluded spec is never corrected: a later change replaces the
     entry on the ledger, and the entries that relied on it are flagged in
     the work that made the change (R23). The corrigendum and the spec's

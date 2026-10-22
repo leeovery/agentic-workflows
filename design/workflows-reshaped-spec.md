@@ -685,6 +685,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `assets/`: what informs a decision (§9);
 - `seeds/` and `.state/`;
 - `spec.md`: the areas, then the phase cut (§11);
+- `spec-review.md`: the record of the person's review of the spec, when they took one (11.11.9);
 - `build/log.md`: what is in flight, what was tried and dropped, what is left for the next phase;
 - `build/notes.md`: notes for later;
 - `build/tasks/{task}.md`: each task's account;
@@ -3482,7 +3483,8 @@ T28]
 authority gate and is never automatic (§3). [R14; R40; ruled by the person 2026-10-13]
 
 11.8.2 Screen: Ready to build shows the short outline and the phase cut, and
-offers the build's position, auto first (11.8.6). What the short outline
+offers the build's position, auto first (11.8.6), and the person's review of
+the spec (11.11). What the short outline
 holds, and the screen's rows and words, are drawn by Claude with the spec's
 screens, in the existing design system, and marked as Claude's for the person
 to tick or comment on. [R14; R15; R40; Claude's derivation, O94]
@@ -3566,14 +3568,16 @@ and starts the build in that position.
 
 ◆ Build it, and in which position?
 
-a/auto  → Auto — runs on its own; danger stops what it touches, a
-          question for you parks only what depends on it, and
-          finish waits for you (recommended)
-s/step  → Step — it also stops after each task, for you to review
-          and test it
-c/calls → See Claude's 40 calls
-Comment → Ask for a change — to what you decided, a
-          product-record line, the outline or the phase cut
+a/auto   → Auto — runs on its own; danger stops what it
+           touches, a question for you parks only what depends
+           on it, and finish waits for you (recommended)
+s/step   → Step — it also stops after each task, for you to
+           review and test it
+r/review → Review the spec on a page first — all of it, the
+           parts you care about, or none
+c/calls  → See Claude's 40 calls
+Comment  → Ask for a change — to what you decided, a
+           product-record line, the outline or the phase cut
 ```
 
 11.8.3 The person approving the phase cut as a short outline, at ready to
@@ -3625,6 +3629,87 @@ ruled by the person 2026-10-14; Claude's derivation, O39]
 11.10.4 Discovery shapes an epic by judgement, never a formula. The roadmap is
 the level above: its epics are the versions, and no new layer is added (§8, §18). [Open, One build across an epic; ruled by
 the person 2026-10-14]
+
+### 11.11 The person's review of the spec
+
+11.11.1 Ready to build offers the person a review of the spec, and makes plain
+that it is optional: they can check all of it, the parts they care about, or
+none, and skipping it is as good a way through as taking it. [ruled by the
+person 2026-10-22]
+
+11.11.2 Taking it publishes the spec as a page and opens it: a private artifact
+on claude.ai, not a board panel, with a tick and a comment on every numbered
+line, the lines resting on Claude's calls marked, filters, and each section's
+progress. It is the page this release's own spec was reviewed on, as it is.
+[ruled by the person 2026-10-22; marking Claude's calls from who decided each
+entry, Claude's derivation]
+
+11.11.3 The spec numbers its sections, statements and scenarios, so each mark
+hangs on a number. A number never changes while the review runs: a line added
+takes the next free number in its section. [Claude's derivation]
+
+11.11.4 The person can stop at any time and ask at any time. Claude answers a
+comment beneath its line, and a tick on a line Claude answered agrees the
+answer. [ruled by the person 2026-10-22]
+
+11.11.5 Claude reads the page's comments when the person asks: once the page
+is open, ready to build's review row reads them, as a word in the conversation
+does. [Claude's derivation]
+
+11.11.6 An agreed answer that changes what the spec decides is written as an
+entry in the topic it belongs to, decided by the person, and the spec is
+rewritten from it, as a gap's answer is (11.7.4); an answer that changes only
+the wording changes the spec. The page is republished with every mark kept.
+[Claude's derivation]
+
+11.11.7 Picking the build's position ends the review. Each ticked line is
+recorded as approved by the person; every line not ticked is carried through
+implicitly: it stands, but nobody said yes to it. [ruled by the person
+2026-10-22]
+
+Screen, drawn by Claude: the foot of ready to build over Mint's Token-Aware Diff Sizing while the review page is open; the rest as 11.8.2's screen. [Claude's derivation]
+
+```text
+· · · · · · · · · · · ·
+Your pick marks Token-Aware Diff Sizing decided, with the two
+product-record lines, approves the outline and the phase cut,
+records the 214 lines you ticked on the review page (the other
+862 pass without review), and starts the build in that
+position.
+
+◆ Build it, and in which position?
+
+a/auto   → Auto — runs on its own; danger stops what it
+           touches, a question for you parks only what depends
+           on it, and finish waits for you (recommended)
+s/step   → Step — it also stops after each task, for you to
+           review and test it
+r/review → Read the comments you've left on the page
+c/calls  → See Claude's 40 calls
+Comment  → Ask for a change — to what you decided, a
+           product-record line, the outline or the phase cut
+```
+
+11.11.8 A position picked while a comment on the page has no answer does not
+start the build: Claude answers the comment first and puts ready to build
+back. [Claude's derivation]
+
+11.11.9 The review's record is written beside the spec as `spec-review.md`, by
+line number: what the person approved explicitly, what they approved after a
+comment, any comment still open, and what passed without review. A comment
+answered but never ticked leaves its line as written and is listed open. A
+spec the person did not review has no record. [ruled by the person 2026-10-22;
+where it sits and its name, Claude's derivation]
+
+11.11.10 In this release the marks feed nothing else: the trust matrix does not
+read them (27.1.2). [ruled by the person 2026-10-22]
+
+11.11.11 Where the session cannot publish a page, ready to build does not offer
+the review. [Claude's derivation]
+
+11.11.12 Left to the builder: how the page is built from the spec and how its
+marks are read back, starting from the page and scripts this release's own
+spec was reviewed with. [Claude's sort]
 
 ## 11-S. Scenarios for §11
 
@@ -3721,6 +3806,37 @@ guarantee the spec states, when the spec's review runs, then it re-runs the
 command and reads the code behind the guarantee; given the measured value has
 changed, the fact is replaced and the decisions relying on it are affected.
 (11.7.9)
+
+11.S22 Given ready to build, when it shows, then it offers a review of the spec
+on a page and says the person can check all of it, the parts they care about,
+or none; given the person picks a position without taking it, then the build
+starts with no page published and no review record written. (11.11.1, 11.11.9)
+
+11.S23 Given the person takes the review, when the page opens, then every
+numbered statement, scenario and screen of the spec is a line with a tick and
+a comment, the lines resting on Claude's calls are marked, and each section
+shows its progress. (11.11.2, 11.11.3)
+
+11.S24 Given a comment left on a line, when the person picks the review row or
+says so in the conversation, then Claude answers it beneath the line; given the
+person then ticks that line and the answer changes what the spec decides, then
+the answer is written as an entry decided by the person in the topic it belongs
+to, the spec is rewritten from it, and the page is republished with every mark
+kept and every number unchanged. (11.11.3, 11.11.4, 11.11.5, 11.11.6)
+
+11.S25 Given a comment on the page with no answer, when the person picks a
+position, then the build does not start: Claude answers the comment and ready
+to build comes back. (11.11.8)
+
+11.S26 Given a review with some lines ticked, one comment answered but not
+ticked, and the rest untouched, when the person picks a position, then
+`spec-review.md` beside the spec lists the ticked lines as approved explicitly,
+the one comment as open with its line left as written, and the rest as passed
+without review, and the trust matrix's counts are unchanged. (11.11.7, 11.11.9,
+11.11.10)
+
+11.S27 Given a session that cannot publish a page, when ready to build shows,
+then it offers no review. (11.11.11)
 
 ## 12. The build
 
@@ -10591,6 +10707,11 @@ The names of the five added last are the builder's. [plan 6.5; Claude's; R20, R4
 27.1.1 What is not integral to the release comes as a fast follow straight
 after it, never as a partial product. [plan 1.3; the person, 2026-10-19]
 
+27.1.2 The person's review marks feed the trust matrix after the release: what
+they approve and what they change at the spec, read against the calls behind
+those lines (11.11.10). [ruled by the person 2026-10-22; as a fast follow,
+Claude's proposal]
+
 ### 27.2 Not built in this release
 
 27.2.1 Importing an existing user's transcripts is not built in this
@@ -10912,7 +11033,9 @@ the rest from the phase cut at the end of `spec.md`. (28.2.1)
 
 29.13.5 Relies on: 29.2 to 29.8, 29.11, 29.12. [R14; Claude's derivation]
 
-29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 18.S21, 24.S3 (22). [R14; Claude's derivation]
+29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3 (28). [R14; Claude's derivation]
+
+29.13.7 The person's review of the spec, offered at ready to build, comes with it (11.11). [ruled by the person 2026-10-22]
 
 ### 29.14 The build and the review phase
 
