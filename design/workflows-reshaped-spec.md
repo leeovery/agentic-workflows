@@ -3877,13 +3877,13 @@ like, and a tick on the line agrees Claude's last answer. The page takes the
 person to the earliest line still waiting on them: never marked, changed
 since its tick, or answered by Claude. [ruled by the person 2026-10-22]
 
-11.11.5 Claude reads the comments the person saves when they ask: once the
-page is open, ready to build's review row reads them, as a word in the
-conversation does. A comment they send with Ask Claude now reaches the session
-at once, and Claude answers it beneath its line straight away: the line shows
-it is with Claude until the answer lands, and the page then tells the person
-and takes them to it. [ruled by the person 2026-10-22; reading saved comments
-on request, Claude's derivation]
+11.11.5 Claude reads the page's comments when the person asks: once the page
+is open, ready to build's review row reads them, as a word in the conversation
+does. Nothing on the page reaches Claude by itself, and under every comment
+waiting for an answer the page says to tell Claude in the session. The page
+brings no other Claude in: the review is between the person and the session
+alone. [ruled by the person 2026-10-22; reading on request, Claude's
+derivation]
 
 11.11.6 An agreed answer that changes what the spec decides is written as an
 entry in the topic it belongs to, decided by the person, and the spec is
@@ -3950,11 +3950,10 @@ every spec, and never adapted for a project. A view a spec needs is added to
 the workflows' page, for every project. [ruled by the person 2026-10-22]
 
 11.11.14 Turns alternate on a line: once the person has written, the next
-message there is Claude's. A comment they save can be edited or removed until
-Claude answers it; one they sent with Ask Claude now can be taken back but not
-reworded, since Claude has it as written; once Claude has answered, their
-message stays as written. A tick closes the line's conversation, its messages
-kept, and unticking opens it again. [ruled by the person 2026-10-22]
+message there is Claude's. They can edit or remove their comment until Claude
+answers it; once Claude has answered, it stays as written. A tick closes the
+line's conversation, its messages kept, and unticking opens it again. [ruled by
+the person 2026-10-22]
 
 ## 11-S. Scenarios for §11
 
@@ -4089,17 +4088,17 @@ unticked and marked changed, its conversation kept, and the step to the
 earliest line waiting on them lands on it ahead of any later line; given a
 change to the line's sources alone, then its tick stands. (11.11.4, 11.11.6)
 
-11.S29 Given the review page open and the session that published it
-running, when the person sends a comment with Ask Claude now, then the line
-shows it is with Claude, Claude answers beneath the line without waiting to be
-asked, and the page tells the person it has answered and takes them to the
+11.S29 Given a comment the person saved on the page, when they have not told
+Claude, then the line says it waits for Claude and to tell Claude in the
+session, and no Claude answers it; when they pick the review row, Claude answers
+it beneath the line, and the page, if open, tells them and takes them to the
 line and back. (11.11.5)
 
-11.S30 Given a comment the person saved that Claude has not answered, when they
-comment on the line again, then the page opens that comment to edit rather
-than adding another; given one they sent with Ask Claude now, then they can
-remove it but not edit it; given Claude has answered it, then neither; given
-the line is ticked, then it takes no comment until they untick it. (11.11.14)
+11.S30 Given a comment Claude has not answered, when the person comments on the
+line again, then the page opens that comment to edit rather than adding
+another; given Claude has answered it, then it can no longer be edited or
+removed; given the line is ticked, then it takes no comment until they untick
+it. (11.11.14)
 
 ## 12. The build
 
