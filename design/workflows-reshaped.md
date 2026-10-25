@@ -1400,8 +1400,8 @@ project's own measurements decide (R7).
       when a task lands, its product summary: what changed, which
       criteria its tests prove, the pair's verdict and its rounds, how
       many calls went to the ledger; and beneath it, every time, the
-      questions waiting on the person: how many, and a line each (two or
-      three at most), so the person sees them without the panel (ruled by
+      questions waiting on the person: how many, and a line for every one,
+      the list growing with them, so the person sees them without the panel (ruled by
       the person 2026-10-20: "even if the mod panel's not open, I can
       still see every now and again when task execution is being done,
       that there are questions awaiting my response"). The review reports are not printed:
