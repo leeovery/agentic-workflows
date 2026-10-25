@@ -6589,7 +6589,7 @@ b/back       → Back to manage
 Ask          → Ask a question about this work unit
 ```
 
-18.3.5 Pivot and absorb are open only while the feature is before its spec, and absorb only into an epic before its spec. A pivoted epic adds topics through its discovery, as any epic's map is re-shaped (8.8.14). Left to the builder: how an absorbed feature's entries become the epic topic's, through the move event (5.3.3). [R19, record 611, 3008–3009; Claude's derivation, T13]
+18.3.5 Pivot and absorb are open only while the feature is before its spec, and absorb only into an epic before its spec. A pivoted epic adds topics through its discovery, as any epic's map is re-shaped (8.8.14). Left to the builder: how an absorbed feature's entries become the epic topic's, through the move event (5.3.3). [R19; today's product for absorb; Claude's derivation, T13: a written spec is the unit's (4.11.2), and an epic's spec waits for every topic (11.2.1)]
 
 18.3.6 A completed feature, bugfix or quick-fix is brought back by reopening its decision through manage. A completed epic is not reopened: later change to it is new work, and a replacement affecting its entries is flagged where it is made (5.6.13). [R17, R19, R37, record 3755–3760; Claude's derivation, T22; ruled by the person 2026-10-25]
 
