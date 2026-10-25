@@ -2574,7 +2574,7 @@ programme folded in by the person 2026-10-12]
 The knowledge base indexes records, never logs, assets, seeds, inbox items or
 the product record's rendered file; an asset is reached through the entry that
 links it (§22). [R11, R44;
-Claude's derivation, O29]
+Claude's derivation, O29; ruled by the person 2026-10-25]
 
 9.2.3 The log keeps the person's thinking and why minds changed. The spec's
 session reads it where it needs to know why; a why missing from it is a gap.
@@ -9681,7 +9681,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.17 The move drops tracking and analysis files (4.10.3); task accounts and their review rounds' reports are kept (4.10.1). [R42, plan 3.13; Claude's derivation]
 
-21.5.18 Tick's store, `.tick/` at the project root today, moves into the state worktree, its contents unchanged (7.5.2, 4.11.3); the default branch drops it in the migration's commit (21.9.2). [7.5.1, 7.5.2, 4.11.3; Claude's derivation 2026-10-25: the tracker's state lives in the state worktree]
+21.5.18 Tick's store, `.tick/` at the project root today, moves into the state worktree, its contents unchanged (7.5.2, 4.11.3); the default branch drops it in the migration's commit (21.9.2). [7.5.1, 7.5.2, 4.11.3; Claude's derivation 2026-10-25: the tracker's state lives in the state worktree; ruled by the person 2026-10-25, Tick needing no change]
 
 ### 21.6 Step 4: the records
 
@@ -10253,7 +10253,7 @@ beside the rendered records, for a CLAUDE.md line to point at (§8). [Layout on 
 
 22.6.12 The knowledge base indexes records only: never assets, seeds, inbox
 items or the product record's rendered file. An asset is reached through
-the entry that links it. [R44; Claude's derivation, O29]
+the entry that links it. [R44; Claude's derivation, O29; ruled by the person 2026-10-25]
 
 22.6.13 Left to the builder: ranking, decay, the per-topic ordering and the
 reopened marker once specs and logs are not indexed, settled by the re-made
