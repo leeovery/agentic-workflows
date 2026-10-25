@@ -408,7 +408,7 @@ Investigation concluded [auto]. Moving to the specification.
 
 ### 3.3 Positions: auto and step
 
-3.3.1 A phase runs in one of two positions, auto or step, which replace today's three positions; today's bounded mode and the separate learned position go. [R40; ruled by the person 2026-10-15; plan 3.2]
+3.3.1 The build runs in one of two positions, auto or step, which replace today's three positions; today's bounded mode and the separate learned position go. No other phase has a position; the review phase's fix phases take the build's (14.6.2). [R40; ruled by the person 2026-10-15; the build alone, ruled by the person 2026-10-25; plan 3.2]
 
 3.3.2 Auto is the default. In auto, process gates are learned and the ask rule decides, the person being bothered only when the ask rule judges they would want to be, the way Claude Code's auto mode classifies. [R40; ruled by the person 2026-10-15]
 
@@ -418,7 +418,7 @@ Investigation concluded [auto]. Moving to the specification.
 
 3.3.5 The build's position is chosen once, at ready to build, auto by default; then the work hands off to the build (§11; §12). [R40; plan 3.2]
 
-3.3.6 Any phase's position can be switched at any time: the person asks in their own words, and Claude records the switch through its door verb. No row is added for it. [R40; plan 3.2; Claude's derivation, O6]
+3.3.6 The build's position can be switched at any time: the person asks in their own words, or, in step, presses `a/auto` on the stop after a task, and Claude records the switch through its door verb. Auto has no stop to carry a row, so a switch back to step is asked in words. [R40; plan 3.2; the row on the step stop, ruled by the person 2026-10-25]
 
 3.3.7 A switch of position is stated intent: it is recorded in the trust log and outranks the learned counts (§16). [R40, R25]
 
@@ -443,7 +443,7 @@ s/step  → Step — it also stops after each task, for you to review
 Comment → Ask for a change to the outline or the phase cut
 ```
 
-3.3.10 Screen: where a phase's current position shows is drawn by Claude in the existing design system, marked as Claude's, for the person to tick or comment on in the spec. [R40; Claude's derivation, O6, O94]
+3.3.10 Screen: where the build's current position shows is drawn by Claude in the existing design system, marked as Claude's, for the person to tick or comment on in the spec. [R40; Claude's derivation, O6, O94]
 
 Screen, drawn by Claude: the build's position, shown on its step marker. [Claude's derivation, O94]
 
@@ -465,7 +465,7 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 3.S3 Given a specification reaching ready to build, when it is approved, then it carries the phase cut, and each build phase's tasks are written as that phase starts. (3.1.8)
 
-3.S4 Given a person who has answered ready to build the same way every time, when ready to build comes again with the phase in auto, then it stops for the person. (3.2.2, 3.2.3, 3.3.4)
+3.S4 Given a person who has answered ready to build the same way every time, when ready to build comes again, then it stops for the person. (3.2.2, 3.2.3, 3.3.4)
 
 3.S5 Given a feature, when its topic is decided, then decided and ready to build come as one screen. (3.2.4)
 
@@ -483,11 +483,11 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 3.S12 Given ready to build, when the person approves without changing the position, then the build runs in auto, and no bounded mode is offered. (3.3.1, 3.3.2, 3.3.5)
 
-3.S13 Given a phase in step, when any process gate comes, then it stops for the person whatever the learned counts. (3.3.3)
+3.S13 Given a build in step, when any process gate comes, then it stops for the person whatever the learned counts. (3.3.3)
 
-3.S14 Given a phase in auto, when the person asks in their own words to switch it to step, then Claude records the switch through its door verb, the switch is recorded in the trust log, and the phase's process gates stop even where the learned counts would run them automatically; no screen carries a row for the switch. (3.3.6, 3.3.7)
+3.S14 Given a build in auto, when the person asks in their own words to switch it to step, then Claude records the switch through its door verb, the switch is recorded in the trust log, and the build's process gates stop even where the learned counts would run them automatically. (3.3.6, 3.3.7)
 
-3.S15 Given a phase in auto, when a danger question arises, then it stops for the person. (3.3.4)
+3.S15 Given a build in auto, when a danger question arises, then it stops for the person. (3.3.4)
 
 3.S16 Given a build in step, when a task finishes, then the gate after it stops, carrying the task's account and diagrams. (3.3.8)
 
@@ -495,7 +495,9 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 3.S18 Given ready to build, when its screen shows, then it offers the build's position with auto first. (3.3.5, 3.3.9)
 
-3.S19 Given a phase the person has switched to step, when its screens show, then its current position shows as step where Claude's drawing places it. (3.3.6, 3.3.10)
+3.S19 Given a build the person has switched to step, when its screens show, then its current position shows as step where Claude's drawing places it. (3.3.6, 3.3.10)
+
+3.S20 Given a build in step, when the stop after a task shows, then it carries an `a/auto` row, and pressing it runs the rest of the build in auto, the switch recorded through the door verb and in the trust log. (3.3.6, 3.3.7)
 
 ## 4. State and the layout on disk
 
@@ -4681,6 +4683,7 @@ DIFFERS FROM THE TASK (3)
 ◆ Approve this task?
 
 y/yes       → Approve it and continue to the next task
+a/auto      → Approve it and run the rest of the build in auto
 t/technical → Retell the result from the code's perspective
 s/show      → Show the result as diagrams
 Ask         → Ask questions about the task (doesn't approve or
@@ -5026,9 +5029,9 @@ change lands in the repos it touched. (7.2.17, 12.7.3, 12.7.10)
 
 13.4.5 A nit is mechanical with no ripple: a comment, a name, a test's wording. The orchestrator fixes it there and then, reading the nit from the report, with no trip back to the builder and no review round, so the tasks after it build on the fixed code. The phase review reads the fix. [Reviews in the build; the person 2026-10-15; plan 3.7]
 
-13.4.6 A task stops looping only when a finding it already fixed comes back. It then parks with a report while the rest of the build runs, as any parked task does: one line in the transcript as it parks, its report kept with the task's account, and the task shown in the stop report if the build stops (a parked task: see §12, §12). [Reviews in the build; ruled by the person 2026-10-15; Claude's derivation, O51]
+13.4.6 No count stops a task's loop. When a task looks stuck, such as a finding it already fixed coming back, the orchestrator judges what is wrong and settles it itself, in either position: settling the build's calls is Claude's. The task's account says what was done about it. Only an answer that needs the person stops the task: it waits on that question while the rest of the build runs, as any parked task does (a parked task: see §12, §12). [Reviews in the build; ruled by the person 2026-10-15; a stuck task is Claude's to settle, ruled by the person 2026-10-25]
 
-13.4.7 The gate after each task stops in step, carrying the task's account and diagrams as today, and never in auto, where the person meets only danger, the authority gates and the questions the ask rule parks (a phase's position, auto or step: see §3 and The build, §12). Task approval and the fix gate go with their loops. [R16, R40; R15; Claude's derivation, O52]
+13.4.7 The gate after each task stops in step, carrying the task's account and diagrams as today, and never in auto, where the person meets only danger, the authority gates and the questions the ask rule parks (the build's position, auto or step: see §3 and The build, §12). Planning's per-task approval, today's author gate, and the fix gate go with their loops. [R16, R40; R15; Claude's derivation, O52]
 
 ### 13.5 A failed review, met as a senior engineer would
 
@@ -5148,7 +5151,7 @@ change lands in the repos it touched. (7.2.17, 12.7.3, 12.7.10)
 
 13.S4 Given a review round in which both reports carry only nits, when the round ends, then the round passes, the orchestrator fixes each nit itself in the task in flight, the builder is not sent back, and no further round runs. (13.4.4, 13.4.5, 13.7.4)
 
-13.S5 Given a task whose latest round reports again a finding the builder fixed in an earlier round, when the round ends, then the task stops looping and parks with a report, Claude says so in one line in the transcript, the report is kept with the task's account, and the build's other tasks carry on; if the build later stops, the stop report shows the task. (13.4.6)
+13.S5 Given a task whose latest round reports again a finding the builder fixed in an earlier round, when the round ends, then no count stops the loop: the orchestrator judges the cause and settles it itself, and the task's account says how; given the answer needs the person, then the task waits on that question while the rest of the build runs. (13.4.3, 13.4.6)
 
 13.S6 Given a finding whose scenario combines several steps of ordinary use and whose report names no edge-list item, when its call is read, then it is serious; given a finding whose report names the edge-list item its scenario needs, then it is not serious. (13.6.1, 13.6.2)
 
@@ -5244,7 +5247,9 @@ change lands in the repos it touched. (7.2.17, 12.7.3, 12.7.10)
 
 14.6.1 The build runs straight into the review phase, in an epic too: implementation's conclude gate and the return to the epic menu between them go. [R16; ruled by the person 2026-10-14; plan 3.10]
 
-14.6.2 A failing review's fix tasks and the rerun go on without stopping. The finish gate is the stop, and the epic menu follows it. [R16; ruled by the person 2026-10-14]
+14.6.2 In auto, a failing review's fix tasks and the rerun go on without stopping; the finish gate is the stop, and the epic menu follows it. In step, the fix tasks stop one by one as any build task does, and the fix phase's merge stops as any phase merge does (7.2.4); the failing verdict itself does not stop. [R16; ruled by the person 2026-10-14; in step, ruled by the person 2026-10-25]
+
+14.6.3 No count stops the review phase's rounds. A round that fails on findings its fix tasks already addressed is Claude's to settle, as a stuck task is (13.4.6): it judges what is wrong and settles it, the report saying how, and stops for the person only where the answer needs them. [R16; ruled by the person 2026-10-25]
 
 ## 14-S. Scenarios for §14
 
@@ -5268,11 +5273,15 @@ change lands in the repos it touched. (7.2.17, 12.7.3, 12.7.10)
 
 14.S10 Given a scenario no drive could perform, when the review phase reports, then the report lists it under what was not proven. (14.1.3, 15.3.3)
 
-14.S11 Given an epic whose review phase fails a round, when the fix tasks and the rerun run, then nothing stops for the person until the finish gate, and the epic menu follows the finish gate. (14.6.2)
+14.S11 Given an epic in auto whose review phase fails a round, when the fix tasks and the rerun run, then nothing stops for the person until the finish gate, and the epic menu follows the finish gate. (14.6.2)
 
 14.S12 Given a review phase that fails two rounds, when each round's fix tasks are written, then each round's fix tasks form one more build phase of their own, and both fix phases land at finish. (14.3.2)
 
 14.S13 Given the review phase's runs leave a file changed outside `.workflows/`, when they end, then the session stops for the person and reverts nothing. (14.1.5, 12.7.8)
+
+14.S14 Given a build in step whose review phase fails a round, when the fix tasks run, then the failing verdict does not stop, the gate after each fix task stops as a build task's does, and the fix phase's merge stops. (14.6.2, 3.3.8, 7.2.4)
+
+14.S15 Given a review phase whose round fails again on a finding its fix tasks already addressed, when the round ends, then no count stops the loop: Claude settles it and the report says how, and only an answer that needs the person stops for them. (14.6.3)
 
 ## 15. Verification
 
@@ -5912,7 +5921,7 @@ b/back    → Back to the start menu — the rest keep waiting
 - each ledger call;
 - each blind question;
 - each reversal;
-- each switch of a phase's position (§3);
+- each switch of the build's position (§3);
 - each convergence accepted.
 [R25]
 
@@ -7232,7 +7241,7 @@ Ask    → Ask anything about triage or the inbox
 
 19.4.18 After the fix, the same test passes in the build's own gates. [R20; ruled by the person 2026-10-16]
 
-19.4.19 Investigation's plan, check-in and conclude gates follow the phase's position (§3): learned in auto, stopping in step. Ready to build stays the authority gate before any code. [R20, R40, plan 3.12; ruled by the person 2026-10-16]
+19.4.19 Investigation's plan, check-in and conclude gates are learned process gates (§3); only the build has a position. Ready to build stays the authority gate before any code. [R20, R40, plan 3.12; ruled by the person 2026-10-16; the build alone has a position, ruled by the person 2026-10-25]
 
 19.4.20 Testing against a live server is danger (§16), which stops in both positions. The per-project verify setup (§15) holds how to run the product safely, given once. [R20, R24, R32; ruled by the person 2026-10-16]
 
@@ -11377,7 +11386,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.14.5 Relies on: 29.2 to 29.8, 29.11 to 29.13. [R14; Claude's derivation]
 
-29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52, 12.S53 (156). [R14; Claude's derivation]
+29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 3.S20, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 14.S14, 14.S15, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52, 12.S53 (159). [R14; Claude's derivation]
 
 ### 29.15 The work types
 

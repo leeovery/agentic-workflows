@@ -1698,8 +1698,11 @@ project's own measurements decide (R7).
     return to the epic menu between them go. A failing review's fix tasks
     and the rerun go on without stopping; the finish gate is the stop, and
     the epic menu follows it.
-  - The task gate, the fix gate and task approval become learned (R40):
-    auto was taken 42 of 49 and 40 of 44 times where offered.
+  - The task gate is the build's position (R40): it stops after each task
+    in step, never in auto. The fix gate and planning's task approval go
+    with their loops: auto was taken 42 of 49 and 40 of 44 times where
+    offered. In step, a failing review's fix tasks stop one by one as any
+    build task does; the failing verdict itself does not (2026-10-25).
 
 ### The tracking layer
 
@@ -3231,6 +3234,17 @@ think is a good sign."
     switchable at any time. A switch is stated intent, recorded in the
     trust log (R25), and outranks the learned counts. In both positions
     the authority gates and danger questions (R24) stop.
+  - **The build alone has a position**, ruled by the person 2026-10-25,
+    after a detour through a per-stop mix: step is stepping through the
+    tasks in series, each stopping once its review passes; auto runs
+    through and lets Claude run tasks in parallel. The step stop carries
+    an `a/auto` row; back to step is asked in words. No count stops a
+    task's loop or the review phase's rounds (today's caps stop even in
+    auto, "and I don't think that's necessary anymore"): a stuck loop is
+    Claude's to settle, stopping for the person only where the answer
+    needs them — "It's my prerogative now or my responsibility in auto
+    mode to make decisions. If it needs me, the person, then obviously
+    it should stop."
 - **R41 — Foundations first.** Discovery orders the map's topics by what
   depends on what, and research whose results other topics rest on comes
   first. The reason is the cone (R24): the topics everything rests on are
