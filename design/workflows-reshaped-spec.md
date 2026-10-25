@@ -1952,10 +1952,12 @@ routing and dead-end map operations. [R10; ruled by the person 2026-10-13]
 (§3 §3). [R10, R40]
 
 8.8.13 For an epic, start this work creates the unit, the conversation shapes
-the topics, approve the map follows, and the work hands off into the first
-topic. A feature has no map gate and hands off from start this work into its
-discussion; a bugfix hands off from start this work into its investigation.
-[R10, R19, R20, R40, plan 9.6; Claude's derivation, O22]
+the topics, approve the map follows, and the work hands off to the epic's
+menu, the first topic in the map's order marked next: which topic is worked,
+and when, is the person's pick. A feature has no map gate and hands off from
+start this work into its discussion; a bugfix hands off from start this work
+into its investigation. [R10, R19, R20, R40, plan 9.6; the epic's menu after
+the map, ruled by the person 2026-10-25]
 
 8.8.14 Re-shaping an existing epic's map: a change the person asked for in
 their own words needs no confirm (8.8.6), and a session in which Claude
@@ -10609,7 +10611,8 @@ the mod, the skill is invoked inline. [plan 9.6; Claude's]
 moves to it, a bugfix's investigation one, and an experiment's spawn one:
 - start this work, into the first topic: for a feature, its discussion; for a
   bugfix, its investigation; for an epic, the conversation goes on to shape
-  the topics, and approve the map makes this move;
+  the topics, and approve the map hands off to the epic's menu, where the
+  person picks the topic to work;
 - decided, into the next topic or the spec;
 - ready to build, into the build;
 - finish, back to the menus;
