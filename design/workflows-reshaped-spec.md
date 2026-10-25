@@ -4769,12 +4769,13 @@ R15]
 top, and its rows carry no phase (§18). [Open, One
 build across an epic; the person 2026-10-14]
 
-12.15.4 A decision that has to change after discussion is over is settled where
-it is found, in the phase the epic is in. The epic never goes back to
-discussion: the ledger records the change, and whatever was written or built on
-the old answer is reworked by tasks. Replacing a decision the person made always
-asks them (16.5.7). [Open, One build across an epic; ruled by the person
-2026-10-14 and 2026-10-21]
+12.15.4 A decision that has to change after its discussion or investigation is
+over is settled where it is found, in the phase the unit is in, for every type
+alike. The unit never goes back to its discussion or investigation: the ledger
+records the change, and whatever was written or built on the old answer is
+reworked by tasks. Replacing a decision the person made always asks them
+(16.5.7). [Open, One build across an epic; ruled by the person 2026-10-14 and
+2026-10-21; every type alike, ruled by the person 2026-10-25]
 
 ## 12-S. Scenarios for §12
 
@@ -6520,13 +6521,13 @@ h/help     → How the workflows work
 
 ### 18.3 Manage
 
-18.3.1 A feature, bugfix or quick-fix has no menu of its own, so reopening its decision and bringing back a cancelled one go through manage on the start menu. One door per kind of unit: an epic's map changes go through its discovery (18.4.9). [R17, R19, plan 3.11; ruled by the person 2026-10-15 and 2026-10-16]
+18.3.1 A feature, bugfix or quick-fix has no menu of its own, so reopening a finished one's decision and bringing back a cancelled one go through manage on the start menu; before it finishes, a changed decision is settled where it is found (12.15.4). One door per kind of unit: an epic's map changes go through its discovery (18.4.9). [R17, R19, plan 3.11; ruled by the person 2026-10-15 and 2026-10-16; finished units only, ruled by the person 2026-10-25]
 
-18.3.2 Revisiting an earlier phase of a feature, bugfix or quick-fix moves to manage on the start menu, beside pivot, absorb and cancel. In the new shape revisiting is mostly reopening the decision, and a later change to a decision replaces its entry on the ledger (§5). [R19; ruled by the person 2026-10-16]
+18.3.2 Revisiting an earlier phase of a finished feature, bugfix or quick-fix moves to manage on the start menu, beside pivot, absorb and cancel. In the new shape revisiting is mostly reopening the decision, and a later change to a decision replaces its entry on the ledger (§5). [R19; ruled by the person 2026-10-16; finished units only, ruled by the person 2026-10-25]
 
 18.3.3 Pivot and absorb stay. [R19]
 
-18.3.4 Screen: manage on the start menu. Rows the sources give: reopen a feature's, bugfix's or quick-fix's decision (revisiting); pivot; absorb; cancel; bring back a cancelled unit. Manage also changes the environment setup and the drivers (§22). Manage also opens the matrix (16.15.1). Its rows' labels and keys are drawn by Claude in the spec (18.10.8). Moving a quick-fix to a feature or bugfix is not among its rows: it happens inside the quick-fix's own session (19.5.9). [R17, R19, plan 3.11, plan 9.2; Claude's derivation, O94, O68]
+18.3.4 Screen: manage on the start menu. Rows the sources give: reopen a finished feature's, bugfix's or quick-fix's decision (revisiting); pivot; absorb; cancel; bring back a cancelled unit. Manage also changes the environment setup and the drivers (§22). Manage also opens the matrix (16.15.1). Its rows' labels and keys are drawn by Claude in the spec (18.10.8). Moving a quick-fix to a feature or bugfix is not among its rows: it happens inside the quick-fix's own session (19.5.9). [R17, R19, plan 3.11, plan 9.2; Claude's derivation, O94, O68]
 
 Screen, drawn by Claude: manage. [Claude's derivation, O94]
 
@@ -6547,7 +6548,7 @@ h/help    → What this menu is for, row by row
 b/back    → Back to the start menu
 ```
 
-Screen, drawn by Claude: manage, a feature picked, its build under way, so pivot and absorb are not offered (18.3.5). [Claude's derivation, O94; 18.3.5]
+Screen, drawn by Claude: manage, a feature picked, its build under way, so pivot, absorb and reopen are not offered (18.3.5, 12.15.4). [Claude's derivation, O94; 18.3.5; 12.15.4]
 
 ```text
 · · · · · · · · · · · ·
@@ -6555,7 +6556,6 @@ Lazy Resume On Attach (feature)
 
 ◆ What would you like to do?
 
-r/reopen → Reopen its decision — back into its discussion
 c/cancel → Mark as cancelled
 h/help   → What this menu is for, row by row
 b/back   → Back to manage
@@ -7091,7 +7091,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S6 Given verdicts waiting in the verdict queue, when the start menu renders, then a verdict-queue project row shows beside the inbox and the roadmap; given none waiting, no such row shows. (18.2.11, 18.2.12)
 
-18.S7 Given a decided feature, when the person opens manage on the start menu, then manage offers to reopen its decision beside cancel, and offers no pivot or absorb, its spec having started; given a cancelled bugfix, manage offers to bring it back. (18.3.1, 18.3.2, 18.3.3, 18.3.4, 19.1.2, 18.3.5)
+18.S7 Given a feature whose build is under way, when the person opens manage on the start menu, then manage offers cancel, and no reopen, pivot or absorb; given a cancelled bugfix, manage offers to bring it back. (18.3.1, 18.3.2, 18.3.3, 18.3.4, 19.1.2, 18.3.5, 12.15.4)
 
 18.S8 Given a feature whose decision the person reopens through manage and changes, when the change is recorded, then the ledger holds a new entry replacing the earlier one. (18.3.2)
 
@@ -7212,6 +7212,8 @@ Ask    → Ask anything about triage or the inbox
 18.S66 Given two items waiting on the horizon "later", when work starts from both, then neither shows on the roadmap's home and the work holds both as seeds; when that work is cancelled, both show again on "later". Given a topic made from a roadmap item, removed before it starts, then the item shows again on its horizon; given that horizon since removed, Claude asks which horizon it goes on. (18.8.20, 8.8.16, 18.8.2)
 
 18.S67 Given a waiting roadmap item with a note, when the person archives it, then it stays on the project manifest marked archived and off its horizon, the roadmap's home no longer shows it, and its note is still in `.roadmap/notes/`; when the person asks for it back on a horizon, then it is there with its note and pointers. (18.8.13)
+
+18.S68 Given a feature whose build is under way, when a decision it rests on has to change, then it is settled in the build: the ledger records the change, tasks rework what was built on the old answer, and the feature does not go back to its discussion. (12.15.4, 18.3.1)
 
 ## 19. Work types
 
@@ -11462,7 +11464,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 24.S18 (104). [R14; Claude's derivation]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 24.S18 (105). [R14; Claude's derivation]
 
 ### 29.17 The rest of the migration
 
@@ -11526,7 +11528,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 827 listed are the 827 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 828 listed are the 828 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
