@@ -7884,11 +7884,13 @@ In READY TO DISCUSS each queued question has its row and a ✕; "▸ unqueue"
 or its ✕ take it back out, and "▸ cancel all" empties the box — none
 of them says anything to Claude. [the locked spike]
 
-20.6.5 The READY TO DISCUSS box is the same box on every tab, fixed at the
-foot of the pane while the list above it scrolls, as sitrep's queue sits
-beside it. The spike draws the box after the list once the list outgrows
-the pane; this statement is the one to build. [R15, "at the panel's foot";
-the locked spike; Claude's derivation, O93]
+20.6.5 The READY TO DISCUSS box is the same box on every tab. Docked, it is
+fixed at the foot of the pane while the list above it scrolls, as sitrep's
+queue sits beside it; inline, Claude Code scrolls the whole board (20.2.2)
+and the box follows the list. The spike draws the box after the list in
+both; this statement is the one to build. [R15, "at the panel's foot";
+the locked spike; Claude's derivation, O93; docked only, ruled by the
+person 2026-10-25]
 
 20.6.6 "▸ send to Claude" sends the queue as one message, in the order it was
 queued: "Ready to discuss Q1: {the question}" for one; "Ready to discuss
@@ -9518,9 +9520,9 @@ nothing turns. (20.4.8)
 conversation shows the same summary and waiting questions either way.
 (20.1.3, 20.1.4)
 
-20.S14 Given a list longer than the pane with a question queued, when the
-person scrolls the board, then the list scrolls and READY TO DISCUSS stays
-at the pane's foot. (20.6.5)
+20.S14 Given the board docked, a list longer than the pane and a question
+queued, when the person scrolls the board, then the list scrolls and READY
+TO DISCUSS stays at the pane's foot. (20.6.5)
 
 20.S15 Given a done task, when the person opens its page, then its account
 is there, and nothing on the page sends it to the conversation. (20.5.7)
@@ -9568,6 +9570,11 @@ calls, and the earlier decision it replaces. (20.14.1)
 shows what changed, why and what it leaves out, and once the person closes
 it This session shows All work at the start menu with the unit under
 COMPLETE. (20.14.1, 20.14.2)
+
+20.S25 Given the board inline above the prompt, a list longer than its
+rows and a question queued, when the person scrolls the board, then the
+board scrolls as one and READY TO DISCUSS comes after the list. (20.6.5,
+20.2.2)
 
 ## 21. Migration
 
@@ -11440,7 +11447,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.14.5 Relies on: 29.2 to 29.8, 29.11 to 29.13. [R14; Claude's derivation]
 
-29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 3.S20, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 14.S14, 14.S15, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52, 12.S53 (159). [R14; Claude's derivation]
+29.14.6 Proven by: 2.S3, 2.S4, 2.S6, 2.S8, 2.S9, 3.S3, 3.S10, 3.S12, 3.S16, 3.S17, 3.S19, 3.S20, 4.S21, 4.S22, 4.S28, 5.S30, 6.S23, 7.S3, 7.S7, 7.S8, 7.S9, 7.S10, 7.S12, 7.S13, 9.S57, 11.S6, 11.S17, 12.S1, 12.S2, 12.S3, 12.S4, 12.S5, 12.S6, 12.S7, 12.S8, 12.S9, 12.S10, 12.S11, 12.S12, 12.S13, 12.S14, 12.S15, 12.S16, 12.S17, 12.S19, 12.S20, 12.S21, 12.S22, 12.S23, 12.S24, 12.S25, 12.S26, 12.S27, 12.S28, 12.S29, 12.S30, 12.S32, 12.S33, 12.S34, 12.S35, 12.S36, 12.S37, 12.S38, 12.S39, 12.S40, 12.S41, 12.S42, 12.S43, 12.S44, 12.S45, 12.S46, 12.S47, 12.S49, 12.S50, 12.S51, 13.S1, 13.S2, 13.S3, 13.S4, 13.S5, 13.S6, 13.S7, 13.S8, 13.S9, 13.S10, 13.S11, 13.S12, 13.S13, 13.S14, 13.S16, 13.S17, 13.S19, 14.S1, 14.S2, 14.S3, 14.S4, 14.S5, 14.S6, 14.S7, 14.S8, 14.S9, 14.S10, 14.S12, 14.S13, 14.S14, 14.S15, 15.S1, 15.S2, 15.S4, 15.S5, 15.S6, 15.S7, 15.S9, 15.S10, 15.S11, 15.S12, 15.S13, 15.S15, 15.S17, 15.S18, 15.S21, 15.S22, 16.S35, 16.S61, 17.S2, 17.S3, 20.S1, 20.S2, 20.S3, 20.S4, 20.S5, 20.S6, 20.S7, 20.S8, 20.S10, 20.S11, 20.S12, 20.S13, 20.S14, 20.S15, 20.S16, 20.S21, 20.S25, 22.S17, 24.S4, 24.S6, 24.S7, 24.S12, 24.S13, 25.S1, 25.S8, 26.S2, 26.S7, 26.S8, 26.S11, 26.S12, 27.S6, 27.S7, 12.S52, 12.S53 (160). [R14; Claude's derivation]
 
 ### 29.15 The work types
 
@@ -11528,7 +11535,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 828 listed are the 828 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 829 listed are the 829 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 

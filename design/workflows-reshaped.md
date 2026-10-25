@@ -1443,7 +1443,10 @@ project's own measurements decide (R7).
       Claude raises it then, in full and product first, from the work as
       it stands, while the other tasks carry on. On the panel it takes two
       steps, ruled by the person 2026-10-21: a press queues a question in
-      a Ready to discuss box at the panel's foot, and nothing reaches the
+      a Ready to discuss box at the panel's foot (pinned there while the
+      list scrolls when the panel is docked; inline, the box follows the
+      list as Claude Code scrolls the board, ruled by the person
+      2026-10-25), and nothing reaches the
       conversation until the person sends the queue, as one message in the
       order they queued it; "discuss all" queues the rest as the panel
       lists them, oldest first. One press that raised a question at once
