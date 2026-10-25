@@ -3264,8 +3264,9 @@ think is a good sign."
   permission restart its research showed did not exist.
 - **R42 — What is kept.** The record, the log, the spec, evidence and a
   short review report; the build's log joins them (R15). Tasks live in the project's tracker, behind its driver (R35). Tracking files,
-  analysis files and per-task report files go: in every project only the
-  spec was read downstream.
+  analysis files and today's per-task report files go: in every project only the
+  spec was read downstream. A task's review rounds' reports are new, and are
+  kept with its account, where the person reaches them (R15).
 
 ## Measures and levers
 

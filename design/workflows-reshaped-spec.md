@@ -666,7 +666,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.10.2 Tasks live in the project's tracker, behind its driver (§7). [R42, plan 3.13]
 
-4.10.3 Tracking files and analysis files go. [R42, plan 3.13; the person 2026-10-16]
+4.10.3 Tracking files, analysis files and today's per-task report files go. A task's review rounds' reports are new, and are kept with its account (12.14.7). [R42, plan 3.13; the person 2026-10-16; the round reports, R15 and Claude's derivation 2026-10-25: the person reaches them through the task's account]
 
 ### 4.11 The layout on disk
 
@@ -1364,7 +1364,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.6.12 The second plugin, `workflow-gates-rows`, stays. It redraws the transcript row of an answer the mod sent as the question and the answer, and a handoff's continuation as its line. [today's product; Claude's sort, T33]
 
-6.6.13 The mod runs where it runs today: Claude Code's terminal app and the Desktop app's Code tab, from the floor version (22.2.5). The board runs wherever Claude Code draws a mod's pane. The mod draws nothing while another screen, such as Remote Control, is attached. Elsewhere the workflows run on the engine's text (6.6.9), softly supported. [today's product; Claude's sort, T37]
+6.6.13 The mod runs where it runs today: Claude Code's terminal app and the Desktop app's Code tab, from the floor version (22.2.5). The board runs wherever Claude Code draws a mod's pane. While another screen, such as Remote Control, is attached, the mod leaves each menu as text so every screen shows it, as today. Elsewhere the workflows run on the engine's text (6.6.9), softly supported. [today's product; Claude's sort, T37; Remote Control as today's mod does it, Claude's derivation 2026-10-25]
 
 ## 6-S. Scenarios for §6
 
@@ -2055,7 +2055,9 @@ menu, and no candidate gate stays there. [R10, plan 3.3; ruled by the person
 8.10.2 When a topic finishes, its closing pass (9.9) also asks whether the
 decision creates work no topic owns. A candidate shows on the decided screen
 with its reason, beside the product record's lines; the person's yes covers
-it, or they strike it. [R10, R11; ruled by the person 2026-10-13]
+it, or they strike it. In a unit with one topic the yes parks the work on the
+roadmap, and a feature's also offers the pivot to an epic (19.3.6). [R10, R11;
+ruled by the person 2026-10-13; one topic, Claude's derivation 2026-10-25]
 
 8.10.3 Once every topic is decided, before the spec, one sweep reads across
 all the records for what falls between topics. [R10, plan 3.3; ruled by the
@@ -2345,8 +2347,9 @@ gate shows, and the person's own session is never reported as another. (8.10.1,
 
 8.S31 Given a topic's closing pass finds work no topic owns that holds a call
 the person would make, then the decided screen shows it as a candidate with its
-reason; the person's yes makes it a topic, and striking it drops it. (8.10.2,
-8.10.5)
+reason; the person's yes makes it a topic, and striking it drops it; in a
+feature, the yes offers the pivot to an epic or parks the work on the
+roadmap. (8.10.2, 8.10.5)
 
 8.S32 Given a closing pass finds work that only carries a decision into another
 topic, then a message goes to that topic's mailbox and no candidate shows; a
@@ -5972,8 +5975,9 @@ b/back    → Back to the start menu — the rest keep waiting
 - each blind question;
 - each reversal;
 - each switch of the build's position (§3);
-- each convergence accepted.
-[R25]
+- each convergence accepted;
+- each correction the person makes to a question's kind or a verdict (16.15.4).
+[R25; the correction, Claude's derivation 2026-10-25]
 
 16.13.5 Every event's key carries its scope: project and kind. [R25]
 
@@ -6085,7 +6089,7 @@ n/no    → Keep 20%
 Comment → Try another number
 ```
 
-16.15.4 Correcting the matrix means the person's own settings: the threshold, picked from a replay (16.15.2), and their care entries (16.5.2). A question's kind is never edited there. [R24, R25, R27; Claude's derivation, O62]
+16.15.4 Correcting the matrix means the person's own settings: the threshold, picked from a replay (16.15.2), and their care entries (16.5.2). A question's kind or a verdict the person finds wrong is corrected in words: the engine records the correction, and the counts follow. [R24, R25, R27; Claude's derivation, O62; corrected in words, Claude's derivation 2026-10-25]
 
 ### 16.16 What ships
 
@@ -6234,7 +6238,7 @@ Comment → Tell me how to word it
 - 8 agreements in a row: when convergence is offered (16.8.1).
 [R29, R24, R25, R26, plan 4.9; Claude's derivation, O54]
 
-16.20.2 A learned process gate (§3) goes automatic once the one-sided 95% upper bound on leaving its usual answer — the same Beta bound as the ask rule's (16.4.4) — falls below the person's threshold of 20% (16.4.6), with blind asks at 5%. Its usual answer is the one picked most often, and the person retunes it by replay (16.15.2). [R29, R24; Claude's derivation, O54, O64]
+16.20.2 A learned process gate (§3) goes automatic once the one-sided 95% upper bound on leaving its usual answer — the same Beta bound as the ask rule's (16.4.4) — falls below the person's threshold of 20% (16.4.6), with blind asks at 5%. It asks again once that bound rises back above the threshold, which is what answers that start to vary means (3.2.7, 16.21.3). Its usual answer is the one picked most often, and the person retunes it by replay (16.15.2). [R29, R24; Claude's derivation, O54, O64; its return, Claude's derivation 2026-10-25]
 
 16.20.3 No process gate ships automatic: each asks until the person's own answers loosen it, the author's included. [R29, R25]
 
@@ -6764,7 +6768,7 @@ b/back → Back to the start menu
 
 18.4.19 From the spec on, an epic's map is closed: the discovery row leaves the menu, and no topic is added, cancelled, postponed, pulled forward, reactivated or reopened. A topic exists only before the spec (4.11.2), and a decision that must change is settled in the phase the epic is in (12.15.4). A split the person agrees at the outline moves topics as 11.10.3 says, before ready to build's yes. Archiving the roadmap item that holds a postponed topic still cancels that topic's row (18.8.17). Abandoning the work is the unit's cancel through manage (18.3.4). [record 3036–3037, 3755–3760; R17; Claude's derivation, T2; 18.8.17]
 
-18.4.20 A cancel or postpone of the topic, asked for inside its own session, is made through the discovery row. Claude commits the sitting, settles the topic's running agents (9.7.8), and returns to the epic menu, where the discovery row makes the change. For a feature or bugfix, cancelling is manage's (18.3.4). A single question put off for later stays in the conversation (9.5.4). [R17; Claude's derivation, T19]
+18.4.20 A cancel or postpone of the topic, asked for inside its own session, is made by the epic's discovery. Claude commits the sitting, settles the topic's running agents (9.7.8), and carries the request into the epic's discovery, which makes the change without the person asking again. For a feature, bugfix or quick-fix, cancelling is manage's (18.3.4). A single question put off for later stays in the conversation (9.5.4). [R17; Claude's derivation, T19; carried, Claude's derivation 2026-10-25]
 
 18.4.21 A topic held by another session is never the recommended row. Entering it asks first, naming when that session was last active, as today. [today's product; Claude's sort, T34]
 
@@ -7202,7 +7206,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S55 Given an epic whose spec has started, when its menu shows, then it carries no discovery row, and no topic can be added, cancelled, postponed, pulled forward, reactivated or reopened, save that archiving the roadmap item holding a postponed topic cancels that topic's row; given the person agrees a split at the outline, topics move as 11.10.3 says, before ready to build's yes. (18.4.19, 18.4.17, 8.6.5, 18.8.17)
 
-18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents and returns to the epic menu, where the discovery row makes the change; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4)
+18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents and carries the request into the epic's discovery, which postpones the topic without the person asking again; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4)
 
 18.S57 Given a topic held by another session, when the epic menu shows, then it is never the recommended row; when the person enters it, they are asked first, naming when that session was last active. (18.4.21)
 
@@ -9739,7 +9743,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.7.4 It takes the topics that must leave a building unit (21.8.9). [R37]
 
-21.7.5 A cross-cutting unit leaves the registry once its spec's entries land product-wide, and its spec is kept as reference in `.roadmap/assets/`. [R37, R22, R8; Claude's derivation, O78]
+21.7.5 A cross-cutting unit leaves the registry once its spec's entries land product-wide, and its spec and its topics' logs are kept as reference in `.roadmap/assets/`; nothing of it is deleted. [R37, R22, R8; Claude's derivation, O78; the logs, Claude's derivation 2026-10-25]
 
 ### 21.8 Specs: the line is whether building has started
 
@@ -9941,7 +9945,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S25 Given a point no log settles, when the records directive ends, then it is raised to the person on its own, after the rest of the work, and the person answers it or leaves it open; no per-entry question was asked. (21.6.10, 21.6.11, 21.10.8)
 
-21.S26 Given a cross-cutting unit with a spec, when the cut-and-merges directive runs, then the spec's rules are product-wide entries, the unit leaves the registry, and its spec sits in `.roadmap/assets/` as reference. (21.7.3, 21.7.5, 19.6.7)
+21.S26 Given a cross-cutting unit with a spec, when the cut-and-merges directive runs, then the spec's rules are product-wide entries, the unit leaves the registry, and its spec and its topics' logs sit in `.roadmap/assets/` as reference. (21.7.3, 21.7.5, 19.6.7)
 
 21.S27 Given a unit with three unbuilt specs and a plan with tasks in the tracker, when the migration runs, then the specs and plan sit in `assets/`, the tracker tasks are closed through the task verbs, the topics keep their states, and the unit sits in discussion; once every topic is decided, one spec is written fresh through the review and ready to build. (21.8.2, 21.8.3, 21.8.4)
 
