@@ -402,7 +402,7 @@ Screen, drawn by Claude: a learned process gate's one-line report in its place, 
 Investigation concluded [auto]. Moving to the specification.
 ```
 
-3.2.10 The gates that served the build's and review's loops — analysis cycles, per-task approval, the fix gate, and their re-review — go with the loops. [R40; Claude's derivation, O52]
+3.2.10 The gates that served the build's and review's loops — analysis cycles, planning's per-task approval (today's author gate), the fix gate, and their re-review — go with the loops. The stop after each task in step is the build's position (3.3.6), not one of them. [R40; Claude's derivation, O52; 13.4.7]
 
 3.2.11 Discussion's reviews stay, and their gates are learned like any other process gate (§9). [R40, R11]
 
@@ -451,12 +451,6 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 □ Build (phase 6 of 8) · auto
 ```
 
-Screen, drawn by Claude: another phase's position, shown the same way, here an investigation. [Claude's derivation, O94]
-
-```text
-□ Investigation · step
-```
-
 ## 3-S. Scenarios for §3
 
 3.S1 Given the engine's phase tables, when they are read, then discovery, discussion, experiment and investigation sit in Discovery, specification in Definition, and implementation and review in Delivery, with no research, planning or scoping phase. (3.1.1, 3.1.2, 3.1.3, 3.1.4, 3.1.5, 3.1.7, 3.1.8, 3.1.9, 3.1.10)
@@ -477,7 +471,7 @@ Screen, drawn by Claude: another phase's position, shown the same way, here an i
 
 3.S9 Given a new user, when any process gate comes for the first time, then it asks. (3.2.8)
 
-3.S10 Given a build, when it runs, then no analysis-cycle gate, per-task approval gate, fix gate or re-review gate appears. (3.2.10)
+3.S10 Given a build, when it runs, then no analysis-cycle gate, planning's per-task approval gate, fix gate or re-review gate appears; in step, the stop after each task is the build's position. (3.2.10, 3.3.6)
 
 3.S11 Given a discussion's review, when its gate comes, then it is learned like any other process gate. (3.2.11)
 
@@ -1019,7 +1013,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.6.8 Finding the older decision is a judgement, made as mechanical as it can be: every opening view reads the whole product record; a topic's opening view searches earlier units' current entries in its area through the knowledge base; and the read for conflicts before the spec covers the whole project's current entries in the areas the work touches (§9, §11). [R23]
 
-5.6.9 Every change to a decision another topic owns goes to the owner through the mailbox, and the owner's session writes the replacing entry, so a decision is only ever changed through the lens of the topic that owns it (§10). [R23; stated 2026-10-14 in answer to the person; plan 3.4]
+5.6.9 During discussion, every change to a decision another topic owns goes to the owner through the mailbox, and the owner's session writes the replacing entry, so a decision is only ever changed through the lens of the topic that owns it (§10). From the spec on, a change is settled where it is found (12.15.4). [R23; stated 2026-10-14 in answer to the person; plan 3.4; 10.2.2]
 
 5.6.10 When an answer is replaced, every entry relying on it is affected. Affected is a fold: an entry relying on a replaced one, with no "still holds" or replacement written since. [R23]
 
@@ -2056,8 +2050,8 @@ menu, and no candidate gate stays there. [R10, plan 3.3; ruled by the person
 decision creates work no topic owns. A candidate shows on the decided screen
 with its reason, beside the product record's lines; the person's yes covers
 it, or they strike it. In a unit with one topic the yes parks the work on the
-roadmap, and a feature's also offers the pivot to an epic (19.3.6). [R10, R11;
-ruled by the person 2026-10-13; one topic, Claude's derivation 2026-10-25]
+roadmap (18.8). [R10, R11; ruled by the person 2026-10-13; one topic, Claude's
+derivation 2026-10-25]
 
 8.10.3 Once every topic is decided, before the spec, one sweep reads across
 all the records for what falls between topics. [R10, plan 3.3; ruled by the
@@ -2348,8 +2342,7 @@ gate shows, and the person's own session is never reported as another. (8.10.1,
 8.S31 Given a topic's closing pass finds work no topic owns that holds a call
 the person would make, then the decided screen shows it as a candidate with its
 reason; the person's yes makes it a topic, and striking it drops it; in a
-feature, the yes offers the pivot to an epic or parks the work on the
-roadmap. (8.10.2, 8.10.5)
+feature, the yes parks the work on the roadmap. (8.10.2, 8.10.5)
 
 8.S32 Given a closing pass finds work that only carries a decision into another
 topic, then a message goes to that topic's mailbox and no candidate shows; a
@@ -2944,8 +2937,9 @@ carries on, never jumped to; and the lanes. [R11]
 9.8.3 What changes is who answers. A finding takes the path of any question:
 a fact is checked; intent goes to the matrix and becomes either Claude's call
 (in the ledger, and on the map under "since you last looked") or a question on
-the person's map; another topic's goes there as a message (§10); a gap is a
-candidate on the decided screen (8.10.2). [R11]
+the person's map; another topic's goes there as a message (§10); a gap inside
+the topic is an open question in it, and work no topic owns is a candidate on
+the decided screen (8.10.2, 9.9.6). [R11; 9.9.6]
 
 9.8.4 The lanes are the matrix's output: apply is what the record or a fact
 settles, decide is Claude's call, the walked lane is the person's question,
@@ -4248,12 +4242,14 @@ acceptance criteria as scenarios, and spec reference. [R15]
 
 12.4.2 A task names no mechanism the record did not decide. [R15]
 
-12.4.3 A task's acceptance scenarios are scenarios of its phase in the cut:
+12.4.3 A task written for a phase of the cut takes its acceptance scenarios
+from that phase's scenarios:
 each of the phase's scenarios goes to the task that makes it true, and every
 one of them goes to a task. When a task lands, running the product proves its
 scenarios (15.4.1). A task that lays groundwork for a later task's scenario
 says so when it lands: its tests prove what it does, and running waits on
-that task. [R15, R32; 11.5.10, 15.4.1; Claude's derivation 2026-10-25:
+that task. A fix task, or a task made from a note for later, carries the
+scenario its finding or note gives (13.4.1). [R15, R32; 11.5.10, 15.4.1; Claude's derivation 2026-10-25:
 `verify` runs only the cut's scenarios]
 
 ### 12.5 Writing a phase's tasks
@@ -5080,7 +5076,7 @@ scenarios. (12.4.3, 12.12.5)
 
 13.4.5 A nit is mechanical with no ripple: a comment, a name, a test's wording. The orchestrator fixes it there and then, reading the nit from the report, with no trip back to the builder and no review round, so the tasks after it build on the fixed code. The phase review reads the fix. [Reviews in the build; the person 2026-10-15; plan 3.7]
 
-13.4.6 No count stops a task's loop. When a task looks stuck, such as a finding it already fixed coming back, the orchestrator judges what is wrong and settles it itself, in either position: settling the build's calls is Claude's. The task's account says what was done about it. Only an answer that needs the person stops the task: it waits on that question while the rest of the build runs, as any parked task does (a parked task: see §12, §12). [Reviews in the build; ruled by the person 2026-10-15; a stuck task is Claude's to settle, ruled by the person 2026-10-25]
+13.4.6 No count stops a task's loop. When a task looks stuck, such as a finding it already fixed coming back, the orchestrator judges what is wrong and settles it itself, in either position: settling the build's calls is Claude's. The task's account says what was done about it. Only an answer that needs the person stops the task: it waits on that question while the rest of the build runs, as any parked task does (§12). [Reviews in the build; ruled by the person 2026-10-15; a stuck task is Claude's to settle, ruled by the person 2026-10-25]
 
 13.4.7 The gate after each task stops in step, carrying the task's account and diagrams as today, and never in auto, where the person meets only danger, the authority gates and the questions the ask rule parks (the build's position, auto or step: see §3 and The build, §12). Planning's per-task approval, today's author gate, and the fix gate go with their loops. [R16, R40; R15; Claude's derivation, O52]
 
@@ -6229,7 +6225,7 @@ Comment → Tell me how to word it
 16.20.1 The release ships these defaults, each setting one thing, set by the person from the replay of their own history (R29) and their rulings of 2026-10-18; the two weights are starting values set with no evidence yet (16.12.5):
 - 20%: the threshold (16.4.6);
 - half: the threshold where a change would be hard to undo, 10% (16.4.8);
-- a quarter above the threshold: where a quiet kind asks again, 25% and 12.5% (16.6.1);
+- a quarter above the threshold: where a quiet kind or an automatic gate asks again, 25% and 12.5% (16.6.1, 16.20.2);
 - the one-sided 95th percentile of Beta(1 + losses, 1 + clean answers): the pessimistic rate (16.4.4);
 - 10 answers' weight: the cap on the person's other projects in a project's prior (16.14.3);
 - half weight at six months old: an answer's age (16.12.4);
@@ -6238,7 +6234,7 @@ Comment → Tell me how to word it
 - 8 agreements in a row: when convergence is offered (16.8.1).
 [R29, R24, R25, R26, plan 4.9; Claude's derivation, O54]
 
-16.20.2 A learned process gate (§3) goes automatic once the one-sided 95% upper bound on leaving its usual answer — the same Beta bound as the ask rule's (16.4.4) — falls below the person's threshold of 20% (16.4.6), with blind asks at 5%. It asks again once that bound rises back above the threshold, which is what answers that start to vary means (3.2.7, 16.21.3). Its usual answer is the one picked most often, and the person retunes it by replay (16.15.2). [R29, R24; Claude's derivation, O54, O64; its return, Claude's derivation 2026-10-25]
+16.20.2 A learned process gate (§3) goes automatic once the one-sided 95% upper bound on leaving its usual answer — the same Beta bound as the ask rule's (16.4.4) — falls below the person's threshold of 20% (16.4.6), with blind asks at 5%. It asks again where a quiet kind does, once that bound rises a quarter above the threshold (16.6.1), which is what answers that start to vary means (3.2.7, 16.21.3). Its usual answer is the one picked most often, and the person retunes it by replay (16.15.2). [R29, R24; Claude's derivation, O54, O64; its return, Claude's derivation 2026-10-25]
 
 16.20.3 No process gate ships automatic: each asks until the person's own answers loosen it, the author's included. [R29, R25]
 
@@ -6342,7 +6338,7 @@ Comment → Tell me how to word it
 
 16.S44 Given a raise is answered, when it is recorded, then one engine command writes the ledger entry in the project and an event in the trust log in the user-level workflows config directory, and the event holds no decision's content. (16.13.1, 16.13.2, 16.13.3)
 
-16.S45 Given a switch of a phase's position, an accepted convergence and a blind draw, when each happens, then each is an event in the trust log keyed by its project and kind where it has one. (16.13.4, 16.13.5, 16.17.5)
+16.S45 Given a switch of the build's position, an accepted convergence and a blind draw, when each happens, then each is an event in the trust log keyed by its project and kind where it has one. (16.13.4, 16.13.5, 16.17.5)
 
 16.S46 Given the trust log, when the engine decides, then it derives the counts from the log, and no stored count exists. (16.13.6)
 
@@ -6768,7 +6764,7 @@ b/back → Back to the start menu
 
 18.4.19 From the spec on, an epic's map is closed: the discovery row leaves the menu, and no topic is added, cancelled, postponed, pulled forward, reactivated or reopened. A topic exists only before the spec (4.11.2), and a decision that must change is settled in the phase the epic is in (12.15.4). A split the person agrees at the outline moves topics as 11.10.3 says, before ready to build's yes. Archiving the roadmap item that holds a postponed topic still cancels that topic's row (18.8.17). Abandoning the work is the unit's cancel through manage (18.3.4). [record 3036–3037, 3755–3760; R17; Claude's derivation, T2; 18.8.17]
 
-18.4.20 A cancel or postpone of the topic, asked for inside its own session, is made by the epic's discovery. Claude commits the sitting, settles the topic's running agents (9.7.8), and carries the request into the epic's discovery, which makes the change without the person asking again. For a feature, bugfix or quick-fix, cancelling is manage's (18.3.4). A single question put off for later stays in the conversation (9.5.4). [R17; Claude's derivation, T19; carried, Claude's derivation 2026-10-25]
+18.4.20 A cancel or postpone of the topic, asked for inside its own session, is made there as the discovery row makes it (18.4.9): Claude commits the sitting, settles the topic's running agents (9.7.8) and makes the change, cancelling confirmed and postponing reported in one line, and the session moves to the epic's menu (24.1.2). A feature's, bugfix's or quick-fix's cancel, asked for inside its session, is made there the same way as manage's (18.3.4), confirmed, and the session moves to the start menu. A single question put off for later stays in the conversation (9.5.4). [R17; Claude's derivation, T19; made in the session for every type as today, Claude's derivation 2026-10-25]
 
 18.4.21 A topic held by another session is never the recommended row. Entering it asks first, naming when that session was last active, as today. [today's product; Claude's sort, T34]
 
@@ -7206,7 +7202,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S55 Given an epic whose spec has started, when its menu shows, then it carries no discovery row, and no topic can be added, cancelled, postponed, pulled forward, reactivated or reopened, save that archiving the roadmap item holding a postponed topic cancels that topic's row; given the person agrees a split at the outline, topics move as 11.10.3 says, before ready to build's yes. (18.4.19, 18.4.17, 8.6.5, 18.8.17)
 
-18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents and carries the request into the epic's discovery, which postpones the topic without the person asking again; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4)
+18.S56 Given a topic in session, when the person asks inside it to postpone the topic, then Claude commits the sitting, settles the topic's running agents, postpones the topic as the discovery row does and reports it in one line, and the session moves to the epic's menu; given a feature in session, when the person asks inside it to cancel the feature, then Claude confirms, cancels it as manage does, and the session moves to the start menu; given a single question put off for later, it stays in the conversation. (18.4.20, 9.7.8, 9.5.4, 18.4.9, 18.3.4)
 
 18.S57 Given a topic held by another session, when the epic menu shows, then it is never the recommended row; when the person enters it, they are asked first, naming when that session was last active. (18.4.21)
 
@@ -7231,6 +7227,8 @@ Ask    → Ask anything about triage or the inbox
 18.S67 Given a waiting roadmap item with a note, when the person archives it, then it stays on the project manifest marked archived and off its horizon, the roadmap's home no longer shows it, and its note is still in `.roadmap/notes/`; when the person asks for it back on a horizon, then it is there with its note and pointers. (18.8.13)
 
 18.S68 Given a feature whose build is under way, when a decision it rests on has to change, then it is settled in the build: the ledger records the change, tasks rework what was built on the old answer, and the feature does not go back to its discussion. (12.15.4, 18.3.1)
+
+18.S69 Given a topic whose session has ended, when the epic menu renders, then the topic is not shown in session. (18.4.3, 18.4.8)
 
 ## 19. Work types
 
@@ -7258,7 +7256,7 @@ Ask    → Ask anything about triage or the inbox
 
 19.3.5 A feature's phases are discovery → discussion → specification → implementation → review, with an experiment called from discussion. [R9, R18, R19; Claude's derivation, O74]
 
-19.3.6 A feature's discussion offers the pivot to an epic when a point needs decisions of its own. On the person's yes, the point goes to the epic's discovery, which adds the new topic carrying it, as a pivoted epic adds every topic (18.3.5, 8.6.5), and the conversation carries on. [today's product; Claude's sort, T51; 18.3.5, 8.8.14]
+19.3.6 A feature's discussion offers the pivot to an epic when a point needs decisions of its own. On the person's yes, the unit becomes an epic and the point becomes a new topic on its map, added there as the discovery row adds one (18.4.9) and reported in one line, and the conversation carries on in its own topic. [today's product; Claude's sort, T51; 18.3.5, 8.8.14]
 
 ### 19.4 Bugfix
 
@@ -7693,7 +7691,7 @@ spike 2026-10-20 and 2026-10-21; the locked spike]
 in discussion); ⚑ waits on the person; ✗ failed or found; ○ not started or
 waiting; ◇ Claude's call or an item; ◆ a review round or pass; △ a
 difference, a finding or something not proven; » a message, or a move; →
-sent; – cancelled; ↷ postponed; ↺ an earlier answer this one replaces. [the
+sent; – cancelled, ruled out or not taken; ↷ postponed; ↺ an earlier answer this one replaces. [the
 locked spike; Claude's derivation 2026-10-25: one mark per meaning in every
 drawing]
 
@@ -10693,24 +10691,30 @@ collaboration chapter stands apart from trust. (23.4.2)
 runs, the mod clears the conversation and sends the continuation; without
 the mod, the skill is invoked inline. [plan 9.6; Claude's]
 
-24.1.2 The table of moves follows the new phases. The new gates add four
-moves to it, a bugfix's investigation one, and an experiment's spawn one:
+24.1.2 The table of moves follows the new phases:
 - start this work, into the first topic: for a feature, its discussion; for a
   bugfix, its investigation; for an epic, the conversation goes on to shape
   the topics, and approve the map hands off to the epic's menu, where the
   person picks the topic to work;
-- decided, into the next topic or the spec;
-- ready to build, into the build;
+- an epic's topic decided, into the next topic or the spec;
+- a feature's topic, once nothing of the person's is open on it and its
+  closing pass has run, into its spec (11.2.1);
+- ready to build, into the build; for a feature, the one screen that also
+  marks it decided (11.8.5);
 - finish, back to the menus;
 - a bugfix's investigation, once concluded, into the spec, as a feature's
-  decided does; the conclude stays a process gate (19.4.19);
+  topic does; the conclude stays a process gate (19.4.19);
+- a topic cancelled or postponed from inside its own session (18.4.20): an
+  epic's onto the epic's menu; a feature's, bugfix's or quick-fix's onto the
+  start menu;
 - an experiment's spawn, from the topic's conversation into the laboratory,
   which never runs inside the conversation that spawned it. The choice of now
   or later is a process gate, and later is reached from the epic menu's
   experiments-waiting row or a feature's Continue.
 
 [plan 9.6; Claude's; R11, R20, record 872–874, 1946; Claude's derivation,
-O22, O89, T14]
+O22, O89, T14; the feature's spec and the in-session cancel, Claude's
+derivation 2026-10-25: 11.2.1, 18.4.20]
 
 24.1.3 Nothing hands off inside a build, a quick-fix or a topic (an
 experiment's spawn leaves the topic: 24.1.2). [plan 9.6; Claude's; Claude's
@@ -11109,7 +11113,7 @@ The names of the five added last are the builder's. [plan 6.5; Claude's; R20, R4
 
 26.S12 Given any phase, when it runs, then no gap-checker agent runs at the phase. (26.4.5)
 
-26.S13 Given the release's agent definitions, when they are listed, then the roster holds the builder, the reviewer, the consolidation agent, the test-surface agent, the task writer, the deep dive, discussion's perspective and review agents, synthesis, the closing-pass reader, the spec reviewer, investigation's two validators, the product researcher, the migration's verifier, and agents for the spec's assembly, the phase cut, the sweep before the spec, experiment write-ups and plain search, and no analysis, planning or review-phase finding agent exists. (26.1.1, 26.5.1, 26.5.2)
+26.S13 Given the release's agent definitions, when they are listed, then the roster holds the builder, the reviewer, the consolidation agent, the test-surface agent, the task writer, the deep dive, discussion's perspective and review agents, synthesis, the closing-pass reader, the spec reviewer, investigation's two validators, the product researcher, the migration's verifier, the migration's per-topic agent, and agents for the spec's assembly, the phase cut, the sweep before the spec, experiment write-ups and plain search, and no analysis, planning or review-phase finding agent exists. (26.1.1, 26.5.1, 26.5.2)
 
 26.S14 Given any agent on the roster, when its definition is read, then it fixes its model and effort: Opus at medium, except investigation's root-cause validation at extra-high. (26.5.3)
 
@@ -11488,7 +11492,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 24.S18 (105). [R14; Claude's derivation]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 24.S18 (106). [R14; Claude's derivation]
 
 ### 29.17 The rest of the migration
 
@@ -11552,7 +11556,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 830 listed are the 830 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 831 listed are the 831 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
