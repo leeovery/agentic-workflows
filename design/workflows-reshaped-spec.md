@@ -537,7 +537,7 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 
 4.4.4 Boot restores a lost local state branch from the remote. [R23, plan 4.2]
 
-4.4.5 Where the state branch is gone both locally and on the remote, in a project whose code tree holds the workflows' trace (4.5.2), boot stops and says so, with two ways on. Another clone still holding the branch, on this machine or another, puts it back: boot there pushes it to the remote (4.4.12), and this clone restores it at its next boot (4.4.4). Otherwise, on the person's yes, boot creates a fresh state branch and plan the product opens with the product researcher's read of the code, as for code that predates the workflows (8.12.4). The earlier decisions, logs and ledger are gone; the code and its history are not. [R23; ruled by the person 2026-10-22; 4.5.2]
+4.4.5 Where the state branch is gone both locally and on the remote, in a project whose code tree holds the workflows' trace (4.5.2), boot stops and says so, with two ways on. Another clone still holding the branch, on this machine or another, puts it back: boot there pushes it to the remote (4.4.12), and this clone restores it at its next boot (4.4.4). Otherwise, on the person's yes, boot creates a fresh state branch and the product's conversation opens with the product researcher's read of the code, as for code that predates the workflows (8.12.4). The earlier decisions, logs and ledger are gone; the code and its history are not. [R23; ruled by the person 2026-10-22; 4.5.2]
 
 Screen, drawn by Claude: boot's stop, the state branch gone here and on the remote. [Claude's derivation, O94]
 
@@ -671,9 +671,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.11.3 `.workflows/` holds:
 - `manifest.json`: the registry and defaults; the environment setup (22.5.12); the roadmap, its archived items among them (18.8.13); the unit that closed each archived inbox item (18.6.4); the answer to the brownfield offer (8.12.11); and each directive's checklist (6.4.12);
 - `.ledger.jsonl`: the project's stream (§5);
-- `.inbox/`, `.roadmap/` and `.state/` (4.11.16);
+- `.inbox/`, `.product/` and `.state/` (4.11.16);
 - `.knowledge/` (4.11.10);
-- `.cache/`: machine-local session state: `{unit}/…` mirroring each unit's tree, `.roadmap/…` for product-level spikes' builds (4.11.13), and the tmux label store (22.1.1);
+- `.cache/`: machine-local session state: `{unit}/…` mirroring each unit's tree, `.product/…` for product-level spikes' builds (4.11.13), and the tmux label store (22.1.1);
 - `.gitignore`, ignoring `.knowledge/`, `.cache/`, the engine's lock (4.3.1) and any files the tracker keeps local;
 - the tracker's store, where the task driver keeps one there: Tick's `.tick/` (7.5.2);
 - one folder per work unit, `{unit}/` (4.11.5).
@@ -690,7 +690,8 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `topics/{topic}/log.md`: the journey, one dated heading per session;
 - `topics/{topic}/mail/NNN-*.md`: messages waiting for the topic (§10);
 - `topics/{topic}/experiments/`: the topic's experiment records (4.11.15);
-- `assets/`: what informs a decision (§9);
+- `assets/`: the files that inform a decision (9.10.5);
+- `spikes/NNN-{slug}/`: one folder per spike, a design spike's rounds in `round-N/` (9.10.10);
 - `spec.md`: the areas, with their scenarios (§11);
 - `spec-review.json`: the record of the person's review of the spec, when they took one (11.11.9);
 - `build/log.md`: what is in flight, what was tried and dropped, what is left for the next phase;
@@ -700,7 +701,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 - `build/runs/`: the verification runs (4.11.15);
 - `review/round-N.md`: the review phase's report for each round, the passing one being the certificate, with its detailed checks beside it in `round-N-checks.md` (14.4.2).
 
-[Layout on disk, R11, R13, R12, R14, R15, R16; the experiments, the reports' and runs' places and names, Claude's proposal; the phase cut on the manifest and the review's record as `spec-review.json`, ruled by the person 2026-10-22]
+[Layout on disk, R11, R13, R12, R14, R15, R16; the experiments, the reports' and runs' places and names, Claude's proposal; the phase cut on the manifest and the review's record as `spec-review.json`, ruled by the person 2026-10-22; `spikes/`, agreed by the person 2026-10-26]
 
 4.11.6 By work type: an epic has many topics; a feature one, named after the unit; a bugfix one, whose log is the investigation; a quick-fix none and no spec, holding `build/` and `summary.md`, the short record after the work (§19). [Layout on disk, R21]
 
@@ -714,9 +715,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.11.11 `.knowledge/` and `.cache/` are gitignored. [Layout on disk, R23, R44]
 
-4.11.12 A product-level spike's files go in `.roadmap/assets/`, which replaces `.roadmap/imports/` as a unit's `assets/` replaces `imports/`. [R12; Claude's call, 2026-10-19]
+4.11.12 A product-level spike's files go in `.product/spikes/`, a folder per spike, and files shared at the product level in `.product/assets/`, which replaces `.roadmap/imports/` as a unit's `assets/` replaces `imports/` (9.10.11). [R12; Claude's call, 2026-10-19; `.product/` and its spikes, agreed by the person 2026-10-26]
 
-4.11.13 A spike's dependencies, builds and run output go in the gitignored cache. [R12; Claude's call, 2026-10-19; plan 3.4]
+4.11.13 A spike's dependencies, builds and run output go in the gitignored cache, at the spike's own path there (9.10.10). [R12; Claude's call, 2026-10-19; plan 3.4]
 
 4.11.14 At user level, `~/.config/workflows/` holds:
 - `config.json`: the knowledge base's provider settings, and the person's own settings, the threshold and its mid-build raise (16.13.7);
@@ -732,12 +733,12 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.11.16 Inside the project's own folders:
 - `.inbox/`: one file per capture, `{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, as today; an archived item moves to `.inbox/.archived/{kind}/`, its name kept, and the unit that closed it is recorded on the project manifest (18.6.4);
-- `.roadmap/`: the session logs, `sessions/session-NNN.md`, discovery's before the work-type commit among them (8.14.3); each note an inbox item brought onto the roadmap, `notes/{YYYY-MM-DD}--{slug}.md`, its inbox name kept (18.8.15); and `assets/` (4.11.12). The items themselves are on the project manifest;
+- `.product/`: the product's conversation (8.2.7), its logs `sessions/session-NNN.md`, every session before a work-type commit among them (8.14.3); each note an inbox item brought onto the roadmap, `notes/{YYYY-MM-DD}--{slug}.md`, its inbox name kept (18.8.15); `spikes/` and `assets/` (4.11.12). The roadmap's items themselves are on the project manifest;
 - `.state/migrations`: each migration applied, its id on a line of its own (4.7.4);
 - a unit's `seeds/`: each seed's file under the name it had, an inbox item or a roadmap item's note. The unit's manifest records each seed's source and, for a roadmap item, the item as it stood, its horizon included, so cancelling the work can put it back (18.8.20);
 - no unit has a `.state/`: nothing writes one once tracking and analysis files go (4.10.3).
 
-[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today]
+[Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26]
 
 4.11.17 The whole layout, as one tree: every path the workflows write under `.workflows/` and at user level is in it, each entry naming the line that sets it. The files the workflows own in the code tree are 6.3.15's. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal; Claude's derivation 2026-10-25: the tree draws `.workflows/` and user level, and 6.3.15 names the code tree's files]
 
@@ -752,9 +753,10 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 │   ├── ideas/ bugs/ quickfixes/
 │   │   └── {YYYY-MM-DD}--{slug}.md
 │   └── .archived/{kind}/{YYYY-MM-DD}--{slug}.md
-├── .roadmap/                4.11.16
+├── .product/                4.11.16
 │   ├── sessions/session-NNN.md
 │   ├── notes/{YYYY-MM-DD}--{slug}.md
+│   ├── spikes/NNN-{slug}/
 │   └── assets/
 ├── .state/
 │   └── migrations           4.7.4
@@ -767,7 +769,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 ├── .cache/                  gitignored (4.11.3)
 │   ├── {unit}/…             mirrors the unit's tree
 │   │   └── last-looked.json 5.8.15
-│   ├── .roadmap/…           product-level spikes' builds
+│   ├── .product/…           product-level spikes' builds
 │   └── .session-labels/
 └── {unit}/                  4.11.5
     ├── manifest.json
@@ -782,6 +784,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
     │       ├── data/
     │       └── E{n}.{m}-{slug}/            a sub-experiment
     ├── assets/
+    ├── spikes/NNN-{slug}/   9.10.10
     ├── spec.md
     ├── spec-review.json
     ├── summary.md           a quick-fix's (4.11.6, 19.5.17)
@@ -859,7 +862,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S25 Given a topic whose entries just changed, when `.workflows/.knowledge/` is listed, then it holds the topic's rendered record, and `git status` in the state worktree shows nothing under `.knowledge/` or `.cache/`, and neither is on the state branch. (4.1.7, 4.11.10, 4.11.11)
 
-4.S26 Given a product-level spike, when its source is kept, then it sits in `.roadmap/assets/`, and its dependencies, builds and run output sit in the gitignored cache. (4.11.12, 4.11.13)
+4.S26 Given a product-level spike, when its source is kept, then it sits in a folder of its own in `.product/spikes/`, and its dependencies, builds and run output sit in the gitignored cache. (4.11.12, 4.11.13)
 
 4.S27 Given a project in use, when the trust log and the record of the person are written, then they are `~/.config/workflows/trust.jsonl` and `~/.config/workflows/person.md`, never under `.workflows/`. (4.11.14, 5.1.7, 16.13.7, 16.18.8)
 
@@ -871,9 +874,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S31 Given the state branch gone from the remote and from this clone but present in another clone, when boot runs in that other clone, then it pushes the branch back to the remote; when boot next runs in this clone, it restores the branch from the remote and nothing is lost. (4.4.4, 4.4.5, 4.4.12)
 
-4.S32 Given the state branch gone from this clone and the remote with no other copy, when boot runs, then it stops, saying what was lost and that the code is untouched; given the person's yes, then a fresh state branch is created and plan the product opens with the product researcher's read of the code; given a no, then nothing is written. (4.4.5)
+4.S32 Given the state branch gone from this clone and the remote with no other copy, when boot runs, then it stops, saying what was lost and that the code is untouched; given the person's yes, then a fresh state branch is created and the product's conversation opens with the product researcher's read of the code; given a no, then nothing is written. (4.4.5)
 
-4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.roadmap/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
+4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.product/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
 
 4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their own names and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
 
@@ -1566,19 +1569,23 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 ### 8.1 What stays
 
-8.1.1 Discovery keeps its shaping: the person talks the product through once,
-and the conversation becomes the record the topics come out of. [R10]
+8.1.1 Discovery keeps its shaping: the person talks the product through, for
+as long as the product lives rather than once (8.2.7), and the conversation
+becomes the record the topics come out of. [R10; for as long as the product
+lives, ruled by the person 2026-10-26]
 
-8.1.2 The product-level conversation on the roadmap, the work-type commit,
-the discovery map and the briefs stay. [R10]
+8.1.2 The product's conversation with its roadmap, the work-type commit, the
+discovery map and the briefs stay. [R10; the product's conversation, ruled by
+the person 2026-10-26]
 
 8.1.3 Start, triage's w (work them now, as one unit) and work started from the
 roadmap, the picked items its seeds, each go through discovery (§18). [R17; ruled by the person 2026-10-16]
 
 8.1.4 Discovery keeps its logs per session, at `discovery/session-NNN.md` in
-the work unit, since its conversations are about the whole epic or product;
-the roadmap keeps its logs per session too. [R11, Layout on disk; ruled by the
-person 2026-10-13 and 2026-10-17]
+the work unit, since its conversations are about the whole epic; the product's
+conversation keeps its logs per session too, in `.product/sessions/`
+(4.11.16). [R11, Layout on disk; ruled by the person 2026-10-13 and
+2026-10-17; the product's sessions, ruled by the person 2026-10-26]
 
 8.1.5 Research that bears on the whole epic belongs in the unit's discovery
 log (§21 for research moved there). [R37; ratified by the person
@@ -1618,16 +1625,73 @@ the level before they start. [R10; ruled by the person 2026-10-13]
 8.2.4 Cross-cutting goes as a type (§19); discovery never calls
 work cross-cutting. [R22; ruled by the person 2026-10-16]
 
-8.2.5 A principle the person wants to talk through on purpose is a
-product-level conversation, reached through Start, where discovery meets it
-at the level it reaches, or through the roadmap's plan the product. It is
-logged per session in the roadmap's session logs, whether reached through
-Start or through plan the product. [R22, plan 3.11; ruled by the person
-2026-10-16; Claude's derivation, O33]
+8.2.5 A principle the person wants to talk through on purpose is the product's
+conversation (8.2.7), reached through the start menu's p, the roadmap's p or
+Start (8.2.9). It is logged in the product's sessions, whichever way it was
+reached. [R22, plan 3.11; ruled by the person 2026-10-16; Claude's derivation,
+O33; the product's conversation, ruled by the person 2026-10-26]
 
 8.2.6 Discovery stays conversation: the person brings the idea, it is shaped
 together, and Claude never decides there alone. [R24; the person's framing
 2026-10-13]
+
+8.2.7 Discovery happens at two levels, each with one home. The product's
+discovery is one conversation per project that never finishes: what the
+product is, where it is going, what testing it in the market showed, spiked
+and researched at that level. What it produces is the roadmap, each item
+pointing into the sessions that shaped it (18.8.15). It lives at project
+level, in `.product/` (4.11.16). A piece of work's discovery is the work's
+own: for an epic, its shaping after start this work — what it covers, its
+topics and their order, spikes across it; for a feature or a bugfix, the type
+call that start this work commits, and little more. [ruled by the person
+2026-10-26]
+
+8.2.8 Anything not yet committed to as work is the product's. A new project's
+first sessions are the product's discovery with an empty roadmap, not a stage
+of their own; talk about a piece of work that the person leaves before start
+this work stays in the product's conversation, which opens on it next time.
+There is one product, so one product conversation: two subjects are two parts
+of it, in session order, never two threads side by side. [ruled by the person
+2026-10-26]
+
+8.2.9 The product's conversation is reached from the start menu's p row,
+always there (18.2.13), and from the roadmap's p (18.8.7). Start means a piece
+of work: what the person brings at Start that is about the product carries the
+product's conversation on, with no announcement, Claude answering from where
+its sessions had got to; a bug, a feature or any other piece of work goes to
+the type call. [ruled by the person 2026-10-26]
+
+8.2.10 A return to the product's conversation reads its two most recent
+sessions in full and the roadmap, whose items' pointers reach the older
+sessions, after any question whose answer may discard them (2.10.4), and opens
+with where the conversation had got to. [agreed by the person 2026-10-26]
+
+8.2.11 Within discovery, Claude carries the conversation to the level it has
+reached. When the product's conversation turns to an epic whose map is still
+open, or an epic's discovery widens to the product, Claude says so in one line
+and carries on there, in the same session (24.1.8); the log follows, the first
+home's log for the sitting ending with a pointer to where the conversation
+went. An epic past its spec has no discovery left (8.6.5): talk about it stays
+in the product's conversation, and what comes of it lands as roadmap items.
+[ruled by the person 2026-10-26; nothing reopens mid-build, ruled by the
+person 2026-10-25]
+
+8.2.12 Claude never moves the conversation into or out of a topic, since a
+topic is where things are decided. When a topic's talk rises to its epic or to
+the product, Claude suggests going there and the person's word moves it,
+Claude committing the sitting and settling the topic's running agents first,
+as a cancel made in the session does (18.4.20). Going into a topic is the
+person's pick from the menu, which Claude may suggest. [ruled by the person
+2026-10-26]
+
+8.2.13 An epic's discovery is a conversation in its own right, at any depth
+and for as long as the person wants, while the epic's topics are in
+discussion: about the epic as a whole, how its topics fit, or a topic's
+subject from outside that topic's own frame. What it finds reaches a started
+topic as a message (8.7.6) and a new topic as its brief; nothing is decided
+there. It stays open until the spec (8.6.5). Which level takes the depth, the
+product's or the epic's, is the person's: neither is favoured. [ruled by the
+person 2026-10-26]
 
 ### 8.3 Any depth, and nothing decided
 
@@ -1943,8 +2007,11 @@ routing and dead-end map operations. [R10; ruled by the person 2026-10-13]
 8.8.11 The candidate gate goes with the gap analysis's background run (8.10).
 [R10; ruled by the person 2026-10-13]
 
-8.8.12 Resume and the import prompt are process gates, learned like any other
-(§3). [R10, R40]
+8.8.12 The import prompt is a process gate, learned like any other (§3). The
+resume prompt goes: each level's discovery is one conversation carried on from
+its row (8.2.9, 8.6.7), so there is nothing to choose between. [R10, R40; the
+resume prompt, Claude's derivation 2026-10-26: one conversation per home
+leaves nothing to resume into but itself]
 
 8.8.13 For an epic, start this work creates the unit, the conversation shapes
 the topics, approve the map follows, and the work hands off to the epic's
@@ -2098,11 +2165,13 @@ today's dismissed topics the same way. [R10, R24; Claude's derivation, T21]
 
 ### 8.11 Spikes in discovery
 
-8.11.1 Discovery may spike to see the shape, and a discovery spike goes as
-far as it needs, full code examples included (8.3.1). What it shows is input
-the brief carries, its files land as reference assets (9.10), and the
-first topics' opening views read them. [R12, R10; ruled by the person
-2026-10-13 and 2026-10-19; as far as it needs, ruled by the person 2026-10-22; Claude's derivation]
+8.11.1 Discovery may spike to see the shape, and a discovery spike goes as far
+as it needs, full code examples included (8.3.1). What it shows is input the
+brief carries, its files land in the spike's own folder (9.10.10), as
+reference (9.10.6), and the first topics' opening views read them. [R12, R10;
+ruled by the person 2026-10-13 and 2026-10-19; as far as it needs, ruled by
+the person 2026-10-22; Claude's derivation; the spike's own folder,
+agreed by the person 2026-10-26]
 
 8.11.2 A spike for the whole epic happens in discovery, reached through the
 epic menu's discovery row (key d), with no surface of its own. [R12; key d
@@ -2115,6 +2184,13 @@ A line it suggests for the product record is input, decided in the first
 topic it bears on (8.9.6). [R12, R10; ruled by the person 2026-10-13 and
 2026-10-19; Claude's derivation]
 
+8.11.4 Discovery's guidance names what it can reach for — searching and
+reading, code spikes and design spikes — and Claude suggests one unprompted
+wherever seeing or running something would tell the person more than talking:
+a provider whose behaviour is in doubt, a risk the whole idea rests on, how a
+flow feels. The suggestion is a line in the conversation, never a gate, and
+the person's yes runs it. [agreed by the person 2026-10-26]
+
 ### 8.12 An existing codebase
 
 8.12.1 Whether a product gets the workflows at all is the person's decision,
@@ -2122,21 +2198,21 @@ made by installing them; the workflows never ask it. [R12; the person
 2026-10-12]
 
 8.12.2 Building a v1 fast is done outside the workflows; a later install comes
-in through the roadmap's plan the product (§18). [R12,
-plan 9.1; ruled by the person 2026-10-22]
+in through the product's conversation (8.2.7). [R12, plan 9.1; ruled by the
+person 2026-10-22; the product's conversation, ruled by the person 2026-10-26]
 
 8.12.3 Today's brownfield assessment folds into discovery: on an existing
 codebase it becomes product-level discovery, the conversation started from
 code. [R12, plan 9.1; ruled by the person 2026-10-22]
 
-8.12.4 The roadmap's plan the product opens with the baseline's research the
-first time it runs on code that predates the workflows; a later session of plan
-the product does not run it again, since its findings are already in the
-ledger, which is append-only. The product researcher, one of the workflows'
-named agents, does that research (§26). [plan
-9.1, plan 6.5; ruled by the person 2026-10-22; once per project, today's
-product; Claude's derivation 2026-10-25: a rerun would record the findings
-twice in the append-only ledger]
+8.12.4 The product's conversation opens with the baseline's research the first
+time it runs on code that predates the workflows; a later session of it does
+not run it again, since its findings are already in the ledger, which is
+append-only. The product researcher, one of the workflows' named agents, does
+that research (§26). [plan 9.1, plan 6.5; ruled
+by the person 2026-10-22; once per project, today's product; Claude's
+derivation 2026-10-25: a rerun would record the findings twice in the
+append-only ledger]
 
 8.12.5 In that conversation, what the person states is input, decided in the
 first topic it bears on; what is observed in the code lands as findings saying
@@ -2150,13 +2226,14 @@ conversation is a field; the baseline's research survives as the product
 researcher's (8.12.4). [plan 9.1, plan 1.5; ruled by the person 2026-10-22; Claude's
 derivation, O32]
 
-8.12.7 The start menu's offer stays, pointing at plan the product. [plan 9.1;
-ruled by the person 2026-10-22]
+8.12.7 The start menu's offer stays, pointing at the product's conversation
+(8.2.9). [plan 9.1; ruled by the person 2026-10-22; the product's
+conversation, ruled by the person 2026-10-26]
 
 8.12.8 A project holding `.baseline/` docs has them moved to
-`.roadmap/assets/` as reference by the migration, the move dropping the
-baseline's status fields (§21). [plan 9.1; ruled by the person 2026-10-22;
-Claude's derivation, O32]
+`.product/assets/` as reference by the migration, the move dropping the
+baseline's status fields (§21). [plan 9.1; ruled by the person
+2026-10-22; Claude's derivation, O32]
 
 8.12.9 Left to the builder: how a finding observed in the code is tagged in the
 ledger when no work unit exists (8.12.5), so the opening view finds it
@@ -2192,17 +2269,21 @@ paths, open questions, the research with its sources, and a link to every spike
 and file. How Claude writes it is Claude's: an instruction to follow, with no
 loop or cadence prescribed. [ruled by the person 2026-10-22]
 
-8.14.3 Before the work-type commit a session is logged with the roadmap's
-session logs, the one home that exists before a unit, and it stays there: one
+8.14.3 Before the work-type commit a session is the product's conversation
+(8.2.8), logged in the product's sessions, and it stays there: one
 product-level session can shape a prototype, a V1 and a V2. When start this
 work creates a unit, the unit's first discovery log points back at the parts
-of the roadmap's logs that shaped it, as a roadmap item's pointers do
-(18.8.15). [ruled by the person 2026-10-22; where it is logged before the commit, Claude's proposal]
+of the product's sessions that shaped it, as a roadmap item's pointers do
+(18.8.15). [ruled by the person 2026-10-22; the product's sessions, ruled by
+the person 2026-10-26]
 
-8.14.4 Before each step that moves things on (plan the product's close, start
-this work, approve the map) and at a session's end, Claude re-reads the log
-against the conversation and adds what is missing. [ruled by the person 2026-10-22; today's check
-before approve the map extended]
+8.14.4 Before each step that moves things on (proposing roadmap items at a
+session's end, start this work, approve the map, a move to another level) and
+at a session's end, Claude re-reads the log against the conversation and adds
+what is missing; a session that ends without it is caught up from its
+transcript at the next return (8.14.9). [ruled by the person 2026-10-22;
+today's check before approve the map extended; a move and the catch-up, agreed
+by the person 2026-10-26]
 
 8.14.5 Every way back is kept: roadmap items point into the logs (18.8.15), a
 unit's first discovery log points back (8.14.3), and each point in a topic's
@@ -2210,11 +2291,30 @@ brief links the part of the log it came from (8.7), so a topic can reach
 everything discovery explored about it. [ruled by the person 2026-10-22]
 
 8.14.6 After a compaction the recovery note brings back the skill, and with it
-the instruction to keep the log, and names the session's log (24.2.2, 24.2.8).
-[ruled by the person 2026-10-22; Claude's derivation]
+the instruction to keep the log, and names the session's log and its
+transcript, from which the log is caught up (8.14.9, 24.2.2, 24.2.8). [ruled
+by the person 2026-10-22; Claude's derivation; the transcript, agreed by the
+person 2026-10-26]
 
 8.14.7 The knowledge base never indexes the logs (9.2.2): they are reached
 through these pointers. [R11, R44; the person 2026-10-22]
+
+8.14.8 Every log a conversation keeps — the product's sessions, a unit's
+discovery sessions, a topic's log — names the conversations that wrote it:
+each one's session id and the path of its transcript, added when that
+conversation first writes to it. The log is the record; the transcript is a
+backstop, there for as long as Claude Code keeps it (23.4.9). [agreed by the
+person 2026-10-26]
+
+8.14.9 After a compaction, and on the first return after a session that ended
+without its check (8.14.4), Claude reads the transcript from the log's last
+write onward and adds what is missing before carrying on. If the transcript is
+gone, Claude says so in one line and carries on from the log. How often Claude
+writes the log stays its own (8.14.2). [agreed by the person 2026-10-26; how
+often, ruled by the person 2026-10-22]
+
+8.14.10 Left to the builder: how a log learns its conversation's session id
+and transcript path (8.14.8). [Claude's sort 2026-10-26]
 
 ## 8-S. Scenarios for §8
 
@@ -2227,9 +2327,8 @@ is one of roadmap, feature, epic, bugfix or quick-fix, and never
 cross-cutting. (8.2.3, 8.2.4)
 
 8.S3 Given the person wants to talk through a principle that spans the
-product, when they pick Start or the roadmap's plan the product, then
-discovery meets it at the product level and logs it per session in the
-roadmap's session logs. (8.2.5)
+product, when they pick p, the roadmap's p or Start, then it is the product's
+conversation, logged in the product's sessions. (8.2.5, 8.2.9)
 
 8.S4 Given an epic's discovery conversation, when the person's talk turns to
 detail, then Claude explores it with them, spikes included, and asks no
@@ -2302,9 +2401,10 @@ confirm shows before the topic is cancelled. (8.8.8, 8.8.9)
 
 8.S21 Given discovery creates a work unit, then no name gate shows. (8.8.10)
 
-8.S22 Given a phase running in auto, where the person always answers discovery's
-resume prompt the same way, when they next resume, then the prompt runs as a
-learned process gate (an automatic step with a one-line report). (8.8.12)
+8.S22 Given a phase running in auto, where the person always answers
+discovery's import prompt the same way, when it next comes, then the prompt
+runs as a learned process gate (an automatic step with a one-line report), and
+no resume prompt is shown. (8.8.12)
 
 8.S23 Given a product-level conversation in which the person says a principle,
 when it ends, then no product-wide entry exists for the principle; when the
@@ -2356,24 +2456,25 @@ conflicts between them, before the spec is written. (8.10.3, 8.10.4)
 menu, then nothing raises it there; it surfaces at the next topic's close or
 the sweep. (8.10.6)
 
-8.S35 Given discovery spikes to see the shape, then the spike's files land as
-reference assets, the brief carries what it showed as input, and the first
-topics' opening views read them. (8.11.1, 9.3.6)
+8.S35 Given discovery spikes to see the shape, then the spike's files land in
+its own folder under `spikes/`, as reference, the brief carries what it showed
+as input, and the first topics' opening views read them. (8.11.1, 9.3.6)
 
 8.S36 Given an epic in discussion, when the person picks d and spikes across the
 epic, then the result lands as a new topic whose brief points at the spike,
 messages to affected topics, or a direction not taken in discovery's log with
 its reason. (8.11.2, 8.11.3)
 
-8.S37 Given a codebase that predates the workflows, when the person picks plan
-the product, then it opens with the product researcher's research; what the
-code shows lands as findings saying how they are known, which a topic opened
-later reads, what the person states is carried as input, and what stays open
-goes on the roadmap. (8.12.2, 8.12.3, 8.12.4, 8.12.5, 9.3.12)
+8.S37 Given a codebase that predates the workflows, when the person first
+opens the product's conversation, then it opens with the product researcher's
+research; what the code shows lands as findings saying how they are known,
+which a topic opened later reads, what the person states is carried as input,
+and what stays open goes on the roadmap. (8.12.2, 8.12.3, 8.12.4, 8.12.5,
+9.3.12)
 
 8.S38 Given the release installed, then no baseline skill, no baseline status
 fields and no baseline agendas, interview procedure or area scoping exist, and
-the start menu's offer points at plan the product. (8.12.6, 8.12.7)
+the start menu's offer points at the product's conversation. (8.12.6, 8.12.7)
 
 8.S39 Given the person picks Start, works inbox items with triage's w, or works
 a roadmap item, then each goes through discovery, the picked items as the
@@ -2428,7 +2529,7 @@ struck; work the sweep only sends as messages, or leaves to the builder, shows
 on no screen. (8.8.4, 8.10.9)
 
 8.S51 Given a project holding `.baseline/` docs, when it migrates, then the
-docs sit in `.roadmap/assets/` as reference and no baseline status field
+docs sit in `.product/assets/` as reference and no baseline status field
 remains. (8.12.8)
 
 8.S52 Given new work taking shape that matches a waiting roadmap item, then
@@ -2476,25 +2577,28 @@ person asks for one as a new topic, it is added. (8.10.11)
 runs again, then the offer is not made. (8.12.11)
 
 8.S62 Given a discovery conversation the person carries over several days,
-when they come back, then it resumes from its log, nothing has moved it on to
-topics or the map, and the map is proposed only when the person calls for it.
-(8.3.6, 8.8.19)
+when they come back through its row — p for the product's, d for an epic's —
+then it carries on from its log, nothing has moved it on to topics or the map,
+and the map is proposed only when the person calls for it. (8.3.6, 8.8.19,
+8.2.10)
 
 8.S63 Given the person asks what already exists, when Claude researches in
 discovery, then what it found is in the session's log with its sources, as
 input, and nothing is decided from it. (8.3.4, 8.3.7)
 
 8.S64 Given a discovery conversation before the work-type commit, when its
-first exchange happens, then its log is written with the roadmap's session
-logs; when start this work creates the unit, then that log stays with the
-roadmap's and the unit's first discovery log points at the sections that
-shaped it; given one session that shaped a prototype and a V1, then both
-units point into the same log, each at its own sections. (8.14.3, 24.2.8)
+first exchange happens, then its log is written in the product's sessions;
+when start this work creates the unit, then that log stays with the product's
+and the unit's first discovery log points at the sections that shaped it;
+given one session that shaped a prototype and a V1, then both units point into
+the same log, each at its own sections. (8.14.3, 24.2.8)
 
-8.S65 Given a plan-the-product session that ran all afternoon, when the person
-calls for its close, then before the screen proposing roadmap items Claude has
-re-read the session's log against the conversation and added what was missing;
-given a session that simply ends, the same check runs. (8.14.4)
+8.S65 Given a session of the product's conversation that ran all afternoon,
+when the person calls for its end, then before the screen proposing roadmap
+items Claude has re-read the session's log against the conversation and added
+what was missing; given a session that simply ends, then at the next return
+Claude reads its transcript from the log's last write and adds what was
+missing before carrying on. (8.14.4, 8.14.9)
 
 8.S66 Given a topic whose brief carries a lean from discovery, when the topic's
 discussion opens, then the lean links the part of the discovery log it came
@@ -2502,12 +2606,57 @@ from, and the full exploration behind it can be read. (8.7.3, 8.14.5)
 
 8.S67 Given a discovery session that compacts mid-conversation, when it
 carries on, then the recovery note has brought back the skill and named the
-session's log, and the log goes on being kept. (8.14.6, 24.2.2)
+session's log and its transcript, the log has been caught up from the
+transcript, and the log goes on being kept. (8.14.6, 8.14.9, 24.2.2)
 
 8.S68 Given a discovery session, when its log is read, then it holds what was
 explored, the leans, false paths and open questions, the research with its
 sources and links to the spikes and files the session produced, and no
 decision. (8.3.4, 8.14.2)
+
+8.S69 Given a new project, when the person picks p or Start and talks about
+the whole product for hours, then the talk is logged in `.product/sessions/`,
+its spikes sit in `.product/spikes/`, and no unit exists; when they come back
+the next day and open the product's conversation, then it reads the last two
+sessions and the roadmap and opens with where the talk had got to. (8.2.7,
+8.2.8, 8.2.9, 8.2.10)
+
+8.S70 Given the product's conversation has sessions, when the person picks
+Start and talks about the product, then the same conversation carries on in
+the product's sessions, with no second product conversation and no
+announcement; given they describe a bug instead, then it goes to the type call
+and start this work; given talk about a piece of work they left before start
+this work, then the next session of the product's conversation opens on it.
+(8.2.8, 8.2.9)
+
+8.S71 Given the product's conversation, when the talk turns to an epic whose
+map is open, then Claude says so in one line and carries on in that epic's
+discovery in the same session, the product session's log ending with a pointer
+to it; given an epic's discovery whose talk widens to the product, then the
+same move runs the other way; given an epic past its spec, then the talk stays
+in the product's conversation and what comes of it lands as roadmap items.
+(8.2.11)
+
+8.S72 Given an epic's discovery whose talk settles toward one topic, then
+Claude may suggest the topic and never moves into it; given a topic's
+discussion whose talk rises to the epic, then Claude suggests the epic's
+discovery and moves only on the person's word, the sitting committed and the
+topic's running agents settled first. (8.2.12)
+
+8.S73 Given an epic with topics in discussion, when the person picks d and
+talks about the epic as a whole, or about a topic's subject from outside that
+topic, then nothing is decided, a started topic gets what bears on it as a
+message, and a new topic gets its brief. (8.2.13)
+
+8.S74 Given a discovery conversation where running or seeing something would
+show more than talking, then Claude suggests a spike in one line, with no
+gate, and it runs on the person's yes. (8.11.4)
+
+8.S75 Given a discovery log, when a conversation first writes to it, then the
+log names that conversation's session id and transcript path; given a
+compaction, then Claude reads the transcript from the log's last write and
+adds what was missing before carrying on; given the transcript is gone, then
+Claude says so in one line and carries on from the log. (8.14.8, 8.14.9)
 
 ## 9. Discussion
 
@@ -2639,6 +2788,11 @@ moved to another topic (§5). [R23]
 9.2.18 A change names what caused it, by short id: the other topic's decision,
 the new fact, or the message. [R23]
 
+9.2.19 A topic's log names the conversations that wrote it and is caught up
+from their transcripts after a compaction or a session that ended without its
+check, as discovery's logs are (8.14.8, 8.14.9). [agreed by the person
+2026-10-26]
+
 ### 9.3 A topic opens with Claude starting the conversation
 
 9.3.1 Nothing is written ahead of a topic's opening. [R11; ruled by the person
@@ -2682,10 +2836,11 @@ topic decided, so the forks shrink on their own (the cone, §16 Trust). [R24]
 answer may discard them (§2: a context budget). [R43; ruled by
 the person 2026-10-19]
 
-9.3.12 The opening view reads the findings plan the product recorded from the
-code (8.12.5), as it reads the product record (9.3.3): they belong to no unit,
-so no topic's record and no search reaches them otherwise. [R17; Claude's
-derivation 2026-10-25: a finding with no unit reaches a topic only this way]
+9.3.12 The opening view reads the findings the product's conversation recorded
+from the code (8.12.5), as it reads the product record (9.3.3): they belong to
+no unit, so no topic's record and no search reaches them otherwise. [R17;
+Claude's derivation 2026-10-25: a finding with no unit reaches a topic only
+this way]
 
 ### 9.4 A conversation, never a conveyor belt
 
@@ -3035,10 +3190,14 @@ first ones. [R12]
 draft code, the generator that drew a design, pulled data — lands in the work
 unit as a tracked asset linked from the record, whoever made it. [R12]
 
-9.10.5 A work unit's `assets/` is the one home for what informs a decision,
-replacing `imports/`, whoever made the file. Each asset is linked from the
-ledger entry it informs: canonical from a decision, reference from a finding
-or the log. [R12, Layout on disk, plan 3.4; ruled by the person 2026-10-13]
+9.10.5 A work unit's `assets/` is the home for the files that inform a
+decision — what the person shares, exports with their live links, pulled data
+— replacing `imports/`, whoever made the file; a spike's files sit in
+`spikes/` (9.10.10). Each is linked from the ledger entry it informs:
+canonical from a decision, reference from a finding or the log. Canonical or
+reference is a status the linking entry gives a file, wherever it sits. [R12,
+Layout on disk, plan 3.4; ruled by the person 2026-10-13; spikes in their own
+folder, agreed by the person 2026-10-26]
 
 9.10.6 Each asset is one of two:
 - **canonical** — the spec carries it, the builder builds to it, and it is
@@ -3060,16 +3219,20 @@ continues; both are recorded. Something living in an outside tool is kept as
 its live link and an exported image. [R12]
 
 9.10.10 A spike's source — draft code, a generator, a design export and its
-live link — is kept in `assets/` as it is written, so nothing is left in a
-session folder; its dependencies, builds and run output go in the gitignored
-cache. [R12, plan 3.4; Claude's call 2026-10-19]
+live link — is kept as it is written in a folder of its own,
+`spikes/NNN-{slug}/`, numbered in the order the spikes start, so nothing is
+left in a session folder; a design spike's rounds sit in `round-N/` inside it.
+Its dependencies, builds and run output go at the same path under the
+gitignored cache. [R12, plan 3.4; Claude's call 2026-10-19; its own folder,
+agreed by the person 2026-10-26]
 
-9.10.11 A product-level spike's files, and files the person shares at the
-product level, go in `.roadmap/assets/`, which replaces `.roadmap/imports/` as
-a unit's `assets/` replaces `imports/`. Each is linked from the roadmap session
-log that brought it in, since nothing is decided at the product level (8.3.4),
-and from a product-wide decision once one cites it. [R12; Claude's call
-2026-10-19; linked from the log, Claude's derivation]
+9.10.11 A product-level spike's files go in `.product/spikes/NNN-{slug}/`, and
+files the person shares at the product level in `.product/assets/`, which
+replaces `.roadmap/imports/` as a unit's `assets/` replaces `imports/`. Each
+is linked from the product's session log that brought it in, since nothing is
+decided at the product level (8.3.4), and from a product-wide decision once
+one cites it. [R12; Claude's call 2026-10-19; linked from the log, Claude's
+derivation; `.product/` and its spikes, agreed by the person 2026-10-26]
 
 9.10.12 A design spike runs in rounds and ends in a lock. A lock is a question
 on the map ("which design?"), closed by the person's choice: a ledger entry
@@ -3260,10 +3423,11 @@ as evidence. (9.10.17)
 9.S38 Given a spike carried scaffolding nobody discussed, then no entry or spec
 statement cites it as decided. (9.10.15)
 
-9.S39 Given a product-level spike, or a file the person shares in plan the
-product, then its files are in `.roadmap/assets/`, linked from the roadmap
-session log that brought them in; given a later topic's decision cites one,
-then it is linked from that decision too. (9.10.11)
+9.S39 Given a product-level spike, or a file the person shares in the
+product's conversation, then the spike's files are in a folder of its own in
+`.product/spikes/` and the file is in `.product/assets/`, each linked from the
+product's session log that brought it in; given a later topic's decision cites
+one, then it is linked from that decision too. (9.10.11)
 
 9.S40 Given a topic in discussion, when a deep dive or the closing pass's fresh
 reader runs, then a named agent does it, and the conversation stays in the main
@@ -3373,6 +3537,17 @@ relying on it are affected as by any replacement. (9.9.7, 6.4.6)
 9.S65 Given the person shares a path that names no file, then Claude asks for it
 to be corrected or skipped before anything lands; given an image pasted with no
 file behind it, Claude asks for it as a saved file. (9.10.22)
+
+9.S66 Given two spikes in a unit, then each sits in its own numbered folder
+under `spikes/`, a design spike's rounds in `round-N/` inside it, their builds
+at the same paths under the cache, and the files the person shared at the top
+of `assets/`; given a design locked in a round's folder, then it is canonical
+where it lies, with no copy. (9.10.5, 9.10.10)
+
+9.S67 Given a topic's log, when a conversation first writes to it, then it
+names that conversation's session id and transcript path; given a compaction
+mid-topic, then the log is caught up from the transcript before the
+conversation carries on. (9.2.19)
 
 ## 10. Between topics
 
@@ -6499,13 +6674,14 @@ Comment → Tell me how to word it
 18.2.12 Screen: the start menu. It shows:
 - one row per work unit, each naming the type first ("Continue epic: Tagging And Filtering"), with the unit's phase and progress and, where something waits on the person in it, the count of its authority gates, questions and topics waiting (18.2.3; "1 question waiting for you"); units with something waiting listed first; no topics on any row;
 - one Start row;
+- the product's row, p, always there (18.2.13);
 - the inbox as one line with its count by kind, and its row "t/triage → Triage the inbox";
 - the roadmap row;
 - the verdict queue's row, only while verdicts wait;
 - completed units; cancelled units;
 - manage (18.3);
 - h help (18.9).
-There is no waiting section, no row that jumps past a unit, and no start-by-type row. The keys the sources leave open are drawn by Claude in the spec (18.10.8). [R17; ruled by the person 2026-10-16; plan 3.11; the person 2026-10-14; Claude's derivation, O67, O94]
+There is no waiting section, no row that jumps past a unit, and no start-by-type row. The keys the sources leave open are drawn by Claude in the spec (18.10.8). [R17; ruled by the person 2026-10-16; plan 3.11; the person 2026-10-14; Claude's derivation, O67, O94; the p row, ruled by the person 2026-10-26]
 
 Screen, drawn by Claude: the start menu, over Portal. [Claude's derivation, O94]
 
@@ -6521,6 +6697,7 @@ Inbox: 3 ideas · 2 bugs · 1 quick-fix
              phase 5 of 7
 3          → Continue epic: Agent First Portal — discussion, 0 of
              7 topics decided
+p/product  → Talk about the product — 4 sessions, last on 19 Oct
 s/start    → Start something new — describe it, and we'll find
              what kind of work it is
 t/triage   → Triage the inbox
@@ -6531,6 +6708,8 @@ m/manage   → Manage work units, the project's setup and drivers,
              and the matrix
 h/help     → How the workflows work
 ```
+
+18.2.13 The start menu has a p row for the product's conversation (8.2.9), always there whatever else is running: "p/product → Talk about the product", with its session count and the last date once the conversation has sessions. The roadmap keeps its own row, so picking work off it stays one press. [ruled by the person 2026-10-26]
 
 ### 18.3 Manage
 
@@ -6928,15 +7107,15 @@ n/no  → Keep it in the archive
 
 18.8.5 The roadmap's home shows each item on one line, with its kind and where it came from. An item's summary shows when the item is picked or asked for. [R17; ruled by the person 2026-10-16]
 
-18.8.6 The roadmap's menu is explicit rows: w work, n new (Claude asks what and which horizon), m move, a archive, p plan the product, h help, b back. [R17; ruled by the person 2026-10-16]
+18.8.6 The roadmap's menu is explicit rows: w work, n new (Claude asks what and which horizon), m move, a archive, p talk about the product, h help, b back. [R17; ruled by the person 2026-10-16]
 
-18.8.7 p plan the product is discovery at the product level (§8): the one row that is a conversation, named for what it does. [R17; ruled by the person 2026-10-16]
+18.8.7 p talk about the product opens the product's conversation (8.2.7), the same conversation as the start menu's p (18.2.13): the one row here that is a conversation, named for what it does. [R17; ruled by the person 2026-10-16; the product's conversation, ruled by the person 2026-10-26]
 
 18.8.8 Today's "converse" row goes: with the gate mod every row is a button, and a button that only says "talk" still leaves the person to say what they meant. [R17; ruled by the person 2026-10-16]
 
-18.8.9 A product-wide talk starts from Start or from the roadmap's plan the product (19.6). [plan 3.11, R22; the person 2026-10-16]
+18.8.9 A product-wide talk starts from the start menu's p, the roadmap's p or Start (8.2.9, 19.6). [plan 3.11, R22; the person 2026-10-16; the product's conversation, ruled by the person 2026-10-26]
 
-18.8.10 Screen: the roadmap's home. Each item on one line with its kind and where it came from; an item's summary when it is picked or asked for. Rows: w work, n new, m move, a archive, p plan the product, h help, b back. [R17; ruled by the person 2026-10-16]
+18.8.10 Screen: the roadmap's home. Each item on one line with its kind and where it came from; an item's summary when it is picked or asked for. Rows: w work, n new, m move, a archive, p talk about the product, h help, b back. [R17; ruled by the person 2026-10-16]
 
 Screen, drawn by Claude: the roadmap's home, over Fumi. [Claude's derivation, O94]
 
@@ -6960,7 +7139,7 @@ w/work    → Work on items now — discovery finds what kind of
 n/new     → Add an item — I'll ask what it is and which horizon
 m/move    → Move an item to another horizon you name
 a/archive → Archive an item
-p/plan    → Plan the product — a conversation about the product
+p/product → Talk about the product
             as a whole
 h/help    → What this menu is for, row by row
 b/back    → Back to the start menu
@@ -6989,7 +7168,7 @@ On the roadmap: "A Shortcuts Action To Make A Fumi" → later.
 
 18.8.12 m move puts a roadmap item on another horizon the person names. [R17; Claude's derivation, O72]
 
-18.8.13 An archived roadmap item stays on the project manifest, marked archived and off its horizon, with its pointers, and its note stays in `.roadmap/notes/`. The roadmap's home leaves it out, and it goes back on a horizon when the person asks in words, as the roadmap's other edits are made (18.8.19). [Claude's sort, B60; Claude's proposal]
+18.8.13 An archived roadmap item stays on the project manifest, marked archived and off its horizon, with its pointers, and its note stays in `.product/notes/`. The roadmap's home leaves it out, and it goes back on a horizon when the person asks in words, as the roadmap's other edits are made (18.8.19). [Claude's sort, B60; Claude's proposal]
 
 18.8.14 Outside a topic's map (9.5.4), where the person's words put an item aside without saying where ("backlog that", "later", "not now", naming no horizon), Claude asks whether it goes on the roadmap or into the inbox, and never chooses. [today's product; Claude's sort, T53]
 
@@ -6999,9 +7178,9 @@ On the roadmap: "A Shortcuts Action To Make A Fumi" → later.
 
 18.8.17 A topic postponed to the roadmap keeps its item saying where it came from (18.8.5). Pulled back into its own epic, the topic returns as it was. Pulled into another epic, it opens as a fresh topic that reads the earlier record as input and never changes it (21.8.9). Postponing is refused while one of the topic's experiments runs. Archiving an item that holds a postponed topic cancels the topic's row on its epic in the same step, as today's `roadmap remove` does, at any stage of the epic: a postponed topic is outside the epic's spec, so the map's closing from the spec on (18.4.19) does not hold it. Left to the builder: a postponed topic whose name another roadmap item already has. [R17, R37, plan 3.11; Claude's derivation, T11; today's product; Claude's derivation 2026-10-25: a refusal past the spec would leave the item never archivable]
 
-18.8.18 Plan the product ends, when the person calls for it, with the capabilities the conversation named proposed as roadmap items on one screen. Each is on a horizon the person named or is asked for (18.8.2), and they land on the person's yes, a process gate. "Roadmap it" during the conversation lands an item at once (18.8.1). [R10, R17, record 41; Claude's derivation, T18]
+18.8.18 A session of the product's conversation ends, when the person calls for it, with the capabilities it named and not yet on the roadmap proposed as roadmap items on one screen. Each is on a horizon the person named or is asked for (18.8.2), and they land on the person's yes, a process gate. "Roadmap it" during the conversation lands an item at once (18.8.1). [R10, R17, record 41; Claude's derivation, T18; a session's end, the product's conversation never ending, ruled by the person 2026-10-26]
 
-Screen, drawn by Claude: plan the product's close, over Fumi: the capabilities proposed as roadmap items, each on its horizon. [Claude's derivation, O94]
+Screen, drawn by Claude: the end of a session of the product's conversation, over Fumi: the capabilities proposed as roadmap items, each on its horizon. [Claude's derivation, O94]
 
 ```text
 TO THE ROADMAP (4, from this conversation)
@@ -7160,7 +7339,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S34 Given an epic in progress, when a roadmap item is to join it, then it joins as a new topic through that epic's discovery. (18.8.4)
 
-18.S35 Given a roadmap with items, when the person opens it, then each item shows on one line with its kind and where it came from, the menu reads w work, n new, m move, a archive, p plan the product, h help, b back, and no "converse" row shows; picking an item shows its summary. (18.8.5, 18.8.6, 18.8.8, 18.8.10, 18.9.1)
+18.S35 Given a roadmap with items, when the person opens it, then each item shows on one line with its kind and where it came from, the menu reads w work, n new, m move, a archive, p talk about the product, h help, b back, and no "converse" row shows; picking an item shows its summary. (18.8.5, 18.8.6, 18.8.8, 18.8.10, 18.9.1)
 
 18.S36 Given the roadmap, when the person presses n, then Claude asks what the item is and which horizon it goes on. (18.8.6)
 
@@ -7216,7 +7395,7 @@ Ask    → Ask anything about triage or the inbox
 
 18.S62 Given a postponed topic, when it is pulled back into its own epic, then it returns as it was; when it is pulled into another epic instead, it opens as a fresh topic that reads the earlier record and never changes it. Given one of a topic's experiments running, postponing the topic is refused; given a roadmap item holding a postponed topic, archiving it cancels the topic's row on its epic, whether or not the epic's spec has started. (18.8.17, 18.4.19)
 
-18.S63 Given plan the product, when the person calls for its end, then the capabilities the conversation named show as roadmap items on one screen, each on a horizon the person named or was asked for, and they land on the person's yes. (18.8.18)
+18.S63 Given a session of the product's conversation, when the person calls for its end, then the capabilities it named and not yet on the roadmap show as roadmap items on one screen, each on a horizon the person named or was asked for, and they land on the person's yes. (18.8.18)
 
 18.S64 Given the person asks in words to rename a horizon and merge two others, then both are done and each is reported in one line with no confirm. (18.8.19)
 
@@ -7224,11 +7403,13 @@ Ask    → Ask anything about triage or the inbox
 
 18.S66 Given two items waiting on the horizon "later", when work starts from both, then neither shows on the roadmap's home and the work holds both as seeds; when that work is cancelled, both show again on "later". Given a topic made from a roadmap item, removed before it starts, then the item shows again on its horizon; given that horizon since removed, Claude asks which horizon it goes on. (18.8.20, 8.8.16, 18.8.2)
 
-18.S67 Given a waiting roadmap item with a note, when the person archives it, then it stays on the project manifest marked archived and off its horizon, the roadmap's home no longer shows it, and its note is still in `.roadmap/notes/`; when the person asks for it back on a horizon, then it is there with its note and pointers. (18.8.13)
+18.S67 Given a waiting roadmap item with a note, when the person archives it, then it stays on the project manifest marked archived and off its horizon, the roadmap's home no longer shows it, and its note is still in `.product/notes/`; when the person asks for it back on a horizon, then it is there with its note and pointers. (18.8.13)
 
 18.S68 Given a feature whose build is under way, when a decision it rests on has to change, then it is settled in the build: the ledger records the change, tasks rework what was built on the old answer, and the feature does not go back to its discussion. (12.15.4, 18.3.1)
 
 18.S69 Given a topic whose session has ended, when the epic menu renders, then the topic is not shown in session. (18.4.3, 18.4.8)
+
+18.S70 Given any project, when the start menu renders, then it shows the p row, "Talk about the product", whatever else is running, with the session count and last date once the product's conversation has sessions, and the roadmap's own row beside it. (18.2.12, 18.2.13)
 
 ## 19. Work types
 
@@ -7418,7 +7599,7 @@ Ask      → Ask about the change before it closes
 
 19.6.3 A principle is decided where it arises and marked product-wide. [R22, plan 3.12; ruled by the person 2026-10-16]
 
-19.6.4 A principle the person wants to talk through on purpose is a product-level conversation, reached through Start, where discovery meets it at the level it reaches, or through the roadmap's plan the product (18.8.7). It is logged in the roadmap's per-session logs. [R22; ruled by the person 2026-10-16; Claude's derivation, O33]
+19.6.4 A principle the person wants to talk through on purpose is the product's conversation, reached through the start menu's p, the roadmap's p or Start (8.2.9), and logged in the product's sessions. [R22; ruled by the person 2026-10-16; Claude's derivation, O33; the product's conversation, ruled by the person 2026-10-26]
 
 19.6.5 That conversation is discovery, so it decides nothing: its principles are carried as input and decided in the first topic each bears on, as product-wide entries (§8). [R22, R10; ruled by the person 2026-10-19]
 
@@ -7480,7 +7661,7 @@ Ask      → Ask about the change before it closes
 
 19.S26 Given a principle decided inside a topic as bearing on the whole product, when it is recorded, then it is a product-wide entry. (19.6.3)
 
-19.S27 Given the person wants to talk through a product-wide principle, when they pick Start or the roadmap's plan the product, then the conversation is discovery at the product level, logged in the roadmap's per-session logs, and the principle enters the record only when the first topic it bears on decides it. (19.6.4, 19.6.5)
+19.S27 Given the person wants to talk through a product-wide principle, when they pick p or Start, then the conversation is the product's, logged in the product's sessions, and the principle enters the record only when the first topic it bears on decides it. (19.6.4, 19.6.5)
 
 19.S28 Given an epic's specification, when it is written, then no topic can be promoted into a cross-cutting unit. (19.6.2)
 
@@ -9676,7 +9857,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.6 Mail for a cancelled topic goes to the inbox, as cancelling does from now on (18.4.14). [R37, R17]
 
-21.5.7 Briefs move into their topics; `imports/` becomes `assets/`, and `.roadmap/imports/` becomes `.roadmap/assets/`; roadmap items' source paths are rewritten. The documents' links to their imports by relative path (`../imports/{name}`) are rewritten to the assets' new places, as today's absorb rewrites the links its moves break, and each `imports[]` entry on the manifests becomes its file's asset, as reference (9.10.6), its status the person's to change (9.10.7). [R37; Claude's derivation, O82; today's product, absorb's link rewrite; Claude's derivation 2026-10-25: the move relocates both the documents and their imports]
+21.5.7 Briefs move into their topics; `imports/` becomes `assets/`, and `.roadmap/` becomes `.product/`, its `imports/` becoming `assets/`; roadmap items' source paths are rewritten. The documents' links to their imports by relative path (`../imports/{name}`) are rewritten to the assets' new places, as today's absorb rewrites the links its moves break, and each `imports[]` entry on the manifests becomes its file's asset, as reference (9.10.6), its status the person's to change (9.10.7). [R37; Claude's derivation, O82; today's product, absorb's link rewrite; Claude's derivation 2026-10-25: the move relocates both the documents and their imports; `.product/`, ruled by the person 2026-10-26]
 
 21.5.8 Retired state is dropped: map routing, staging, review-cycle and plan-review tracking, scoping state, the Dependencies machinery and build order (§12). The cut and the merges (step 5) read build order and the dependencies between specs from the manifests as they stood before the move, still in git, since nothing is committed before the migration's commit (21.8.5, 21.8.7, 21.9.3). [R37, R15; 21.9.3; Claude's derivation 2026-10-25: step 5 needs what step 3 drops]
 
@@ -9741,7 +9922,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.7.4 It takes the topics that must leave a building unit (21.8.9). [R37]
 
-21.7.5 A cross-cutting unit leaves the registry once its spec's entries land product-wide, and its spec and its topics' logs are kept as reference in `.roadmap/assets/`; nothing of it is deleted. [R37, R22, R8; Claude's derivation, O78; the logs, Claude's derivation 2026-10-25]
+21.7.5 A cross-cutting unit leaves the registry once its spec's entries land product-wide, and its spec and its topics' logs are kept as reference in `.product/assets/`; nothing of it is deleted. [R37, R22, R8; Claude's derivation, O78; the logs, Claude's derivation 2026-10-25]
 
 ### 21.8 Specs: the line is whether building has started
 
@@ -9869,7 +10050,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 ### 21.11 The brownfield docs
 
-21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.roadmap/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32; ruled by the person 2026-10-22]
+21.11.1 A project holding `.baseline/` docs has them moved by the migration into `.product/assets/`, as reference, and the move drops the baseline's status fields. The brownfield assessment itself folds into discovery (§8). [plan 9.1; Claude's, agreed; Claude's derivation, O32; ruled by the person 2026-10-22]
 
 21.11.2 The move carries a project's recorded baseline status of `native` or `skipped` onto the project manifest as the brownfield offer's remembered answer (8.12.11), so a project that grew up on the workflows, or that declined the offer, is never asked again. [8.12.11; today's product; Claude's derivation 2026-10-25: today's answer stays remembered once its status field goes]
 
@@ -9921,7 +10102,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S14 Given a cancelled topic with messages waiting, when the move runs, then those messages land in the inbox. (21.5.6)
 
-21.S15 Given a unit with briefs, an `imports/` folder and roadmap items pointing at its files, and a project with `.roadmap/imports/`, when the move runs, then each brief sits in its topic, `imports/` is `assets/`, `.roadmap/imports/` is `.roadmap/assets/`, and the roadmap items' source paths point at the new places; a topic log's link to an import opens the asset, and each import on the manifests is a reference asset. (21.5.7)
+21.S15 Given a unit with briefs, an `imports/` folder and roadmap items pointing at its files, and a project with `.roadmap/imports/`, when the move runs, then each brief sits in its topic, `imports/` is `assets/`, `.roadmap/` is `.product/` and its `imports/` is `assets/`, and the roadmap items' source paths point at the new places; a topic log's link to an import opens the asset, and each import on the manifests is a reference asset. (21.5.7)
 
 21.S16 Given a manifest carrying map routing, staging, review-cycle and plan-review tracking, scoping state, the Dependencies machinery and build order, when the move runs, then none of them remains; promoted topics, unstarted messages, where a topic came from and a roadmap item's kind remain. (21.5.8, 21.5.9)
 
@@ -9943,7 +10124,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S25 Given a point no log settles, when the records directive ends, then it is raised to the person on its own, after the rest of the work, and the person answers it or leaves it open; no per-entry question was asked. (21.6.10, 21.6.11, 21.10.8)
 
-21.S26 Given a cross-cutting unit with a spec, when the cut-and-merges directive runs, then the spec's rules are product-wide entries, the unit leaves the registry, and its spec and its topics' logs sit in `.roadmap/assets/` as reference. (21.7.3, 21.7.5, 19.6.7)
+21.S26 Given a cross-cutting unit with a spec, when the cut-and-merges directive runs, then the spec's rules are product-wide entries, the unit leaves the registry, and its spec and its topics' logs sit in `.product/assets/` as reference. (21.7.3, 21.7.5, 19.6.7)
 
 21.S27 Given a unit with three unbuilt specs and a plan with tasks in the tracker, when the migration runs, then the specs and plan sit in `assets/`, the tracker tasks are closed through the task verbs, the topics keep their states, and the unit sits in discussion; once every topic is decided, one spec is written fresh through the review and ready to build. (21.8.2, 21.8.3, 21.8.4)
 
@@ -9967,7 +10148,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S37 Given a session that dies mid-directive with two topics finished and one half done, when the next start runs, then boot will not go past the unfinished directive, the two finished topics pass the check, and the half-done topic is redone from the start, the ledger holding each of its entries once. (21.10.9, 21.10.10, 21.10.11)
 
-21.S38 Given a project holding `.baseline/` docs, when the migration runs, then the docs sit in `.roadmap/assets/` as reference, and no baseline status field remains. (21.11.1)
+21.S38 Given a project holding `.baseline/` docs, when the migration runs, then the docs sit in `.product/assets/` as reference, and no baseline status field remains. (21.11.1)
 
 21.S39 Given the rehearsal's scratch copies, when the migration is about to run on them, then each copy has no git remote and a push from it has been shown to fail. (21.12.1)
 
@@ -10022,7 +10203,7 @@ walkthrough offer, session labels, the knowledge gate and the migration
 review. [plan 9.2; Claude's]
 
 22.2.2 Start's offer of the brownfield assessment stays, pointing at the
-roadmap's "plan the product"; the baseline skill it pointed at goes (§8). [plan 9.1; ruled by the person 2026-10-22]
+product's conversation (8.2.9); the baseline skill it pointed at goes (§8). [plan 9.1; ruled by the person 2026-10-22]
 
 22.2.3 When the session runs below medium, the recommended minimum effort,
 start says so once and carries on (§26).
@@ -10240,9 +10421,9 @@ entries of a cancelled topic or unit, and of a postponed topic while it
 waits, are not current and are not indexed (5.8.17). [R44; ruled by the
 person 2026-10-12; Claude's derivation, T4]
 
-22.6.3 The knowledge base never indexes a log. A topic's log, the build's
-log, and discovery's and the roadmap's per-session logs are all logs. [R44,
-R11, R15; ruled by the person 2026-10-12]
+22.6.3 The knowledge base never indexes a log. A topic's log, the build's log,
+and discovery's and the product's per-session logs are all logs. [R44, R11,
+R15; ruled by the person 2026-10-12]
 
 22.6.4 The knowledge base never indexes the ledger: the ledger holds
 replaced answers, which search would return as current. [R44, R23; ruled by
@@ -10316,9 +10497,9 @@ next run. (22.1.2)
 walkthrough offer, session labels, the knowledge gate and the migration
 review behave as they did before the release. (22.2.1)
 
-22.S5 Given a project whose code predates the workflows, when the person
-takes start's brownfield offer, then the roadmap's "plan the product" opens,
-and no baseline skill is installed. (22.2.2)
+22.S5 Given a project whose code predates the workflows, when the person takes
+start's brownfield offer, then the product's conversation opens, and no
+baseline skill is installed. (22.2.2)
 
 22.S6 Given a session running below medium effort, when start runs, then it
 says once that the recommended minimum is medium and carries on to the
@@ -10614,6 +10795,11 @@ Opus 5.5's own default. [R46; agreed by the person 2026-10-19]
 23.4.8 The README, whose pipeline table shows retired phases, is rewritten
 with the book. [plan 9.4; Claude's derivation, O88]
 
+23.4.9 The user docs say, where they explain the logs, that a log names the
+transcripts of the conversations that wrote it and that a transcript lasts
+only as long as Claude Code keeps it; the workflows never set or recommend how
+long that is. [agreed by the person 2026-10-26]
+
 ## 23-S. Scenarios for §23
 
 23.S1 Given the release, when the walkthrough is opened, then its samples of
@@ -10683,6 +10869,10 @@ at the user docs, and the gate is put back. (23.3.5)
 introduction, how it fits together and an index are among them, and no
 collaboration chapter stands apart from trust. (23.4.2)
 
+23.S18 Given the shipped docs, when they explain the logs, then they say a
+transcript lasts as long as Claude Code keeps it, and nothing in the workflows
+sets or asks how long. (23.4.9)
+
 ## 24. Handoffs and compaction recovery
 
 ### 24.1 What hands off
@@ -10736,6 +10926,11 @@ go, and the table holds no move between them (§14).
 24.1.7 Moves into work from a menu, and `/workflow-start {unit} {topic}`,
 still hand off as today. [plan 9.6; Claude's derivation, O89]
 
+24.1.8 A move of the conversation between discovery's levels, and from a topic
+up to its epic's discovery or the product's conversation, carries it on in the
+same session: none hands off (8.2.11, 8.2.12). [ruled by the person
+2026-10-26]
+
 ### 24.2 Recovery after a compaction, a crash or a new session
 
 24.2.1 After a compaction, a crash or a new session alike, the engine's note
@@ -10765,10 +10960,12 @@ new session, or a compaction where the mod does not run; the note reaches the
 session wherever the workflows run (24.2.1). [Claude's sort, B74, T61]
 
 24.2.8 In discovery, once the work-type commit has run, the recovery note
-names the active discovery log and the unit's map; at the product level, the
-roadmap's session log. Before the commit, it names the session's log with the
-roadmap's (8.14.3). [today's product; Claude's sort, T42; before the commit,
-ruled by the person 2026-10-22]
+names the active discovery log and the unit's map; in the product's
+conversation, which every session before a commit is (8.2.8), the product's
+session log. Either way it names the log's transcript, from which the log is
+caught up (8.14.9). [today's product; Claude's sort, T42; before the commit,
+ruled by the person 2026-10-22; the product's sessions, ruled by the person
+2026-10-26; the transcript, agreed by the person 2026-10-26]
 
 ## 24-S. Scenarios for §24
 
@@ -10842,9 +11039,15 @@ from the epic menu's experiments-waiting row, or a feature's Continue.
 (24.1.2, 24.1.3)
 
 24.S19 Given a discovery session past the work-type commit, when the context
-compacts, then the recovery note names the active discovery log and the
-unit's map; given a session before the commit, the note names the session's
-log with the roadmap's. (8.14.3, 24.2.8)
+compacts, then the recovery note names the active discovery log and the unit's
+map; given a session before the commit, the note names its log in the
+product's sessions; either way the note names the log's transcript. (8.14.3,
+24.2.8)
+
+24.S20 Given the product's conversation turning to an epic whose map is open,
+when Claude carries it there, then no handoff runs and the conversation goes
+on in the same session; given a topic's session the person moves up to the
+epic's discovery, then the same. (24.1.8)
 
 ## 25. Prose tests and the test suites
 
@@ -11426,19 +11629,19 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.11.6 Relies on: 29.2 to 29.8, 29.10. [R14; Claude's derivation]
 
-29.11.7 Proven by: 2.S5, 2.S12, 2.S13, 2.S14, 2.S15, 2.S16, 2.S17, 3.S2, 5.S11, 5.S26, 6.S1, 6.S2, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S14, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 17.S5, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 25.S2, 25.S3, 25.S4, 25.S9, 25.S13, 26.S3, 27.S4, 21.S49 (126). [R14; Claude's derivation]
+29.11.7 Proven by: 2.S5, 2.S12, 2.S13, 2.S14, 2.S15, 2.S16, 2.S17, 3.S2, 5.S11, 5.S26, 6.S1, 6.S2, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S14, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 17.S5, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 25.S2, 25.S3, 25.S4, 25.S9, 25.S13, 26.S3, 27.S4, 21.S49 (128). [R14; Claude's derivation]
 
 ### 29.12 Discovery
 
 29.12.1 Discovery is rewritten as one phase at whatever level the conversation reaches (§8). [plan 11.3; R10]
 
-29.12.2 The baseline is folded in: the roadmap's "plan the product" opens with the baseline's research when the code predates the workflows, and the baseline skill goes (8.12). [plan 11.3, plan 9.1; ruled by the person 2026-10-22]
+29.12.2 The baseline is folded in: the product's conversation opens with the baseline's research when the code predates the workflows, and the baseline skill goes (8.12). [plan 11.3, plan 9.1; ruled by the person 2026-10-22]
 
 29.12.3 Draws on: §8, §4.11, §9.3, §9.7, §9.10, §10.1, §16.7, §16.13, §24.1, §26.1, §26.5, §27.2, §24.2, §2.10. [R14; Claude's derivation]
 
 29.12.4 Relies on: 29.2 to 29.8, 29.11. [R14; Claude's derivation]
 
-29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64, 8.S65, 8.S66, 8.S67, 8.S68 (58). [R14; Claude's derivation]
+29.12.5 Proven by: 4.S26, 8.S1, 8.S2, 8.S3, 8.S4, 8.S5, 8.S6, 8.S7, 8.S10, 8.S13, 8.S14, 8.S15, 8.S16, 8.S17, 8.S19, 8.S21, 8.S23, 8.S24, 8.S27, 8.S28, 8.S29, 8.S31, 8.S32, 8.S35, 8.S36, 8.S37, 8.S40, 8.S42, 8.S44, 8.S45, 8.S46, 8.S47, 8.S48, 8.S49, 8.S52, 8.S53, 8.S54, 8.S55, 8.S56, 8.S57, 8.S58, 8.S59, 8.S60, 9.S39, 10.S11, 24.S1, 24.S2, 24.S15, 24.S19, 26.S15, 27.S5, 8.S62, 8.S63, 8.S64, 8.S65, 8.S66, 8.S67, 8.S68, 8.S69, 8.S70, 8.S71, 8.S72, 8.S73, 8.S74, 8.S75, 24.S20 (66). [R14; Claude's derivation]
 
 ### 29.13 Specification and the phase cut
 
@@ -11492,7 +11695,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.16.4 Relies on: 29.2 to 29.8, 29.11 to 29.15. [R14; Claude's derivation]
 
-29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 24.S18 (106). [R14; Claude's derivation]
+29.16.5 Proven by: 1.S8, 5.S23, 6.S3, 7.S16, 8.S8, 8.S11, 8.S12, 8.S20, 8.S30, 8.S34, 8.S39, 8.S41, 9.S20, 9.S54, 10.S5, 10.S13, 12.S31, 12.S48, 14.S11, 18.S1, 18.S2, 18.S3, 18.S4, 18.S5, 18.S6, 18.S7, 18.S8, 18.S9, 18.S10, 18.S11, 18.S12, 18.S13, 18.S14, 18.S15, 18.S16, 18.S18, 18.S19, 18.S20, 18.S22, 18.S23, 18.S24, 18.S25, 18.S26, 18.S27, 18.S28, 18.S29, 18.S30, 18.S31, 18.S32, 18.S33, 18.S34, 18.S35, 18.S36, 18.S37, 18.S38, 18.S39, 18.S42, 18.S43, 18.S44, 18.S45, 18.S46, 18.S47, 18.S48, 18.S49, 18.S50, 18.S51, 18.S52, 18.S53, 18.S54, 18.S55, 18.S56, 18.S57, 18.S58, 18.S59, 18.S60, 18.S61, 18.S62, 18.S63, 18.S64, 18.S65, 18.S66, 19.S2, 19.S3, 19.S4, 19.S19, 19.S25, 19.S27, 20.S9, 20.S17, 20.S22, 20.S24, 22.S30, 23.S4, 23.S5, 23.S7, 24.S5, 24.S16, 25.S7, 27.S9, 28.S1, 4.S34, 4.S35, 18.S67, 18.S68, 18.S69, 18.S70, 24.S18 (107). [R14; Claude's derivation]
 
 ### 29.17 The rest of the migration
 
@@ -11520,7 +11723,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.18.6 Relies on: 29.2 to 29.8, 29.12 to 29.17. [R14; Claude's derivation]
 
-29.18.7 Proven by: 2.S7, 7.S1, 7.S2, 7.S14, 7.S18, 8.S38, 8.S61, 12.S18, 13.S18, 15.S3, 15.S14, 15.S16, 17.S7, 18.S40, 22.S1, 22.S4, 22.S5, 22.S6, 22.S7, 22.S8, 22.S9, 22.S10, 22.S11, 22.S12, 22.S13, 22.S14, 22.S15, 22.S25, 22.S26, 22.S27, 22.S28, 22.S29, 22.S31, 22.S32, 22.S33, 22.S34, 22.S35, 23.S1, 23.S2, 23.S3, 23.S6, 23.S8, 23.S9, 23.S10, 23.S11, 23.S12, 23.S13, 23.S14, 23.S15, 23.S16, 23.S17, 24.S14, 25.S5, 25.S6, 25.S10, 26.S4, 26.S5, 26.S6, 22.S37 (59). [R14; Claude's derivation]
+29.18.7 Proven by: 2.S7, 7.S1, 7.S2, 7.S14, 7.S18, 8.S38, 8.S61, 12.S18, 13.S18, 15.S3, 15.S14, 15.S16, 17.S7, 18.S40, 22.S1, 22.S4, 22.S5, 22.S6, 22.S7, 22.S8, 22.S9, 22.S10, 22.S11, 22.S12, 22.S13, 22.S14, 22.S15, 22.S25, 22.S26, 22.S27, 22.S28, 22.S29, 22.S31, 22.S32, 22.S33, 22.S34, 22.S35, 23.S1, 23.S2, 23.S3, 23.S6, 23.S8, 23.S9, 23.S10, 23.S11, 23.S12, 23.S13, 23.S14, 23.S15, 23.S16, 23.S17, 23.S18, 24.S14, 25.S5, 25.S6, 25.S10, 26.S4, 26.S5, 26.S6, 22.S37 (60). [R14; Claude's derivation]
 
 ### 29.19 The ask rule
 
@@ -11556,7 +11759,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 831 listed are the 831 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 843 listed are the 843 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 

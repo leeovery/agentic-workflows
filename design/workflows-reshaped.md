@@ -576,9 +576,10 @@ project's own measurements decide (R7).
 
 - **R10 — Discovery keeps its shaping.** The high-level shaping
   conversation is the strongest part of the workflows: the person talks
-  the product through once and the conversation becomes the record the
-  topics come out of. The product-level conversation on the roadmap, the
-  work-type commit, the discovery map and the briefs stay. What changes:
+  the product through, for as long as the product lives, and the
+  conversation becomes the record the topics come out of. The product's
+  conversation with its roadmap, the work-type commit, the discovery map
+  and the briefs stay. What changes:
   - **One phase, at whatever level the conversation reaches.** The person
     starts and talks; the conversation finds its level and moves between
     levels as it goes (the pivots run both ways). The type call comes down
@@ -612,11 +613,11 @@ project's own measurements decide (R7).
     on for hours, days, or weeks before you're ready to actually proceed
     into a topic-based exploration"); and everything in it is recorded
     from its first exchange ("it's a very important phase, arguably one of
-    the most important"). Before the work-type commit a session is logged
-    with the roadmap's session logs and stays there, since one
-    product-level session can shape a prototype, a V1 and a V2; a unit's
-    first discovery log points back at the sections that shaped it —
-    Claude's proposal for where. Discovery's record is a rule of its own,
+    the most important"). Before the work-type commit a session is the
+    product's conversation, logged in the product's sessions, and stays
+    there, since one product-level session can shape a prototype, a V1 and
+    a V2; a unit's first discovery log points back at the sections that
+    shaped it. Discovery's record is a rule of its own,
     ruled by the person 2026-10-22: nothing talked about is lost when the
     work comes; Claude keeps the log as the conversation goes, recording
     everything relevant, how it writes it left to Claude ("Claude is
@@ -625,9 +626,45 @@ project's own measurements decide (R7).
     against the conversation before each step that moves things on and
     at a session's end; every way back is kept, each point in a brief
     linking the part of the log it came from; and the compaction re-read
-    the gate mod brings keeps the instruction alive. The length stays:
+    the gate mod brings keeps the instruction alive. Every log a
+    conversation keeps names the conversations that wrote it, their
+    session ids and transcripts, and after a compaction, or on the first
+    return after a session that ended without its check, Claude catches the
+    log up from the transcript before carrying on (agreed by the person
+    2026-10-26, asked "have we built discovery to handle compaction
+    well?"); the docs say a transcript lasts as long as Claude Code keeps
+    it, and the workflows never set how long. The length stays:
     Fumi's discovery ran to about 150 of the person's replies over two
     sessions.
+  - **Discovery at two levels, each with one home**, ruled by the person
+    2026-10-26. The product's discovery is one conversation per project
+    that never finishes, at project level in `.product/` (renamed from
+    `.roadmap/`, which it now holds): "I should always be able to have
+    product discovery… even if there are epics going on and features and
+    bug fixes… to add or enrich or expand the roadmap for what the
+    product's doing, how we're moving it forward, what we're discovering
+    with market testing." What it produces is the roadmap. A piece of
+    work's discovery lives in its unit: an epic's shaping, or a feature's
+    type call ("there's a difference between initial discovery and then
+    when it forks into epic-level discovery. It's not the same process").
+    Anything not yet committed to as work is the product's, so a new
+    project's first sessions are simply the product conversation with an
+    empty roadmap, and there is one product conversation, never two
+    threads. The start menu's p row ("Talk about the product") is always
+    there; Start means a piece of work, and product talk brought to Start
+    carries the product conversation on with no announcement. Within
+    discovery Claude moves the conversation to the level it has reached,
+    product to epic and back, in the same session, the log following;
+    Claude never moves into or out of a topic ("I would never actually want
+    to go into a topic automatically from discovery"), suggesting the move
+    up for the person's word. An epic's discovery is a conversation in its
+    own right while its topics are in discussion ("There's a small sliver
+    of space between product and epics, topics. I think we need to make
+    that real as well"), and which level takes the depth is the person's.
+    The resume prompt goes: each level's discovery is one conversation
+    carried on from its row. This replaced a first proposal that made a
+    discovery a unit from its first exchange, which the person rejected:
+    it nested the product's conversation in its first epic.
   - **Feature and epic stay two types, and the call between them is
     light.** A feature is linear by definition and its menus are simpler.
     Discovery leans one topic; the work becomes an epic only when the
@@ -963,13 +1000,18 @@ project's own measurements decide (R7).
     tool is kept as its live link and an exported image.
   - **Where a spike's files go** (Claude's call, 2026-10-19, after the
     experiment's precedent): its source — draft code, a generator, a
-    design export and its live link — is kept in `assets/` as it is
-    written, so nothing is left in a session folder; its dependencies,
-    builds and run output go in the gitignored cache. A product-level
-    spike's files, and files shared at the product level, go in
-    `.roadmap/assets/`, which replaces `.roadmap/imports/` as a unit's
-    `assets/` replaces `imports/`, each linked from the roadmap session log
-    that brought it in, and from a product-wide decision once one cites it.
+    design export and its live link — is kept as it is written in a folder
+    of its own, `spikes/NNN-{slug}/`, a design spike's rounds in
+    `round-N/` inside it (agreed by the person 2026-10-26: a spike is a
+    small project you run, an asset a file you look at, and canonical or
+    reference is a status the linking entry gives a file wherever it
+    sits), so nothing is left in a session folder; its dependencies,
+    builds and run output go at the same path in the gitignored cache. A
+    product-level spike's files go in `.product/spikes/`, and files shared
+    at the product level in `.product/assets/`, which replaces
+    `.roadmap/imports/` as a unit's `assets/` replaces `imports/`, each
+    linked from the product's session log that brought it in, and from a
+    product-wide decision once one cites it.
   - **A lock is a question on the map** ("which design?"), closed by the
     person's choice: a ledger entry with the design as its canonical
     asset, no gate of its own. Rejected designs stay reference, the reason
@@ -979,7 +1021,11 @@ project's own measurements decide (R7).
     travel — "a valid use of discovery" (the person, Fumi). It goes as
     far as it needs, full code examples included (the person 2026-10-22);
     what it shows lands as reference and the first topics' opening views
-    read it.
+    read it. Claude suggests a spike unprompted wherever seeing or running
+    something would tell the person more than talking, a line and never a
+    gate (agreed by the person 2026-10-26: "I shouldn't necessarily have to
+    ask for it. As and when it's appropriate, Claude should suggest doing
+    that").
   - **Claude's own spikes back its calls** (R24): the reference assets
     attach to Claude's ledger entry as its evidence, so "what have you
     decided without me" shows how Claude found out.
@@ -998,8 +1044,8 @@ project's own measurements decide (R7).
   made by installing them; the workflows never ask it (the person,
   2026-10-12: "I don't think it's the workflow's responsibility to decide
   if the workflows are required. It'll be me."). Building a v1 fast is
-  done outside them, and a later install comes in through the roadmap's
-  plan the product (R17): discovery is one conversation at whatever level
+  done outside them, and a later install comes in through the product's
+  conversation (R17): discovery is one conversation at whatever level
   it reaches, and an existing codebase is that conversation started from
   code. Today's brownfield assessment folds into it, agreed by the person
   2026-10-19.
@@ -1886,14 +1932,16 @@ project's own measurements decide (R7).
       came from; its summary shows when picked or asked for.
     - **Its menu is explicit rows**, ruled by the person 2026-10-16: w
       work, n new (Claude asks what and which horizon), m move, a
-      archive, p plan the product (discovery at the product level, R10:
-      the one row that is a conversation, named for what it does), h
+      archive, p talk about the product (the product's conversation,
+      R10, the same as the start menu's p: the one row that is a
+      conversation, named for what it does), h
       help, b back. Today's "converse" row went: with the gate mod every
       row is a button, and a button that only says "talk" still leaves
       the person to say what they meant.
-    - **The brownfield assessment folds into plan the product**, ruled by
-      the person 2026-10-22: on code that predates the workflows, plan
-      the product opens with the same research of the code the baseline
+    - **The brownfield assessment folds into the product's
+      conversation**, ruled by the person 2026-10-22: on code that
+      predates the workflows, the product's conversation opens with the
+      same research of the code the baseline
       skill runs today. What it sees lands as findings every later topic
       reads, what the person says is input to the topic it bears on, and
       what stays open goes on the map. The separate skill, its documents
@@ -2065,9 +2113,9 @@ project's own measurements decide (R7).
   name and its forms, cited by three later plans) came from an epic's
   spec grouping promoting a topic, and grouping goes (R14). A principle
   is decided where it arises and marked product-wide; one the person
-  wants to talk through on purpose is a product-level conversation,
-  reached through Start, where discovery meets it at the level it
-  reaches, or the roadmap's plan the product (R17; the person,
+  wants to talk through on purpose is the product's conversation,
+  reached through the start menu's p, the roadmap's p or Start (R10,
+  R17; the person,
   2026-10-16: "or we go into discovery, or, as I said, in the product
   roadmap, we can talk about something that's product-wide"), logged per
   session like discovery
@@ -3122,9 +3170,10 @@ worktree of the state's own branch, never part of a code branch (R23).
 │   ├── ideas/ bugs/ quickfixes/
 │   │   └── {YYYY-MM-DD}--{slug}.md
 │   └── .archived/{kind}/{YYYY-MM-DD}--{slug}.md
-├── .roadmap/                4.11.16
+├── .product/                4.11.16
 │   ├── sessions/session-NNN.md
 │   ├── notes/{YYYY-MM-DD}--{slug}.md
+│   ├── spikes/NNN-{slug}/
 │   └── assets/
 ├── .state/
 │   └── migrations           4.7.4
@@ -3136,7 +3185,7 @@ worktree of the state's own branch, never part of a code branch (R23).
 ├── .cache/                  gitignored (4.11.3)
 │   ├── {unit}/…             mirrors the unit's tree
 │   │   └── last-looked.json 5.8.15
-│   ├── .roadmap/…           product-level spikes' builds
+│   ├── .product/…           product-level spikes' builds
 │   └── .session-labels/
 └── {unit}/                  4.11.5
     ├── manifest.json
@@ -3151,6 +3200,7 @@ worktree of the state's own branch, never part of a code branch (R23).
     │       ├── data/
     │       └── E{n}.{m}-{slug}/            a sub-experiment
     ├── assets/
+    ├── spikes/NNN-{slug}/   9.10.10
     ├── spec.md
     ├── spec-review.json
     ├── summary.md           a quick-fix's (4.11.6, 19.5.17)
@@ -3524,7 +3574,7 @@ own detection finds nothing in either.
     2026-10-22: boot stops with two ways on. Another clone still holding
     the branch pushes it back (boot pushes a state branch the remote
     lacks), and this clone restores it; otherwise, on the person's yes, a
-    fresh state branch, and plan the product reads the code as the
+    fresh state branch, and the product's conversation reads the code as the
     baseline did ("use what was called the baseline system to
     reconstitute some type of state").
   - **No whole live run before the release**, ruled by the person
