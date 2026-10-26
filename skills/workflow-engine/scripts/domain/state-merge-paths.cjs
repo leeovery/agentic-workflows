@@ -146,9 +146,14 @@ function textOf(ctx, entry) {
 
 // --- one path both sides changed --------------------------------------------
 
+/** @param {string} file */
+function changedCopyKept(file) {
+  return `${file} was deleted on one machine and changed on the other: the changed copy is kept`;
+}
+
 /** @param {string} file @param {Versions} versions @returns {PathMerge} */
 function keepChanged(file, { local, remote }) {
-  return { entry: local ?? remote, note: `${file} was deleted on one machine and changed on the other: the changed copy is kept` };
+  return { entry: local ?? remote, note: changedCopyKept(file) };
 }
 
 /** Where this machine's copy of a path is set beside the remote's. @param {string} file @param {string} oid */
@@ -357,6 +362,7 @@ module.exports = {
   mergePath,
   mergeTrees,
   separateClashes,
+  besidePath,
+  changedCopyKept,
   isUnder,
-  foldersAbove,
 };

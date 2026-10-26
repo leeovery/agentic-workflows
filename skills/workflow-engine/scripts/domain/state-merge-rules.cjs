@@ -31,6 +31,7 @@
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
 
+const crypto = require('crypto');
 const { titlecase } = require('./conventions.cjs');
 
 const LEDGER = '.ledger.jsonl';
@@ -202,19 +203,24 @@ function sideOf(value) {
   return value === undefined ? { set: false } : { set: true, value };
 }
 
-/** @param {Side} a @param {Side} b */
-function sameSide(a, b) {
-  return a.set ? b.set && same(a.value, b.value) : !b.set;
+/** A JSON value with every object's keys in order, so equal values write alike. @param {unknown} value @returns {unknown} */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!isObject(value)) return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
 }
 
 /**
- * Whether two conflicts leave the same choice: one field, between the same
- * two values.
- * @param {Choice} a @param {Choice} b
+ * A choice's identity: the manifest it is in, whether it is on the branch or
+ * between the working tree and the update, the field, and the two values,
+ * whatever order their keys came in. A pick answers the choice with its
+ * identity, and the screen carries it to the pick.
+ * @param {Choice & {manifest: string, uncommitted: boolean}} choice
+ * @returns {string}
  */
-function sameChoice(a, b) {
-  return a.field.length === b.field.length && a.field.every((key, i) => key === b.field[i])
-    && sameSide(a.local, b.local) && sameSide(a.remote, b.remote);
+function choiceId({ manifest, uncommitted, field, local, remote }) {
+  const named = JSON.stringify(canonical([manifest, uncommitted, field, local, remote]));
+  return crypto.createHash('sha1').update(named).digest('hex').slice(0, 12);
 }
 
 /** @typedef {(choice: Choice) => 'local'|'remote'|null} PickOf */
@@ -331,7 +337,7 @@ module.exports = {
   unionLedger,
   unionMigrations,
   mergeManifest,
-  sameChoice,
+  choiceId,
   askedAt,
   conflictLabel,
 };

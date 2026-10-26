@@ -39,7 +39,7 @@ const {
   STATE_BRANCH, stateRoot, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
-const { unionLedger, unionMigrations, mergeManifest, sameChoice, conflictLabel, ruleOf } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
+const { unionLedger, unionMigrations, mergeManifest, choiceId, conflictLabel, ruleOf } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
 const { stateMergeGate } = require(path.join(SCRIPTS, 'domain/projections/state-merge.cjs'));
 
 /** @type {string} */
@@ -207,6 +207,18 @@ function traced(fn) {
 /** Where the merge keeps its stop: the state worktree's git dir. @param {string} root */
 function keptStopFile(root) {
   return path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-merge.json']).trim());
+}
+
+/** The identity of the choice the stop's screen shows, from its DATA section. @param {Machine} machine */
+function shownChoice(machine) {
+  const shown = /^choice: (\S+)$/m.exec(stateMergeGateSurface(machine.main, {}));
+  assert.ok(shown !== null, 'the screen carries no choice');
+  return shown[1];
+}
+
+/** Pick `key` at the stop's screen, as the person does: for the choice it shows. @param {Machine} machine @param {string} key */
+function pickShown(machine, key) {
+  return pickStateMerge(machine.root, key, shownChoice(machine));
 }
 
 /** The merge's own files left in the state worktree's git dir. @param {string} root */
@@ -471,7 +483,7 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.deepStrictEqual(out.conflicts.map((c) => [c.uncommitted, c.local, c.remote]), [[true, { set: true, value: 'next' }, { set: true, value: 'someday' }]]);
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next'));
 
-    const picked = pickStateMerge(here.root, '1');
+    const picked = pickShown(here, '1');
 
     assert.deepStrictEqual([picked.action, picked.commit], ['fast-forwarded', theirs]);
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('someday'));
@@ -501,18 +513,20 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
   it('asks nothing of a field the working tree changed where the pick on the branch settles it', () => {
     const here = stoppedWithWork();
 
-    assert.strictEqual(pickStateMerge(here.root, '1').action, 'merged');
+    assert.strictEqual(pickShown(here, '1').action, 'merged');
     assert.deepStrictEqual(horizons(here), ['next', 'never']);
   });
 
   it('asks a field the working tree changed once the branch\'s fields are picked, where their pick leaves it standing', () => {
     const here = stoppedWithWork();
 
-    const next = pickStateMerge(here.root, '2');
+    const next = pickShown(here, '2');
 
     assert.deepStrictEqual(next.conflicts.map((c) => [c.uncommitted, c.local.set && c.local.value, c.pick]), [[false, 'next', 'remote'], [true, 'never', null]]);
-    assert.match(stateMergeGateSurface(here.main, {}), /^> Field 2 of 2\. .*\n>\n> - this machine: never\n> - the remote: someday$/m);
-    assert.strictEqual(pickStateMerge(here.root, '1').action, 'fast-forwarded');
+    const screen = stateMergeGateSurface(here.main, {});
+    assert.match(screen, /^⚑ The state merge stopped: this machine's uncommitted copy and the update changed one field differently$/m);
+    assert.match(screen, /^> In .*\n>\n> - this machine's uncommitted copy: never\n> - the update from the remote: someday$/m);
+    assert.strictEqual(pickShown(here, '1').action, 'fast-forwarded');
     assert.deepStrictEqual(horizons(here), ['someday', 'never']);
   });
 
@@ -599,12 +613,17 @@ describe('another session writing while the catch-up runs', () => {
 
     const out = withPath(writerAfterStaging(here.root, ['## another session', '## and again']), () => catchUpState(here.root));
 
+    const mergedCopy = '# a\n\n## first\n\n## elsewhere\n## here\n## another session\n';
+    const beside = `unit/topics/a/log.${blobId(mergedCopy).slice(0, 8)}.md`;
     assert.strictEqual(out.action, 'fast-forwarded');
     assert.strictEqual(tip(here.main, STATE_BRANCH), tip(there.main, STATE_BRANCH));
     assert.strictEqual(read(here.root, LOG), '# a\n\n## first\n\n## here\n## another session\n## and again\n');
+    assert.strictEqual(read(here.root, beside), mergedCopy);
     assert.ok(out.warnings.includes(
-      `${LOG} changed while the state caught up and was left as it stands, unmerged: the remote's side of it is the copy committed on leeway-state`,
+      `${LOG} changed while the state caught up and was left as it stands, with the merged copy beside it as ${beside}: `
+      + `committing ${LOG} as it stands leaves the remote's change only in ${beside}`,
     ), out.warnings.join('\n'));
+    assert.strictEqual(status(here.root), ` M ${LOG}\n?? ${beside}\n`);
   });
 });
 
@@ -639,6 +658,19 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.ok(appendOnly(there.root), 'the append-only check fails on the other machine');
     assert.deepStrictEqual([mergeDrivers(here.main), mergeDrivers(there.main)], ['', '']);
     assert.ok(!git(here.main, ['ls-tree', '--name-only', STATE_BRANCH]).includes('.gitattributes'));
+  });
+
+  it('merges a ledger past spawnSync\'s 1 MiB default, both clones appending', () => {
+    const long = Array.from({ length: 4000 }, (_, i) => entry({ v: 1, id: `e${i}`, event: 'decided', text: 'y'.repeat(300) })).join('');
+    assert.ok(Buffer.byteLength(long) > 1024 * 1024);
+    const { here, there } = twoMachines({ '.ledger.jsonl': long });
+    commitUnpushed(here, { '.ledger.jsonl': long + ledger('a1') });
+    commitOn(there, { '.ledger.jsonl': long + ledger('b1') });
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
+    assert.ok(read(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
   });
 
   it('keeps a line both sides hold by id once', () => {
@@ -731,7 +763,8 @@ describe('the remote moving under the merge (4.S15)', () => {
     const second = commitUnpushed(there, { '.ledger.jsonl': ledger('base', 'b1', 'b2') });
     assert.strictEqual(catchUpState(here.root).action, 'stopped');
 
-    const out = withMovingRemote(there, [second], () => pickStateMerge(here.root, '1'));
+    const shown = shownChoice(here);
+    const out = withMovingRemote(there, [second], () => pickStateMerge(here.root, '1', shown));
 
     assert.deepStrictEqual([out.action, out.pushed, out.warnings], ['merged', true, []]);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [second]);
@@ -831,7 +864,7 @@ describe('the manifests (4.S17)', () => {
     assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'a1'));
     assert.strictEqual(status(here.root), '');
 
-    const picked = pickStateMerge(here.root, '2');
+    const picked = pickShown(here, '2');
 
     assert.deepStrictEqual([picked.action, picked.pushed], ['merged', true]);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [theirs]);
@@ -848,7 +881,7 @@ describe('the manifests (4.S17)', () => {
     commitOn(there, { 'manifest.json': projectManifest('someday') });
     catchUpState(here.root);
 
-    const picked = pickStateMerge(here.root, '1');
+    const picked = pickShown(here, '1');
 
     assert.strictEqual(picked.action, 'merged');
     assert.strictEqual(JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`])).roadmap.items['a-lifetime-tier'].horizon, 'next');
@@ -864,12 +897,12 @@ describe('the manifests (4.S17)', () => {
     assert.deepStrictEqual(stopped.conflicts.map((c) => c.label.path), ['defaults.plan_format', 'roadmap.items.a-lifetime-tier.horizon']);
     assert.match(stateMergeGateSurface(here.main, {}), /Field 1 of 2\. In Fumi's project manifest, the plan format \(`defaults\.plan_format`\) changed/);
 
-    const next = pickStateMerge(here.root, '1');
+    const next = pickShown(here, '1');
     assert.deepStrictEqual([next.action, next.conflicts.map((c) => c.pick)], ['stopped', ['local', null]]);
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next', { defaults: { plan_format: 'tick' } }));
     assert.match(stateMergeGateSurface(here.main, {}), /Field 2 of 2\. In Fumi's project manifest, the horizon of the roadmap item "A lifetime tier" changed/);
 
-    const done = pickStateMerge(here.root, '2');
+    const done = pickShown(here, '2');
     assert.strictEqual(done.action, 'merged');
     const merged = JSON.parse(read(here.root, 'manifest.json'));
     assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['tick', 'someday']);
@@ -878,8 +911,8 @@ describe('the manifests (4.S17)', () => {
   it('refuses a pick that is neither side, and a pick with nothing waiting', () => {
     const { here } = twoMachines({ 'manifest.json': projectManifest('now') });
 
-    assert.throws(() => pickStateMerge(here.root, '3'), /a state merge pick is 1 \(this machine's value\) or 2 \(the remote's\), got "3"/);
-    assert.throws(() => pickStateMerge(here.root, '1'), /no state merge is waiting on a pick/);
+    assert.throws(() => pickStateMerge(here.root, '3', 'a1b2c3d4e5f6'), /a state merge pick is 1 \(this machine's value\) or 2 \(the remote's\), got "3"/);
+    assert.throws(() => pickStateMerge(here.root, '1', 'a1b2c3d4e5f6'), /^Error: no state merge is waiting on a pick$/);
   });
 });
 
@@ -908,14 +941,14 @@ describe('a kept stop', () => {
   it('is still answerable from a new session', () => {
     const { here, bare } = stopped();
     const session = [
-      'const [mod, root] = process.argv.slice(1);',
+      'const [mod, main, root] = process.argv.slice(1);',
       'const merge = require(mod);',
       "const before = merge.pendingStateMerge(root).conflicts.map((c) => c.label.path);",
-      "const out = merge.pickStateMerge(root, '1');",
+      "const out = merge.pickStateMerge(root, '1', /^choice: (\\S+)$/m.exec(merge.stateMergeGateSurface(main, {}))[1]);",
       'process.stdout.write(JSON.stringify({ before, action: out.action, pushed: out.pushed }));',
     ].join('\n');
 
-    const res = spawnSync('node', ['-e', session, MERGE, here.root], { encoding: 'utf8' });
+    const res = spawnSync('node', ['-e', session, MERGE, here.main, here.root], { encoding: 'utf8' });
 
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), { before: ['roadmap.items.a-lifetime-tier.horizon'], action: 'merged', pushed: true });
@@ -928,12 +961,12 @@ describe('a kept stop', () => {
     commitUnpushed(here, { 'manifest.json': projectManifest('next', { defaults: { plan_format: 'tick' } }) });
     commitOn(there, { 'manifest.json': projectManifest('someday', { defaults: { plan_format: 'linear' } }) });
     catchUpState(here.root);
-    pickStateMerge(here.root, '2');
+    pickShown(here, '2');
 
     const again = catchUpState(here.root);
 
     assert.deepStrictEqual([again.action, again.conflicts.map((c) => c.pick)], ['stopped', ['remote', null]]);
-    assert.strictEqual(pickStateMerge(here.root, '1').action, 'merged');
+    assert.strictEqual(pickShown(here, '1').action, 'merged');
     const merged = JSON.parse(read(here.root, 'manifest.json'));
     assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['linear', 'next']);
   });
@@ -942,7 +975,7 @@ describe('a kept stop', () => {
     const { here, there, bare } = stopped();
     const moved = commitOn(there, { 'manifest.json': projectManifest('later') }).commit;
 
-    const out = pickStateMerge(here.root, '1');
+    const out = pickShown(here, '1');
 
     assert.strictEqual(out.action, 'stopped');
     assert.deepStrictEqual([out.conflicts[0].remote, out.conflicts[0].pick], [{ set: true, value: 'later' }, null]);
@@ -951,23 +984,45 @@ describe('a kept stop', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).conflicts.map((c) => [c.remote.value, c.pick]), [['later', null]]);
   });
 
-  it('asks afresh as this clone moves: the same choice stays asked, and a pick for a choice no longer asked is not taken', () => {
+  it('takes a pick shown before this clone moved where the merge still asks the same choice', () => {
     const { here } = stopped();
+    const shown = shownChoice(here);
+
     commitUnpushed(here, { 'manifest.json': projectManifest('next', { defaults: { plan_format: 'tick' } }) });
 
-    assert.deepStrictEqual(pendingStateMerge(here.root)?.conflicts.map((c) => c.local), [{ set: true, value: 'next' }]);
+    assert.strictEqual(shownChoice(here), shown);
+    assert.strictEqual(pickStateMerge(here.root, '1', shown).action, 'merged');
+    const merged = JSON.parse(read(here.root, 'manifest.json'));
+    assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['tick', 'next']);
+  });
 
-    commitUnpushed(here, { 'manifest.json': projectManifest('never', { defaults: { plan_format: 'tick' } }) });
-    const out = pickStateMerge(here.root, '1');
+  it('refuses a pick for a choice the merge no longer asks, the stop rewritten by another catch-up between its screen and the pick', () => {
+    const { here, there } = stopped();
+    const shown = shownChoice(here);
+    commitOn(there, { 'manifest.json': projectManifest('later') });
+    assert.strictEqual(catchUpState(here.root).action, 'stopped');
 
-    assert.deepStrictEqual([out.action, out.conflicts.map((c) => [c.local, c.pick])], ['stopped', [[{ set: true, value: 'never' }, null]]]);
-    assert.match(out.warnings.join('\n'), /sides moved since it stopped/);
+    const refused = pickStateMerge(here.root, '1', shown);
 
-    commitUnpushed(here, { 'manifest.json': projectManifest('again', { defaults: { plan_format: 'tick' } }) });
-    assert.match(stateMergeGateSurface(here.main, {}), /^> - this machine: again$/m);
+    assert.deepStrictEqual([refused.action, refused.conflicts.map((c) => [c.remote, c.pick])], ['stopped', [[{ set: true, value: 'later' }, null]]]);
+    assert.deepStrictEqual(refused.warnings, ['the pick answered a question the state merge no longer asks, so it was not taken']);
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next'));
+    assert.notStrictEqual(shownChoice(here), shown);
 
-    assert.strictEqual(pickStateMerge(here.root, '1').action, 'merged');
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'again');
+    assert.strictEqual(pickShown(here, '2').action, 'fast-forwarded');
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'));
+  });
+
+  it('asks afresh as this clone moves, showing this machine\'s value as it now stands', () => {
+    const { here } = stopped();
+    const shown = shownChoice(here);
+
+    commitUnpushed(here, { 'manifest.json': projectManifest('never') });
+
+    assert.match(stateMergeGateSurface(here.main, {}), /^> - this machine: never$/m);
+    assert.strictEqual(pickStateMerge(here.root, '1', shown).action, 'stopped');
+    assert.strictEqual(pickShown(here, '1').action, 'merged');
+    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'never');
   });
 
   it('asks with the uncommitted value as the working tree now holds it', () => {
@@ -986,7 +1041,7 @@ describe('a kept stop', () => {
     const away = path.join(world, 'moved-away.git');
     fs.renameSync(bare, away);
 
-    const offline = pickStateMerge(here.root, '1');
+    const offline = pickShown(here, '1');
 
     assert.strictEqual(offline.action, 'unreachable');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).conflicts.map((c) => c.pick), ['local']);
@@ -1001,10 +1056,26 @@ describe('a kept stop', () => {
     assert.ok(!fs.existsSync(keptStopFile(here.root)));
   });
 
+  it('asks nothing while a landing a kill cut short stands, and the next catch-up finishes it with no question', () => {
+    const { here, there } = stopped();
+    killedAfter(here.root, `merge.pickStateMerge(root, '2', '${shownChoice(here)}')`, 'reset --quiet');
+    commitOn(there, { 'manifest.json': projectManifest('later') });
+    git(here.main, ['fetch', '-q', 'origin']);
+
+    assert.strictEqual(pendingStateMerge(here.root), null);
+    assert.throws(() => pickStateMerge(here.root, '1', 'a1b2c3d4e5f6'), /^Error: no state merge is waiting on a pick$/);
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.conflicts], ['fast-forwarded', []]);
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'));
+    assert.deepStrictEqual(mergeLeftovers(here.root), []);
+  });
+
   it('with every field picked and the pick killed before it finished, is finished by the next catch-up', () => {
     const { here, bare } = stopped();
 
-    killedAfter(here.root, "merge.pickStateMerge(root, '2')", 'ls-remote');
+    killedAfter(here.root, `merge.pickStateMerge(root, '2', '${shownChoice(here)}')`, 'ls-remote');
 
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).conflicts.map((c) => c.pick), ['remote']);
     assert.strictEqual(pendingStateMerge(here.root), null);
@@ -1138,20 +1209,32 @@ describe('a catch-up killed between its steps', () => {
   // The landing's git steps, each named by what its arguments hold: the
   // merge's commit, the files staged, the worktree's index, the branch, the
   // push.
+  // After the kill the remote moves on, changing one manifest field and
+  // removing another the killed landing had written: the next catch-up
+  // reads nothing that landing wrote as this machine's change.
   for (const marker of ['commit-tree', '--prefix=', 'reset --quiet', 'update-ref -m', '--force-with-lease']) {
-    it(`loses nothing, and the next catch-up lands the whole merge, when killed after ${marker}`, () => {
-      const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), [CHART]: 'png\0base', [LOG]: '# a\n' });
+    it(`loses nothing, and reads nothing it wrote as this machine's, when killed after ${marker} with the remote moving on`, () => {
+      const { here, there, bare } = twoMachines({
+        '.ledger.jsonl': ledger('base'), [CHART]: 'png\0base', [LOG]: '# a\n', 'manifest.json': projectManifest('now'),
+      });
       commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1'), [CHART]: 'png\0here' });
       write(here.root, LOG, '# a\n\n## here, uncommitted\n');
-      const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), [CHART]: 'png\0there', [LOG]: '# a\n\n## elsewhere\n' }).commit;
+      commitOn(there, {
+        '.ledger.jsonl': ledger('base', 'b1'), [CHART]: 'png\0there', [LOG]: '# a\n\n## elsewhere\n', 'manifest.json': projectManifest('someday', { extra: 1 }),
+      });
       const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
 
       killedAfter(here.root, 'merge.catchUpState(root)', marker);
-      catchUpState(here.root);
+      assert.notStrictEqual(catchUpState(there.root).action, 'stopped');
+      const onward = commitOn(there, { 'manifest.json': projectManifest('later') }).commit;
+      const out = catchUpState(here.root);
 
       const landed = tip(here.main, STATE_BRANCH);
-      assert.deepStrictEqual(parents(here.main, landed), [theirs]);
+      assert.ok(['merged', 'fast-forwarded'].includes(out.action), `the catch-up ${out.action}: ${JSON.stringify(out.conflicts)}`);
       assert.strictEqual(remoteTip(bare), landed);
+      assert.ok(landed === onward || parents(here.main, landed)[0] === onward, 'the landing is not on the remote\'s new tip');
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('later'));
+      assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'), 'a field the killed landing wrote came back');
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'b1', 'a1'));
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${CHART}`]), 'png\0there');
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), 'png\0here');
@@ -1233,12 +1316,17 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 4 }, pickOf).conflicts.map((c) => c.pick), [null]);
   });
 
-  it('holds two conflicts the same choice where the field and both values match, whatever the picks', () => {
-    const choice = { field: ['a', 'b'], local: { set: true, value: { x: [1] } }, remote: { set: false } };
-    assert.ok(sameChoice(choice, { ...choice, local: { set: true, value: { x: [1] } }, pick: 'local' }));
-    assert.ok(!sameChoice(choice, { ...choice, field: ['a', 'c'] }));
-    assert.ok(!sameChoice(choice, { ...choice, local: { set: true, value: { x: [2] } } }));
-    assert.ok(!sameChoice(choice, { ...choice, remote: { set: true, value: null } }));
+  it('names a choice by its manifest, its step, its field and both values, whatever the pick or the values\' key order', () => {
+    const choice = { manifest: 'manifest.json', uncommitted: false, field: ['a', 'b'], local: { set: true, value: { x: [1], y: 2 } }, remote: { set: false } };
+    const id = choiceId(choice);
+    assert.match(id, /^[0-9a-f]{12}$/);
+    assert.strictEqual(choiceId({ ...choice, local: { set: true, value: { y: 2, x: [1] } }, pick: 'local' }), id);
+    for (const other of [
+      { manifest: 'auth-flow/manifest.json' }, { uncommitted: true }, { field: ['a', 'c'] },
+      { local: { set: true, value: { x: [2], y: 2 } } }, { remote: { set: true, value: null } },
+    ]) {
+      assert.notStrictEqual(choiceId({ ...choice, ...other }), id, JSON.stringify(other));
+    }
   });
 
   it('orders the merged keys as the remote has them, this clone\'s new ones after', () => {
@@ -1280,10 +1368,14 @@ describe('the stop\'s screen (4.7.6)', () => {
     };
   }
 
-  it('draws the title, the account with both values, the question and one numbered row per side', () => {
-    const out = stateMergeGate(stopOf({}));
+  it('draws the shown choice\'s identity, the title, the account with both values, the question and one numbered row per side', () => {
+    const stop = stopOf({});
+    const out = stateMergeGate(stop);
 
     assert.strictEqual(out, [
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      `choice: ${choiceId(stop.conflicts[0])}`,
+      '',
       '=== DISPLAY: state merge stop (emit verbatim as a properties code block (```properties fence)) ===',
       '⚑ The state merge stopped: one field changed on both machines',
       '',
@@ -1318,13 +1410,32 @@ describe('the stop\'s screen (4.7.6)', () => {
   });
 
   it('shows the first conflict still open, counted among them all', () => {
-    const out = stateMergeGate(stopOf({ pick: 'local' }, { field: ['defaults', 'plan_format'], label: conflictLabel('manifest.json', ['defaults', 'plan_format'], 'Fumi'), local: { set: false }, remote: { set: true, value: { nested: ['a*b'] } } }));
+    const stop = stopOf({ pick: 'local' }, { field: ['defaults', 'plan_format'], label: conflictLabel('manifest.json', ['defaults', 'plan_format'], 'Fumi'), local: { set: false }, remote: { set: true, value: { nested: ['a*b'] } } });
+    const out = stateMergeGate(stop);
 
+    assert.match(out, new RegExp(`^choice: ${choiceId(stop.conflicts[1])}$`, 'm'));
     assert.match(out, /^⚑ The state merge stopped: 2 fields changed on both machines$/m);
     assert.match(out, /^> Field 2 of 2\. In Fumi's project manifest, the plan format \(`defaults\.plan_format`\) changed on each machine since they last agreed:$/m);
     assert.match(out, /^> - this machine: removed$/m);
     assert.match(out, /^> - the remote: \{"nested":\\\["a\\\*b"\\\]\}$/m);
     assert.match(out, /^\*\*`◆ Which plan format does Fumi's project manifest keep\?`\*\*$/m);
+  });
+
+  it('asks the working tree\'s fields as a step of their own, naming the uncommitted copy and the update', () => {
+    const planFormat = { field: ['defaults', 'plan_format'], label: conflictLabel('manifest.json', ['defaults', 'plan_format'], 'Fumi'), local: { set: true, value: 'tick' }, remote: { set: true, value: 'linear' } };
+    const out = stateMergeGate(stopOf({ pick: 'remote' }, { uncommitted: true, local: { set: true, value: 'never' } }, { ...planFormat, uncommitted: true }));
+
+    assert.match(out, /^⚑ The state merge stopped: this machine's uncommitted copy and the update changed 2 fields differently$/m);
+    assert.match(out, /^> Field 1 of 2\. In Fumi's project manifest, the horizon of the roadmap item "A lifetime tier" changed in this machine's uncommitted copy, and differently in the update from the remote:$/m);
+    assert.match(out, /^> - this machine's uncommitted copy: never$/m);
+    assert.match(out, /^> - the update from the remote: someday$/m);
+    assert.match(out, /^\*\*`1`\*\* → never — \*this machine's uncommitted copy\*$/m);
+    assert.match(out, /^\*\*`2`\*\* → someday — \*the remote's\*$/m);
+    assert.doesNotMatch(out, /since they last agreed/);
+
+    const single = stateMergeGate(stopOf({ pick: 'remote' }, { uncommitted: true }));
+    assert.match(single, /^⚑ The state merge stopped: this machine's uncommitted copy and the update changed one field differently$/m);
+    assert.match(single, /^> In Fumi's project manifest, the horizon/m);
   });
 
   it('shows the last conflict of a stop with every one picked, never failing on it', () => {
@@ -1363,15 +1474,16 @@ describe('the stop\'s screen (4.7.6)', () => {
 });
 
 describe('the pick\'s command', () => {
-  it('takes `pick <1|2>`; a pick leaving nothing of this clone\'s lands on the remote\'s tip with no commit', () => {
+  it('takes `pick <1|2> <choice>`; a pick leaving nothing of this clone\'s lands on the remote\'s tip with no commit', () => {
     const { here, there, bare } = twoMachines({ 'manifest.json': projectManifest('now') });
     commitUnpushed(here, { 'manifest.json': projectManifest('next') });
     commitOn(there, { 'manifest.json': projectManifest('someday') });
     catchUpState(here.root);
 
-    assert.throws(() => stateMergeCommand(here.main, ['pick']), /Usage: engine state-merge pick <1\|2>/);
-    assert.throws(() => stateMergeCommand(here.main, ['choose', '1']), /Usage: engine state-merge pick <1\|2>/);
-    const out = stateMergeCommand(here.main, ['pick', '2']);
+    for (const argv of [['pick'], ['pick', '2'], ['choose', '1', shownChoice(here)], ['pick', '2', shownChoice(here), 'more']]) {
+      assert.throws(() => stateMergeCommand(here.main, argv), /^Error: Usage: engine state-merge pick <1\|2> <choice>$/, argv.join(' '));
+    }
+    const out = stateMergeCommand(here.main, ['pick', '2', shownChoice(here)]);
 
     assert.deepStrictEqual([out.action, out.pushed, out.commit], ['fast-forwarded', false, remoteTip(bare)]);
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));

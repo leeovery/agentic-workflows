@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { GitError } = require('./git.cjs');
+const { GitError, READ_BUDGET_BYTES } = require('./git.cjs');
 
 /**
  * The variables that point git at a repository, its index, its objects or
@@ -123,7 +123,7 @@ function isolatedGit(cwd) {
   function spawn(args, { input, timeoutMs, env } = {}) {
     base ??= hooksOffEnv(cwd);
     return spawnSync('git', [...HOOKS_OFF, ...args], {
-      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env },
+      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES,
     });
   }
 

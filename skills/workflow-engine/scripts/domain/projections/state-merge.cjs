@@ -6,13 +6,19 @@
 // keeps. The conflicts are shown one at a time, the one the stop asks about
 // (state-merge-rules.cjs, askedAt): each has its own question, and two
 // numbered rows answer it as the spec draws them, where every conflict at
-// once would need a key per side per field. The title counts them all, and
-// the account says which one this is.
+// once would need a key per side per field. The DATA section carries the
+// shown choice's identity, which the pick passes back, so a pick only ever
+// answers the question its screen showed.
+//
+// The merge asks in two steps: the branch's fields, then, once those are
+// picked, the fields this machine's uncommitted copies changed differently
+// from the update. Each step is known whole when it is asked, so the title
+// counts the step's fields and the account says which one this is.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION, dataSection } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
-const { askedAt } = require('../state-merge-rules.cjs');
+const { askedAt, choiceId } = require('../state-merge-rules.cjs');
 
 /** @typedef {import('../state-merge-rules.cjs').Side} Side */
 /** @typedef {import('../state-merge-rules.cjs').ConflictLabel} ConflictLabel */
@@ -32,7 +38,29 @@ const { askedAt } = require('../state-merge-rules.cjs');
  * }} Conflict
  */
 
-const SIDES = /** @type {const} */ ([['1', 'local', "this machine's", 'this machine'], ['2', 'remote', "the remote's", 'the remote']]);
+/**
+ * How a step's screen names its fields and its sides: each side's key, value
+ * and row tail, and its line in the account.
+ * @typedef {{
+ *   title: (count: number) => string,
+ *   changed: string,
+ *   sides: readonly (readonly ['1'|'2', 'local'|'remote', string, string])[],
+ * }} Step
+ */
+
+/** @type {Record<'branch'|'uncommitted', Step>} */
+const STEPS = {
+  branch: {
+    title: (count) => `${count === 1 ? 'one field' : `${count} fields`} changed on both machines`,
+    changed: 'changed on each machine since they last agreed',
+    sides: [['1', 'local', "this machine's", 'this machine'], ['2', 'remote', "the remote's", 'the remote']],
+  },
+  uncommitted: {
+    title: (count) => `this machine's uncommitted copy and the update changed ${count === 1 ? 'one field' : `${count} fields`} differently`,
+    changed: "changed in this machine's uncommitted copy, and differently in the update from the remote",
+    sides: [['1', 'local', "this machine's uncommitted copy", "this machine's uncommitted copy"], ['2', 'remote', "the remote's", 'the update from the remote']],
+  },
+};
 
 // The menu's glyphed question is short and plain (surfaces.cjs: a label
 // earns the glyph within 60 characters, with no markup in it).
@@ -81,21 +109,21 @@ function changed({ subject, field, path }) {
  * @returns {string}
  */
 function stateMergeGate({ conflicts }) {
-  const at = askedAt(conflicts);
-  const conflict = conflicts[at];
-  const count = conflicts.length;
-  const which = count === 1 ? '' : `Field ${at + 1} of ${count}. `;
+  const conflict = conflicts[askedAt(conflicts)];
+  const fields = conflicts.filter((c) => c.uncommitted === conflict.uncommitted);
+  const step = STEPS[conflict.uncommitted ? 'uncommitted' : 'branch'];
+  const which = fields.length === 1 ? '' : `Field ${fields.indexOf(conflict) + 1} of ${fields.length}. `;
   const account = [
-    `> ${which}In ${escapeMarkdown(conflict.label.owner)}, ${changed(conflict.label)} changed on each machine since they last agreed:`,
+    `> ${which}In ${escapeMarkdown(conflict.label.owner)}, ${changed(conflict.label)} ${step.changed}:`,
     '>',
-    ...SIDES.map(([, side, , who]) => `> - ${who}: ${escapeMarkdown(shown(conflict[side]))}`),
+    ...step.sides.map(([, side, , who]) => `> - ${who}: ${escapeMarkdown(shown(conflict[side]))}`),
     '>',
     '> The engine takes a field from one side only where the other left it alone or set it the same, so it stops here for you to pick.',
   ];
-  const rows = SIDES.map(([key, side, whose]) => cmdOption(key, null, { head: escapeMarkdown(clipped(shown(conflict[side]), ROW_VALUE_MAX)), tail: whose }));
+  const rows = step.sides.map(([key, side, whose]) => cmdOption(key, null, { head: escapeMarkdown(clipped(shown(conflict[side]), ROW_VALUE_MAX)), tail: whose }));
   return [
-    section('DISPLAY: state merge stop', emitAs('properties'),
-      `⚑ The state merge stopped: ${count === 1 ? 'one field' : `${count} fields`} changed on both machines`),
+    dataSection([`choice: ${choiceId(conflict)}`]),
+    section('DISPLAY: state merge stop', emitAs('properties'), `⚑ The state merge stopped: ${step.title(fields.length)}`),
     section('DISPLAY: state merge account', emitAs('markdown'), account.join('\n')),
     section('MENU: state merge gate', MENU_INSTRUCTION, menu('', rows, { question: question(conflict.label) })),
   ].join('\n');

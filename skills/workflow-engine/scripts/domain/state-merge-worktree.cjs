@@ -19,7 +19,9 @@
 //   was merged from: each is checked just before, with no git call between
 //   the check and the write. One another session wrote meanwhile is merged
 //   again from what it now holds, once; one that will not merge again
-//   cleanly, or moved again, is left as it stands, with a warning naming it.
+//   cleanly, or moved again, is left as it stands, with the merged copy set
+//   beside it and a warning naming both. One the move would remove is kept
+//   as the changed copy.
 // - Every file lands whole by a rename, and every copy set beside moves
 //   there by a rename, so a process killed at any point leaves each path at
 //   its old bytes or its new ones, and no version only in memory.
@@ -32,7 +34,7 @@ const { GitError } = require('../kernel/git.cjs');
 const { STATE_BRANCH } = require('./state-worktree.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, separateClashes, isUnder,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */
@@ -46,9 +48,10 @@ const {
  * @typedef {import('./state-merge-paths.cjs').MergeContext & {root: string, objectFormat: string, staged: string}} WorktreeContext
  */
 
-/** A path brought from the bytes `from` to `to`, none where it goes. @typedef {{file: string, from: Entry|undefined, to: Entry|undefined}} Write */
+/** A file removed where it holds the bytes `from`. @typedef {{file: string, from: Entry}} Remove */
+/** A path brought from the bytes `from`, none where it is absent, to `to`. @typedef {{file: string, from: Entry|undefined, to: Entry}} Write */
 /** A copy set beside another, by a rename. @typedef {{from: string, to: string}} Move */
-/** In this order: the files removed, the copies set beside, the files written. @typedef {{removes: Write[], moves: Move[], writes: Write[]}} Steps */
+/** In this order: the files removed, the copies set beside, the files written. @typedef {{removes: Remove[], moves: Move[], writes: Write[]}} Steps */
 
 /**
  * The working tree's move worked out: its steps, the manifest fields left to
@@ -107,7 +110,7 @@ function planWorktree(ctx, local, target, working, pickOf) {
     }
     if (sameEntry(from, result.entry)) continue;
     if (result.entry === undefined) {
-      steps.removes.push({ file, from, to: undefined });
+      steps.removes.push({ file, from: /** @type {Entry} */ (from) });
       layout.delete(file);
     } else {
       steps.writes.push({ file, from, to: result.entry });
@@ -174,9 +177,23 @@ function stored(ctx, file) {
   return { mode: stat.mode & 0o100 ? '100755' : '100644', oid };
 }
 
-/** @param {string} file */
-function leftAsItStands(file) {
-  return `${file} changed while the state caught up and was left as it stands, unmerged: the remote's side of it is the copy committed on ${STATE_BRANCH}`;
+/**
+ * Leave a file the merge cannot land on as it stands, its merged copy, the
+ * staged one, set beside it: committing the file as it stands leaves the
+ * remote's change only in that copy.
+ * @param {WorktreeContext} ctx @param {Write} write @param {Report} report
+ */
+function leaveBeside(ctx, write, report) {
+  const beside = besidePath(write.file, write.to.oid);
+  try {
+    if (!exists(path.join(ctx.root, beside))) fs.renameSync(path.join(ctx.staged, write.file), path.join(ctx.root, beside));
+    report.warnings.push(`${write.file} changed while the state caught up and was left as it stands, with the merged copy beside it as ${beside}: `
+      + `committing ${write.file} as it stands leaves the remote's change only in ${beside}`);
+  } catch (err) {
+    if (!(err instanceof Error) || !('code' in err)) throw err;
+    report.warnings.push(`${write.file} changed while the state caught up and was left as it stands, and its merged copy could not be set beside it: `
+      + `the remote's change is only in the copy committed on ${STATE_BRANCH}, until ${write.file} is next committed`);
+  }
 }
 
 /**
@@ -204,8 +221,8 @@ function tryMerge(ctx, file, versions) {
 function mergeAgain(ctx, write, report) {
   const now = stored(ctx, write.file);
   const result = now === null ? null : tryMerge(ctx, write.file, { base: write.from, local: now, remote: write.to });
-  if (now === null || result === null || result.beside !== undefined || (result.conflicts ?? []).length > 0) {
-    report.warnings.push(leftAsItStands(write.file));
+  if (now === null || result === null || result.entry === undefined || result.beside !== undefined || (result.conflicts ?? []).length > 0) {
+    leaveBeside(ctx, write, report);
     return null;
   }
   if (result.note !== undefined) report.notes.push(result.note);
@@ -225,16 +242,16 @@ function removeFile(root, file) {
   }
 }
 
-/** Set a copy beside, never over anything already there. @param {WorktreeContext} ctx @param {Move} move @param {Report} report */
-function moveBeside(ctx, move, report) {
+/**
+ * Set a copy beside, never over anything already there. The copy's name is
+ * its content's id, so one already there is that copy, set beside by a
+ * landing a kill cut short.
+ * @param {WorktreeContext} ctx @param {Move} move
+ */
+function moveBeside(ctx, move) {
   const from = path.join(ctx.root, move.from);
   const to = path.join(ctx.root, move.to);
-  if (!exists(from)) return;
-  if (exists(to)) {
-    report.warnings.push(`${move.from} was left where it is, not set beside as ${move.to}: something is already there`);
-    return;
-  }
-  fs.renameSync(from, to);
+  if (exists(from) && !exists(to)) fs.renameSync(from, to);
 }
 
 /**
@@ -265,52 +282,57 @@ function placeStaged(ctx, write, report) {
     fs.renameSync(path.join(ctx.staged, write.file), at);
   } catch (err) {
     if (!(err instanceof Error) || !('code' in err)) throw err;
-    report.warnings.push(leftAsItStands(write.file));
+    leaveBeside(ctx, write, report);
   }
 }
 
 /**
- * Take the steps, each file checked just before it is touched. A file that
- * moved since is merged again into a step for the next round; on the last
- * round it is left as it stands.
- * @param {WorktreeContext} ctx @param {Steps} steps @param {Report} report @param {boolean} last
- * @returns {Steps} the next round's steps
+ * Remove a file the move deletes, where it still holds what the move read;
+ * one changed since is the changed copy, kept.
+ * @param {WorktreeContext} ctx @param {Remove} remove @param {Report} report
  */
-function takeSteps(ctx, steps, report, last) {
-  /** @type {Steps} */
-  const again = { removes: [], moves: [], writes: [] };
-  const moved = (/** @type {Write} */ write) => {
-    if (last) {
-      report.warnings.push(leftAsItStands(write.file));
-      return;
-    }
-    const next = mergeAgain(ctx, write, report);
-    if (next !== null) (next.to === undefined ? again.removes : again.writes).push(next);
-  };
-  for (const write of steps.removes) {
-    if (holds(ctx, write.file, write.from)) removeFile(ctx.root, write.file);
-    else moved(write);
-  }
-  for (const move of steps.moves) moveBeside(ctx, move, report);
-  withStaged(ctx, steps.writes, () => {
-    for (const write of steps.writes) {
-      if (holds(ctx, write.file, write.from)) placeStaged(ctx, write, report);
-      else moved(write);
+function removeChecked(ctx, remove, report) {
+  if (holds(ctx, remove.file, remove.from)) removeFile(ctx.root, remove.file);
+  else if (exists(path.join(ctx.root, remove.file))) report.notes.push(changedCopyKept(remove.file));
+}
+
+/**
+ * Write the files, each checked just before it is replaced. A file that
+ * moved since is merged again into a write for the next round; on the last
+ * round it is left as it stands.
+ * @param {WorktreeContext} ctx @param {Write[]} writes @param {Report} report @param {boolean} last
+ * @returns {Write[]} the next round's writes
+ */
+function writeChecked(ctx, writes, report, last) {
+  /** @type {Write[]} */
+  const again = [];
+  withStaged(ctx, writes, () => {
+    for (const write of writes) {
+      if (holds(ctx, write.file, write.from)) {
+        placeStaged(ctx, write, report);
+      } else if (last) {
+        leaveBeside(ctx, write, report);
+      } else {
+        const next = mergeAgain(ctx, write, report);
+        if (next !== null) again.push(next);
+      }
     }
   });
   return again;
 }
 
 /**
- * Make the working tree's move.
+ * Make the working tree's move: the removals, the copies set beside, then
+ * the writes, in two rounds.
  * @param {WorktreeContext} ctx @param {Steps} steps
  * @returns {Report}
  */
 function moveWorktree(ctx, steps) {
   /** @type {Report} */
   const report = { notes: [], warnings: [] };
-  const again = takeSteps(ctx, steps, report, false);
-  takeSteps(ctx, again, report, true);
+  for (const remove of steps.removes) removeChecked(ctx, remove, report);
+  for (const move of steps.moves) moveBeside(ctx, move);
+  writeChecked(ctx, writeChecked(ctx, steps.writes, report, false), report, true);
   return report;
 }
 
