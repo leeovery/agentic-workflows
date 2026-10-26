@@ -1161,8 +1161,20 @@ project's own measurements decide (R7).
     the spec as a private claude.ai page, the one this release's own spec
     was reviewed on, as it is: a tick and a comment per numbered line,
     Claude's calls marked, Claude answering comments beneath their lines,
-    stop or ask at any time. What the person ticks is recorded as
-    approved; the rest is carried through implicitly. The record is
+    stop or ask at any time. As the person used it on this release's own
+    spec, the page also carries Claude's ticks (agreed 2026-10-25),
+    drawn apart from the person's: proposed here as drawn by the engine
+    from the entries a line cites. The person's decisions, findings
+    and the builder's lines take Claude's tick; Claude's calls and
+    decisions marked hard to undo stay open. Their own tick outranks
+    Claude's. The page also carries a change log (agreed 2026-10-23):
+    numbered changes with a reason, each line's earlier wordings greyed
+    above it, removed lines kept where they stood, and a Changes panel.
+    A change reaches the open page without republishing it, and each
+    line's controls stand in one column that stays in view (ruled
+    2026-10-26). What the person ticks is recorded as approved, a line
+    with Claude's tick as Claude's, let stand; the rest is carried
+    through implicitly. The record is
     `spec-review.json` beside the spec, each line's state and its
     conversation by line number, written by the engine from the page's
     marks when the person picks the build's position: Claude never

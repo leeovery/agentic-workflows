@@ -4090,8 +4090,10 @@ page as lines]
 11.11.4 The person can stop at any time and ask at any time. Claude answers a
 comment beneath its line, the person can answer back as many times as they
 like, and a tick on the line agrees Claude's last answer. The page takes the
-person to the earliest line still waiting on them: never marked, changed
-since its tick, or answered by Claude. [ruled by the person 2026-10-22]
+person to the earliest line still waiting on them: never marked and carrying
+no tick of Claude's (11.11.15), changed since its tick, or answered by Claude.
+[ruled by the person 2026-10-22; passing Claude's ticks by, agreed by the
+person 2026-10-25]
 
 11.11.5 Claude reads the page's comments when the person asks: once the page
 is open, ready to build's review row reads them, as a word in the conversation
@@ -4104,17 +4106,22 @@ derivation]
 11.11.6 An agreed answer that changes what the spec decides is written as an
 entry in the topic it belongs to, decided by the person, and the spec is
 rewritten from it, as a gap's answer is (11.7.4); an answer that changes only
-the wording changes the spec. The page is republished with every mark kept,
-but a tick agrees a line as it is worded: a line whose wording has changed
-since its tick, by a change the person agreed to or any other, reads unticked
-and marked changed until they tick the new wording. A change to a line's
-sources alone keeps its tick. [Claude's derivation; a tick holds the wording,
-ruled by the person 2026-10-22]
+the wording changes the spec. The change reaches the page open in front of the
+person, every mark kept, without republishing it (11.11.17), but a tick agrees
+a line as it is worded: a line whose wording has changed since its tick, by a
+change the person agreed to or any other, reads unticked and marked changed,
+showing the wording they ticked beside the new with the words that differ
+marked, until they tick the new wording. A change to a line's sources alone
+keeps its tick. [Claude's derivation; a tick holds the wording, ruled by the
+person 2026-10-22; reaching the open page, and the wording ticked shown beside
+the new, the page as the person has used it since 2026-10-22, Claude's
+proposal]
 
 11.11.7 Picking the build's position ends the review. Each ticked line is
-recorded as approved by the person; every line not ticked is carried through
-implicitly: it stands, but nobody said yes to it. [ruled by the person
-2026-10-22]
+recorded as approved by the person; a line carrying Claude's tick (11.11.15)
+is recorded as Claude's, which the person let stand; every other line not
+ticked is carried through implicitly: it stands, but nobody said yes to it.
+[ruled by the person 2026-10-22; Claude's tick let stand, Claude's proposal]
 
 Screen, drawn by Claude: the foot of ready to build over Mint's Token-Aware Diff Sizing while the review page is open; the rest as 11.8.2's screen. [Claude's derivation]
 
@@ -4122,9 +4129,9 @@ Screen, drawn by Claude: the foot of ready to build over Mint's Token-Aware Diff
 · · · · · · · · · · · ·
 Your pick marks Token-Aware Diff Sizing decided, with the two
 product-record lines, approves the outline and the phase cut,
-records the 214 lines you ticked on the review page (the other
-862 pass without review), and starts the build in that
-position.
+records the 214 lines you ticked on the review page and the
+790 carrying Claude's tick that you let stand (the other 72
+pass without review), and starts the build in that position.
 
 ◆ Build it, and in which position?
 
@@ -4146,11 +4153,13 @@ back. [Claude's derivation]
 11.11.9 The review's record is `spec-review.json` beside the spec, written by
 the engine from the page's marks when the person picks the build's position,
 and never by Claude. By line number, a screen's included (11.11.3), it holds
-each line's state — approved explicitly, approved after a comment, still open,
-or passed without review — and the line's conversation. A comment answered but
+each line's state — approved explicitly, approved after a comment, Claude's
+tick let stand, still open, changed since its tick and not ticked again, or
+passed without review — and the line's conversation. A comment answered but
 never ticked leaves its line as written and is listed open. A spec the person
-did not review has none. [ruled by the person 2026-10-22; where it sits and its
-name, Claude's derivation; 11.11.3]
+did not review has none. [ruled by the person 2026-10-22; where it sits and
+its name, Claude's derivation; 11.11.3; Claude's tick let stand and changed
+since its tick, Claude's proposal]
 
 11.11.10 In this release the marks feed nothing else: the trust matrix does not
 read them (27.1.2). [ruled by the person 2026-10-22]
@@ -4172,6 +4181,41 @@ message there is Claude's. They can edit or remove their comment until Claude
 answers it; once Claude has answered, it stays as written. A tick closes the
 line's conversation, its messages kept, and unticking opens it again. [ruled by
 the person 2026-10-22]
+
+11.11.15 Every line opens with Claude's assessment, which the engine draws
+from the entries the line cites. A line resting only on the person's decisions
+and on findings, or a line left to the builder, carries Claude's tick, drawn
+apart from the person's, with its reason beneath its source: the decision it
+restates and when, or that it holds nothing the person would see. A line
+resting on a call of Claude's, or on a decision whose question was marked hard
+to undo (16.11.7), stays open for the person, its reason saying which.
+[Claude's ticks, agreed by the person 2026-10-25 for this release's own spec;
+drawn from the cited entries rather than from a fresh read, Claude's proposal]
+
+11.11.16 The person's tick outranks Claude's: a tap on a line carrying
+Claude's tick makes the tick theirs, the next tap unticks it, and their untick
+holds against Claude's tick until they tick the line again. Only the engine
+draws Claude's tick. [agreed by the person 2026-10-25]
+
+11.11.17 Each change made to the spec while the page is open is numbered, with
+its reason in a line and the lines whose conversations led to it. A line
+carries its earlier wordings greyed above it, oldest first, each with the
+change that replaced it and that change's reason; a removed line stays greyed
+where it stood, with the change that removed it; a line a change added carries
+New until the person ticks or comments on it; and Changes, in the page's
+header, lists every change, newest first, each opening on the lines it
+touched. [agreed by the person 2026-10-23]
+
+11.11.18 Each line's controls stand in one column beside it, the tick first,
+then the comment, then show changes on a line with earlier wordings, and stay
+in view while the line scrolls under the page's header. [ruled by the person
+2026-10-26]
+
+11.11.19 The page filters its lines by where they stand — all of them, those
+waiting on the person (11.11.4), those with comments, those Claude has
+answered, those changed since their tick, and those carrying Claude's tick —
+and by what they are: Claude's calls, and screens. [the page as the person has
+used it, Claude's proposal]
 
 ## 11-S. Scenarios for §11
 
@@ -4282,31 +4326,34 @@ on Claude's calls are marked, and each section shows its progress. (11.11.2,
 11.11.3)
 
 11.S24 Given a comment left on a line, when the person picks the review row or
-says so in the conversation, then Claude answers it beneath the line; given the
-person then ticks that line and the answer changes what the spec decides, then
-the answer is written as an entry decided by the person in the topic it belongs
-to, the spec is rewritten from it, and the page is republished with every mark
-kept and every number unchanged. (11.11.3, 11.11.4, 11.11.5, 11.11.6)
+says so in the conversation, then Claude answers it beneath the line; given
+the person then ticks that line and the answer changes what the spec decides,
+then the answer is written as an entry decided by the person in the topic it
+belongs to, the spec is rewritten from it, and the change reaches the open
+page with every mark kept and every number unchanged. (11.11.3, 11.11.4,
+11.11.5, 11.11.6)
 
 11.S25 Given a comment on the page with no answer, when the person picks a
 position, then the build does not start: Claude answers the comment and ready
 to build comes back. (11.11.8)
 
 11.S26 Given a review with some lines ticked, one comment answered but not
-ticked, and the rest untouched, when the person picks a position, then the
-engine writes `spec-review.json` beside the spec, holding the ticked lines as
-approved explicitly, the one comment's line as open and left as written, with
-its conversation, and the rest as passed without review, and the trust matrix's
-counts are unchanged. (11.11.7, 11.11.9, 11.11.10)
+ticked, and the rest untouched and carrying no tick of Claude's, when the
+person picks a position, then the engine writes `spec-review.json` beside the
+spec, holding the ticked lines as approved explicitly, the one comment's line
+as open and left as written, with its conversation, and the rest as passed
+without review, and the trust matrix's counts are unchanged. (11.11.7,
+11.11.9, 11.11.10)
 
 11.S27 Given a session that cannot publish a page, when ready to build shows,
 then it offers no review. (11.11.11)
 
 11.S28 Given a line the person ticked after Claude's answer to their comment,
-when the change lands and the page is republished, then the line reads
-unticked and marked changed, its conversation kept, and the step to the
-earliest line waiting on them lands on it ahead of any later line; given a
-change to the line's sources alone, then its tick stands. (11.11.4, 11.11.6)
+when the change lands on the open page, then the line reads unticked and
+marked changed, showing the wording ticked beside the new, its conversation
+kept, and the step to the earliest line waiting on them lands on it ahead of
+any later line; given a change to the line's sources alone, then its tick
+stands. (11.11.4, 11.11.6)
 
 11.S29 Given a comment the person saved on the page, when they have not told
 Claude, then the line says it waits for Claude and to tell Claude in the
@@ -4325,6 +4372,37 @@ phase cut is written through the `cut` verb placing a scenario 3.S9 that
 each and the cut on the unit's manifest is unchanged; when each scenario is
 placed in exactly one phase, then the cut is written to the unit's manifest and
 ready to build shows it from there. (11.5.8, 11.5.9, 11.5.10)
+
+11.S32 Given a spec whose 3.2.1 restates a decision the person made, 3.2.2
+rests on a call of Claude's, 3.2.3 is left to the builder, and 3.2.4 restates
+a decision of the person's whose question was marked hard to undo, when the
+review page opens, then 3.2.1 and 3.2.3 carry Claude's tick, each with its
+reason beneath its source, 3.2.2 and 3.2.4 are open with their reasons, and
+the step to the earliest line waiting on the person passes 3.2.1 and 3.2.3 by;
+when the person taps 3.2.1, the tick is theirs, and when they tap it again it
+is unticked and Claude's tick does not come back. (11.11.4, 11.11.15,
+11.11.16)
+
+11.S33 Given the page open, when an agreed answer rewords 3.2.2, which the
+person had ticked, and removes 3.2.5, then the open page shows the change
+without being republished, numbered, with its one-line reason and 3.2.2's
+conversation named; 3.2.2 reads unticked and changed, its earlier wording
+greyed above the new with that change and the words that differ marked; 3.2.5
+stays greyed where it stood, with the change that removed it; and Changes
+lists the change first, opening on both lines. (11.11.6, 11.11.17)
+
+11.S34 Given a line long enough to scroll under the page's header, when the
+person scrolls through it, then its controls stay in view beside it, the tick
+above the comment, with show changes below them only where the line has
+earlier wordings; given the filter for Claude's ticks, then only the lines
+carrying Claude's tick show. (11.11.18, 11.11.19)
+
+11.S35 Given a review with 214 lines ticked, 790 carrying Claude's tick and
+not ticked, one line changed since the person ticked it, and the rest
+untouched, when the person picks a position, then `spec-review.json` holds the
+214 as approved explicitly, the 790 as Claude's tick let stand, the changed
+line as changed since its tick and not ticked again, and the rest as passed
+without review. (11.11.7, 11.11.9)
 
 ## 12. The build
 
@@ -11653,7 +11731,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.13.5 Relies on: 29.2 to 29.8, 29.11, 29.12. [R14; Claude's derivation]
 
-29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28, 11.S29, 11.S30, 11.S31 (32). [R14; Claude's derivation]
+29.13.6 Proven by: 3.S18, 8.S33, 8.S43, 8.S50, 11.S1, 11.S2, 11.S3, 11.S4, 11.S5, 11.S7, 11.S8, 11.S9, 11.S11, 11.S12, 11.S13, 11.S15, 11.S16, 11.S18, 11.S20, 11.S21, 11.S22, 11.S23, 11.S24, 11.S25, 11.S26, 11.S27, 18.S21, 24.S3, 11.S28, 11.S29, 11.S30, 11.S31, 11.S32, 11.S33, 11.S34, 11.S35 (36). [R14; Claude's derivation]
 
 29.13.7 The person's review of the spec, offered at ready to build, comes with it (11.11). [ruled by the person 2026-10-22]
 
@@ -11757,7 +11835,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 844 listed are the 844 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 848 listed are the 848 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
