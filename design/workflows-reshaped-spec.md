@@ -630,9 +630,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.7.7 Manifests are never derived from events. [plan 10.6; Claude's, rejected for cost]
 
-4.7.8 The `state` verbs carry the merge: sync (fetch, merge, push) and status (6.1.14). [plan 6.1; Claude's]
-
-4.7.9 Left to the builder: when the second-clone merge runs. [Claude's sort, B11]
+4.7.8 Boot runs the merge before anything writes state: where only the remote has moved it fast-forwards, where only this clone has moved it pushes what a failed push left behind (4.3.3), and where both have moved it merges (4.7.2 to 4.7.6). The person never runs it. [ruled by the person 2026-10-26: one machine at a time, so a merge follows only a push that failed]
 
 4.7.10 Left to the builder: how files other than the ledger and the manifests are merged between two clones; anything local to a machine stays off the branch (4.1.7). [Claude's sort, B12]
 
@@ -838,13 +836,13 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S12 Given a project being set up, its code tree holding nothing the workflows commit there, with no state worktree and no state branch on the remote, when boot runs, then an orphan `workflows-state` branch exists afterwards. (4.5.2, 4.9.1)
 
-4.S14 Given two clones that each appended ledger entries since their last push, when the clone that is behind runs `state sync`, then its ledger holds the remote's entries first and its own unpushed entries after them in their order, the new commit's parent is the remote's tip, the push is made with lease, the append-only check passes on both clones afterwards, and neither clone's config holds a merge driver for the state. (4.7.1, 4.7.2, 4.7.3, 4.7.8)
+4.S14 Given two clones that each appended ledger entries since their last push, when boot runs in the clone that is behind, then its ledger holds the remote's entries first and its own unpushed entries after them in their order, the new commit's parent is the remote's tip, the push is made with lease, the append-only check passes on both clones afterwards, and neither clone's config holds a merge driver for the state. (4.7.1, 4.7.2, 4.7.3, 4.7.8)
 
-4.S15 Given the remote moved between the fetch and the push of a sync, when the push with lease fails, then the sync retries. (4.7.2)
+4.S15 Given the remote moved between the fetch and the push of boot's merge, when the push with lease fails, then the merge retries. (4.7.2)
 
-4.S16 Given both clones applied the same migration independently, when they sync, then `.state/migrations` holds one line for it. (4.7.4)
+4.S16 Given both clones applied the same migration independently, when boot merges them, then `.state/migrations` holds one line for it. (4.7.4)
 
-4.S17 Given two clones that changed different fields of one manifest, when they sync, then the merged manifest holds both changes; given both changed the same field to the same value, then the merged manifest holds it and the sync does not stop; given both changed the same field to different values, then the merge stops and shows both values, and once the person picks one the merged manifest holds it and the sync finishes. (4.7.4, 4.7.5, 4.7.6, 4.7.11)
+4.S17 Given two clones that changed different fields of one manifest, when boot runs in the clone that is behind, then the merged manifest holds both changes; given both changed the same field to the same value, then the merged manifest holds it and the merge does not stop; given both changed the same field to different values, then the merge stops and shows both values, and once the person picks one the merged manifest holds it and the merge finishes. (4.7.4, 4.7.5, 4.7.6, 4.7.11)
 
 4.S18 Given the person's code repository has a commit hook and the session's environment carries `GIT_DIR`, when the engine makes a state commit, then the hook does not run and the commit lands on `workflows-state` in the state worktree. (4.8.1)
 
@@ -879,6 +877,8 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.S34 Given an idea captured, when a finishing unit closes it, then it moves from `.inbox/ideas/` to `.inbox/.archived/ideas/` under the same name and the project manifest records the unit; given an inbox bug put on the roadmap, then its note is in `.product/notes/` under its inbox name and the item is on the project manifest. (4.11.16, 18.6.4, 18.8.15)
 
 4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their own names and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
+
+4.S36 Given work on one machine pushed to the remote, when boot runs on another machine whose state branch is behind, then before anything writes state the branch fast-forwards to the remote's tip and no merge commit is made; given a clone holding state commits a failed push left behind, with the remote not moved, when boot runs, then they are pushed. (4.7.8, 4.3.3)
 
 ## 5. The ledger
 
@@ -1186,15 +1186,11 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.1.13 `gate` (new): takes the person's answer at any gate, logs it, and returns what happens next (6.6). [plan 6.1; Claude's]
 
-6.1.14 `state` (new): sync (fetch, merge, push) and status (4.7). [plan 6.1; Claude's]
-
 6.1.15 `inbox` keeps archive, for an item the person declines (18.7.8), and restore and delete, for the archived store's view (18.7.11), and gains close, naming the unit that resolved the item where one did (18.6.4, 18.6.10), and file, for the review phase (§14, §18). [plan 6.1; Claude's; today's product; 18.7.8]
 
 6.1.16 These families are kept, trimmed: `topic`, `workunit`, `roadmap`, `discovery-session`, `experiment`, `agent`, `knowledge`, `commit`, `render`, `handoff`, `conversation`, `presence`, `session`, `boot`. [plan 6.1; Claude's]
 
 6.1.17 The verbs that serve what the release removes — research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness, promotion to cross-cutting — go with it. [plan 6.1; Claude's]
-
-6.1.18 Left to the builder: what `state status` reports. [Claude's sort, B18]
 
 6.1.19 Left to the builder: which verbs the kept families lose, and which of today's families, named neither kept nor new, go; those serving what the release removes go (6.1.17). [Claude's sort, B19]
 
@@ -1369,7 +1365,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.S2 Given a verb whose response carries a value, when the prose needs that value, then the walk records no separate manifest read for it. (6.1.3)
 
-6.S3 Given the engine, when its command catalogue is read, then it has the families `ledger`, `raise`, `verdict`, `task`, `land`, `brief`, `checklist`, `asset`, `verify`, `gate`, `state`, `inbox` and `cut` with the verbs 6.1.4 to 6.1.15 and 6.1.20 name, and the kept families of 6.1.16, and no verb serving research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness or promotion to cross-cutting. (6.1.4, 6.1.5, 6.1.6, 6.1.7, 6.1.8, 6.1.9, 6.1.10, 6.1.11, 6.1.12, 6.1.13, 6.1.14, 6.1.15, 6.1.16, 6.1.17, 6.1.20)
+6.S3 Given the engine, when its command catalogue is read, then it has the families `ledger`, `raise`, `verdict`, `task`, `land`, `brief`, `checklist`, `asset`, `verify`, `gate`, `inbox` and `cut` with the verbs 6.1.4 to 6.1.13, 6.1.15 and 6.1.20 name, and the kept families of 6.1.16, and no verb serving research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness or promotion to cross-cutting. (6.1.4, 6.1.5, 6.1.6, 6.1.7, 6.1.8, 6.1.9, 6.1.10, 6.1.11, 6.1.12, 6.1.13, 6.1.15, 6.1.16, 6.1.17, 6.1.20)
 
 6.S4 Given a session with the mod not running, when Claude uses Write to create `.workflows/{unit}/scratch/notes.md`, then the hook refuses; when it writes `.workflows/{unit}/topics/{topic}/log.md`, the write goes through. (6.2.1, 6.2.2, 6.2.3)
 
@@ -10184,9 +10180,11 @@ repair puts back this session's tmux name and any stranded one. The tidy-up
 removes a conversation's folder once Claude Code has deleted its transcript,
 never by age. [plan 9.2; Claude's; today's product; Claude's sort, T36]
 
-22.1.2 Boot also adds the state worktree on a fresh clone, locked, and
-checks the state worktree and the state branch on every run (§4). [plan 9.2, plan 10.5, plan 4.2; adding the
-worktree, Claude's proposal; the checks every run, R23]
+22.1.2 Boot also adds the state worktree on a fresh clone, locked, and checks
+the state worktree and the state branch on every run (§4), and catches the state up from the remote before anything
+writes it (4.7.8). [plan 9.2, plan 10.5, plan 4.2; adding the worktree,
+Claude's proposal; the checks every run, R23; catching up, ruled by the person
+2026-10-26]
 
 22.1.3 Left to the builder: the worktree include's role once `.workflows/` is
 a state worktree that code worktrees never hold. [Claude's sort, B77]
@@ -10633,8 +10631,8 @@ then the entry stands, a warning shows, and the next start re-indexes the
 record. (22.6.15)
 
 22.S37 Given the environment setup recorded at the first ready to build, then
-it is on the project manifest, and a brief takes its linters from there;
-given two machines changed different parts of it, then after a sync the
+it is on the project manifest, and a brief takes its linters from there; given
+two machines changed different parts of it, then after boot's merge the
 manifest holds both changes. (4.7.5, 22.5.12)
 
 ## 23. Help, the glossary and the user docs
@@ -11509,7 +11507,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.2.8 Relies on: none. [R14; Claude's derivation]
 
-29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32 (22). [R14; Claude's derivation]
+29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S36 (23). [R14; Claude's derivation]
 
 ### 29.3 The ledger
 
@@ -11759,7 +11757,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 843 listed are the 843 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 844 listed are the 844 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 

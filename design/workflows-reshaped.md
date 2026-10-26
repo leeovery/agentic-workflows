@@ -2341,7 +2341,11 @@ each call on a page that day.
       to install per clone or to decay. A fact two clones could record
       independently — a migration applied, a phase concluded — takes an
       id derived from the fact, so both record the one entry; anything
-      local to a machine stays off the branch.
+      local to a machine stays off the branch. Boot runs the merge before
+      anything writes, and the person never does (ruled 2026-10-26: the
+      person works one machine at a time, never two at once, so a merge
+      follows only a push that failed; picking one copy whole instead
+      would drop ledger entries the remote already holds).
     - Rejected: state on code branches made mergeable, since every shared
       file would need reshaping and any one missed surfaces as a conflict
       in the middle of a stack — GitHub's merge never runs a repository's
@@ -3788,7 +3792,8 @@ person, one item at a time; the sections above hold the detail.
 - Where state lives (2026-10-18, R23): on a branch of its own, checked
   out as a worktree at `.workflows/`, never in a code branch or pull
   request; entries identified by nanoids and shown by short ids; a
-  second clone merged by the engine, never a merge driver.
+  second clone merged by the engine at boot, never a merge driver or a
+  command.
 - Pushing (2026-10-18, R23, R35): the workflows push across the board —
   the state branch on every commit, task branches as their pull requests
   open — and merge through the driver after review.

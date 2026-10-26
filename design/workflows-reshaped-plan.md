@@ -637,7 +637,6 @@ Ruled in shape (R35, R2):
     7.3).
   - `gate` (new): takes the person's answer at any gate, logs it, and
     returns what happens next (6.6).
-  - `state` (new): sync (fetch, merge, push) and status.
   - `inbox` gains close, naming the unit that resolved the item, and file,
     for the review phase.
   - Trimmed and kept: `topic`, `workunit`, `roadmap`, `discovery-session`,
