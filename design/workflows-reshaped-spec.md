@@ -1519,7 +1519,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 7.5.2 Tick's store lives in the state worktree. [plan 10.8; Claude's]
 
-7.5.3 Claude checks whether Tick takes a store path before anything is asked; only if Tick needs a change for it does it go to the person, as their call on their own project. [plan 10.8; Claude's; Claude's derivation, O15]
+7.5.3 Tick finds its store by walking up from the folder it runs in, so the tracker's driver runs it inside the state worktree; Tick needs no change. [plan 10.8; Tick's code as it is today, internal/cli/discover.go, read 2026-10-26; agreed by the person 2026-10-26]
 
 ## 7-S. Scenarios for §7
 

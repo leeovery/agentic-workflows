@@ -2189,6 +2189,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 6.6.12
 - 6.S3 – 6.S6
 - 6.S33
+- 7.5.3
 - 8.1.1 – 8.1.2
 - 8.1.4
 - 8.12.4

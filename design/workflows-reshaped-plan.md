@@ -1122,9 +1122,9 @@ not yet written"), and the build reads the cut before treating "nothing
 ready" as finished (ruled, R15).
 
 10.8 **The tracker's state on the state branch** (R23). Tick's store has to
-live in the state worktree. Whether Tick takes a store path today is to be
-checked; if it needs a change, that is the person's call on their own
-project.
+live in the state worktree. Tick finds its store by walking up from the
+folder it runs in (checked 2026-10-26, `internal/cli/discover.go`), so the
+driver runs it inside the state worktree and Tick needs no change.
 
 10.9 **Two mods' panes in one tab row.** Settled in the build panel's
 spike (2026-10-19, Claude Code 2.1.303): a second mod's pane joins the same
