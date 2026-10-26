@@ -8,8 +8,9 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
+const { stateRel } = require('../state-root.cjs');
 
-const KNOWLEDGE_DIR = '.workflows/.knowledge';
+const KNOWLEDGE_DIR = stateRel('.knowledge');
 
 /** The files a checkout sets up, by their names in the directory. */
 const NAMES = { store: 'store.bin', metadata: 'metadata.json', config: 'config.json' };

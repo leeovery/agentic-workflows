@@ -10,6 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 function fileExists(p) {
   try {
@@ -52,7 +53,7 @@ function filesChecksum(paths) {
 }
 
 function loadProjectManifest(cwd) {
-  const p = path.join(cwd, '.workflows', 'manifest.json');
+  const p = path.join(stateRoot(cwd), 'manifest.json');
   try {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch {
@@ -61,7 +62,7 @@ function loadProjectManifest(cwd) {
 }
 
 function loadManifest(cwd, name) {
-  const p = path.join(cwd, '.workflows', name, 'manifest.json');
+  const p = path.join(stateRoot(cwd), name, 'manifest.json');
   try {
     return JSON.parse(fs.readFileSync(p, 'utf8'));
   } catch {
@@ -78,7 +79,7 @@ function workUnitNames(cwd) {
     return Object.keys(proj.work_units);
   }
   // Fallback: scan filesystem (pre-migration compat)
-  const workflowsDir = path.join(cwd, '.workflows');
+  const workflowsDir = stateRoot(cwd);
   return listDirs(workflowsDir).filter(n => !n.startsWith('.'));
 }
 

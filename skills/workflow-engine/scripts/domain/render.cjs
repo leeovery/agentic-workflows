@@ -71,6 +71,7 @@ const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -145,7 +146,7 @@ function resumeGate(cwd, args) {
     // A restart deletes the planning directory first and the manifest entry
     // second. Between the two commits the entry survives a crash with nothing
     // left to continue — so the gate offers the restart alone.
-    if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'planning', topic))) {
+    if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, 'planning', topic))) {
       return section('MENU: resume gate', MENU_INSTRUCTION, menu(
         `Found a planning entry for **${t}**, but the prior run's files are already cleared.`,
         [cmdOption('r', 'restart', 'Clear what is left and plan from scratch')],
@@ -1048,7 +1049,7 @@ function findingsSignoffGate(cwd, { dotpath }) {
   if (phase !== 'investigation') {
     throw new Error(`render findings-signoff-gate: address must be <work_unit>.investigation.<topic>, got phase "${phase}"`);
   }
-  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'investigation', `${topic}.md`))) {
+  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, 'investigation', `${topic}.md`))) {
     throw new Error(`render findings-signoff-gate: no investigation file for "${topic}" — the sign-off is read from the record`);
   }
   return section('MENU: findings sign-off gate', MENU_INSTRUCTION, menu('Do these findings match your understanding?', [
@@ -3129,7 +3130,7 @@ const SUMMARY_BACKFILL_VARIANTS = ['batch', 'proposed', 'unsourced'];
 
 /** @param {string} cwd @param {string} workUnit @param {object} manifest @returns {import('./derivations.cjs').DiscoveryMapRow[]} */
 function backfillRows(cwd, workUnit, manifest) {
-  const rows = buildDiscoveryMap(manifest, path.join(cwd, '.workflows')).map
+  const rows = buildDiscoveryMap(manifest, stateRoot(cwd)).map
     .filter((row) => !row.summary_present || !row.description_present);
   if (rows.length === 0) {
     throw new Error(`render summary-backfill-gate: "${workUnit}" has no discovery item missing a summary or description — nothing to backfill`);
@@ -3400,7 +3401,7 @@ function changeSetTree(cwd, { dotpath }) {
   const dirty = projectDirtyEntries(projectRepos(cwd)).map((e) => `\`${e.path}\``);
   if (dirty.length === 0) return '';
   return blocker(
-    'The change-set verification left the working tree dirty outside .workflows/',
+    `The change-set verification left the working tree dirty outside ${stateRel()}/`,
     `The pass must leave the tree as it found it — these paths are modified or untracked: ${dirty.join(', ')}. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.`,
   );
 }
@@ -3941,7 +3942,7 @@ function correctionGate(cwd, { dotpath }) {
   if (manifest.status !== 'completed') {
     throw new Error(`render correction-gate: "${workUnit}" is "${manifest.status}" — the corrigendum protocol serves completed work units`);
   }
-  const specPath = `.workflows/${workUnit}/specification/${topic}/specification.md`;
+  const specPath = stateRel(`${workUnit}/specification/${topic}/specification.md`);
   return section('MENU: correction gate', MENU_INSTRUCTION, menu(
     `Correcting ${specPath}.`,
     [
@@ -3968,7 +3969,7 @@ const ANALYSIS_PROMPT = 'Your discussions will be analyzed for natural groupings
  */
 function analysisProceedGate(cwd, { dotpath }) {
   const { manifest } = resolveWorkUnit(cwd, dotpath, 'analysis-proceed-gate');
-  const analysis = computeAnalysisCacheStatus(manifest, path.join(cwd, '.workflows'), 'grouping-analysis');
+  const analysis = computeAnalysisCacheStatus(manifest, stateRoot(cwd), 'grouping-analysis');
   const stale = analysis.stamped && analysis.status !== 'valid';
   return [
     section('DISPLAY: analysis prompt', emitAs('markdown'), `> ${stale ? `${ANALYSIS_STALE} ` : ''}${ANALYSIS_PROMPT}`),
@@ -4585,7 +4586,7 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'phase-completed');
   if (!isFilled(phase)) throw new Error('render phase-completed: --phase is required');
   const artefacts = paths
-    ? `\n\n  Spec: .workflows/${workUnit}/specification/${workUnit}/specification.md\n  Plan: .workflows/${workUnit}/planning/${workUnit}/`
+    ? `\n\n  Spec: ${stateRel(`${workUnit}/specification/${workUnit}/specification.md`)}\n  Plan: ${stateRel(`${workUnit}/planning/${workUnit}`)}/`
     : '';
   // A derived phase has no completion ceremony — the record closed, the
   // session ends, and sibling records may still live — so its line says what
@@ -5029,7 +5030,7 @@ const SESSION_OPENINGS = {
  * @param {string} cwd @param {string} workUnit @param {string} topic
  */
 function doNowCount(cwd, workUnit, topic) {
-  const rel = `.workflows/.cache/${workUnit}/review/${topic}/actions.json`;
+  const rel = stateRel(`.cache/${workUnit}/review/${topic}/actions.json`);
   let parsed;
   try {
     parsed = JSON.parse(fs.readFileSync(path.join(cwd, rel), 'utf8'));
@@ -6793,7 +6794,7 @@ function legacySplitThemes(variant, p) {
     lines.push(treeList([
       `Summary: ${t.summary}`,
       `Content: ${t.paragraph_count} para(s) — "${t.content_preview}..."`,
-      `Cache: .workflows/.cache/${p.work_unit}/legacy-split/${p.source}/${t.kebab_name}.md`,
+      `Cache: ${stateRel(`.cache/${p.work_unit}/legacy-split/${p.source}/${t.kebab_name}.md`)}`,
     ], { indent: '   ' }));
     lines.push('');
   });

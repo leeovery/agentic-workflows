@@ -37,6 +37,7 @@ const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = re
 const { todayStamp } = require('./dates.cjs');
 const { roadmapItems, sourceRows } = require('./derivations.cjs');
 const { carrySources } = require('./roadmap.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 /**
  * @typedef {object} WorkUnitPromoteResult
@@ -82,7 +83,7 @@ function listFilesRecursive(dir) {
 function planImportCarry(cwd, workUnit, specDir, sources, entries) {
   const documents = [
     ...listFilesRecursive(path.join(cwd, specDir)),
-    ...sources.map((name) => path.join(cwd, '.workflows', workUnit, 'discussion', `${name}.md`)),
+    ...sources.map((name) => path.join(stateRoot(cwd), workUnit, 'discussion', `${name}.md`)),
   ];
   /** @type {Set<string>} */
   const linked = new Set();
@@ -109,7 +110,7 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
     const basename = entry.path.slice('imports/'.length);
     if (basename === '' || basename.includes('/')) continue;
     if (!linked.has(basename) && !(entry.origin !== undefined && attached.has(entry.origin))) continue;
-    if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, entry.path))) {
+    if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, entry.path))) {
       missing.push(entry.path);
       continue;
     }
@@ -170,7 +171,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     if (item.status !== 'completed') {
       throw new Error(`specification "${topic}" is not completed (status: ${item.status}) — only a completed specification promotes`);
     }
-    const specSrc = `.workflows/${workUnit}/specification/${topic}`;
+    const specSrc = stateRel(`${workUnit}/specification/${topic}`);
     if (!fs.existsSync(path.join(cwd, specSrc, 'specification.md'))) {
       throw new Error(`specification file missing on disk: ${specSrc}/specification.md`);
     }
@@ -179,8 +180,8 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     // registration. Read (and refuse corrupt JSON) before anything mutates;
     // the registration itself re-reads under the project lock after the cc
     // unit lands.
-    if (fs.existsSync(path.join(cwd, '.workflows', to))) {
-      throw new Error(`work unit "${to}" already exists (.workflows/${to}) — pick a different name`);
+    if (fs.existsSync(path.join(stateRoot(cwd), to))) {
+      throw new Error(`work unit "${to}" already exists (${stateRel(to)}) — pick a different name`);
     }
     const projectManifest = readProjectManifest(cwd);
     if (projectManifest.work_units && typeof projectManifest.work_units === 'object' && projectManifest.work_units[to]) {
@@ -201,7 +202,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       if (/[./]/.test(name)) {
         throw new Error(`specification "${topic}" has a malformed source name (${JSON.stringify(name)}) — fix the manifest before promoting`);
       }
-      if (fs.existsSync(path.join(cwd, '.workflows', workUnit, 'discussion', `${name}.md`))) {
+      if (fs.existsSync(path.join(stateRoot(cwd), workUnit, 'discussion', `${name}.md`))) {
         plan.push(name);
       }
     }
@@ -212,19 +213,19 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       Array.isArray(manifest.imports) ? manifest.imports : []);
 
     // -- mutate: files out of the epic, then the epic manifest -----------------
-    fs.mkdirSync(path.join(cwd, '.workflows', to, 'specification'), { recursive: true });
-    fs.renameSync(path.join(cwd, specSrc), path.join(cwd, '.workflows', to, 'specification', to));
-    if (plan.length > 0) fs.mkdirSync(path.join(cwd, '.workflows', to, 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(stateRoot(cwd), to, 'specification'), { recursive: true });
+    fs.renameSync(path.join(cwd, specSrc), path.join(stateRoot(cwd), to, 'specification', to));
+    if (plan.length > 0) fs.mkdirSync(path.join(stateRoot(cwd), to, 'discussion'), { recursive: true });
     for (const name of plan) {
       fs.renameSync(
-        path.join(cwd, '.workflows', workUnit, 'discussion', `${name}.md`),
-        path.join(cwd, '.workflows', to, 'discussion', `${name}.md`));
+        path.join(stateRoot(cwd), workUnit, 'discussion', `${name}.md`),
+        path.join(stateRoot(cwd), to, 'discussion', `${name}.md`));
     }
 
     // Copied, not moved: the epic keeps the file and its entry, since
     // another topic may link the same material.
-    copyImports(cwd, path.join(cwd, '.workflows', to, 'imports'),
-      carried.map((c) => ({ src: `.workflows/${workUnit}/${c.entry.path}`, dest: c.basename })));
+    copyImports(cwd, path.join(stateRoot(cwd), to, 'imports'),
+      carried.map((c) => ({ src: stateRel(`${workUnit}/${c.entry.path}`), dest: c.basename })));
 
     // Each moved discussion's item travels whole into the unit, under the
     // unit's own status — but for a reconcile flag, whose upstream stays in
@@ -309,7 +310,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
 
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${workUnit}`, `.workflows/${to}`, '.workflows/manifest.json'],
+    [stateRel(workUnit), stateRel(to), stateRel('manifest.json')],
     `spec(${workUnit}): promote ${topic} to cross-cutting work unit`, warnings);
 
   /** @type {WorkUnitPromoteResult} */

@@ -44,6 +44,7 @@ const { phaseSkill } = require('./handoff.cjs');
 const { stepOfInternalId } = require('./tasks.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 const FILE = 'position.json';
 
@@ -139,7 +140,7 @@ function placeError(cwd, name, phase, topic) {
   if (phase !== undefined && !VALID_PHASES.includes(phase)) return `unknown phase "${phase}" — one of ${VALID_PHASES.join('|')}`;
   const illegal = (phase === undefined ? null : illegalNameReason('topic', topic)) ?? illegalNameReason('work unit', name);
   if (illegal !== null) return illegal;
-  return fs.existsSync(path.join(cwd, '.workflows', name)) ? null : `no work unit directory: .workflows/${name}`;
+  return fs.existsSync(path.join(stateRoot(cwd), name)) ? null : `no work unit directory: ${stateRel(name)}`;
 }
 
 /**
@@ -342,7 +343,7 @@ function workAt(cwd, position, manifest) {
   if (skill === null) return { skill: null, documents: [] };
   if (phase === undefined) return { skill, documents: name === ROADMAP_IDENTITY ? roadmapSessionLog(cwd) : [] };
   if (manifest === null) return { skill: null, documents: [] };
-  const wu = `.workflows/${name}`;
+  const wu = stateRel(name);
   const topic = /** @type {string} */ (position.topic);
   switch (phase) {
     case 'discovery':

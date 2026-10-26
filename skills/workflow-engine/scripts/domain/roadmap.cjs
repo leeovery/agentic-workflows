@@ -52,6 +52,7 @@ const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClash
 const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, undoMoves, archivedDir, FOLDER_KIND } = require('./inbox.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 /** @typedef {import('./inbox.cjs').ItemKind} RoadmapKind */
 
@@ -60,7 +61,7 @@ const KINDS = /** @type {RoadmapKind[]} */ (Object.values(FOLDER_KIND));
 /** The kind an item takes where nothing names one. */
 const DEFAULT_KIND = /** @type {RoadmapKind} */ ('idea');
 
-const ROADMAP_DIR = '.workflows/.roadmap';
+const ROADMAP_DIR = stateRel('.roadmap');
 const SESSIONS_DIR = `${ROADMAP_DIR}/sessions`;
 const NOTES_DIR = `${ROADMAP_DIR}/notes`;
 
@@ -103,7 +104,7 @@ function notePath(folder, file) {
  * @returns {string}
  */
 function asSource(projectPath) {
-  return path.posix.relative('.workflows', projectPath);
+  return path.posix.relative(stateRel(), projectPath);
 }
 
 /**
@@ -143,10 +144,10 @@ function validateSources(sources) {
   }
   for (const s of sources) {
     if (s === '' || s.startsWith('/') || s.split('/').includes('..')) {
-      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative under .workflows/, never absolute or traversing`);
+      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative under ${stateRel()}/, never absolute or traversing`);
     }
-    if (s.startsWith('.workflows/')) {
-      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative to .workflows/, so drop the leading ".workflows/" (${JSON.stringify(s.slice('.workflows/'.length))})`);
+    if (s.startsWith(`${stateRel()}/`)) {
+      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative to ${stateRel()}/, so drop the leading "${stateRel()}/" (${JSON.stringify(s.slice(`${stateRel()}/`.length))})`);
     }
   }
 }
@@ -155,11 +156,11 @@ function validateSources(sources) {
 // session log its session has not opened yet.
 /** @param {string} cwd @param {string[]} sources */
 function requireSourcesOnDisk(cwd, sources) {
-  const missing = [...new Set(sources)].filter((s) => !fs.existsSync(path.join(cwd, '.workflows', s)));
+  const missing = [...new Set(sources)].filter((s) => !fs.existsSync(path.join(stateRoot(cwd), s)));
   if (missing.length === 0) return;
   const named = missing.map((s) => JSON.stringify(s)).join(', ');
   const [what, verb] = missing.length === 1 ? ['source', 'does'] : ['sources', 'do'];
-  throw new Error(`${what} ${named} ${verb} not exist under .workflows/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
+  throw new Error(`${what} ${named} ${verb} not exist under ${stateRel()}/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
 }
 
 /** @param {*} kind */
@@ -545,7 +546,7 @@ function withUndoFailure(err, failure) {
 function commitRoadmap(cwd, result, message, { workUnit, moves = [], warnings = [] } = {}) {
   const spec = [
     PROJECT_MANIFEST_SPEC,
-    ...(workUnit ? [`.workflows/${workUnit}/manifest.json`] : []),
+    ...(workUnit ? [stateRel(`${workUnit}/manifest.json`)] : []),
     ...moves.flatMap((m) => [m.from, m.to]),
   ];
   const outcome = commitTailPathspec(cwd, spec, message, warnings);
@@ -1511,7 +1512,7 @@ function flagJoined(cwd, name) {
   }
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(cwd, `.workflows/${join.work_unit}/manifest.json`, `roadmap: flag ${name} — input moved`, warnings);
+  const outcome = commitTailPathspec(cwd, stateRel(`${join.work_unit}/manifest.json`), `roadmap: flag ${name} — input moved`, warnings);
   result.committed = outcome.committed;
   if (outcome.failed) result.warnings = warnings;
   noteCommitOutcome(result, outcome);

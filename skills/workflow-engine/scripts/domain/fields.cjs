@@ -23,6 +23,7 @@ const io = require('../kernel/manifest-io.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { UNIT_PHASES, promotedRefusal } = require('./derivations.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -52,20 +53,15 @@ function fail(msg, code = 1) {
   throw err;
 }
 
-/** @param {string} cwd */
-function workflowsDir(cwd) {
-  return path.join(cwd, '.workflows');
-}
-
 /** @param {string} cwd @param {string} name */
 function manifestPath(cwd, name) {
-  return io.workUnitManifestPath(workflowsDir(cwd), name);
+  return io.workUnitManifestPath(stateRoot(cwd), name);
 }
 
 /** @param {string} cwd @param {string} name */
 function readManifest(cwd, name) {
   if (!fs.existsSync(manifestPath(cwd, name))) fail(`Work unit "${name}" not found`, 2);
-  return io.readWorkUnitManifest(workflowsDir(cwd), name);
+  return io.readWorkUnitManifest(stateRoot(cwd), name);
 }
 
 // ---------------------------------------------------------------------------
@@ -719,7 +715,7 @@ function cmdGet(cwd, args, out) {
   // Project manifest routing
   const proj = parseProjectPath(args[0]);
   if (proj.isProject) {
-    const manifest = io.readProjectManifest(workflowsDir(cwd));
+    const manifest = io.readProjectManifest(stateRoot(cwd));
     if (proj.fieldSegments.length === 0) {
       out(JSON.stringify(manifest, null, 2) + '\n');
       return;
@@ -771,7 +767,7 @@ function cmdExists(cwd, args, out) {
   // Project manifest routing: exists project[.field.path]
   const proj = parseProjectPath(args[0]);
   if (proj.isProject) {
-    const manifest = io.readProjectManifest(workflowsDir(cwd));
+    const manifest = io.readProjectManifest(stateRoot(cwd));
     if (proj.fieldSegments.length === 0) {
       // exists project — check if project manifest has any content
       out(Object.keys(manifest).length > 0 ? 'true\n' : 'false\n');
@@ -888,7 +884,7 @@ function cmdResolve(cwd, args, out) {
 
   // Validate that the work unit exists by reading its manifest.
   const manifest = readManifest(cwd, workUnit);
-  const wuDir = path.join(workflowsDir(cwd), workUnit);
+  const wuDir = path.join(stateRoot(cwd), workUnit);
 
   if (phase === 'research') {
     if (topic) {
@@ -947,7 +943,7 @@ function cmdResolve(cwd, args, out) {
  * @returns {{transact: <T>(fn: (manifest: any, save: () => void) => T) => T}}
  */
 function manifestTarget(cwd, isProject, workUnit) {
-  const wfDir = workflowsDir(cwd);
+  const wfDir = stateRoot(cwd);
   if (isProject) {
     return {
       transact: (fn) => io.withProjectLock(wfDir, () => {

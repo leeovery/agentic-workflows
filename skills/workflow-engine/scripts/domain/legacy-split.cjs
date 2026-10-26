@@ -12,6 +12,7 @@
 const path = require('path');
 const { fileExists } = require('./reads.cjs');
 const { phaseItems } = require('./derivations.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 // Theme/source names become engine dot-path segments and research filenames.
 // The engine rejects dots/slashes; the canonical map name is kebab. A source
@@ -41,7 +42,7 @@ function classify(cwd, workUnit, researchByName, item) {
   if (!(item.source || '').includes('migration-seeded') || item.routing !== 'research') return null;
   const research = researchByName.get(item.name);
   if (!research || research.status !== 'in-progress') return null;
-  if (!fileExists(path.join(cwd, '.workflows', workUnit, 'research', `${item.name}.md`))) return null;
+  if (!fileExists(path.join(stateRoot(cwd), workUnit, 'research', `${item.name}.md`))) return null;
   return NAME_RE.test(item.name) ? 'qualifying' : 'unsplittable';
 }
 

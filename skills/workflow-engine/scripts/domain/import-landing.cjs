@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isoNow } = require('./dates.cjs');
+const { stateRel } = require('../kernel/state-root.cjs');
 
 // Sources the knowledge base can read as prose: they land as `{stem}.md` and
 // are indexed. Every other extension is kept, lowercased, and tracked on the
@@ -205,7 +206,7 @@ function isIndexableImport(dest) {
  * @returns {string}
  */
 function importArtifact(workUnit, dest) {
-  return `.workflows/${workUnit}/imports/${dest}`;
+  return stateRel(`${workUnit}/imports/${dest}`);
 }
 
 module.exports = {

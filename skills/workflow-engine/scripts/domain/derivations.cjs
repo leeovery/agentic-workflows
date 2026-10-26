@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { fileExists, filesChecksum, listFiles } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { stateRel } = require('../kernel/state-root.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -1334,7 +1335,7 @@ const MAILBOX_PHASES = Object.entries(VALID_PHASE_STATUSES)
  * @returns {string}
  */
 function mailboxDir(workUnit, phase, topic) {
-  return `.workflows/${workUnit}/${phase}/.mailbox/${topic}`;
+  return stateRel(`${workUnit}/${phase}/.mailbox/${topic}`);
 }
 
 /**

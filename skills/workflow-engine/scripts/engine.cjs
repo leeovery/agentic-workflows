@@ -66,6 +66,7 @@ const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf } = require('./kernel/call.cjs');
+const { STATE_DIR_NAME, stateRoot, stateRel, isStatePath } = require('./kernel/state-root.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
 
@@ -315,7 +316,7 @@ Commands:
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
-  render change-set-tree  <wu.review.topic>  (empty when the tree is clean outside .workflows/)
+  render change-set-tree  <wu.review.topic>  (empty when the tree is clean outside ${stateRel()}/)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --file <payload.json> | --variant resolution
   render task-count-gate  <wu.planning.topic> --file <payload.json>
@@ -912,7 +913,7 @@ function hookSessionId(call, rest, usage) {
  * @param {string} cwd @returns {string}
  */
 function hookProjectDir(cwd) {
-  return fs.existsSync(path.join(cwd, '.workflows'))
+  return fs.existsSync(path.join(cwd, STATE_DIR_NAME))
     ? cwd
     : (process.env.CLAUDE_PROJECT_DIR || cwd);
 }
@@ -1643,14 +1644,14 @@ function runBoot(call) {
 // mailbox phases carry the topic's mailbox so a drain's deletions
 // ride the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
-  research: (wu, t) => [`.workflows/${wu}/research/${t}.md`, mailboxDir(wu, 'research', t)],
-  experiment: (wu, t) => [`.workflows/${wu}/experiment/${t}`],
-  discussion: (wu, t) => [`.workflows/${wu}/discussion/${t}.md`, mailboxDir(wu, 'discussion', t)],
-  investigation: (wu, t) => [`.workflows/${wu}/investigation/${t}.md`, mailboxDir(wu, 'investigation', t)],
-  specification: (wu, t) => [`.workflows/${wu}/specification/${t}`],
-  planning: (wu, t) => [`.workflows/${wu}/planning/${t}`],
-  implementation: (wu, t) => [`.workflows/${wu}/implementation/${t}`],
-  review: (wu, t) => [`.workflows/${wu}/review/${t}`],
+  research: (wu, t) => [stateRel(`${wu}/research/${t}.md`), mailboxDir(wu, 'research', t)],
+  experiment: (wu, t) => [stateRel(`${wu}/experiment/${t}`)],
+  discussion: (wu, t) => [stateRel(`${wu}/discussion/${t}.md`), mailboxDir(wu, 'discussion', t)],
+  investigation: (wu, t) => [stateRel(`${wu}/investigation/${t}.md`), mailboxDir(wu, 'investigation', t)],
+  specification: (wu, t) => [stateRel(`${wu}/specification/${t}`)],
+  planning: (wu, t) => [stateRel(`${wu}/planning/${t}`)],
+  implementation: (wu, t) => [stateRel(`${wu}/implementation/${t}`)],
+  review: (wu, t) => [stateRel(`${wu}/review/${t}`)],
 });
 
 // A topic whose item reads one of these is finished: nothing further a
@@ -1668,7 +1669,7 @@ const TERMINAL_TOPIC_STATUSES = ['completed', ...TERMINAL_STATUSES];
  */
 function topicItem(cwd, wu, phase, topic) {
   try {
-    const manifest = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', wu, 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(stateRoot(cwd), wu, 'manifest.json'), 'utf8'));
     const item = manifest?.phases?.[phase]?.items?.[topic];
     return item && typeof item === 'object' ? item : null;
   } catch {
@@ -1705,7 +1706,7 @@ function codePathSpec(cwd, repos, given) {
     throw new Error(`commit --paths: "${given}" resolves outside the project`);
   }
   const spec = rel.split(path.sep).join('/');
-  if (spec === '.workflows' || spec.startsWith('.workflows/')) {
+  if (isStatePath(spec)) {
     throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
   }
   assertCommittable(repos, spec, given);
@@ -1766,8 +1767,8 @@ function assertCodeTarget(cwd, target) {
   const { workUnit, phase, topic } = target;
   if (workUnit.includes('/') || workUnit.includes('..')) throw new Error(`invalid work unit name "${workUnit}"`);
   if (topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
-  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
-    throw new Error(`commit --paths: no work unit directory: .workflows/${workUnit}`);
+  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit))) {
+    throw new Error(`commit --paths: no work unit directory: ${stateRel(workUnit)}`);
   }
   if (topicItem(cwd, workUnit, phase, topic) === null) {
     throw new Error(`commit --paths: no ${phase} item "${topic}" in "${workUnit}" — check the --for target`);
@@ -1870,9 +1871,9 @@ function runCommit(call, argv) {
     if (globalState) {
       // `.workflows/.state` — migrations, environment setup: project-level
       // bookkeeping written from inside whatever session happened to need it.
-      scope = '.workflows/.state';
+      scope = stateRel('.state');
     } else if (workflows) {
-      scope = '.workflows';
+      scope = stateRel();
     } else if (migrationsScope) {
       // The reviewed migration commit: every path the workflows own, taken
       // as the index records it — a migration may stage a removal there
@@ -1882,11 +1883,11 @@ function runCommit(call, argv) {
       else respond(call, { committed });
       return;
     } else if (inbox) {
-      scope = '.workflows/.inbox';
+      scope = stateRel('.inbox');
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
-      const specs = stageableSpecs(cwd, [roadmap.ROADMAP_DIR, '.workflows/manifest.json']);
+      const specs = stageableSpecs(cwd, [roadmap.ROADMAP_DIR, stateRel('manifest.json')]);
       if (specs.length === 0) {
         respond(call, { committed: null, note: 'nothing to commit' });
         return;
@@ -1895,10 +1896,10 @@ function runCommit(call, argv) {
     } else {
       const wu = /** @type {string} */ (workUnit);
       if (wu === '' || wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);
-      if (!fs.existsSync(path.join(cwd, '.workflows', wu))) {
-        throw new Error(`no work unit directory: .workflows/${wu}`);
+      if (!fs.existsSync(path.join(stateRoot(cwd), wu))) {
+        throw new Error(`no work unit directory: ${stateRel(wu)}`);
       }
-      scope = `.workflows/${wu}`;
+      scope = stateRel(wu);
       if (topicSpec !== null) {
         // --topic: the action-scoped pathspec commit. `git commit -- <paths>`
         // confines the commit to the topic's artifact paths plus the
@@ -1912,7 +1913,7 @@ function runCommit(call, argv) {
           throw new Error(`commit --topic: expected <phase>/<topic> with phase one of ${Object.keys(TOPIC_COMMIT_ARTIFACTS).join(', ')} — got "${topicSpec}"`);
         }
         if (topic === '' || topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
-        const specs = stageableSpecs(cwd, [`.workflows/${wu}/manifest.json`, ...artifact(wu, topic)]);
+        const specs = stageableSpecs(cwd, [stateRel(`${wu}/manifest.json`), ...artifact(wu, topic)]);
         const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
         // `--sweep` outranks everything. It marks a commit on a topic this
         // session is not working — the conclude sweep's leavings, a
@@ -1944,8 +1945,8 @@ function runCommit(call, argv) {
         // live topic sessions whose half-written documents sit in the same
         // work unit, so the analysis slices its own paths and never theirs.
         const committed = commitPathspecScoped(cwd, [
-          `.workflows/${wu}/.state`,
-          `.workflows/${wu}/manifest.json`,
+          stateRel(`${wu}/.state`),
+          stateRel(`${wu}/manifest.json`),
         ], message);
         if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
         else respond(call, { committed });
@@ -1957,7 +1958,7 @@ function runCommit(call, argv) {
         // the same scope the landing's own tail took, so a peer session's
         // dirt elsewhere in the unit never rides. No presence beat: running
         // an owed commit is not a session's work on a topic.
-        scope = [`.workflows/${wu}/imports`, `.workflows/${wu}/manifest.json`];
+        scope = [stateRel(`${wu}/imports`), stateRel(`${wu}/manifest.json`)];
       }
       if (discovery) {
         // --discovery: the discovery session's cadence commit. Discovery runs
@@ -1979,12 +1980,12 @@ function runCommit(call, argv) {
         // deleted-but-tracked path still commits its deletions (the
         // restart-cleanup commits depend on that).
         if (plan.includes('/') || plan.includes('..')) throw new Error(`invalid planning topic name "${plan}"`);
-        const manifestFile = path.join(cwd, '.workflows', wu, 'manifest.json');
+        const manifestFile = path.join(stateRoot(cwd), wu, 'manifest.json');
         /** @type {any} */ let planItem;
         try {
           planItem = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).phases?.planning?.items?.[plan];
         } catch {
-          throw new Error(`commit --plan: cannot read .workflows/${wu}/manifest.json`);
+          throw new Error(`commit --plan: cannot read ${stateRel(`${wu}/manifest.json`)}`);
         }
         if (!planItem) throw new Error(`commit --plan: no planning item "${plan}" in "${wu}"`);
         const declared = planItem.storage_paths;
@@ -2000,9 +2001,9 @@ function runCommit(call, argv) {
           }
         }
         scope = stageableSpecs(cwd, [
-          `.workflows/${wu}/planning/${plan}`,
-          `.workflows/${wu}/manifest.json`,
-          '.workflows/manifest.json',
+          stateRel(`${wu}/planning/${plan}`),
+          stateRel(`${wu}/manifest.json`),
+          stateRel('manifest.json'),
           ...declared,
         ]);
       }

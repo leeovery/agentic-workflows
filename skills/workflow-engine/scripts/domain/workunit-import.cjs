@@ -24,6 +24,7 @@ const {
 } = require('./import-landing.cjs');
 const { itemOf } = require('./derivations.cjs');
 const { IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 /**
  * @typedef {object} WorkUnitImportResult
@@ -67,7 +68,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   // copies, and two sessions importing the same basename cannot dedupe
   // against one snapshot (create's discipline: the copies land beside the
   // write that records them).
-  const importsDir = path.join(cwd, '.workflows', workUnit, 'imports');
+  const importsDir = path.join(stateRoot(cwd), workUnit, 'imports');
   const { moves, skipped } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.status !== 'in-progress') {
@@ -105,7 +106,7 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
 
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${workUnit}/imports`, `.workflows/${workUnit}/manifest.json`],
+    [stateRel(`${workUnit}/imports`), stateRel(`${workUnit}/manifest.json`)],
     `workflow(${workUnit}): import ${moves.length} file(s) for ${origin}`,
     warnings);
 

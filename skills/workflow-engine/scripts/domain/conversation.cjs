@@ -52,6 +52,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
+const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
 
 const MARKER = 'workflow';
 const TRANSCRIPT = 'transcript';
@@ -78,7 +79,7 @@ function conversationDir(sessionId) {
  */
 function markConversation(cwd) {
   const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-  if (!sessionId || !fs.existsSync(path.join(cwd, '.workflows'))) return;
+  if (!sessionId || !fs.existsSync(path.join(cwd, STATE_DIR_NAME))) return;
   const marker = path.join(conversationDir(sessionId), MARKER);
   if (fs.existsSync(marker)) return;
   try {

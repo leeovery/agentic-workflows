@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { stateRoot } = require('../../workflow-engine/scripts/kernel/state-root.cjs');
 
 // Cache-shape contract validated here:
 //
@@ -36,7 +37,7 @@ function die(msg, code = 1) {
 }
 
 function loadDiscoveryItemNames(cwd, workUnit) {
-  const manifestPath = path.join(cwd, '.workflows', workUnit, 'manifest.json');
+  const manifestPath = path.join(stateRoot(cwd), workUnit, 'manifest.json');
   if (!fs.existsSync(manifestPath)) return null;
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -48,9 +49,9 @@ function loadDiscoveryItemNames(cwd, workUnit) {
 }
 
 function validate(cwd, workUnit, currentSource) {
-  const cacheDir = path.join(cwd, '.workflows', '.cache', workUnit, 'legacy-split', currentSource);
+  const cacheDir = path.join(stateRoot(cwd), '.cache', workUnit, 'legacy-split', currentSource);
   const planPath = path.join(cacheDir, 'plan.json');
-  const researchDir = path.join(cwd, '.workflows', workUnit, 'research');
+  const researchDir = path.join(stateRoot(cwd), workUnit, 'research');
   const errors = [];
 
   // For collision check: existing discovery items the cache must not duplicate.

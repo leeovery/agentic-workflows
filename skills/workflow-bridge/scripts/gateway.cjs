@@ -4,12 +4,13 @@ const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { TERMINAL_STATUSES } = require('../../workflow-engine/scripts/kernel/manifest-schema.cjs');
 const { loadManifest, fileExists, listFiles, listDirs } = engine.reads;
+const { stateRoot } = engine.state;
 const { phaseStatus, phaseItems, computeNextPhase, inputMoved, movedFrom } = engine.derivations;
 
 const ALL_PHASES = engine.schema.VALID_PHASES.filter((p) => p !== 'discovery');
 
 function phaseFileExists(cwd, workUnit, phase, manifest) {
-  const dir = path.join(cwd, '.workflows', workUnit, phase);
+  const dir = path.join(stateRoot(cwd), workUnit, phase);
   switch (phase) {
     case 'research':       return listFiles(dir, '.md').length > 0;
     case 'experiment':     return listDirs(dir).length > 0;

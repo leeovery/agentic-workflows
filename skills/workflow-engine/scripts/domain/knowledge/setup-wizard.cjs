@@ -28,6 +28,7 @@ const { SETUP_DESCRIPTOR: OPENAI_SETUP } = require('../../kernel/knowledge/provi
 const { SETUP_DESCRIPTOR: COMPATIBLE_SETUP } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
 const { metadataMissing } = require('./embedder.cjs');
 const setup = require('./setup.cjs');
+const { stateRoot, stateRel } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -359,8 +360,8 @@ async function runProjectInitStep(call, files, rl) {
 async function runWizard(call, root, deps = {}) {
   (deps.requireTTY || requireTTY)(call);
   const files = knowledgeFiles(root);
-  if (!fs.existsSync(path.join(root, '.workflows'))) {
-    call.err('No .workflows/ directory found. Initialise a workflow project first.\n');
+  if (!fs.existsSync(stateRoot(root))) {
+    call.err(`No ${stateRel()}/ directory found. Initialise a workflow project first.\n`);
     throw new ExitSignal(1);
   }
 

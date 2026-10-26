@@ -14,6 +14,7 @@ const { TERMINAL_STATUSES, PROJECT_IDENTITIES } = require('../../kernel/manifest
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
+const { stateRoot, stateRel } = require('../../kernel/state-root.cjs');
 
 /**
  * The roadmap's directory, from its owner — required where it is read, since
@@ -22,6 +23,12 @@ const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
  */
 const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
 
+// The state directory's path, escaped for the identity patterns below.
+const STATE_PATTERN = stateRel().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const BASELINE_PATH = new RegExp(`${STATE_PATTERN}/\\.baseline/(.+)$`);
+const ANALYSIS_PATH = new RegExp(`${STATE_PATTERN}/([^/]+)/\\.state/(.+)$`);
+const PHASE_PATH = new RegExp(`${STATE_PATTERN}/([^/]+)/(research|discussion|investigation|specification|imports|seeds|discovery)/(.+)$`);
+
 /**
  * Phases whose completed artifact is indexed, with the artifact path per
  * topic — the per-topic manifest items. Imports, seeds, analysis caches and
@@ -29,10 +36,10 @@ const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
  * @type {Record<string, (wu: string, topic: string) => string>}
  */
 const INDEXED_ARTIFACTS = {
-  research: (wu, topic) => `.workflows/${wu}/research/${topic}.md`,
-  discussion: (wu, topic) => `.workflows/${wu}/discussion/${topic}.md`,
-  investigation: (wu, topic) => `.workflows/${wu}/investigation/${topic}.md`,
-  specification: (wu, topic) => `.workflows/${wu}/specification/${topic}/specification.md`,
+  research: (wu, topic) => stateRel(`${wu}/research/${topic}.md`),
+  discussion: (wu, topic) => stateRel(`${wu}/discussion/${topic}.md`),
+  investigation: (wu, topic) => stateRel(`${wu}/investigation/${topic}.md`),
+  specification: (wu, topic) => stateRel(`${wu}/specification/${topic}/specification.md`),
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
@@ -121,7 +128,7 @@ function baselineIdentity(rest) {
   if (!fileMatch) {
     throw new UserError(
       `Unexpected baseline path structure: ${rest}\n` +
-        'Expected: .workflows/.baseline/{topic}.md'
+        `Expected: ${stateRel('.baseline')}/{topic}.md`
     );
   }
   assertSegment('topic', fileMatch[1]);
@@ -162,7 +169,7 @@ function analysisIdentity(workUnit, rest) {
   if (!fileMatch) {
     throw new UserError(
       `Unexpected .state path structure: ${rest}\n` +
-        'Expected: .workflows/{work_unit}/.state/{filename}.md'
+        `Expected: ${stateRel('{work_unit}/.state/{filename}.md')}`
     );
   }
   const basename = fileMatch[1];
@@ -186,7 +193,7 @@ function phaseTopic(phase, rest, filePath) {
     if (!specMatch) {
       throw new UserError(
         `Unexpected specification path structure: ${rest}\n` +
-          'Expected: .workflows/{work_unit}/specification/{topic}/specification.md'
+          `Expected: ${stateRel('{work_unit}/specification/{topic}/specification.md')}`
       );
     }
     return specMatch[1];
@@ -197,7 +204,7 @@ function phaseTopic(phase, rest, filePath) {
       if (phase === 'imports' && isNonMarkdownImport(rest)) throw nonMarkdownImportError(filePath);
       throw new UserError(
         `Unexpected ${phase} path structure: ${rest}\n` +
-          `Expected: .workflows/{work_unit}/${phase}/{topic}.md`
+          `Expected: ${stateRel(`{work_unit}/${phase}/{topic}.md`)}`
       );
     }
     return flatMatch[1];
@@ -206,7 +213,7 @@ function phaseTopic(phase, rest, filePath) {
   if (!discMatch) {
     throw new UserError(
       `Unexpected discovery path structure: ${rest}\n` +
-        'Expected: .workflows/{work_unit}/discovery/sessions/session-NNN.md'
+        `Expected: ${stateRel('{work_unit}/discovery/sessions/session-NNN.md')}`
     );
   }
   return discMatch[1];
@@ -223,18 +230,18 @@ function deriveIdentity(filePath) {
 
   // The dotted directories first: they would otherwise fall into the `.state`
   // capture and read as an invalid work unit.
-  const baselineMatch = /\.workflows\/\.baseline\/(.+)$/.exec(norm);
+  const baselineMatch = BASELINE_PATH.exec(norm);
   if (baselineMatch) return baselineIdentity(baselineMatch[1]);
   const roadmapAt = norm.indexOf(`${roadmapDir()}/`);
   if (roadmapAt !== -1) return roadmapIdentity(norm.slice(roadmapAt + roadmapDir().length + 1), filePath);
-  const stateMatch = /\.workflows\/([^/]+)\/\.state\/(.+)$/.exec(norm);
+  const stateMatch = ANALYSIS_PATH.exec(norm);
   if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
 
-  const match = /\.workflows\/([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/.exec(norm);
+  const match = PHASE_PATH.exec(norm);
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
-        'Expected path matching: .workflows/{work_unit}/{phase}/...'
+        `Expected path matching: ${stateRel('{work_unit}/{phase}/...')}`
     );
   }
   const [, workUnit, phase, rest] = match;
@@ -256,7 +263,7 @@ function workTypeOf(root, { workUnit, phase }, workUnits = []) {
   if (workUnit === ROADMAP_IDENTITY) return ROADMAP_IDENTITY;
   const read = workUnits.find((unit) => unit.name === workUnit);
   if (read && read.work_type) return read.work_type;
-  const manifestFile = path.join(root, '.workflows', workUnit, 'manifest.json');
+  const manifestFile = path.join(stateRoot(root), workUnit, 'manifest.json');
   if (!fs.existsSync(manifestFile)) throw new UserError(`Work unit manifest not found: ${manifestFile}`);
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   if (!manifest.work_type) throw new UserError(`Work unit manifest missing work_type field: ${manifestFile}`);
@@ -416,7 +423,7 @@ function flatMarkdown(root, dir) {
  * @returns {Artifact[]}
  */
 function projectArtifacts(root, roadmapSession) {
-  const baselineDir = '.workflows/.baseline';
+  const baselineDir = stateRel('.baseline');
   const sessionsDir = `${roadmapDir()}/sessions`;
   const importsDir = `${roadmapDir()}/imports`;
   /** @param {string} dir @param {string} workUnit @param {string} phase @returns {(f: string) => Artifact} */
@@ -450,14 +457,14 @@ function unitArtifacts(root, unit) {
   }
   items.push(
     ...flatEntries(root, unit, 'imports', importArtifact),
-    ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join('.workflows', wu, 'seeds', dest)),
+    ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join(stateRel(), wu, 'seeds', dest)),
   );
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
-    const file = path.posix.join('.workflows', workUnit, '.state', `${basename}.md`);
+    const file = path.posix.join(stateRel(), workUnit, '.state', `${basename}.md`);
     if (exists(file)) items.push({ file, workUnit, phase: 'analysis', topic });
   }
   if (unit.work_type === 'epic') {
-    const sessionsDir = path.posix.join('.workflows', workUnit, 'discovery', 'sessions');
+    const sessionsDir = path.posix.join(stateRel(), workUnit, 'discovery', 'sessions');
     for (const f of closedSessionLogs(root, sessionsDir, activeSession(unit.phases && unit.phases.discovery))) {
       items.push({ file: path.posix.join(sessionsDir, f), workUnit, phase: 'discovery', topic: f.slice(0, -3) });
     }

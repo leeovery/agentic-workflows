@@ -44,6 +44,7 @@ const {
 } = require('../kernel/manifest-schema.cjs');
 const { settleItemStatus } = require('./derivations.cjs');
 const { flagDownstream, releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
 // purpose: that transition is the briefing gate's freeze (`approve`).
@@ -132,7 +133,7 @@ function liveSubs(item, parentId) {
  * @param {Record<string, ExperimentRecord>} experiments
  */
 function recordDir(workUnit, topic, id, experiments) {
-  const base = `.workflows/${workUnit}/experiment/${topic}`;
+  const base = stateRel(`${workUnit}/experiment/${topic}`);
   if (isParentExperimentId(id)) return `${base}/${id}-${experiments[id].slug}`;
   const parentId = id.slice(0, id.indexOf('.'));
   return `${base}/${parentId}-${experiments[parentId].slug}/${id}-${experiments[id].slug}`;
@@ -208,9 +209,9 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
     // The scratch is consumed after the create — confine it to the cache so
     // a mis-passed path can never read (and delete) a live artifact.
     scratchAbs = path.resolve(cwd, problem);
-    const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
+    const cacheRoot = path.join(stateRoot(cwd), '.cache') + path.sep;
     if (!scratchAbs.startsWith(cacheRoot)) {
-      throw new Error(`--problem must point inside .workflows/.cache/ — got "${problem}"`);
+      throw new Error(`--problem must point inside ${stateRel('.cache')}/ — got "${problem}"`);
     }
     try {
       problemBody = fs.readFileSync(scratchAbs, 'utf8');

@@ -23,6 +23,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
 const { phaseItems } = require('./derivations.cjs');
 const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { stateRel } = require('../kernel/state-root.cjs');
 
 /**
  * Whether a specification item is in the build order's live set. Terminal
@@ -111,7 +112,7 @@ function sequenceBuildOrder(cwd, workUnit, orders) {
   // The sequencing pass runs from the epic entry, beside whatever sessions
   // hold the unit's topics: it wrote the manifest and nothing else, so that
   // is all it commits.
-  const outcome = commitTailPathspec(cwd, `.workflows/${workUnit}/manifest.json`, `specification(${workUnit}): sequence build order`, warnings);
+  const outcome = commitTailPathspec(cwd, stateRel(`${workUnit}/manifest.json`), `specification(${workUnit}): sequence build order`, warnings);
   /** @type {BuildOrderSequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
   if (outcome.failed) result.warnings = warnings;

@@ -7,18 +7,13 @@
 //
 // Mechanism only: it knows nothing about what the manifest contains. The
 // façade translates the engine's `cwd` convention (project root) to the
-// io module's `workflowsDir` and keeps the engine ring's import surface
-// stable.
+// io module's `workflowsDir` through the state-root resolver, and keeps
+// the engine ring's import surface stable.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const path = require('path');
 const io = require('./manifest-io.cjs');
-
-/** @param {string} cwd project root (the directory containing `.workflows/`) */
-function workflowsDir(cwd) {
-  return path.join(cwd, '.workflows');
-}
+const { stateRoot } = require('./state-root.cjs');
 
 /**
  * Load and parse one work unit's manifest (loud on missing/invalid).
@@ -27,7 +22,7 @@ function workflowsDir(cwd) {
  * @returns {any}
  */
 function loadWorkUnitManifest(cwd, workUnit) {
-  return io.readWorkUnitManifest(workflowsDir(cwd), workUnit);
+  return io.readWorkUnitManifest(stateRoot(cwd), workUnit);
 }
 
 /**
@@ -37,7 +32,7 @@ function loadWorkUnitManifest(cwd, workUnit) {
  * @param {object} manifest
  */
 function saveWorkUnitManifest(cwd, workUnit, manifest) {
-  io.writeWorkUnitManifestAtomic(workflowsDir(cwd), workUnit, manifest);
+  io.writeWorkUnitManifestAtomic(stateRoot(cwd), workUnit, manifest);
 }
 
 /**
@@ -51,7 +46,7 @@ function saveWorkUnitManifest(cwd, workUnit, manifest) {
  * @returns {T}
  */
 function withWorkUnitLock(cwd, workUnit, fn) {
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, fn);
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, fn);
 }
 
 /**
@@ -60,7 +55,7 @@ function withWorkUnitLock(cwd, workUnit, fn) {
  * @returns {Record<string, any>}
  */
 function readProjectManifest(cwd) {
-  return io.readProjectManifest(workflowsDir(cwd));
+  return io.readProjectManifest(stateRoot(cwd));
 }
 
 /**
@@ -73,7 +68,7 @@ function readProjectManifest(cwd) {
  * @returns {Array<Record<string, any>>}
  */
 function listWorkUnitManifests(cwd, project) {
-  const wfDir = workflowsDir(cwd);
+  const wfDir = stateRoot(cwd);
   if (!fs.existsSync(wfDir)) return [];
   const registered = Object.keys((project || io.readProjectManifest(wfDir)).work_units || {});
   const names = registered.length > 0
@@ -99,7 +94,7 @@ function listWorkUnitManifests(cwd, project) {
  * @param {object} data
  */
 function writeProjectManifestAtomic(cwd, data) {
-  io.writeProjectManifestAtomic(workflowsDir(cwd), data);
+  io.writeProjectManifestAtomic(stateRoot(cwd), data);
 }
 
 /**
@@ -110,7 +105,7 @@ function writeProjectManifestAtomic(cwd, data) {
  * @returns {T}
  */
 function withProjectLock(cwd, fn) {
-  return io.withProjectLock(workflowsDir(cwd), fn);
+  return io.withProjectLock(stateRoot(cwd), fn);
 }
 
 // Structural-container descent (create when empty, refuse scalars/arrays) —

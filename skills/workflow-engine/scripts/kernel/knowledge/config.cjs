@@ -15,6 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { STATE_DIR_NAME } = require('../state-root.cjs');
 
 const { systemConfigDir } = require('../system-config.cjs');
 const { ENGINE_COMMAND } = require('../call.cjs');
@@ -115,7 +116,7 @@ function findProjectRoot(startFrom) {
   let dir = path.resolve(startFrom);
   const fallback = dir;
   while (true) {
-    if (fs.existsSync(path.join(dir, '.workflows'))) return dir;
+    if (fs.existsSync(path.join(dir, STATE_DIR_NAME))) return dir;
     const parent = path.dirname(dir);
     if (parent === dir) return fallback;
     dir = parent;

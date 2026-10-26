@@ -22,6 +22,7 @@ const {
   collectAnalysisInputs, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 // Discussion statuses the menu never counts: cancelled is closed, postponed
 // has left for the roadmap, promoted has left with its specification for a
@@ -165,7 +166,7 @@ function specSortRank(spec) {
 function specificationDiscovery(cwd, workUnit) {
   const manifest = loadActiveManifests(cwd).find((m) => m.name === workUnit && m.work_type === 'epic');
   if (!manifest) throw new Error(`no active epic "${workUnit}"`);
-  const workflowsDir = path.join(cwd, '.workflows');
+  const workflowsDir = stateRoot(cwd);
   const specItems = phaseItems(manifest, 'specification');
 
   /** @type {DiscoveryResult['discussions']} */

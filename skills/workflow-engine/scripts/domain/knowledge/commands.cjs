@@ -26,6 +26,7 @@ const { readiness, statusReport } = require('./status.cjs');
 const { countChunks, removeChunks, planCompaction, compact } = require('./maintenance.cjs');
 const { parseSetupForm, runFromSystem, runKeywordOnly, runProviderForm } = require('./setup-forms.cjs');
 const { runWizard, runKeyOnly } = require('./setup-wizard.cjs');
+const { stateRel } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -389,7 +390,7 @@ async function runRebuild(call, { root, files }) {
     stop(call,
       'No artifacts to index. Aborting rebuild — ' +
       'the existing index has NOT been modified.\n' +
-      '(If you believe this is wrong, check that .workflows/ exists and ' +
+      `(If you believe this is wrong, check that ${stateRel()}/ exists and ` +
       'that work units have items with status "completed".)\n'
     );
   }

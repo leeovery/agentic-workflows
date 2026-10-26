@@ -11,6 +11,7 @@ const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'workflow-engine', 'scrip
 const { commitPathspecScoped } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'commit.cjs'));
 const { syncKnowledge } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'knowledge', 'sync.cjs'));
 const { ENGINE_COMMAND } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'call.cjs'));
+const { stateRoot } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'state-root.cjs'));
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -61,7 +62,7 @@ function renderResearchTemplate(theme, currentSource) {
 }
 
 function loadDismissedList(cwd, workUnit) {
-  const manifestPath = path.join(cwd, '.workflows', workUnit, 'manifest.json');
+  const manifestPath = path.join(stateRoot(cwd), workUnit, 'manifest.json');
   try {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const dismissed = manifest && manifest.phases && manifest.phases.discovery && manifest.phases.discovery.dismissed;
@@ -72,9 +73,9 @@ function loadDismissedList(cwd, workUnit) {
 }
 
 function apply(cwd, workUnit, currentSource) {
-  const wuDir = path.join(cwd, '.workflows', workUnit);
+  const wuDir = path.join(stateRoot(cwd), workUnit);
   const researchDir = path.join(wuDir, 'research');
-  const cacheDir = path.join(cwd, '.workflows', '.cache', workUnit, 'legacy-split', currentSource);
+  const cacheDir = path.join(stateRoot(cwd), '.cache', workUnit, 'legacy-split', currentSource);
   const sourceFile = path.join(researchDir, `${currentSource}.md`);
 
   // Re-validate cache before any mutations.

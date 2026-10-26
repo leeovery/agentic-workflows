@@ -17,6 +17,7 @@ const { projectRepos, projectPath } = require('../kernel/repos.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { commitPathspecScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
+const { stateRel } = require('../kernel/state-root.cjs');
 
 /** The statuses a project manifest records; `none` is their absence. */
 const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
@@ -158,7 +159,7 @@ function sum(values) {
  */
 function arrivalIn(cwd) {
   if (!hasCommits(cwd)) return null;
-  const [first] = gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%H%x09%as%x09%ct', 'HEAD', '--', '.workflows']);
+  const [first] = gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%H%x09%as%x09%ct', 'HEAD', '--', stateRel()]);
   if (first === undefined) return null;
   const [sha, date, time] = first.split('\t');
   return { sha, date, time };
@@ -277,7 +278,7 @@ function elided(rows) {
  * @returns {{files_at_arrival: number, tree_at_arrival: string[]}}
  */
 function treeShape(paths) {
-  const project = paths.filter((p) => !p.startsWith('.claude/') && !p.startsWith('.workflows/') && p !== WORKTREE_INCLUDE);
+  const project = paths.filter((p) => !p.startsWith('.claude/') && !p.startsWith(`${stateRel()}/`) && p !== WORKTREE_INCLUDE);
   /** @type {Map<string, number>} */
   const top = new Map();
   for (const p of project) {

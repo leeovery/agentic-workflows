@@ -28,6 +28,7 @@ const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 /**
  * The highest-numbered `session-NNN.md` on disk — its number and its file
@@ -113,9 +114,9 @@ function openDiscoverySession(cwd, workUnit, { sessionLogFile }) {
       throw new Error(`session log draft is empty: ${sessionLogFile} — draft the log before opening the session`);
     }
 
-    const sessionsDir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
+    const sessionsDir = path.join(stateRoot(cwd), workUnit, 'discovery', 'sessions');
     const session = String(nextSessionNumber(sessionsDir)).padStart(3, '0');
-    const rel = `.workflows/${workUnit}/discovery/sessions/session-${session}.md`;
+    const rel = stateRel(`${workUnit}/discovery/sessions/session-${session}.md`);
 
     // Log first, marker second: a failure between the two leaves a log
     // without a marker (a closed-looking session — recoverable), never a
@@ -166,7 +167,7 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
     if (typeof active !== 'string' || active === '') {
       throw new Error(`no active discovery session for "${workUnit}" — phases.discovery.active_session is not set (a browse-only session never sets it; nothing to close)`);
     }
-    const rel = `.workflows/${workUnit}/discovery/sessions/session-${active}.md`;
+    const rel = stateRel(`${workUnit}/discovery/sessions/session-${active}.md`);
     if (!fs.existsSync(path.join(cwd, rel))) {
       throw new Error(`session log missing on disk: ${rel} — the active-session marker names a session with no log`);
     }

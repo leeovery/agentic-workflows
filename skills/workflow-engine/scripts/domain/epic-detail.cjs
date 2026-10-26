@@ -11,7 +11,6 @@
 // duplicated here.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 const { loadProjectManifest } = require('./reads.cjs');
 const {
@@ -40,6 +39,7 @@ const {
 } = require('./derivations.cjs');
 const { computeBuildOrderNeedsSequencing, sortItemsByBuildOrder } = require('./build-order.cjs');
 const { discoveryLifecycleLabel, titlecase } = require('./conventions.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 // Every phase the epic detail iterates and the epic dashboard / thin dump
 // surface — discovery (the map, not a pipeline phase) first, then the epic
@@ -407,7 +407,7 @@ function postponedTopics(manifest, discoveryMap, project) {
  * @returns {{gap_analysis: AnalysisCache}}
  */
 function buildAnalysisCaches(cwd, manifest) {
-  const workflowsDir = path.join(cwd, '.workflows');
+  const workflowsDir = stateRoot(cwd);
   return {
     gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
   };
@@ -649,7 +649,7 @@ function epicDetail(cwd, manifest) {
   // the same rows the discovery-session gateway reads. map_summary stays null
   // (not the zero-count shape) when the map is empty, the epic dashboard's cue
   // that there is no map to render.
-  const builtMap = buildDiscoveryMap(manifest, path.join(cwd, '.workflows'));
+  const builtMap = buildDiscoveryMap(manifest, stateRoot(cwd));
   // The postpone's other half lives on the project manifest: the roadmap
   // item joined by `postponed_from` carries the horizon the topic waits in.
   const project = loadProjectManifest(cwd);

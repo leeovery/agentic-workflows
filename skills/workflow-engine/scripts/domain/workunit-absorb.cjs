@@ -42,6 +42,7 @@ const { addItem } = require('./discovery-map.cjs');
 const { reaimAbsorbed } = require('./roadmap.cjs');
 const { mailboxStatus } = require('./transitions.cjs');
 const { mailboxDir } = require('./derivations.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
 // would orphan the downstream artifacts, so the guard refuses.
@@ -92,7 +93,7 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
   // character guarding dotfiles and traversal, and the single segment
   // refusing a subdirectory.
   const shape = new RegExp(`^${field}/[^./][^/]*\\.[^./]+$`);
-  const destDir = path.join(cwd, '.workflows', epic, field);
+  const destDir = path.join(stateRoot(cwd), epic, field);
   /** @type {Set<string>} */
   const taken = new Set();
   /** @type {{entry: Record<string, any>, basename: string, dest: string}[]} */
@@ -102,7 +103,7 @@ function planTrackedMoves(cwd, feature, epic, field, entries) {
     if (typeof rel !== 'string' || !shape.test(rel)) {
       throw new Error(`feature "${feature}" has a malformed ${field} entry (${JSON.stringify(rel)}) — fix the manifest before absorbing`);
     }
-    if (!fs.existsSync(path.join(cwd, '.workflows', feature, rel))) {
+    if (!fs.existsSync(path.join(stateRoot(cwd), feature, rel))) {
       throw new Error(`feature "${feature}" ${field} file missing on disk: ${rel}`);
     }
     const basename = rel.slice(field.length + 1);
@@ -198,7 +199,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (!discussionItem || typeof discussionItem !== 'object' || typeof discussionItem.status !== 'string') {
       throw new Error(`feature "${feature}" has no discussion — absorb moves the discussion in as the epic topic`);
     }
-    const discussionSrc = `.workflows/${feature}/discussion/${feature}.md`;
+    const discussionSrc = stateRel(`${feature}/discussion/${feature}.md`);
     if (!fs.existsSync(path.join(cwd, discussionSrc))) {
       throw new Error(`discussion file missing on disk: ${discussionSrc}`);
     }
@@ -235,7 +236,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     if (phaseItems(epicManifest, 'discussion')[topic]) {
       throw new Error(`discussion topic "${topic}" already exists in ${into} — pick a different name`);
     }
-    const discussionDest = `.workflows/${into}/discussion/${topic}.md`;
+    const discussionDest = stateRel(`${into}/discussion/${topic}.md`);
     if (fs.existsSync(path.join(cwd, discussionDest))) {
       throw new Error(`${discussionDest} already exists — pick a different name`);
     }
@@ -248,8 +249,8 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       if (phaseItems(epicManifest, 'research')[topic]) {
         throw new Error(`research topic "${topic}" already exists in ${into} — pick a different name`);
       }
-      if (fs.existsSync(path.join(cwd, '.workflows', into, 'research', `${topic}.md`))) {
-        throw new Error(`.workflows/${into}/research/${topic}.md already exists — pick a different name`);
+      if (fs.existsSync(path.join(stateRoot(cwd), into, 'research', `${topic}.md`))) {
+        throw new Error(`${stateRel(`${into}/research/${topic}.md`)} already exists — pick a different name`);
       }
     }
 
@@ -260,7 +261,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       if (phaseItems(epicManifest, 'experiment')[topic]) {
         throw new Error(`experiment topic "${topic}" already exists in ${into} — pick a different name`);
       }
-      const experimentDest = `.workflows/${into}/experiment/${topic}`;
+      const experimentDest = stateRel(`${into}/experiment/${topic}`);
       if (fs.existsSync(path.join(cwd, experimentDest))) {
         throw new Error(`${experimentDest} already exists — pick a different name`);
       }
@@ -281,12 +282,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     }
 
     // The research move: the file must exist before anything mutates.
-    const epicResearchDir = path.join(cwd, '.workflows', into, 'research');
+    const epicResearchDir = path.join(stateRoot(cwd), into, 'research');
     /** @type {{from: string, target: string, status: string, item: Record<string, unknown>}[]} */
     const researchPlan = [];
     const researchItem = featureResearch[feature];
     if (researchItem !== undefined) {
-      const src = `.workflows/${feature}/research/${feature}.md`;
+      const src = stateRel(`${feature}/research/${feature}.md`);
       if (!fs.existsSync(path.join(cwd, src))) {
         throw new Error(`research file missing on disk: ${src}`);
       }
@@ -309,22 +310,22 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     readProjectManifest(cwd);
 
     // -- mutate: files, then the epic manifest ---------------------------------
-    fs.mkdirSync(path.join(cwd, '.workflows', into, 'discussion'), { recursive: true });
+    fs.mkdirSync(path.join(stateRoot(cwd), into, 'discussion'), { recursive: true });
     fs.renameSync(path.join(cwd, discussionSrc), path.join(cwd, discussionDest));
     if (researchPlan.length > 0) fs.mkdirSync(epicResearchDir, { recursive: true });
     for (const move of researchPlan) {
       fs.renameSync(
-        path.join(cwd, '.workflows', feature, 'research', `${move.from}.md`),
+        path.join(stateRoot(cwd), feature, 'research', `${move.from}.md`),
         path.join(epicResearchDir, `${move.target}.md`));
     }
     /** @param {string} field @param {{basename: string, dest: string}[]} moves */
     const moveTrackedFiles = (field, moves) => {
       if (moves.length === 0) return;
-      fs.mkdirSync(path.join(cwd, '.workflows', into, field), { recursive: true });
+      fs.mkdirSync(path.join(stateRoot(cwd), into, field), { recursive: true });
       for (const move of moves) {
         fs.renameSync(
-          path.join(cwd, '.workflows', feature, field, move.basename),
-          path.join(cwd, '.workflows', into, field, move.dest));
+          path.join(stateRoot(cwd), feature, field, move.basename),
+          path.join(stateRoot(cwd), into, field, move.dest));
       }
     };
     moveTrackedFiles('imports', importPlan);
@@ -341,12 +342,12 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     // The series directory moves whole — record dirs, data extracts, harness
     // scripts, nested sub-experiments. A series whose spawn crashed before
     // the problem statement landed may have no directory yet.
-    const seriesMoved = Boolean(experimentItem) && fs.existsSync(path.join(cwd, '.workflows', feature, 'experiment', feature));
+    const seriesMoved = Boolean(experimentItem) && fs.existsSync(path.join(stateRoot(cwd), feature, 'experiment', feature));
     if (seriesMoved) {
-      fs.mkdirSync(path.join(cwd, '.workflows', into, 'experiment'), { recursive: true });
+      fs.mkdirSync(path.join(stateRoot(cwd), into, 'experiment'), { recursive: true });
       fs.renameSync(
-        path.join(cwd, '.workflows', feature, 'experiment', feature),
-        path.join(cwd, '.workflows', into, 'experiment', topic));
+        path.join(stateRoot(cwd), feature, 'experiment', feature),
+        path.join(stateRoot(cwd), into, 'experiment', topic));
     }
     for (const { from, dest } of mailboxPlan) {
       fs.mkdirSync(path.dirname(path.join(cwd, dest)), { recursive: true });
@@ -361,7 +362,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     for (const move of importPlan) relocations.push([`${feature}/imports/${move.basename}`, `${into}/imports/${move.dest}`]);
     for (const move of seedPlan) relocations.push([`${feature}/seeds/${move.basename}`, `${into}/seeds/${move.dest}`]);
     if (seriesMoved) relocations.push([`${feature}/experiment/${feature}`, `${into}/experiment/${topic}`]);
-    for (const { from, dest } of mailboxPlan) relocations.push([path.posix.relative('.workflows', from), path.posix.relative('.workflows', dest)]);
+    for (const { from, dest } of mailboxPlan) relocations.push([path.posix.relative(stateRel(), from), path.posix.relative(stateRel(), dest)]);
 
     // Epic manifest: phase items mirror the feature's statuses; tracked
     // entries carry their original timestamps (and seed provenance) with new
@@ -438,7 +439,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   // already rides this transaction's commit.
   const roadmap = reaimAbsorbed(cwd, feature, { into, topic, relocations });
 
-  fs.rmSync(path.join(cwd, '.workflows', feature), { recursive: true, force: true });
+  fs.rmSync(path.join(stateRoot(cwd), feature), { recursive: true, force: true });
 
   // KB: drop the feature's chunks, index the moved artifacts at their epic
   // identities (completed phase artifacts; imports and seeds always).
@@ -453,13 +454,13 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
       .map((move) => ({ index: INDEXED_ARTIFACTS.research(into, move.target), label: `knowledge index (research/${move.target})` })),
     ...importMoves.filter((m) => isIndexableImport(m.dest))
       .map((move) => ({ index: importArtifact(into, move.dest), label: `knowledge index (imports/${move.dest})` })),
-    ...seedMoves.map((move) => ({ index: `.workflows/${into}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
+    ...seedMoves.map((move) => ({ index: stateRel(`${into}/seeds/${move.dest}`), label: `knowledge index (seeds/${move.dest})` })),
   ], warnings);
 
   const cacheSpec = purgeWorkUnitCache(cwd, feature);
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${feature}`, `.workflows/${into}`, '.workflows/manifest.json', ...(cacheSpec ? [cacheSpec] : [])],
+    [stateRel(feature), stateRel(into), stateRel('manifest.json'), ...(cacheSpec ? [cacheSpec] : [])],
     `workflow(${feature}): absorb into ${into}`, warnings);
 
   /** @type {WorkUnitAbsorbResult} */
@@ -480,7 +481,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
     result.experiment = { path: `experiment/${topic}`, status: experimentMove.status, experiments: experimentMove.ids };
   }
   if (mailboxMoves.length > 0) {
-    result.mail_moved = mailboxMoves.map(({ phase, count, dest }) => ({ phase, path: path.posix.relative(`.workflows/${into}`, dest), count }));
+    result.mail_moved = mailboxMoves.map(({ phase, count, dest }) => ({ phase, path: path.posix.relative(stateRel(into), dest), count }));
   }
   if (roadmap.reaimed.length > 0) result.roadmap_reaimed = roadmap.reaimed;
   if (roadmap.rewritten.length > 0) result.roadmap_sources_rewritten = roadmap.rewritten;

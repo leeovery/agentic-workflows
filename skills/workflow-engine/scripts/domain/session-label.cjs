@@ -67,6 +67,7 @@ const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, isPlace, dropPosition, placeLine } = require('./position.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -88,7 +89,7 @@ const HOOK_MARKS = wantedByEvent({ session: true, workflows: true }).flatMap((e)
  */
 function resolveEnabled(cwd) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(cwd, '.workflows', 'manifest.json'), 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(path.join(stateRoot(cwd), 'manifest.json'), 'utf8'));
     const v = isObject(parsed) && isObject(parsed.defaults) ? parsed.defaults.tmux_labels : undefined;
     if (typeof v === 'boolean') return v;
   } catch { /* no project manifest */ }
@@ -268,7 +269,7 @@ function tmuxContext() {
 
 /** The checkout's stash store, under its gitignored cache. @param {string} cwd */
 function stashDir(cwd) {
-  return path.join(cwd, '.workflows', '.cache', '.session-labels');
+  return path.join(stateRoot(cwd), '.cache', '.session-labels');
 }
 
 /** @param {string} cwd @param {string|null} socket @param {string} tmuxId */
