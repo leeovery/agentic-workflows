@@ -1,0 +1,2210 @@
+# Review record: The workflows, reshaped — the specification
+
+As of 2026-10-26: 661 of 2704 lines approved explicitly, 2042 assessed by Claude and not ticked, 1 with an open conversation, 0 passed without review.
+
+A line ticked is the person's explicit approval. A line Claude assessed is Claude's approval, from a fresh pass, which the person let stand. A line not reviewed is carried through implicitly: it stands, but nobody has said yes to it.
+
+## Approved explicitly
+
+- 1.1.1 – 4.1.1
+- 4.1.3
+- 4.1.5 – 4.1.8
+- 4.3.1 – 4.4.1
+- 4.4.3 – 4.4.5
+- 4.4.6 – 4.4.7
+- 4.4.8 – 4.7.7
+- 4.7.10 – 4.9.1
+- 4.9.3 – 4.10.3
+- 4.11.2 – 4.11.17
+- 4.S3 – 4.S6
+- 4.S10
+- 4.S21
+- 4.S23 – 4.S24
+- 4.S26
+- 4.S28 – 4.S35
+- 5.1.1 – 5.6.15
+- 5.7.2 – 5.8.11
+- 5.8.13 – 5.9.1
+- 5.S2 – 5.S6
+- 5.S8 – 6.1.20
+- 6.2.2
+- 6.2.4 – 6.3.14
+- 6.4.1 – 6.6.11
+- 6.6.13 – 6.S2
+- 6.S7 – 6.S32
+- 7.1.1 – 7.5.2
+- 7.S1 – 7.S19
+- 8.1.3
+- 8.8.12
+- 8.9.13
+- 8.10.2
+- 8.10.7
+- 8.12.11
+- 9.1.1 – 9.1.9
+- 9.2.2
+- 9.2.4
+- 9.2.10
+- 9.10.5
+- 9.10.10 – 9.10.11
+- 10.1.1 – 10.1.8
+- 10.3.1
+- 11.1.4
+- 11.3.1
+- 11.4.5 – 11.5.1
+- 11.5.8
+- 11.11.4 – screen 1 after 11.11.7
+- 11.11.9
+- 11.11.15
+- 11.11.19
+- 12.1.1 – 12.1.2
+- 12.14.7
+- 13.12.1
+- 13.12.4
+- 14.1.1 – 14.2.3
+- 15.2.10 – 15.2.12
+- 15.4.4
+- 16.13.4
+- 16.13.7
+- 16.18.8
+- 17.2.1
+- 17.2.3
+- 17.4.1 – 17.4.2
+- 18.8.13
+- 19.1.1 – 19.4.4
+- screen 1 after 19.4.21
+- 19.5.17
+- 19.6.7
+- note 1 after 20
+- 20.2.2
+- 21.5.16
+- 21.6.2
+- 22.5.12
+- 24.1.1 – 24.1.2
+- 27.1.2
+- 29.1.1 – 29.1.7
+- 29.2.1
+- 29.2.3 – 29.2.5
+- 29.3.1 – 29.3.3
+- 29.4.1 – 29.4.2
+- 29.5.1 – 29.5.3
+- 29.6.1 – 29.6.2
+- 29.7.1
+- 29.8.1 – 29.8.2
+- 29.9.1 – 29.9.3
+- 29.10.1
+- 29.11.2
+- 29.13.1
+- 29.14.1 – 29.14.3
+- 29.15.1 – 29.15.2
+- 29.16.1 – 29.16.2
+- 29.17.1
+- 29.18.1 – 29.18.4
+- 29.19.1 – 29.19.2
+- 29.20.2
+
+## Approved after a conversation
+
+- 1.4.6: This sounds good in principle, but I'm not going to go through an entire run because that involves real conversations and stuff. We can run parts of it, like the mechanised parts, but I'm not going to sit and have a whole conversation with Claude as a way of testing. What we could do, though, is set up a test project that involves moving through parts of the process. At some point, we have to take the leap of faith and then test it live with real projects. That's what we usually do.
+- 1.5.2: I don't recall saying that we would get rid of the baseline skill. Why is that?
+- 1.S7: This relates to the other comment I made about running a rehearsal. We won't necessarily run the entire thing through a rehearsal.
+- 3.S13: Does building with step mode imply, implicitly, that tasks should be executed in serial rather than parallel?
+- 4.4.5: What's a fix here? Is there even anything possible? If the STATE BRANCH has gone locally and on the remote, then the workflow state is gone and we're kind of fucked. I guess we just have to say that someone's deleted it locally and remotely, we can't continue. Your only option is to start again and use what was called the baseline system to reconstitute some type of state, and then carry on from there.
+- 4.7.4: not following . no context.
+- 4.11.5: This looks good, but there's one thing that's slipped in here, the spec review. Shouldn't that be manifest-driven or some other mechanism of storage? Because if every spec item is numbered, isn't the agreement and comments and stuff something that could go into a more programmatic-friendly storage mechanism like JSON? I might be wrong here, so do push back if you think that the markdown is appropriate. / Ok I agree. So this would be a separate manifest type file? What if the spec numbers change through update - all the references would then be wrong. Im wondering if maybe we should or could design it so the spec is json too, and comments, additions, ticks etc can be linked inline with the item. Would be more machinaery for Claude to manage though when writing which might weaken the spec doc? If it could work then it would enable us to track items with nano ids and then ultimately produce an artefact (or not) programically. just a thought
+- 4.11.7: Does this end up in the manifest at all? Again, I'm not 100% sure that adding stuff like this to Markdown is necessarily the right shape, but maybe it is. The worry here is that when we use Markdown, Claude can easily hallucinate extra sections and just make up stuff. Unless it's all engine-driven, and then maybe it's okay. What do you think?
+
+## Assessed by Claude, not ticked
+
+- 4.1.2: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.1.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.2.1: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.2.2: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.4.2: a rename to Leeway's names, by your ruling of 26 Oct
+- screen 1 after 4.4.5: a rename to Leeway's names, by your ruling of 26 Oct
+- screen 1 after 4.4.7: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.7.8: your ruling of 26 Oct
+- 4.9.2: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.11.1: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S1: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S2: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S7: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S8: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S9: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S11: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S12: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S14: matches 4.7.2 and 4.7.8
+- 4.S15: matches 4.7.2 and 4.7.8
+- 4.S16: matches 4.7.4 and 4.7.8
+- 4.S17: matches 4.7.5, 4.7.6 and 4.7.8
+- 4.S18: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S19: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S20: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S22: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S25: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S27: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S36: matches 4.7.8
+- 5.7.1: a rename to Leeway's names, by your ruling of 26 Oct
+- 5.8.12: a rename to Leeway's names, by your ruling of 26 Oct
+- 5.S1: a rename to Leeway's names, by your ruling of 26 Oct
+- 5.S7: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.2.1: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.2.3: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.3.15: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.6.12: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.S3: matches 6.1 without the state commands
+- 6.S4: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.S5: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.S6: a rename to Leeway's names, by your ruling of 26 Oct
+- 6.S33: a rename to Leeway's names, by your ruling of 26 Oct
+- 8.1.1: your ruling of 26 Oct
+- 8.1.2: your ruling of 26 Oct
+- 8.1.4: your ruling of 26 Oct
+- 8.1.5: R37, ratified by you on 17 Oct
+- 8.1.6: today's behaviour, with your 21 Oct ruling that items leave
+- 8.1.7: restates your ruling of 22 Oct
+- 8.2.1: restates your ruling of 13 Oct (R10)
+- 8.2.2: restates your ruling of 13 Oct (R10)
+- 8.2.3: restates your ruling of 13 Oct (R10)
+- 8.2.4: restates your ruling of 16 Oct (R22)
+- 8.2.5: your ruling of 26 Oct
+- 8.2.6: restates your framing of 13 Oct
+- 8.2.7: your ruling of 26 Oct
+- 8.2.8: your ruling of 26 Oct
+- 8.2.9: your ruling of 26 Oct
+- 8.2.10: you agreed it on 26 Oct
+- 8.2.11: your ruling of 26 Oct
+- 8.2.12: your ruling of 26 Oct
+- 8.2.13: your ruling of 26 Oct
+- 8.3.1: restates your ruling of 22 Oct
+- 8.3.2: R10, as the record puts it
+- 8.3.3: R10, as the record puts it
+- 8.3.4: restates your ruling of 19 Oct
+- 8.3.5: restates your rulings of 19 and 22 Oct
+- 8.3.6: restates your ruling of 22 Oct
+- 8.3.7: restates your ruling of 22 Oct, with sources logged
+- 8.3.8: restates your ruling of 22 Oct
+- 8.4.1: restates your ruling of 13 Oct
+- 8.4.2: R10 and R19, as the record puts them
+- 8.4.3: restates your ruling of 13 Oct
+- 8.4.4: R19, as the record puts it
+- 8.4.5: the shaping rule you said yes to on 13 Oct
+- 8.4.6: the shaping rule you said yes to on 13 Oct
+- 8.4.7: restates your ruling of 14 Oct
+- 8.4.8: restates your ruling of 14 Oct
+- 8.5.1: restates your ruling of 13 Oct
+- 8.5.2: R10, as the record puts it
+- 8.5.3: restates your ruling of 13 Oct
+- 8.5.4: R10 and R17, as the record puts them
+- 8.5.5: R10, as the record puts it
+- 8.6.1: R10; the map stays on the manifest, as today
+- 8.6.2: R41 and plan 3.3, unchanged
+- 8.6.3: R41, as the record puts it
+- 8.6.4: R17 and R41, as the record puts them
+- 8.6.5: your 14 and 15 Oct rulings; the map closing at the spec follows
+- 8.6.6: R17, as the record puts it
+- 8.6.7: today's behaviour, carried over
+- 8.7.1: restates your layout ruling of 17 Oct
+- 8.7.2: restates your ruling of 19 Oct
+- 8.7.3: R10, as the record puts it
+- 8.7.4: R10, as the record puts it
+- 8.7.5: R10, as the record puts it
+- 8.7.6: follows from the brief feeding only the opening
+- 8.7.7: follows from a feature being an epic with one topic
+- 8.8.1: restates your ruling of 13 Oct
+- 8.8.2: screen: wording you can change any time
+- screen 1 after 8.8.2: screen drawn by me: wording you can change any time
+- 8.8.3: your 13 and 16 Oct rulings; an unnamed horizon is asked
+- 8.8.4: screen: follows your rulings; wording you can change
+- screen 1 after 8.8.4: screen drawn by me: wording you can change any time
+- screen 2 after 8.8.4: screen drawn by me: wording you can change any time
+- screen 3 after 8.8.4: screen drawn by me: wording you can change any time
+- 8.8.5: restates your ruling of 16 Oct (R19)
+- 8.8.6: your 13 Oct no-confirm rule, extended to the other map changes
+- 8.8.7: screen: one line, as R10 says
+- 8.8.8: restates your ruling of 13 Oct
+- 8.8.9: screen: today's cancel confirm stays
+- 8.8.10: restates your ruling of 13 Oct
+- 8.8.11: restates your ruling of 13 Oct
+- 8.8.13: your ruling of 25 Oct: the map lands on the epic menu, you pick the topic
+- 8.8.14: follows from approve the map governing topics and order
+- 8.8.15: today's check before approve the map, carried over
+- 8.8.16: cancel's rule applied to removal; your 21 Oct ruling
+- 8.8.17: builder's call: nothing you'd see
+- 8.8.18: today's naming rule, carried over
+- 8.8.19: today's behaviour, matching your 22 Oct ruling
+- 8.9.1: R10, adopted by you on 13 Oct
+- 8.9.2: R10 and R23, as the record puts them
+- 8.9.3: restates your ruling of 19 Oct
+- 8.9.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 8.9.5: R10 and plan 3.3, unchanged
+- 8.9.6: restates your ruling of 19 Oct
+- 8.9.7: restates what you agreed on 13 Oct
+- 8.9.8: R10, as the record puts it
+- 8.9.9: R10, as the record puts it
+- 8.9.10: R10, as the record puts it
+- 8.9.11: R10, as the record puts it
+- 8.9.12: restates what you agreed on 13 Oct
+- 8.10.1: restates your ruling of 13 Oct
+- 8.10.3: restates your ruling of 13 Oct
+- 8.10.4: restates your ruling of 14 Oct
+- 8.10.5: restates your ruling of 13 Oct
+- 8.10.6: R10, as the record puts it
+- 8.10.8: R46, agreed by you on 19 Oct
+- 8.10.9: approve the map is the gate over which topics exist
+- 8.10.10: today's behaviour, carried over
+- 8.10.11: a strike is your answer, so it isn't proposed again
+- 8.11.1: you agreed it on 26 Oct
+- 8.11.2: R12, with key d as you agreed on 14 Oct
+- 8.11.3: R12, squared with your 19 Oct ruling that discovery decides nothing
+- 8.11.4: you agreed it on 26 Oct
+- 8.12.1: R12, your words of 12 Oct
+- 8.12.2: your ruling of 26 Oct
+- 8.12.3: restates your ruling of 22 Oct
+- 8.12.4: your ruling of 26 Oct
+- 8.12.5: plan 9.1 and your 22 Oct ruling; the read is 9.3.12's
+- 8.12.6: restates your ruling of 22 Oct
+- 8.12.7: your ruling of 26 Oct
+- 8.12.8: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 8.12.9: builder's call: ledger field shapes are the builder's (5.3.12)
+- 8.12.10: builder's call: nothing you'd see
+- 8.13.1: R10, as the record puts it
+- 8.14.1: restates your ruling of 22 Oct
+- 8.14.2: restates your ruling of 22 Oct
+- 8.14.3: your ruling of 26 Oct
+- 8.14.4: you agreed it on 26 Oct
+- 8.14.5: restates your ruling of 22 Oct
+- 8.14.6: you agreed it on 26 Oct
+- 8.14.7: R44 and your 22 Oct ruling
+- 8.14.8: you agreed it on 26 Oct
+- 8.14.9: you agreed it on 26 Oct
+- 8.14.10: builder's call: nothing you'd see
+- 8.S1: matches 8.2.1 and 8.2.2
+- 8.S2: matches 8.2.3 and 8.2.4
+- 8.S3: matches 8.2.5 and 8.2.9
+- 8.S4: matches 8.3.1 to 8.3.5 and 8.7.2
+- 8.S5: matches 8.4.1 to 8.4.3
+- 8.S6: matches 8.4.5
+- 8.S7: matches 8.4.6
+- 8.S8: matches 8.5.1, 8.5.3, 8.5.4 and 8.8.10
+- 8.S9: matches 8.5.5
+- 8.S10: matches 8.6.1 and 8.6.2
+- 8.S11: matches 8.6.5
+- 8.S12: matches 8.6.5
+- 8.S13: matches 8.6.6
+- 8.S14: matches 8.7.1 and 8.7.2
+- 8.S15: matches 8.7.3 and 8.7.4
+- 8.S16: matches 8.8.1 and 8.8.2
+- 8.S17: matches 8.8.3, 8.8.4 and 8.7.5
+- 8.S18: matches 8.8.5
+- 8.S19: matches 8.8.6 and 8.8.7
+- 8.S20: matches 8.8.8 and 8.8.9
+- 8.S21: matches 8.8.10
+- 8.S22: matches 8.8.12
+- 8.S23: matches 8.3.4, 8.9.3, 8.9.6 and 9.3.8
+- 8.S24: matches 8.9.6
+- 8.S25: matches 8.9.1 and 8.9.7
+- 8.S26: a rename to Leeway's names, by your ruling of 26 Oct
+- 8.S27: matches 8.9.5
+- 8.S28: matches 8.9.9
+- 8.S29: matches 8.9.8 and 9.3.3
+- 8.S30: matches 8.10.1, 8.10.7 and 8.8.11
+- 8.S31: matches 8.10.2
+- 8.S32: matches 8.10.5
+- 8.S33: matches 8.10.3 and 8.10.4
+- 8.S34: matches 8.10.6
+- 8.S35: matches 8.11.1 and 9.10.10
+- 8.S36: matches 8.11.2 and 8.11.3
+- 8.S37: matches 8.12.4
+- 8.S38: matches 8.12.7
+- 8.S39: matches 8.1.3
+- 8.S40: matches 8.1.4 and 8.1.5
+- 8.S41: matches 8.6.4
+- 8.S42: matches 8.9.10 to 8.9.12
+- 8.S43: matches 8.10.8
+- 8.S44: matches 8.12.1
+- 8.S45: matches 8.13.1
+- 8.S46: matches 8.7.6
+- 8.S47: matches 8.8.13
+- 8.S48: matches 8.8.14
+- 8.S49: matches 8.8.4
+- 8.S50: matches 8.8.4 and 8.10.9
+- 8.S51: matches 8.12.8
+- 8.S52: matches 8.1.6
+- 8.S53: matches 8.6.7
+- 8.S54: matches 8.7.7
+- 8.S55: matches 8.8.15
+- 8.S56: matches 8.8.16
+- 8.S57: matches 8.8.18
+- 8.S58: matches 8.8.19
+- 8.S59: matches 8.10.10
+- 8.S60: matches 8.10.11
+- 8.S61: matches 8.12.11
+- 8.S62: matches 8.2.10 and 8.6.7
+- 8.S63: matches 8.3.4 and 8.3.7
+- 8.S64: matches 8.14.3
+- 8.S65: matches 8.14.4 and 8.14.9
+- 8.S66: matches 8.7.3 and 8.14.5
+- 8.S67: matches 8.14.6 and 8.14.9
+- 8.S68: matches 8.3.4 and 8.14.2
+- 8.S69: matches 8.2.7 to 8.2.10
+- 8.S70: matches 8.2.8 and 8.2.9
+- 8.S71: matches 8.2.11
+- 8.S72: matches 8.2.12
+- 8.S73: matches 8.2.13
+- 8.S74: matches 8.11.4
+- 8.S75: matches 8.14.8 and 8.14.9
+- 9.1.10: Today's behaviour kept: answers in full, or a short digest.
+- 9.1.11: my derivation: only you close a point its experiment still measures
+- 9.2.1: R11 and your record-and-log ruling of 12 Oct.
+- 9.2.3: R11, as the record puts it.
+- 9.2.5: Restates your 14 Oct ruling: replace, never edit.
+- 9.2.6: Follows from R11 and R23: Claude writes content, the engine holds links.
+- 9.2.7: R11 and R23, as the record puts it.
+- 9.2.8: R11 and R12, as the record puts it.
+- 9.2.9: R11: split by outcome against journey, not by phase.
+- 9.2.11: R23, as the record puts it.
+- 9.2.12: Restates your 13 Oct ruling; the exploratory label is today's.
+- 9.2.13: Follows from 9.2.4 and your layout ruling.
+- 9.2.14: R11, as the record puts it.
+- 9.2.15: R11, as the record puts it.
+- 9.2.16: R11, as the record puts it.
+- 9.2.17: R23's event kinds, as discussion uses them.
+- 9.2.18: R23, as the record puts it.
+- 9.2.19: you agreed it on 26 Oct
+- 9.3.1: Restates your 18 Oct ruling.
+- 9.3.2: Restates your 18 Oct ruling.
+- 9.3.3: R10 and R23, as the record puts it.
+- 9.3.4: R11 and R43; put to you on 13 Oct.
+- 9.3.5: R23, as the record puts it.
+- 9.3.6: R12: discovery's spike feeds the first openings.
+- 9.3.7: Restates your 18 Oct ruling.
+- 9.3.8: R10: a product-level principle opens as the position.
+- 9.3.9: R11, as the record puts it.
+- 9.3.10: R24's cone, as the record puts it.
+- 9.3.11: Restates your 19 Oct ruling (R43).
+- 9.3.12: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 9.4.1: Your own words of 18 Oct, as the record keeps them.
+- 9.4.2: R11, as the record puts it.
+- 9.4.3: R11 and R2, as the record puts it.
+- 9.4.4: Plan 2.2, ruled 19 Oct.
+- 9.4.5: R11, as the record puts it.
+- 9.4.6: R11, as the record puts it.
+- 9.5.1: Restates your 13 Oct agreement.
+- 9.5.2: R11, as the record puts it.
+- 9.5.3: R11: only your questions hold a topic open.
+- 9.5.4: R11, as the record puts it.
+- 9.5.5: R11 and R23: one engine query serves both.
+- 9.5.6: Screen: rows and words you can change any time.
+- screen 1 after 9.5.6: Screen drawn by Claude: wording you can change any time.
+- 9.5.7: R23, as the record puts it.
+- 9.5.8: R11: today's five-state subtopic map goes.
+- 9.5.9: Your 14 Oct ruling; an older record line (882) still says otherwise.
+- 9.5.10: R12, as the record puts it.
+- 9.5.11: From your locked board spike; the per-machine mark is settled in 5.8.15.
+- 9.6.3: Restates your 21 Oct ruling.
+- 9.6.1: R11 and R24, as the record puts it.
+- 9.6.2: Restates your 13 Oct ruling.
+- 9.7.1: R11, as the record puts it.
+- 9.7.2: R40: decided is an authority gate.
+- 9.7.3: Your verdict and count rulings; the rest is screen layout.
+- screen 1 after 9.7.3: Screen drawn by Claude: wording you can change any time.
+- screen 2 after 9.7.3: Screen drawn by Claude: wording you can change any time.
+- 9.7.4: Restates your 14 Oct ruling (R36).
+- 9.7.5: R11: today's closing gates go.
+- 9.7.6: R14 and R40; see the feature-ordering doubt at 11.8.5.
+- 9.7.7: Plan 6.4: the engine-held checklist, agreed in outline.
+- 9.7.8: Today's behaviour kept, as a process gate.
+- 9.8.1: Restates your 13 Oct ruling.
+- 9.8.2: R11: today's review machinery keeps running.
+- 9.8.3: matches 9.9.6: a gap inside a topic is its own question
+- 9.8.4: R24, as the record puts it.
+- 9.8.5: Restates your 14 Oct fold-in (R24).
+- 9.8.6: Restates your 14 Oct ruling.
+- 9.8.7: Screen: a one-line note, wording you can change any time.
+- 9.8.8: Claude's addition, which you ruled in on 14 Oct.
+- 9.8.9: Restates your 14 Oct ruling.
+- 9.8.10: Restates your 14 Oct ruling.
+- 9.8.11: R23, as the record puts it.
+- 9.8.12: R40: review gates learned like any process gate.
+- 9.8.13: Follows from your brief-control ruling of 18 Oct.
+- 9.8.14: Builder's call: when background reviews fire, tunable later.
+- 9.9.1: R11, as the record puts it.
+- 9.9.2: R11, as the record puts it.
+- 9.9.3: R11, as the record puts it.
+- 9.9.4: R23 and your 14 Oct ruling.
+- 9.9.5: R11, as the record puts it.
+- 9.9.6: matches 9.8.3: a gap inside a topic is its own question
+- 9.9.7: Today's behaviour kept: measurements re-run at the close.
+- 9.10.1: R12, as the record puts it.
+- 9.10.2: R12, as the record puts it.
+- 9.10.3: R12, as the record puts it.
+- 9.10.4: R12, as the record puts it.
+- 9.10.6: R12: canonical or reference, as the record puts it.
+- 9.10.7: Follows from R12: changed in your own words, no menu row.
+- 9.10.8: R12, as the record puts it.
+- 9.10.9: R12, as the record puts it.
+- 9.10.12: Your 13 Oct ruling; 'the spike goes' read as files kept.
+- 9.10.13: R12, as the record puts it.
+- 9.10.14: R12, as the record puts it.
+- 9.10.15: R12, as the record puts it.
+- 9.10.16: R12, as the record puts it.
+- 9.10.17: Restates your 13 Oct ruling.
+- 9.10.18: R23's standing rule, as the record puts it.
+- 9.10.19: R12, as the record puts it.
+- 9.10.20: R14: the spec links canonical assets.
+- 9.10.21: Builder's call: nothing you'd see.
+- 9.10.22: Today's behaviour kept.
+- 9.S1: Matches 9.1.1 to 9.1.3, 9.2.9 and 9.2.12.
+- 9.S2: Matches 9.1.4.
+- 9.S3: Matches 9.1.7 and 9.4.5.
+- 9.S4: Matches 9.2.1, 9.2.4, 9.2.10, 9.2.14 and 9.2.17.
+- 9.S5: Matches 9.2.5 and 9.2.18.
+- 9.S6: Matches 9.2.12.
+- 9.S7: Matches 9.2.14 to 9.2.16 and 9.5.4.
+- 9.S8: Matches 9.2.11, 9.2.13 and 9.5.1.
+- 9.S9: Matches 9.3.1 to 9.3.3 and 9.3.7.
+- 9.S10: Matches 9.3.4.
+- 9.S11: Matches 9.3.5.
+- 9.S12: Matches 9.3.9.
+- 9.S13: Matches 9.3.11.
+- 9.S14: Matches 9.4.4.
+- 9.S15: Matches 9.5.2 and 10.4.4.
+- 9.S16: Matches 9.5.3 and 9.7.1.
+- 9.S17: Matches 9.5.4 and 10.2.5.
+- 9.S18: Matches 9.5.5 and 9.5.6.
+- 9.S19: Matches 9.5.7.
+- 9.S20: Matches 9.5.9.
+- 9.S21: Matches 9.7.2 to 9.7.4.
+- 9.S22: Matches 9.7.5.
+- 9.S23: Matches 9.7.6; see the feature doubt at 11.8.5.
+- 9.S24: Matches 9.8.3 and 9.8.4.
+- 9.S25: Matches 9.8.3 and 9.8.9.
+- 9.S26: Matches 9.8.6 and 9.8.7.
+- 9.S27: Matches 9.8.8.
+- 9.S28: Matches 9.8.10.
+- 9.S29: Matches 9.8.11.
+- 9.S30: Matches 9.9.1 to 9.9.3 and 9.8.3.
+- 9.S31: Matches 9.9.5.
+- 9.S32: Matches 9.10.3 and 9.10.10.
+- 9.S33: Matches 9.10.4, 9.10.5 and 9.10.7.
+- 9.S34: Matches 9.10.6.
+- 9.S35: Matches 9.5.10, 9.10.12 and 9.10.13.
+- 9.S36: Matches 9.10.14.
+- 9.S37: Matches 9.10.17.
+- 9.S38: Matches 9.10.15.
+- 9.S39: matches 9.10.11
+- 9.S40: Matches 9.1.5.
+- 9.S41: Matches 9.1.6, 9.1.9 and 9.5.8.
+- 9.S42: Matches 9.1.8.
+- 9.S43: Matches 9.2.2.
+- 9.S44: Matches 9.2.7.
+- 9.S45: Matches 9.6.1 and 9.6.2.
+- 9.S46: Matches 9.8.1, 9.8.2 and 9.8.5.
+- 9.S47: Matches 9.8.12 with the learned gates of section 3.
+- 9.S48: Matches 9.8.13.
+- 9.S49: Matches 9.9.4.
+- 9.S50: Matches 9.2.8, 9.10.8 and 9.10.9.
+- 9.S51: Matches 9.10.16.
+- 9.S52: Matches 9.10.18.
+- 9.S53: Matches 9.10.19.
+- 9.S54: Matches 9.2.2.
+- 9.S55: Matches 9.7.3.
+- 9.S56: Matches 9.10.7.
+- 9.S57: Matches 9.5.5 and 9.5.11.
+- 9.S58: matches 9.9.6
+- 9.S59: Matches 9.6.3 and 16.7.3.
+- 9.S60: Matches 9.1.10.
+- 9.S61: matches 9.1.11, 9.5.3 and 9.5.4
+- 9.S62: Matches 9.2.12.
+- 9.S63: Matches 9.7.8.
+- 9.S64: Matches 9.9.7 and 6.4.6.
+- 9.S65: Matches 9.10.22.
+- 9.S66: matches 9.10.5 and 9.10.10
+- 9.S67: matches 9.2.19
+- 10.2.1: Restates your 14 Oct ruling.
+- 10.2.2: matches 5.6.9; from the spec on, your ruling 12.15.4
+- 10.2.3: Restates your 14 Oct ruling.
+- 10.2.4: R23 and R13, as the record puts it.
+- 10.2.5: R11 and R23, as the record puts it.
+- 10.2.6: R23: an affected topic waits on you.
+- 10.2.7: Follows R12: a decided topic reopens through its mailbox.
+- 10.3.2: R13, as the record puts it.
+- 10.3.3: R13, as the record puts it.
+- 10.3.4: a rename to Leeway's names, by your ruling of 26 Oct
+- screen 1 after 10.3.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 10.4.1: R13, as the record puts it.
+- 10.4.2: Screen: wording you can change any time.
+- screen 1 after 10.4.2: Screen drawn by Claude: wording you can change any time.
+- 10.4.3: R13: today's behaviour kept.
+- 10.4.4: R11: a message can open a question.
+- 10.5.1: R13: rejected in the record, with its reason.
+- 10.5.2: R13: rejected in the record.
+- 10.5.3: R13: held as a later fallback (plan 12.4).
+- 10.S1: a rename to Leeway's names, by your ruling of 26 Oct
+- 10.S2: a rename to Leeway's names, by your ruling of 26 Oct
+- 10.S3: Matches 10.4.1 and 10.4.2.
+- 10.S4: Matches 10.1.5.
+- 10.S5: Matches 10.1.7 and 10.4.3.
+- 10.S6: Matches 10.1.1, 10.2.1 and 10.2.2.
+- 10.S7: Matches 10.2.3.
+- 10.S8: Matches 10.2.4.
+- 10.S9: Matches 10.2.6.
+- 10.S10: Matches 10.2.7.
+- 10.S11: Matches 10.1.6.
+- 10.S12: Matches 10.5.1 and 10.5.2.
+- 10.S13: Matches 10.1.8.
+- 11.1.1: Restates your 14 Oct ruling (R14).
+- 11.1.2: Restates your 14 Oct ruling.
+- 11.1.3: Restates your 14 Oct ruling.
+- 11.1.5: Restates your 19 Oct agreement (R46).
+- 11.1.6: Restates your 16 Oct ruling (R20, R21).
+- 11.2.1: a feature's decided and ready to build are one screen; 24.1.2 moves it
+- 11.2.2: R10 and R23, as the record puts it.
+- 11.3.2: Restates your 14 Oct ruling.
+- 11.3.3: Restates your 15 Oct ruling.
+- 11.3.4: Restates your 14 Oct ruling.
+- 11.3.5: Restates your 13 Oct ruling.
+- 11.3.6: Restates your 14 Oct ruling.
+- 11.3.7: Builder's call: where planning's context text lands.
+- 11.3.8: Builder's call: the spec agent picks the areas.
+- 11.4.1: Restates your 13 Oct ruling.
+- 11.4.2: Restates your 13 Oct ruling.
+- 11.4.3: R14's own wording; see the doubt at 11.4.4.
+- 11.4.4: builder's call: the marking cites what 11.4.3 makes the builder's
+- 11.5.2: R14 and R15, as the record puts it.
+- 11.5.3: R33: every acceptance criterion has a test.
+- 11.5.4: Restates your 15 Oct ruling.
+- 11.5.5: Your 15 and 16 Oct rulings; tasks enter the tracker once written (7.4.1).
+- 11.5.6: Restates your 14 Oct ruling.
+- 11.5.7: Restates your 12 Oct ruling.
+- 11.5.9: Restates your 22 Oct ruling.
+- 11.5.10: Restates your 22 Oct ruling.
+- 11.6.1: R34, as the record puts it.
+- 11.6.2: Follows from R34's 'where one can'; plan 6.4's checklist.
+- 11.6.3: R14 and R12, as the record puts it.
+- 11.7.1: Restates your 13 Oct ruling.
+- 11.7.2: Restates your 13 Oct ruling.
+- 11.7.3: Restates your 13 Oct ruling.
+- 11.7.4: Restates your 13 Oct ruling.
+- 11.7.5: R14 and R36, as the record puts it.
+- 11.7.6: Restates your 13 Oct ruling.
+- 11.7.7: R14: today's whole-spec re-review goes.
+- 11.7.8: Follows from R46 and your brief-control ruling.
+- 11.7.9: Today's behaviour kept: claims checked against the code.
+- 11.8.1: Restates your 13 Oct ruling (R40).
+- 11.8.2: Screen: rows and words you can change any time.
+- screen 1 after 11.8.2: Screen drawn by Claude: wording you can change any time.
+- 11.8.3: R15, as the record puts it.
+- 11.8.4: R14: today's spec gates go.
+- 11.8.5: follows 11.2.1; see the doubt there
+- 11.8.6: Restates your 15 Oct ruling.
+- 11.8.7: Plan 6.4 and 9.2; environment setup asked once, ruled 20 Oct.
+- 11.9.1: Restates your 14 Oct ruling.
+- 11.9.2: R14: corrigenda and the spec's re-index go.
+- 11.10.1: Your 14 Oct ruling; Claude raising the split is its derivation.
+- 11.10.2: Restates your 14 Oct ruling.
+- 11.10.3: your 14 Oct ruling; the split lands before ready to build (18.4.19)
+- 11.10.4: Restates your 14 Oct ruling.
+- 11.11.1: Restates your 22 Oct ruling.
+- 11.11.2: Restates your 22 Oct ruling.
+- 11.11.3: my derivation: screens take marks, as on this page
+- 11.11.8: Follows from turns alternating: an unanswered comment is Claude's turn.
+- 11.11.10: Restates your 22 Oct ruling.
+- 11.11.11: Follows: with no page, nothing to offer.
+- 11.11.12: Builder's call: starts from this page's own scripts.
+- 11.11.13: Restates your 22 Oct ruling.
+- 11.11.14: Restates your 22 Oct ruling.
+- 11.11.16: you agreed it on 25 Oct
+- 11.11.17: you agreed the change log on 23 Oct
+- 11.11.18: your ruling of 26 Oct
+- 11.S1: Matches 11.2.1.
+- 11.S2: Matches 11.1.4, 11.1.5, 11.3.1, 11.3.2 and 11.3.4.
+- 11.S3: Matches 11.4.1 and 11.4.3.
+- 11.S4: Matches 11.4.2.
+- 11.S5: Matches 11.1.4, 11.3.3 and 11.5.1 to 11.5.8.
+- 11.S6: Matches 11.5.3.
+- 11.S7: Matches 11.5.6.
+- 11.S8: Matches 11.6.1 and 11.6.2.
+- 11.S9: Matches 11.6.3.
+- 11.S10: Matches 11.7.1 to 11.7.4.
+- 11.S11: Matches 11.7.6 to 11.7.8.
+- 11.S12: Matches 11.8.1, 11.8.2, 11.8.4 and 11.8.6.
+- 11.S13: Matches 11.8.1 and 11.8.3.
+- 11.S14: Matches 11.8.5; see the doubt there.
+- 11.S15: Matches 11.9.1, 11.9.2 and 11.1.3.
+- 11.S16: Matches 11.1.2.
+- 11.S17: Matches 11.3.6 and 11.10.1.
+- 11.S18: matches 11.10.1 to 11.10.3
+- 11.S19: Matches 11.1.6, with 11.1.4.
+- 11.S20: Matches 11.3.5 and 11.7.2.
+- 11.S21: Matches 11.7.9.
+- 11.S22: Matches 11.11.1 and 11.11.9.
+- 11.S23: matches 11.11.2 and 11.11.3
+- 11.S24: matches 11.11.6
+- 11.S25: Matches 11.11.8.
+- 11.S26: matches 11.11.9
+- 11.S27: Matches 11.11.11.
+- 11.S28: matches 11.11.6
+- 11.S29: matches 11.11.5
+- 11.S30: Matches 11.11.14.
+- 11.S31: Matches 11.5.8 to 11.5.10.
+- 11.S32: matches 11.11.4, 11.11.15 and 11.11.16
+- 11.S33: matches 11.11.6 and 11.11.17
+- 11.S34: matches 11.11.18 and 11.11.19
+- 11.S35: matches 11.11.7 and 11.11.9
+- 12.1.3: restates your agreement of 19 Oct (R46)
+- 12.1.4: R15, as the record puts it
+- 12.1.5: restates your ruling of 12 Oct
+- 12.1.6: R15 and R35, as the record puts them
+- 12.1.7: R15, as the record puts it
+- 12.2.1: restates your ruling of 12 Oct
+- 12.2.2: restates your ruling of 12 Oct
+- 12.2.3: the build log's place, from the layout you ruled 17 Oct
+- 12.3.1: restates your ruling of 12 Oct
+- 12.3.2: principle 1, word for word as you ruled it 12 Oct
+- 12.3.3: principle 2, word for word as you ruled it 12 Oct
+- 12.3.4: principle 3, word for word as you ruled it 12 Oct
+- 12.3.5: principle 4, word for word as you ruled it 12 Oct
+- 12.3.6: principle 5, with the size guide you agreed 15 Oct
+- 12.3.7: principle 6, word for word as you ruled it 12 Oct
+- 12.3.8: R15's 'left unsaid' list, as the record puts it
+- 12.4.1: R15's task template, unchanged
+- 12.4.2: R15, as the record puts it
+- 12.4.3: verify runs only the cut's scenarios; fix tasks carry their finding's
+- 12.5.1: R15, as the record puts it
+- 12.5.2: R15 and R35, as the record puts them
+- 12.5.3: restates your agreement of 19 Oct
+- 12.5.4: restates your agreement of 19 Oct
+- 12.5.5: restates your agreement of 19 Oct
+- 12.5.6: your 19 Oct agreement; reading on at a seam is my addition
+- 12.5.7: restates your ruling of 19 Oct
+- 12.5.8: restates your agreement of 19 Oct
+- 12.5.9: restates your agreement of 19 Oct
+- 12.5.10: R15 and R36, as the record puts them
+- 12.5.11: R15, as the record puts it
+- 12.6.1: restates your ruling of 16 Oct
+- 12.6.2: restates your ruling of 16 Oct
+- 12.6.3: restates your ruling of 16 Oct
+- 12.6.4: restates your ruling of 16 Oct
+- 12.6.5: restates your ruling of 16 Oct
+- 12.6.6: restates your ruling of 16 Oct
+- 12.6.7: restates your ruling of 16 Oct
+- 12.6.8: builder's call: nothing you'd see
+- 12.7.1: R15 and plan 3.6, unchanged
+- 12.7.2: R15, as the record puts it
+- 12.7.3: restates your ruling of 14 Oct
+- 12.7.4: R15, as the record puts it
+- 12.7.5: follows 12.6.3; my reading that the review overlap isn't a floor
+- 12.7.6: restates your ruling of 18 Oct
+- 12.7.7: restates your ruling of 14 Oct
+- 12.7.8: a rename to Leeway's names, by your ruling of 26 Oct
+- 12.7.9: restates your ruling of 22 Oct
+- 12.7.10: restates your ruling of 22 Oct
+- 12.8.1: R15 and R33, as the record puts them
+- 12.8.2: R15 and R34, as the record puts them
+- 12.8.3: R15, as the record puts it
+- 12.8.4: R15, as the record puts it
+- 12.9.1: restates your ruling of 16 Oct
+- 12.9.2: your rulings of 16 and 21 Oct; 'another unit's topic' follows 12.15.4
+- 12.9.3: R15 and R14, as the record puts them
+- 12.9.4: R15 and plan 3.6, unchanged
+- 12.9.5: R15 and plan 3.6, unchanged
+- 12.9.6: R15 and plan 3.6, unchanged
+- 12.9.7: R15, as the record puts it
+- 12.9.8: R15 and R35, as the record puts them
+- 12.9.9: R21; matches 19.5.4
+- 12.9.10: builder's call: nothing you'd see
+- 12.10.1: restates your ruling of 15 Oct
+- 12.10.2: the notes file's place, from the layout you ruled 17 Oct
+- 12.10.3: restates your ruling of 15 Oct
+- 12.10.4: restates your ruling of 15 Oct
+- 12.11.1: restates your ruling of 16 Oct
+- 12.11.2: restates your ruling of 16 Oct
+- 12.11.3: restates your ruling of 16 Oct
+- 12.11.4: a pointer to §13
+- 12.12.1: restates your agreement of 12 Oct
+- 12.12.2: restates your agreement of 12 Oct
+- 12.12.3: restates your ruling of 16 Oct
+- 12.12.4: screen: the headline as you ruled it 16 Oct
+- 12.12.5: every waiting question gets a line, your words; proven per task by 12.4.3
+- screen 1 after 12.12.5: screen: wording you can change any time
+- 12.12.6: restates your ruling of 16 Oct
+- 12.12.7: follows R15 and R40: a gate per task in step, none in auto
+- 12.12.8: R15 and R40, as the record puts them
+- 12.12.9: screen: the stop report as you ruled it 20 Oct
+- 12.12.10: restates your rulings of 19 and 20 Oct
+- 12.12.11: follows R6: the board's build view, printable on request
+- 12.13.1: restates your ruling of 19 Oct (plan 2.2)
+- 12.13.2: restates your ruling of 20 Oct
+- 12.13.3: restates your ruling of 20 Oct
+- 12.13.4: restates your ruling of 20 Oct
+- 12.13.5: your 20 Oct agreement; plan 6.1's raise verb records the answer
+- 12.13.6: restates your agreement of 20 Oct
+- 12.13.7: restates your agreement of 20 Oct
+- 12.13.8: restates your call of 20 Oct: not built
+- 12.13.9: restates your ruling of 20 Oct
+- 12.13.10: restates your ruling of 20 Oct
+- 12.13.11: restates your ruling of 21 Oct
+- 12.13.12: restates your ruling of 21 Oct
+- 12.13.13: restates your ruling of 21 Oct
+- 12.13.14: R15, in your own words
+- 12.13.15: restates your ruling of 21 Oct
+- 12.13.16: screen: the receipt as you ruled it 21 Oct
+- 12.13.17: your 21 Oct ruling, as the locked board draws it
+- 12.13.18: restates your agreement of 20 Oct
+- 12.13.19: restates your agreement of 20 Oct
+- 12.13.20: R15, as the record puts it
+- 12.13.21: R15, as the record puts it
+- 12.13.22: R15 and plan 3.6, unchanged
+- 12.13.23: restates your ruling of 19 Oct
+- 12.14.1: your rulings of 15–20 Oct; 'from the mod menu' became 'ask in words'
+- 12.14.2: screen: the account as you asked for it 15 and 20 Oct
+- 12.14.3: today's task gate in step, drawn for your tick
+- screen 1 after 12.14.3: screen: the build's step stop (3.3.6), not planning's approval
+- 12.14.4: restates your agreement of 21 Oct, in the layout you ruled 17 Oct
+- 12.14.5: restates your agreement of 21 Oct
+- 12.14.6: restates your call of 19 Oct
+- 12.14.8: builder's call: nothing you'd see
+- 12.14.9: builder's call: nothing you'd see
+- 12.15.1: the record's one build per epic; 'implement' read as the ready-to-build yes
+- 12.15.2: the record's one-build idea, as it puts it
+- 12.15.3: restates your call of 14 Oct
+- 12.15.4: restates your rulings of 14, 21 and 25 Oct
+- 12.S1: matches 12.1.1, 12.1.2, 12.1.3 and 12.1.5
+- 12.S2: matches 12.1.4
+- 12.S3: matches 12.2.1 and 12.2.3
+- 12.S4: matches 12.1.6 and 12.2.2
+- 12.S5: matches 12.3.3
+- 12.S6: matches 12.3.2
+- 12.S7: matches 12.3.7, 12.4 and 12.5.1–12.5.4
+- 12.S8: matches 12.5.5
+- 12.S9: matches 12.5.6 and 12.5.7
+- 12.S10: matches 12.5.8
+- 12.S11: matches 12.5.9, 12.8.3 and 12.8.4
+- 12.S12: matches 12.6.1 and 12.6.5
+- 12.S13: matches 12.6.2 and 12.6.3
+- 12.S14: matches 12.6.4
+- 12.S15: matches 12.3.4, 12.6.6, 12.7.1 and 12.7.3
+- 12.S16: matches 12.6.7
+- 12.S17: matches 12.6.3, 12.7.5 and 12.7.6
+- 12.S18: matches 12.7.4
+- 12.S19: matches 12.9.1–12.9.4
+- 12.S20: matches 12.9.5
+- 12.S21: matches 12.9.6 and 12.9.8
+- 12.S22: matches 12.9.7
+- 12.S23: matches 12.10.1–12.10.4
+- 12.S24: matches 12.11.1–12.11.3
+- 12.S25: matches 12.12.3 and 12.12.4
+- 12.S26: matches 12.12.5 and 12.12.6; changes with the doubt on 12.12.5
+- 12.S27: matches 12.12.7 and 12.13.2
+- 12.S28: matches 12.12.8
+- 12.S29: matches 12.12.10
+- 12.S30: matches 12.13.2–12.13.4 and 12.13.9
+- 12.S31: matches 12.13.6 and 12.13.7
+- 12.S32: matches 12.13.11–12.13.14
+- 12.S33: matches 12.13.10
+- 12.S34: matches 12.13.18–12.13.20
+- 12.S35: matches 12.13.5, 12.13.15 and 12.13.16
+- 12.S36: matches 12.13.17
+- 12.S37: matches 12.13.21
+- 12.S38: matches 12.12.9 and 12.13.22
+- 12.S39: matches 12.13.23
+- 12.S40: matches 12.14.1, 12.14.2, 12.14.4 and 12.14.5
+- 12.S41: matches 12.14.3
+- 12.S42: matches 12.14.4 and 12.14.6
+- 12.S43: matches 12.15.1 and 12.15.2
+- 12.S44: matches 12.9.2 and 12.15.4
+- 12.S45: matches 12.5.11
+- 12.S46: matches 12.1.7, 12.3.8 and 12.8.1
+- 12.S47: matches 12.13.1
+- 12.S48: matches 12.15.3
+- 12.S49: matches 12.14.7; goes with your call there
+- 12.S50: matches 12.7.8, 14.1.5 and 19.5.18
+- 12.S51: matches 12.12.11
+- 12.S52: matches 12.7.3 and 12.7.9
+- 12.S53: matches 7.2.17, 12.7.3 and 12.7.10
+- 12.S54: matches 12.4.3 and 12.12.5
+- 13.1.1: restates the shape you agreed 15 Oct
+- 13.1.2: R16, as the record puts it
+- 13.1.3: R16, as the record puts it
+- 13.1.4: the record's Reviews in the build, as it puts it
+- 13.1.5: a pointer to §12
+- 13.1.6: builder's call: nothing you'd see
+- 13.2.1: restates your ruling of 15 Oct
+- 13.2.2: restates your ruling of 15 Oct
+- 13.2.3: Reviews in the build, as the record puts it
+- 13.3.1: restates your ruling of 15 Oct
+- 13.3.2: restates your ruling of 15 Oct
+- 13.3.3: builder's call: nothing you'd see
+- 13.4.1: restates your ruling of 15 Oct
+- 13.4.2: restates your ruling of 15 Oct
+- 13.4.3: restates your ruling of 15 Oct
+- 13.4.4: restates your ruling of 15 Oct
+- 13.4.5: restates your call of 15 Oct
+- 13.4.6: restates your ruling of 25 Oct
+- 13.4.7: R40 and R15: the step gate stays, planning's approval goes
+- 13.5.1: restates your ruling of 15 Oct
+- 13.5.2: restates your ruling of 15 Oct
+- 13.5.3: restates your ruling of 15 Oct
+- 13.5.4: restates your ruling of 15 Oct
+- 13.5.5: Reviews in the build, as the record puts it
+- 13.5.6: restates your ruling of 15 Oct
+- 13.5.7: restates your ruling of 15 Oct
+- 13.5.8: restates your ruling of 15 Oct
+- 13.5.9: restates your ruling of 15 Oct
+- 13.5.10: Reviews in the build, as the record puts it
+- 13.5.11: builder's call: nothing you'd see
+- 13.6.1: restates your ruling of 15 Oct
+- 13.6.2: restates your ruling of 15 Oct
+- 13.6.3: builder's call, taken from the replay's own labelling rubric
+- 13.7.1: restates your call of 15 Oct
+- 13.7.2: restates your call of 15 Oct
+- 13.7.3: restates your call of 15 Oct
+- 13.7.4: restates your call of 15 Oct
+- 13.8.1: restates your ruling of 15 Oct
+- 13.8.2: restates your ruling of 15 Oct
+- 13.8.3: the record's banking, kept as it works today
+- 13.8.4: the record's banking, kept as it works today
+- 13.9.1: restates your ruling of 15 Oct
+- 13.9.2: restates your ruling of 15 Oct
+- 13.9.3: restates your ruling of 15 Oct
+- 13.10.1: your rulings of 15 and 16 Oct: fix tasks get their pair
+- 13.11.1: restates your brief-control ruling of 18 Oct
+- 13.11.2: your 18 Oct ruling; the linters added from plan 6.5
+- 13.11.3: restates your brief-control ruling of 18 Oct
+- 13.11.4: restates your brief-control ruling of 18 Oct
+- 13.11.5: restates your brief-control ruling of 18 Oct
+- 13.11.6: restates your brief-control ruling of 18 Oct
+- 13.11.7: restates your ruling of 19 Oct
+- 13.11.8: restates your ruling of 19 Oct
+- 13.11.9: restates your ruling of 19 Oct
+- 13.11.10: restates your ruling of 19 Oct
+- 13.11.11: restates your brief-control ruling of 18 Oct
+- 13.11.12: restates your brief-control ruling of 18 Oct
+- 13.11.13: restates your brief-control ruling of 18 Oct
+- 13.11.14: my derivation: no task ids in product code; template wording
+- 13.11.15: builder's call: template wording the measurement tunes
+- 13.12.2: plan 8.4, agreed with no comment
+- 13.12.3: plan 8.4, agreed with no comment
+- 13.12.5: builder's call: nothing you'd see
+- 13.S1: matches 13.1.1, 13.2.1, 13.2.2 and 13.3.1
+- 13.S2: matches 13.3.2, 13.4.2, 13.4.3 and 13.11.6
+- 13.S3: matches 13.4.2, 13.4.3, 13.7.2 and 13.7.3
+- 13.S4: matches 13.4.4, 13.4.5 and 13.7.4
+- 13.S5: matches 13.4.3 and 13.4.6
+- 13.S6: matches 13.6.1 and 13.6.2
+- 13.S7: matches 13.5.8
+- 13.S8: matches 13.5.5
+- 13.S9: matches 13.5.7 and 13.5.10
+- 13.S10: matches 13.9.1–13.9.3
+- 13.S11: matches 13.8.2 and 13.7.3
+- 13.S12: matches 13.8.1, 13.8.3 and 13.8.4
+- 13.S13: matches 13.10.1
+- 13.S14: matches 13.11.3 and 13.11.5
+- 13.S15: matches 13.11.1, 13.11.2, 13.11.11 and 13.11.12
+- 13.S16: matches 13.11.7–13.11.9
+- 13.S17: matches 13.11.10 and 13.2.2
+- 13.S18: matches 13.12.1, 13.12.2 and 13.12.4
+- 13.S19: matches 13.4.7; changes with the doubt there
+- 13.S20: matches 13.11.14 and 13.9.3
+- 14.2.4: restates your call of 19 Oct
+- 14.2.5: restates your ruling of 16 Oct
+- 14.2.6: R16 and R14, as the record puts them
+- 14.3.1: R16; 'the floor' read as today's consequence floor
+- 14.3.2: a fix phase is a build phase and closes like one (6.4.9)
+- 14.3.3: restates your ruling of 16 Oct, on the task loop's terms
+- 14.3.4: restates your ruling of 14 Oct
+- 14.3.5: restates your ruling of 14 Oct
+- 14.3.6: restates your call of 14 Oct
+- 14.3.7: restates your ruling of 14 Oct
+- 14.3.8: my reading: your no-flood condition held by dropping and grouping, no cap
+- 14.4.1: screen: the report as you ruled it 14 Oct
+- 14.4.2: R16, as the record puts it
+- 14.4.3: screen: R16's certificate, 'the topic' read as the whole unit
+- 14.4.4: screen: R16's grouping of the calls
+- 14.5.1: screen: R16's finish gate, as the record puts it
+- 14.6.1: restates your ruling of 14 Oct
+- 14.6.2: restates your rulings of 14 and 25 Oct
+- 14.6.3: restates your 25 Oct ruling, settled as a stuck task is
+- 14.S1: matches 14.6.1
+- 14.S2: matches 14.1.1 and 14.2.1–14.2.4
+- 14.S3: matches 14.3.2, 14.3.3, 14.6.2 and 13.10.1
+- 14.S4: matches 14.3.4
+- 14.S5: matches 14.3.5–14.3.7
+- 14.S6: matches 14.4.1 and 14.4.2
+- 14.S7: matches 14.4.3
+- 14.S8: matches 14.4.4
+- 14.S9: matches 14.5.1
+- 14.S10: matches 14.1.3 and 15.3.3
+- 14.S11: matches 14.6.2
+- 14.S12: matches 14.3.2
+- 14.S13: a rename to Leeway's names, by your ruling of 26 Oct
+- 14.S14: matches 14.6.2, 3.3.8 and 7.2.4
+- 14.S15: matches 14.6.3
+- 15.1.1: R31, as the record puts it
+- 15.1.2: R31 and R32, as the record puts them
+- 15.2.1: R32, as the record puts it
+- 15.2.2: R32, as the record puts it
+- 15.2.3: R32, as the record puts it
+- 15.2.4: R32's examples, as the record gives them
+- 15.2.5: R32 and plan 7.1, unchanged
+- 15.2.6: R32, as the record puts it
+- 15.2.7: R32, as the record puts it
+- 15.2.8: R32 and plan 7.1, unchanged
+- 15.2.9: plan 7.1 and principle 2, agreed with no comment
+- 15.2.13: R20, as the record puts it
+- 15.2.14: R32 and your ruling of 20 Oct; the board's look drawn for your tick
+- screen 1 after 15.2.14: screen: wording you can change any time
+- screen 2 after 15.2.14: screen: wording you can change any time
+- 15.2.15: builder's call: nothing you'd see
+- 15.2.16: builder's call: nothing you'd see
+- 15.3.1: restates the definition you agreed 12 Oct
+- 15.3.2: R32, as the record puts it
+- 15.3.3: R32, as the record puts it
+- 15.3.4: R32, as the record puts it
+- 15.3.5: R32, as the record puts it
+- 15.4.1: plan 7.2; matches your 22 Oct ruling that verify reads the cut
+- 15.4.2: plan 7.2, agreed with no comment
+- 15.4.3: plan 7.2, agreed with no comment
+- 15.5.1: restates your ruling of 16 Oct
+- 15.5.2: plan 7.3, agreed with no comment
+- 15.5.3: your 16 Oct ruling: failing every time, so one pass refuses
+- 15.5.4: plan 7.3 and R20, unchanged
+- 15.5.5: R20, as the record puts it
+- 15.5.6: R20 and R16: the review phase reruns the test on unfixed code
+- 15.5.7: builder's call: nothing you'd see
+- 15.6.1: R33, as the record puts it
+- 15.6.2: R33, as the record puts it
+- 15.6.3: plan 7.4, agreed with no comment
+- 15.6.4: plan 7.4, agreed with no comment
+- 15.6.5: plan 7.4, agreed with no comment
+- 15.6.6: plan 7.4, agreed with no comment
+- 15.6.7: builder's call: nothing you'd see
+- 15.7.1: R33, as the record puts it
+- 15.7.2: R33, with your condition of 7 Oct quoted
+- 15.7.3: R33 and plan 7.5, ruled 19 Oct
+- 15.7.4: plan 7.5; the CLAUDE.md part follows 8.9.5
+- 15.7.5: builder's call: nothing you'd see
+- 15.8.1: R34, as the record puts it
+- 15.8.2: plan 7.6, agreed with no comment
+- 15.8.3: plan 7.6, agreed with no comment
+- 15.8.4: R34; the CLAUDE.md part follows 8.9.5
+- 15.8.5: plan 7.6, agreed with no comment
+- 15.8.6: R34, as the record puts it
+- 15.8.7: R34, as the record puts it
+- 15.8.8: builder's call: nothing you'd see
+- 15.9.1: restates your ruling of 20 Oct
+- 15.9.2: restates your ruling of 20 Oct
+- 15.9.3: restates your ruling of 20 Oct
+- 15.10.1: restates your ruling of 20 Oct
+- 15.10.2: restates your ruling of 20 Oct
+- 15.10.3: restates your ruling of 20 Oct
+- 15.10.4: plan 7.7, ruled 20 Oct
+- 15.10.5: restates your ruling of 20 Oct
+- 15.10.6: follows 15.10.3: the agents need the Skill tool
+- 15.11.1: R32, as the record puts it
+- 15.11.2: R32 and R20, as the record puts them
+- 15.11.3: R32 and plan 8.1, ruled 19 Oct
+- 15.12.1: R32 and plan 7.8, ruled 19 Oct
+- 15.12.2: plan 7.8, ruled 19 Oct
+- 15.S1: matches 15.2.1, 15.2.2 and 15.2.5–15.2.9
+- 15.S2: matches 15.2.8–15.2.12; goes with your call on 15.2.10 and 15.2.12
+- 15.S3: matches 15.2.11; goes with your call there
+- 15.S4: matches 15.4.1, 15.4.2 and 15.3.4
+- 15.S5: matches 15.4.3 and 15.3.3
+- 15.S6: matches 15.3.5
+- 15.S7: matches 15.4.4
+- 15.S8: matches 15.5.1–15.5.4
+- 15.S9: matches 15.6.3, 15.6.4 and 15.6.6
+- 15.S10: matches 15.6.5
+- 15.S11: matches 15.8.3
+- 15.S12: matches 15.8.1 and 15.8.2
+- 15.S13: matches 15.8.4 and 15.8.5
+- 15.S14: matches 15.9.1–15.9.3
+- 15.S15: matches 15.10.1–15.10.3
+- 15.S16: matches 15.7.2 and 15.7.3
+- 15.S17: matches 15.11.1–15.11.3
+- 15.S18: matches 15.2.14 and 15.4.3
+- 15.S19: matches 15.12.1 and 15.12.2
+- 15.S20: matches 15.5.3 and 15.5.6
+- 15.S21: matches 15.7.4 and 15.8.4
+- 15.S22: matches 15.10.6 and 15.10.3
+- 16.1.1: Your ruling of 12 Oct, in your words.
+- 16.1.2: R24 and R26; sealing before your answer is my derivation, as the record implies.
+- 16.1.3: R24, restating your ruling of 19 Oct.
+- 16.1.4: R25, as the record puts it.
+- 16.1.5: R24's closing paragraph, unchanged.
+- 16.1.6: R24, as the record puts it.
+- 16.2.1: Restates your ruling of 13 Oct.
+- 16.2.2: R24: the review lanes as the matrix's output.
+- 16.2.3: Restates your ruling of 14 Oct.
+- 16.2.4: Restates your ruling of 14 Oct.
+- 16.2.5: Your ruling of 14 Oct; the check against the record is my addition, recorded there.
+- 16.2.6: Restates your ruling of 14 Oct.
+- 16.2.7: Restates your ruling of 14 Oct: no cap on findings.
+- 16.3.1: R24 and plan 4.4, unchanged.
+- 16.3.2: R24, as the record puts it.
+- 16.3.3: Your rule of 12 Oct, as R24 records it.
+- 16.3.4: R24, as the record puts it.
+- 16.3.5: R24, as the record puts it.
+- 16.3.6: R24, as the record puts it.
+- 16.3.7: your rulings of 13 and 21 Oct; the always-ask rules now outrank
+- 16.4.1: R24 and plan 4.4, unchanged.
+- 16.4.2: R24, as the record puts it.
+- 16.4.3: R24 and plan 4.3, unchanged.
+- 16.4.4: My derivation of R24's bound; every worked number in the record matches it.
+- 16.4.5: R24's worked numbers; I checked each against the formula.
+- 16.4.6: R24: your 20% pick from the replay.
+- 16.4.7: R24's 'until then the same'; raising it as your replay pick is my reading.
+- 16.4.8: R24 and plan 4.4: hard to undo halves the threshold.
+- 16.4.9: R24, as the record puts it; the 28 checks out.
+- 16.4.10: your 21 Oct ruling; asking waits on an overrule, so newcomers aren't asked
+- 16.5.1: R24; reading danger straight off question 9 is my derivation, and only asks more.
+- 16.5.2: Restates your ruling of 19 Oct on care entries.
+- 16.5.3: Restates your ruling of 19 Oct.
+- 16.5.4: Restates your ruling of 19 Oct.
+- 16.5.5: Restates your ruling of 19 Oct.
+- 16.5.6: Builder's call: how many 'don't care' answers before a drop is proposed.
+- screen 1 after 16.5.6: Screen drawn by me: wording you can change any time.
+- screen 2 after 16.5.6: Screen drawn by me: wording you can change any time.
+- screen 3 after 16.5.6: Screen drawn by me; the 39% checks out against the matrix's look row.
+- screen 4 after 16.5.6: Screen drawn by me: wording you can change any time.
+- 16.5.7: Restates your ruling of 21 Oct on replacing your own decisions.
+- 16.6.1: Restates your ruling of 18 Oct; the numbers check out.
+- 16.6.2: Restates your ruling of 18 Oct; the 16 and 35 lines check out.
+- 16.6.3: R24's worked example; I checked the numbers.
+- 16.6.4: R24, as the record puts it.
+- 16.7.1: Your framing of 13 Oct, as R24 records it.
+- 16.7.2: R24, as the record puts it.
+- 16.7.3: R24's list, with your ruling of 21 Oct.
+- 16.8.1: R24 and plan 4.4: 8 in a row, or your word.
+- 16.8.2: Screen: engine-drawn per R24 and R35; its rows are mine to change.
+- screen 1 after 16.8.2: Screen drawn by me: wording you can change any time.
+- 16.8.3: R24, as the record puts it.
+- 16.8.4: R24, as the record puts it.
+- 16.8.5: R24, as the record puts it.
+- 16.8.6: R24 and R25: a yes is stated intent.
+- 16.8.7: Builder's call: counting the run; only the offer's timing shows.
+- 16.9.1: R24, as the record puts it.
+- 16.9.2: Screen: R24's raise shape; the rows and toggle are mine to change.
+- screen 1 after 16.9.2: Screen drawn by me; the 21% checks out.
+- 16.9.3: R24 and R25: 'I don't follow' counts as no answer.
+- 16.9.4: Restates your rulings of 14 and 18 Oct.
+- 16.10.1: R23 and plan 4.3; 'can't call' as a skip is my reading of the four answers.
+- 16.10.2: Restates your ruling of 18 Oct; what each row shows is mine to change.
+- screen 1 after 16.10.2: Screen drawn by me: wording you can change any time.
+- 16.10.3: the other verdict points are in 16.10.10 and 16.10.11
+- 16.10.4: Restates your ruling of 18 Oct.
+- 16.10.5: your 18 Oct ruling, carried to the two new verdict points
+- 16.10.6: R23 and plan 4.3, unchanged.
+- 16.10.7: Screen: start-menu row and R29 page shape, my derivation; easy to change.
+- screen 1 after 16.10.7: Screen drawn by me: wording you can change any time.
+- 16.10.8: R23 and plan 4.3: an unjudged departure counts as a loss.
+- 16.10.9: R25: each verdict is a trust log event.
+- 16.10.10: follows from what a departure is; lists 16.10.11's points too
+- 16.10.11: my derivation: every departure gets a verdict (16.10.1)
+- 16.11.1: R25, as the record puts it.
+- 16.11.2: R25 and R29: the twelve questions word for word.
+- 16.11.3: R25's order; it can be recomposed later from the stored twelve answers.
+- 16.11.4: R25, as the record puts it.
+- 16.11.5: Your ruling of 19 Oct: store all twelve answers.
+- 16.11.6: Your parking of 19 Oct; matches 27.2.2.
+- 16.11.7: R25, as the record puts it.
+- 16.11.8: R25 and R28: never the Claude that wants to proceed.
+- 16.11.9: R25, as the record puts it.
+- 16.12.1: R25, with your ruling of 18 Oct on shown answers.
+- 16.12.2: R25, as the record puts it.
+- 16.12.3: R25, as the record puts it.
+- 16.12.4: Your starting values of 18 Oct, retunable by replay.
+- 16.12.5: Restates your ruling of 18 Oct.
+- 16.12.6: Builder's call: a step at six months, as worded.
+- 16.13.1: R25 as you approved it; the actual file is open at 16.13.7.
+- 16.13.2: R25, as the record puts it
+- 16.13.3: R25: ledger entry and trust event written in one command.
+- 16.13.5: R25; part of the event shape opened at 16.13.4.
+- 16.13.6: R25: counts derived, never stored.
+- 16.14.1: Restates your ruling of 14 Oct.
+- 16.14.2: R25, as the record puts it.
+- 16.14.3: R25, with your cap of 10 ruled 18 Oct.
+- 16.14.4: Your ruling of 18 Oct; the 24% and three asks check out.
+- 16.14.5: R25 and R29, as the record puts it.
+- 16.14.6: Builder's call: how the cap scales, as the replay script did it.
+- 16.14.7: Builder's call: which process gates pool their evidence.
+- 16.15.1: screen: R25's matrix; both rates per your 25 Oct ruling
+- screen 1 after 16.15.1: screen drawn by me; every rate on it checks out
+- 16.15.2: R25 and plan 4.5: tuning by replay.
+- 16.15.3: R25's replay line, in the record's own example form.
+- screen 1 after 16.15.3: Screen drawn by me; the 12.5% and 31% check out.
+- 16.15.4: my derivation: a wrong kind or verdict now corrected in words
+- 16.16.1: R25 and plan 4.5: the procedure ships, never counts.
+- 16.16.2: R25, as the record puts it.
+- 16.16.3: R25, as the record puts it.
+- 16.16.4: R25; the 13 and 28 check out.
+- 16.16.5: R25; matches 27.2.1.
+- 16.16.6: Restates your ruling of 18 Oct to start clean.
+- 16.17.1: Your idea of 12 Oct, as R26 records it.
+- 16.17.2: R26, as the record puts it.
+- screen 1 after 16.17.2: Screen drawn by me: wording you can change any time.
+- 16.17.3: Restates your ruling of 18 Oct: one in ten to start.
+- 16.17.4: Restates your ruling of 18 Oct: drawn from the call's id.
+- 16.17.5: R26, as the record puts it.
+- 16.17.6: R26; 'cheap to undo' as question 10 answering no is my reading.
+- 16.17.7: R26, as the record puts it.
+- screen 1 after 16.17.7: Screen drawn by me: wording you can change any time.
+- 16.17.8: R26, as the record puts it.
+- 16.17.9: Builder's call: how much more often, and how 'wide' is measured.
+- 16.18.1: Restates your rulings of 6 and 19 Oct.
+- 16.18.2: R27 and plan 4.7, unchanged
+- 16.18.3: Screen: R27's proposal shape; its other rows are mine to change.
+- screen 1 after 16.18.3: Screen drawn by me: wording you can change any time.
+- 16.18.4: R27 and plan 4.7, unchanged.
+- 16.18.5: R27 and plan 4.7, unchanged.
+- 16.18.6: R27, as the record puts it.
+- 16.18.7: Restates your ruling of 19 Oct.
+- 16.19.1: Restates your ruling of 18 Oct.
+- 16.19.2: R28 and R24, as the record puts it.
+- 16.19.3: Restates your ruling of 19 Oct: as raw as possible.
+- 16.19.4: Restates your ruling of 19 Oct: the command as recorded.
+- 16.19.5: R28 and plan 4.8: --bare can't use your login.
+- 16.19.6: The record's split, though plan 4.8 reads all-Sonnet; a model flag, easy to change.
+- 16.19.7: R28, quoting you on 18 Oct; its pointer to §27 finds no entry.
+- 16.19.8: my derivation: a check that can't run never stops recording
+- 16.19.9: Builder's call: the labeller's effort, as measured.
+- 16.19.10: Builder's call: prompt and schema from the measured wording.
+- 16.19.11: Builder's call: each label names the labeller that wrote it.
+- 16.20.1: your defaults of 18 Oct; the gate's return follows 16.6.1
+- 16.20.2: a gate returns where a quiet kind does, your rule of 18 Oct (16.6.1)
+- 16.20.3: R29 and R25: no gate ships automatic.
+- 16.20.4: R29, as the record puts it
+- 16.21.1: R30 and plan 8, unchanged.
+- 16.21.2: Plan 8.3, unchanged.
+- 16.21.3: Plan 8.3 and R29, unchanged.
+- 16.S1: Matches 16.1.1 to 16.1.3, 16.4.1 and 16.6.1.
+- 16.S2: Matches 16.1.3.
+- 16.S3: Matches 16.1.4.
+- 16.S4: Matches 16.2.1 and 16.2.2.
+- 16.S5: Matches 16.2.3.
+- 16.S6: Matches 16.2.4.
+- 16.S7: Matches 16.2.6.
+- 16.S8: Matches 16.2.7.
+- 16.S9: Matches 16.3.1, 16.3.2 and 16.11.7.
+- 16.S10: Matches 16.3.3 to 16.3.5.
+- 16.S11: Matches 16.4.5; 12 asks and 13 doesn't, checked.
+- 16.S12: Matches 16.4.5; the 21% checked.
+- 16.S13: Matches 16.4.2, 16.4.3 and 16.10.8.
+- 16.S14: Matches 16.4.8; numbers checked.
+- 16.S15: Matches 16.4.9; 27 asks and 28 doesn't, checked.
+- 16.S16: Matches 16.4.7.
+- 16.S17: Matches 16.5.1.
+- 16.S18: Matches 16.5.2 and 16.5.3.
+- 16.S19: Matches 16.5.4 and 16.5.5.
+- 16.S20: Matches 16.6.1 to 16.6.3; numbers checked.
+- 16.S21: Matches 16.6.1 and 16.6.2; numbers checked.
+- 16.S22: Matches 16.6.1 and 16.6.2; the 34 and 35 checked.
+- 16.S23: Matches 16.6.4 and 16.17.3.
+- 16.S24: Matches 16.7.2, 16.7.3 and 16.13.5.
+- 16.S25: Matches 16.8.1 and 16.8.2.
+- 16.S26: Matches 16.8.3, 16.8.6 and 16.13.4.
+- 16.S27: Matches 16.8.4.
+- 16.S28: Matches 16.8.1: on your word.
+- 16.S29: Matches 16.8.5 and 16.5.1.
+- 16.S30: Matches 16.9.1 and 16.9.2.
+- 16.S31: Matches 16.9.3, 16.12.1 and 16.12.3.
+- 16.S32: Matches 16.9.4.
+- 16.S33: Matches 16.10.1 and 16.10.2.
+- 16.S34: Matches 16.10.5.
+- 16.S35: Matches 16.10.3; see the doubt there.
+- 16.S36: Matches 16.10.4.
+- 16.S37: Matches 16.10.6 to 16.10.9.
+- 16.S38: Matches 16.11.1, 16.11.2, 16.11.5, 16.11.8, 16.19.1 and 16.19.3.
+- 16.S39: Matches 16.11.3 and 16.11.4.
+- 16.S40: Matches 16.11.9, 16.13.4 and 16.19.1.
+- 16.S41: Matches 16.12.1 and 16.12.2.
+- 16.S42: Matches 16.12.4.
+- 16.S43: Matches 16.12.4 and 16.14.5.
+- 16.S44: Matches 16.13.1 to 16.13.3.
+- 16.S45: matches 16.13.4; only the build has a position, your ruling of 25 Oct
+- 16.S46: Matches 16.13.6.
+- 16.S47: Matches 16.14.2 to 16.14.4; the 24% and three asks checked.
+- 16.S48: Matches 16.14.1 to 16.14.3.
+- 16.S49: matches 16.15.1 to 16.15.3
+- 16.S50: Matches 16.16.3; see the doubt at 16.4.10.
+- 16.S51: Matches 16.16.1, 16.16.2, 16.16.5 and 16.16.6.
+- 16.S52: Matches 16.17.1 to 16.17.5.
+- 16.S53: Matches 16.17.6.
+- 16.S54: Matches 16.18.1 to 16.18.4.
+- 16.S55: Matches 16.18.5 and 16.18.6.
+- 16.S56: matches 16.18.7
+- 16.S57: Matches 16.19.3 to 16.19.6.
+- 16.S58: matches 16.20.3 and 16.20.4
+- 16.S60: Matches 16.20.1.
+- 16.S61: Matches 16.17.8.
+- 16.S59: Matches 16.20.2 and 16.21.3; see the doubt at 16.20.2.
+- 16.S62: Matches 16.5.1 and 16.11.3.
+- 16.S63: Matches 16.4.7.
+- 16.S64: Matches 16.10.1 and 16.4.3.
+- 16.S65: Matches 16.1.2.
+- 16.S66: Matches 16.10.10.
+- 16.S67: Matches 16.15.4; see the doubt there.
+- 16.S68: Matches 16.19.8; see the doubt there.
+- 16.S69: matches 16.3.7, 16.4.10 and the always-ask rules
+- 16.S70: Matches 16.19.6.
+- 16.S71: Matches 16.3.7 and 16.4.10.
+- 16.S72: Matches 16.5.7, 12.9.2 and 12.15.4.
+- 17.1.1: R36 and plan 8, unchanged.
+- 17.1.2: restates your 25 Oct ruling: both rates shown, the ask rule on real loss
+- 17.1.3: Plan 8.1's row, unchanged.
+- 17.1.4: R24: an indicator, never a target.
+- 17.1.5: Plan 8.1 widened to every phase, as 11.7.5 needs; for this repo only.
+- 17.1.6: Plan 8.1 with your ruling of 19 Oct: no flag of its own.
+- 17.1.7: Plan 8.1's row, unchanged.
+- 17.1.8: Plan 8.1's row, unchanged.
+- 17.1.9: Builder's call: how a bugfix records the unit it fixes.
+- 17.2.2: Restates your rulings of 14 and 19 Oct.
+- 17.2.4: Screen: an authors-only query, following from 17.1.5.
+- 17.2.5: Builder's call: the authors' query.
+- 17.3.1: Plan 8.3, unchanged.
+- 17.3.2: Plan 8.3; points to 16.21.
+- 17.4.3: Your wish for more data, 15 Oct; when it runs is my call, as the record allows.
+- 17.S1: matches 17.1.1 to 17.1.3
+- 17.S2: Matches 17.2.2.
+- 17.S3: Matches 17.1.5, 17.2.1 and 17.2.4.
+- 17.S4: Matches 17.1.6.
+- 17.S5: Matches 17.1.7, 17.1.8 and 17.2.3.
+- 17.S6: Matches 17.3.1.
+- 17.S7: Matches 17.4.1 to 17.4.3.
+- 17.S8: matches 17.1.2 and 16.10.8
+- 18.1.1: R17, as the record puts it
+- 18.1.2: R17, as the record puts it: an aim, not a mechanism
+- 18.1.3: R17, as the record puts it
+- 18.1.4: R17, as the record puts it; the detail is 18.4
+- 18.2.1: restates your ruling of 16 Oct
+- 18.2.2: restates your ruling of 16 Oct
+- 18.2.3: your 16 Oct ruling; what the count includes is my call, easy to change
+- 18.2.4: restates your ruling of 16 Oct
+- 18.2.5: restates your ruling of 16 Oct
+- 18.2.6: restates your ruling of 16 Oct
+- 18.2.7: restates your ruling of 16 Oct
+- 18.2.8: restates your ruling of 16 Oct
+- 18.2.9: restates your ruling of 16 Oct
+- 18.2.10: restates your ruling of 16 Oct
+- 18.2.11: restates your ruling of 16 Oct and plan 3.11
+- 18.2.12: your ruling of 26 Oct
+- screen 1 after 18.2.12: a rename to Leeway's names, by your ruling of 26 Oct
+- 18.2.13: your ruling of 26 Oct
+- 18.3.1: restates your rulings of 15, 16 and 25 Oct
+- 18.3.2: restates your 16 Oct ruling, finished units only per 25 Oct
+- 18.3.3: R19, as the record puts it
+- 18.3.4: screen: the rows the record names; labels and keys you can change
+- screen 1 after 18.3.4: screen: wording and keys you can change any time
+- screen 2 after 18.3.4: screen: matches 18.3.5, no pivot or absorb past the spec
+- screen 3 after 18.3.4: screen: wording and keys you can change any time
+- 18.3.5: a written spec is the unit's; your 25 Oct ruling: nothing reopens mid-build
+- 18.3.6: your ruling of 25 Oct: a finished epic stays finished
+- 18.3.7: builder's call: only a topic's summary, which you can edit
+- 18.4.1: restates your ruling of 15 Oct
+- 18.4.2: R17 and your rulings of 14 and 19 Oct
+- 18.4.3: R17, as the record puts it
+- 18.4.4: restates your ruling of 14 Oct
+- 18.4.5: R17 and R10, as the record puts them
+- 18.4.6: R17 and plan 3.11, unchanged
+- 18.4.7: R17 and R41, as the record puts them
+- 18.4.8: R17, as the record puts it
+- 18.4.9: your 15 Oct ruling; no confirm follows R10's rule for changes you ask
+- 18.4.10: your 15 Oct ruling; the rows dropped are the never-picked ones
+- 18.4.11: R17, as the record puts it
+- 18.4.12: R17 and R40, as the record puts them
+- 18.4.13: R17, as the record puts it
+- 18.4.14: restates your ruling of 15 Oct
+- 18.4.15: restates your ruling of 15 Oct
+- 18.4.16: restates your ruling of 16 Oct
+- 18.4.17: screen: rows from R17 and your rulings; wording you can change
+- screen 1 after 18.4.17: screen: wording you can change; the tally adds up
+- screen 2 after 18.4.17: screen: wording and keys you can change any time
+- screen 3 after 18.4.17: screen: matches 18.4.6 and 18.4.7; row order you can change
+- screen 4 after 18.4.17: screen: wording and keys you can change any time
+- 18.4.18: your rulings of 14 and 15 Oct; follows from 18.4.9
+- 18.4.19: follows from 4.11.2 and 12.15.4: the record's closed map
+- 18.4.20: an in-session cancel or postpone stays as today, made as discovery and manage make it
+- 18.4.21: today's product, unchanged
+- 18.4.22: today's product, unchanged
+- 18.5.1: restates your ruling of 12 Oct and plan 3.5
+- 18.5.2: restates your ruling of 12 Oct
+- 18.5.3: restates your ruling of 12 Oct
+- 18.6.1: restates your ruling of 16 Oct
+- 18.6.2: restates your ruling of 16 Oct
+- 18.6.3: R17 and R23, as the record puts them
+- 18.6.4: restates your ruling of 16 Oct
+- 18.6.5: restates your ruling of 16 Oct
+- 18.6.6: restates your ruling of 16 Oct
+- 18.6.7: screen: the closure list you ruled; wording you can change
+- screen 1 after 18.6.7: screen: wording and keys you can change any time
+- 18.6.8: restates your 25 Oct ruling
+- 18.6.9: today's archive view, kept; follows from 18.6.5
+- 18.6.10: builder's call: one stored detail you'd rarely see
+- 18.7.1: restates your ruling of 16 Oct
+- 18.7.2: restates your ruling of 16 Oct
+- 18.7.3: restates your ruling of 16 Oct
+- 18.7.4: restates your ruling of 16 Oct
+- 18.7.5: restates your ruling of 16 Oct
+- 18.7.6: your 16 Oct ruling; mixed kinds through discovery follows from it
+- 18.7.7: restates your ruling of 16 Oct
+- 18.7.8: restates your ruling of 16 Oct
+- 18.7.9: restates your ruling of 16 Oct
+- 18.7.10: screen: your 16 Oct rows plus today's archive row
+- screen 1 after 18.7.10: screen: wording and keys you can change any time
+- 18.7.11: today's archived view, kept as it is
+- screen 1 after 18.7.11: screen: wording and keys you can change any time
+- screen 2 after 18.7.11: screen: wording and keys you can change any time
+- screen 3 after 18.7.11: screen: wording and keys you can change any time
+- 18.8.1: restates your ruling of 16 Oct
+- 18.8.2: restates your ruling of 16 Oct
+- 18.8.3: restates your ruling of 16 Oct
+- 18.8.4: restates your ruling of 16 Oct
+- 18.8.5: restates your ruling of 16 Oct
+- 18.8.6: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 18.8.7: your ruling of 26 Oct
+- 18.8.8: restates your ruling of 16 Oct
+- 18.8.9: your ruling of 26 Oct
+- 18.8.10: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- screen 1 after 18.8.10: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 18.8.11: your 16 Oct ruling; the ask's words you can change
+- screen 1 after 18.8.11: screen: wording and keys you can change any time
+- screen 2 after 18.8.11: screen: wording and keys you can change any time
+- 18.8.12: follows from the m move row you ruled
+- 18.8.14: today's product, unchanged
+- 18.8.15: today's product: notes and log pointers travel with items
+- 18.8.16: today's product, unchanged
+- 18.8.17: today's roadmap remove; my derivation keeps the item archivable past the spec
+- 18.8.18: your ruling of 26 Oct
+- screen 1 after 18.8.18: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 18.8.19: today's product, unchanged
+- 18.8.20: restates your ruling of 21 Oct
+- 18.9.1: restates your ruling of 16 Oct
+- 18.9.2: restates your ruling of 16 Oct
+- 18.9.3: restates your ruling of 16 Oct
+- 18.9.4: your 16 Oct addition; gates without help is my call
+- 18.9.5: restates your addition of 16 Oct
+- screen 1 after 18.9.5: screen: wording and keys you can change any time
+- 18.10.1: restates your ruling of 19 Oct
+- 18.10.2: restates your ruling of 19 Oct
+- 18.10.3: restates your ruling of 19 Oct
+- 18.10.4: restates your ruling of 19 Oct
+- 18.10.5: R17, as the record puts it
+- 18.10.6: restates your ruling of 20 Oct
+- 18.10.7: agreed in the panel spike, 20 Oct
+- 18.10.8: my derivation: screens I drew come to you on this page
+- 18.10.9: today's band behaviour, unchanged
+- 18.S1: matches 18.2.1, 18.2.2 and 18.2.6
+- 18.S2: matches 18.2.3 and 18.2.5
+- 18.S3: matches 18.2.1 and 18.2.4
+- 18.S4: matches 18.2.7 and 18.2.8
+- 18.S5: matches 18.2.9 and 18.2.10
+- 18.S6: matches 18.2.11
+- 18.S7: matches 18.3.1 to 18.3.5
+- 18.S8: matches 18.3.2
+- 18.S9: matches 18.4.1 and 18.4.2
+- 18.S10: matches 18.4.3 to 18.4.5
+- 18.S11: matches 18.4.6 and 18.5.1
+- 18.S12: matches 18.4.6
+- 18.S13: matches 18.4.7
+- 18.S14: matches 18.4.8
+- 18.S15: matches 18.4.9 and 18.4.10
+- 18.S16: matches 18.4.11, 18.4.13 and 18.4.15
+- 18.S17: matches 18.4.12
+- 18.S18: matches 18.4.14
+- 18.S19: matches 18.4.15
+- 18.S20: matches 18.4.16 and 18.7.2
+- 18.S21: matches 18.5.1 and 18.5.2
+- 18.S22: matches 18.6.1 and 18.6.2
+- 18.S23: matches 18.6.3
+- 18.S24: matches 18.6.4, 18.6.5 and 18.6.7
+- 18.S25: matches 18.6.6
+- 18.S26: matches 18.7.3 and 18.7.10
+- 18.S27: matches 18.7.4 and 18.7.5
+- 18.S28: matches 18.7.6
+- 18.S29: matches 18.7.7 and 18.8.2
+- 18.S30: matches 18.7.8 and 18.7.9
+- 18.S31: matches 18.8.1, 18.8.2 and 18.8.11
+- 18.S32: matches 18.8.1 and 18.8.2
+- 18.S33: matches 18.8.3
+- 18.S34: matches 18.8.4
+- 18.S35: matches 18.8.6 and 18.8.10
+- 18.S36: matches 18.8.6
+- 18.S37: matches 18.8.7 and 18.8.9
+- 18.S38: matches 18.9.2
+- 18.S39: matches 18.9.3 and 18.9.4
+- 18.S40: matches 18.9.4 and 18.9.5
+- 18.S41: matches 18.10.1, 18.10.3 and 18.10.8
+- 18.S42: matches 18.10.5
+- 18.S43: matches 18.10.7
+- 18.S44: matches 18.2.3 and 18.2.11
+- 18.S45: matches 18.4.9
+- 18.S46: matches 18.4.17 and 18.4.18
+- 18.S47: matches 18.6.8, itself in doubt
+- 18.S48: matches 18.6.9 and 18.7.11
+- 18.S49: matches 18.7.6
+- 18.S50: matches 18.8.12
+- 18.S51: matches 18.9.4
+- 18.S52: matches 18.2.3, 18.4.2, 18.4.18 and 10.2.6
+- 18.S53: matches 18.3.5
+- 18.S54: matches 18.3.6, itself in doubt
+- 18.S55: matches 18.4.19 and 18.8.17
+- 18.S56: matches 18.4.20
+- 18.S57: matches 18.4.21
+- 18.S58: matches 18.4.22
+- 18.S59: matches 18.8.14
+- 18.S60: matches 18.8.15
+- 18.S61: matches 18.8.16
+- 18.S62: matches 18.8.17
+- 18.S63: matches 18.8.18
+- 18.S64: matches 18.8.19
+- 18.S65: matches 18.10.9
+- 18.S66: matches 18.8.20 and 8.8.16
+- 18.S67: matches 18.8.13
+- 18.S68: matches 12.15.4 and 18.3.1
+- 18.S69: matches 18.4.3 and 18.4.8: shown in session only while one is held
+- 18.S70: matches 18.2.12 and 18.2.13
+- 19.4.5: R20, as the record puts it
+- 19.4.6: R20, as the record puts it
+- 19.4.7: restates your ruling of 12 Oct
+- 19.4.8: R20 and R46, as the record puts them
+- 19.4.9: restates your ruling of 12 Oct
+- 19.4.10: restates your ruling of 12 Oct
+- 19.4.11: restates your ruling of 12 Oct
+- 19.4.12: restates your ruling of 12 Oct
+- 19.4.13: restates your ruling of 16 Oct
+- 19.4.14: restates your ruling of 16 Oct
+- 19.4.15: restates your rulings of 16 and 22 Oct
+- 19.4.16: restates your ruling of 16 Oct
+- 19.4.17: restates your ruling of 16 Oct
+- 19.4.18: restates your ruling of 16 Oct
+- 19.4.19: restates your rulings of 16 and 25 Oct
+- 19.4.20: restates your ruling of 16 Oct
+- 19.4.21: screen: R20's extra option; wording you can change
+- 19.4.22: R20: a design-rooted cause always reaches you (19.4.5)
+- 19.4.23: my derivation: today's findings sign-off folds into the conclude gate
+- 19.4.24: my derivation: a broken analysis plan goes back to its gate
+- 19.4.25: today's product, unchanged
+- 19.5.1: restates your ruling of 12 Oct
+- 19.5.2: restates your ruling of 12 Oct
+- 19.5.3: restates your ruling of 12 Oct
+- 19.5.4: your 12 Oct ruling; each fix in a set its own task follows
+- 19.5.5: restates your ruling of 12 Oct
+- 19.5.6: restates your ruling of 12 Oct and the ruled layout
+- 19.5.7: your 12 Oct ruling; the review row at the close is my call
+- 19.5.8: restates your rulings of 12 and 18 Oct
+- 19.5.9: your 12 Oct ruling; moving from inside the session is my call
+- 19.5.10: restates your ruling of 12 Oct
+- 19.5.11: restates your ruling of 16 Oct
+- 19.5.12: R21, as the record puts it
+- 19.5.13: screen: rows from R21 and R23; wording you can change
+- screen 1 after 19.5.13: screen: wording and keys you can change any time
+- 19.5.14: my derivation: with no spec, the review reads the record and change-set
+- 19.5.15: follows from R35: code lands through the landing driver
+- 19.5.16: builder's call: what the move carries across
+- 19.5.18: today's product, unchanged
+- 19.5.19: today's product, unchanged
+- 19.6.1: restates your ruling of 16 Oct
+- 19.6.2: R22, as the record puts it
+- 19.6.3: restates your ruling of 16 Oct
+- 19.6.4: your ruling of 26 Oct
+- 19.6.5: restates your ruling of 19 Oct
+- 19.6.6: R22 and R10, as the record puts them
+- 19.S1: matches 19.1.1 and 19.6.1
+- 19.S2: matches 19.1.3
+- 19.S3: matches 19.1.3
+- 19.S4: matches 19.2.1
+- 19.S5: matches 19.3.2
+- 19.S6: matches 19.3.4
+- 19.S7: matches 19.4.1 to 19.4.3
+- 19.S8: matches 19.4.4
+- 19.S9: matches 19.4.6
+- 19.S10: matches 19.4.7 to 19.4.9
+- 19.S11: matches 19.4.10
+- 19.S12: matches 19.4.11 and 19.4.12
+- 19.S13: matches 19.4.13
+- 19.S14: matches 19.4.5
+- 19.S15: matches 19.4.15
+- 19.S16: matches 19.4.16 to 19.4.18
+- 19.S17: matches 19.4.19
+- 19.S18: matches 19.4.20
+- 19.S19: matches 19.5.2
+- 19.S20: matches 19.5.1, 19.5.3 to 19.5.5 and 19.5.10
+- 19.S21: matches 19.5.6 to 19.5.8
+- 19.S22: matches 19.5.8 and 19.5.13
+- 19.S23: matches 19.5.7, 19.5.13 and 19.5.14
+- 19.S24: matches 19.5.9 and 18.3.4
+- 19.S25: matches 19.5.4, 19.5.11 and 19.5.12
+- 19.S26: matches 19.6.3
+- 19.S27: matches 19.6.4
+- 19.S28: matches 19.6.2
+- 19.S29: matches 19.3.5
+- 19.S30: matches 19.4.22, itself in doubt
+- 19.S31: matches 19.5.14, itself in doubt
+- 19.S32: matches 19.5.15
+- 19.S33: matches 19.3.6
+- 19.S34: matches 19.4.23
+- 19.S35: matches 19.4.24
+- 19.S36: matches 19.4.25
+- 19.S37: matches 19.5.19
+- 19.S38: matches 19.5.17, my proposal
+- 20.1.1: R15 and the record's board passage; wanted by you 12 Oct
+- 20.1.2: restates your rulings of 19 and 21 Oct; each view you locked
+- 20.1.3: restates your ruling of 20 Oct
+- 20.1.4: restates your ruling of 19 Oct, with R6
+- 20.1.5: restates your ruling of 21 Oct, as the spike draws it
+- 20.1.6: R15, as the record puts it: not yet discussed
+- 20.1.7: restates your ruling of 20 Oct
+- 20.1.8: the record's board passage, as written
+- 20.1.9: the record's board passage and what you said 19 Oct
+- 20.2.1: agreed 21 Oct, measured 19 Oct; a tab label you can change
+- 20.2.3: the locked spike, with your 20 Oct wording: show board
+- 20.2.4: screen from the locked spike: wording you can change any time
+- 20.2.5: the locked spike; a layout detail, easy to change
+- 20.3.1: agreed 21 Oct
+- 20.3.2: agreed 21 Oct
+- 20.3.3: agreed 21 Oct, as the record puts it
+- 20.3.4: agreed 21 Oct; its approve-the-map move shares 20.11.4's doubt
+- 20.3.5: agreed 21 Oct
+- 20.3.6: the locked spike
+- 20.3.7: the locked spike
+- 20.3.8: follows from 20.3.4: the board needs the position with labels off
+- 20.4.1: restates your ruling of 20 Oct
+- 20.4.2: colours agreed in the spike 20 and 21 Oct; easy to change
+- 20.4.3: screen marks: wording you can change any time
+- 20.4.4: the locked spike; a drawing detail
+- 20.4.5: the locked spike; a drawing detail
+- 20.4.6: the locked spike, with your 20 and 21 Oct words on button colour
+- 20.4.7: the locked spike; a drawing detail
+- 20.4.8: the locked spike; you liked the subtle spinner 21 Oct
+- 20.4.9: restates your ruling of 21 Oct
+- 20.5.1: the build view you locked 21 Oct
+- 20.5.2: the locked spike
+- 20.5.3: restates your rulings of 20 and 21 Oct
+- 20.5.4: agreed 19 and 21 Oct; the record's task page
+- 20.5.7: follows your ruling of 21 Oct (20.1.5): the board sends only the queue
+- 20.5.5: restates what you asked for 19 Oct
+- 20.5.6: the locked spike
+- 20.6.1: restates your ruling of 20 Oct
+- 20.6.2: restates your ruling of 21 Oct
+- 20.6.3: restates your 21 Oct rejection of staging in the prompt box
+- 20.6.4: the locked spike
+- 20.6.5: restates your 25 Oct ruling: fixed at the foot only when docked
+- 20.6.6: the locked spike's wording; easy to change
+- 20.6.7: the locked spike's wording
+- 20.6.8: restates what you said 21 Oct: one line each
+- 20.6.9: my derivation: the receipt gains 'I don't follow', per 16.9.3
+- 20.6.10: the locked spike; set-aside questions still wait (12.13.17)
+- 20.6.11: your 19 and 20 Oct words: cancel on board and banner alike
+- 20.7.1: the discussion view you locked 21 Oct
+- 20.7.2: agreed 21 Oct; matches 9.5.11
+- 20.7.3: R15, as the record puts it
+- 20.7.4: follows from 9.1.11
+- 20.8.1: agreed 21 Oct
+- 20.8.2: the epic page you locked 21 Oct
+- 20.8.3: R15, as the record puts it
+- 20.9.1: the screen you locked on 21 Oct; looking per 5.8.14
+- 20.9.2: the locked spike
+- 20.9.3: agreed 21 Oct
+- 20.10.1: the review view you locked 21 Oct
+- 20.10.2: R15, R16 and the locked spike
+- 20.10.3: R15, as the record puts it
+- 20.10.4: agreed 21 Oct
+- 20.11.1: the discovery view you locked 21 Oct
+- 20.11.2: your 19 Oct ruling: nothing in discovery is a decision
+- 20.11.3: R12 and the locked spike
+- 20.11.4: your ruling of 25 Oct: approving the map lands on the epic's menu
+- 20.12.1: the screen you locked on 21 Oct; looking per 5.8.14
+- 20.12.2: R20 and the locked spike
+- 20.12.3: R20, as the record puts it
+- 20.12.4: R20 and the locked spike; matches 24.1.2's move into the spec
+- 20.13.1: the experiment view you locked 21 Oct, over a made-up experiment
+- 20.13.2: the locked spike; matches the record's board passage
+- 20.13.3: follows from 18.4.22
+- 20.14.1: the quick-fix view you locked 21 Oct
+- 20.14.2: R21 and the locked spike
+- 20.15.1: the unit tab you locked 21 Oct
+- 20.15.2: R18, R20 and R21's phases, as the spike draws them
+- 20.15.3: the locked spike
+- 20.16.1: All work as you locked it 21 Oct
+- 20.S1: matches 20.5.1 and 20.5.3; the clocks are 20.5.2's
+- 20.S2: matches 20.2.3
+- 20.S3: matches 20.6.2, 20.6.3 and 20.6.5
+- 20.S4: matches 20.6.6
+- 20.S5: matches 20.6.8
+- 20.S6: matches 20.6.9
+- 20.S7: matches 20.6.10
+- 20.S8: matches 20.3.4 and 20.3.5
+- 20.S9: matches 20.3.3, 20.3.4 and 20.8.1
+- 20.S10: matches 20.9.3
+- 20.S11: matches 20.10.2
+- 20.S12: matches 20.4.8
+- 20.S13: matches 20.1.3 and 20.1.4
+- 20.S14: matches 20.6.5
+- 20.S15: matches 20.5.7
+- 20.S16: matches 20.11.1 and 20.11.2
+- 20.S17: matches 20.11.4; shares its doubt against 8.8.13
+- 20.S18: matches 20.12.1
+- 20.S19: matches 20.12.1
+- 20.S20: matches 20.12.3
+- 20.S21: matches 20.13.1 and 20.13.2
+- 20.S22: matches 20.13.1 and 20.13.2
+- 20.S23: matches 20.14.1
+- 20.S24: matches 20.14.1 and 20.14.2
+- 20.S25: matches 20.6.5 and 20.2.2
+- 21.1.1: R37 and R8, as the record puts them
+- 21.1.2: your ruling of 26 Oct: /leeway in place of /workflow-start
+- 21.1.3: restates your ruling of 16 Oct
+- 21.1.4: R37, as the record puts it
+- 21.1.5: R37: the trust log starts empty for everyone
+- 21.2.1: R37's six steps, in its order
+- 21.3.1: R37, as the record puts it
+- 21.3.2: R37, as the record puts it
+- 21.3.3: restates your word of 17 Oct
+- 21.3.4: screen: wording you can change any time
+- screen 1 after 21.3.4: a rename to Leeway's names, by your ruling of 26 Oct
+- screen 2 after 21.3.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 21.4.1: R37, as the record puts it
+- 21.4.2: R37: the split becomes a directive, its skill goes
+- 21.4.3: R37, as the record puts it
+- 21.4.4: R37, as the record puts it
+- 21.4.5: screen: today's interview, kept as R37 says
+- 21.5.1: R37: the move is code
+- 21.5.2: R37, as the record puts it
+- 21.5.3: R37, as the record puts it
+- 21.5.4: restates what you ratified on 17 Oct
+- 21.5.5: R37, as the record puts it
+- 21.5.6: R37 and R17: mail follows cancelling's rule
+- 21.5.7: your ruling of 26 Oct
+- 21.5.8: my derivation: step 5 reads from git what step 3 drops
+- 21.5.9: R37, as the record puts it
+- 21.5.10: R37, as the record puts it
+- 21.5.11: your ruling of 26 Oct: the state branch checked out at .leeway/
+- 21.5.12: R37, as the record puts it
+- 21.5.13: follows from the layout's home for experiments (4.11.15)
+- 21.5.14: follows from R37: one shape for every unit
+- 21.5.15: follows from R21: a quick-fix keeps only its summary
+- 21.5.17: follows from 4.10.3, which you ruled on 16 Oct
+- 21.5.18: restates your 25 Oct ruling: Tick's store moves unchanged
+- 21.5.19: follows from your ruling of 26 Oct: today's other names move with the migration
+- 21.6.1: R37, as the record puts it
+- 21.6.3: restates your ruling of 17 Oct
+- 21.6.4: R37: spec-stage decisions become entries
+- 21.6.5: R37: 'carried over' where the log is silent
+- 21.6.6: R37, as the record puts it
+- 21.6.7: R37, as the record puts it
+- 21.6.8: R37, as the record puts it
+- 21.6.9: R37, as the record puts it
+- 21.6.10: restates your ruling of 17 Oct
+- 21.6.11: screen: wording you can change any time
+- 21.7.1: restates your rulings of 17 and 22 Oct
+- 21.7.2: R37, as the record puts it
+- 21.7.3: R37 and R22, as the record puts them
+- 21.7.4: R37, as the record puts it
+- 21.7.5: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 21.8.1: restates your ruling of 17 Oct
+- 21.8.2: restates your ruling of 17 Oct
+- 21.8.3: restates your ruling of 17 Oct
+- 21.8.4: restates your ruling of 17 Oct
+- 21.8.5: restates your ruling of 17 Oct
+- 21.8.6: restates your ruling of 17 Oct
+- 21.8.7: restates your ruling of 17 Oct, in the record's words
+- 21.8.8: your 17 Oct ruling; the store as 21.5.18 moves it
+- 21.8.9: restates your ruling of 17 Oct; none of your projects has it
+- 21.8.10: screen: wording you can change any time
+- screen 1 after 21.8.10: screen: wording you can change any time
+- 21.8.11: restates your ruling of 17 Oct
+- 21.8.12: builder's call: nothing you'd see
+- 21.8.13: builder's call: none of your projects has such a plan
+- 21.9.1: R37: index the records, then commit on your yes
+- 21.9.2: plan 6.3's two commits; Tick's store per 21.5.18
+- 21.9.3: R38, as the record puts it
+- 21.9.4: screen: today's migration review, kept
+- 21.9.5: your ruling of 26 Oct: the state branch checked out at .leeway/
+- 21.9.6: builder's call: what is dropped is fixed in 22.6
+- 21.10.1: restates your ruling of 17 Oct
+- 21.10.2: restates your ruling of 17 Oct
+- 21.10.3: restates your ruling of 17 Oct
+- 21.10.4: restates your ruling of 17 Oct
+- 21.10.5: R38: what you were told on 17 Oct
+- 21.10.6: R38, as the record puts it
+- 21.10.7: R38's check; spec citations follow from 21.6.4
+- 21.10.8: restates your ruling of 17 Oct
+- 21.10.9: your 17 Oct ruling; entries appended once a topic completes
+- 21.10.10: restates your ruling of 17 Oct
+- 21.10.11: screen: wording you can change any time
+- screen 1 after 21.10.11: screen: wording you can change any time
+- 21.10.12: builder's call: nothing you'd see
+- 21.10.13: follows from R38: directives add a kind, retire nothing
+- 21.10.14: builder's call: nothing you'd see
+- 21.11.1: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 21.11.2: today's answer kept; every surveyed project is native or skipped
+- 21.12.1: restates your ruling of 17 Oct
+- 21.12.2: restates your ruling of 17 Oct
+- 21.12.3: restates your ruling of 17 Oct; commits as the record has them
+- 21.12.4: R37's proof of 17 Oct, as recorded
+- 21.12.5: restates your ruling of 17 Oct
+- 21.12.6: R39, as the record puts it
+- 21.12.7: R39, as the record puts it
+- 21.12.8: R39's Fumi figures, as recorded
+- 21.S1: a rename to Leeway's names, by your ruling of 26 Oct
+- 21.S2: matches 21.1.3
+- 21.S3: matches 21.1.5
+- 21.S4: matches 21.2.1, 21.6.1 and 21.7.1
+- 21.S5: matches 21.3.1, 21.3.3 and 21.3.4
+- 21.S6: matches 21.3.2 and 21.3.4
+- 21.S7: matches 21.4.3
+- 21.S8: matches 21.4.1, 21.4.4, 21.4.5 and 21.12.4
+- 21.S9: matches 21.4.2
+- 21.S10: matches 21.5.1 and 21.5.2
+- 21.S11: matches 21.5.3
+- 21.S12: matches 21.5.4 and 21.7.2
+- 21.S13: matches 21.5.5
+- 21.S14: matches 21.5.6
+- 21.S15: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 21.S16: matches 21.5.8 and 21.5.9
+- 21.S17: matches 21.5.10
+- 21.S18: matches 21.5.11
+- 21.S19: matches 21.5.12
+- 21.S20: matches 21.6.2, 21.6.3 and 21.10.7
+- 21.S21: matches 21.6.4 and 21.10.7
+- 21.S22: matches 21.6.5
+- 21.S23: matches 21.6.6 and 21.6.7
+- 21.S24: matches 21.6.9
+- 21.S25: matches 21.6.10, 21.6.11 and 21.10.8
+- 21.S26: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 21.S27: matches 21.8.2 to 21.8.4
+- 21.S28: matches 21.7.1 and 21.8.5 to 21.8.8
+- 21.S29: matches 21.8.8
+- 21.S30: matches 21.8.8
+- 21.S31: matches 21.8.9, 21.8.10 and 21.7.4
+- 21.S32: matches 21.8.11
+- 21.S33: matches 21.10.2 and 21.10.4
+- 21.S34: matches 21.10.6 and 21.10.8
+- 21.S35: matches 21.10.5
+- 21.S36: matches 21.10.7 and 21.12.7
+- 21.S37: matches 21.10.9 to 21.10.11
+- 21.S38: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 21.S39: matches 21.12.1
+- 21.S40: matches 21.12.2 and 21.12.3
+- 21.S41: matches 21.12.4
+- 21.S42: matches 21.12.6 and 21.12.8
+- 21.S43: matches 21.5.13
+- 21.S44: matches 21.5.14 and 21.6.2
+- 21.S45: matches 21.5.15
+- 21.S46: matches 21.5.17
+- 21.S47: matches 21.9.1 and 22.6.3, 22.6.5, 22.6.12
+- 21.S48: matches 21.10.13
+- 21.S49: matches 21.5.9, 21.5.16 and 21.5.17
+- 21.S50: matches 21.11.2 and 8.12.11
+- 21.S51: matches 21.5.19
+- 22.1.1: today's boot, kept as plan 9.2 says
+- 22.1.2: your ruling of 26 Oct
+- 22.1.3: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.1.4: today's runtime, kept
+- 22.2.1: plan 9.2: today's setup gates stay
+- 22.2.2: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 22.2.3: restates what you agreed on 19 Oct
+- 22.2.4: today's notice, kept
+- 22.2.5: builder's call: the floor moves with the mod, as today
+- 22.3.1: follows from R35: drivers replace plan formats
+- 22.3.2: restates your ruling of 20 Oct
+- 22.3.3: restates your ruling of 20 Oct
+- 22.3.4: plan 9.2, unchanged
+- 22.4.1: plan 9.2, unchanged
+- 22.4.2: restates your ruling of 17 Oct
+- 22.4.3: plan 9.2; a non-GitHub remote landing locally matches 7.2.16
+- 22.4.4: plan 9.2, unchanged
+- 22.4.5: plan 9.2, unchanged
+- 22.4.6: restates your ruling of 18 Oct
+- 22.4.7: plan 9.2, unchanged
+- 22.4.8: screen: wording you can change any time
+- screen 1 after 22.4.8: screen: wording you can change any time
+- 22.4.9: today's version floor check, kept
+- 22.5.1: plan 9.2, with preparation steps and the verify parts added
+- 22.5.2: restates your ruling of 20 Oct
+- 22.5.3: plan 9.2, unchanged
+- 22.5.4: restates your ruling of 20 Oct
+- 22.5.5: restates your ruling of 20 Oct
+- 22.5.6: R15, as the record puts it
+- 22.5.7: screen: wording you can change any time
+- screen 1 after 22.5.7: screen: wording you can change any time
+- 22.5.8: screen: rows you can change any time
+- screen 1 after 22.5.8: screen: rows you can change any time
+- 22.5.9: follows: the verify setup doesn't exist yet at that point
+- 22.5.10: follows from R21: a quick-fix asks nothing extra
+- 22.5.11: follows: today's setup carries over, nothing re-asked
+- 22.5.13: builder's call: nothing you'd see
+- 22.6.1: restates your ruling of 12 Oct
+- 22.6.2: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.6.3: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 22.6.4: restates your ruling of 12 Oct
+- 22.6.5: restates your ruling of 14 Oct
+- 22.6.6: restates your ruling of 17 Oct
+- 22.6.7: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.6.8: R20, as the record puts it
+- 22.6.9: restates your ruling of 12 Oct
+- 22.6.10: restates your ruling of 12 Oct
+- 22.6.11: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.6.12: your ruling of 25 Oct: search reaches records only
+- 22.6.13: builder's call, settled by the re-made eval
+- 22.6.14: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.6.15: today's behaviour: a warning, never a refused entry
+- 22.6.16: builder's call: nothing you'd see
+- 22.6.17: builder's call; it never fails silently
+- 22.S1: matches 22.1.1
+- 22.S2: matches 22.1.2
+- 22.S3: matches 22.1.2
+- 22.S4: matches 22.2.1
+- 22.S5: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 22.S6: matches 22.2.3
+- 22.S7: matches 22.3.1, 22.3.2 and 22.5.2
+- 22.S8: matches 22.3.3, 22.3.4, 22.5.3 and 22.5.4
+- 22.S9: matches 22.4.1 to 22.4.3
+- 22.S10: matches 22.4.1 and 22.4.3
+- 22.S11: matches 22.4.4 and 22.5.8
+- 22.S12: matches 22.4.5 to 22.4.8
+- 22.S13: matches 22.5.1 to 22.5.4, 22.5.7 and 22.5.9
+- 22.S14: matches 22.5.5 and 22.5.8
+- 22.S15: matches 22.5.6
+- 22.S16: matches 22.6.2 and 22.6.6
+- 22.S17: matches 22.6.3 to 22.6.5
+- 22.S18: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.S19: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.S20: matches 22.6.1
+- 22.S21: matches 22.6.8
+- 22.S22: matches 22.6.9
+- 22.S23: matches 22.6.10
+- 22.S24: a rename to Leeway's names, by your ruling of 26 Oct
+- 22.S25: matches 22.4.1 and 22.4.3
+- 22.S26: matches 22.5.1 and 22.5.9
+- 22.S27: matches 22.5.6 and 22.5.9
+- 22.S28: matches 22.5.10
+- 22.S29: matches 22.5.11
+- 22.S30: matches 22.6.12
+- 22.S31: matches 22.1.1
+- 22.S32: matches 22.1.4
+- 22.S33: matches 22.2.4
+- 22.S34: matches 22.4.9
+- 22.S35: matches 22.5.1, 22.5.7 and 22.5.9
+- 22.S36: matches 22.6.15
+- 22.S37: matches 22.5.12 and 4.7.8
+- 23.1.1: plan 9.3, unchanged
+- 23.1.2: plan 9.3, unchanged
+- 23.1.3: restates your rule of 17-18 Oct on naming tools
+- 23.1.4: follows: the name is still open (§28)
+- 23.1.5: builder's call: which samples render
+- 23.2.1: restates your addition of 16 Oct
+- 23.2.2: screen: wording you can change any time
+- 23.2.3: screen: wording you can change any time
+- screen 1 after 23.2.3: a rename to Leeway's names, by your ruling of 26 Oct
+- screen 2 after 23.2.3: a rename to Leeway's names, by your ruling of 26 Oct
+- 23.2.4: plan 9.3, unchanged
+- 23.3.1: plan 9.3, unchanged
+- 23.3.2: plan 9.3's list, unchanged
+- 23.3.3: names you can change any time
+- 23.3.4: restates your ruling of 16 Oct
+- 23.3.5: today's behaviour, kept
+- 23.4.1: plan 9.4, unchanged
+- 23.4.2: plan 9.4's book, with intro, overview and index added
+- 23.4.3: plan 9.4, unchanged
+- 23.4.4: plan 9.4, unchanged
+- 23.4.5: plan 9.4, unchanged
+- 23.4.6: plan 9.4, unchanged
+- 23.4.7: restates what you agreed on 19 Oct
+- 23.4.8: follows: today's README shows retired phases
+- 23.4.9: you agreed it on 26 Oct
+- 23.S1: matches 23.1.1 and 23.1.2
+- 23.S2: matches 23.1.2
+- 23.S3: matches 23.1.3
+- 23.S4: matches 23.2.1 and 23.2.2
+- 23.S5: matches 23.2.2
+- 23.S6: matches 23.2.3
+- 23.S7: matches 23.2.4
+- 23.S8: matches 23.3.1 and 23.3.2
+- 23.S9: matches 23.3.3
+- 23.S10: matches 23.3.4
+- 23.S11: matches 23.4.1 to 23.4.4
+- 23.S12: matches 23.1.3, 23.4.5 and 23.4.6
+- 23.S13: matches 23.4.7
+- 23.S14: matches 23.4.8
+- 23.S15: matches 23.1.4
+- 23.S16: matches 23.3.5
+- 23.S17: matches 23.4.2
+- 23.S18: matches 23.4.9
+- 24.1.3: plan 9.6, unchanged
+- 24.1.4: restates your ruling of 12 Oct
+- 24.1.5: restates your ruling of 12 Oct
+- 24.1.6: restates your ruling of 14 Oct
+- 24.1.7: a rename to Leeway's names, by your ruling of 26 Oct
+- 24.1.8: your ruling of 26 Oct
+- 24.2.1: plan 9.6, unchanged
+- 24.2.2: restates your ruling of 12 Oct
+- 24.2.3: restates your ruling of 19 Oct
+- 24.2.4: plan 9.6, unchanged
+- 24.2.5: restates your ruling of 12 Oct
+- 24.2.6: plan 9.6: the note carries recovery whole
+- 24.2.7: builder's call; the note reaches every session
+- 24.2.8: your ruling of 26 Oct
+- 24.S1: matches 24.1.1 and 24.1.2
+- 24.S2: matches 24.1.1
+- 24.S3: matches 24.1.2
+- 24.S4: matches 24.1.2
+- 24.S5: matches 24.1.2
+- 24.S6: matches 24.1.3 and 24.1.4
+- 24.S7: matches 24.1.6
+- 24.S8: matches 24.1.3 and 24.1.5
+- 24.S9: matches 24.1.3
+- 24.S10: matches 24.2.1 and 24.2.2
+- 24.S11: matches 24.2.1 and 24.2.3
+- 24.S12: matches 24.2.4
+- 24.S13: matches 24.2.2 and 24.2.5
+- 24.S14: matches 24.2.6
+- 24.S15: matches 24.1.2 and 8.8.13, your 25 Oct ruling
+- 24.S16: a rename to Leeway's names, by your ruling of 26 Oct
+- 24.S17: matches 24.1.2, 8.8.13 and 19.4.19
+- 24.S18: matches 24.1.2 and 24.1.3
+- 24.S19: matches 24.2.8
+- 24.S20: matches 24.1.8
+- 25.1.1: plan 9.5, unchanged
+- 25.1.2: plan 9.5, unchanged
+- 25.1.3: restates your ruling of 18 Oct
+- 25.1.4: plan 9.5, unchanged
+- 25.1.5: screen: a dev summary you can change any time
+- 25.1.6: builder's call: nothing you'd see
+- 25.2.1: plan 9.5, unchanged
+- 25.2.2: plan 9.5, unchanged
+- 25.2.3: plan 9.5, unchanged
+- 25.2.4: plan 9.5, unchanged
+- 25.2.5: restates what you agreed on 20 Oct
+- 25.3.1: plan 9.5, unchanged
+- 25.3.2: restates what you agreed on 19-20 Oct (26.2.8)
+- 25.3.3: restates your ruling of 12 Oct
+- 25.3.4: follows from R43: the budget catches growth
+- 25.3.5: builder's call: nothing you'd see
+- 25.4.1: plan 9.5; CLAUDE.md requires it
+- 25.5.1: plan 9.5, unchanged
+- 25.5.2: plan 9.5, unchanged
+- 25.5.3: R44's third arm, as the record puts it
+- 25.5.4: builder's call: nothing you'd see
+- 25.S1: matches 25.1.1 to 25.1.3
+- 25.S2: matches 25.1.4
+- 25.S3: matches 25.1.5
+- 25.S4: matches 25.1.5 and 25.3.3
+- 25.S5: matches 25.2.1 and 25.2.3
+- 25.S6: matches 25.2.2
+- 25.S7: matches 25.2.4
+- 25.S8: matches 25.2.5
+- 25.S9: matches 25.3.1 and 25.3.2
+- 25.S10: matches 25.4.1
+- 25.S11: matches 25.5.1 to 25.5.3
+- 25.S12: matches 25.5.3
+- 25.S13: matches 25.1.5 and 25.3.4
+- 26.1.1: R46, as you agreed on 19 Oct
+- 26.1.2: R46, as you agreed on 19 Oct
+- 26.1.3: R46, as the record puts it
+- 26.1.4: R46, as the record puts it
+- 26.1.5: R46, as the record puts it
+- 26.1.6: R46, as the record puts it
+- 26.2.1: R46, as you agreed on 19 Oct
+- 26.2.2: R46, as the record puts it
+- 26.2.3: a rename to Leeway's names, by your ruling of 26 Oct
+- 26.2.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 26.2.5: R46, as measured on 19 Oct
+- 26.2.6: R46, as measured on 19 Oct
+- 26.2.7: R46, as measured on 19 Oct
+- 26.2.8: restates your ruling of 20 Oct
+- 26.2.9: a rename to Leeway's names, by your ruling of 26 Oct
+- 26.3.1: restates your ruling of 15 Oct
+- 26.3.2: plan 3.7 and R28, unchanged
+- 26.3.3: plan 3.7, unchanged
+- 26.3.4: restates your ruling of 15 Oct
+- 26.4.1: R46, as you agreed on 19 Oct
+- 26.4.2: restates your ruling of 19 Oct
+- 26.4.3: restates your ruling of 15 Oct
+- 26.4.4: R46's measurements, as recorded
+- 26.4.5: restates your ruling of 20 Oct
+- 26.4.6: restates what you parked on 19 Oct
+- 26.4.7: restates your ruling of 20 Oct
+- 26.4.8: R46, as the record puts it
+- 26.4.9: R46, as the record puts it
+- 26.4.10: R46, as the record puts it
+- 26.4.11: builder's call: nothing you'd see
+- 26.5.1: plan 6.5's roster, plus the per-topic agent 21.10.5 needs
+- 26.5.2: plan 6.5, unchanged
+- 26.5.3: follows from R46: Opus medium, one named exception
+- 26.S1: matches 26.1.1, 26.1.2 and 26.4.1
+- 26.S2: matches 26.1.2, 26.2.7 and 26.4.2
+- 26.S3: matches 26.1.4
+- 26.S4: a rename to Leeway's names, by your ruling of 26 Oct
+- 26.S5: a rename to Leeway's names, by your ruling of 26 Oct
+- 26.S6: matches 26.2.5
+- 26.S7: matches 26.3.1, 26.4.1 to 26.4.3
+- 26.S8: matches 26.3.4
+- 26.S9: matches 26.3.2
+- 26.S10: matches 26.4.7 to 26.4.10
+- 26.S11: matches 26.4.6
+- 26.S12: matches 26.4.5
+- 26.S13: matches 26.5.1
+- 26.S14: matches 26.5.3
+- 26.S15: matches 26.1.1 and 26.5.1
+- 27.1.1: restates your word of 19 Oct
+- 27.2.1: restates your ruling of 18 Oct
+- 27.2.2: restates what you parked on 19 Oct
+- 27.2.3: restates what you parked on 13 Oct
+- 27.2.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 27.2.5: restates your ruling of 16 Oct
+- 27.2.6: plan 12.5 and R22, unchanged
+- 27.2.7: restates what you parked on 19 Oct
+- 27.2.8: restates what you parked on 19 Oct
+- 27.2.9: restates what you agreed on 21 Oct
+- 27.2.10: restates what you parked on 21 Oct
+- 27.S1: matches 27.2.1
+- 27.S2: matches 27.2.2
+- 27.S3: matches 27.2.3
+- 27.S4: matches 27.2.5 and 10.3.3
+- 27.S5: matches 27.2.6
+- 27.S6: matches 27.2.7
+- 27.S7: matches 27.2.8 and 26.4.3
+- 27.S8: matches 27.2.9
+- 27.S9: matches 27.2.10
+- 28.1.1: your ruling of 26 Oct
+- 28.1.2: your ruling of 26 Oct
+- 28.1.3: your ruling of 26 Oct
+- 28.2.1: follows plan 10.7 and your ruling of 22 Oct
+- 28.3.1: restates what you parked on 13 Oct
+- 28.S1: unchanged scenario; its note now says §28.1 is proven where its names are used
+- 29.1.8: R14: sections, reliance and scenarios per phase, as plan 3.5 has it
+- 29.1.9: R14 and R33: a phase lands with its scenarios' tests passing
+- 29.1.10: checked: all 823 scenarios sit under exactly one phase
+- 29.2.2: restates your ruling of 20 Oct: the merged phase is discussion
+- 29.2.6: follows from 1.6.4: weigh the spec before building
+- 29.2.7: checked: covers every section its scenarios cite
+- 29.2.8: the first part needs nothing before it
+- 29.2.9: the cut's list with 4.S36 placed
+- 29.3.4: a rename to Leeway's names, by your ruling of 26 Oct
+- 29.3.5: checked: covers every section its scenarios cite
+- 29.3.6: the ledger lives on the state branch, so needs 29.2
+- 29.3.7: checked: 40 listed, count right, none listed twice
+- 29.4.3: checked: covers both its scenarios' sections
+- 29.4.4: follows: the trust log records calls the ledger holds
+- 29.4.5: checked: 2 listed, count right
+- 29.5.4: checked: covers every section its scenarios cite
+- 29.5.5: follows: a raise writes to the ledger and trust log
+- 29.5.6: checked: 3 listed, count right
+- 29.6.3: my derivation: your plan put these with the state; they need the driver
+- 29.6.4: checked: covers every section its scenarios cite
+- 29.6.5: follows: the tracker's store sits on the state branch
+- 29.6.6: checked: 7 listed, count right
+- 29.7.2: checked: covers every section its scenarios cite
+- 29.7.3: follows: briefs fill from records and tasks
+- 29.7.4: checked: 5 listed, count right
+- 29.8.3: checked: covers every section its scenarios cite
+- 29.8.4: follows: the doors need every earlier part
+- 29.8.5: checked: 24 listed, count right; 6.S24 now with the ask rule
+- 29.9.4: follows: the model check reads every section
+- 29.9.5: follows: a table needs nothing built first
+- 29.9.6: follows: a table has no scenario of its own
+- 29.10.2: plan 11.3 and R2: the sort happens skill by skill
+- 29.10.3: follows: the principles and verbs a phase skill names
+- 29.10.4: follows: conventions name the door verbs
+- 29.10.5: follows: a document, proven through the skills it shapes
+- 29.11.1: the record's Sequence step 4: discussion first
+- 29.11.3: plan 3.4, unchanged
+- 29.11.4: follows: the first phase walked brings the harness
+- 29.11.5: checked: covers every section its scenarios cite
+- 29.11.6: follows: needs step 1 and the conventions
+- 29.11.7: the cut's list with 21.S51 placed
+- 29.12.1: R10, as the record puts it
+- 29.12.2: a rename to the product's conversation or `.product/`, by your ruling of 26 Oct
+- 29.12.3: checked: covers every section its scenarios cite
+- 29.12.4: follows: discovery hands into discussion
+- 29.12.5: the cut's list with 26 Oct's scenarios placed
+- 29.13.2: plan 3.5, unchanged
+- 29.13.3: plan 3.3, unchanged
+- 29.13.4: checked: covers every section its scenarios cite
+- 29.13.5: follows: the spec reads decided topics
+- 29.13.6: the cut's list with 11.S32 to 11.S35 placed
+- 29.13.7: restates your ruling of 22 Oct
+- 29.14.4: checked: covers every section its scenarios cite
+- 29.14.5: follows: the build starts from a spec
+- 29.14.6: checked: 161 listed, count right, none twice
+- 29.15.3: checked: covers every section its scenarios cite
+- 29.15.4: follows: the types run the phases built before
+- 29.15.5: checked: 56 listed, count right, none listed twice
+- 29.16.3: checked: covers every section its scenarios cite
+- 29.16.4: follows: the menus route into every phase
+- 29.16.5: the cut's list with 26 Oct's scenarios placed
+- 29.17.2: follows: the eval needs the whole migration
+- 29.17.3: checked: covers every section its scenarios cite
+- 29.17.4: follows: the migration writes every new shape
+- 29.17.5: checked: 33 listed, count right, none twice
+- 29.18.5: checked: covers every section its scenarios cite
+- 29.18.6: follows: setup and docs describe the phases built before
+- 29.18.7: the cut's list with 26 Oct's scenarios placed
+- 29.19.3: plan 1.3: ships asking what is asked today
+- 29.19.4: checked: covers every section its scenarios cite
+- 29.19.5: follows: the rule sits on every phase's decision point
+- 29.19.6: checked: 84 listed, count right, none twice
+- 29.20.1: R39 and plan 11.5, unchanged
+- 29.20.3: checked: covers every section its scenarios cite
+- 29.20.4: follows: rehearsal needs everything built
+- 29.20.5: checked: 13 listed, count right
+- 29.21.1: restates your ruling of 18 Oct, as 27.2.1 says
+- 29.S1: matches 29.1.7 and 29.1.8
+- 29.S2: the total, 849, with 21.S51
+- 29.S3: matches 29.1.10; 29.8.5 and 29.11.7 currently break it
+- 29.S4: matches 29.2.1
+- 29.S5: matches 29.1.8
+
+## Open conversations
+
+- 7.5.3: I think before they establish this, we don't need to worry and establish that we don't need a path that the tick call rolls up through the directory structure. Tell me if I'm wrong, but I feel like this was already decided.
+
+## Changed since they were ticked, not ticked again
+
+- 4.1.2
+- 4.1.4
+- 4.2.1 – 4.2.2
+- 4.4.2
+- screen 1 after 4.4.5
+- screen 1 after 4.4.7
+- 4.7.8
+- 4.9.2
+- 4.11.1
+- 4.S1 – 4.S2
+- 4.S7 – 4.S9
+- 4.S11 – 4.S20
+- 4.S22
+- 4.S25
+- 4.S27
+- 5.7.1
+- 5.8.12
+- 5.S1
+- 5.S7
+- 6.2.1
+- 6.2.3
+- 6.3.15
+- 6.6.12
+- 6.S3 – 6.S6
+- 6.S33
+- 8.1.1 – 8.1.2
+- 8.1.4
+- 8.12.4
+- 8.14.3
+- 21.5.11
+
+## Removed after they were marked
+
+- screen 2 after 3.3.10, ticked: removed in C24, 2026-10-25: Fixes for what the check of the changed lines found: only the build's position drawn; the per-task approval that goes is planning's; a gap inside a topic is its own question; the mailbox carries discussion's changes; a feature's topic moves into its spec; an in-session cancel or postpone made in the session for every type; a learned gate returns where a quiet kind does; an ended session stops showing in session
+- 4.2.3, ticked: removed in C19, 2026-10-25: One-answer fixes from the fresh review, each line's bracket naming what it now follows; plus your 25 Oct rulings: the overturn rate shown beside the loss rate, a finished epic stays finished, Claude finds a capture's project
+- 4.2.4, ticked: removed in C19, 2026-10-25: One-answer fixes from the fresh review, each line's bracket naming what it now follows; plus your 25 Oct rulings: the overturn rate shown beside the loss rate, a finished epic stays finished, Claude finds a capture's project
+- 4.6.1, ticked: removed in C15, 2026-10-22: the bare-repository layout is dropped — an edge case never discussed or needed
+- 4.6.2, commented on: removed in C15, 2026-10-22: the bare-repository layout is dropped — an edge case never discussed or needed
+- 4.7.9, ticked: removed in C26, 2026-10-26: The weight check's one cut: you work one machine at a time, so the second clone's merge stays for a failed push and boot runs it; the state commands go
+- 6.1.14, ticked: removed in C26, 2026-10-26: The weight check's one cut: you work one machine at a time, so the second clone's merge stays for a failed push and boot runs it; the state commands go
+- 6.1.18, ticked: removed in C26, 2026-10-26: The weight check's one cut: you work one machine at a time, so the second clone's merge stays for a failed push and boot runs it; the state commands go
+
+## Passed without review
+
