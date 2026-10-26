@@ -38,7 +38,8 @@ The method, in the person's words:
 
 ### Where it stands
 
-- **Leeway** is liked, and parked (round 12, 2026-10-22): "I like leeway, park it." Remit is a maybe. After round 17: "I think Leeway might be the one, but I don't want to commit just yet." The name is revisited before the reshape's spec is signed off.
+- **Decided 2026-10-26: Leeway**, with the tagline "agentic workflows for Claude Code" ("I think I'd like to go ahead and call it Leeway"). The rename goes all the way down with the reshape; the repository is renamed around the release (spec §28.1).
+- **Leeway** was liked and parked first (round 12, 2026-10-22): "I like leeway, park it." Remit was a maybe. After round 17: "I think Leeway might be the one, but I don't want to commit just yet."
 - **Sumi** was the closest before it: "Sumi is the best of a bad bunch, is what I'm feeling."
 - **The direction that came closest** is "someone who acts for you" (round 10). Round 11 dug into it: "Some are definitely a no, some are a maybe. Nothing particularly jumps out." The person hasn't yet marked which. Round 12 turned it round, naming what you give the one who acts for you rather than the person.
 - **How deep a rename goes** is decided with the name. The product, the repository, the docs and help are cheap to rename. The rest follows the name: the install (`leeovery/agentic-workflows`), the command typed (`/workflow-start`, which could become `/leeway`), the `workflow-*` skill names, each project's `.workflows/` folder, the state branch `workflows-state` (spec 4.9.1), `~/.config/workflows/` and the `WORKFLOWS_*` environment variables. Before the reshape's build these cost a word: its migration already moves every project's `.workflows/` onto the new state branch and its skills are rewritten. After the release they are a second migration of every project.

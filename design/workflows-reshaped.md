@@ -3940,13 +3940,28 @@ an epic), which opened what stores what. Resolve each, then climb:
   tab follows the session into every phase, so every phase's view ships
   with it, each spiked in its own round first (agreed by the person
   2026-10-21).
-- **The product's name.** Still open. Explored with the person on
-  2026-10-20; every option and the person's reaction to it is recorded in
-  `design/name-exploration.md`. Nothing is off the table, and it may stay
-  "the workflows".
-  - How deep the rename goes is decided with it. The product, repository,
-    docs and help are cheap to rename. The `workflow-*` skill names and
-    the `.workflows/` folder are a migration.
+- **The product's name.** Decided by the person 2026-10-26: Leeway, with
+  the tagline "agentic workflows for Claude Code". The tagline describes
+  it plainly and never leans on "Lee's way", by the person's own rule.
+  Every option explored, with the person's reactions, is in
+  `design/name-exploration.md`.
+  - The rename goes all the way down, with the reshape, whose migration
+    already moves every project:
+    - `/leeway` in place of `/workflow-start`;
+    - the skills become `leeway-*`;
+    - each project's `.leeway/` and its state branch `leeway-state`;
+    - `~/.config/leeway/` at user level;
+    - the `LEEWAY_*` environment variables;
+    - the mods become `leeway-gates` and `leeway-gates-rows`.
+  - Renaming after the release would be a second migration of every
+    project. `.workflows/` sits beside `.github/workflows/`, and a branch
+    named `workflows-state` reads like CI.
+  - The repository is renamed `leeovery/leeway` around the release, so
+    the name installed matches the code. GitHub's redirect keeps existing
+    installs updating, since agntc clones over https.
+  - The local folder `~/Code/agentic-workflows` is renamed only at the
+    very end, in two steps: the move, then Claude Code's project folder
+    (memory, transcripts, the research) and the worktrees moved with it.
 - **Uninstalling and reinstalling.** Parked by the person 2026-10-13 for
   a proper conversation later; recorded as raised, nothing decided. It is
   raised with the person when the work reaches install.

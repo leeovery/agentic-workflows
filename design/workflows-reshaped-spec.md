@@ -499,11 +499,11 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 
 4.1.1 The workflows' state lives on a branch of its own. [R23; ruled by the person 2026-10-18 and confirmed the same day; plan 4.2]
 
-4.1.2 `.workflows/` is a worktree of an orphan branch, checked out inside the main checkout and ignored by code branches. [R23, plan 4.2, Layout on disk]
+4.1.2 `.leeway/` is a worktree of an orphan branch, checked out inside the main checkout and ignored by code branches. [R23, plan 4.2, Layout on disk]
 
 4.1.3 Code branches and pull requests never carry state, and GitHub never merges it. [R23, plan 4.2]
 
-4.1.4 There is one copy of the state. Every session, whichever worktree it runs in, writes that one copy, and nothing ever creates a `.workflows/` inside a code worktree. [R23, plan 4.2]
+4.1.4 There is one copy of the state. Every session, whichever worktree it runs in, writes that one copy, and nothing ever creates a `.leeway/` inside a code worktree. [R23, plan 4.2]
 
 4.1.5 The layout on disk (4.11) is the content of the state branch's worktree, never part of a code branch. [Layout on disk, R23]
 
@@ -515,9 +515,9 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 
 ### 4.2 Finding the state
 
-4.2.1 The engine resolves `.workflows/` through the common git directory and hands out absolute paths in its responses. [R23, plan 4.2, plan 10.1; Claude's]
+4.2.1 The engine resolves `.leeway/` through the common git directory and hands out absolute paths in its responses. [R23, plan 4.2, plan 10.1; Claude's]
 
-4.2.2 The skills never assume `.workflows/` sits under the session's own folder, so a session working in a code worktree works the same as one in the main checkout. [plan 10.1; Claude's; record, engineering still unclear]
+4.2.2 The skills never assume `.leeway/` sits under the session's own folder, so a session working in a code worktree works the same as one in the main checkout. [plan 10.1; Claude's; record, engineering still unclear]
 
 ### 4.3 Locks and pushing
 
@@ -531,7 +531,7 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 
 4.4.1 The engine locks the state worktree when it creates it, with the reason "workflows state, do not remove". [R23; ruled by the person 2026-10-18]
 
-4.4.2 The hook before Bash refuses each of: unlocking `.workflows/`; removing `.workflows/`; deleting the state branch locally; deleting the state branch on the remote; force-pushing the state branch. [R23; ruled by the person 2026-10-18; plan 4.2, plan 6.3]
+4.4.2 The hook before Bash refuses each of: unlocking `.leeway/`; removing `.leeway/`; deleting the state branch locally; deleting the state branch on the remote; force-pushing the state branch. [R23; ruled by the person 2026-10-18; plan 4.2, plan 6.3]
 
 4.4.3 Boot checks the state worktree and the state branch every time it runs. [R23, plan 4.2, plan 9.2]
 
@@ -542,13 +542,13 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 Screen, drawn by Claude: boot's stop, the state branch gone here and on the remote. [Claude's derivation, O94]
 
 ```text
-⚑ Boot stopped: the workflows' state branch is gone
-> Portal keeps its workflows state on a branch of its own,
-> workflows-state. Boot found it neither in this clone nor on
+⚑ Boot stopped: Leeway's state branch is gone
+> Portal keeps its Leeway state on a branch of its own,
+> leeway-state. Boot found it neither in this clone nor on
 > the remote.
 >
 > If another clone of Portal still has it, on this machine or
-> another, run the workflows there: boot pushes it back to the
+> another, run Leeway there: boot pushes it back to the
 > remote, and this clone restores it when it next starts.
 >
 > Otherwise the state is lost: the decisions, the logs and the
@@ -571,8 +571,8 @@ Screen, drawn by Claude: setup's offer of the GitHub rule, with its no (4.4.11).
 ```text
 · · · · · · · · · · · ·
 Portal's remote is on GitHub. A rule there can refuse deleting
-or force-pushing workflows-state for anything run outside Claude
-Code; inside it, the workflows already refuse both.
+or force-pushing leeway-state for anything run outside Claude
+Code; inside it, Leeway already refuses both.
 
 ◆ Set that rule on GitHub?
 
@@ -644,9 +644,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 ### 4.9 The branch's name
 
-4.9.1 The state branch is named `workflows-state`, fixed. [plan 10.3; Claude's]
+4.9.1 The state branch is named `leeway-state`, fixed. [plan 10.3; Claude's]
 
-4.9.2 Setup refuses where a branch named `workflows-state` already holds code history. [plan 10.3; Claude's]
+4.9.2 Setup refuses where a branch named `leeway-state` already holds code history. [plan 10.3; Claude's]
 
 4.9.3 The commit door refuses a code commit on the state branch. [plan 10.3; Claude's]
 
@@ -662,11 +662,11 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 ### 4.11 The layout on disk
 
-4.11.1 The layout on disk is as this subsection sets it out, and the layout hook refuses writes under `.workflows/` outside it (6.2). [Layout on disk; ruled by the person 2026-10-17; R35; plan 3.13]
+4.11.1 The layout on disk is as this subsection sets it out, and the layout hook refuses writes under `.leeway/` outside it (6.2). [Layout on disk; ruled by the person 2026-10-17; R35; plan 3.13]
 
 4.11.2 A topic exists only before the spec; from the spec on, everything is the work unit's. [Layout on disk]
 
-4.11.3 `.workflows/` holds:
+4.11.3 `.leeway/` holds:
 - `manifest.json`: the registry and defaults; the environment setup (22.5.12); the roadmap, its archived items among them (18.8.13); the unit that closed each archived inbox item (18.6.4); the answer to the brownfield offer (8.12.11); and each directive's checklist (6.4.12);
 - `.ledger.jsonl`: the project's stream (§5);
 - `.inbox/`, `.product/` and `.state/` (4.11.16);
@@ -717,7 +717,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.11.13 A spike's dependencies, builds and run output go in the gitignored cache, at the spike's own path there (9.10.10). [R12; Claude's call, 2026-10-19; plan 3.4]
 
-4.11.14 At user level, `~/.config/workflows/` holds:
+4.11.14 At user level, `~/.config/leeway/` holds:
 - `config.json`: the knowledge base's provider settings, and the person's own settings, the threshold and its mid-build raise (16.13.7);
 - `credentials.json`: the keys the workflows call with, for the knowledge base's provider and a hosted tracker (7.1.8);
 - `trust.jsonl`: the trust log, the person's own stream across all their projects (§16);
@@ -738,10 +738,10 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 [Claude's sort, B20; the inner layouts, Claude's proposal; the inbox's names as today; `.product/`, ruled by the person 2026-10-26]
 
-4.11.17 The whole layout, as one tree: every path the workflows write under `.workflows/` and at user level is in it, each entry naming the line that sets it. The files the workflows own in the code tree are 6.3.15's. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal; Claude's derivation 2026-10-25: the tree draws `.workflows/` and user level, and 6.3.15 names the code tree's files]
+4.11.17 The whole layout, as one tree: every path the workflows write under `.leeway/` and at user level is in it, each entry naming the line that sets it. The files the workflows own in the code tree are 6.3.15's. [Layout on disk; ruled by the person 2026-10-17; every place prescribed, asked by the person 2026-10-22; the tree drawn, Claude's proposal; Claude's derivation 2026-10-25: the tree draws `.leeway/` and user level, and 6.3.15 names the code tree's files]
 
 ```text
-.workflows/                  the state worktree (4.1.2)
+.leeway/                     the state worktree (4.1.2)
 ├── .git                     git's link to the repository
 ├── .gitignore               4.11.3
 ├── .lock                    the writer lock (4.3.1)
@@ -798,7 +798,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
         ├── round-N.md
         └── round-N-checks.md
 
-~/.config/workflows/         user level (4.11.14)
+~/.config/leeway/            user level (4.11.14)
 ├── config.json
 ├── credentials.json
 ├── trust.jsonl
@@ -812,9 +812,9 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 ## 4-S. Scenarios for §4
 
-4.S1 Given a project with a remote and its state worktree at `.workflows/` on `workflows-state`, when a session working in a code worktree runs a verb that writes state, then the write lands in the one `.workflows/` found through the common git directory, no `.workflows/` appears in the code worktree, the engine's response carries absolute paths, the state branch gains a commit that is pushed, and the default branch gains no commit. (4.1.1, 4.1.2, 4.1.4, 4.1.8, 4.2.1, 4.2.2, 4.3.2)
+4.S1 Given a project with a remote and its state worktree at `.leeway/` on `leeway-state`, when a session working in a code worktree runs a verb that writes state, then the write lands in the one `.leeway/` found through the common git directory, no `.leeway/` appears in the code worktree, the engine's response carries absolute paths, the state branch gains a commit that is pushed, and the default branch gains no commit. (4.1.1, 4.1.2, 4.1.4, 4.1.8, 4.2.1, 4.2.2, 4.3.2)
 
-4.S2 Given a code branch with work on it, when its pull request is opened, then the pull request carries no file under `.workflows/`. (4.1.2, 4.1.3, 4.1.5)
+4.S2 Given a code branch with work on it, when its pull request is opened, then the pull request carries no file under `.leeway/`. (4.1.2, 4.1.3, 4.1.5)
 
 4.S3 Given two sessions running state-writing verbs at the same moment, when both finish, then their writes were made one after the other under the lock, and the state branch's history is linear with no merge commit. (4.3.1)
 
@@ -824,17 +824,17 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S6 Given a state worktree the engine created, when `git worktree list --porcelain` is read, then the worktree shows as locked with the reason "workflows state, do not remove". (4.4.1)
 
-4.S7 Given a session, in a project with a remote or without one, when Claude runs a command that unlocks `.workflows/`, removes it, deletes `workflows-state` locally, deletes it on the remote, or force-pushes it, then the hook before Bash refuses each one. (4.4.2, 4.4.8, 6.3.8)
+4.S7 Given a session, in a project with a remote or without one, when Claude runs a command that unlocks `.leeway/`, removes it, deletes `leeway-state` locally, deletes it on the remote, or force-pushes it, then the hook before Bash refuses each one. (4.4.2, 4.4.8, 6.3.8)
 
-4.S8 Given the local `workflows-state` deleted outside Claude Code while the remote holds it, when boot runs, then the local branch is restored from the remote. (4.4.3, 4.4.4)
+4.S8 Given the local `leeway-state` deleted outside Claude Code while the remote holds it, when boot runs, then the local branch is restored from the remote. (4.4.3, 4.4.4)
 
-4.S9 Given `workflows-state` gone locally and on the remote, in a project whose committed `.claude/settings.json` holds the workflows' hooks, when boot runs, then boot stops and says so, and creates no branch. (4.4.5, 4.5.2)
+4.S9 Given `leeway-state` gone locally and on the remote, in a project whose committed `.claude/settings.json` holds the workflows' hooks, when boot runs, then boot stops and says so, and creates no branch. (4.4.5, 4.5.2)
 
 4.S10 Given a project whose remote is on GitHub, when setup runs, then it offers the rule against deleting or force-pushing the state branch, and the rule exists on the repository only after the person's yes. (4.4.6, 4.4.7)
 
-4.S11 Given a fresh clone whose remote holds `workflows-state` and which has no state worktree, when boot runs, then the state worktree is added and locked. (4.5.1)
+4.S11 Given a fresh clone whose remote holds `leeway-state` and which has no state worktree, when boot runs, then the state worktree is added and locked. (4.5.1)
 
-4.S12 Given a project being set up, its code tree holding nothing the workflows commit there, with no state worktree and no state branch on the remote, when boot runs, then an orphan `workflows-state` branch exists afterwards. (4.5.2, 4.9.1)
+4.S12 Given a project being set up, its code tree holding nothing the workflows commit there, with no state worktree and no state branch on the remote, when boot runs, then an orphan `leeway-state` branch exists afterwards. (4.5.2, 4.9.1)
 
 4.S14 Given two clones that each appended ledger entries since their last push, when boot runs in the clone that is behind, then its ledger holds the remote's entries first and its own unpushed entries after them in their order, the new commit's parent is the remote's tip, the push is made with lease, the append-only check passes on both clones afterwards, and neither clone's config holds a merge driver for the state. (4.7.1, 4.7.2, 4.7.3, 4.7.8)
 
@@ -844,25 +844,25 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S17 Given two clones that changed different fields of one manifest, when boot runs in the clone that is behind, then the merged manifest holds both changes; given both changed the same field to the same value, then the merged manifest holds it and the merge does not stop; given both changed the same field to different values, then the merge stops and shows both values, and once the person picks one the merged manifest holds it and the merge finishes. (4.7.4, 4.7.5, 4.7.6, 4.7.11)
 
-4.S18 Given the person's code repository has a commit hook and the session's environment carries `GIT_DIR`, when the engine makes a state commit, then the hook does not run and the commit lands on `workflows-state` in the state worktree. (4.8.1)
+4.S18 Given the person's code repository has a commit hook and the session's environment carries `GIT_DIR`, when the engine makes a state commit, then the hook does not run and the commit lands on `leeway-state` in the state worktree. (4.8.1)
 
-4.S19 Given an existing branch named `workflows-state` that holds code history, when setup runs, then setup refuses. (4.9.2)
+4.S19 Given an existing branch named `leeway-state` that holds code history, when setup runs, then setup refuses. (4.9.2)
 
-4.S20 Given a code commit made through the commit door on `workflows-state`, then the door refuses it; and given any `land` call, it never opens or merges a pull request into `workflows-state`. (4.9.3, 4.9.4)
+4.S20 Given a code commit made through the commit door on `leeway-state`, then the door refuses it; and given any `land` call, it never opens or merges a pull request into `leeway-state`. (4.9.3, 4.9.4)
 
 4.S21 Given a unit that has finished its build, when its folder is listed, then it holds the topics' logs, the spec, the build's log, each task's account with its review rounds' reports, and the review's reports, no tracking files or analysis files, and its tasks are found in the tracker. (4.10.1, 4.10.2, 4.10.3)
 
-4.S22 Given an epic after its review phase, when its folder is listed, then it matches 4.11.5: `manifest.json` holding the phase cut, `discovery/session-NNN.md` files, `seeds/`, `topics/{topic}/` each with `brief.md` and `log.md`, and `mail/` only where mail is waiting, `assets/`, `spec.md`, `build/` with `log.md`, `notes.md`, `tasks/` and `phases/`, and `review/`, and no `.state/`; with discovery's log one file per session, each topic one log, and nothing of the build or review under `topics/`; and `.workflows/` holds no `.baseline/`. (4.11.1, 4.11.2, 4.11.3, 4.11.4, 4.11.5, 4.11.7, 4.11.8, 4.11.16)
+4.S22 Given an epic after its review phase, when its folder is listed, then it matches 4.11.5: `manifest.json` holding the phase cut, `discovery/session-NNN.md` files, `seeds/`, `topics/{topic}/` each with `brief.md` and `log.md`, and `mail/` only where mail is waiting, `assets/`, `spec.md`, `build/` with `log.md`, `notes.md`, `tasks/` and `phases/`, and `review/`, and no `.state/`; with discovery's log one file per session, each topic one log, and nothing of the build or review under `topics/`; and `.leeway/` holds no `.baseline/`. (4.11.1, 4.11.2, 4.11.3, 4.11.4, 4.11.5, 4.11.7, 4.11.8, 4.11.16)
 
 4.S23 Given a quick-fix unit after its work, when its folder is listed, then it holds `build/` and `summary.md`, and no `topics/` and no `spec.md`; given a feature, then it holds one topic named after the unit. (4.11.6)
 
 4.S24 Given any project, when the state branch's files are listed, then none holds a topic's record, a map, the product record, the verdict queue, the questions waiting on the person or "what have you decided without me". (4.11.9)
 
-4.S25 Given a topic whose entries just changed, when `.workflows/.knowledge/` is listed, then it holds the topic's rendered record, and `git status` in the state worktree shows nothing under `.knowledge/` or `.cache/`, and neither is on the state branch. (4.1.7, 4.11.10, 4.11.11)
+4.S25 Given a topic whose entries just changed, when `.leeway/.knowledge/` is listed, then it holds the topic's rendered record, and `git status` in the state worktree shows nothing under `.knowledge/` or `.cache/`, and neither is on the state branch. (4.1.7, 4.11.10, 4.11.11)
 
 4.S26 Given a product-level spike, when its source is kept, then it sits in a folder of its own in `.product/spikes/`, and its dependencies, builds and run output sit in the gitignored cache. (4.11.12, 4.11.13)
 
-4.S27 Given a project in use, when the trust log and the record of the person are written, then they are `~/.config/workflows/trust.jsonl` and `~/.config/workflows/person.md`, never under `.workflows/`. (4.11.14, 5.1.7, 16.13.7, 16.18.8)
+4.S27 Given a project in use, when the trust log and the record of the person are written, then they are `~/.config/leeway/trust.jsonl` and `~/.config/leeway/person.md`, never under `.leeway/`. (4.11.14, 5.1.7, 16.13.7, 16.18.8)
 
 4.S28 Given topic `pricing` ran experiment E1 with a sub-experiment, and a build recorded a run of scenario 3.S2, when their files are written, then `topics/pricing/experiments/E1-{slug}/` holds `problem.md`, `design.md`, `report.md`, `data/` and the sub-experiment's `E1.1-{slug}/`; `build/runs/3.S2/run-001.json` holds the verdict and the text evidence; and the run's recordings and images sit under `.cache/{unit}/build/runs/3.S2/`, their hash in the run's file. (4.11.15)
 
@@ -1032,7 +1032,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 ### 5.7 Storage
 
-5.7.1 The ledger is stored as JSON lines in `.workflows/.ledger.jsonl`, under git on the state branch: one line per event, appended, each line carrying its schema version. [R23; ruled by the person 2026-10-18; plan 4.1]
+5.7.1 The ledger is stored as JSON lines in `.leeway/.ledger.jsonl`, under git on the state branch: one line per event, appended, each line carrying its schema version. [R23; ruled by the person 2026-10-18; plan 4.1]
 
 5.7.2 A field a later release adds is optional in the schema with a stated default, so older lines are already valid lines of the current shape and need nothing. [R23; ruled by the person 2026-10-18; plan 4.1]
 
@@ -1072,7 +1072,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.8.11 Every session can read every entry, by unit, topic or area, and current entries only. [R23]
 
-5.8.12 The knowledge base's copy is the one rendering kept: when a topic's entries change, the engine renders its record and the knowledge base indexes it. The copy lives in the gitignored `.workflows/.knowledge/` and is rebuilt from the ledger, so a replaced answer drops out of search the moment it is replaced (§22). [R23; ruled by the person 2026-10-17; R44]
+5.8.12 The knowledge base's copy is the one rendering kept: when a topic's entries change, the engine renders its record and the knowledge base indexes it. The copy lives in the gitignored `.leeway/.knowledge/` and is rebuilt from the ledger, so a replaced answer drops out of search the moment it is replaced (§22). [R23; ruled by the person 2026-10-17; R44]
 
 5.8.13 The engine renders the product record to a file in `.knowledge/` whenever a product-wide entry changes, so a CLAUDE.md line can point at it. [R10, Layout on disk, plan 3.3]
 
@@ -1090,7 +1090,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 ## 5-S. Scenarios for §5
 
-5.S1 Given a topic with an open question, when Claude records an answer through `ledger decide` naming the question, then one line is appended to `.workflows/.ledger.jsonl` carrying a nanoid id, its schema version, the unit, topic, phase and session, the time written, who decided, why, what it rules out and what it relies on, the engine-assigned link to the question it closes, and the engine's response shows the entry's short id; the project has this one ledger file and no other, per unit or elsewhere. (5.1.4, 5.2.1, 5.2.3, 5.2.4, 5.3.2, 5.3.5, 5.7.1, 5.7.5)
+5.S1 Given a topic with an open question, when Claude records an answer through `ledger decide` naming the question, then one line is appended to `.leeway/.ledger.jsonl` carrying a nanoid id, its schema version, the unit, topic, phase and session, the time written, who decided, why, what it rules out and what it relies on, the engine-assigned link to the question it closes, and the engine's response shows the entry's short id; the project has this one ledger file and no other, per unit or elsewhere. (5.1.4, 5.2.1, 5.2.3, 5.2.4, 5.3.2, 5.3.5, 5.7.1, 5.7.5)
 
 5.S2 Given two sessions appending entries at once, when both land, then their ids differ, neither is a sequential number, and a read made meanwhile meets the ledger before or after each append, never half a line. (5.2.2, 5.4.6)
 
@@ -1102,7 +1102,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.S6 Given a ledger that does not start, byte for byte, with the parent commit's ledger, when a state commit is made, then it is refused. (5.4.5)
 
-5.S7 Given Claude uses Write or Edit on `.workflows/.ledger.jsonl`, then the hook refuses it, and the ledger changes only through engine commands. (5.1.9, 5.4.2)
+5.S7 Given Claude uses Write or Edit on `.leeway/.ledger.jsonl`, then the hook refuses it, and the ledger changes only through engine commands. (5.1.9, 5.4.2)
 
 5.S8 Given a decision D1, when Claude replaces it through `ledger replace` with the reason "a changed mind", then a replaced event naming D1 and the reason is appended, D1's line is byte for byte unchanged, and the record shows the new answer with D1 folded beneath it. (5.3.4, 5.6.2, 5.6.4, 5.6.5, 5.6.6)
 
@@ -1198,11 +1198,11 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 ### 6.2 The layout hook
 
-6.2.1 A hook refuses writes under `.workflows/` to paths outside the layout (4.11): no ad hoc directories. [R35, R2]
+6.2.1 A hook refuses writes under `.leeway/` to paths outside the layout (4.11): no ad hoc directories. [R35, R2]
 
 6.2.2 It is a Claude Code hook before Write, Edit and NotebookEdit, installed by boot into the project's settings as the session hooks are, so it holds with or without the mod. [plan 6.2; Claude's; Claude's derivation, O17]
 
-6.2.3 It refuses any path under `.workflows/` outside the layout, every manifest, the ledger, and a unit's `spec-review.json` (11.11.9). [plan 6.2; Claude's; R23; `spec-review.json`, ruled by the person 2026-10-22]
+6.2.3 It refuses any path under `.leeway/` outside the layout, every manifest, the ledger, and a unit's `spec-review.json` (11.11.9). [plan 6.2; Claude's; R23; `spec-review.json`, ruled by the person 2026-10-22]
 
 6.2.4 The mod's manifest guard folds into the hook. [plan 6.2; Claude's; R35; Claude's derivation, O17]
 
@@ -1238,7 +1238,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.3.14 Left to the builder: the code commit's message beyond the task's id. [Claude's sort, B17]
 
-6.3.15 The files the workflows own outside `.workflows/` are not code: the project's `.claude/settings.json`, `.worktreeinclude` and `.gitignore`. Boot commits its own changes to them on the branch checked out, as today. A migration's changes to them go through the migration review, whose one yes makes one commit on the code branch and one on the state branch where it changed both (21.9.2). [today's product (`engine-commands.md:26`, `:436`); R15, R35, plan 6.3; Claude's derivation, T9]
+6.3.15 The files the workflows own outside `.leeway/` are not code: the project's `.claude/settings.json`, `.worktreeinclude` and `.gitignore`. Boot commits its own changes to them on the branch checked out, as today. A migration's changes to them go through the migration review, whose one yes makes one commit on the code branch and one on the state branch where it changed both (21.9.2). [today's product (`engine-commands.md:26`, `:436`); R15, R35, plan 6.3; Claude's derivation, T9]
 
 ### 6.4 The checklists
 
@@ -1329,7 +1329,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.5.11 Which agents the workflows own is §26's. [plan 6.5; Claude's proposal]
 
-6.5.12 A filled brief is kept in the folder of the conversation that issued it, `~/.config/workflows/conversations/{session-id}/briefs/{id}.md`, where the hook before Agent and SendMessage finds it whether or not a work unit exists, and it goes with that folder (22.1.1). The hook's refusals are appended, each with its reason, to `~/.config/workflows/brief-refusals.jsonl`, across the person's projects, since the templates are the workflows' own (6.5.9). [Claude's sort, B16; Claude's proposal]
+6.5.12 A filled brief is kept in the folder of the conversation that issued it, `~/.config/leeway/conversations/{session-id}/briefs/{id}.md`, where the hook before Agent and SendMessage finds it whether or not a work unit exists, and it goes with that folder (22.1.1). The hook's refusals are appended, each with its reason, to `~/.config/leeway/brief-refusals.jsonl`, across the person's projects, since the templates are the workflows' own (6.5.9). [Claude's sort, B16; Claude's proposal]
 
 ### 6.6 Gate answers and the mod
 
@@ -1355,7 +1355,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.6.11 The mod keeps setting Claude Code's harness as today. `SendUserMessage` is on. In a workflow conversation, thinking summaries and the silent-turn reminder are off, and the person's own values are put back as it ends. Anything shown mid-turn and then carried past with another tool call reaches the person through `SendUserMessage`, and a turn ends on text. [today's product; Claude's sort, T32]
 
-6.6.12 The second plugin, `workflow-gates-rows`, stays. It redraws the transcript row of an answer the mod sent as the question and the answer, and a handoff's continuation as its line. [today's product; Claude's sort, T33]
+6.6.12 The second plugin, today's `workflow-gates-rows`, stays, named `leeway-gates-rows` (28.1.2). It redraws the transcript row of an answer the mod sent as the question and the answer, and a handoff's continuation as its line. [today's product; Claude's sort, T33]
 
 6.6.13 The mod runs where it runs today: Claude Code's terminal app and the Desktop app's Code tab, from the floor version (22.2.5). The board runs wherever Claude Code draws a mod's pane. While another screen, such as Remote Control, is attached, the mod leaves each menu as text so every screen shows it, as today. Elsewhere the workflows run on the engine's text (6.6.9), softly supported. [today's product; Claude's sort, T37; Remote Control as today's mod does it, Claude's derivation 2026-10-25]
 
@@ -1367,11 +1367,11 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.S3 Given the engine, when its command catalogue is read, then it has the families `ledger`, `raise`, `verdict`, `task`, `land`, `brief`, `checklist`, `asset`, `verify`, `gate`, `inbox` and `cut` with the verbs 6.1.4 to 6.1.13, 6.1.15 and 6.1.20 name, and the kept families of 6.1.16, and no verb serving research threads, the discussion map, routing, build order, analysis cycles, plan formats, grouping, staleness or promotion to cross-cutting. (6.1.4, 6.1.5, 6.1.6, 6.1.7, 6.1.8, 6.1.9, 6.1.10, 6.1.11, 6.1.12, 6.1.13, 6.1.15, 6.1.16, 6.1.17, 6.1.20)
 
-6.S4 Given a session with the mod not running, when Claude uses Write to create `.workflows/{unit}/scratch/notes.md`, then the hook refuses; when it writes `.workflows/{unit}/topics/{topic}/log.md`, the write goes through. (6.2.1, 6.2.2, 6.2.3)
+6.S4 Given a session with the mod not running, when Claude uses Write to create `.leeway/{unit}/scratch/notes.md`, then the hook refuses; when it writes `.leeway/{unit}/topics/{topic}/log.md`, the write goes through. (6.2.1, 6.2.2, 6.2.3)
 
-6.S5 Given a session, when Claude uses Edit on `.workflows/manifest.json`, `.workflows/{unit}/manifest.json`, `.workflows/{unit}/spec-review.json` or `.workflows/.ledger.jsonl`, then the hook refuses each, with or without the mod. (6.2.3, 6.2.4)
+6.S5 Given a session, when Claude uses Edit on `.leeway/manifest.json`, `.leeway/{unit}/manifest.json`, `.leeway/{unit}/spec-review.json` or `.leeway/.ledger.jsonl`, then the hook refuses each, with or without the mod. (6.2.3, 6.2.4)
 
-6.S6 Given a shell command created `.workflows/{unit}/tmp/x.md`, when a verb next makes its state commit, then the commit is refused and the refusal names `tmp/x.md`. (6.2.5)
+6.S6 Given a shell command created `.leeway/{unit}/tmp/x.md`, when a verb next makes its state commit, then the commit is refused and the refusal names `tmp/x.md`. (6.2.5)
 
 6.S7 Given a project with a remote and a topic's log edited since the last state commit, when a verb writes state, then one state commit holds the verb's writes and the log, and the state branch is pushed. (6.3.2)
 
@@ -1425,7 +1425,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.S32 Given a build phase's close that skipped an item with a reason, when the session compacts and the build reaches finish in a later session, then finish's screen shows the skip and its reason, read from the unit's manifest. (6.4.5, 6.4.12)
 
-6.S33 Given a brief issued for the product researcher in a conversation with no work unit, when Claude dispatches the agent, then the hook finds the brief in that conversation's `briefs/` and lets it through; given a dispatch whose content differs from its brief, then the hook refuses it and a line with the reason is appended to `~/.config/workflows/brief-refusals.jsonl`. (6.5.7, 6.5.9, 6.5.12)
+6.S33 Given a brief issued for the product researcher in a conversation with no work unit, when Claude dispatches the agent, then the hook finds the brief in that conversation's `briefs/` and lets it through; given a dispatch whose content differs from its brief, then the hook refuses it and a line with the reason is appended to `~/.config/leeway/brief-refusals.jsonl`. (6.5.7, 6.5.9, 6.5.12)
 
 ## 7. Tasks, landing and their drivers
 
@@ -2057,7 +2057,7 @@ the person 2026-10-19; Claude's derivation]
 
 8.9.4 The engine renders the product record to a file whenever a product-wide
 entry changes, so a line the person adds to CLAUDE.md can point at it. The
-file is gitignored and sits in `.workflows/.knowledge/`, beside the knowledge
+file is gitignored and sits in `.leeway/.knowledge/`, beside the knowledge
 base's rendered records. [R10, Layout on disk, plan 3.3; a file the workflows
 own agreed by the person 2026-10-13 (the plan dates it ruled 2026-10-19);
 where it sits is Claude's call; Claude's derivation]
@@ -2098,9 +2098,9 @@ session logs until a pull creates its topic. [R10]
 it; discussion writes the product record and the opening view reads it. [R10,
 R32; agreed by the person 2026-10-13]
 
-8.9.13 The product record's rendered file is `.workflows/.knowledge/product.md`,
+8.9.13 The product record's rendered file is `.leeway/.knowledge/product.md`,
 in markdown. A CLAUDE.md line pointing at it names its full path, since a
-code worktree holds no `.workflows/` (4.1.4). [Claude's sort, B23; Claude's
+code worktree holds no `.leeway/` (4.1.4). [Claude's sort, B23; Claude's
 proposal]
 
 ### 8.10 The gap analysis
@@ -2416,7 +2416,7 @@ the person's yes adds them to the product record with no gate of their own.
 (8.9.1, 8.9.7, 9.7.3)
 
 8.S26 Given a product-wide entry is added or replaced, then the engine renders
-the product record to `.workflows/.knowledge/product.md`, the file is
+the product record to `.leeway/.knowledge/product.md`, the file is
 gitignored, and it shows the current entry. (8.9.2, 8.9.4, 8.9.13)
 
 8.S27 Given any session of the workflows, then no change is written to the
@@ -3611,7 +3611,7 @@ is the person's other way in. [R12, R17; Claude's derivation, O31]
 ### 10.3 Opening a topic directly
 
 10.3.1 The start skill takes an optional work unit and topic:
-`/workflow-start {work unit} {topic}` opens that topic directly, as picking it
+`/leeway {work unit} {topic}` opens that topic directly, as picking it
 through the menus would. [R13, plan 3.4; ruled by the person 2026-10-16]
 
 10.3.2 The command opens any topic by name, not only for mail. [R13]
@@ -3620,7 +3620,7 @@ through the menus would. [R13, plan 3.4; ruled by the person 2026-10-16]
 another pane now or use later. [R13, plan 3.4]
 
 10.3.4 Screen: the send report. It says where the message landed and ends with
-`/workflow-start {work unit} {topic}` for the target. The rest of what it
+`/leeway {work unit} {topic}` for the target. The rest of what it
 shows is drawn by Claude in the spec in the existing design system, marked as
 Claude's. [R13; Claude's derivation, O94]
 
@@ -3632,7 +3632,7 @@ Sent to Commercialization, on Fumi
   a wizard step after the tour
   ↳ Waiting in its mailbox, with my reasoning
 
-/workflow-start fumi commercialization
+/leeway fumi commercialization
 ```
 
 ### 10.4 Waiting mail
@@ -3680,10 +3680,10 @@ only if the one-command open still feels clunky. [R13]
 
 10.S1 Given a topic sends a message to another, then the message is one file in
 the target's `topics/{topic}/mail/`, its path naming no phase, and the send's
-report ends with `/workflow-start {work unit} {topic}` for the target.
+report ends with `/leeway {work unit} {topic}` for the target.
 (10.1.2, 10.1.3, 10.3.3, 10.3.4)
 
-10.S2 Given the person types `/workflow-start {work unit} {topic}`, then that
+10.S2 Given the person types `/leeway {work unit} {topic}`, then that
 topic opens as it would through the menus, mail or none. (10.3.1, 10.3.2)
 
 10.S3 Given a topic with mail waiting, when it opens, then the mail is raised
@@ -4610,7 +4610,7 @@ checkout, whatever unit or topic the other session sits in. Entering one while
 another session holds the checkout's code shows today's stop, naming that
 session and when it was last active, with yes to go on anyway and back to
 return. The review phase leaves the working tree as it found it: dirt outside
-`.workflows/` after its runs stops for the person and is never reverted blind.
+`.leeway/` after its runs stops for the person and is never reverted blind.
 [today's product (`code-session-gate.md`,
 `invoke-change-set-verifiers.md:96–116`); Claude's sort, T25]
 
@@ -5573,7 +5573,7 @@ scenarios. (12.4.3, 12.12.5)
 
 14.S12 Given a review phase that fails two rounds, when each round's fix tasks are written, then each round's fix tasks form one more build phase of their own, and both fix phases land at finish. (14.3.2)
 
-14.S13 Given the review phase's runs leave a file changed outside `.workflows/`, when they end, then the session stops for the person and reverts nothing. (14.1.5, 12.7.8)
+14.S13 Given the review phase's runs leave a file changed outside `.leeway/`, when they end, then the session stops for the person and reverts nothing. (14.1.5, 12.7.8)
 
 14.S14 Given a build in step whose review phase fails a round, when the fix tasks run, then the failing verdict does not stop, the gate after each fix task stops as a build task's does, and the fix phase's merge stops. (14.6.2, 3.3.8, 7.2.4)
 
@@ -6228,7 +6228,7 @@ b/back    → Back to the start menu — the rest keep waiting
 
 16.13.6 Counts are derived from the trust log, never stored. [R25]
 
-16.13.7 The trust log is `~/.config/workflows/trust.jsonl`, and the person's settings — the threshold (16.4.6) and its mid-build raise (16.4.7) — sit in `~/.config/workflows/config.json`, beside the knowledge base's provider settings (4.11.14). Left to the builder: the event schemas and the guard against Claude editing either, or `person.md` (16.13.2, 16.18.8); the events carry the model, since the bound is per model (16.4.4). [Claude's sort, B52; the files, Claude's proposal]
+16.13.7 The trust log is `~/.config/leeway/trust.jsonl`, and the person's settings — the threshold (16.4.6) and its mid-build raise (16.4.7) — sit in `~/.config/leeway/config.json`, beside the knowledge base's provider settings (4.11.14). Left to the builder: the event schemas and the guard against Claude editing either, or `person.md` (16.13.2, 16.18.8); the events carry the model, since the bound is per model (16.4.4). [Claude's sort, B52; the files, Claude's proposal]
 
 ### 16.14 The matrix at two levels, and the merge
 
@@ -6443,7 +6443,7 @@ Comment → Tell me how to word it
 
 16.18.7 No session searches the person's decisions in other projects: that would put another project's text into a session, and projects differ by what they are for. [R27, plan 4.7; ruled by the person 2026-10-19: "I do care about different things in different projects"]
 
-16.18.8 The record of the person is `~/.config/workflows/person.md` (4.11.14). Left to the builder: how its entries are laid out, and when a session reads it. [Claude's sort, B53; the file, Claude's proposal]
+16.18.8 The record of the person is `~/.config/leeway/person.md` (4.11.14). Left to the builder: how its entries are laid out, and when a session reads it. [Claude's sort, B53; the file, Claude's proposal]
 
 ### 16.19 The separate Claude call
 
@@ -6780,7 +6780,7 @@ e/verdicts → Give the 2 verdicts waiting on calls you changed
 v/view     → View completed & cancelled work units
 m/manage   → Manage work units, the project's setup and drivers,
              and the matrix
-h/help     → How the workflows work
+h/help     → How Leeway works
 ```
 
 18.2.13 The start menu has a p row for the product's conversation (8.2.9), always there whatever else is running: "p/product → Talk about the product", with its session count and the last date once the conversation has sessions. The roadmap keeps its own row, so picking work off it stays one press. [ruled by the person 2026-10-26]
@@ -9852,7 +9852,7 @@ board scrolls as one and READY TO DISCUSS comes after the list. (20.6.5,
 
 21.1.1 Every existing project migrates fully, as if it had always had this shape: one canonical path, with no second set of skills, no old units on old prose, and no runtime code that recognises an older shape (§2). [R37, R8, plan 5.1]
 
-21.1.2 A project migrates when the person updates its skills and next runs `/workflow-start`. A dormant project migrates whenever it is brought back. [R37, plan 5.1]
+21.1.2 A project migrates when the person updates its skills and next runs `/leeway`, the command the update puts in place of `/workflow-start` (28.1.2). A dormant project migrates whenever it is brought back. [R37, plan 5.1]
 
 21.1.3 Only the current shape is migrated from. The existing chain of migrations brings an older project up first, and the reshape's migration is written against today's shape alone — the shape the existing chain leaves (072 when ruled; see §1 for rebasing onto later migrations). [R37, plan 5.1; ruled by the person 2026-10-16]
 
@@ -9891,7 +9891,7 @@ Screen, drawn by Claude: the guard's refusal, another session live in the projec
 > ago. A major upgrade never runs under a live session, so
 > nothing has been changed.
 >
-> End that session, then run /workflow-start here again.
+> End that session, then run /leeway here again.
 ```
 
 Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflows/. [Claude's derivation, O94]
@@ -9902,7 +9902,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 > The migration's commit would sweep them in with its own, so
 > nothing has been changed.
 >
-> Commit or discard them, then run /workflow-start here again.
+> Commit or discard them, then run /leeway here again.
 ```
 
 ### 21.4 Step 2: the legacy split
@@ -9939,7 +9939,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.10 The old cache is left alone: nothing reads it, and completion deletes `.cache/{unit}` whole without knowing what is inside. [R37]
 
-21.5.11 `.workflows/` leaves the default branch (§4). The new layout becomes the first commit of the state's own branch, checked out where `.workflows/` was, and the default branch drops the folder and ignores it. These two commits are the migration's commit, made at finish on the person's yes (21.9). [R37, R23, plan 5.2, plan 6.3]
+21.5.11 `.workflows/` leaves the default branch (§4). The new layout becomes the first commit of the state's own branch, checked out at `.leeway/` (28.1.2), and the default branch drops `.workflows/` and ignores `.leeway/`. These two commits are the migration's commit, made at finish on the person's yes (21.9). [R37, R23, plan 5.2, plan 6.3]
 
 21.5.12 Anything still pending in the old state — a review not folded in, carry-notes waiting — is folded into its topic's log by the records directive (21.6). [R37]
 
@@ -9961,6 +9961,8 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 21.5.17 The move drops tracking and analysis files (4.10.3); task accounts and their review rounds' reports are kept (4.10.1). [R42, plan 3.13; Claude's derivation]
 
 21.5.18 Tick's store, `.tick/` at the project root today, moves into the state worktree, its contents unchanged (7.5.2, 4.11.3); the default branch drops it in the migration's commit (21.9.2). [7.5.1, 7.5.2, 4.11.3; Claude's derivation 2026-10-25: the tracker's state lives in the state worktree; ruled by the person 2026-10-25, Tick needing no change]
+
+21.5.19 The move takes today's other names to the product's (28.1.2): `~/.config/workflows/` moves to `~/.config/leeway/`, its contents unchanged, and the project's settings hooks, `.gitignore` and `.worktreeinclude` are rewritten to the new names. [ruled by the person 2026-10-26; Claude's derivation]
 
 ### 21.6 Step 4: the records
 
@@ -10073,7 +10075,7 @@ r/roadmap → The roadmap, as postponed topics — I'll ask which
 
 21.9.4 Screen: the migration commit gate. It stays today's migration review (§22), and its one yes makes the two commits of 21.9.2. [R37, plan 6.3, plan 9.2]
 
-21.9.5 Left to the builder: the two commits' order, what happens if one lands and the other fails, and how the state branch is checked out where `.workflows/` was before finish. [Claude's sort, B64]
+21.9.5 Left to the builder: the two commits' order, what happens if one lands and the other fails, and how the state branch is checked out at `.leeway/` before finish. [Claude's sort, B64]
 
 21.9.6 Left to the builder: how the knowledge store's old chunks are dropped at migration (what is dropped: 22.6). [Claude's sort, B68]
 
@@ -10148,7 +10150,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 ## 21-S. Scenarios for §21
 
-21.S1 Given a project on today's shape with updated skills, when the person next runs `/workflow-start`, then the migration runs, every unit ends in the new layout, and none of the project's code is changed. (21.1.1, 21.1.2, 21.1.4)
+21.S1 Given a project on today's shape with updated skills, when the person next runs `/leeway`, then the migration runs, every unit ends in the new layout, and none of the project's code is changed. (21.1.1, 21.1.2, 21.1.4)
 
 21.S2 Given a project on a shape older than today's, when the migration runs, then the existing chain brings it up to today's shape before the reshape's steps run. (21.1.3)
 
@@ -10182,7 +10184,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S17 Given an old `.cache/{unit}`, when the migration runs, then the cache is left as it was. (21.5.10)
 
-21.S18 Given the person says yes at the migration commit gate, when finish runs, then the default branch has a commit dropping `.workflows/` and ignoring it, and the state branch's first commit holds the new layout, checked out where `.workflows/` was; nothing was committed before. (21.5.11, 21.9.1, 21.9.2, 21.9.3, 21.9.4)
+21.S18 Given the person says yes at the migration commit gate, when finish runs, then the default branch has a commit dropping `.workflows/` and ignoring `.leeway/`, and the state branch's first commit holds the new layout, checked out at `.leeway/`; nothing was committed before. (21.5.11, 21.9.1, 21.9.2, 21.9.3, 21.9.4)
 
 21.S19 Given a topic with a review not folded in, when the records directive runs, then the review's content is in the topic's log. (21.5.12)
 
@@ -10248,6 +10250,8 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S50 Given a project whose baseline status records `native`, and another whose status records `skipped`, when the migration runs, then neither holds a baseline status field, each project manifest remembers the brownfield offer's answer, and the start menu makes neither the offer. (21.11.2, 8.12.11)
 
+21.S51 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows/` is gone, and the project's settings hooks, `.gitignore` and `.worktreeinclude` name `.leeway/` and the engine under its new name. (21.5.19)
+
 ## 22. Setup, environment and the knowledge base
 
 ### 22.1 Boot
@@ -10264,7 +10268,7 @@ writes it (4.7.8). [plan 9.2, plan 10.5, plan 4.2; adding the worktree,
 Claude's proposal; the checks every run, R23; catching up, ruled by the person
 2026-10-26]
 
-22.1.3 Left to the builder: the worktree include's role once `.workflows/` is
+22.1.3 Left to the builder: the worktree include's role once `.leeway/` is
 a state worktree that code worktrees never hold. [Claude's sort, B77]
 
 22.1.4 The engine keeps today's runtime: Node 18 or newer, Node's built-ins
@@ -10492,7 +10496,7 @@ and the reach across work units. [R44, plan 2.11; ruled by the person
 
 22.6.2 The knowledge base indexes records, which hold current decisions,
 through the one file each is written to: the rendered copy in the gitignored
-`.workflows/.knowledge/`, kept for indexing alone (22.6.7). The
+`.leeway/.knowledge/`, kept for indexing alone (22.6.7). The
 entries of a cancelled topic or unit, and of a postponed topic while it
 waits, are not current and are not indexed (5.8.17). [R44; ruled by the
 person 2026-10-12; Claude's derivation, T4]
@@ -10513,7 +10517,7 @@ from the ledger and the knowledge base indexes it, so a replaced answer
 drops out of search the moment it is replaced. [R44, R23; ruled by the
 person 2026-10-17]
 
-22.6.7 The rendered copy lives in the gitignored `.workflows/.knowledge/` and
+22.6.7 The rendered copy lives in the gitignored `.leeway/.knowledge/` and
 is rebuilt from the ledger. It is the one rendering of a record that is
 kept; a topic's record is otherwise a projection of the ledger, never a
 file. [R23, R44, Layout on disk; ruled by the person 2026-10-17]
@@ -10529,7 +10533,7 @@ plain-search helper on the roster (§26), so
 its cost stays out of the conversation. [R44, R43; ruled by the person
 2026-10-12; Claude's derivation, O1]
 
-22.6.11 The product record's rendered file sits in `.workflows/.knowledge/`
+22.6.11 The product record's rendered file sits in `.leeway/.knowledge/`
 beside the rendered records, for a CLAUDE.md line to point at (§8). [Layout on disk, R10, plan 3.3; Claude's call]
 
 22.6.12 The knowledge base indexes records only: never assets, seeds, inbox
@@ -10540,7 +10544,7 @@ the entry that links it. [R44; Claude's derivation, O29; ruled by the person 202
 reopened marker once specs and logs are not indexed, settled by the re-made
 eval (25.5). [Claude's sort, B71]
 
-22.6.14 Left to the builder: when the `.workflows/.knowledge/` copies are
+22.6.14 Left to the builder: when the `.leeway/.knowledge/` copies are
 rebuilt from the ledger. [Claude's sort, B72]
 
 22.6.15 A failure to render or index a record after its entries change is a
@@ -10632,10 +10636,10 @@ queried for words found only in them, then none of them is returned.
 (22.6.3, 22.6.4, 22.6.5)
 
 22.S18 Given a topic whose record has been rendered, then its copy is under
-the gitignored `.workflows/.knowledge/`, and no record file exists in the
+the gitignored `.leeway/.knowledge/`, and no record file exists in the
 unit's tree. (22.6.7)
 
-22.S19 Given the copies in `.workflows/.knowledge/` are gone, when they are
+22.S19 Given the copies in `.leeway/.knowledge/` are gone, when they are
 rebuilt, then each record is rendered from the ledger. (22.6.7)
 
 22.S20 Given two work units with records, when the knowledge base is queried
@@ -10653,7 +10657,7 @@ searches plainly, then the search runs in a helper agent and only its
 result enters the conversation. (22.6.10)
 
 22.S24 Given a product-wide entry that changes, then the product record's
-rendered file in `.workflows/.knowledge/` shows the change. (22.6.11, 8.9.4)
+rendered file in `.leeway/.knowledge/` shows the change. (22.6.11, 8.9.4)
 
 22.S25 Given a project whose remote is not on GitHub, when its first ready
 to build is reached, then the landing driver is the local one, unasked.
@@ -10781,10 +10785,10 @@ Ask about anything else, or walk through the whole thing.
 · · · · · · · · · · · ·
 ◆ What would you like to do?
 
-w/walk   → Walk through how the workflows work
+w/walk   → Walk through how Leeway works
 t/topics → Read about one area in more depth
 b/back   → Back to the start menu
-Ask      → Ask anything about how the workflows work
+Ask      → Ask anything about how Leeway works
 ```
 
 Screen, drawn by Claude: the reference cards, reached from the help home. [Claude's derivation, O94]
@@ -10805,7 +10809,7 @@ Screen, drawn by Claude: the reference cards, reached from the help home. [Claud
 8      → Reshaping work
 9      → Working in parallel
 b/back → Back to help
-Ask    → Ask anything about how the workflows work
+Ask    → Ask anything about how Leeway works
 ```
 
 23.2.4 Each menu's help is an engine content file beside the screen's
@@ -10999,7 +11003,7 @@ implementation's conclude gate and the return to the epic menu between them
 go, and the table holds no move between them (§14).
 [R16, plan 9.6; ruled by the person 2026-10-14]
 
-24.1.7 Moves into work from a menu, and `/workflow-start {unit} {topic}`,
+24.1.7 Moves into work from a menu, and `/leeway {unit} {topic}`,
 still hand off as today. [plan 9.6; Claude's derivation, O89]
 
 24.1.8 A move of the conversation between discovery's levels, and from a topic
@@ -11101,7 +11105,7 @@ when the person approves the map, the move goes to the epic's menu, where
 the person picks the topic to work. (24.1.2, 8.8.13)
 
 24.S16 Given a menu where the person picks a unit or a topic to work on, or
-`/workflow-start {unit} {topic}` run, then the move into that work hands off
+`/leeway {unit} {topic}` run, then the move into that work hands off
 as today. (24.1.7)
 
 24.S17 Given a bugfix's discovery, when the person says yes at start this
@@ -11289,9 +11293,9 @@ what the workflows loaded. (25.1.5, 25.3.4)
 
 26.2.2 The main session's effort is recommended, never set. The recommended minimum is medium, Opus 5.5's own default, and the docs state it (§23). [R46; plan 2.13]
 
-26.2.3 `workflow-start` reads the session's effort level and, if it runs below medium, says so once, then carries on. [R46; plan 2.13]
+26.2.3 `/leeway` reads the session's effort level and, if it runs below medium, says so once, then carries on. [R46; plan 2.13]
 
-26.2.4 Screen: `workflow-start`'s effort notice — shown once when the session's effort runs below the recommended minimum, medium, saying so; nothing is answered and `workflow-start` carries on. [R46; plan 2.13]
+26.2.4 Screen: `/leeway`'s effort notice — shown once when the session's effort runs below the recommended minimum, medium, saying so; nothing is answered and `/leeway` carries on. [R46; plan 2.13]
 
 26.2.5 The workflows do not put a top-level `effortLevel` in the project's `.claude/settings.json`: it would outrank the person's own saved level in every session there, and the file is committed, so it would override everyone's choice. [R46; plan 2.13]
 
@@ -11301,7 +11305,7 @@ what the workflows loaded. (25.1.5, 25.3.4)
 
 26.2.8 Following the workflows' prose at medium has no dedicated test, and no release condition requires the main session's prose walked at medium: the person moves to medium at release, perhaps sooner, runs it live, and the recommendation moves on what that shows. The design bet is that the engine deciding what comes next, and refusing a wrong move, makes the main session's adherence matter less. [R46; ruled by the person 2026-10-20; plan 2.13; Claude's derivation, O3]
 
-26.2.9 Left to the builder: how `workflow-start` reads the session's effort, and the notice's wording; the "once" of 26.2.3 is once per `workflow-start` run. [Claude's sort, B2]
+26.2.9 Left to the builder: how `/leeway` reads the session's effort, and the notice's wording; the "once" of 26.2.3 is once per `/leeway` run. [Claude's sort, B2]
 
 ### 26.3 Models
 
@@ -11374,9 +11378,9 @@ The names of the five added last are the builder's. [plan 6.5; Claude's; R20, R4
 
 26.S3 Given an agent writing its artifact, when it makes a decision, then the decision comes back to the orchestrator and takes the trust matrix's route. (26.1.4)
 
-26.S4 Given a session whose effort is below medium, when `workflow-start` runs, then it says once that the session runs below the recommended minimum, medium, and carries on without a gate. (26.2.2, 26.2.3, 26.2.4)
+26.S4 Given a session whose effort is below medium, when `/leeway` runs, then it says once that the session runs below the recommended minimum, medium, and carries on without a gate. (26.2.2, 26.2.3, 26.2.4)
 
-26.S5 Given a session at medium or above, when `workflow-start` runs, then no effort notice shows. (26.2.3)
+26.S5 Given a session at medium or above, when `/leeway` runs, then no effort notice shows. (26.2.3)
 
 26.S6 Given a project after the release is installed, when its `.claude/settings.json` is read, then the workflows have written no top-level `effortLevel` there. (26.2.5)
 
@@ -11437,9 +11441,9 @@ was raised, none of it decided:
 - removing the skills is agntc's job, and agntc is being changed so the
   workflows can call its remove, which is why this waits;
 - install runs through migrations at boot, on a new or an existing project;
-- removal keeps `.workflows/`, the work and the record of migrations with it,
+- removal keeps `.leeway/`, the work and the record of migrations with it,
   so a later reinstall would find the record and not rerun the migrations
-  that put the hooks in place; deleting `.workflows/` takes the record, and
+  that put the hooks in place; deleting `.leeway/` takes the record, and
   everything reinstalls;
 - a better install process may be worth a look, or migrations may be fine.
 
@@ -11510,17 +11514,25 @@ calls that task made. (27.2.10)
 
 ## 28. Open
 
-### 28.1 The product's name
+### 28.1 The product's name, decided
 
-28.1.1 The product's name is undecided. It was explored with the person on
-2026-10-20, and every option with the person's reaction is recorded in
-`design/name-exploration.md`. Nothing is off the table, and the product may
-stay "the workflows". [Open, The product's name; Where things stand]
+28.1.1 The product is named Leeway, with the tagline "agentic workflows for
+Claude Code", which describes it plainly and never leans on the name. [ruled
+by the person 2026-10-26; every option explored, with the person's reactions,
+in `design/name-exploration.md`]
 
-28.1.2 How deep the rename goes is decided with the name. The product, the
-repository, the docs and help are cheap to rename; the `workflow-*` skill
-names and the `.workflows/` folder are a migration. [Open, The product's
-name]
+28.1.2 The rename goes all the way down, with the reshape, whose migration
+already moves every project: the command `/leeway` in place of
+`/workflow-start`, the skills `leeway-*`, each project's `.leeway/` and its
+state branch `leeway-state`, `~/.config/leeway/` at user level, the `LEEWAY_*`
+environment variables, and the mods `leeway-gates` and `leeway-gates-rows`.
+Where this spec names `.workflows/`, it means today's folder, which the
+migration moves from (21.5.11). [ruled by the person 2026-10-26]
+
+28.1.3 The repository is renamed `leeovery/leeway` around the release, so the
+name installed matches the code: the install becomes `npx agntc add
+leeovery/leeway`, and GitHub's redirect from the old name keeps existing
+installs updating. [ruled by the person 2026-10-26]
 
 ### 28.2 Per-phase task writing in the task driver
 
@@ -11541,7 +11553,7 @@ derivation, O91; the cut on the manifest, ruled by the person 2026-10-22]
 tracker is read, then it holds only the written phases, and the views draw
 the rest from the phase cut on the unit's manifest. (28.2.1)
 
-§28.1 and §28.3 state only what is undecided, and have no scenarios.
+§28.1's names are proven by the scenarios that use them, and §28.3 states only what is undecided: neither has scenarios of its own.
 
 ## 29. The phase cut
 
@@ -11595,7 +11607,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.3.3 The `ledger` verbs are its door (6.1.4). [plan 6.1; Claude's proposal]
 
-29.3.4 When a topic's entries change, the engine renders the topic's record into `.workflows/.knowledge/` and the knowledge base indexes it, and the product record is rendered beside it (5.8.12, 5.8.13, §22.6). [R23, R44]
+29.3.4 When a topic's entries change, the engine renders the topic's record into `.leeway/.knowledge/` and the knowledge base indexes it, and the product record is rendered beside it (5.8.12, 5.8.13, §22.6). [R23, R44]
 
 29.3.5 Draws on: §5, §2.9, §2.13, §4.1, §4.7, §4.11, §8.9, §16.19, §22.6. [R14; Claude's derivation]
 
@@ -11705,7 +11717,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.11.6 Relies on: 29.2 to 29.8, 29.10. [R14; Claude's derivation]
 
-29.11.7 Proven by: 2.S5, 2.S12, 2.S13, 2.S14, 2.S15, 2.S16, 2.S17, 3.S2, 5.S11, 5.S26, 6.S1, 6.S2, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S14, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 17.S5, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 25.S2, 25.S3, 25.S4, 25.S9, 25.S13, 26.S3, 27.S4, 21.S49 (128). [R14; Claude's derivation]
+29.11.7 Proven by: 2.S5, 2.S12, 2.S13, 2.S14, 2.S15, 2.S16, 2.S17, 3.S2, 5.S11, 5.S26, 6.S1, 6.S2, 6.S12, 6.S20, 8.S25, 9.S1, 9.S2, 9.S3, 9.S4, 9.S5, 9.S6, 9.S7, 9.S8, 9.S9, 9.S10, 9.S11, 9.S12, 9.S13, 9.S14, 9.S15, 9.S16, 9.S17, 9.S18, 9.S19, 9.S22, 9.S25, 9.S26, 9.S27, 9.S28, 9.S29, 9.S30, 9.S31, 9.S32, 9.S33, 9.S34, 9.S35, 9.S36, 9.S37, 9.S38, 9.S40, 9.S41, 9.S42, 9.S43, 9.S44, 9.S46, 9.S48, 9.S49, 9.S50, 9.S51, 9.S52, 9.S53, 9.S55, 9.S56, 9.S58, 9.S59, 9.S60, 9.S61, 9.S62, 9.S63, 9.S64, 9.S65, 9.S66, 9.S67, 10.S1, 10.S2, 10.S3, 10.S4, 10.S6, 10.S7, 10.S8, 10.S9, 10.S10, 10.S12, 16.S4, 16.S6, 16.S7, 16.S8, 16.S9, 16.S10, 16.S31, 16.S32, 16.S33, 16.S34, 17.S5, 21.S10, 21.S11, 21.S12, 21.S13, 21.S14, 21.S15, 21.S16, 21.S17, 21.S19, 21.S20, 21.S21, 21.S22, 21.S23, 21.S25, 21.S34, 21.S35, 21.S36, 21.S37, 21.S43, 21.S44, 21.S45, 21.S46, 22.S23, 24.S9, 24.S10, 24.S11, 25.S2, 25.S3, 25.S4, 25.S9, 25.S13, 26.S3, 27.S4, 21.S49, 21.S51 (129). [R14; Claude's derivation]
 
 ### 29.12 Discovery
 
@@ -11835,7 +11847,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 848 listed are the 848 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 849 listed are the 849 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
