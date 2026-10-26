@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 
 const { git, initRepo } = require('./engine-harness.cjs');
 
@@ -30,7 +30,7 @@ const { processStartTime } = require('../../skills/workflow-engine/scripts/kerne
 
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
-  stateRoot, inspectState, createState, addStateWorktree, createStateBranchFromRemote, lockStateWorktree,
+  stateRoot, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
   withStateLock, commitState, pushState,
 } = state;
 
@@ -89,9 +89,21 @@ function write(dir, rel, content) {
   fs.writeFileSync(path.join(dir, rel), content);
 }
 
-/** The files a commit touched, with their status letters. @param {string} dir @param {string} rev */
+/**
+ * The files a commit touched, each `{status}\t{path}` with the path as it
+ * stands, unquoted.
+ * @param {string} dir @param {string} rev
+ */
 function touched(dir, rev) {
-  return git(dir, ['show', '--name-status', '--format=', rev]).trim().split('\n').filter(Boolean).sort();
+  const fields = git(dir, ['show', '--name-status', '--no-renames', '-z', '--format=', rev]).replace(/^\n+/, '').split('\0');
+  const entries = [];
+  for (let i = 0; i + 1 < fields.length; i += 2) entries.push(`${fields[i]}\t${fields[i + 1]}`);
+  return entries.sort();
+}
+
+/** The inspection's worktree and folder. @param {{worktree: unknown, folder: string}} seen */
+function pick({ worktree, folder }) {
+  return { worktree, folder };
 }
 
 /** The porcelain record git lists for the worktree at `root`. @param {string} main @param {string} root */
@@ -344,11 +356,11 @@ describe('inspecting the state', () => {
     const { main, root } = project();
 
     assert.deepStrictEqual(inspectState(root), {
-      main, root, branch: false, remotes: [], remote: null, remoteBranch: false, worktree: null,
+      main, root, branch: false, remotes: [], remote: null, remoteBranch: false, worktree: null, folder: 'absent',
     });
   });
 
-  it('reads the branch and its worktree, present, on the branch and locked', () => {
+  it('reads the branch, its worktree on the branch and locked, and the folder git opens', () => {
     const { main, root } = project();
     createState(root);
 
@@ -359,7 +371,8 @@ describe('inspecting the state', () => {
       remotes: [],
       remote: null,
       remoteBranch: false,
-      worktree: { present: true, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON },
+      worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON },
+      folder: 'linked',
     });
   });
 
@@ -380,7 +393,7 @@ describe('inspecting the state', () => {
     const seen = inspectState(stateRoot(fresh));
 
     assert.deepStrictEqual(seen, {
-      main: fresh, root: path.join(fresh, '.leeway'), branch: false, remotes: ['origin'], remote: 'origin', remoteBranch: true, worktree: null,
+      main: fresh, root: path.join(fresh, '.leeway'), branch: false, remotes: ['origin'], remote: 'origin', remoteBranch: true, worktree: null, folder: 'absent',
     });
   });
 
@@ -389,11 +402,11 @@ describe('inspecting the state', () => {
     createState(root);
 
     git(main, ['worktree', 'unlock', root]);
-    assert.deepStrictEqual(inspectState(root).worktree, { present: true, branch: STATE_BRANCH, locked: false, reason: null });
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: false, reason: null }, folder: 'linked' });
 
     lockStateWorktree(root);
     fs.rmSync(root, { recursive: true, force: true });
-    assert.deepStrictEqual(inspectState(root).worktree, { present: false, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON });
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'absent' });
   });
 
   it('takes origin as the state\'s remote, else the one the main checkout\'s branch tracks, else the one remote', () => {
@@ -429,7 +442,7 @@ describe('the repairs, each on its own', () => {
 
     assert.strictEqual(tip(fresh, STATE_BRANCH), remoteTip(bare));
     assert.strictEqual(fs.readFileSync(path.join(freshRoot, '.gitignore'), 'utf8'), STATE_GITIGNORE);
-    assert.deepStrictEqual(inspectState(freshRoot).worktree, { present: true, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON });
+    assert.deepStrictEqual(pick(inspectState(freshRoot)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
   });
 
   it('restores a lost local branch from the remote\'s (4.S8)', () => {
@@ -455,11 +468,11 @@ describe('the repairs, each on its own', () => {
     const { main, root } = project();
     createState(root);
     git(main, ['worktree', 'remove', '--force', '--force', root]);
-    assert.strictEqual(inspectState(root).worktree, null);
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: null, folder: 'absent' });
 
     addStateWorktree(root);
 
-    assert.deepStrictEqual(inspectState(root).worktree, { present: true, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON });
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
   });
 
   it('re-adds a worktree whose folder was deleted under its locked registration (4.S29)', () => {
@@ -469,7 +482,7 @@ describe('the repairs, each on its own', () => {
 
     addStateWorktree(root);
 
-    assert.deepStrictEqual(inspectState(root).worktree, { present: true, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON });
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
     assert.strictEqual(fs.readFileSync(path.join(root, '.gitignore'), 'utf8'), STATE_GITIGNORE);
   });
 
@@ -488,6 +501,45 @@ describe('the repairs, each on its own', () => {
     lockStateWorktree(root);
 
     assert.match(worktreeRecord(main, root) || '', /^locked workflows state, do not remove$/m);
+  });
+
+  it('relinks the state worktree after the project folder moved, keeping what it holds, and commits again', () => {
+    const { main, root } = project();
+    createState(root);
+    write(root, 'manifest.json', '{"kept":true}\n');
+    const moved = path.join(world, 'moved');
+    fs.renameSync(main, moved);
+    const movedRoot = stateRoot(moved);
+
+    const seen = inspectState(movedRoot);
+    assert.deepStrictEqual([seen.branch, pick(seen)], [true, { worktree: null, folder: 'unlinked' }]);
+    assert.throws(() => commitState(movedRoot, ['manifest.json'], 'state: x'),
+      /^Error: git cannot open the state worktree at .*moved\/\.leeway: git rev-parse failed: fatal: .+ — nothing committed$/s);
+    assert.throws(() => addStateWorktree(movedRoot), /a folder is already at .*moved\/\.leeway — repair its worktree rather than add one over it/);
+
+    repairStateWorktree(movedRoot);
+
+    assert.deepStrictEqual(pick(inspectState(movedRoot)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
+    assert.strictEqual(fs.readFileSync(path.join(movedRoot, 'manifest.json'), 'utf8'), '{"kept":true}\n');
+    const out = withStateLock(movedRoot, () => commitState(movedRoot, ['manifest.json'], 'state: after the move'));
+    assert.strictEqual(tip(moved, STATE_BRANCH), out.commit);
+    assert.strictEqual(git(moved, ['show', `${STATE_BRANCH}:manifest.json`]), '{"kept":true}\n');
+  });
+
+  it('never writes through a copied project\'s state worktree, which git reads as the original\'s', () => {
+    const { main, root } = project();
+    createState(root);
+    const before = tip(main, STATE_BRANCH);
+    const copy = path.join(world, 'copy');
+    fs.cpSync(main, copy, { recursive: true, verbatimSymlinks: true });
+    const copyRoot = stateRoot(copy);
+    write(copyRoot, 'manifest.json', '{}\n');
+
+    assert.strictEqual(inspectState(copyRoot).folder, 'unlinked');
+    assert.throws(() => commitState(copyRoot, ['manifest.json'], 'state: x'),
+      new RegExp(`git cannot open the state worktree at .*copy/\\.leeway: git reads it as part of .*, whose repository is ${main}/\\.git`));
+    assert.strictEqual(tip(main, STATE_BRANCH), before);
+    assert.strictEqual(tip(copy, STATE_BRANCH), before);
   });
 });
 
@@ -523,19 +575,63 @@ describe('the writer lock', () => {
     }
   });
 
-  it('never breaks a live holder, however long it has held: the contender gives up, naming it', () => {
+  // A holder in a process of its own: it takes the lock, ages it ten
+  // minutes, says it holds it, and keeps it until told to let go.
+  const HOLDER = [
+    "const fs = require('fs');",
+    "const path = require('path');",
+    'const [mod, root, signals] = process.argv.slice(1);',
+    'const { withStateLock } = require(mod);',
+    'withStateLock(root, () => {',
+    '  const past = (Date.now() - 600000) / 1000;',
+    "  fs.utimesSync(path.join(root, '.lock'), past, past);",
+    "  fs.writeFileSync(path.join(signals, 'held'), '');",
+    "  while (!fs.existsSync(path.join(signals, 'go'))) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);",
+    '});',
+  ].join('\n');
+
+  /** Wait, without blocking the loop, until `ready` holds. @param {() => boolean} ready */
+  async function until(ready) {
+    const deadline = Date.now() + 10000;
+    while (!ready()) {
+      if (Date.now() > deadline) throw new Error('waited ten seconds');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+
+  it('never breaks a live holder, however long it has held: the contender gives up, naming it', async () => {
     const { root } = project();
     createState(root);
     const lock = path.join(root, '.lock');
+    const holder = spawn('node', ['-e', HOLDER, STATE, root, world]);
+    let stderr = '';
+    holder.stderr.on('data', (chunk) => { stderr += chunk; });
+    const exited = new Promise((resolve) => holder.on('exit', resolve));
+    await until(() => fs.existsSync(path.join(world, 'held')));
 
-    withStateLock(root, () => {
-      const past = (Date.now() - 600000) / 1000;
-      fs.utimesSync(lock, past, past);
+    assert.throws(() => withStateLock(root, () => null, { timeoutMs: 300 }),
+      new RegExp(`Timed out waiting for the state lock .*process ${holder.pid} holds it`));
+    assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, holder.pid);
 
-      assert.throws(() => withStateLock(root, () => null, { timeoutMs: 300 }),
-        new RegExp(`Timed out waiting for the state lock .*process ${process.pid} holds it`));
-      assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, process.pid);
+    fs.writeFileSync(path.join(world, 'go'), '');
+    assert.strictEqual(await exited, 0, stderr);
+    assert.ok(!fs.existsSync(lock));
+  });
+
+  it('is taken again at once by the process holding it, and let go when the outermost hold ends', () => {
+    const { root } = project();
+    createState(root);
+    const lock = path.join(root, '.lock');
+    const started = Date.now();
+
+    const seen = withStateLock(root, () => {
+      const inner = withStateLock(root, () => withStateLock(root, () => fs.existsSync(lock)));
+      assert.throws(() => withStateLock(root, () => { throw new Error('the inner verb failed'); }), /the inner verb failed/);
+      return [inner, fs.existsSync(lock)];
     });
+
+    assert.ok(Date.now() - started < 2000, `the nested holds waited ${Date.now() - started}ms`);
+    assert.deepStrictEqual(seen, [true, true]);
     assert.ok(!fs.existsSync(lock));
   });
 
@@ -636,6 +732,153 @@ describe('committing state', () => {
     assert.strictEqual(remoteTip(bare), before);
   });
 
+  // Every state the worktree's own index can be left in under a path, by a
+  // killed verb or by a person: the commit takes the working tree as it
+  // stands, leaves `git status` clean under the path, and the next commit
+  // finds nothing more to take.
+  const INDEX_STATES = [
+    {
+      name: 'AD: added to the index, then deleted',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => { write(root, 'u/n.md', 'n\n'); git(root, ['add', 'u/n.md']); fs.rmSync(path.join(root, 'u/n.md')); },
+      touched: [],
+    },
+    {
+      name: 'MD: changed in the index, then deleted',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => { write(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); fs.rmSync(path.join(root, 'u/m.md')); },
+      touched: ['D\tu/m.md'],
+    },
+    {
+      name: 'rm --cached, the file kept',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => git(root, ['rm', '-q', '--cached', 'u/m.md']),
+      touched: [],
+    },
+    {
+      name: 'intent to add',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => { write(root, 'u/n.md', 'n\n'); git(root, ['add', '-N', 'u/n.md']); },
+      touched: ['A\tu/n.md'],
+    },
+    {
+      name: 'AM: added, then changed again',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => { write(root, 'u/n.md', 'n1\n'); git(root, ['add', 'u/n.md']); write(root, 'u/n.md', 'n2\n'); },
+      touched: ['A\tu/n.md'],
+    },
+    {
+      name: 'a staged deletion',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => git(root, ['rm', '-q', 'u/m.md']),
+      touched: ['D\tu/m.md'],
+    },
+    {
+      name: 'a staged change undone in the working tree',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => { write(root, 'u/m.md', 'm2\n'); git(root, ['add', 'u/m.md']); write(root, 'u/m.md', 'm\n'); },
+      touched: [],
+    },
+    {
+      name: 'a folder become a file',
+      base: { 'u/x/a.md': 'a\n' },
+      setup: (root) => { fs.rmSync(path.join(root, 'u/x'), { recursive: true }); write(root, 'u/x', 'x\n'); },
+      touched: ['A\tu/x', 'D\tu/x/a.md'],
+    },
+    {
+      name: 'a file become a folder',
+      base: { 'u/x': 'x\n' },
+      setup: (root) => { fs.rmSync(path.join(root, 'u/x')); write(root, 'u/x/a.md', 'a\n'); },
+      touched: ['A\tu/x/a.md', 'D\tu/x'],
+    },
+    {
+      name: 'symlinks, one dangling',
+      base: { 'u/m.md': 'm\n' },
+      setup: (root) => { fs.symlinkSync('m.md', path.join(root, 'u/link')); fs.symlinkSync('nowhere', path.join(root, 'u/dangling')); },
+      touched: ['A\tu/dangling', 'A\tu/link'],
+    },
+    {
+      name: 'a file become a symlink',
+      base: { 'u/m.md': 'm\n', 'u/n.md': 'n\n' },
+      setup: (root) => { fs.rmSync(path.join(root, 'u/n.md')); fs.symlinkSync('m.md', path.join(root, 'u/n.md')); },
+      touched: ['T\tu/n.md'],
+    },
+  ];
+
+  for (const { name, base, setup, touched: expected } of INDEX_STATES) {
+    it(`commits the working tree as it stands over an index left in a state: ${name}`, () => {
+      const { root } = project();
+      createState(root);
+      for (const [rel, content] of Object.entries(base)) write(root, rel, content);
+      withStateLock(root, () => commitState(root, ['u'], 'state: base'));
+      setup(root);
+
+      const out = withStateLock(root, () => commitState(root, ['u'], 'state: the change'));
+
+      assert.deepStrictEqual(out.commit === null ? [] : touched(root, out.commit), expected);
+      assert.deepStrictEqual(out.warnings, []);
+      assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all', '--', 'u']), '');
+      assert.strictEqual(withStateLock(root, () => commitState(root, ['u'], 'state: again')).commit, null);
+    });
+  }
+
+  it('takes every name literally, odd characters and all', () => {
+    const { root } = project();
+    createState(root);
+    const names = ['u/a b.md', 'u/"quoted".md', 'u/é.md', 'u/-dash.md', 'u/star*.md', 'u/starX.md', 'u/[b].md', 'u/b.md', 'u/tab\there.md', 'u/new\nline.md'];
+    for (const rel of names) write(root, rel, `${rel}\n`);
+
+    const named = withStateLock(root, () => commitState(root, ['u/star*.md', 'u/[b].md'], 'state: two by name'));
+    const rest = withStateLock(root, () => commitState(root, ['u'], 'state: the rest'));
+
+    assert.deepStrictEqual(touched(root, named.commit || ''), ['A\tu/[b].md', 'A\tu/star*.md']);
+    assert.deepStrictEqual(touched(root, rest.commit || ''),
+      names.filter((rel) => !['u/star*.md', 'u/[b].md'].includes(rel)).map((rel) => `A\t${rel}`).sort());
+    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+
+  it('refuses a path the state ignores, committing nothing', () => {
+    const { root } = project();
+    createState(root);
+    const before = tip(root, STATE_BRANCH);
+    write(root, '.cache/unit/state.json', '{}\n');
+
+    assert.throws(() => commitState(root, ['.cache/unit/state.json'], 'state: x'), /ignored/);
+    assert.strictEqual(tip(root, STATE_BRANCH), before);
+  });
+
+  it('commits past a private index and its lock a kill left mid-step', () => {
+    const { root } = project();
+    createState(root);
+    const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
+    fs.writeFileSync(index, 'left by a killed verb');
+    fs.writeFileSync(`${index}.lock`, '');
+    write(root, 'manifest.json', '{}\n');
+
+    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+
+    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tmanifest.json']);
+    assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`));
+  });
+
+  it('keeps the commit and warns where the worktree\'s own index is held, and lines it up on the next commit', () => {
+    const { root } = project();
+    createState(root);
+    const indexLock = path.resolve(root, git(root, ['rev-parse', '--git-path', 'index.lock']).trim());
+    fs.writeFileSync(indexLock, '');
+    write(root, 'manifest.json', '{}\n');
+
+    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+
+    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tmanifest.json']);
+    assert.strictEqual(out.warnings.length, 1);
+    assert.match(out.warnings[0], /^the state worktree's index was not brought into line with leeway-state: .*index\.lock/s);
+
+    fs.rmSync(indexLock);
+    assert.deepStrictEqual(withStateLock(root, () => commitState(root, ['manifest.json'], 'state: again')), { commit: null, pushed: false, warnings: [] });
+    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+
   it('makes no commit and no push where the paths hold no change, or where no path is given', () => {
     const { root, bare } = project({ remote: true });
     createState(root);
@@ -712,7 +955,7 @@ describe('committing state', () => {
     const { result, commands } = traced(() => withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest')));
 
     assert.deepStrictEqual([result.pushed, result.warnings], [false, []]);
-    assert.ok(commands.includes('commit'), `the trace caught nothing: ${commands}`);
+    assert.ok(commands.includes('commit-tree'), `the trace caught nothing: ${commands}`);
     assert.ok(!commands.includes('push'), `a push was attempted: ${commands}`);
   });
 
@@ -815,6 +1058,94 @@ describe('committing state', () => {
     assert.deepStrictEqual(pushState(root), { pushed: true, warnings: [] });
     assert.strictEqual(remoteTip(bare), left);
   });
+});
+
+describe('a state commit interrupted between its steps', () => {
+  // The commit as a verb makes it, in a process of its own; a refusal
+  // exits 3 with its message.
+  const COMMIT = [
+    'const [mod, root] = process.argv.slice(1);',
+    'const { withStateLock, commitState } = require(mod);',
+    "try { withStateLock(root, () => commitState(root, ['u'], 'state: the change')); }",
+    'catch (err) { process.stdout.write(err.message); process.exit(3); }',
+  ].join('\n');
+
+  /**
+   * A `git` that runs the real one, then, once the step named in KILL_AFTER
+   * has run, kills the process that called it, and once the step named in
+   * MOVE_AFTER has run, moves `leeway-state` to MOVE_TO — a writer the lock
+   * did not hold back.
+   */
+  function interruptingGit() {
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const dir = path.join(world, 'interrupting-git');
+    fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(dir, 'git'), [
+      '#!/bin/sh',
+      `"${real}" "$@"`,
+      'status=$?',
+      'for arg in "$@"; do',
+      '  if [ -n "$KILL_AFTER" ] && [ "$arg" = "$KILL_AFTER" ]; then kill -9 "$PPID"; fi',
+      `  if [ -n "$MOVE_AFTER" ] && [ "$arg" = "$MOVE_AFTER" ]; then "${real}" update-ref refs/heads/${STATE_BRANCH} "$MOVE_TO"; fi`,
+      'done',
+      'exit $status',
+      '',
+    ].join('\n'), { mode: 0o755 });
+    return dir;
+  }
+
+  /** Run the verb's commit in its own process under `env`. @param {string} root @param {Record<string, string>} env */
+  function commitInterrupted(root, env) {
+    return spawnSync('node', ['-e', COMMIT, STATE, root], {
+      encoding: 'utf8', env: { ...process.env, PATH: `${interruptingGit()}:${process.env.PATH}`, ...env },
+    });
+  }
+
+  it('moves the branch only from the tip it built on: one that moved meanwhile refuses the commit', () => {
+    const { root } = project();
+    createState(root);
+    write(root, 'u/a.md', 'a\n');
+    withStateLock(root, () => commitState(root, ['u'], 'state: base'));
+    const elsewhere = git(root, ['commit-tree', `${STATE_BRANCH}^{tree}`, '-p', STATE_BRANCH, '-m', 'a writer the lock missed']).trim();
+    write(root, 'u/a.md', 'a2\n');
+
+    const res = commitInterrupted(root, { MOVE_AFTER: 'commit-tree', MOVE_TO: elsewhere });
+
+    assert.strictEqual(res.status, 3, res.stderr);
+    assert.match(res.stdout, /^git update-ref failed: /);
+    assert.strictEqual(tip(root, STATE_BRANCH), elsewhere);
+  });
+
+  for (const step of ['read-tree', 'add', 'write-tree', 'commit-tree', 'update-ref', 'reset']) {
+    it(`leaves the branch at its old tip or the whole commit, and the next commit right, when killed after ${step}`, () => {
+      const { root } = project();
+      createState(root);
+      write(root, 'u/a.md', 'a\n');
+      write(root, 'u/b.md', 'b\n');
+      withStateLock(root, () => commitState(root, ['u'], 'state: base'));
+      const before = tip(root, STATE_BRANCH);
+      write(root, 'other.md', 'other\n');
+      git(root, ['add', 'other.md']);
+      write(root, 'u/a.md', 'a2\n');
+      fs.rmSync(path.join(root, 'u/b.md'));
+      write(root, 'u/c/d.md', 'd\n');
+
+      const killed = commitInterrupted(root, { KILL_AFTER: step });
+      assert.strictEqual(killed.signal, 'SIGKILL', `the verb was not killed: ${killed.stderr}`);
+      const landed = tip(root, STATE_BRANCH);
+      assert.ok(landed === before || git(root, ['rev-parse', `${landed}^`]).trim() === before, 'the branch moved somewhere else');
+
+      const out = withStateLock(root, () => commitState(root, ['u'], 'state: the change'));
+
+      assert.strictEqual(out.commit === null, landed !== before);
+      assert.strictEqual(git(root, ['rev-list', '--count', `${before}..${STATE_BRANCH}`]).trim(), '1');
+      assert.deepStrictEqual(touched(root, STATE_BRANCH), ['A\tu/c/d.md', 'D\tu/b.md', 'M\tu/a.md']);
+      assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:u/a.md`]), 'a2\n');
+      assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  other.md\n');
+      const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
+      assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`), 'the private index was left behind');
+    });
+  }
 });
 
 describe('a state commit beside the person\'s repository (4.S18)', () => {
