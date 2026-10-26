@@ -3,18 +3,34 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the screen of a state merge stopped by a field both machines
 // changed to different values (4.7.6). Pure renderer over the stop the merge
-// keeps. The conflicts are shown one at a time, the first still unpicked:
-// each has its own question, and two numbered rows answer it as the spec
-// draws them, where every conflict at once would need a key per side per
-// field. The title counts them all, and the account says which one this is.
+// keeps. The conflicts are shown one at a time, the one the stop asks about
+// (state-merge-rules.cjs, askedAt): each has its own question, and two
+// numbered rows answer it as the spec draws them, where every conflict at
+// once would need a key per side per field. The title counts them all, and
+// the account says which one this is.
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
+const { askedAt } = require('../state-merge-rules.cjs');
 
 /** @typedef {import('../state-merge-rules.cjs').Side} Side */
 /** @typedef {import('../state-merge-rules.cjs').ConflictLabel} ConflictLabel */
-/** @typedef {{manifest: string, field: string[], label: ConflictLabel, local: Side, remote: Side, pick: 'local'|'remote'|null}} Conflict */
+
+/**
+ * A field both sides changed to different values, in the manifest at
+ * `manifest`: on the branch, or between the working tree's uncommitted copy
+ * and the branch's update.
+ * @typedef {{
+ *   manifest: string,
+ *   uncommitted: boolean,
+ *   field: string[],
+ *   label: ConflictLabel,
+ *   local: Side,
+ *   remote: Side,
+ *   pick: 'local'|'remote'|null,
+ * }} Conflict
+ */
 
 const SIDES = /** @type {const} */ ([['1', 'local', "this machine's", 'this machine'], ['2', 'remote', "the remote's", 'the remote']]);
 
@@ -60,12 +76,12 @@ function changed({ subject, field, path }) {
 }
 
 /**
- * The stop's screen for the first conflict still unpicked.
+ * The stop's screen for the conflict it asks about.
  * @param {{conflicts: Conflict[]}} stop
  * @returns {string}
  */
 function stateMergeGate({ conflicts }) {
-  const at = conflicts.findIndex((c) => c.pick === null);
+  const at = askedAt(conflicts);
   const conflict = conflicts[at];
   const count = conflicts.length;
   const which = count === 1 ? '' : `Field ${at + 1} of ${count}. `;

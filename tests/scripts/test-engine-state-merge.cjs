@@ -2,16 +2,22 @@
 
 // ---------------------------------------------------------------------------
 // The state's catch-up and the merge between two clones
-// (workflow-engine/scripts/domain/state-merge.cjs), the rules each file
-// merges by (domain/state-merge-rules.cjs) and the stop's screen
+// (workflow-engine/scripts/domain/state-merge.cjs), each path's merge
+// (domain/state-merge-paths.cjs) and the rules it merges by
+// (domain/state-merge-rules.cjs), the working tree brought to the merge
+// (domain/state-merge-worktree.cjs) and the stop's screen
 // (domain/projections/state-merge.cjs): fast-forward, push what a failed
-// push left behind, or merge onto the remote's tip and push with a lease,
-// retrying while the remote moves; the ledger, the migrations record and the
-// manifests merged by their rules; a field both sides changed stopping the
-// merge with nothing written, kept for the person's picks.
+// push left behind, or merge committed state onto the remote's tip and push
+// with a lease, retrying while the remote moves; the working tree's
+// uncommitted files merged in place and never committed; a field both sides
+// changed stopping the merge with nothing written, kept for the person's
+// picks; and a catch-up killed between its steps, or raced by another
+// session's write, losing nothing.
 //
 // Real repositories in temp folders: a bare remote, and two clones of the
-// state, each with its state worktree made through the machinery.
+// state, each with its state worktree made through the machinery. A `git`
+// wrapper first on PATH stands in for the other session's write, a remote
+// moving, or a kill.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -33,7 +39,7 @@ const {
   STATE_BRANCH, stateRoot, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
-const { unionLedger, unionMigrations, mergeManifest, conflictLabel, ruleOf } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
+const { unionLedger, unionMigrations, mergeManifest, sameChoice, conflictLabel, ruleOf } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
 const { stateMergeGate } = require(path.join(SCRIPTS, 'domain/projections/state-merge.cjs'));
 
 /** @type {string} */
@@ -68,6 +74,17 @@ function tip(dir, ref) {
 /** The remote's `leeway-state`, or '' where it holds none. @param {string} bare */
 function remoteTip(bare) {
   return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
+}
+
+/** The id git names a blob of `text` by. @param {string} text */
+function blobId(text) {
+  return execFileSync('git', ['hash-object', '--stdin'], { encoding: 'utf8', input: text }).trim();
+}
+
+/** The id of a tree of files, written in the repository at `dir`. @param {string} dir @param {Record<string, string>} files */
+function treeId(dir, files) {
+  const listing = Object.entries(files).map(([name, text]) => `100644 blob ${blobId(text)}\t${name}\n`).join('');
+  return execFileSync('git', ['mktree', '--missing'], { cwd: dir, encoding: 'utf8', input: listing }).trim();
 }
 
 /** A commit's parents. @param {string} dir @param {string} rev */
@@ -192,6 +209,60 @@ function keptStopFile(root) {
   return path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-merge.json']).trim());
 }
 
+/** The merge's own files left in the state worktree's git dir. @param {string} root */
+function mergeLeftovers(root) {
+  return fs.readdirSync(path.dirname(keptStopFile(root))).filter((name) => name.startsWith('leeway-merge'));
+}
+
+/**
+ * A folder holding a `git` that runs the real one, then, after each call
+ * whose arguments hold `marker`, runs the shell line `after`, with `$n` the
+ * count of such calls so far and `$real` the real git.
+ * @param {string} marker @param {string} after @returns {string}
+ */
+function gitWrapper(marker, after) {
+  const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+  const dir = fs.mkdtempSync(path.join(world, 'git-'));
+  fs.writeFileSync(path.join(dir, 'git'), [
+    '#!/bin/sh',
+    `real="${real}"`,
+    '"$real" "$@"',
+    'status=$?',
+    'case "$*" in',
+    `  *"${marker}"*)`,
+    `    n=$(( $(cat "${dir}/count" 2>/dev/null || echo 0) + 1 )); echo "$n" > "${dir}/count"`,
+    `    ${after}`,
+    '    ;;',
+    'esac',
+    'exit $status',
+    '',
+  ].join('\n'), { mode: 0o755 });
+  return dir;
+}
+
+/** Run `fn` with `dir` first on PATH. @template T @param {string} dir @param {() => T} fn @returns {T} */
+function withPath(dir, fn) {
+  const was = process.env.PATH;
+  process.env.PATH = `${dir}:${was}`;
+  try {
+    return fn();
+  } finally {
+    process.env.PATH = was;
+  }
+}
+
+/**
+ * Run `call` on the merge module in a process of its own, killed just after
+ * its first git call whose arguments hold `marker`.
+ * @param {string} root @param {string} call  a call on `merge`, given `root` @param {string} marker
+ */
+function killedAfter(root, call, marker) {
+  const res = spawnSync('node', ['-e', `const merge = require(process.argv[1]); const root = process.argv[2]; ${call};`, MERGE, root], {
+    encoding: 'utf8', env: { ...process.env, PATH: `${gitWrapper(marker, 'kill -9 "$PPID"')}:${process.env.PATH}` },
+  });
+  assert.strictEqual(res.signal, 'SIGKILL', `it was not killed after ${marker}: ${res.stderr}`);
+}
+
 describe('catching up when one side moved (4.S36)', () => {
   it('fast-forwards the branch and the worktree to the remote\'s tip, with no merge commit, where only the remote moved', () => {
     const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
@@ -243,13 +314,14 @@ describe('catching up when one side moved (4.S36)', () => {
     assert.strictEqual(remoteTip(bare), before);
   });
 
-  it('does nothing where both sides are at one tip', () => {
+  it('does nothing where both sides are at one tip, asking the remote once and fetching nothing', () => {
     const { here } = twoMachines({ '.ledger.jsonl': ledger('base') });
     const before = tip(here.main, STATE_BRANCH);
 
-    const out = catchUpState(here.root);
+    const { result: out, traced: commands } = traced(() => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.reason, out.commit, out.warnings], ['nothing', 'current', before, []]);
+    assert.deepStrictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).map((c) => c.split(' ')[0]), ['ls-remote']);
   });
 
   it('does nothing, fetching nothing, where the project has no remote', () => {
@@ -279,29 +351,31 @@ describe('catching up when one side moved (4.S36)', () => {
     git(main, ['remote', 'add', 'origin', bare]);
     git(main, ['update-ref', `refs/remotes/origin/${STATE_BRANCH}`, STATE_BRANCH]);
 
-    const out = catchUpState(root);
+    const { result: out, traced: commands } = traced(() => catchUpState(root));
 
     assert.deepStrictEqual([out.action, out.reason, out.pushed, out.warnings], ['nothing', 'no-remote-branch', false, []]);
     assert.strictEqual(remoteTip(bare), '');
     assert.strictEqual(git(main, ['for-each-ref', `refs/remotes/origin/${STATE_BRANCH}`]), '', 'the stale remote-tracking branch is gone');
+    assert.ok(!commands.some((c) => c.startsWith('fetch ')), 'a branch the remote does not hold was fetched');
   });
 
-  it('answers a fetch that fails with a warning, and leaves the state as it was', () => {
+  it('answers a remote it cannot reach with a warning, asking it once, and leaves the state as it was', () => {
     const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
     commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') });
     const before = tip(here.main, STATE_BRANCH);
     fs.renameSync(path.join(world, 'fumi-remote.git'), path.join(world, 'moved-away.git'));
 
-    const out = catchUpState(here.root);
+    const { result: out, traced: commands } = traced(() => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.commit, out.pushed], ['unreachable', before, false]);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /^leeway-state could not be fetched from origin, so this session works on the state it has: git fetch failed: /);
+    assert.match(out.warnings[0], /^leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
+    assert.strictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).length, 1, 'the remote was asked again after it failed');
     assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base'));
     assert.strictEqual(status(here.root), '');
   });
 
-  it('gives up on a fetch the remote never answers, within the timeout, as a warning', () => {
+  it('gives up on a remote that never answers within one timeout, as a warning', () => {
     const { here } = twoMachines({ '.ledger.jsonl': ledger('base') });
     const silent = path.join(world, 'silent-ssh');
     fs.writeFileSync(silent, '#!/bin/sh\nexec sleep 5\n', { mode: 0o755 });
@@ -309,11 +383,12 @@ describe('catching up when one side moved (4.S36)', () => {
     git(here.main, ['config', 'core.sshCommand', silent]);
 
     const started = Date.now();
-    const out = catchUpState(here.root, { fetchTimeoutMs: 500 });
+    const { result: out, traced: commands } = traced(() => catchUpState(here.root, { fetchTimeoutMs: 500 }));
 
     assert.ok(Date.now() - started < 4000, `the fetch held boot for ${Date.now() - started}ms`);
     assert.strictEqual(out.action, 'unreachable');
-    assert.match(out.warnings[0], /git fetch timed out after 0\.5s/);
+    assert.match(out.warnings[0], /git ls-remote timed out after 0\.5s/);
+    assert.strictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).length, 1, 'the timeout ran twice');
   });
 
   it('refuses a state worktree with another branch checked out, moving nothing', () => {
@@ -345,35 +420,191 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.strictEqual(status(here.root), ' M unit/topics/a/log.md\n?? unit/topics/b/log.md\n');
   });
 
-  it('merges an uncommitted change to a file the remote also changed, never overwriting it', () => {
+  it('fast-forwards with no new commit where only the remote moved, merging an uncommitted file it changed in place, still uncommitted', () => {
     const { here, there, bare } = twoMachines({ 'unit/topics/a/log.md': '# a\n\n## first\n' });
     write(here.root, 'unit/topics/a/log.md', '# a\n\n## first\n\n## here, uncommitted\n');
-    const theirs = commitOn(there, { 'unit/topics/a/log.md': '# a\n\n## first\n\n## elsewhere\n' }).commit;
+    const theirsText = '# a\n\n## first\n\n## elsewhere\n';
+    const theirs = commitOn(there, { 'unit/topics/a/log.md': theirsText }).commit;
 
     const out = catchUpState(here.root);
 
-    const merged = '# a\n\n## first\n\n## elsewhere\n## here, uncommitted\n';
-    assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
+    assert.deepStrictEqual([out.action, out.pushed, out.commit], ['fast-forwarded', false, theirs]);
     assert.deepStrictEqual(out.uncommitted, { kept: [], merged: ['unit/topics/a/log.md'] });
-    assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [theirs]);
-    assert.strictEqual(read(here.root, 'unit/topics/a/log.md'), merged);
-    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:unit/topics/a/log.md`]), merged);
-    assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
-    assert.strictEqual(status(here.root), '');
+    assert.strictEqual(tip(here.main, STATE_BRANCH), theirs);
+    assert.strictEqual(remoteTip(bare), theirs);
+    assert.strictEqual(git(bare, ['show', `${STATE_BRANCH}:unit/topics/a/log.md`]), theirsText);
+    assert.strictEqual(read(here.root, 'unit/topics/a/log.md'), '# a\n\n## first\n\n## elsewhere\n## here, uncommitted\n');
+    assert.strictEqual(status(here.root), ' M unit/topics/a/log.md\n');
     assert.match(out.warnings.join('\n'), /unit\/topics\/a\/log\.md was changed in the same place on both machines/);
   });
 
-  it('takes an uncommitted file into the merge where the remote changed a path above it, writing nothing over it', () => {
+  it('merges committed state alone into the merge commit where both moved, the uncommitted bytes merged into the working tree', () => {
+    const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), 'unit/topics/a/log.md': '# a\n' });
+    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
+    write(here.root, '.ledger.jsonl', ledger('base', 'a1', 'u1'));
+    write(here.root, 'unit/topics/a/log.md', '# a\n\n## here, uncommitted\n');
+    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), 'unit/topics/a/log.md': '# a\n\n## elsewhere\n' });
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'b1', 'a1'));
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:unit/topics/a/log.md`]), '# a\n\n## elsewhere\n');
+    assert.strictEqual(spawnSync('git', ['grep', '-l', '-e', 'u1', '-e', 'uncommitted', STATE_BRANCH], { cwd: here.main, encoding: 'utf8' }).stdout, '',
+      'uncommitted bytes reached the commit');
+    assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
+    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'a1', 'u1'));
+    assert.strictEqual(read(here.root, 'unit/topics/a/log.md'), '# a\n\n## elsewhere\n## here, uncommitted\n');
+    assert.strictEqual(status(here.root), ' M .ledger.jsonl\n M unit/topics/a/log.md\n');
+    assert.ok(appendOnly(here.root), 'the uncommitted ledger no longer starts with the committed one');
+  });
+
+  it('stops on a field the uncommitted copy and the update changed differently, its pick written into the working copy, never a commit', () => {
+    const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
+    write(here.root, 'manifest.json', projectManifest('next'));
+    const theirs = commitOn(there, { 'manifest.json': projectManifest('someday') }).commit;
+    const before = tip(here.main, STATE_BRANCH);
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.commit], ['stopped', before]);
+    assert.deepStrictEqual(out.conflicts.map((c) => [c.uncommitted, c.local, c.remote]), [[true, { set: true, value: 'next' }, { set: true, value: 'someday' }]]);
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next'));
+
+    const picked = pickStateMerge(here.root, '1');
+
+    assert.deepStrictEqual([picked.action, picked.commit], ['fast-forwarded', theirs]);
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('someday'));
+    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.strictEqual(status(here.root), ' M manifest.json\n');
+  });
+
+  /** A stop on the horizon both sides committed, with the working tree's copy changing it again. */
+  function stoppedWithWork() {
+    const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
+    commitUnpushed(here, { 'manifest.json': projectManifest('next') });
+    write(here.root, 'manifest.json', projectManifest('never'));
+    commitOn(there, { 'manifest.json': projectManifest('someday') });
+    const out = catchUpState(here.root);
+    assert.deepStrictEqual(out.conflicts.map((c) => [c.uncommitted, c.local.set && c.local.value]), [[false, 'next']]);
+    return here;
+  }
+
+  /** The horizon committed, and the working tree's. @param {Machine} here */
+  function horizons(here) {
+    return [
+      JSON.parse(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`])).roadmap.items['a-lifetime-tier'].horizon,
+      JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon,
+    ];
+  }
+
+  it('asks nothing of a field the working tree changed where the pick on the branch settles it', () => {
+    const here = stoppedWithWork();
+
+    assert.strictEqual(pickStateMerge(here.root, '1').action, 'merged');
+    assert.deepStrictEqual(horizons(here), ['next', 'never']);
+  });
+
+  it('asks a field the working tree changed once the branch\'s fields are picked, where their pick leaves it standing', () => {
+    const here = stoppedWithWork();
+
+    const next = pickStateMerge(here.root, '2');
+
+    assert.deepStrictEqual(next.conflicts.map((c) => [c.uncommitted, c.local.set && c.local.value, c.pick]), [[false, 'next', 'remote'], [true, 'never', null]]);
+    assert.match(stateMergeGateSurface(here.main, {}), /^> Field 2 of 2\. .*\n>\n> - this machine: never\n> - the remote: someday$/m);
+    assert.strictEqual(pickStateMerge(here.root, '1').action, 'fast-forwarded');
+    assert.deepStrictEqual(horizons(here), ['someday', 'never']);
+  });
+
+  it('sets an uncommitted folder beside where the update writes a file at its path', () => {
     const { here, there } = twoMachines({ 'unit/x': 'x was a file\n' });
     fs.rmSync(path.join(here.root, 'unit/x'));
     write(here.root, 'unit/x/new.md', 'uncommitted, where x was\n');
-    commitOn(there, { 'unit/x': 'x changed elsewhere\n' });
-    const before = tip(here.main, STATE_BRANCH);
+    const theirs = commitOn(there, { 'unit/x': 'x changed elsewhere\n' }).commit;
 
-    assert.throws(() => catchUpState(here.root), /unit\/x/);
+    const out = catchUpState(here.root);
 
-    assert.strictEqual(tip(here.main, STATE_BRANCH), before);
-    assert.strictEqual(read(here.root, 'unit/x/new.md'), 'uncommitted, where x was\n');
+    const beside = `unit/x.${treeId(here.root, { 'new.md': 'uncommitted, where x was\n' }).slice(0, 8)}`;
+    assert.deepStrictEqual([out.action, out.commit], ['fast-forwarded', theirs]);
+    assert.strictEqual(read(here.root, 'unit/x'), 'x changed elsewhere\n');
+    assert.strictEqual(read(here.root, `${beside}/new.md`), 'uncommitted, where x was\n');
+    assert.deepStrictEqual(out.warnings, [
+      'unit/x was deleted on one machine and changed on the other: the changed copy is kept',
+      `unit/x is a file on the remote and a folder on this machine: the remote's file stays at unit/x, and this machine's folder is kept beside it as ${beside}`,
+    ]);
+    assert.deepStrictEqual(out.uncommitted, { kept: [], merged: ['unit/x', 'unit/x/new.md'] });
+    assert.strictEqual(status(here.root), `?? ${beside}/new.md\n`);
+  });
+
+  it('sets an uncommitted file beside where the update writes a folder at its path', () => {
+    const { here, there } = twoMachines({ 'unit/a.md': 'a\n' });
+    write(here.root, 'unit/y', 'an uncommitted file\n');
+    commitOn(there, { 'unit/y/b.md': 'b, there\n' });
+
+    const out = catchUpState(here.root);
+
+    const beside = `unit/y.${blobId('an uncommitted file\n').slice(0, 8)}`;
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.strictEqual(read(here.root, 'unit/y/b.md'), 'b, there\n');
+    assert.strictEqual(read(here.root, beside), 'an uncommitted file\n');
+    assert.deepStrictEqual(out.warnings, [
+      `unit/y is a folder on the remote and a file on this machine: the remote's folder stays at unit/y, and this machine's file is kept beside it as ${beside}`,
+    ]);
+    assert.strictEqual(status(here.root), `?? ${beside}\n`);
+  });
+});
+
+describe('another session writing while the catch-up runs', () => {
+  const LOG = 'unit/topics/a/log.md';
+
+  /** An uncommitted change here and a remote change to the same file. */
+  function racing() {
+    const machines = twoMachines({ [LOG]: '# a\n\n## first\n' });
+    write(machines.here.root, LOG, '# a\n\n## first\n\n## here\n');
+    commitOn(machines.there, { [LOG]: '# a\n\n## first\n\n## elsewhere\n' });
+    return machines;
+  }
+
+  /** A `git` that, after the nth time the catch-up stages its files, appends `lines[n - 1]` to the file, as another session writing it. @param {string} root @param {string[]} lines */
+  function writerAfterStaging(root, lines) {
+    const list = path.join(world, 'lines');
+    fs.writeFileSync(list, lines.map((line) => `${line}\n`).join(''));
+    return gitWrapper('--prefix=', `line=$(sed -n "\${n}p" "${list}"); if [ -n "$line" ]; then echo "$line" >> "${path.join(root, LOG)}"; fi`);
+  }
+
+  it('merges the update again into what the other session wrote, never writing over it', () => {
+    const { here } = racing();
+
+    const out = withPath(writerAfterStaging(here.root, ['## another session']), () => catchUpState(here.root));
+
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.strictEqual(read(here.root, LOG), '# a\n\n## first\n\n## elsewhere\n## here\n## another session\n');
+  });
+
+  it('keeps a file the update removes where the other session wrote it meanwhile', () => {
+    const { here, there } = twoMachines({ 'unit/gone.md': 'gone\n', 'unit/a.md': 'a\n' });
+    fs.rmSync(path.join(there.root, 'unit/gone.md'));
+    withStateLock(there.root, () => commitState(there.root, ['unit/gone.md'], 'state: drop'));
+    const writer = gitWrapper('write-tree', `echo "written meanwhile" >> "${path.join(here.root, 'unit/gone.md')}"`);
+
+    const out = withPath(writer, () => catchUpState(here.root));
+
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.strictEqual(read(here.root, 'unit/gone.md'), 'gone\nwritten meanwhile\n');
+    assert.deepStrictEqual(out.warnings, ['unit/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
+  });
+
+  it('leaves a file that moves again as it stands, and names it', () => {
+    const { here, there } = racing();
+
+    const out = withPath(writerAfterStaging(here.root, ['## another session', '## and again']), () => catchUpState(here.root));
+
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.strictEqual(tip(here.main, STATE_BRANCH), tip(there.main, STATE_BRANCH));
+    assert.strictEqual(read(here.root, LOG), '# a\n\n## first\n\n## here\n## another session\n## and again\n');
+    assert.ok(out.warnings.includes(
+      `${LOG} changed while the state caught up and was left as it stands, unmerged: the remote's side of it is the copy committed on leeway-state`,
+    ), out.warnings.join('\n'));
   });
 });
 
@@ -463,41 +694,16 @@ describe('the merge, both sides moved (4.S14)', () => {
 
 describe('the remote moving under the merge (4.S15)', () => {
   /**
-   * Run `fn` under a `git` that runs the real one, and after each
-   * `commit-tree` — a merge's commit — pushes the other machine's next
-   * waiting commit, while any wait: the remote moves between the fetch and
-   * the push.
+   * Run `fn` under a `git` that, after the nth `commit-tree` — a merge's
+   * commit — pushes the other machine's nth waiting commit, while any wait:
+   * the remote moves between the fetch and the push.
    * @template T @param {Machine} there @param {string[]} commits @param {() => T} fn @returns {T}
    */
   function withMovingRemote(there, commits, fn) {
-    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
-    const dir = path.join(world, 'moving-git');
-    fs.mkdirSync(dir);
-    fs.writeFileSync(path.join(dir, 'commits'), commits.map((sha) => `${sha}\n`).join(''));
-    fs.writeFileSync(path.join(dir, 'git'), [
-      '#!/bin/sh',
-      `"${real}" "$@"`,
-      'status=$?',
-      'for arg in "$@"; do',
-      '  if [ "$arg" = commit-tree ]; then',
-      `    n=$(cat "${dir}/count" 2>/dev/null || echo 0)`,
-      `    next=$(sed -n "$((n + 1))p" "${dir}/commits")`,
-      '    if [ -n "$next" ]; then',
-      `      echo $((n + 1)) > "${dir}/count"`,
-      `      "${real}" -C "${there.main}" push -q origin "$next:refs/heads/${STATE_BRANCH}" >/dev/null 2>&1`,
-      '    fi',
-      '  fi',
-      'done',
-      'exit $status',
-      '',
-    ].join('\n'), { mode: 0o755 });
-    const pathWas = process.env.PATH;
-    process.env.PATH = `${dir}:${pathWas}`;
-    try {
-      return fn();
-    } finally {
-      process.env.PATH = pathWas;
-    }
+    const list = path.join(world, 'waiting-commits');
+    fs.writeFileSync(list, commits.map((sha) => `${sha}\n`).join(''));
+    const push = `"$real" -C "${there.main}" push -q origin "$next:refs/heads/${STATE_BRANCH}" >/dev/null 2>&1`;
+    return withPath(gitWrapper('commit-tree', `next=$(sed -n "\${n}p" "${list}"); if [ -n "$next" ]; then ${push}; fi`), fn);
   }
 
   it('fetches and merges again when the lease fails, and lands on the remote\'s new tip', () => {
@@ -605,6 +811,7 @@ describe('the manifests (4.S17)', () => {
     assert.deepStrictEqual([out.action, out.commit, out.pushed], ['stopped', mine, false]);
     assert.deepStrictEqual(out.conflicts, [{
       manifest: 'manifest.json',
+      uncommitted: false,
       field: ['roadmap', 'items', 'a-lifetime-tier', 'horizon'],
       local: { set: true, value: 'next' },
       remote: { set: true, value: 'someday' },
@@ -731,7 +938,7 @@ describe('a kept stop', () => {
     assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['linear', 'next']);
   });
 
-  it('is dropped when the remote moves, and the merge is worked out again from the new tip', () => {
+  it('asks the new choice once the remote moves under a pick, the old pick not taken for it', () => {
     const { here, there, bare } = stopped();
     const moved = commitOn(there, { 'manifest.json': projectManifest('later') }).commit;
 
@@ -741,30 +948,72 @@ describe('a kept stop', () => {
     assert.deepStrictEqual([out.conflicts[0].remote, out.conflicts[0].pick], [{ set: true, value: 'later' }, null]);
     assert.match(out.warnings.join('\n'), /sides moved since it stopped/);
     assert.strictEqual(remoteTip(bare), moved);
-    assert.strictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).remote, moved);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).conflicts.map((c) => [c.remote.value, c.pick]), [['later', null]]);
   });
 
-  it('is dropped when this clone moves', () => {
+  it('asks afresh as this clone moves: the same choice stays asked, and a pick for a choice no longer asked is not taken', () => {
     const { here } = stopped();
-    assert.notStrictEqual(pendingStateMerge(here.root), null);
-
     commitUnpushed(here, { 'manifest.json': projectManifest('next', { defaults: { plan_format: 'tick' } }) });
 
-    assert.strictEqual(pendingStateMerge(here.root), null);
-    assert.throws(() => stateMergeGateSurface(here.main, {}), /no state merge is waiting on a pick/);
+    assert.deepStrictEqual(pendingStateMerge(here.root)?.conflicts.map((c) => c.local), [{ set: true, value: 'next' }]);
+
+    commitUnpushed(here, { 'manifest.json': projectManifest('never', { defaults: { plan_format: 'tick' } }) });
+    const out = pickStateMerge(here.root, '1');
+
+    assert.deepStrictEqual([out.action, out.conflicts.map((c) => [c.local, c.pick])], ['stopped', [[{ set: true, value: 'never' }, null]]]);
+    assert.match(out.warnings.join('\n'), /sides moved since it stopped/);
+
+    commitUnpushed(here, { 'manifest.json': projectManifest('again', { defaults: { plan_format: 'tick' } }) });
+    assert.match(stateMergeGateSurface(here.main, {}), /^> - this machine: again$/m);
+
+    assert.strictEqual(pickStateMerge(here.root, '1').action, 'merged');
+    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'again');
   });
 
-  it('is dropped when the uncommitted state it took changes', () => {
+  it('asks with the uncommitted value as the working tree now holds it', () => {
     const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
     write(here.root, 'manifest.json', projectManifest('next'));
     commitOn(there, { 'manifest.json': projectManifest('someday') });
-    const out = catchUpState(here.root);
-    assert.deepStrictEqual([out.action, out.conflicts.map((c) => c.local)], ['stopped', [{ set: true, value: 'next' }]]);
-    assert.notStrictEqual(pendingStateMerge(here.root), null);
+    assert.strictEqual(catchUpState(here.root).action, 'stopped');
 
     write(here.root, 'manifest.json', projectManifest('never'));
 
+    assert.deepStrictEqual(pendingStateMerge(here.root)?.conflicts.map((c) => c.local), [{ set: true, value: 'never' }]);
+  });
+
+  it('with every field picked offline, is not asked again, and the next catch-up finishes it', () => {
+    const { here, bare } = stopped();
+    const away = path.join(world, 'moved-away.git');
+    fs.renameSync(bare, away);
+
+    const offline = pickStateMerge(here.root, '1');
+
+    assert.strictEqual(offline.action, 'unreachable');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).conflicts.map((c) => c.pick), ['local']);
     assert.strictEqual(pendingStateMerge(here.root), null);
+    assert.throws(() => stateMergeGateSurface(here.main, {}), /^Error: render state-merge-gate: no state merge is waiting on a pick$/);
+
+    fs.renameSync(away, bare);
+    const online = catchUpState(here.root);
+
+    assert.deepStrictEqual([online.action, online.pushed], ['merged', true]);
+    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.ok(!fs.existsSync(keptStopFile(here.root)));
+  });
+
+  it('with every field picked and the pick killed before it finished, is finished by the next catch-up', () => {
+    const { here, bare } = stopped();
+
+    killedAfter(here.root, "merge.pickStateMerge(root, '2')", 'ls-remote');
+
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(keptStopFile(here.root), 'utf8')).conflicts.map((c) => c.pick), ['remote']);
+    assert.strictEqual(pendingStateMerge(here.root), null);
+
+    const out = catchUpState(here.root);
+
+    assert.strictEqual(out.action, 'fast-forwarded');
+    assert.strictEqual(tip(here.main, STATE_BRANCH), remoteTip(bare));
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));
   });
 });
 
@@ -805,7 +1054,59 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(read(here.root, 'unit/assets/chart.png'), 'png\0there');
     assert.strictEqual(read(here.root, beside), 'png\0here');
     assert.deepStrictEqual(out.warnings, [
-      `unit/assets/chart.png was changed on both machines and is not text to merge: the remote's copy stays at unit/assets/chart.png, and this machine's is kept beside it as ${beside}`,
+      `unit/assets/chart.png was changed on both machines and is not merged line by line: the remote's copy stays at unit/assets/chart.png, and this machine's is kept beside it as ${beside}`,
+    ]);
+    assert.strictEqual(status(here.root), '');
+  });
+
+  it('keeps a JSON file both sides changed whole, the remote\'s at its path and this machine\'s beside it, never merged line by line', () => {
+    const { here, there } = twoMachines({ 'unit/data.json': '{\n  "a": 1,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n' });
+    commitUnpushed(here, { 'unit/data.json': '{\n  "a": 2,\n  "b": 1\n}\n', 'unit/events.jsonl': '{"n":1}\n{"n":2}\n' });
+    commitOn(there, { 'unit/data.json': '{\n  "a": 1,\n  "b": 3\n}\n', 'unit/events.jsonl': '{"n":1}\n{"n":3}\n' });
+
+    const out = catchUpState(here.root);
+
+    const data = `unit/data.${blobId('{\n  "a": 2,\n  "b": 1\n}\n').slice(0, 8)}.json`;
+    const events = `unit/events.${blobId('{"n":1}\n{"n":2}\n').slice(0, 8)}.jsonl`;
+    assert.strictEqual(out.action, 'merged');
+    assert.strictEqual(read(here.root, 'unit/data.json'), '{\n  "a": 1,\n  "b": 3\n}\n');
+    assert.strictEqual(read(here.root, data), '{\n  "a": 2,\n  "b": 1\n}\n');
+    assert.strictEqual(read(here.root, 'unit/events.jsonl'), '{"n":1}\n{"n":3}\n');
+    assert.strictEqual(read(here.root, events), '{"n":1}\n{"n":2}\n');
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/data.json', 'unit/events.jsonl']);
+  });
+
+  it('keeps a file on the remote and a folder here apart, the remote\'s file at the path and this machine\'s folder beside it', () => {
+    const { here, there } = twoMachines({ 'unit/a.md': 'a\n' });
+    commitUnpushed(here, { 'unit/z/inside.md': 'inside, here\n' });
+    commitOn(there, { 'unit/z': 'z, a file there\n' });
+
+    const out = catchUpState(here.root);
+
+    const beside = `unit/z.${treeId(here.root, { 'inside.md': 'inside, here\n' }).slice(0, 8)}`;
+    assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
+    assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/a.md\nunit/z\n${beside}/inside.md\n`);
+    assert.strictEqual(read(here.root, 'unit/z'), 'z, a file there\n');
+    assert.strictEqual(read(here.root, `${beside}/inside.md`), 'inside, here\n');
+    assert.deepStrictEqual(out.warnings, [
+      `unit/z is a file on the remote and a folder on this machine: the remote's file stays at unit/z, and this machine's folder is kept beside it as ${beside}`,
+    ]);
+    assert.strictEqual(status(here.root), '');
+  });
+
+  it('keeps a folder on the remote and a file here apart, the remote\'s folder at the path and this machine\'s file beside it', () => {
+    const { here, there } = twoMachines({ 'unit/a.md': 'a\n' });
+    commitUnpushed(here, { 'unit/w': 'w, a file here\n' });
+    commitOn(there, { 'unit/w/inside.md': 'inside, there\n' });
+
+    const out = catchUpState(here.root);
+
+    const beside = `unit/w.${blobId('w, a file here\n').slice(0, 8)}`;
+    assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/a.md\n${beside}\nunit/w/inside.md\n`);
+    assert.strictEqual(read(here.root, 'unit/w/inside.md'), 'inside, there\n');
+    assert.strictEqual(read(here.root, beside), 'w, a file here\n');
+    assert.deepStrictEqual(out.warnings, [
+      `unit/w is a folder on the remote and a file on this machine: the remote's folder stays at unit/w, and this machine's file is kept beside it as ${beside}`,
     ]);
     assert.strictEqual(status(here.root), '');
   });
@@ -830,11 +1131,44 @@ describe('any other file both sides changed', () => {
   });
 });
 
+describe('a catch-up killed between its steps', () => {
+  const LOG = 'unit/topics/a/log.md';
+  const CHART = 'unit/assets/chart.png';
+
+  // The landing's git steps, each named by what its arguments hold: the
+  // merge's commit, the files staged, the worktree's index, the branch, the
+  // push.
+  for (const marker of ['commit-tree', '--prefix=', 'reset --quiet', 'update-ref -m', '--force-with-lease']) {
+    it(`loses nothing, and the next catch-up lands the whole merge, when killed after ${marker}`, () => {
+      const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), [CHART]: 'png\0base', [LOG]: '# a\n' });
+      commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1'), [CHART]: 'png\0here' });
+      write(here.root, LOG, '# a\n\n## here, uncommitted\n');
+      const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), [CHART]: 'png\0there', [LOG]: '# a\n\n## elsewhere\n' }).commit;
+      const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
+
+      killedAfter(here.root, 'merge.catchUpState(root)', marker);
+      catchUpState(here.root);
+
+      const landed = tip(here.main, STATE_BRANCH);
+      assert.deepStrictEqual(parents(here.main, landed), [theirs]);
+      assert.strictEqual(remoteTip(bare), landed);
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'b1', 'a1'));
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${CHART}`]), 'png\0there');
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), 'png\0here');
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${LOG}`]), '# a\n\n## elsewhere\n');
+      assert.strictEqual(read(here.root, LOG), '# a\n\n## elsewhere\n## here, uncommitted\n');
+      assert.strictEqual(read(here.root, beside), 'png\0here');
+      assert.strictEqual(status(here.root), ` M ${LOG}\n`);
+      assert.deepStrictEqual(mergeLeftovers(here.root), []);
+    });
+  }
+});
+
 describe('the rules each file merges by', () => {
-  it('reads the ledger, the migrations record and each manifest by its path', () => {
+  it('reads the ledger, the migrations record, each manifest and any other JSON file by its path', () => {
     assert.deepStrictEqual(
-      ['.ledger.jsonl', '.state/migrations', 'manifest.json', 'auth-flow/manifest.json', '.tick/manifest.json', 'unit/topics/a/manifest.json', 'unit/topics/a/log.md'].map(ruleOf),
-      ['ledger', 'migrations', 'manifest', 'manifest', 'file', 'file', 'file'],
+      ['.ledger.jsonl', '.state/migrations', 'manifest.json', 'auth-flow/manifest.json', '.tick/manifest.json', 'unit/topics/a/manifest.json', 'unit/data.json', 'unit/events.jsonl', 'unit/topics/a/log.md'].map(ruleOf),
+      ['ledger', 'migrations', 'manifest', 'manifest', 'whole', 'whole', 'whole', 'whole', 'file'],
     );
   });
 
@@ -874,11 +1208,17 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(merged({ a: 1 }, {}, { a: 2 }).conflicts, [{ field: ['a'], local: { set: false }, remote: { set: true, value: 2 }, pick: null }]);
   });
 
-  it('treats a list as one value, joining lists both sides only appended to, the remote\'s additions first', () => {
+  it('treats a list as one value, joining lists both sides only appended to the ancestor\'s, the remote\'s additions first', () => {
     assert.deepStrictEqual(merged({ l: [1] }, { l: [1, 2, 4] }, { l: [1, 3, 4] }).value, { l: [1, 3, 4, 2] });
-    assert.deepStrictEqual(merged({}, { l: ['a'] }, { l: ['b'] }).value, { l: ['b', 'a'] });
+    assert.deepStrictEqual(merged({ l: [1] }, { l: [1, 1] }, { l: [1, 2] }).value, { l: [1, 2, 1] }, 'an appended element equal to one the ancestor held was dropped');
     assert.deepStrictEqual(merged({ l: [1, 2] }, { l: [1] }, { l: [1, 2, 3] }).conflicts.map((c) => c.field), [['l']]);
     assert.deepStrictEqual(merged({ l: [1, 2] }, { l: [2, 1] }, { l: [1, 2, 3] }).conflicts.map((c) => c.field), [['l']]);
+  });
+
+  it('stops on lists both sides created differently, the ancestor holding none', () => {
+    assert.deepStrictEqual(merged({}, { l: ['a'] }, { l: ['b'] }).conflicts,
+      [{ field: ['l'], local: { set: true, value: ['a'] }, remote: { set: true, value: ['b'] }, pick: null }]);
+    assert.deepStrictEqual(merged({ l: 'flat' }, { l: ['a'] }, { l: ['b'] }).conflicts.map((c) => c.field), [['l']]);
   });
 
   it('stops on a field both sides changed to different values, a change of type included', () => {
@@ -886,10 +1226,19 @@ describe('the rules each file merges by', () => {
       [{ field: ['a'], local: { set: true, value: { x: 2 } }, remote: { set: true, value: 'flat' }, pick: null }]);
   });
 
-  it('takes the picked side where a pick is given', () => {
-    const pickOf = (field) => (field.join('.') === 'a' ? 'local' : null);
+  it('takes the picked side where a pick is given for the choice', () => {
+    const pickOf = (choice) => (choice.field.join('.') === 'a' && choice.remote.set && choice.remote.value === 3 ? 'local' : null);
     assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 3 }, pickOf), { value: { a: 2 }, conflicts: [{ field: ['a'], local: { set: true, value: 2 }, remote: { set: true, value: 3 }, pick: 'local' }] });
     assert.deepStrictEqual(merged({ a: 1 }, {}, { a: 3 }, pickOf).value, {});
+    assert.deepStrictEqual(merged({ a: 1 }, { a: 2 }, { a: 4 }, pickOf).conflicts.map((c) => c.pick), [null]);
+  });
+
+  it('holds two conflicts the same choice where the field and both values match, whatever the picks', () => {
+    const choice = { field: ['a', 'b'], local: { set: true, value: { x: [1] } }, remote: { set: false } };
+    assert.ok(sameChoice(choice, { ...choice, local: { set: true, value: { x: [1] } }, pick: 'local' }));
+    assert.ok(!sameChoice(choice, { ...choice, field: ['a', 'c'] }));
+    assert.ok(!sameChoice(choice, { ...choice, local: { set: true, value: { x: [2] } } }));
+    assert.ok(!sameChoice(choice, { ...choice, remote: { set: true, value: null } }));
   });
 
   it('orders the merged keys as the remote has them, this clone\'s new ones after', () => {
@@ -920,6 +1269,7 @@ describe('the stop\'s screen (4.7.6)', () => {
     return {
       conflicts: conflicts.map((c) => ({
         manifest: 'manifest.json',
+        uncommitted: false,
         field: ['roadmap', 'items', 'a-lifetime-tier', 'horizon'],
         local: { set: true, value: 'next' },
         remote: { set: true, value: 'someday' },
@@ -975,6 +1325,13 @@ describe('the stop\'s screen (4.7.6)', () => {
     assert.match(out, /^> - this machine: removed$/m);
     assert.match(out, /^> - the remote: \{"nested":\\\["a\\\*b"\\\]\}$/m);
     assert.match(out, /^\*\*`◆ Which plan format does Fumi's project manifest keep\?`\*\*$/m);
+  });
+
+  it('shows the last conflict of a stop with every one picked, never failing on it', () => {
+    const out = stateMergeGate(stopOf({ pick: 'local' }, { field: ['defaults', 'plan_format'], label: conflictLabel('manifest.json', ['defaults', 'plan_format'], 'Fumi'), pick: 'remote' }));
+
+    assert.match(out, /^> Field 2 of 2\. In Fumi's project manifest, the plan format \(`defaults\.plan_format`\) changed/m);
+    auditMarkers(out, 'state merge gate');
   });
 
   it('asks a shorter question where the specific one would not fit the menu\'s glyph', () => {

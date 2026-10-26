@@ -20,10 +20,15 @@
 //   other, it goes; removed on one and changed on the other, it is a
 //   conflict. An array is one field's value, never merged element by
 //   element, since a manifest's lists carry no identity to match elements
-//   by; but where both sides only appended to the ancestor's list, the
-//   result is the remote's list then this clone's additions it lacks — the
-//   ledger's rule, so independent appends never stop the merge. Any other
-//   divergence on one field is a conflict (4.7.6), resolved by a pick.
+//   by; but where the ancestor held the list and both sides only appended
+//   to it, the result is the remote's list, then this clone's appended
+//   elements the remote did not append too, in order — the ledger's rule,
+//   so independent appends never stop the merge. Any other divergence on
+//   one field, two lists both sides created among them, is a conflict
+//   (4.7.6), resolved by a pick. A pick answers one choice: the field, and
+//   the two values it was between.
+// - Any other JSON file is kept whole, never merged line by line: a text
+//   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
 
 const { titlecase } = require('./conventions.cjs');
@@ -33,8 +38,12 @@ const MIGRATIONS = '.state/migrations';
 // The project's manifest and each unit's; a unit's name never starts with
 // a dot, so a hidden folder's file is never a unit's manifest.
 const MANIFEST = /^(?:[^./][^/]*\/)?manifest\.json$/;
+const JSON_FILE = /\.jsonl?$/;
 
-/** @typedef {'ledger'|'migrations'|'manifest'|'file'} MergeRule */
+/** @typedef {'ledger'|'migrations'|'manifest'|'whole'|'file'} MergeRule */
+
+/** A side's copy is not what its rule reads, so the merge cannot take it apart. */
+class MergeError extends Error {}
 
 /**
  * One side of a conflicted field: its value, or that it was removed.
@@ -42,9 +51,15 @@ const MANIFEST = /^(?:[^./][^/]*\/)?manifest\.json$/;
  */
 
 /**
- * A field both sides changed to different values: its path from the
- * manifest's root, each side's value, and the person's pick once made.
- * @typedef {{field: string[], local: Side, remote: Side, pick: 'local'|'remote'|null}} FieldConflict
+ * A choice a field leaves the person: its path from the manifest's root,
+ * and each side's value.
+ * @typedef {{field: string[], local: Side, remote: Side}} Choice
+ */
+
+/**
+ * A field both sides changed to different values: the choice, and the
+ * person's pick once made.
+ * @typedef {Choice & {pick: 'local'|'remote'|null}} FieldConflict
  */
 
 /**
@@ -62,7 +77,8 @@ const MANIFEST = /^(?:[^./][^/]*\/)?manifest\.json$/;
 function ruleOf(file) {
   if (file === LEDGER) return 'ledger';
   if (file === MIGRATIONS) return 'migrations';
-  return MANIFEST.test(file) ? 'manifest' : 'file';
+  if (MANIFEST.test(file)) return 'manifest';
+  return JSON_FILE.test(file) ? 'whole' : 'file';
 }
 
 /** @param {string} text @returns {string[]} */
@@ -106,7 +122,7 @@ function entryId(line, side, number) {
   }
   if (entry === null || typeof entry !== 'object' || typeof entry.id !== 'string') {
     const where = side === 'local' ? "this machine's" : "the remote's";
-    throw new Error(`cannot merge ${LEDGER}: line ${number} of ${where} is not an entry with an id: ${line.slice(0, 80)}`);
+    throw new MergeError(`cannot merge ${LEDGER}: line ${number} of ${where} is not an entry with an id: ${line.slice(0, 80)}`);
   }
   return entry.id;
 }
@@ -168,17 +184,17 @@ function startsWith(list, prefix) {
 
 /**
  * Two lists that each only appended to the ancestor's, joined: the
- * remote's, then this clone's additions the remote lacks. Undefined where
- * either side did anything else.
+ * remote's, then this clone's appended elements the remote's appended ones
+ * lack, in order. Undefined where the ancestor held no list, or where either
+ * side did anything but append.
  * @param {unknown} base @param {unknown} local @param {unknown} remote
  * @returns {unknown[]|undefined}
  */
 function bothAppended(base, local, remote) {
-  const start = base === undefined ? [] : base;
-  if (!Array.isArray(start) || !Array.isArray(local) || !Array.isArray(remote)) return undefined;
-  if (!startsWith(local, start) || !startsWith(remote, start)) return undefined;
-  const added = local.slice(start.length).filter((item) => !remote.some((held) => same(held, item)));
-  return [...remote, ...added];
+  if (!Array.isArray(base) || !Array.isArray(local) || !Array.isArray(remote)) return undefined;
+  if (!startsWith(local, base) || !startsWith(remote, base)) return undefined;
+  const theirs = remote.slice(base.length);
+  return [...remote, ...local.slice(base.length).filter((item) => !theirs.some((held) => same(held, item)))];
 }
 
 /** @param {unknown} value @returns {Side} */
@@ -186,12 +202,24 @@ function sideOf(value) {
   return value === undefined ? { set: false } : { set: true, value };
 }
 
+/** @param {Side} a @param {Side} b */
+function sameSide(a, b) {
+  return a.set ? b.set && same(a.value, b.value) : !b.set;
+}
+
 /**
- * @typedef {{
- *   conflicts: FieldConflict[],
- *   pickOf: (field: string[]) => 'local'|'remote'|null,
- * }} FieldMerge
+ * Whether two conflicts leave the same choice: one field, between the same
+ * two values.
+ * @param {Choice} a @param {Choice} b
  */
+function sameChoice(a, b) {
+  return a.field.length === b.field.length && a.field.every((key, i) => key === b.field[i])
+    && sameSide(a.local, b.local) && sameSide(a.remote, b.remote);
+}
+
+/** @typedef {(choice: Choice) => 'local'|'remote'|null} PickOf */
+
+/** @typedef {{conflicts: FieldConflict[], pickOf: PickOf}} FieldMerge */
 
 /**
  * One field merged, recursing into objects both sides hold.
@@ -205,8 +233,9 @@ function mergeValue(base, local, remote, field, merge) {
   if (isObject(local) && isObject(remote)) return mergeObject(base, local, remote, field, merge);
   const appended = bothAppended(base, local, remote);
   if (appended !== undefined) return appended;
-  const pick = merge.pickOf(field);
-  merge.conflicts.push({ field, local: sideOf(local), remote: sideOf(remote), pick });
+  const choice = { field, local: sideOf(local), remote: sideOf(remote) };
+  const pick = merge.pickOf(choice);
+  merge.conflicts.push({ ...choice, pick });
   return pick === 'local' ? local : remote;
 }
 
@@ -231,10 +260,10 @@ function mergeObject(base, local, remote, field, merge) {
 /**
  * A manifest merged field by field against the common ancestor (undefined
  * where the manifest is new on both sides). Each conflict carries the pick
- * `pickOf` names for its field, and takes it; a conflict with no pick takes
+ * `pickOf` names for its choice, and takes it; a conflict with no pick takes
  * the remote's value for now, and stops the merge.
  * @param {unknown} base @param {Record<string, unknown>} local @param {Record<string, unknown>} remote
- * @param {(field: string[]) => 'local'|'remote'|null} [pickOf]
+ * @param {PickOf} [pickOf]
  * @returns {{value: unknown, conflicts: FieldConflict[]}}
  */
 function mergeManifest(base, local, remote, pickOf = () => null) {
@@ -283,12 +312,26 @@ function conflictLabel(manifest, field, project) {
   return { owner, subject: `the ${subject.noun} "${name}"`, name, field: rest.length > 0 ? words(last) : null, path };
 }
 
+/**
+ * The conflict a stop asks about: the first not yet picked; where every one
+ * is picked, which the next catch-up finishes, the last.
+ * @param {{pick: 'local'|'remote'|null}[]} conflicts
+ * @returns {number}
+ */
+function askedAt(conflicts) {
+  const open = conflicts.findIndex((c) => c.pick === null);
+  return open === -1 ? conflicts.length - 1 : open;
+}
+
 module.exports = {
   LEDGER,
   MIGRATIONS,
+  MergeError,
   ruleOf,
   unionLedger,
   unionMigrations,
   mergeManifest,
+  sameChoice,
+  askedAt,
   conflictLabel,
 };
