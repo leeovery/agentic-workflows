@@ -26,6 +26,7 @@ const { git, initRepo } = require('./engine-harness.cjs');
 const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
 const { REPOSITORY_ENV, isolatedGit, mainCheckout } = require('../../skills/workflow-engine/scripts/kernel/isolated-git.cjs');
+const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
@@ -343,7 +344,7 @@ describe('inspecting the state', () => {
     const { main, root } = project();
 
     assert.deepStrictEqual(inspectState(root), {
-      main, root, branch: false, remote: null, remoteBranch: false, worktree: null,
+      main, root, branch: false, remotes: [], remote: null, remoteBranch: false, worktree: null,
     });
   });
 
@@ -355,6 +356,7 @@ describe('inspecting the state', () => {
       main,
       root,
       branch: true,
+      remotes: [],
       remote: null,
       remoteBranch: false,
       worktree: { present: true, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON },
@@ -378,7 +380,7 @@ describe('inspecting the state', () => {
     const seen = inspectState(stateRoot(fresh));
 
     assert.deepStrictEqual(seen, {
-      main: fresh, root: path.join(fresh, '.leeway'), branch: false, remote: 'origin', remoteBranch: true, worktree: null,
+      main: fresh, root: path.join(fresh, '.leeway'), branch: false, remotes: ['origin'], remote: 'origin', remoteBranch: true, worktree: null,
     });
   });
 
@@ -394,18 +396,24 @@ describe('inspecting the state', () => {
     assert.deepStrictEqual(inspectState(root).worktree, { present: false, branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON });
   });
 
-  it('takes origin as the state\'s remote, else the one remote, else none', () => {
+  it('takes origin as the state\'s remote, else the one the main checkout\'s branch tracks, else the one remote', () => {
     const { main, root } = project();
+    const seen = () => {
+      const { remotes, remote } = inspectState(root);
+      return { remotes, remote };
+    };
 
     git(main, ['remote', 'add', 'upstream', path.join(world, 'upstream.git')]);
-    assert.strictEqual(inspectState(root).remote, 'upstream');
+    assert.deepStrictEqual(seen(), { remotes: ['upstream'], remote: 'upstream' });
+
+    git(main, ['remote', 'add', 'fork', path.join(world, 'fork.git')]);
+    assert.deepStrictEqual(seen(), { remotes: ['fork', 'upstream'], remote: null });
+
+    git(main, ['config', 'branch.main.remote', 'fork']);
+    assert.deepStrictEqual(seen(), { remotes: ['fork', 'upstream'], remote: 'fork' });
 
     git(main, ['remote', 'add', 'origin', path.join(world, 'origin.git')]);
-    assert.strictEqual(inspectState(root).remote, 'origin');
-
-    git(main, ['remote', 'remove', 'origin']);
-    git(main, ['remote', 'add', 'fork', path.join(world, 'fork.git')]);
-    assert.strictEqual(inspectState(root).remote, null);
+    assert.deepStrictEqual(seen(), { remotes: ['fork', 'origin', 'upstream'], remote: 'origin' });
   });
 });
 
@@ -489,21 +497,67 @@ describe('the writer lock', () => {
     createState(root);
     const lock = path.join(root, '.lock');
 
-    const held = withStateLock(root, () => fs.readFileSync(lock, 'utf8'));
-    assert.strictEqual(held, String(process.pid));
+    const held = withStateLock(root, () => JSON.parse(fs.readFileSync(lock, 'utf8')));
+    assert.deepStrictEqual(held, { pid: process.pid, pid_start: processStartTime(process.pid) });
     assert.ok(!fs.existsSync(lock));
 
     assert.throws(() => withStateLock(root, () => { throw new Error('the verb failed'); }), /the verb failed/);
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('never shows as a change in the state worktree', () => {
+  it('takes over at once a lock whose holder is gone, however fresh the lock', () => {
+    const { root } = project();
+    createState(root);
+    const lock = path.join(root, '.lock');
+    const ended = spawnSync('node', ['-e', '']).pid;
+
+    for (const left of [{ pid: ended, pid_start: 'gone' }, { pid: process.pid, pid_start: 'a process before this one' }]) {
+      fs.writeFileSync(lock, JSON.stringify(left));
+      const started = Date.now();
+
+      const ran = withStateLock(root, () => JSON.parse(fs.readFileSync(lock, 'utf8')).pid_start);
+
+      assert.ok(Date.now() - started < 2000, `waited ${Date.now() - started}ms on ${JSON.stringify(left)}`);
+      assert.strictEqual(ran, processStartTime(process.pid));
+      assert.ok(!fs.existsSync(lock));
+    }
+  });
+
+  it('never breaks a live holder, however long it has held: the contender gives up, naming it', () => {
+    const { root } = project();
+    createState(root);
+    const lock = path.join(root, '.lock');
+
+    withStateLock(root, () => {
+      const past = (Date.now() - 600000) / 1000;
+      fs.utimesSync(lock, past, past);
+
+      assert.throws(() => withStateLock(root, () => null, { timeoutMs: 300 }),
+        new RegExp(`Timed out waiting for the state lock .*process ${process.pid} holds it`));
+      assert.strictEqual(JSON.parse(fs.readFileSync(lock, 'utf8')).pid, process.pid);
+    });
+    assert.ok(!fs.existsSync(lock));
+  });
+
+  it('leaves the lock alone at release where another holder has taken it', () => {
+    const { root } = project();
+    createState(root);
+    const lock = path.join(root, '.lock');
+    const other = JSON.stringify({ pid: 1, pid_start: 'another holder' });
+
+    withStateLock(root, () => fs.writeFileSync(lock, other));
+
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), other);
+  });
+
+  it('never shows as a change in the state worktree, nor do the files its claim makes', () => {
     const { root } = project();
     createState(root);
 
     const status = withStateLock(root, () => git(root, ['status', '--porcelain', '--untracked-files=all']));
 
     assert.strictEqual(status, '');
+    for (const rel of ['.lock.4242.tmp', '.lock.breaking']) assert.ok(ignored(root, rel), rel);
   });
 
   it('refuses where there is no state worktree', () => {
@@ -547,6 +601,39 @@ describe('committing state', () => {
       'A\tunit/topics/a/brief.md', 'A\tunit/topics/a/log.md', 'D\tunit/old.md', 'M\tmanifest.json',
     ]);
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+
+  it('commits a deletion already staged in the state worktree, named by its file or by its folder', () => {
+    const { root } = project();
+    createState(root);
+    write(root, 'unit/old.md', 'old\n');
+    write(root, 'unit/gone.md', 'gone\n');
+    withStateLock(root, () => commitState(root, ['unit'], 'state: first'));
+    git(root, ['rm', '-q', 'unit/old.md', 'unit/gone.md']);
+
+    const byFile = withStateLock(root, () => commitState(root, ['unit/old.md'], 'state: drop old'));
+    const byFolder = withStateLock(root, () => commitState(root, ['unit'], 'state: drop gone'));
+
+    assert.deepStrictEqual(touched(root, byFile.commit || ''), ['D\tunit/old.md']);
+    assert.deepStrictEqual(touched(root, byFolder.commit || ''), ['D\tunit/gone.md']);
+    assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+
+  it('makes no commit and no push where a staged change was undone in the working tree', () => {
+    const { root, bare } = project({ remote: true });
+    createState(root);
+    write(root, 'manifest.json', '{}\n');
+    const before = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: first')).commit;
+    write(root, 'manifest.json', '{"a":1}\n');
+    git(root, ['add', 'manifest.json']);
+    write(root, 'manifest.json', '{}\n');
+
+    const { result, commands } = traced(() => withStateLock(root, () => commitState(root, ['manifest.json'], 'state: nothing')));
+
+    assert.deepStrictEqual(result, { commit: null, pushed: false, warnings: [] });
+    assert.ok(!commands.includes('push'), `a push was attempted: ${commands}`);
+    assert.strictEqual(tip(root, STATE_BRANCH), before);
+    assert.strictEqual(remoteTip(bare), before);
   });
 
   it('makes no commit and no push where the paths hold no change, or where no path is given', () => {
@@ -682,6 +769,38 @@ describe('committing state', () => {
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.deepStrictEqual([out.pushed, out.warnings.length], [false, 1]);
     assert.match(out.warnings[0], /git push timed out after 0\.5s/);
+  });
+
+  it('warns on every push where several remotes choose none, and pushes to the one the main checkout\'s branch tracks', () => {
+    const { main, root } = project();
+    const [fork, upstream] = ['fork', 'upstream'].map((name) => {
+      const bare = path.join(world, `${name}.git`);
+      git(world, ['init', '-q', '--bare', bare]);
+      git(main, ['remote', 'add', name, bare]);
+      return bare;
+    });
+    const unchosen = /^leeway-state is committed here but was not pushed: the project has several remotes \(fork, upstream\), and none is named origin or tracked by the main checkout's branch$/;
+
+    const created = createState(root);
+    write(root, 'manifest.json', '{}\n');
+    const committed = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    const pushed = pushState(root);
+
+    for (const out of [created, committed, pushed]) {
+      assert.strictEqual(out.pushed, false);
+      assert.strictEqual(out.warnings.length, 1);
+      assert.match(out.warnings[0], unchosen);
+    }
+    assert.strictEqual(tip(root, STATE_BRANCH), committed.commit);
+    assert.deepStrictEqual([remoteTip(fork), remoteTip(upstream)], ['', '']);
+    assert.throws(() => createStateBranchFromRemote(root), /cannot take leeway-state from a remote: the project has several remotes \(fork, upstream\)/);
+
+    git(main, ['config', 'branch.main.remote', 'upstream']);
+    write(root, 'manifest.json', '{"a":1}\n');
+    const tracked = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: again'));
+
+    assert.deepStrictEqual([tracked.pushed, tracked.warnings], [true, []]);
+    assert.deepStrictEqual([remoteTip(fork), remoteTip(upstream)], ['', tracked.commit]);
   });
 
   it('pushes the branch as it stands on its own, what a failed push left behind', () => {

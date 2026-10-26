@@ -14,9 +14,11 @@
 //   the remote's, lock the worktree.
 // - Writing it: a verb holds the writer lock (`.leeway/.lock`) across its
 //   writes and its commit, so concurrent verbs take turns and the branch
-//   stays one line. The commit takes exactly the paths given, then the branch
-//   is pushed wherever the project has a remote, never forced; a push that
-//   fails or runs out of time is a warning, and the commit stands.
+//   stays one line; the lock follows its holder's process, never its age.
+//   The commit takes exactly the paths given, then the branch is pushed
+//   wherever the project has a remote, never forced; a push that fails, runs
+//   out of time, or finds no remote chosen among several is a warning, and
+//   the commit stands.
 //
 // Every git call goes through kernel/isolated-git: hooks off, the caller's
 // repository environment cleared.
@@ -26,21 +28,21 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit, mainCheckout } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
-const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
+const { LOCK_RETRY_MS, tryClaimFile } = require('../kernel/manifest-io.cjs');
 
 const STATE_BRANCH = 'leeway-state';
 const STATE_DIR = '.leeway';
 const STATE_LOCK_REASON = 'workflows state, do not remove';
 const WRITER_LOCK = '.lock';
-const STATE_GITIGNORE = ['/.knowledge/', '/.cache/', `/${WRITER_LOCK}`, ''].join('\n');
+// The lock's claim is written beside it and linked into place, and a
+// takeover holds a guard beside it: both are the lock's, ignored with it.
+const STATE_GITIGNORE = ['/.knowledge/', '/.cache/', `/${WRITER_LOCK}`, `/${WRITER_LOCK}.*`, ''].join('\n');
 const FIRST_COMMIT_MESSAGE = `chore: begin ${STATE_BRANCH}`;
 
 const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
 
-// The writer lock is held across a verb's writes, its commit and its push,
-// so it keeps the commit lock's clocks: a holder is stale only after five
-// minutes, and a contender waits a minute — longer than any push may take.
-const WRITER_LOCK_STALE_MS = 300000;
+// A contender waits a minute for a live holder — longer than any push the
+// holder makes under the lock may take.
 const WRITER_LOCK_TIMEOUT_MS = 60000;
 const PUSH_TIMEOUT_MS = 15000;
 
@@ -52,12 +54,13 @@ const PUSH_TIMEOUT_MS = 15000;
 
 /**
  * Where the state stands: the main checkout and the state root, the local
- * branch, the remote the state goes to and its branch there as last fetched,
- * and the worktree registered at the root.
+ * branch, the project's remotes, the one the state goes to and its branch
+ * there as last fetched, and the worktree registered at the root.
  * @typedef {{
  *   main: string,
  *   root: string,
  *   branch: boolean,
+ *   remotes: string[],
  *   remote: string|null,
  *   remoteBranch: boolean,
  *   worktree: StateWorktree|null,
@@ -89,15 +92,25 @@ function remoteRef(remote) {
 }
 
 /**
- * The remote the state goes to: `origin`, else the project's one remote;
- * none where the project has no remote, or several and no `origin`.
- * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git
- * @returns {string|null}
+ * The project's remotes, and the one the state goes to: `origin`, else the
+ * remote the main checkout's branch tracks, else the project's one remote.
+ * `remote` is null where the project has none, or several and none of
+ * these chooses one.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the main checkout
+ * @returns {{remote: string|null, remotes: string[]}}
  */
 function stateRemote(git) {
   const remotes = git.run(['remote']).split('\n').filter((name) => name !== '');
-  if (remotes.includes('origin')) return 'origin';
-  return remotes.length === 1 ? remotes[0] : null;
+  if (remotes.includes('origin')) return { remote: 'origin', remotes };
+  const branch = (git.tryRun(['symbolic-ref', '--quiet', '--short', 'HEAD']) || '').trim();
+  const tracked = branch === '' ? '' : (git.tryRun(['config', '--get', `branch.${branch}.remote`]) || '').trim();
+  if (remotes.includes(tracked)) return { remote: tracked, remotes };
+  return { remote: remotes.length === 1 ? remotes[0] : null, remotes };
+}
+
+/** Why several remotes choose none. @param {string[]} remotes @returns {string} */
+function noRemoteChosen(remotes) {
+  return `the project has several remotes (${remotes.join(', ')}), and none is named origin or tracked by the main checkout's branch`;
 }
 
 /**
@@ -134,13 +147,14 @@ function registeredWorktree(git, root) {
 function inspectState(root) {
   const main = mainOf(root);
   const git = isolatedGit(main);
-  const remote = stateRemote(git);
+  const { remote, remotes } = stateRemote(git);
   const wanted = remote === null ? [BRANCH_REF] : [BRANCH_REF, remoteRef(remote)];
   const refs = git.run(['for-each-ref', '--format=%(refname)', ...wanted]).split('\n');
   return {
     main,
     root,
     branch: refs.includes(BRANCH_REF),
+    remotes,
     remote,
     remoteBranch: remote !== null && refs.includes(remoteRef(remote)),
     worktree: registeredWorktree(git, root),
@@ -214,8 +228,12 @@ function addStateWorktree(root) {
  */
 function createStateBranchFromRemote(root) {
   const git = isolatedGit(mainOf(root));
-  const remote = stateRemote(git);
-  if (remote === null) throw new Error(`the project has no remote to take ${STATE_BRANCH} from`);
+  const { remote, remotes } = stateRemote(git);
+  if (remote === null) {
+    throw new Error(remotes.length === 0
+      ? `the project has no remote to take ${STATE_BRANCH} from`
+      : `cannot take ${STATE_BRANCH} from a remote: ${noRemoteChosen(remotes)}`);
+  }
   const tip = git.tryRun(['rev-parse', '--quiet', '--verify', `${remoteRef(remote)}^{commit}`]);
   if (tip === null) throw new Error(`${remote} holds no ${STATE_BRANCH}`);
   createBranchAt(git, tip.trim());
@@ -229,22 +247,50 @@ function lockStateWorktree(root) {
   lockWorktree(isolatedGit(mainOf(root)), root);
 }
 
+// Block the thread for `ms` without burning CPU (Atomics.wait on a
+// throwaway buffer is never notified, so it sleeps the full timeout).
+/** @param {number} ms */
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Who holds the lock, as its record names it. @param {string} lockFile @returns {string} */
+function lockHolder(lockFile) {
+  try {
+    const { pid } = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+    return pid ? `process ${pid}` : 'another process';
+  } catch {
+    return 'another process';
+  }
+}
+
 /**
  * Run `fn` holding the writer lock, `.leeway/.lock` — across a verb's state
- * writes and its commit, so concurrent verbs write one after the other.
- * `fn` runs synchronously.
+ * writes and its commit, so concurrent verbs write one after the other. The
+ * lock records its holder: a holder whose process is gone is taken over at
+ * once, and a live one is never broken — the contender gives up after
+ * `timeoutMs` instead, naming it. `fn` runs synchronously.
  * @template T
  * @param {string} root @param {() => T} fn
+ * @param {{timeoutMs?: number}} [opts]
  * @returns {T}
  */
-function withStateLock(root, fn) {
+function withStateLock(root, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const lockFile = path.join(root, WRITER_LOCK);
-  acquireLockFile(lockFile, 'Timed out waiting for the state lock', WRITER_LOCK_TIMEOUT_MS, WRITER_LOCK_STALE_MS);
+  const deadline = Date.now() + timeoutMs;
+  let release = tryClaimFile(lockFile);
+  while (release === null) {
+    if (Date.now() >= deadline) {
+      throw new Error(`Timed out waiting for the state lock (lock file: ${lockFile}) — ${lockHolder(lockFile)} holds it`);
+    }
+    sleepSync(LOCK_RETRY_MS);
+    release = tryClaimFile(lockFile);
+  }
   try {
     return fn();
   } finally {
-    releaseLockFile(lockFile);
+    release();
   }
 }
 
@@ -263,27 +309,39 @@ function fromRoot(root, given) {
 }
 
 /**
- * The files under the pathspecs that differ from HEAD, untracked ones each
- * on its own, named from the worktree's root. No pathspec, no file — never
- * the whole worktree.
+ * Stage every change under the pathspecs, and answer the files whose staged
+ * content then differs from HEAD, named from the worktree's root. A file the
+ * index already holds as the working tree does — a deletion staged ahead,
+ * gone from both — is left as staged: `add` refuses a path neither holds.
+ * No pathspec, no file — never the whole worktree.
  * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string[]} specs
  * @returns {string[]}
  */
-function changedFiles(git, specs) {
+function stageChanges(git, specs) {
   if (specs.length === 0) return [];
-  return git.run(['status', '--porcelain', '-z', '--no-renames', '--untracked-files=all', '--', ...literally(specs)])
-    .split('\0').filter((entry) => entry.length > 3).map((entry) => entry.slice(3));
+  const entries = git.run(['status', '--porcelain', '-z', '--no-renames', '--untracked-files=all', '--', ...literally(specs)])
+    .split('\0').filter((entry) => entry.length > 3);
+  if (entries.length === 0) return [];
+  const unstaged = entries.filter((entry) => entry[1] !== ' ').map((entry) => entry.slice(3));
+  if (unstaged.length > 0) git.run(['add', '--all', '--', ...literally(unstaged)]);
+  const files = entries.map((entry) => entry.slice(3));
+  return git.run(['diff', '--cached', '--name-only', '--no-renames', '-z', '--', ...literally(files)])
+    .split('\0').filter((file) => file !== '');
 }
 
 /**
  * Push `leeway-state` to the state's remote, never forcing, within
- * `timeoutMs`. No remote, no push; a refused or timed-out push is a warning.
- * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {number} timeoutMs
+ * `timeoutMs`. No remote, no push; several remotes that choose none, a
+ * refused push or a timed-out one is a warning.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the main checkout
+ * @param {number} timeoutMs
  * @returns {PushOutcome}
  */
 function push(git, timeoutMs) {
-  const remote = stateRemote(git);
-  if (remote === null) return { pushed: false, warnings: [] };
+  const { remote, remotes } = stateRemote(git);
+  if (remote === null) {
+    return { pushed: false, warnings: remotes.length === 0 ? [] : [`${STATE_BRANCH} is committed here but was not pushed: ${noRemoteChosen(remotes)}`] };
+  }
   try {
     git.run(['push', '--quiet', remote, `${BRANCH_REF}:${BRANCH_REF}`], { timeoutMs, env: { GIT_TERMINAL_PROMPT: '0' } });
     return { pushed: true, warnings: [] };
@@ -313,12 +371,11 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } =
     const checkedOut = head === '' ? 'a detached HEAD' : head.replace(/^refs\/heads\//, '');
     throw new Error(`the state worktree at ${root} has ${checkedOut} checked out, not ${STATE_BRANCH} — nothing committed`);
   }
-  const changed = changedFiles(git, specs);
+  const changed = stageChanges(git, specs);
   if (changed.length === 0) return { commit: null, pushed: false, warnings: [] };
-  git.run(['add', '--all', '--', ...literally(changed)]);
   git.run(['commit', '--quiet', '-m', message, '--', ...literally(changed)]);
   const commit = git.run(['rev-parse', 'HEAD']).trim();
-  return { commit, ...push(git, pushTimeoutMs) };
+  return { commit, ...push(isolatedGit(mainOf(root)), pushTimeoutMs) };
 }
 
 /**
