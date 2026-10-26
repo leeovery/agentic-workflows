@@ -1,6 +1,6 @@
 # Review record: The workflows, reshaped — the specification
 
-As of 2026-10-26: 661 of 2704 lines approved explicitly, 2042 assessed by Claude and not ticked, 1 with an open conversation, 0 passed without review.
+As of 2026-10-26: 662 of 2704 lines approved explicitly, 2042 assessed by Claude and not ticked, 0 with an open conversation, 0 passed without review.
 
 A line ticked is the person's explicit approval. A line Claude assessed is Claude's approval, from a fresh pass, which the person let stand. A line not reviewed is carried through implicitly: it stands, but nobody has said yes to it.
 
@@ -32,8 +32,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 6.4.1 – 6.6.11
 - 6.6.13 – 6.S2
 - 6.S7 – 6.S32
-- 7.1.1 – 7.5.2
-- 7.S1 – 7.S19
+- 7.1.1 – 7.S19
 - 8.1.3
 - 8.8.12
 - 8.9.13
@@ -112,6 +111,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.7.4: not following . no context.
 - 4.11.5: This looks good, but there's one thing that's slipped in here, the spec review. Shouldn't that be manifest-driven or some other mechanism of storage? Because if every spec item is numbered, isn't the agreement and comments and stuff something that could go into a more programmatic-friendly storage mechanism like JSON? I might be wrong here, so do push back if you think that the markdown is appropriate. / Ok I agree. So this would be a separate manifest type file? What if the spec numbers change through update - all the references would then be wrong. Im wondering if maybe we should or could design it so the spec is json too, and comments, additions, ticks etc can be linked inline with the item. Would be more machinaery for Claude to manage though when writing which might weaken the spec doc? If it could work then it would enable us to track items with nano ids and then ultimately produce an artefact (or not) programically. just a thought
 - 4.11.7: Does this end up in the manifest at all? Again, I'm not 100% sure that adding stuff like this to Markdown is necessarily the right shape, but maybe it is. The worry here is that when we use Markdown, Claude can easily hallucinate extra sections and just make up stuff. Unless it's all engine-driven, and then maybe it's okay. What do you think?
+- 7.5.3: I think before they establish this, we don't need to worry and establish that we don't need a path that the tick call rolls up through the directory structure. Tell me if I'm wrong, but I feel like this was already decided.
 
 ## Assessed by Claude, not ticked
 
@@ -2158,10 +2158,6 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 29.S4: matches 29.2.1
 - 29.S5: matches 29.1.8
 
-## Open conversations
-
-- 7.5.3: I think before they establish this, we don't need to worry and establish that we don't need a path that the tick call rolls up through the directory structure. Tell me if I'm wrong, but I feel like this was already decided.
-
 ## Changed since they were ticked, not ticked again
 
 - 4.1.2
@@ -2189,7 +2185,6 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 6.6.12
 - 6.S3 – 6.S6
 - 6.S33
-- 7.5.3
 - 8.1.1 – 8.1.2
 - 8.1.4
 - 8.12.4
