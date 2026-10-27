@@ -7,21 +7,24 @@
 // whole set, with the message form the inbox history already uses
 // (`archive {slug}` for one item, `archive {N} items` for several).
 //
-//   live:     .workflows/.inbox/{ideas|bugs|quickfixes}/{file}.md
-//   archived: .workflows/.inbox/.archived/{ideas|bugs|quickfixes}/{file}.md
+// In the state, state-relative:
+//   live:     .inbox/{ideas|bugs|quickfixes}/{file}.md
+//   archived: .inbox/.archived/{ideas|bugs|quickfixes}/{file}.md
+//
+// A path given is read from the caller's folder, absolute as the engine
+// hands paths out; a path answered is absolute.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { removeFiles } = require('../kernel/git.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
-const { stateRel } = require('../kernel/state-root.cjs');
+const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
+const { statePath, stateRelative } = require('../kernel/state-root.cjs');
 
-const INBOX = stateRel('.inbox');
+const INBOX = '.inbox';
 const ARCHIVED = `${INBOX}/.archived`;
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
 
-/** Where a folder's declined items wait. @param {string} folder @returns {string} project-relative */
+/** Where a folder's declined items wait. @param {string} folder @returns {string} state-relative */
 function archivedDir(folder) {
   return `${ARCHIVED}/${folder}`;
 }
@@ -47,7 +50,7 @@ function seedKind(source) {
 
 /**
  * @typedef {object} InboxItem
- * @property {string} given   the path as passed (normalised)
+ * @property {string} rel     the path in the state, state-relative
  * @property {string} folder  ideas | bugs | quickfixes
  * @property {string} file    file name
  * @property {string} slug    file name minus the date prefix and extension
@@ -55,17 +58,16 @@ function seedKind(source) {
 
 /**
  * Validate one inbox path against the expected layout. Loud on anything
- * outside it — wrong root, unknown folder, nesting, traversal.
- * @param {string} given
+ * outside it — outside the state, the wrong store, an unknown folder,
+ * nesting.
+ * @param {string} cwd
+ * @param {string} given absolute, or from `cwd`
  * @param {{archived: boolean}} opts whether the path must be under `.archived/`
  * @returns {InboxItem}
  */
-function parseInboxPath(given, { archived }) {
-  const norm = path.normalize(given);
-  if (path.isAbsolute(norm) || norm.split(path.sep).includes('..')) {
-    throw new Error(`inbox paths must be project-relative without "..": "${given}"`);
-  }
-  const segs = norm.split(path.sep);
+function parseInboxPath(cwd, given, { archived }) {
+  const rel = stateRelative(cwd, given);
+  const segs = rel === null ? [] : rel.split('/');
   const root = archived ? ARCHIVED : INBOX;
   const depth = root.split('/').length + 2;
   const ok =
@@ -74,12 +76,12 @@ function parseInboxPath(given, { archived }) {
     FOLDERS.includes(segs[depth - 2]) &&
     segs[depth - 1].endsWith('.md');
   if (!ok) {
-    const expected = `${root}/{${FOLDERS.join('|')}}/{file}.md`;
+    const expected = statePath(cwd, `${root}/{${FOLDERS.join('|')}}/{file}.md`);
     throw new Error(`not ${archived ? 'an archived' : 'a live'} inbox path (expected ${expected}): "${given}"`);
   }
   const file = segs[depth - 1];
   return {
-    given: segs.join('/'),
+    rel: segs.join('/'),
     folder: segs[depth - 2],
     file,
     slug: file.replace(/\.md$/, '').replace(/^\d{4}-\d{2}-\d{2}--/, ''),
@@ -92,18 +94,19 @@ function parseInboxPath(given, { archived }) {
  * @returns {InboxItem[]}
  */
 function parseInboxPaths(cwd, paths, opts) {
-  const items = paths.map((p) => parseInboxPath(p, opts));
+  const items = paths.map((p) => parseInboxPath(cwd, p, opts));
   // Refuse duplicates here, before anything moves: two paths naming the same
   // file both pass existence, then the second `renameSync` hits ENOENT after
   // the first move already applied — a half-done, uncommitted transaction.
   const seen = new Set();
   for (const item of items) {
-    if (seen.has(item.given)) {
-      throw new Error(`duplicate inbox path: "${item.given}"`);
+    const at = statePath(cwd, item.rel);
+    if (seen.has(item.rel)) {
+      throw new Error(`duplicate inbox path: "${at}"`);
     }
-    seen.add(item.given);
-    if (!fs.existsSync(path.join(cwd, item.given))) {
-      throw new Error(`inbox file not found: "${item.given}"`);
+    seen.add(item.rel);
+    if (!fs.existsSync(at)) {
+      throw new Error(`inbox file not found: "${at}"`);
     }
   }
   return items;
@@ -118,12 +121,12 @@ function commitMessage(verb, items) {
 /**
  * Refuse any move whose destination is already taken — run before the first
  * file moves, so a refusal leaves every file where it was.
- * @param {string} cwd @param {{from: string, to: string}[]} moves project-relative
+ * @param {string} cwd @param {{from: string, to: string}[]} moves state-relative
  */
 function refuseTakenDestinations(cwd, moves) {
   for (const { to } of moves) {
-    if (fs.existsSync(path.join(cwd, to))) {
-      throw new Error(`destination already exists: "${to}"`);
+    if (fs.existsSync(statePath(cwd, to))) {
+      throw new Error(`destination already exists: "${statePath(cwd, to)}"`);
     }
   }
 }
@@ -139,15 +142,15 @@ function refuseTakenDestinations(cwd, moves) {
  * Move each file to its destination, creating the destination's directory.
  * All or nothing: a move that throws puts every file already moved back
  * (`undoMoves`), then rethrows that move's error.
- * @param {string} cwd @param {{from: string, to: string}[]} moves project-relative
+ * @param {string} cwd @param {{from: string, to: string}[]} moves state-relative
  */
 function moveFiles(cwd, moves) {
   /** @type {{from: string, to: string}[]} */
   const done = [];
   try {
     for (const move of moves) {
-      fs.mkdirSync(path.dirname(path.join(cwd, move.to)), { recursive: true });
-      fs.renameSync(path.join(cwd, move.from), path.join(cwd, move.to));
+      fs.mkdirSync(path.dirname(statePath(cwd, move.to)), { recursive: true });
+      fs.renameSync(statePath(cwd, move.from), statePath(cwd, move.to));
       done.push(move);
     }
   } catch (err) {
@@ -157,9 +160,9 @@ function moveFiles(cwd, moves) {
 
 /**
  * Put moved files back where they were, last moved first, every reversal
- * attempted. Any that fail ride `err` as `stranded` and are named in its
- * message, so the first failure is never lost. Returns `err`.
- * @param {string} cwd @param {{from: string, to: string}[]} done project-relative, as moved
+ * attempted. Any that fail ride `err` as `stranded`, absolute, and are named
+ * in its message, so the first failure is never lost. Returns `err`.
+ * @param {string} cwd @param {{from: string, to: string}[]} done state-relative, as moved
  * @param {unknown} err the failure that called for the undo
  * @returns {unknown}
  */
@@ -168,9 +171,9 @@ function undoMoves(cwd, done, err) {
   const stranded = [];
   for (const move of [...done].reverse()) {
     try {
-      fs.renameSync(path.join(cwd, move.to), path.join(cwd, move.from));
+      fs.renameSync(statePath(cwd, move.to), statePath(cwd, move.from));
     } catch (error) {
-      stranded.push({ ...move, error });
+      stranded.push({ from: statePath(cwd, move.from), to: statePath(cwd, move.to), error });
     }
   }
   if (stranded.length > 0 && err instanceof Error) attachStranded(err, stranded);
@@ -193,19 +196,26 @@ function attachStranded(err, stranded) {
  * @returns {{moved: string[], committed: string|null}}
  */
 function moveAndCommit(cwd, items, destDir, verb) {
-  const moves = items.map((item) => ({ from: item.given, to: `${destDir(item)}/${item.file}` }));
+  const moves = items.map((item) => ({ from: item.rel, to: `${destDir(item)}/${item.file}` }));
   refuseTakenDestinations(cwd, moves);
   moveFiles(cwd, moves);
-  const moved = moves.map((m) => m.to);
+  const moved = moves.map((m) => statePath(cwd, m.to));
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(cwd, INBOX, commitMessage(verb, items), warnings);
-  /** @type {{moved: string[], committed: string|null, note?: string, warnings?: string[]}} */
-  const result = { moved, committed: outcome.committed };
-  if (outcome.failed) {
-    result.warnings = warnings;
-    noteCommitOutcome(result, outcome);
-  }
+  const outcome = commitStateTail(cwd, INBOX, commitMessage(verb, items), warnings);
+  return committedResult({ moved, committed: outcome.committed }, outcome, warnings);
+}
+
+/**
+ * A transaction's result with its commit's outcome: the warnings where there
+ * are any, and the note a failed commit leaves.
+ * @template {{committed: string|null, note?: string, warnings?: string[]}} R
+ * @param {R} result @param {{committed: string|null, failed: boolean}} outcome @param {string[]} warnings
+ * @returns {R}
+ */
+function committedResult(result, outcome, warnings) {
+  if (warnings.length > 0) result.warnings = warnings;
+  if (outcome.failed) noteCommitOutcome(result, outcome);
   return result;
 }
 
@@ -234,29 +244,20 @@ function restoreItems(cwd, paths) {
 }
 
 /**
- * Permanently delete archived items (`git rm`). One commit for the set.
- * Live-folder paths are rejected — delete only operates on `.archived/`.
+ * Permanently delete archived items. One commit for the set. Live-folder
+ * paths are rejected — delete only operates on `.archived/`.
  * @param {string} cwd project root
  * @param {string[]} paths archived inbox paths
  * @returns {{deleted: string[], committed: string|null}}
  */
 function deleteItems(cwd, paths) {
   const items = parseInboxPaths(cwd, paths, { archived: true });
+  const deleted = items.map((i) => statePath(cwd, i.rel));
+  for (const file of deleted) fs.rmSync(file);
   /** @type {string[]} */
   const warnings = [];
-  // The git rm stages index changes, so it belongs inside the same commit
-  // lock as the commit that lands them — no peer's add+commit sequence may
-  // interleave between the two.
-  const outcome = commitTailPathspec(cwd, INBOX, commitMessage('delete', items), warnings, () => {
-    removeFiles(cwd, items.map((i) => i.given));
-  });
-  /** @type {{deleted: string[], committed: string|null, note?: string, warnings?: string[]}} */
-  const result = { deleted: items.map((i) => i.given), committed: outcome.committed };
-  if (outcome.failed) {
-    result.warnings = warnings;
-    noteCommitOutcome(result, outcome);
-  }
-  return result;
+  const outcome = commitStateTail(cwd, INBOX, commitMessage('delete', items), warnings);
+  return committedResult({ deleted, committed: outcome.committed }, outcome, warnings);
 }
 
 module.exports = {

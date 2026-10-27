@@ -308,7 +308,7 @@ describe('gateway.cjs adapter: map-view', () => {
     // A waiting roadmap idea sharing a proposed name — the anti-twin flag; a
     // pulled one does not fire it (its collision is the join's business), nor
     // a waiting bug, which never becomes a topic.
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       roadmap: {
         horizons: ['v1'],
         items: {

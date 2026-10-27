@@ -406,7 +406,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
     /** @type {Record<string, string> | null} */
     let mapSnapshot = null;
     if (kind === 'review' && phase === 'discussion') {
-      const waiting = mailboxDepth(cwd, workUnit, phase, topic);
+      const waiting = mailboxDepth(stateRoot(cwd), workUnit, phase, topic);
       if (waiting > 0) {
         throw new Error(`review dispatch blocked: ${waiting} message(s) wait in the ${phase}/${topic} mailbox — absorb them (topic absorb) before dispatching a review`);
       }
@@ -487,7 +487,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
         created,
         ...(mapSnapshot ? { map_snapshot: mapSnapshot } : {}),
       };
-      return { id, file: path.relative(cwd, path.join(dir, `${id}.md`)) };
+      return { id, file: path.join(dir, `${id}.md`) };
     });
     saveState(cwd, workUnit, phase, topic, state);
     if (agents.length === 1) {

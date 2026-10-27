@@ -11,8 +11,8 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { spawnSync } = require('child_process');
+const { git, stateGit, commitAll, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 
 const SKILL_DIR = path.resolve(__dirname, '..', '..', 'skills', 'workflow-legacy-research-split', 'scripts');
 const DETECT_CLI   = path.join(SKILL_DIR, 'detect.cjs');
@@ -22,23 +22,21 @@ const APPLY_CLI    = path.join(SKILL_DIR, 'apply.cjs');
 let dir;
 
 function setup() {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'legacy-split-test-'));
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-  // Init git so apply.cjs can commit.
-  spawnSync('git', ['init', '-q'], { cwd: dir });
-  spawnSync('git', ['config', 'user.email', 't@t'], { cwd: dir });
-  spawnSync('git', ['config', 'user.name', 't'], { cwd: dir });
+  dir = setupGitFixture('legacy-split-test-');
 }
 
 function cleanup() {
-  // maxRetries: teardown races concurrent suites' fs activity under parallel
-  // load — a bare rm intermittently dies ENOTEMPTY.
-  if (dir) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  if (dir) cleanupFixture(dir);
   dir = null;
 }
 
+/** The state commit held off: git cannot take the state branch's ref lock. */
+function holdStateRef() {
+  fs.writeFileSync(path.join(dir, '.git', 'refs', 'heads', 'leeway-state.lock'), '');
+}
+
 function writeProjectManifest(workUnit, workType) {
-  const p = path.join(dir, '.workflows', 'manifest.json');
+  const p = path.join(dir, '.leeway', 'manifest.json');
   let proj = {};
   if (fs.existsSync(p)) proj = JSON.parse(fs.readFileSync(p, 'utf8'));
   if (!proj.work_units) proj.work_units = {};
@@ -47,26 +45,26 @@ function writeProjectManifest(workUnit, workType) {
 }
 
 function writeManifest(workUnit, data) {
-  const wuDir = path.join(dir, '.workflows', workUnit);
+  const wuDir = path.join(dir, '.leeway', workUnit);
   fs.mkdirSync(wuDir, { recursive: true });
   fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(data, null, 2));
   writeProjectManifest(workUnit, data.work_type || 'epic');
 }
 
 function writeResearchFile(workUnit, topic, content) {
-  const p = path.join(dir, '.workflows', workUnit, 'research', `${topic}.md`);
+  const p = path.join(dir, '.leeway', workUnit, 'research', `${topic}.md`);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, content);
 }
 
 function readManifest(workUnit) {
   return JSON.parse(fs.readFileSync(
-    path.join(dir, '.workflows', workUnit, 'manifest.json'), 'utf8'
+    path.join(dir, '.leeway', workUnit, 'manifest.json'), 'utf8'
   ));
 }
 
 function fileExists(workUnit, relPath) {
-  return fs.existsSync(path.join(dir, '.workflows', workUnit, relPath));
+  return fs.existsSync(path.join(dir, '.leeway', workUnit, relPath));
 }
 
 function runScript(cli, ...args) {
@@ -107,12 +105,11 @@ function seedLegacyEpic(workUnit, sourceTopic, opts = {}) {
     writeResearchFile(workUnit, sourceTopic, opts.fileContent || '# Broad Research\n\nContent.');
   }
   // Initial commit so subsequent apply.cjs has a clean working tree.
-  spawnSync('git', ['add', '.'], { cwd: dir });
-  spawnSync('git', ['commit', '-q', '-m', 'seed'], { cwd: dir });
+  commitAll(dir, 'seed');
 }
 
 function writeCachePlan(workUnit, currentSource, themes) {
-  const cacheDir = path.join(dir, '.workflows', '.cache', workUnit, 'legacy-split', currentSource);
+  const cacheDir = path.join(dir, '.leeway', '.cache', workUnit, 'legacy-split', currentSource);
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({ themes }, null, 2));
   for (const t of themes) {
@@ -240,7 +237,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects when plan.json is missing', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
     assert.strictEqual(r.json.ok, false);
@@ -248,7 +245,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects when cache file missing for a theme', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
       themes: [{ kebab_name: 'auth', summary: 's', description: 'd' }],
@@ -343,7 +340,7 @@ describe('validate.cjs: cache shape contract', () => {
 
   it('rejects a theme name containing a slash (filesystem hazard)', () => {
     // Write plan.json directly — a slash in the name can't be a flat cache filename.
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
       themes: [{ kebab_name: 'api/v2', summary: 's', description: 'd' }],
@@ -397,7 +394,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects malformed JSON in plan.json', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), '{ "themes": [');  // truncated
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
@@ -406,7 +403,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects when themes is not an array', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({ themes: { foo: 'bar' } }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
@@ -415,7 +412,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects empty themes array', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({ themes: [] }));
     const r = runScriptJson(VALIDATE_CLI, 'wu', 'src');
@@ -424,7 +421,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects theme with missing kebab_name', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
       themes: [{ summary: 's', description: 'd' }],
@@ -435,7 +432,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects theme that is not an object', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
       themes: ['just-a-string'],
@@ -446,7 +443,7 @@ describe('validate.cjs: cache shape contract', () => {
   });
 
   it('rejects whitespace-only kebab_name', () => {
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'wu', 'legacy-split', 'src');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'wu', 'legacy-split', 'src');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'plan.json'), JSON.stringify({
       themes: [{ kebab_name: '   ', summary: 's', description: 'd' }],
@@ -478,7 +475,7 @@ describe('apply.cjs: end-to-end', () => {
 
     // Source file renamed (not original path).
     assert.strictEqual(fileExists('e1', 'research/exploration.md'), false);
-    const researchFiles = fs.readdirSync(path.join(dir, '.workflows', 'e1', 'research')).sort();
+    const researchFiles = fs.readdirSync(path.join(dir, '.leeway', 'e1', 'research')).sort();
     assert.deepStrictEqual(
       researchFiles.filter(f => f.startsWith('exploration-superseded-')).length, 1
     );
@@ -500,47 +497,44 @@ describe('apply.cjs: end-to-end', () => {
     assert.strictEqual(m.phases.discovery.items.auth.source, 'legacy-split:exploration');
     assert.strictEqual(m.phases.research.items.auth.status, 'in-progress');
 
-    // Single git commit.
-    const log = spawnSync('git', ['log', '--oneline'], { cwd: dir, encoding: 'utf8' }).stdout;
-    const lines = log.trim().split('\n');
-    assert.strictEqual(lines.length, 2);  // seed + legacy-split
-    assert.ok(lines[0].includes('legacy-split exploration'));
+    // Single state commit, straight after the seed.
+    const lines = stateGit(dir, ['log', '-2', '--pretty=%s']).trim().split('\n');
+    assert.deepStrictEqual(lines, ['discovery(e1): legacy-split exploration', 'seed']);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'the default branch takes no state commit');
 
     // Cache dir cleaned up.
     assert.strictEqual(
-      fs.existsSync(path.join(dir, '.workflows', '.cache', 'e1', 'legacy-split', 'exploration')),
+      fs.existsSync(path.join(dir, '.leeway', '.cache', 'e1', 'legacy-split', 'exploration')),
       false
     );
   });
 
-  it('pathspec-limits the commit — pre-staged unrelated files stay out', () => {
+  it('commits the state alone — a file pre-staged in the code tree stays staged there', () => {
     seedLegacyEpic('e1p', 'exploration');
     writeCachePlan('e1p', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
     ]);
     // User pre-stages an unrelated file for other work.
     fs.writeFileSync(path.join(dir, 'unrelated.md'), 'user work in progress');
-    spawnSync('git', ['add', 'unrelated.md'], { cwd: dir });
+    git(dir, ['add', 'unrelated.md']);
 
     const r = runScriptJson(APPLY_CLI, 'e1p', 'exploration');
     assert.strictEqual(r.json.ok, true);
 
     // The split commit must not contain the unrelated file.
-    const committed = spawnSync('git', ['show', '--pretty=format:', '--name-only', 'HEAD'],
-      { cwd: dir, encoding: 'utf8' }).stdout;
+    const committed = stateGit(dir, ['show', '--pretty=format:', '--name-only', 'HEAD']);
     assert.ok(!committed.split('\n').includes('unrelated.md'),
       `split commit unexpectedly included unrelated.md:\n${committed}`);
     // It's still staged, uncommitted.
-    const staged = spawnSync('git', ['diff', '--cached', '--name-only'],
-      { cwd: dir, encoding: 'utf8' }).stdout.trim().split('\n');
+    const staged = git(dir, ['diff', '--cached', '--name-only']).trim().split('\n');
     assert.ok(staged.includes('unrelated.md'));
   });
 
   it('untracked source succeeds — no phantom old-path git add fatal', () => {
     seedLegacyEpic('eu', 'exploration');
     // Make the source untracked: remove it from git but keep it on disk.
-    spawnSync('git', ['rm', '--cached', '-q', '.workflows/eu/research/exploration.md'], { cwd: dir });
-    spawnSync('git', ['commit', '-q', '-m', 'untrack source'], { cwd: dir });
+    stateGit(dir, ['rm', '--cached', '-q', 'eu/research/exploration.md']);
+    stateGit(dir, ['commit', '-q', '-m', 'untrack source']);
 
     writeCachePlan('eu', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
@@ -549,29 +543,25 @@ describe('apply.cjs: end-to-end', () => {
     const r = runScriptJson(APPLY_CLI, 'eu', 'exploration');
     assert.strictEqual(r.json.ok, true);
     // New theme + superseded file committed.
-    const committed = spawnSync('git', ['show', '--pretty=format:', '--name-only', 'HEAD'],
-      { cwd: dir, encoding: 'utf8' }).stdout;
-    assert.ok(committed.includes('.workflows/eu/research/auth.md'));
+    const committed = stateGit(dir, ['show', '--pretty=format:', '--name-only', 'HEAD']);
+    assert.ok(committed.includes('eu/research/auth.md'));
     assert.ok(committed.includes('exploration-superseded-'));
   });
 
-  it('untracked source + failing hook gives an accurate (not pre-commit) hint', () => {
+  it('a failed commit over an untracked source says its history was never in git', () => {
     seedLegacyEpic('euh', 'exploration');
-    spawnSync('git', ['rm', '--cached', '-q', '.workflows/euh/research/exploration.md'], { cwd: dir });
-    spawnSync('git', ['commit', '-q', '-m', 'untrack source'], { cwd: dir });
+    stateGit(dir, ['rm', '--cached', '-q', 'euh/research/exploration.md']);
+    stateGit(dir, ['commit', '-q', '-m', 'untrack source']);
 
     writeCachePlan('euh', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc', _content: 'auth content' },
     ]);
-    const hookDir = path.join(dir, '.git', 'hooks');
-    fs.writeFileSync(path.join(hookDir, 'pre-commit'), '#!/bin/sh\nexit 1\n');
-    fs.chmodSync(path.join(hookDir, 'pre-commit'), 0o755);
+    holdStateRef();
 
     const r = runScriptJson(APPLY_CLI, 'euh', 'exploration');
     assert.strictEqual(r.json.ok, false);
     assert.strictEqual(r.json.stage, 'git_commit');
     assert.ok(r.json.recovery_hint.includes('never committed'));
-    assert.ok(!r.json.recovery_hint.includes('pre-commit hook'));
     // The retry is the confined engine commit, never a raw whole-unit stage:
     // the split runs beside live sessions on the same work unit.
     assert.ok(r.json.recovery_hint.includes('engine.cjs commit euh -m'), r.json.recovery_hint);
@@ -606,7 +596,7 @@ describe('apply.cjs: end-to-end', () => {
     assert.strictEqual(r.json.ok, true);
 
     // Source file renamed; new auth.md exists at original path.
-    const researchFiles = fs.readdirSync(path.join(dir, '.workflows', 'e2', 'research'));
+    const researchFiles = fs.readdirSync(path.join(dir, '.leeway', 'e2', 'research'));
     assert.ok(researchFiles.includes('auth.md'));
     assert.ok(researchFiles.some(f => f.startsWith('auth-superseded-')));
 
@@ -628,12 +618,12 @@ describe('apply.cjs: end-to-end', () => {
     assert.deepStrictEqual(r.json.applied, { themes: 1 });
 
     // Original file renamed, new file in its place.
-    const researchFiles = fs.readdirSync(path.join(dir, '.workflows', 'e2b', 'research')).sort();
+    const researchFiles = fs.readdirSync(path.join(dir, '.leeway', 'e2b', 'research')).sort();
     assert.ok(researchFiles.includes('auth.md'));
     assert.ok(researchFiles.some(f => f.startsWith('auth-superseded-')));
 
     // New file is wrapped in the research template (title, summary, starting point, body).
-    const newContent = fs.readFileSync(path.join(dir, '.workflows', 'e2b', 'research', 'auth.md'), 'utf8');
+    const newContent = fs.readFileSync(path.join(dir, '.leeway', 'e2b', 'research', 'auth.md'), 'utf8');
     assert.ok(newContent.startsWith('# Research: Auth\n'));
     assert.ok(newContent.includes('Auth flow'));  // summary
     assert.ok(newContent.includes('## Starting Point'));
@@ -655,10 +645,7 @@ describe('apply.cjs: end-to-end', () => {
         _content: 'auth content' },
     ]);
 
-    const hookDir = path.join(dir, '.git', 'hooks');
-    fs.writeFileSync(path.join(hookDir, 'pre-commit'),
-      '#!/bin/sh\necho "blocked"; exit 1\n');
-    fs.chmodSync(path.join(hookDir, 'pre-commit'), 0o755);
+    holdStateRef();
 
     const r = runScriptJson(APPLY_CLI, 'e4', 'exploration');
     assert.strictEqual(r.json.ok, false);
@@ -687,7 +674,7 @@ describe('apply.cjs: end-to-end', () => {
 
     // Make the source file unreadable by removing it before apply — fs.renameSync will
     // fail at the rename_source_file stage, simulating a mid-flight crash after sentinel.
-    fs.unlinkSync(path.join(dir, '.workflows', 'e4b', 'research', 'exploration.md'));
+    fs.unlinkSync(path.join(dir, '.leeway', 'e4b', 'research', 'exploration.md'));
 
     const r = runScriptJson(APPLY_CLI, 'e4b', 'exploration');
     assert.strictEqual(r.json.ok, false);
@@ -713,8 +700,8 @@ describe('apply.cjs: end-to-end', () => {
   it('partial-state retry: source file already renamed externally', () => {
     seedLegacyEpic('e9', 'exploration');
     // Simulate a previous run that renamed the source file out from under us.
-    const orig = path.join(dir, '.workflows', 'e9', 'research', 'exploration.md');
-    const renamed = path.join(dir, '.workflows', 'e9', 'research', 'exploration-superseded-2026-01-01T00-00-00.md');
+    const orig = path.join(dir, '.leeway', 'e9', 'research', 'exploration.md');
+    const renamed = path.join(dir, '.leeway', 'e9', 'research', 'exploration-superseded-2026-01-01T00-00-00.md');
     fs.renameSync(orig, renamed);
 
     writeCachePlan('e9', 'exploration', [
@@ -729,7 +716,7 @@ describe('apply.cjs: end-to-end', () => {
 
     // Cache dir intact (no partial write); sentinel set (apply's first mutation).
     assert.strictEqual(
-      fs.existsSync(path.join(dir, '.workflows', '.cache', 'e9', 'legacy-split', 'exploration', 'plan.json')),
+      fs.existsSync(path.join(dir, '.leeway', '.cache', 'e9', 'legacy-split', 'exploration', 'plan.json')),
       true
     );
     const m = readManifest('e9');
@@ -742,11 +729,10 @@ describe('apply.cjs: end-to-end', () => {
     const m = readManifest('e10');
     m.phases.discovery.dismissed = ['auth', 'unrelated-name'];
     fs.writeFileSync(
-      path.join(dir, '.workflows', 'e10', 'manifest.json'),
+      path.join(dir, '.leeway', 'e10', 'manifest.json'),
       JSON.stringify(m, null, 2)
     );
-    spawnSync('git', ['add', '.'], { cwd: dir });
-    spawnSync('git', ['commit', '-q', '-m', 'add-dismissed'], { cwd: dir });
+    commitAll(dir, 'add-dismissed');
 
     writeCachePlan('e10', 'exploration', [
       { kebab_name: 'auth', summary: 'Auth', description: 'auth desc',

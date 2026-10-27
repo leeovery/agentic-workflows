@@ -36,7 +36,7 @@ const STUB_MESSAGE = '000-parked.md';
 /** @param {string} dir @param {string} name @param {any} manifest */
 function layStubMessages(dir, name, manifest) {
   for (const phase of ['research', 'discussion']) {
-    const root = path.join(dir, '.workflows', name, phase, '.mailbox');
+    const root = path.join(dir, '.leeway', name, phase, '.mailbox');
     for (const topic of fs.existsSync(root) ? fs.readdirSync(root) : []) {
       fs.rmSync(path.join(root, topic, STUB_MESSAGE), { force: true });
     }
@@ -156,7 +156,7 @@ describe('epic projections: dashboard (map branch)', () => {
   });
 
   it('a postponed topic drops out of the tree and its counts, named with its horizon on one line beneath', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next', 'later'], items: {
         'data-export': { horizon: 'next', summary: 's', origin: 'postpone:pv1', postponed_from: { work_unit: 'pv1', topic: 'data-export' } },
@@ -195,7 +195,7 @@ describe('epic projections: dashboard (map branch)', () => {
   });
 
   it('a map whose every row is postponed draws an empty tree and never claims all decided', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next'], items: {
         'data-export': { horizon: 'next', summary: 's', origin: 'postpone:pv2', postponed_from: { work_unit: 'pv2', topic: 'data-export' } },
@@ -218,7 +218,7 @@ describe('epic projections: dashboard (map branch)', () => {
   });
 
   it('a postponed row whose roadmap item is gone says so rather than naming a horizon it lost', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ work_units: {} }, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ work_units: {} }, null, 2));
     const detail = detailFor(dir, 'pv3', {
       work_type: 'epic',
       phases: { discovery: { items: { 'data-export': { routing: 'discussion', source: 'discovery', postponed: true } } } },
@@ -1265,7 +1265,7 @@ describe('epic projections: selection sub-views', () => {
   // harvest), `gone-again` waits under later, and `taken` was pulled into
   // another epic after it was postponed — it no longer waits.
   function projectRoadmap(dir) {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next', 'later'], items: {
         'export-suite': { horizon: 'next', summary: 's', origin: 'harvest', postponed_from: { work_unit: 'pf1', topic: 'away' } },
@@ -1438,7 +1438,7 @@ describe('epic projections: selection sub-views', () => {
   });
 
   it('cancel-menu: a topic off the map cues the messages waiting beneath its started item, as a map row does', () => {
-    const mailbox = path.join(dir, '.workflows', 'quiz-competition-v1', 'research', '.mailbox', 'menu-admin');
+    const mailbox = path.join(dir, '.leeway', 'quiz-competition-v1', 'research', '.mailbox', 'menu-admin');
     fs.mkdirSync(mailbox, { recursive: true });
     fs.writeFileSync(path.join(mailbox, '001-cost-model.md'), '### cost model\n');
     const view = epicCancelMenu(detailFor(dir, 'quiz-competition-v1', {
@@ -2186,7 +2186,7 @@ describe('epic projections: outstanding research is the topic\'s row — the dis
   // reopens it to in-progress and leaves no stub behind, so the message files
   // themselves are the signal — and their drain retires it.
   const deliver = (phase, ...files) => {
-    const mailbox = path.join(dir, '.workflows', 'v1', phase, '.mailbox', 'billing');
+    const mailbox = path.join(dir, '.leeway', 'v1', phase, '.mailbox', 'billing');
     fs.mkdirSync(mailbox, { recursive: true });
     for (const f of files) fs.writeFileSync(path.join(mailbox, f), `### ${f}\n`);
     return mailbox;

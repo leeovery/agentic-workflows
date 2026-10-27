@@ -12,10 +12,10 @@
 // non-final siblings, └─ for the last), never repeated └─.
 // ---------------------------------------------------------------------------
 
+const path = require('path');
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
 const { menuFrame, cmdOption, bulletRow, optionDetail, autoSelectLine } = require('./surfaces.cjs');
-const { stateRel } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -412,6 +412,7 @@ function specificationCompletedMenu(detail) {
 /**
  * @typedef {object} SpecConfirmation
  * @property {'create'|'continue'|'refine'|'unify'} variant  the entry the confirm reads
+ * @property {string} state_root  the state the specification lives in
  * @property {string} work_unit
  * @property {string} name
  * @property {string} status              the item's status — proposed before its first session
@@ -439,7 +440,7 @@ function bulletRows(texts) {
  * @returns {string}
  */
 function specificationConfirmation(c) {
-  const specPath = (name) => stateRel(`${c.work_unit}/specification/${name}/specification.md`);
+  const specPath = (name) => path.join(c.state_root, c.work_unit, 'specification', name, 'specification.md');
   const named = (status) => c.sources.filter((s) => s.status === status).map((s) => s.name);
   const head = `${CONFIRM_VERBS[c.variant]} specification: ${titlecase(c.name)}`;
   const output = `Output: ${specPath(c.name)}`;

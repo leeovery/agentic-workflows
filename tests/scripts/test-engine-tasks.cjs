@@ -78,7 +78,7 @@ function inFlightItem() {
 }
 
 function readManifest(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'));
 }
 
 function implItem(dir) {
@@ -86,14 +86,14 @@ function implItem(dir) {
 }
 
 function trackingPath(dir, internalId) {
-  return path.join(dir, '.workflows', 'auth', 'implementation', 'auth-flow', `fix-tracking-${internalId}.md`);
+  return path.join(dir, '.leeway', 'auth', 'implementation', 'auth-flow', `fix-tracking-${internalId}.md`);
 }
 
 function writeFindings(dir, content) {
-  const file = path.join(dir, '.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'attempt-findings.md');
+  const file = path.join(dir, '.leeway', '.cache', 'auth', 'implementation', 'auth-flow', 'attempt-findings.md');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, content);
-  return '.workflows/.cache/auth/implementation/auth-flow/attempt-findings.md';
+  return '.leeway/.cache/auth/implementation/auth-flow/attempt-findings.md';
 }
 
 /**
@@ -427,17 +427,17 @@ describe('engine task fix-attempt', () => {
     engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'x\n')]);
     const m = readManifest(dir);
     m.phases.implementation.items['auth-flow'].fix_gate_mode = 'auto';
-    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', writeFindings(dir, 'y\n')]);
     assert.strictEqual(res.fix_gate_mode, 'auto');
     assert.strictEqual(res.attempts, 2);
   });
 
   it('a missing findings file is loud and leaves the manifest untouched', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8');
     const err = engineFails(dir, ['fix-attempt', 'auth', 'auth-flow', 'auth-flow-1-1', '--findings-file', 'ghost.md']);
     assert.match(err.error, /findings file not found: ghost\.md/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'), before);
     assert.ok(!fs.existsSync(trackingPath(dir, 'auth-flow-1-1')));
   });
 
@@ -472,7 +472,7 @@ describe('engine task complete', () => {
   function seedGateModes(gates) {
     const m = readManifest(dir);
     Object.assign(m.phases.implementation.items['auth-flow'], gates);
-    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
   }
 
   it('records a completed task by internal id: push, current_phase, current_task', () => {
@@ -492,7 +492,7 @@ describe('engine task complete', () => {
     const m = readManifest(dir);
     m.phases.implementation.items['auth-flow'].fix_attempts = 2;
     m.phases.implementation.items['auth-flow'].current_task = 'auth-flow-1-1';
-    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
     engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--next-task', 'auth-flow-1-2']);
     assert.strictEqual(implItem(dir).fix_attempts, 0);
@@ -502,7 +502,7 @@ describe('engine task complete', () => {
     const m = readManifest(dir);
     m.phases.implementation.items['auth-flow'].fix_attempts = 2;
     m.phases.implementation.items['auth-flow'].current_task = 'auth-flow-1-2';
-    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
     engine(dir, ['complete', 'auth', 'auth-flow', 'auth-flow-1-1', '--skipped']);
     const item = implItem(dir);
@@ -631,7 +631,7 @@ describe('engine task complete', () => {
   });
 
   it('is loud on unresolvable ids and malformed calls, manifest untouched', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8');
     assert.match(
       engineFails(dir, ['complete', 'auth', 'auth-flow', '--external', 'ext-999']).error,
       /Value "ext-999" not found in "phases\.planning\.items\.auth-flow\.task_map"/);
@@ -650,13 +650,13 @@ describe('engine task complete', () => {
     assert.match(
       engineFails(dir, ['complete', 'auth', 'ghost', 'x-1-1']).error,
       /no implementation item "ghost"/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'), before);
   });
 
   it('is loud when the topic has no planning task_map to resolve against', () => {
     const m = readManifest(dir);
     delete m.phases.planning.items['auth-flow'].task_map;
-    fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.match(
       engineFails(dir, ['complete', 'auth', 'auth-flow', '--external', 'ext-101']).error,
       /Path "phases\.planning\.items\.auth-flow\.task_map" is not an object in "auth"/);
@@ -977,7 +977,7 @@ describe('engine render task surfaces', () => {
 
   /** @param {object} payload */
   function writeBlockedPayload(payload) {
-    const rel = path.join('.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'blocked-tasks.json');
+    const rel = path.join('.leeway', '.cache', 'auth', 'implementation', 'auth-flow', 'blocked-tasks.json');
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), JSON.stringify(payload));
     return rel;
@@ -1104,7 +1104,7 @@ describe('engine render task surfaces', () => {
 
   /** Write a task-result payload into the fixture; returns its relative path. */
   function writeResultPayload(payload) {
-    const rel = path.join('.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'task-result.json');
+    const rel = path.join('.leeway', '.cache', 'auth', 'implementation', 'auth-flow', 'task-result.json');
     const abs = path.join(dir, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, JSON.stringify(payload));
@@ -1292,7 +1292,7 @@ describe('engine render task surfaces', () => {
 
   /** Write a task-brief payload into the fixture; returns its relative path. */
   function writeBriefPayload(payload) {
-    const rel = path.join('.workflows', '.cache', 'auth', 'implementation', 'auth-flow', 'task-brief.json');
+    const rel = path.join('.leeway', '.cache', 'auth', 'implementation', 'auth-flow', 'task-brief.json');
     const abs = path.join(dir, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, JSON.stringify(payload));

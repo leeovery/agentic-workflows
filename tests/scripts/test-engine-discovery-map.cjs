@@ -10,7 +10,7 @@ const path = require('path');
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git } = harness;
+const { git, stateGit, commitAll } = harness;
 
 /** Run a discovery-map command expecting success; returns the parsed JSON line. */
 const runOk = (dir, args) => harness.ok(dir, ['discovery-map', ...args]);
@@ -33,13 +33,12 @@ describe('engine CLI: discovery-map sequence', () => {
         },
       },
     });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
+    commitAll(dir, 'init');
     return dir;
   }
 
   function readManifest(dir) {
-    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'));
   }
 
   let dir;
@@ -52,8 +51,8 @@ describe('engine CLI: discovery-map sequence', () => {
 
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.ordered, { 'auth-flow': 1, 'session-model': 2 });
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'discovery(payments): sequence topic map');
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'discovery(payments): sequence topic map');
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
@@ -65,20 +64,19 @@ describe('engine CLI: discovery-map sequence', () => {
   it('commits the discovery scope, leaving a live peer\'s document behind', () => {
     // The map lives in the manifest, which the discovery scope covers; a
     // research or discussion session's half-written file does not.
-    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\n');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'a peer topic']);
-    fs.writeFileSync(path.join(dir, '.workflows/payments/discussion/auth-flow.md'), '# Discussion\nhalf a turn\n');
+    fs.mkdirSync(path.join(dir, '.leeway/payments/discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/payments/discussion/auth-flow.md'), '# Discussion\n');
+    commitAll(dir, 'a peer topic');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/discussion/auth-flow.md'), '# Discussion\nhalf a turn\n');
 
     runOk(dir, ['sequence', 'payments', 'auth-flow=1', 'session-model=2']);
 
     assert.deepStrictEqual(
-      git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
-      ['.workflows/payments/manifest.json']);
+      stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
+      ['payments/manifest.json']);
     assert.deepStrictEqual(
-      git(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
-      [' M .workflows/payments/discussion/auth-flow.md'], 'the peer keeps its dirt');
+      stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
+      [' M payments/discussion/auth-flow.md'], 'the peer keeps its dirt');
   });
 
   it('re-applying the same orders is a no-op commit: committed null, note, exit 0', () => {
@@ -88,10 +86,10 @@ describe('engine CLI: discovery-map sequence', () => {
   });
 
   it('rejects unknown topics before writing anything', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8');
     assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'ghost=2']).error, /no discovery item "ghost"/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'init');
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
   it('rejects a row that has closed — its stashed order is what returns with it', () => {
@@ -102,8 +100,8 @@ describe('engine CLI: discovery-map sequence', () => {
       dead: { routing: 'discussion', source: 'discovery', handled: true },
     });
     manifest.phases.discussion = { items: { dead: { status: 'completed' } } };
-    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(manifest, null, 2));
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
+    fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8');
 
     assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'gone=2']).error,
       /"gone" takes no order — it is cancelled and stays on the map as record/);
@@ -111,7 +109,7 @@ describe('engine CLI: discovery-map sequence', () => {
       /"away" takes no order — it is postponed and waits on the roadmap/);
     assert.match(runFail(dir, ['sequence', 'payments', 'auth-flow=1', 'dead=2']).error,
       /"dead" takes no order — it is closed as a dead end and stays on the map as record/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'), before);
   });
 
   it('rejects bad orders and malformed assignments — loud and specific', () => {
@@ -179,13 +177,13 @@ describe('engine CLI: discovery-map operations', () => {
   }
 
   function writeMessage(dir, phase, topic) {
-    const mailbox = path.join(dir, '.workflows', 'payments', phase, '.mailbox', topic);
+    const mailbox = path.join(dir, '.leeway', 'payments', phase, '.mailbox', topic);
     fs.mkdirSync(mailbox, { recursive: true });
     fs.writeFileSync(path.join(mailbox, '001-message.md'), '### A message\n');
   }
 
   function readManifest(dir) {
-    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'));
   }
 
   let dir;
@@ -238,7 +236,7 @@ describe('engine CLI: discovery-map operations', () => {
       createManifest(dir, 'bare', { work_type: 'epic', phases: {} });
       const res = runOk(dir, ['add', 'bare', 'first-topic', 'research', '--summary', 's']);
       assert.strictEqual(res.map_total, 1);
-      const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'bare', 'manifest.json'), 'utf8'));
+      const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'bare', 'manifest.json'), 'utf8'));
       assert.deepStrictEqual(manifest.phases.discovery.items['first-topic'], {
         routing: 'research', source: 'discovery', summary: 's',
       });
@@ -247,7 +245,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('reports the joined lifecycle when phase work already exists under the name', () => {
       // A legacy manifest can hold a research item with no map anchor; the add
       // re-anchors it and the response reflects the real lifecycle.
-      const file = path.join(dir, '.workflows', 'payments', 'manifest.json');
+      const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
       const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
       manifest.phases.research.items['orphan-topic'] = { status: 'in-progress' };
       fs.writeFileSync(file, JSON.stringify(manifest, null, 2));
@@ -430,7 +428,7 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('deletes the topic brief file (regenerable) and reports brief_removed', () => {
-      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      const briefsDir = path.join(dir, '.leeway', 'payments', 'discovery', 'briefs');
       fs.mkdirSync(briefsDir, { recursive: true });
       fs.writeFileSync(path.join(briefsDir, 'fresh-topic.md'), '# Brief: fresh-topic\n');
       const res = runOk(dir, ['remove', 'payments', 'fresh-topic']);
@@ -444,7 +442,7 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('frees the name for a later rename — the deleted brief no longer collides', () => {
-      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      const briefsDir = path.join(dir, '.leeway', 'payments', 'discovery', 'briefs');
       fs.mkdirSync(briefsDir, { recursive: true });
       fs.writeFileSync(path.join(briefsDir, 'fresh-topic.md'), '# Brief\n');
       runOk(dir, ['remove', 'payments', 'fresh-topic']);
@@ -481,7 +479,7 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('moves the brief file with the topic and reports brief_moved', () => {
-      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      const briefsDir = path.join(dir, '.leeway', 'payments', 'discovery', 'briefs');
       fs.mkdirSync(briefsDir, { recursive: true });
       fs.writeFileSync(path.join(briefsDir, 'rich-fresh.md'), '# Brief: Rich Fresh\n\nsoft decisions\n');
 
@@ -497,7 +495,7 @@ describe('engine CLI: discovery-map operations', () => {
     });
 
     it('refuses when a brief already exists at the new name — manifest and files untouched', () => {
-      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      const briefsDir = path.join(dir, '.leeway', 'payments', 'discovery', 'briefs');
       fs.mkdirSync(briefsDir, { recursive: true });
       fs.writeFileSync(path.join(briefsDir, 'rich-fresh.md'), 'the brief\n');
       fs.writeFileSync(path.join(briefsDir, 'menu-admin.md'), 'an unrelated brief\n');
@@ -513,7 +511,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('refuses when a brief exists at the new name even with no old brief on disk', () => {
       // The hijack variant: rich-fresh has no brief file, but one exists at
       // the target name — renaming would silently adopt the unrelated brief.
-      const briefsDir = path.join(dir, '.workflows', 'payments', 'discovery', 'briefs');
+      const briefsDir = path.join(dir, '.leeway', 'payments', 'discovery', 'briefs');
       fs.mkdirSync(briefsDir, { recursive: true });
       fs.writeFileSync(path.join(briefsDir, 'menu-admin.md'), 'an unrelated brief\n');
       const before = JSON.stringify(readManifest(dir));
@@ -527,7 +525,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('leaves a non-canonical brief_path alone — no dangling pointer', () => {
       // The dangling-pointer variant: brief_path aimed anywhere other than
       // discovery/briefs/{old}.md is not this rename's to re-aim.
-      const file = path.join(dir, '.workflows', 'payments', 'manifest.json');
+      const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
       const m = JSON.parse(fs.readFileSync(file, 'utf8'));
       m.phases.discovery.items['rich-fresh'].brief_path = 'discovery/briefs/shared-brief.md';
       fs.writeFileSync(file, JSON.stringify(m, null, 2) + '\n');
@@ -624,7 +622,7 @@ describe('engine CLI: discovery-map operations', () => {
       const m = readManifest(dir);
       m.phases.research.items['fresh-topic'] = { status: 'superseded' };
       m.phases.discussion.items['fresh-topic'] = { status: 'unstarted' };
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       const before = JSON.stringify(readManifest(dir));
 
       for (const args of [['remove', 'payments', 'fresh-topic'], ['rename', 'payments', 'fresh-topic', 'anything-else'], ['reroute', 'payments', 'fresh-topic', 'research']]) {
@@ -638,7 +636,7 @@ describe('engine CLI: discovery-map operations', () => {
       const m = readManifest(dir);
       m.phases.research.items['fresh-topic'] = { status: 'superseded' };
       m.phases.discussion.items['fresh-topic'] = { status: 'cancelled', previous_status: 'completed' };
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       const err = runFail(dir, ['remove', 'payments', 'fresh-topic']);
       assert.match(err.error, /"fresh-topic" can't be removed — it is cancelled and stays on the map as record; reactivate it from the epic menu first/);
     });
@@ -647,7 +645,7 @@ describe('engine CLI: discovery-map operations', () => {
       const m = readManifest(dir);
       m.phases.discovery.items['postponed-topic'] = { routing: 'discussion', source: 'discovery', postponed: true };
       m.phases.discussion.items['postponed-topic'] = { status: 'postponed', previous_status: 'completed' };
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       const before = JSON.stringify(readManifest(dir));
 
       for (const [verb, args] of [
@@ -664,7 +662,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('names superseded research honestly in the refusal — never as completed', () => {
       const m = readManifest(dir);
       m.phases.research.items['ready-topic'].status = 'superseded';
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
       const err = runFail(dir, ['remove', 'payments', 'ready-topic']);
       assert.match(err.error, /its research was superseded and discussion is queued/);
@@ -674,7 +672,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('a handled topic reads the same phrase whatever its research state', () => {
       const m = readManifest(dir);
       m.phases.research.items['handled-topic'] = { status: 'completed' };
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
 
       const err = runFail(dir, ['rename', 'payments', 'handled-topic', 'anything-else']);
       assert.match(err.error, /it is closed as a dead end and stays on the map as record/);
@@ -698,7 +696,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('refuses a postponed item, pointing at the pull', () => {
       const m = readManifest(dir);
       m.phases.discovery.items['fresh-topic'].postponed = true;
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       assert.match(runFail(dir, ['handle', 'payments', 'fresh-topic']).error,
         /"fresh-topic" can't be closed as a dead end — it's postponed; pull it forward from the roadmap first/);
       assert.strictEqual('handled' in readManifest(dir).phases.discovery.items['fresh-topic'], false, 'nothing written');
@@ -746,7 +744,7 @@ describe('engine CLI: discovery-map operations', () => {
     it('refuses a postponed dead end — the pull, not the reopen', () => {
       const m = readManifest(dir);
       m.phases.discovery.items['handled-topic'].postponed = true;
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       assert.match(runFail(dir, ['unhandle', 'payments', 'handled-topic']).error,
         /"handled-topic" can't be reopened — it's postponed; pull it forward from the roadmap first/);
       assert.strictEqual(readManifest(dir).phases.discovery.items['handled-topic'].handled, true, 'nothing written');
@@ -757,7 +755,7 @@ describe('engine CLI: discovery-map operations', () => {
         /"cancelled-topic" can't be reopened — it's cancelled; reactivate it from the epic menu first/);
       const m = readManifest(dir);
       m.phases.discovery.items['handled-topic'].cancelled = true;
-      fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+      fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
       assert.match(runFail(dir, ['unhandle', 'payments', 'handled-topic']).error, /it's cancelled; reactivate it from the epic menu first/);
       assert.strictEqual(readManifest(dir).phases.discovery.items['handled-topic'].handled, true, 'nothing written');
     });
@@ -799,11 +797,8 @@ describe('engine CLI: discovery-map operations', () => {
 
   describe('commit cadence', () => {
     it('map operations never commit — the session picks the change up', () => {
-      git(dir, ['init', '-q', '-b', 'main']);
-      git(dir, ['config', 'user.email', 'test@example.com']);
-      git(dir, ['config', 'user.name', 'Test']);
-      git(dir, ['add', '-A']);
-      git(dir, ['commit', '-q', '-m', 'init']);
+      commitAll(dir, 'init');
+      const head = stateGit(dir, ['rev-parse', 'HEAD']);
 
       runOk(dir, ['add', 'payments', 'brand-new', 'research', '--summary', 'no commit']);
       runOk(dir, ['edit', 'payments', 'fresh-topic', '--summary', 'no commit']);
@@ -813,8 +808,8 @@ describe('engine CLI: discovery-map operations', () => {
       runOk(dir, ['handle', 'payments', 'renamed-rich']);
       runOk(dir, ['unhandle', 'payments', 'renamed-rich']);
 
-      assert.strictEqual(git(dir, ['log', '--pretty=%s']).trim(), 'init');
-      assert.match(git(dir, ['status', '--porcelain']), / M \.workflows\/payments\/manifest\.json/);
+      assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']), head);
+      assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json$/m);
     });
   });
 });

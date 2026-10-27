@@ -51,8 +51,8 @@ beforeEach(() => {
   dir = harness.setupGitFixture('mod-position-contract-');
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'mod-position-contract-config-'));
   for (const [rel, content] of [
-    ['.workflows/pay/manifest.json', JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} })],
-    ['.workflows/pay/discussion/ledger.md', '# ledger\n'],
+    ['.leeway/pay/manifest.json', JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} })],
+    ['.leeway/pay/discussion/ledger.md', '# ledger\n'],
     ['.claude/skills/workflow-discussion-process/SKILL.md', '# discussion\n'],
   ]) {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
@@ -97,7 +97,7 @@ describe('the mods read conversation position as the engine writes it', () => {
   });
 
   it('the spinner reads the position file the engine writes, by the keys it writes, the task in flight as `{phase}.{task}`', () => {
-    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
     }));
@@ -132,7 +132,7 @@ describe('the mods read conversation position as the engine writes it', () => {
     assert.ok(call, 'the gate mod runs the engine with the session id and the agent id');
     const engine = literal('skills/workflow-gates/hooks/folder.ts', 'ENGINE');
     assert.ok(engine.startsWith('.claude/') && fs.existsSync(path.join(ROOT, engine.slice('.claude/'.length))), `the gate mod runs the engine where a project installs it (${engine})`);
-    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } } },
     }));

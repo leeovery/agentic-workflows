@@ -14,7 +14,6 @@
 // context. Everything past the discovery is pure derivation.
 // ---------------------------------------------------------------------------
 
-const path = require('path');
 const { TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { loadActiveManifests, fileExists, filesChecksum } = require('./reads.cjs');
 const {
@@ -22,7 +21,7 @@ const {
   collectAnalysisInputs, computeAnalysisCacheStatus,
 } = require('./derivations.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // Discussion statuses the menu never counts: cancelled is closed, postponed
 // has left for the roadmap, promoted has left with its specification for a
@@ -89,7 +88,7 @@ const UNCOUNTED_DISCUSSIONS = ['cancelled', 'postponed', 'promoted', 'unstarted'
 /**
  * @typedef {object} Incorporation
  * @property {string} topic     the incorporated specification
- * @property {string} path      its document, project-relative
+ * @property {string} path      its document, absolute
  * @property {string[]} covers  the discussions it sources among the incorporating specification's sources
  */
 
@@ -166,7 +165,7 @@ function specSortRank(spec) {
 function specificationDiscovery(cwd, workUnit) {
   const manifest = loadActiveManifests(cwd).find((m) => m.name === workUnit && m.work_type === 'epic');
   if (!manifest) throw new Error(`no active epic "${workUnit}"`);
-  const workflowsDir = stateRoot(cwd);
+  const stateDir = stateRoot(cwd);
   const specItems = phaseItems(manifest, 'specification');
 
   /** @type {DiscoveryResult['discussions']} */
@@ -202,7 +201,7 @@ function specificationDiscovery(cwd, workUnit) {
     const spec = discoverySpec(manifest, item.name, item);
     if (spec.status === 'proposed') proposedCount++;
     else if (spec.status !== 'promoted') {
-      if (!fileExists(path.join(cwd, INDEXED_ARTIFACTS.specification(workUnit, item.name)))) continue;
+      if (!fileExists(statePath(cwd, INDEXED_ARTIFACTS.specification(workUnit, item.name)))) continue;
       specCount++;
     }
     if (Number.isInteger(item.order)) spec.order = item.order;
@@ -216,7 +215,7 @@ function specificationDiscovery(cwd, workUnit) {
   specifications.sort((a, b) => (specSortRank(a) - specSortRank(b))
     || (orderOf(a) === orderOf(b) ? 0 : orderOf(a) - orderOf(b)));
 
-  const analysis = computeAnalysisCacheStatus(manifest, workflowsDir, 'grouping-analysis');
+  const analysis = computeAnalysisCacheStatus(manifest, stateDir, 'grouping-analysis');
   const completedCount = discussions.filter((d) => d.status === 'completed').length;
 
   return {
@@ -225,7 +224,7 @@ function specificationDiscovery(cwd, workUnit) {
     cancelled_specifications: cancelledSpecifications,
     cache: !analysis.stamped ? 'none' : (analysis.status === 'valid' ? 'valid' : 'stale'),
     current_state: {
-      discussions_checksum: filesChecksum(collectAnalysisInputs(manifest, workflowsDir, 'grouping-analysis')),
+      discussions_checksum: filesChecksum(collectAnalysisInputs(manifest, stateDir, 'grouping-analysis')),
       discussion_count: discussions.length,
       completed_count: completedCount,
       in_progress_count: discussions.filter((d) => d.status === 'in-progress').length,
@@ -323,18 +322,19 @@ function specConfirmation(manifest, spec, { unify = false } = {}) {
  * The specifications a specification incorporates, as its session reads
  * them: each one's document, and the discussions it covers among this
  * specification's sources.
+ * @param {string} cwd
  * @param {object} manifest
  * @param {string} workUnit
  * @param {string} topic
  * @returns {Incorporation[]}
  */
-function incorporations(manifest, workUnit, topic) {
+function incorporations(cwd, manifest, workUnit, topic) {
   const item = itemOf(manifest, 'specification', topic);
   if (!item) throw new Error(`no specification "${topic}" in "${workUnit}"`);
   const own = new Set(sourceRows(item.sources).map(([name]) => name));
   return specIncorporations(manifest, topic).map((name) => ({
     topic: name,
-    path: INDEXED_ARTIFACTS.specification(workUnit, name),
+    path: statePath(cwd, INDEXED_ARTIFACTS.specification(workUnit, name)),
     covers: sourceRows(/** @type {Record<string, any>} */ (itemOf(manifest, 'specification', name)).sources)
       .map(([source]) => source)
       .filter((source) => own.has(source)),

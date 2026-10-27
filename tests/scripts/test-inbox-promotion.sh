@@ -3,7 +3,7 @@
 #
 # When an inbox item (idea/bug/quick-fix logged via /workflow-log-*) is
 # promoted, discovery's confirm-trigger (section D) lands it as the work
-# unit's SEED — its origin — by MOVING .workflows/.inbox/{folder}/{file} into
+# unit's SEED — its origin — by MOVING .leeway/.inbox/{folder}/{file} into
 # the work unit's seeds/, registering manifest.seeds[] with a source tag, and
 # KB-indexing it under the `seeds` phase. A seed is distinct from an import:
 # the trigger the work was spawned from, not reference material it pulled in.
@@ -48,11 +48,13 @@ trap 'rm -rf "$FAKE_HOME"' EXIT
 
 TEST_ROOT=""
 setup_project() {
-  TEST_ROOT=$(mktemp -d)
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+  # A git repository with its state worktree, the suites' one fixture.
+  TEST_ROOT=$(node -e 'process.stdout.write(require(process.argv[1]).setupFixture("inbox-promotion-"))' \
+    "$SCRIPT_DIR/discovery-test-utils.cjs")
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
   # Keyword-only: an index over a provider that can embed launches the
   # background vector fill, which would race the teardown.
-  cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+  cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": null } }
 CONF
 }
@@ -100,22 +102,22 @@ promote_and_assert() {
   type=$(seed_type_for_folder "$folder")
 
   # Arrange: a logged inbox item.
-  mkdir -p ".workflows/.inbox/$folder"
-  printf '%s\n' "$content" > ".workflows/.inbox/$folder/$basename"
+  mkdir -p ".leeway/.inbox/$folder"
+  printf '%s\n' "$content" > ".leeway/.inbox/$folder/$basename"
 
   # confirm-trigger A/B: name resolved + work unit created (fixture writes
   # the same document `engine workunit create` writes).
   node -e '
     const fs = require("fs"), path = require("path");
     const [name, type] = process.argv.slice(1);
-    const dir = path.join(".workflows", name);
+    const dir = path.join(".leeway", name);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
       name, work_type: type, status: "in-progress",
       created: new Date().toISOString().slice(0, 10),
       description: "promoted from inbox", phases: {},
     }, null, 2) + "\n");
-    const projPath = path.join(".workflows", "manifest.json");
+    const projPath = path.join(".leeway", "manifest.json");
     const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
     proj.work_units = proj.work_units || {};
     proj.work_units[name] = { work_type: type };
@@ -125,25 +127,25 @@ promote_and_assert() {
   # confirm-trigger D → land-seed.md (move into seeds/, track, index).
   local dest
   dest=$(normalise_filename "$basename")
-  mkdir -p ".workflows/$work_unit/seeds/"
-  mv ".workflows/.inbox/$folder/$basename" ".workflows/$work_unit/seeds/$dest"
+  mkdir -p ".leeway/$work_unit/seeds/"
+  mv ".leeway/.inbox/$folder/$basename" ".leeway/$work_unit/seeds/$dest"
   node "$ENGINE_JS" manifest push "$work_unit" seeds \
     "{\"path\":\"seeds/$dest\",\"source\":\"inbox:$type\",\"seeded_at\":\"2026-06-02T00:00:00Z\"}" >/dev/null 2>&1
-  node "$ENGINE_JS" knowledge index ".workflows/$work_unit/seeds/$dest" >/dev/null 2>&1
+  node "$ENGINE_JS" knowledge index ".leeway/$work_unit/seeds/$dest" >/dev/null 2>&1
 
   # Assert: landed in seeds/ (not imports/).
   assert_eq "$label: file lands in seeds/" "true" \
-    "$([ -f ".workflows/$work_unit/seeds/$dest" ] && echo true || echo false)"
+    "$([ -f ".leeway/$work_unit/seeds/$dest" ] && echo true || echo false)"
   assert_eq "$label: NOT landed in imports/" "false" \
-    "$([ -e ".workflows/$work_unit/imports/$dest" ] && echo true || echo false)"
+    "$([ -e ".leeway/$work_unit/imports/$dest" ] && echo true || echo false)"
 
   # Assert: removed from the inbox (moved, not copied).
   assert_eq "$label: removed from .inbox/" "false" \
-    "$([ -f ".workflows/.inbox/$folder/$basename" ] && echo true || echo false)"
+    "$([ -f ".leeway/.inbox/$folder/$basename" ] && echo true || echo false)"
 
   # Assert: NOT archived (.archived is reserved for declined items).
   assert_eq "$label: not archived to .inbox/.archived/" "false" \
-    "$([ -e ".workflows/.inbox/.archived/$folder/$basename" ] && echo true || echo false)"
+    "$([ -e ".leeway/.inbox/.archived/$folder/$basename" ] && echo true || echo false)"
 
   # Assert: registered in manifest.seeds[] with the right source tag,
   # and NOT in manifest.imports[].
@@ -166,7 +168,7 @@ promote_and_assert() {
   assert_eq "$label: query result carries seeds provenance" "true" \
     "$(printf '%s' "$query_out" | grep -q "seeds | $work_unit/" && echo true || echo false)"
   assert_eq "$label: result carries readable Source path for the seed read" "true" \
-    "$(printf '%s' "$query_out" | grep -q "Source: .workflows/$work_unit/seeds/$dest" && echo true || echo false)"
+    "$(printf '%s' "$query_out" | grep -qF "Source: $TEST_ROOT/.leeway/$work_unit/seeds/$dest" && echo true || echo false)"
 
   teardown_project
 }

@@ -6,7 +6,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { setupFixture, cleanupFixture, createFile } = require('./discovery-test-utils.cjs');
+const { setupFixture, cleanupFixture, createFile, statePath } = require('./discovery-test-utils.cjs');
 
 const {
   fileExists, listFiles, listDirs, filesChecksum,
@@ -106,7 +106,7 @@ describe('reads + derivations', () => {
 
   describe('loadManifest', () => {
     it('loads valid manifest', () => {
-      const mdir = path.join(dir, '.workflows', 'test');
+      const mdir = path.join(dir, '.leeway', 'test');
       fs.mkdirSync(mdir, { recursive: true });
       fs.writeFileSync(path.join(mdir, 'manifest.json'), JSON.stringify({ name: 'test', work_type: 'feature' }));
       const m = loadManifest(dir, 'test');
@@ -131,7 +131,7 @@ describe('reads + derivations', () => {
     it('skips dotfiles', () => {
       const { createManifest } = require('./discovery-test-utils.cjs');
       createManifest(dir, 'good', {});
-      fs.mkdirSync(path.join(dir, '.workflows', '.state'), { recursive: true });
+      fs.mkdirSync(path.join(dir, '.leeway', '.state'), { recursive: true });
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
     });
@@ -150,7 +150,7 @@ describe('reads + derivations', () => {
     it('skips dotfiles', () => {
       const { createManifest } = require('./discovery-test-utils.cjs');
       createManifest(dir, 'good', {});
-      fs.mkdirSync(path.join(dir, '.workflows', '.state'), { recursive: true });
+      fs.mkdirSync(path.join(dir, '.leeway', '.state'), { recursive: true });
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 1);
     });
@@ -159,7 +159,7 @@ describe('reads + derivations', () => {
   describe('loadProjectManifest', () => {
     it('returns parsed project manifest', () => {
       const proj = { work_units: { alpha: { work_type: 'feature' } } };
-      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
       const result = loadProjectManifest(dir);
       assert.deepStrictEqual(result, proj);
     });
@@ -176,7 +176,7 @@ describe('reads + derivations', () => {
       createManifest(dir, 'beta', { status: 'completed' });
       // Project manifest only lists alpha and beta
       const proj = { work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } };
-      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'alpha');
@@ -187,7 +187,7 @@ describe('reads + derivations', () => {
       createManifest(dir, 'exists', { status: 'in-progress' });
       // "ghost" is in project manifest but has no directory
       const proj = { work_units: { exists: { work_type: 'feature' }, ghost: { work_type: 'epic' } } };
-      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'exists');
@@ -209,7 +209,7 @@ describe('reads + derivations', () => {
       createManifest(dir, 'a', { status: 'in-progress' });
       createManifest(dir, 'b', { status: 'completed' });
       const proj = { work_units: { a: { work_type: 'feature' }, b: { work_type: 'epic' } } };
-      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 2);
     });
@@ -218,7 +218,7 @@ describe('reads + derivations', () => {
       const { createManifest } = require('./discovery-test-utils.cjs');
       createManifest(dir, 'real', { status: 'in-progress' });
       const proj = { work_units: { real: { work_type: 'feature' }, gone: { work_type: 'epic' } } };
-      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'real');
@@ -831,9 +831,9 @@ describe('reads + derivations', () => {
       createManifest(dir, 'alpha', {
         phases: { research: { items: { 'topic-a': { status: 'in-progress' } } } },
       });
-      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
+      createFile(dir, '.leeway/alpha/research/topic-a.md', 'content');
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       // Completed-only input: no completed items → absent (analysis won't fire)
       assert.strictEqual(r.status, 'absent');
     });
@@ -842,14 +842,14 @@ describe('reads + derivations', () => {
       createManifest(dir, 'alpha', {
         phases: { research: { items: { 'topic-a': { status: 'completed' } } } },
       });
-      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content');
+      createFile(dir, '.leeway/alpha/research/topic-a.md', 'content');
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'stale');
     });
 
     it('gap-analysis: returns stale when a cached input file changes', () => {
-      createFile(dir, '.workflows/alpha/research/topic-a.md', 'content-original');
+      createFile(dir, '.leeway/alpha/research/topic-a.md', 'content-original');
       createManifest(dir, 'alpha', {
         phases: {
           research: { items: { 'topic-a': { status: 'completed' } } },
@@ -857,7 +857,7 @@ describe('reads + derivations', () => {
         },
       });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'stale');
     });
 
@@ -867,14 +867,14 @@ describe('reads + derivations', () => {
       // computeAnalysisCacheStatus must sort identically — otherwise the cache
       // always reports stale on every workflow-continue-epic, firing the
       // analysis + KB re-indexes for no reason.
-      createFile(dir, '.workflows/alpha/research/zebra.md', 'rz');
-      createFile(dir, '.workflows/alpha/research/auth.md', 'ra');
-      createFile(dir, '.workflows/alpha/discussion/billing.md', 'db');
+      createFile(dir, '.leeway/alpha/research/zebra.md', 'rz');
+      createFile(dir, '.leeway/alpha/research/auth.md', 'ra');
+      createFile(dir, '.leeway/alpha/discussion/billing.md', 'db');
       const checksum = filesChecksum([
         // Sorted across both directories combined — matches discovery-gap-analysis.md write side.
-        path.join(dir, '.workflows/alpha/discussion/billing.md'),
-        path.join(dir, '.workflows/alpha/research/auth.md'),
-        path.join(dir, '.workflows/alpha/research/zebra.md'),
+        path.join(dir, '.leeway/alpha/discussion/billing.md'),
+        path.join(dir, '.leeway/alpha/research/auth.md'),
+        path.join(dir, '.leeway/alpha/research/zebra.md'),
       ]);
       createManifest(dir, 'alpha', {
         phases: {
@@ -884,14 +884,14 @@ describe('reads + derivations', () => {
         },
       });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'valid', 'gap-analysis cache should be valid — read side must sort');
     });
 
     it('gap-analysis: returns absent when no completed material and no cache', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
       assert.strictEqual(r.generated, null);
       assert.deepStrictEqual(r.files, []);
@@ -907,7 +907,7 @@ describe('reads + derivations', () => {
         },
       });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
       assert.deepStrictEqual(r.files, ['gone.md']);
     });
@@ -916,9 +916,9 @@ describe('reads + derivations', () => {
       createManifest(dir, 'alpha', {
         phases: { discussion: { items: { auth: { status: 'in-progress' } } } },
       });
-      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
+      createFile(dir, '.leeway/alpha/discussion/auth.md', 'content');
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
     });
 
@@ -926,15 +926,15 @@ describe('reads + derivations', () => {
       createManifest(dir, 'alpha', {
         phases: { discussion: { items: { auth: { status: 'completed' } } } },
       });
-      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content');
+      createFile(dir, '.leeway/alpha/discussion/auth.md', 'content');
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'stale');
     });
 
     it('gap-analysis: returns valid when checksum matches completed discussion files', () => {
-      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
-      const checksum = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
+      createFile(dir, '.leeway/alpha/discussion/auth.md', 'content-d');
+      const checksum = filesChecksum([path.join(dir, '.leeway/alpha/discussion/auth.md')]);
       createManifest(dir, 'alpha', {
         phases: {
           discussion: { items: { auth: { status: 'completed' } } },
@@ -942,16 +942,16 @@ describe('reads + derivations', () => {
         },
       });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'valid');
       assert.strictEqual(r.generated, '2026-05-02');
       assert.deepStrictEqual(r.files, ['auth.md']);
     });
 
     it('gap-analysis: includes completed research files in checksum alongside discussions', () => {
-      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-d');
-      createFile(dir, '.workflows/alpha/research/auth.md', 'content-r');
-      const checksumDOnly = filesChecksum([path.join(dir, '.workflows/alpha/discussion/auth.md')]);
+      createFile(dir, '.leeway/alpha/discussion/auth.md', 'content-d');
+      createFile(dir, '.leeway/alpha/research/auth.md', 'content-r');
+      const checksumDOnly = filesChecksum([path.join(dir, '.leeway/alpha/discussion/auth.md')]);
       createManifest(dir, 'alpha', {
         phases: {
           research: { items: { auth: { status: 'completed' } } },
@@ -960,17 +960,17 @@ describe('reads + derivations', () => {
         },
       });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'gap-analysis');
       // Cache only saw discussion checksum, but reality includes the completed research file too
       assert.strictEqual(r.status, 'stale');
     });
 
     it('grouping-analysis: every discussion file is an input, whatever its item reads — a stamp over them is valid', () => {
-      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
-      createFile(dir, '.workflows/alpha/discussion/billing.md', 'content-b');
+      createFile(dir, '.leeway/alpha/discussion/auth.md', 'content-a');
+      createFile(dir, '.leeway/alpha/discussion/billing.md', 'content-b');
       const checksum = filesChecksum([
-        path.join(dir, '.workflows/alpha/discussion/auth.md'),
-        path.join(dir, '.workflows/alpha/discussion/billing.md'),
+        path.join(dir, '.leeway/alpha/discussion/auth.md'),
+        path.join(dir, '.leeway/alpha/discussion/billing.md'),
       ]);
       createManifest(dir, 'alpha', {
         phases: {
@@ -980,33 +980,33 @@ describe('reads + derivations', () => {
           },
         },
       });
-      const r = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.workflows'), 'grouping-analysis');
+      const r = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'grouping-analysis');
       assert.strictEqual(r.status, 'valid');
       assert.strictEqual(r.generated, '2026-05-02');
       assert.deepStrictEqual(r.files, [], 'the grouping stamp records no file list');
     });
 
     it('stamped tells a cache an analysis never wrote from one the inputs have moved past', () => {
-      createFile(dir, '.workflows/alpha/discussion/auth.md', 'content-a');
+      createFile(dir, '.leeway/alpha/discussion/auth.md', 'content-a');
       createManifest(dir, 'alpha', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
-      const unstamped = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.workflows'), 'grouping-analysis');
+      const unstamped = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'grouping-analysis');
       assert.deepStrictEqual([unstamped.status, unstamped.stamped], ['stale', false]);
       createManifest(dir, 'alpha', {
         phases: { discussion: { analysis_cache: { checksum: 'old', generated: '2026-05-02' }, items: { auth: { status: 'completed' } } } },
       });
-      const moved = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.workflows'), 'grouping-analysis');
+      const moved = computeAnalysisCacheStatus(loadManifest(dir, 'alpha'), path.join(dir, '.leeway'), 'grouping-analysis');
       assert.deepStrictEqual([moved.status, moved.stamped], ['stale', true]);
     });
 
     it('returns absent for unknown kind', () => {
       createManifest(dir, 'alpha', { phases: {} });
       const m = loadManifest(dir, 'alpha');
-      const r = computeAnalysisCacheStatus(m, path.join(dir, '.workflows'), 'nonsense');
+      const r = computeAnalysisCacheStatus(m, path.join(dir, '.leeway'), 'nonsense');
       assert.strictEqual(r.status, 'absent');
     });
 
     it('returns absent for null manifest', () => {
-      const r = computeAnalysisCacheStatus(null, path.join(dir, '.workflows'), 'gap-analysis');
+      const r = computeAnalysisCacheStatus(null, path.join(dir, '.leeway'), 'gap-analysis');
       assert.strictEqual(r.status, 'absent');
     });
   });
@@ -1826,17 +1826,18 @@ describe('reads + derivations', () => {
   });
 
   describe('the mailbox — one reader, one meaning of mail waiting', () => {
-    const message = (wu, phase, topic, file) => createFile(dir, `${mailboxDir(wu, phase, topic)}/${file}`, '### m\n');
+    const state = () => statePath(dir);
+    const message = (wu, phase, topic, file) => createFile(state(), `${mailboxDir(wu, phase, topic)}/${file}`, '### m\n');
 
     it('mailboxFiles lists the message files in drain order — .md files alone, [] for no mailbox', () => {
-      assert.deepStrictEqual(mailboxFiles(dir, 'pay', 'discussion', 'fees'), []);
+      assert.deepStrictEqual(mailboxFiles(state(), 'pay', 'discussion', 'fees'), []);
       message('pay', 'discussion', 'fees', '002-second.md');
       message('pay', 'discussion', 'fees', '001-first.md');
       message('pay', 'discussion', 'fees', 'notes.txt');
-      fs.mkdirSync(path.join(dir, mailboxDir('pay', 'discussion', 'fees'), '003-dir.md'));
-      assert.deepStrictEqual(mailboxFiles(dir, 'pay', 'discussion', 'fees'), ['001-first.md', '002-second.md']);
-      assert.strictEqual(mailboxDepth(dir, 'pay', 'discussion', 'fees'), 2);
-      assert.deepStrictEqual(mailQueued(dir, 'pay', 'fees'), { research: 0, discussion: 2 });
+      fs.mkdirSync(path.join(state(), mailboxDir('pay', 'discussion', 'fees'), '003-dir.md'));
+      assert.deepStrictEqual(mailboxFiles(state(), 'pay', 'discussion', 'fees'), ['001-first.md', '002-second.md']);
+      assert.strictEqual(mailboxDepth(state(), 'pay', 'discussion', 'fees'), 2);
+      assert.deepStrictEqual(mailQueued(state(), 'pay', 'fees'), { research: 0, discussion: 2 });
     });
 
     it('mail waits wherever either mailbox holds a message, and nowhere else', () => {
@@ -1854,7 +1855,7 @@ describe('reads + derivations', () => {
         },
       };
       message('pay', 'discussion', 'fees', '001-escalation.md');
-      const rows = buildDiscoveryMap(m, path.join(dir, '.workflows')).map;
+      const rows = buildDiscoveryMap(m, state()).map;
       const row = (name) => /** @type {any} */ (rows.find((r) => r.name === name));
       assert.strictEqual(row('fees').mail_waiting, true);
       assert.deepStrictEqual(row('fees').mail_queued, { research: 0, discussion: 1 });
@@ -1863,9 +1864,9 @@ describe('reads + derivations', () => {
 
     it('a single-topic unit\'s mail phases read the same mailboxes', () => {
       const m = { name: 'pay', work_type: 'feature', phases: { discussion: { items: { pay: { status: 'in-progress' } } } } };
-      assert.deepStrictEqual(mailPhases(dir, m), []);
+      assert.deepStrictEqual(mailPhases(state(), m), []);
       message('pay', 'discussion', 'pay', '001-escalation.md');
-      assert.deepStrictEqual(mailPhases(dir, m), ['discussion']);
+      assert.deepStrictEqual(mailPhases(state(), m), ['discussion']);
     });
   });
 

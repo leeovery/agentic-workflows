@@ -5,10 +5,10 @@
 // engine's lock discipline over it: one read/parse, one atomic-write
 // serialisation, one lock protocol for every manifest writer.
 //
-// Proves the concurrency contract the island-absorption wave closed: engine
-// writes take the same .lock as every manifest writer — a fresh lock blocks the engine
-// until released, a stale lock is broken per the shared constants, and no
-// lock file ever leaks into a transaction's commit.
+// Proves the concurrency contract: every manifest writer holds the one
+// writer lock at the state's root — a live holder blocks the engine until it
+// lets go, a dead holder's claim is taken over at once, a read never waits,
+// and no lock file ever leaks into a transaction's commit.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -22,8 +22,9 @@ const { spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
-const { ENGINE, git, ok: engine } = harness;
+const { ENGINE, stateGit, commitAll, cleanupFixture, ok: engine } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-io-');
 
@@ -34,7 +35,7 @@ function writeFile(dir, rel, content) {
 }
 
 function writeEpicFixture(dir) {
-  writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify({
+  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
     name: 'payments',
     work_type: 'epic',
     status: 'in-progress',
@@ -46,7 +47,7 @@ function writeEpicFixture(dir) {
 }
 
 function readManifest(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 /** Age a lock file well past the stale threshold. @param {string} file */
@@ -54,6 +55,12 @@ function makeStale(file) {
   const past = (Date.now() - io.LOCK_STALE_MS - 60000) / 1000;
   fs.utimesSync(file, past, past);
 }
+
+/** A claim whose holder no longer runs. */
+const DEAD = JSON.stringify({ pid: 2147483646, pid_start: null });
+
+/** A claim this test's own process holds: alive, and never a child's. */
+const live = () => JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
 
 /** @param {number} ms */
 function sleep(ms) {
@@ -65,11 +72,12 @@ describe('manifest-io — shared lock constants and IO contract', () => {
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-io-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout, 60s tmp orphan', () => {
+  it('carries the shared lock discipline: 30s stale, 50ms retry, 10s timeout, 60s tmp orphan, 60s writer wait', () => {
     assert.strictEqual(io.LOCK_STALE_MS, 30000);
     assert.strictEqual(io.LOCK_RETRY_MS, 50);
     assert.strictEqual(io.LOCK_TIMEOUT_MS, 10000);
     assert.strictEqual(io.TMP_STALE_MS, 60000);
+    assert.strictEqual(io.WRITER_LOCK_TIMEOUT_MS, 60000);
   });
 
   it('tells a JSON object from an array, null, and a scalar', () => {
@@ -112,17 +120,21 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.throws(() => io.readProjectManifest(dir), /by hand/);
   });
 
-  it('withWorkUnitLock: lock file exists (pid inside) during fn, gone after — including on throw', () => {
+  it('withWorkUnitLock and withProjectLock hold the one writer lock at the state root, gone after — including on throw', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const lock = path.join(dir, 'unit', '.lock');
-    const result = io.withWorkUnitLock(dir, 'unit', () => {
-      assert.strictEqual(fs.readFileSync(lock, 'utf8'), String(process.pid));
-      return 'ran';
-    });
-    assert.strictEqual(result, 'ran');
+    const lock = path.join(dir, '.lock');
+    const holder = { pid: process.pid, pid_start: processStartTime(process.pid) };
+    const held = [
+      io.withWorkUnitLock(dir, 'unit', () => JSON.parse(fs.readFileSync(lock, 'utf8'))),
+      io.withProjectLock(dir, () => JSON.parse(fs.readFileSync(lock, 'utf8'))),
+    ];
+    assert.deepStrictEqual(held, [holder, holder]);
     assert.ok(!fs.existsSync(lock));
+    assert.deepStrictEqual(fs.readdirSync(dir).sort(), ['unit'], 'no lock of the unit\'s or the project\'s own');
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'unit')), []);
 
     assert.throws(() => io.withWorkUnitLock(dir, 'unit', () => { throw new Error('boom'); }), /boom/);
+    assert.throws(() => io.withProjectLock(dir, () => { throw new Error('bang'); }), /bang/);
     assert.ok(!fs.existsSync(lock), 'lock must be released when fn throws');
   });
 
@@ -131,22 +143,40 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.ok(!fs.existsSync(path.join(dir, 'ghost')), 'no directory conjured for the lock file');
   });
 
-  it('withWorkUnitLock breaks a stale lock and proceeds', () => {
+  it('the manifest locks run inside a verb\'s writer lock without waiting on it', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const lock = path.join(dir, 'unit', '.lock');
-    fs.writeFileSync(lock, '99999');
-    makeStale(lock);
+    const started = Date.now();
+    const ran = io.withWriterLock(dir, () => io.withWorkUnitLock(dir, 'unit', () => io.withProjectLock(dir, () => 'ran')),
+      { timeoutMs: 300 });
+    assert.strictEqual(ran, 'ran');
+    assert.ok(Date.now() - started < 300, `the nested holds waited ${Date.now() - started}ms`);
+    assert.ok(!fs.existsSync(path.join(dir, '.lock')));
+  });
+
+  it('withWorkUnitLock takes over a dead holder\'s claim and proceeds', () => {
+    fs.mkdirSync(path.join(dir, 'unit'));
+    const lock = path.join(dir, '.lock');
+    fs.writeFileSync(lock, DEAD);
     const result = io.withWorkUnitLock(dir, 'unit', () => 'ran');
     assert.strictEqual(result, 'ran');
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('withProjectLock: .project-lock held during fn, released after', () => {
-    const lock = path.join(dir, '.project-lock');
-    io.withProjectLock(dir, () => {
-      assert.ok(fs.existsSync(lock));
+  it('a live holder\'s claim is never broken by age: the wait times out naming it', () => {
+    const lock = path.join(dir, '.lock');
+    fs.writeFileSync(lock, live());
+    makeStale(lock);
+    assert.throws(() => io.withWriterLock(dir, () => 'never', { timeoutMs: 250 }), (/** @type {Error} */ err) => {
+      assert.ok(err.message.startsWith(`Timed out waiting for the state lock (lock file: ${lock}) — process ${process.pid} holds it`), err.message);
+      return true;
     });
-    assert.ok(!fs.existsSync(lock));
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the live claim untouched');
+  });
+
+  it('withWriterLock refuses a missing state root and conjures no folder for the lock', () => {
+    const missing = path.join(dir, '.leeway');
+    assert.throws(() => io.withWriterLock(missing, () => 'never'), /no state worktree at .*\.leeway — nothing written/);
+    assert.ok(!fs.existsSync(missing));
   });
 
   it('lock timeout carries the remedy: lock path, 30s stale self-clear, manual delete', () => {
@@ -242,11 +272,10 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
       'the winner removed its renamed file');
   });
 
-  it('N contenders racing a stale lock through withProjectLock: all acquire, never concurrently', async () => {
-    const lock = path.join(dir, '.project-lock');
+  it('N contenders racing a dead holder\'s claim through withProjectLock: all acquire, never concurrently', async () => {
+    const lock = path.join(dir, '.lock');
     const log = path.join(dir, 'hold.log');
-    fs.writeFileSync(lock, '99999');
-    makeStale(lock);
+    fs.writeFileSync(lock, DEAD);
 
     const script = [
       "const fs = require('fs');",
@@ -288,8 +317,6 @@ describe('the claim — one holder at a time, never waited on', () => {
     claim = path.join(dir, '.fill');
   });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-
-  const DEAD = JSON.stringify({ pid: 2147483646, pid_start: null });
 
   it('claims for this process, refuses a second while it holds, and its release frees it', () => {
     const release = io.tryClaimFile(claim);
@@ -362,10 +389,10 @@ describe('the claim — one holder at a time, never waited on', () => {
 describe('structurally corrupt manifests refuse writes', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-root-'));
-    fs.mkdirSync(path.join(dir, '.workflows/unit'), { recursive: true });
+    dir = harness.setupGitFixture('engine-root-');
+    fs.mkdirSync(path.join(dir, '.leeway/unit'), { recursive: true });
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => { cleanupFixture(dir); });
 
   /** Run the engine expecting `{ok:false}` exit 1; returns the parsed stderr JSON. */
   const engineFail = (/** @type {string[]} */ args) => harness.refuses(dir, args);
@@ -378,7 +405,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   }
 
   it('array root: set refuses with the domain diagnostic, file byte-identical', () => {
-    const untouched = plant('.workflows/unit/manifest.json', '[]\n');
+    const untouched = plant('.leeway/unit/manifest.json', '[]\n');
     const res = engineFail(['manifest', 'set', 'unit', 'status', 'completed']);
     assert.strictEqual(res.ok, false);
     assert.match(res.error, /manifest root is not an object/);
@@ -386,7 +413,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('null root: the domain diagnostic, never a raw TypeError', () => {
-    const untouched = plant('.workflows/unit/manifest.json', 'null\n');
+    const untouched = plant('.leeway/unit/manifest.json', 'null\n');
     const res = engineFail(['manifest', 'set', 'unit', 'status', 'completed']);
     assert.match(res.error, /manifest root is not an object/);
     assert.ok(!/TypeError/.test(res.error), 'no raw JS TypeError may surface');
@@ -394,7 +421,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('number root: the domain diagnostic, never a raw TypeError', () => {
-    const untouched = plant('.workflows/unit/manifest.json', '42\n');
+    const untouched = plant('.leeway/unit/manifest.json', '42\n');
     const res = engineFail(['manifest', 'set', 'unit', 'status', 'completed']);
     assert.match(res.error, /manifest root is not an object/);
     assert.ok(!/TypeError/.test(res.error));
@@ -402,7 +429,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('string `phases` + topic start: refusal, manifest pristine — no silent coercion', () => {
-    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+    const untouched = plant('.leeway/unit/manifest.json', JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: 'oops',
     }, null, 2) + '\n');
     const res = engineFail(['topic', 'start', 'unit', 'research', 'auth']);
@@ -411,7 +438,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('array `phases` + topic start: refusal — fields set into an array are stringify-dropped', () => {
-    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+    const untouched = plant('.leeway/unit/manifest.json', JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: [],
     }, null, 2) + '\n');
     const res = engineFail(['topic', 'start', 'unit', 'research', 'auth']);
@@ -420,7 +447,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('scalar mid-path container: set refuses instead of coercing to {}', () => {
-    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+    const untouched = plant('.leeway/unit/manifest.json', JSON.stringify({
       name: 'unit', work_type: 'epic', status: 'in-progress', phases: { research: 'active' },
     }, null, 2) + '\n');
     const res = engineFail(['manifest', 'set', 'unit.research.auth', 'status', 'in-progress']);
@@ -429,7 +456,7 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('named field into an array: set refuses — stringify would silently drop it', () => {
-    const untouched = plant('.workflows/unit/manifest.json', JSON.stringify({
+    const untouched = plant('.leeway/unit/manifest.json', JSON.stringify({
       name: 'unit', work_type: 'feature', status: 'in-progress', imports: [], phases: {},
     }, null, 2) + '\n');
     const res = engineFail(['manifest', 'set', 'unit', 'imports.name', 'x']);
@@ -438,32 +465,42 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 
   it('array-root project manifest: set refuses with the domain diagnostic, file byte-identical', () => {
-    const untouched = plant('.workflows/manifest.json', '[]\n');
+    const untouched = plant('.leeway/manifest.json', '[]\n');
     const res = engineFail(['manifest', 'set', 'project.defaults.plan_format', 'tick']);
     assert.match(res.error, /manifest root is not an object/);
     untouched();
   });
 });
 
-describe('engine writes take the work-unit lock', () => {
+describe('engine writes take the writer lock', () => {
   let dir;
-  beforeEach(() => { dir = setupGitFixture(); writeEpicFixture(dir); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  let lock;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeEpicFixture(dir);
+    lock = path.join(dir, '.leeway/.lock');
+  });
+  afterEach(() => { cleanupFixture(dir); });
 
-  it('a stale .lock is broken per the constants: the write proceeds, the lock is cleaned up', () => {
-    const lock = path.join(dir, '.workflows/payments/.lock');
-    fs.writeFileSync(lock, '99999');
-    makeStale(lock);
+  it('a dead holder\'s claim is taken over at once: the write proceeds, the lock is cleaned up', () => {
+    fs.writeFileSync(lock, DEAD);
 
     const res = engine(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['auth-flow'].status, 'in-progress');
-    assert.ok(!fs.existsSync(lock), 'stale lock broken and not left behind');
+    assert.ok(!fs.existsSync(lock), 'the dead claim taken over and not left behind');
   });
 
-  it('a fresh .lock blocks the engine until released — the write lands only after', async () => {
-    const lock = path.join(dir, '.workflows/payments/.lock');
-    fs.writeFileSync(lock, '12345');
+  it('a read answers at once while a live holder has the lock', () => {
+    fs.writeFileSync(lock, live());
+    const started = Date.now();
+    assert.strictEqual(harness.output(dir, ['manifest', 'get', 'payments', 'status']).trim(), 'in-progress');
+    assert.ok(Date.now() - started < 1500, `the read waited ${Date.now() - started}ms`);
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
+  });
+
+  it('a live holder blocks the engine until released — the write lands only after', async () => {
+    fs.writeFileSync(lock, live());
 
     const child = spawn('node', [ENGINE, 'discovery-map', 'edit', 'payments', 'auth-flow', '--summary', 'After the lock'], {
       cwd: dir,
@@ -474,7 +511,7 @@ describe('engine writes take the work-unit lock', () => {
     const exit = new Promise((resolve) => child.on('close', resolve));
 
     // Long enough for node to start and reach the lock wait; far inside the
-    // 10s timeout, so a passing run never races it.
+    // 60s timeout, so a passing run never races it.
     const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
     assert.strictEqual(raced, 'waiting', 'engine must wait on a live lock');
     assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['auth-flow'].summary, 'Auth',
@@ -487,53 +524,49 @@ describe('engine writes take the work-unit lock', () => {
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('committing transactions release the lock before staging — no .lock in the commit', () => {
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
+  it('committing transactions hold the lock across their commit, and it never lands in one', () => {
+    commitAll(dir, 'init');
 
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.strictEqual(res.ok, true);
     assert.ok(res.committed, 'cancel commits');
-    const show = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
+    const show = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!show.includes('.lock'), `lock file leaked into the commit:\n${show}`);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/.lock')));
+    assert.ok(!fs.existsSync(lock));
   });
 });
 
-describe('engine project-manifest writes take the project lock', () => {
+describe('engine project-manifest writes take the writer lock', () => {
   let dir;
+  let lock;
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/.cache/payments/discovery/session-001.md', '# Session\n');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
+    lock = path.join(dir, '.leeway/.lock');
+    writeFile(dir, '.leeway/.cache/payments/discovery/session-001.md', '# Session\n');
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => { cleanupFixture(dir); });
 
-  it('a stale .project-lock is broken: create registers and cleans up', () => {
-    const lock = path.join(dir, '.workflows/.project-lock');
-    fs.writeFileSync(lock, '99999');
-    makeStale(lock);
+  it('a dead holder\'s claim is taken over: create registers and cleans up', () => {
+    fs.writeFileSync(lock, DEAD);
 
     const res = engine(dir, [
       'workunit', 'create', 'payments', 'feature',
-      '--description', 'Payments', '--session-log-file', '.workflows/.cache/payments/discovery/session-001.md',
+      '--description', 'Payments', '--session-log-file', '.leeway/.cache/payments/discovery/session-001.md',
     ]);
     assert.strictEqual(res.ok, true);
-    const project = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/manifest.json'), 'utf8'));
+    const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, { payments: { work_type: 'feature' } });
-    assert.ok(!fs.existsSync(lock), 'stale project lock broken and not left behind');
-    const show = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
+    assert.ok(!fs.existsSync(lock), 'the dead claim taken over and not left behind');
+    const show = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!show.includes('lock'), `lock file leaked into the commit:\n${show}`);
   });
 
-  it('a fresh .project-lock blocks create until released', async () => {
-    const lock = path.join(dir, '.workflows/.project-lock');
-    fs.writeFileSync(lock, '12345');
+  it('a live holder blocks create until released', async () => {
+    fs.writeFileSync(lock, live());
 
     const child = spawn('node', [ENGINE,
       'workunit', 'create', 'payments', 'feature',
-      '--description', 'Payments', '--session-log-file', '.workflows/.cache/payments/discovery/session-001.md',
+      '--description', 'Payments', '--session-log-file', '.leeway/.cache/payments/discovery/session-001.md',
     ], { cwd: dir });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
@@ -541,13 +574,13 @@ describe('engine project-manifest writes take the project lock', () => {
     const exit = new Promise((resolve) => child.on('close', resolve));
 
     const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'create must wait on a live project lock');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/manifest.json')), 'no registration while the lock is held');
+    assert.strictEqual(raced, 'waiting', 'create must wait on a live writer lock');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/manifest.json')), 'no registration while the lock is held');
 
     fs.unlinkSync(lock);
     assert.strictEqual(await exit, 0);
     assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
-    const project = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/manifest.json'), 'utf8'));
+    const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, { payments: { work_type: 'feature' } });
   });
 });

@@ -19,19 +19,17 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 const harness = require('./engine-harness.cjs');
 
 let dir;
 
 function setup() {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ensure-discovery-test-'));
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+  dir = harness.setupGitFixture('ensure-discovery-test-');
 }
 
 function cleanup() {
-  if (dir) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  if (dir) harness.cleanupFixture(dir);
   dir = null;
 }
 
@@ -41,12 +39,12 @@ const runEngine = (/** @type {string[]} */ ...args) => harness.call(dir, args);
 
 function readManifest(workUnit) {
   return JSON.parse(fs.readFileSync(
-    path.join(dir, '.workflows', workUnit, 'manifest.json'), 'utf8'
+    path.join(dir, '.leeway', workUnit, 'manifest.json'), 'utf8'
   ));
 }
 
 function seedEpic(workUnit) {
-  const manifestDir = path.join(dir, '.workflows', workUnit);
+  const manifestDir = path.join(dir, '.leeway', workUnit);
   fs.mkdirSync(manifestDir, { recursive: true });
   const manifest = {
     name: workUnit,
@@ -59,7 +57,7 @@ function seedEpic(workUnit) {
     path.join(manifestDir, 'manifest.json'),
     JSON.stringify(manifest, null, 2),
   );
-  const projPath = path.join(dir, '.workflows', 'manifest.json');
+  const projPath = path.join(dir, '.leeway', 'manifest.json');
   let proj = {};
   if (fs.existsSync(projPath)) proj = JSON.parse(fs.readFileSync(projPath, 'utf8'));
   if (!proj.work_units) proj.work_units = {};

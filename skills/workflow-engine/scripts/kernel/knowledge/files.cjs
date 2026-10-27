@@ -2,24 +2,26 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: the knowledge directory's files — the one home for their names. The
-// directory is local to each checkout and never committed: the store, its
-// metadata and the knowledge config setup wrote, beside the store's lock and
-// the vector fill's claim.
+// directory sits in the state, local to the machine and never committed: the
+// store, its metadata and the knowledge config setup wrote, beside the
+// store's lock and the vector fill's claim.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { stateRel } = require('../state-root.cjs');
+const { STATE_DIR_NAME } = require('../state-root.cjs');
 
-const KNOWLEDGE_DIR = stateRel('.knowledge');
+/** The knowledge directory, state-relative. */
+const KNOWLEDGE_DIR = '.knowledge';
 
 /** The files a checkout sets up, by their names in the directory. */
 const NAMES = { store: 'store.bin', metadata: 'metadata.json', config: 'config.json' };
 
-/** The files a checkout sets up, project-relative — the ones a new worktree is given a copy of. */
-const STORE_FILES = Object.values(NAMES).map((name) => `${KNOWLEDGE_DIR}/${name}`);
+/** The files a checkout sets up, as `.worktreeinclude` names them from a checkout's root. */
+const STORE_FILES = Object.values(NAMES).map((name) => `${STATE_DIR_NAME}/${KNOWLEDGE_DIR}/${name}`);
 
 /**
  * @typedef {object} KnowledgeFiles  absolute paths
+ * @property {string} root  the state root the directory is in
  * @property {string} dir
  * @property {string} store
  * @property {string} metadata
@@ -29,12 +31,13 @@ const STORE_FILES = Object.values(NAMES).map((name) => `${KNOWLEDGE_DIR}/${name}
  */
 
 /**
- * @param {string} root  the project root
+ * @param {string} root  the state root
  * @returns {KnowledgeFiles}
  */
 function knowledgeFiles(root) {
   const dir = path.join(root, KNOWLEDGE_DIR);
   return {
+    root,
     dir,
     store: path.join(dir, NAMES.store),
     metadata: path.join(dir, NAMES.metadata),

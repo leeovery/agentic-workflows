@@ -70,11 +70,6 @@ function write(rel, content = '# content\n') {
   return rel;
 }
 
-/** Git in the project. */
-function git(args) {
-  return harness.git(dir, args);
-}
-
 /** A file of the project, by its absolute path. */
 function abs(rel) {
   return path.join(dir, rel);
@@ -87,7 +82,7 @@ function install(skill) {
 
 /** A work unit's manifest, its `phases` given. */
 function workUnit(name, workType, phases = {}, extra = {}) {
-  write(`.workflows/${name}/manifest.json`, JSON.stringify({ name, work_type: workType, status: 'in-progress', phases, ...extra }, null, 2));
+  write(`.leeway/${name}/manifest.json`, JSON.stringify({ name, work_type: workType, status: 'in-progress', phases, ...extra }, null, 2));
 }
 
 /** `conversation position`'s answer: the DATA text and the parsed POSITION line. */
@@ -158,15 +153,18 @@ describe('the position every arrival records', () => {
 
   it('refuses a place this project lacks, labels off, keeping the last one — a missing work unit, an unknown phase, an identity with a phase, an illegal name', () => {
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
+    const missing = (name) => `no work unit directory: ${abs(`.leeway/${name}`)}`;
     for (const [args, error] of [
-      [['ghost'], /^no work unit directory: \.workflows\/ghost$/],
+      [['ghost'], missing('ghost')],
       [['pay', 'deploying', 'ledger'], /^unknown phase "deploying" — one of /],
-      [['ghost', 'discussion', 'ledger'], /^no work unit directory: \.workflows\/ghost$/],
-      [['roadmap', 'discovery', 'roadmap'], /^no work unit directory: \.workflows\/roadmap$/],
+      [['ghost', 'discussion', 'ledger'], missing('ghost')],
+      [['roadmap', 'discovery', 'roadmap'], missing('roadmap')],
       [['pay', 'discussion', 'led.ger'], /^"led\.ger" is not a legal topic name/],
       [['p.ay'], /^"p\.ay" is not a legal work unit name/],
     ]) {
-      assert.match(harness.refuses(dir, ['session', 'label', ...args], { env: env() }).error, error, args.join(' '));
+      const refused = harness.refuses(dir, ['session', 'label', ...args], { env: env() }).error;
+      if (typeof error === 'string') assert.strictEqual(refused, error, args.join(' '));
+      else assert.match(refused, error, args.join(' '));
     }
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
   });
@@ -396,46 +394,46 @@ describe('conversation position', () => {
 
   it('a discussion: its phase skill\'s recovery steps, then the discussion', () => {
     install('workflow-discussion-process');
-    write('.workflows/pay/discussion/ledger.md');
+    write('.leeway/pay/discussion/ledger.md');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const answer = reads();
     assert.deepStrictEqual(answer.position, { name: 'pay', phase: 'discussion', topic: 'ledger' });
     assert.strictEqual(answer.place, 'pay › discussion › ledger');
     assert.strictEqual(answer.skill, abs('.claude/skills/workflow-discussion-process/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.workflows/pay/discussion/ledger.md')]);
+    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discussion/ledger.md')]);
     assert.strictEqual(answer.text, [
       `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "pay". Follow the workflow-discussion-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${dir}/.claude/skills/workflow-discussion-process/SKILL.md and its framework in full, then re-read these in full:`,
-      `- ${dir}/.workflows/pay/discussion/ledger.md`,
+      `- ${dir}/.leeway/pay/discussion/ledger.md`,
     ].join('\n'));
   });
 
   it('names the work unit by its work type, the topic collapsed where it is the work unit', () => {
     workUnit('auth', 'feature');
     install('workflow-discussion-process');
-    write('.workflows/auth/discussion/auth.md');
+    write('.leeway/auth/discussion/auth.md');
     ok(['session', 'label', 'auth', 'discussion', 'auth']);
     const answer = reads();
-    assert.strictEqual(answer.text, note('the discussion of the feature "auth"', 'workflow-discussion-process', ['.workflows/auth/discussion/auth.md']));
+    assert.strictEqual(answer.text, note('the discussion of the feature "auth"', 'workflow-discussion-process', ['.leeway/auth/discussion/auth.md']));
     assert.strictEqual(answer.place, 'auth › discussion');
   });
 
   it('an implementation task: the skill, the plan format\'s reading adapter, and the task\'s file where the plan keeps one', () => {
     install('workflow-implementation-process');
     write('.claude/skills/workflow-planning-process/references/output-formats/flat-files/reading.md');
-    write('.workflows/pay/planning/ledger/planning.md');
-    write('.workflows/pay/planning/ledger/tasks/ledger-2-3.md');
-    write('.workflows/pay/planning/ledger/tasks/ledger-2-4.md');
+    write('.leeway/pay/planning/ledger/planning.md');
+    write('.leeway/pay/planning/ledger/tasks/ledger-2-3.md');
+    write('.leeway/pay/planning/ledger/tasks/ledger-2-4.md');
     ok(['session', 'label', 'pay', 'implementation', 'ledger']);
     ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
     const answer = reads();
     assert.deepStrictEqual(answer.files, [
       abs('.claude/skills/workflow-planning-process/references/output-formats/flat-files/reading.md'),
-      abs('.workflows/pay/planning/ledger/tasks/ledger-2-3.md'),
+      abs('.leeway/pay/planning/ledger/tasks/ledger-2-3.md'),
     ]);
     assert.strictEqual(answer.text, [
       `The conversation was just compacted. This conversation is working in the implementation of "ledger" in the epic "pay", on task 2.3 (internal id \`ledger-2-3\`). Follow the workflow-implementation-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${dir}/.claude/skills/workflow-implementation-process/SKILL.md and its framework in full, then re-read these in full:`,
       `- ${dir}/.claude/skills/workflow-planning-process/references/output-formats/flat-files/reading.md`,
-      `- ${dir}/.workflows/pay/planning/ledger/tasks/ledger-2-3.md`,
+      `- ${dir}/.leeway/pay/planning/ledger/tasks/ledger-2-3.md`,
     ].join('\n'));
     assert.strictEqual(answer.place, 'pay › implementation › ledger');
   });
@@ -453,7 +451,7 @@ describe('conversation position', () => {
 
   it('an implementation task whose plan names no format, or one no file can be named for, names no reading adapter', () => {
     install('workflow-implementation-process');
-    write('.workflows/pay/planning/ledger/tasks/ledger-2-3.md');
+    write('.leeway/pay/planning/ledger/tasks/ledger-2-3.md');
     for (const format of [undefined, '../flat-files', 7]) {
       workUnit('pay', 'epic', {
         implementation: { items: { ledger: { status: 'in-progress', current_task: null, fix_attempts: 0 } } },
@@ -461,7 +459,7 @@ describe('conversation position', () => {
       });
       ok(['session', 'label', 'pay', 'implementation', 'ledger']);
       ok(['task', 'start', 'pay', 'ledger', 'ledger-2-3']);
-      assert.deepStrictEqual(reads().files, [abs('.workflows/pay/planning/ledger/tasks/ledger-2-3.md')], String(format));
+      assert.deepStrictEqual(reads().files, [abs('.leeway/pay/planning/ledger/tasks/ledger-2-3.md')], String(format));
     }
   });
 
@@ -478,12 +476,12 @@ describe('conversation position', () => {
     ok(['session', 'label', 'pay', 'specification', 'ledger']);
     assert.deepStrictEqual(reads().files, []);
     assert.strictEqual(reads().text, note('the specification of "ledger" in the epic "pay"', 'workflow-specification-process', []));
-    write('.workflows/pay/specification/ledger/specification.md');
-    assert.deepStrictEqual(reads().files, [abs('.workflows/pay/specification/ledger/specification.md')]);
+    write('.leeway/pay/specification/ledger/specification.md');
+    assert.deepStrictEqual(reads().files, [abs('.leeway/pay/specification/ledger/specification.md')]);
   });
 
   it('a place whose skill this project lacks carries nothing on, whatever documents it has', () => {
-    write('.workflows/pay/specification/ledger/specification.md');
+    write('.leeway/pay/specification/ledger/specification.md');
     ok(['session', 'label', 'pay', 'specification', 'ledger']);
     assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
@@ -498,11 +496,11 @@ describe('conversation position', () => {
   it('each phase names its own documents', () => {
     workUnit('fix', 'quick-fix');
     const cases = [
-      ['research', 'ledger', ['.workflows/pay/research/ledger.md']],
-      ['investigation', 'ledger', ['.workflows/pay/investigation/ledger.md']],
-      ['specification', 'ledger', ['.workflows/pay/specification/ledger/specification.md']],
-      ['planning', 'ledger', ['.workflows/pay/planning/ledger/planning.md', '.workflows/pay/planning/ledger/phase-2-tasks.md', '.workflows/pay/planning/ledger/phase-10-tasks.md']],
-      ['review', 'ledger', ['.workflows/pay/review/ledger/report.md']],
+      ['research', 'ledger', ['.leeway/pay/research/ledger.md']],
+      ['investigation', 'ledger', ['.leeway/pay/investigation/ledger.md']],
+      ['specification', 'ledger', ['.leeway/pay/specification/ledger/specification.md']],
+      ['planning', 'ledger', ['.leeway/pay/planning/ledger/planning.md', '.leeway/pay/planning/ledger/phase-2-tasks.md', '.leeway/pay/planning/ledger/phase-10-tasks.md']],
+      ['review', 'ledger', ['.leeway/pay/review/ledger/report.md']],
     ];
     for (const [phase, topic, files] of cases) {
       install(`workflow-${phase}-process`);
@@ -514,27 +512,27 @@ describe('conversation position', () => {
       assert.strictEqual(answer.text, note(`the ${phase} of "${topic}" in the epic "pay"`, `workflow-${phase}-process`, files), phase);
     }
     install('workflow-scoping-process');
-    write('.workflows/fix/specification/fix/specification.md');
-    write('.workflows/fix/planning/fix/planning.md');
+    write('.leeway/fix/specification/fix/specification.md');
+    write('.leeway/fix/planning/fix/planning.md');
     ok(['session', 'label', 'fix', 'scoping', 'fix']);
     const scoping = reads();
-    assert.deepStrictEqual(scoping.files, ['.workflows/fix/specification/fix/specification.md', '.workflows/fix/planning/fix/planning.md'].map(abs));
+    assert.deepStrictEqual(scoping.files, ['.leeway/fix/specification/fix/specification.md', '.leeway/fix/planning/fix/planning.md'].map(abs));
     assert.strictEqual(scoping.text, note('the scoping of the quick-fix "fix"', 'workflow-scoping-process', [
-      '.workflows/fix/specification/fix/specification.md', '.workflows/fix/planning/fix/planning.md',
+      '.leeway/fix/specification/fix/specification.md', '.leeway/fix/planning/fix/planning.md',
     ]));
   });
 
   it('discovery: the open session\'s log, else the latest on disk', () => {
     install('workflow-discovery');
-    for (const n of ['001', '002', '010']) write(`.workflows/pay/discovery/sessions/session-${n}.md`);
+    for (const n of ['001', '002', '010']) write(`.leeway/pay/discovery/sessions/session-${n}.md`);
     ok(['session', 'label', 'pay', 'discovery', 'pay']);
     let answer = reads();
     assert.strictEqual(answer.skill, abs('.claude/skills/workflow-discovery/SKILL.md'));
-    assert.deepStrictEqual(answer.files, [abs('.workflows/pay/discovery/sessions/session-010.md')]);
-    assert.strictEqual(answer.text, note('the discovery of the epic "pay"', 'workflow-discovery', ['.workflows/pay/discovery/sessions/session-010.md']));
+    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/sessions/session-010.md')]);
+    assert.strictEqual(answer.text, note('the discovery of the epic "pay"', 'workflow-discovery', ['.leeway/pay/discovery/sessions/session-010.md']));
     workUnit('pay', 'epic', { discovery: { active_session: '002' } });
     answer = reads();
-    assert.deepStrictEqual(answer.files, [abs('.workflows/pay/discovery/sessions/session-002.md')]);
+    assert.deepStrictEqual(answer.files, [abs('.leeway/pay/discovery/sessions/session-002.md')]);
   });
 
   it('an experiment: each live record\'s files in register order, a concluded one\'s left out', () => {
@@ -551,14 +549,14 @@ describe('conversation position', () => {
       'E1-latency/report.md', 'E1-latency/E1.1-warm/problem.md',
       'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md',
       'E2-throughput/E2.1-batch/problem.md',
-    ]) write(`.workflows/pay/experiment/ledger/${f}`);
+    ]) write(`.leeway/pay/experiment/ledger/${f}`);
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.deepStrictEqual(reads().files, [
-      '.workflows/pay/experiment/ledger/E1-latency/E1.1-warm/problem.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/problem.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/design.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/report.md',
-      '.workflows/pay/experiment/ledger/E2-throughput/E2.1-batch/problem.md',
+      '.leeway/pay/experiment/ledger/E1-latency/E1.1-warm/problem.md',
+      '.leeway/pay/experiment/ledger/E2-throughput/problem.md',
+      '.leeway/pay/experiment/ledger/E2-throughput/design.md',
+      '.leeway/pay/experiment/ledger/E2-throughput/report.md',
+      '.leeway/pay/experiment/ledger/E2-throughput/E2.1-batch/problem.md',
     ].map(abs));
   });
 
@@ -575,14 +573,14 @@ describe('conversation position', () => {
   it('the project-level places: the roadmap with its open session\'s log, the baseline its skill alone', () => {
     install('workflow-roadmap');
     install('workflow-baseline');
-    write('.workflows/.roadmap/sessions/session-003.md');
+    write('.leeway/.roadmap/sessions/session-003.md');
     ok(['session', 'label', 'roadmap']);
     assert.deepStrictEqual([reads().skill, reads().files], [abs('.claude/skills/workflow-roadmap/SKILL.md'), []], 'no session open');
-    write('.workflows/manifest.json', JSON.stringify({ roadmap: { active_session: '003' } }));
+    write('.leeway/manifest.json', JSON.stringify({ roadmap: { active_session: '003' } }));
     const roadmap = reads();
-    assert.deepStrictEqual(roadmap.files, [abs('.workflows/.roadmap/sessions/session-003.md')]);
+    assert.deepStrictEqual(roadmap.files, [abs('.leeway/.roadmap/sessions/session-003.md')]);
     assert.strictEqual(roadmap.place, 'roadmap');
-    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'workflow-roadmap', ['.workflows/.roadmap/sessions/session-003.md']));
+    assert.strictEqual(roadmap.text, note('the project\'s roadmap', 'workflow-roadmap', ['.leeway/.roadmap/sessions/session-003.md']));
     ok(['session', 'label', 'baseline']);
     const baseline = reads();
     assert.deepStrictEqual([baseline.skill, baseline.files, baseline.place], [abs('.claude/skills/workflow-baseline/SKILL.md'), [], 'baseline']);
@@ -591,7 +589,7 @@ describe('conversation position', () => {
 
   it('a place no longer open carries nothing on — the work unit gone from this project or closed, the place\'s item closed', () => {
     install('workflow-discussion-process');
-    write('.workflows/pay/discussion/ledger.md');
+    write('.leeway/pay/discussion/ledger.md');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const closed = (text) => assert.deepStrictEqual(reads(), {
       session_id: 'sess-1',
@@ -607,7 +605,7 @@ describe('conversation position', () => {
     }
     workUnit('pay', 'epic', { discussion: { items: { ledger: { status: 'in-progress' } } } }, { status: 'completed' });
     closed('This conversation was working in the discussion of "ledger" in the epic "pay", but "pay" is completed, so there is nothing to carry on from.');
-    fs.rmSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+    fs.rmSync(path.join(dir, '.leeway', 'pay'), { recursive: true });
     closed('This conversation was working in the discussion of "ledger" in "pay", but this project has no work unit "pay", so there is nothing to carry on from.');
   });
 
@@ -618,13 +616,12 @@ describe('conversation position', () => {
       discussion: { items: { ledger: { status: 'in-progress', awaiting_experiments: ['E1'] } } },
       experiment: { items: { ledger: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'the epic']);
-    write('.workflows/pay/experiment/ledger/E1-latency/problem.md');
+    harness.commitAll(dir, 'the epic');
+    write('.leeway/pay/experiment/ledger/E1-latency/problem.md');
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the running laboratory carries on');
     ok(['topic', 'cancel', 'pay', 'discovery', 'ledger']);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/pay/manifest.json'), 'utf8'));
     assert.notStrictEqual(manifest.phases.experiment.items.ledger.status, 'cancelled', 'the series item itself is not what closes');
     const answer = reads();
     assert.deepStrictEqual([answer.skill, answer.files], [null, []]);
@@ -636,8 +633,7 @@ describe('conversation position', () => {
       discovery: { items: { ledger: { routing: 'discussion', summary: 'The ledger.', source: 'discovery' } } },
       discussion: { items: { ledger: { status: 'completed' } } },
     });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'the epic']);
+    harness.commitAll(dir, 'the epic');
     install('workflow-discussion-process');
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the concluded discussion carries on');
@@ -654,12 +650,11 @@ describe('conversation position', () => {
       discussion: { items: { ledger: { status: 'completed' } } },
       experiment: { items: { ledger: { status: 'completed', experiments: { E1: { slug: 'latency', status: 'concluded', verdict: 'Fast enough.' } } } } },
     });
-    git(['add', '-A']);
-    git(['commit', '-q', '-m', 'the epic']);
+    harness.commitAll(dir, 'the epic');
     ok(['session', 'label', 'pay', 'experiment', 'ledger']);
     assert.notStrictEqual(reads().skill, null, 'the concluded series carries on');
     ok(['topic', 'postpone', 'pay', 'ledger', '--horizon', 'later']);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/pay/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.experiment.items.ledger.status, 'completed', 'the series item itself is not what closes');
     const answer = reads();
     assert.deepStrictEqual([answer.skill, answer.files], [null, []]);
@@ -700,17 +695,17 @@ describe('conversation position', () => {
   });
 
   it('names each file under the root of the project the call runs in, a dashed or dotted root spelled as it is', () => {
-    const root = path.join(dir, 'code', 'my-repo.app');
+    const root = harness.setupFixtureAt(path.join(dir, 'code', 'my-repo.app'));
     fs.mkdirSync(path.join(root, '.claude', 'skills', 'workflow-discussion-process'), { recursive: true });
     fs.writeFileSync(path.join(root, '.claude', 'skills', 'workflow-discussion-process', 'SKILL.md'), '# discussion\n');
-    fs.mkdirSync(path.join(root, '.workflows', 'pay', 'discussion'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
-    fs.writeFileSync(path.join(root, '.workflows', 'pay', 'discussion', 'ledger.md'), '# ledger\n');
+    fs.mkdirSync(path.join(root, '.leeway', 'pay', 'discussion'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'epic', status: 'in-progress', phases: {} }));
+    fs.writeFileSync(path.join(root, '.leeway', 'pay', 'discussion', 'ledger.md'), '# ledger\n');
     writePosition({ name: 'pay', phase: 'discussion', topic: 'ledger' });
     const out = harness.output(root, ['conversation', 'position'], { env: env() });
     const answer = JSON.parse(out.slice(out.indexOf('=== POSITION')).split('\n')[1]);
-    assert.deepStrictEqual(answer.files, [path.join(root, '.workflows/pay/discussion/ledger.md')]);
-    assert.ok(answer.text.endsWith(`\n- ${root}/.workflows/pay/discussion/ledger.md`), answer.text);
+    assert.deepStrictEqual(answer.files, [path.join(root, '.leeway/pay/discussion/ledger.md')]);
+    assert.ok(answer.text.endsWith(`\n- ${root}/.leeway/pay/discussion/ledger.md`), answer.text);
   });
 
   it('reads another conversation by its id, from any project the call runs in; the calling one\'s by default', () => {

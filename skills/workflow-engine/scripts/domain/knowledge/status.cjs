@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
@@ -125,10 +126,10 @@ function statusReport(root) {
   if (manifests) {
     const plan = planIndex(root, chunks, manifests, { scope: null, pruning: pruneTest(settings.cfg, manifests.workUnits) });
     for (const [label, rows] of /** @type {Array<[string, string[]]>} */ ([
-      ['Unindexed completed artifacts', plan.fresh.map((a) => a.file)],
-      ['Changed since indexing', plan.changed.map((a) => a.file)],
-      ['Pruned below the decay floor', plan.pruned.map((a) => a.file)],
-      ['Retired since indexing', plan.retired.map((e) => `${e.file} (${e.reason})`)],
+      ['Unindexed completed artifacts', plan.fresh.map((a) => path.join(root, a.file))],
+      ['Changed since indexing', plan.changed.map((a) => path.join(root, a.file))],
+      ['Pruned below the decay floor', plan.pruned.map((a) => path.join(root, a.file))],
+      ['Retired since indexing', plan.retired.map((e) => `${path.join(root, e.file)} (${e.reason})`)],
     ])) {
       if (rows.length > 0) out.push('', `${label}: ${rows.length}`, ...rows.map((row) => `  ${row}`));
     }

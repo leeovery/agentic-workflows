@@ -41,7 +41,7 @@ describe('workflow-bridge discovery', () => {
       work_type: 'feature',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
-    createFile(dir, '.workflows/auth/discussion/auth.md', '# Discussion');
+    createFile(dir, '.leeway/auth/discussion/auth.md', '# Discussion');
     const r = discover(dir, 'auth');
     assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.phases.specification.exists, false);
@@ -145,8 +145,8 @@ describe('workflow-bridge discovery', () => {
         review: { items: { full: { status: 'completed' } } },
       },
     });
-    createFile(dir, '.workflows/full/discussion/full.md', '');
-    createFile(dir, '.workflows/full/specification/full/specification.md', '');
+    createFile(dir, '.leeway/full/discussion/full.md', '');
+    createFile(dir, '.leeway/full/specification/full/specification.md', '');
     const r = discover(dir, 'full');
     assert.strictEqual(r.phases.discussion.exists, true);
     assert.strictEqual(r.phases.specification.exists, true);
@@ -203,7 +203,7 @@ describe('workflow-bridge discovery', () => {
       work_type: 'epic',
       phases: { research: { items: { exploration: { status: 'in-progress' } } } },
     });
-    createFile(dir, '.workflows/v1/research/notes.md', '# Notes');
+    createFile(dir, '.leeway/v1/research/notes.md', '# Notes');
     const r = discover(dir, 'v1');
     assert.strictEqual(r.phases.research.exists, true);
     assert.strictEqual(r.phases.research.status, 'in-progress');
@@ -214,7 +214,7 @@ describe('workflow-bridge discovery', () => {
       work_type: 'bugfix',
       phases: { investigation: { items: { crash: { status: 'in-progress' } } } },
     });
-    createFile(dir, '.workflows/crash/investigation/crash.md', '# Investigation');
+    createFile(dir, '.leeway/crash/investigation/crash.md', '# Investigation');
     const r = discover(dir, 'crash');
     assert.strictEqual(r.phases.investigation.exists, true);
     assert.strictEqual(r.phases.investigation.status, 'in-progress');
@@ -251,7 +251,7 @@ describe('workflow-bridge discovery', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/research/exploration.md', '# Exploration');
+    createFile(dir, '.leeway/v1/research/exploration.md', '# Exploration');
     const r = discover(dir, 'v1');
     assert.strictEqual(r.epic_detail, undefined);
     assert.strictEqual(r.phases.research.exists, true);

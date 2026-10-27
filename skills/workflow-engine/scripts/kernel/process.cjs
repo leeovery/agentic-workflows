@@ -11,6 +11,15 @@
 const { execFileSync } = require('child_process');
 
 /**
+ * Block the thread for `ms` without burning CPU: Atomics.wait on a throwaway
+ * buffer is never notified, so it sleeps the full timeout.
+ * @param {number} ms
+ */
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
  * The process's kernel-recorded start time. Null when the pid is gone or
  * `ps` is unavailable.
  * @param {number} pid @returns {string|null}
@@ -65,4 +74,4 @@ function ownsRow(record) {
   return (mySession !== null && record.session_id === mySession) || (myPid !== null && record.pid === myPid);
 }
 
-module.exports = { processStartTime, processAlive, ownerAlive, ownsRow };
+module.exports = { sleepSync, processStartTime, processAlive, ownerAlive, ownsRow };

@@ -52,7 +52,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
-const { STATE_DIR_NAME } = require('../kernel/state-root.cjs');
+const { findStateRoot } = require('../kernel/state-root.cjs');
 
 const MARKER = 'workflow';
 const TRANSCRIPT = 'transcript';
@@ -73,13 +73,14 @@ function conversationDir(sessionId) {
 /**
  * Mark the calling conversation as one that runs the workflows — once, only
  * where Claude Code handed the command a session id, and only for a command
- * run inside a workflows project: one run where no `.workflows/` exists
- * marks nothing. A mark that cannot be written costs the command nothing.
+ * run inside a workflows project — one whose repository holds the state, a
+ * code worktree's included: one run anywhere else marks nothing. A mark
+ * that cannot be written costs the command nothing.
  * @param {string} cwd
  */
 function markConversation(cwd) {
   const sessionId = process.env.CLAUDE_CODE_SESSION_ID;
-  if (!sessionId || !fs.existsSync(path.join(cwd, STATE_DIR_NAME))) return;
+  if (!sessionId || findStateRoot(cwd) === null) return;
   const marker = path.join(conversationDir(sessionId), MARKER);
   if (fs.existsSync(marker)) return;
   try {

@@ -1027,7 +1027,7 @@ describe('detectProjectInit', () => {
   });
 
   it('reports partiallyInitialised when the directory exists but files are missing', () => {
-    const dir = path.join(tmpDir, '.workflows', '.knowledge');
+    const dir = knowledgeFiles(tmpDir).dir;
     fs.mkdirSync(dir, { recursive: true });
     const result = detectProjectInit(knowledgeFiles(tmpDir));
     assert.strictEqual(result.dirExists, true);
@@ -1036,7 +1036,7 @@ describe('detectProjectInit', () => {
   });
 
   it('reports partiallyInitialised when only some files are present', () => {
-    const dir = path.join(tmpDir, '.workflows', '.knowledge');
+    const dir = knowledgeFiles(tmpDir).dir;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
     const result = detectProjectInit(knowledgeFiles(tmpDir));
@@ -1047,7 +1047,7 @@ describe('detectProjectInit', () => {
   });
 
   it('reports fullyInitialised when all three files exist', () => {
-    const dir = path.join(tmpDir, '.workflows', '.knowledge');
+    const dir = knowledgeFiles(tmpDir).dir;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'config.json'), '{}', 'utf8');
     fs.writeFileSync(path.join(dir, 'store.bin'), '', 'utf8');

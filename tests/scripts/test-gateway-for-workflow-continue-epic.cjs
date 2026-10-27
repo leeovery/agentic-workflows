@@ -1470,7 +1470,7 @@ describe('workflow-continue-epic formatScoped (state dump)', () => {
         discussion: { items: { parked: { status: 'unstarted' } } },
       },
     });
-    createFile(dir, '.workflows/v1/discussion/.mailbox/parked/001-question.md', '### question\n');
+    createFile(dir, '.leeway/v1/discussion/.mailbox/parked/001-question.md', '### question\n');
     const out = formatScoped('v1', discover(dir, 'v1'));
     assert.ok(out.includes('  - ○ parked [fresh] routing=discussion summary=absent description=absent mail=waiting\n'), out);
   });
@@ -1775,7 +1775,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
 
   it('pull-forward-menu emits the roadmap item on the key, in DATA, byte-exactly', () => {
     const fs = require('fs');
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next'], items: {
         'export-suite': { horizon: 'next', summary: 's', origin: 'harvest', postponed_from: { work_unit: 'v1', topic: 'away' } },
@@ -1851,7 +1851,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   it('view joins a held session across DATA, the menu strike-through, and the ACTIONS marker', () => {
     const fs = require('fs');
     epicFixture();
-    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    const p = path.join(dir, '.leeway/.cache/v1/discussion/auth/presence');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     // pid alive (this test process), no start time — the aliveness fallback.
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'sess-view' }) + '\n');
@@ -1892,7 +1892,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
         discussion: { items: { auth: { status: 'in-progress', reconcile_needed: 'research' } } },
       },
     });
-    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    const p = path.join(dir, '.leeway/.cache/v1/discussion/auth/presence');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
     const past = new Date(Date.now() - 240 * 1000);
@@ -1921,19 +1921,19 @@ describe('workflow-continue-epic CLI dispatch', () => {
     epicFixture();
     // A ready-to-implement plan in this epic, and a peer session holding the
     // code slot in a different work unit entirely.
-    const mpath = path.join(dir, '.workflows/v1/manifest.json');
+    const mpath = path.join(dir, '.leeway/v1/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(mpath, 'utf8'));
     manifest.phases.specification = { items: { auth: { status: 'completed', order: 1, sources: { auth: { status: 'incorporated' } } } } };
     manifest.phases.planning = { items: { auth: { status: 'completed', format: 'local-markdown' } } };
     manifest.phases.discussion.items.auth.status = 'completed';
     fs.writeFileSync(mpath, JSON.stringify(manifest, null, 2));
-    fs.mkdirSync(path.join(dir, '.workflows/ship'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/ship/manifest.json'), JSON.stringify({
+    fs.mkdirSync(path.join(dir, '.leeway/ship'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/ship/manifest.json'), JSON.stringify({
       name: 'ship', work_type: 'feature', status: 'in-progress', phases: {},
     }, null, 2));
-    const peer = path.join(dir, '.workflows/.cache/ship/implementation/checkout-flow/presence');
+    const peer = path.join(dir, '.leeway/.cache/ship/implementation/checkout-flow/presence');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
-    fs.writeFileSync(peer, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
+    fs.writeFileSync(peer, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer', checkout: dir }) + '\n');
 
     const res = run(['view', 'v1']);
     assert.strictEqual(res.status, 0, res.stderr);
@@ -1954,7 +1954,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   it('the caller\'s own hold marks nothing — a session never strikes through itself', () => {
     const fs = require('fs');
     epicFixture();
-    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    const p = path.join(dir, '.leeway/.cache/v1/discussion/auth/presence');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine' }) + '\n');
 
@@ -2007,7 +2007,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   it("cancel-menu carries a held unit's in-session age from the presence scan — never the caller's own hold", () => {
     const fs = require('fs');
     epicFixture();
-    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    const p = path.join(dir, '.leeway/.cache/v1/discussion/auth/presence');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
     const past = new Date(Date.now() - 120 * 1000);
@@ -2028,7 +2028,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
   it("postpone-menu carries a held unit's in-session age from the presence scan — never the caller's own hold", () => {
     const fs = require('fs');
     epicFixture();
-    const p = path.join(dir, '.workflows/.cache/v1/discussion/auth/presence');
+    const p = path.join(dir, '.leeway/.cache/v1/discussion/auth/presence');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
     const past = new Date(Date.now() - 120 * 1000);
@@ -2055,7 +2055,7 @@ describe('workflow-continue-epic CLI dispatch', () => {
         discussion: { items: { auth: { status: 'cancelled', previous_status: 'in-progress' } } },
       },
     });
-    const p = path.join(dir, '.workflows/.cache/v1/experiment/auth/presence');
+    const p = path.join(dir, '.leeway/.cache/v1/experiment/auth/presence');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
     const past = new Date(Date.now() - 120 * 1000);
@@ -2201,8 +2201,8 @@ describe('workflow-continue-epic specification discovery', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
-    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data Spec');
+    createFile(dir, '.leeway/v1/specification/auth-spec/specification.md', '# Auth Spec');
+    createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data Spec');
     const r = specificationDiscovery(dir, 'v1');
     assert.strictEqual(r.specifications.length, 2);
     const authSpec = r.specifications.find(s => s.name === 'auth-spec');
@@ -2223,7 +2223,7 @@ describe('workflow-continue-epic specification discovery', () => {
       },
     });
     assert.strictEqual(specificationDiscovery(dir, 'v1').specifications.length, 0);
-    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/a-spec/specification.md', '# A');
     assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.spec_count, 1);
   });
 
@@ -2239,8 +2239,8 @@ describe('workflow-continue-epic specification discovery', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/old-spec/specification.md', '# Old');
-    createFile(dir, '.workflows/v1/specification/new-spec/specification.md', '# New');
+    createFile(dir, '.leeway/v1/specification/old-spec/specification.md', '# Old');
+    createFile(dir, '.leeway/v1/specification/new-spec/specification.md', '# New');
     const r = specificationDiscovery(dir, 'v1');
     assert.strictEqual(r.specifications.length, 1);
     assert.strictEqual(r.specifications[0].name, 'new-spec');
@@ -2262,7 +2262,7 @@ describe('workflow-continue-epic specification discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { parked: { status: 'unstarted' } } } },
     });
-    createFile(dir, '.workflows/overhaul/discussion/.mailbox/parked/001-message.md', '### Message\nBody.\n');
+    createFile(dir, '.leeway/overhaul/discussion/.mailbox/parked/001-message.md', '### Message\nBody.\n');
     const r = specificationDiscovery(dir, 'overhaul');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a stub must not flip the blocked scenario to "still in progress"');
@@ -2277,7 +2277,7 @@ describe('workflow-continue-epic specification discovery', () => {
         discussion: { items: { away: { status: 'postponed', previous_status: 'completed' } } },
       },
     });
-    createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
+    createFile(dir, '.leeway/mvp/discussion/away.md', '# Discussion: Away\n');
     const r = specificationDiscovery(dir, 'mvp');
     assert.strictEqual(r.current_state.discussion_count, 0);
     assert.strictEqual(r.current_state.has_discussions, false, 'a topic that left for the roadmap must not read as one still in progress');
@@ -2301,8 +2301,8 @@ describe('workflow-continue-epic specification discovery', () => {
         } },
       },
     });
-    createFile(dir, '.workflows/mvp/discussion/away.md', '# Discussion: Away\n');
-    createFile(dir, '.workflows/mvp/discussion/billing.md', '# Discussion: Billing\n');
+    createFile(dir, '.leeway/mvp/discussion/away.md', '# Discussion: Away\n');
+    createFile(dir, '.leeway/mvp/discussion/billing.md', '# Discussion: Billing\n');
     const r = specificationDiscovery(dir, 'mvp');
     assert.strictEqual(r.current_state.discussion_count, 1);
     assert.strictEqual(r.current_state.completed_count, 1);
@@ -2315,7 +2315,7 @@ describe('workflow-continue-epic specification discovery', () => {
       work_type: 'epic',
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
-    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth');
+    createFile(dir, '.leeway/v1/discussion/auth.md', '# Auth');
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'none');
 
     createManifest(dir, 'v1', {
@@ -2329,7 +2329,7 @@ describe('workflow-continue-epic specification discovery', () => {
     });
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'valid');
 
-    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth updated');
+    createFile(dir, '.leeway/v1/discussion/auth.md', '# Auth updated');
     assert.strictEqual(specificationDiscovery(dir, 'v1').cache, 'stale');
   });
 
@@ -2352,7 +2352,7 @@ describe('workflow-continue-epic specification discovery', () => {
       phases: { discussion: { items: { auth: { status: 'completed' } } } },
     });
     assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.discussions_checksum, null);
-    createFile(dir, '.workflows/v1/discussion/auth.md', '# Auth discussion');
+    createFile(dir, '.leeway/v1/discussion/auth.md', '# Auth discussion');
     assert.ok(specificationDiscovery(dir, 'v1').current_state.discussions_checksum);
   });
 
@@ -2398,7 +2398,7 @@ describe('workflow-continue-epic specification discovery', () => {
         } },
       },
     });
-    createFile(dir, '.workflows/pay/specification/billing/specification.md', '# Billing');
+    createFile(dir, '.leeway/pay/specification/billing/specification.md', '# Billing');
     const r = specificationDiscovery(dir, 'pay');
     assert.deepStrictEqual(r.discussions.map((d) => [d.name, d.has_individual_spec]), [['auth', false], ['billing', false]]);
     assert.deepStrictEqual(r.specifications.map((s) => s.name).sort(), ['auth', 'billing'],
@@ -2442,7 +2442,7 @@ describe('workflow-continue-epic specification discovery', () => {
         specification: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+    createFile(dir, '.leeway/v1/specification/auth/specification.md', '# Spec');
     const r = specificationDiscovery(dir, 'v1');
     assert.strictEqual(r.specifications.length, 1);
     assert.strictEqual(r.specifications[0].sources, undefined);
@@ -2463,7 +2463,7 @@ describe('workflow-continue-epic specification discovery', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+    createFile(dir, '.leeway/v1/specification/auth/specification.md', '# Spec');
     const spec = specificationDiscovery(dir, 'v1').specifications[0];
     assert.deepStrictEqual(spec.sources, [{ name: 'auth', status: 'pending', discussion_status: 'completed' }]);
     assert.strictEqual(spec.has_pending_sources, true);
@@ -2481,7 +2481,7 @@ describe('workflow-continue-epic specification discovery', () => {
         },
       },
     });
-    createFile(dir, '.workflows/pay/specification/core/specification.md', '# Spec');
+    createFile(dir, '.leeway/pay/specification/core/specification.md', '# Spec');
     const r = specificationDiscovery(dir, 'pay');
     assert.deepStrictEqual(r.specifications[0].sources, [
       { name: 'auth', status: 'incorporated', discussion_status: 'completed' },
@@ -2539,9 +2539,9 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           },
         },
       });
-      createFile(dir, '.workflows/v1/specification/concluded-spec/specification.md', '# Concluded');
-      createFile(dir, '.workflows/v1/specification/pending-spec/specification.md', '# Pending');
-      createFile(dir, '.workflows/v1/specification/wip-spec/specification.md', '# Wip');
+      createFile(dir, '.leeway/v1/specification/concluded-spec/specification.md', '# Concluded');
+      createFile(dir, '.leeway/v1/specification/pending-spec/specification.md', '# Pending');
+      createFile(dir, '.leeway/v1/specification/wip-spec/specification.md', '# Wip');
     }
 
     it('has_pending_sources false when all sources incorporated', () => {
@@ -2577,7 +2577,7 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           },
         },
       });
-      createFile(dir, '.workflows/v1/specification/staled-spec/specification.md', '# Staled');
+      createFile(dir, '.leeway/v1/specification/staled-spec/specification.md', '# Staled');
       const spec = specificationDiscovery(dir, 'v1').specifications.find(s => s.name === 'staled-spec');
       assert.strictEqual(spec.has_pending_sources, true);
       assert.strictEqual(spec.sources[0].status, 'stale');
@@ -2591,7 +2591,7 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           specification: { items: { auth: { status: 'in-progress' } } },
         },
       });
-      createFile(dir, '.workflows/v1/specification/auth/specification.md', '# Spec');
+      createFile(dir, '.leeway/v1/specification/auth/specification.md', '# Spec');
       assert.strictEqual(specificationDiscovery(dir, 'v1').specifications[0].has_pending_sources, false);
     });
 
@@ -2615,9 +2615,9 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           },
         },
       });
-      createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
-      createFile(dir, '.workflows/v1/specification/auth/specification.md', '# A');
-      createFile(dir, '.workflows/v1/specification/stray/specification.md', '# S');
+      createFile(dir, '.leeway/v1/specification/zeta/specification.md', '# Z');
+      createFile(dir, '.leeway/v1/specification/auth/specification.md', '# A');
+      createFile(dir, '.leeway/v1/specification/stray/specification.md', '# S');
       assert.deepStrictEqual(specificationDiscovery(dir, 'v1').specifications.map(s => s.name), ['auth', 'zeta', 'stray']);
     });
 
@@ -2634,8 +2634,8 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           },
         },
       });
-      createFile(dir, '.workflows/v1/specification/zeta/specification.md', '# Z');
-      createFile(dir, '.workflows/v1/specification/alpha/specification.md', '# A');
+      createFile(dir, '.leeway/v1/specification/zeta/specification.md', '# Z');
+      createFile(dir, '.leeway/v1/specification/alpha/specification.md', '# A');
       assert.deepStrictEqual(specificationDiscovery(dir, 'v1').specifications.map(s => s.name), ['zeta', 'alpha']);
     });
 
@@ -2657,7 +2657,7 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           },
         },
       });
-      createFile(dir, '.workflows/v1/specification/wip/specification.md', '# Wip');
+      createFile(dir, '.leeway/v1/specification/wip/specification.md', '# Wip');
       assert.strictEqual(specificationDiscovery(dir, 'v1').current_state.concluded_count, 0);
     });
   });
@@ -2722,7 +2722,7 @@ describe('workflow-continue-epic specification ordering and counts', () => {
           },
         },
       });
-      createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth Spec');
+      createFile(dir, '.leeway/v1/specification/auth-spec/specification.md', '# Auth Spec');
       const r = specificationDiscovery(dir, 'v1');
       assert.strictEqual(r.current_state.spec_count, 1);
       assert.strictEqual(r.current_state.proposed_count, 1);

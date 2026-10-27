@@ -8,10 +8,12 @@
 // waits on embedding.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
-// error — migrations must never half-run silently. A run that recorded
-// migrations without changing a document leaves the tracking ledger as the
-// only dirt, and no reviewed commit follows a report of no changes, so boot
-// commits that line itself — this run's, or one an earlier boot stranded.
+// error — migrations must never half-run silently. The run records into the
+// state's ledger, which boot names, under the writer lock: the runner takes
+// no lock of its own, so the parent's hold covers it. A run that recorded
+// migrations without changing a document leaves the ledger as the only dirt,
+// and no reviewed commit follows a report of no changes, so boot commits
+// that line itself — this run's, or one an earlier boot stranded.
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
 // beside them the store's lock and the fill's claim — is local to each
@@ -33,10 +35,11 @@
 
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
-const { commitPathspecScoped } = require('./commit.cjs');
+const { commitPathspecScoped, commitStateScoped } = require('./commit.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
@@ -69,15 +72,14 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 // flow's migration summary and stripped from the report text.
 const NOTICES_MARKER = '---MIGRATION_NOTICES---';
 
-// Marker preceding migrate.cjs's one-line JSON report of the run —
-// `{ran, tracking}`: the migrations executed, and the tracking ledger they
-// recorded into. Counting runs is not counting files — a migration that ran
-// and found nothing to do still recorded its ID — so the stop gate cannot
-// speak for the ledger. The path is what the commit needs, and it rides every
-// completed run, a run that recorded nothing included: the runner resolves it
-// itself (migration 011 moves it), and dirt from an earlier boot must be
-// committable by a boot that ran no migrations at all.
+// Marker preceding migrate.cjs's one-line JSON report of the run — `{ran}`:
+// the migrations executed. Counting runs is not counting files — a migration
+// that ran and found nothing to do still recorded its ID — so the stop gate
+// cannot speak for the ledger.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
+
+// The ledger the runner records into, state-relative.
+const LEDGER = '.state/migrations';
 
 /**
  * @typedef {object} SystemConfigReport
@@ -165,39 +167,17 @@ function liftMarker(lines, marker, label, warnings) {
 }
 
 /**
- * Whether a path is one this project may commit: relative, inside the tree,
- * no traversal.
- * @param {string} p
- * @returns {boolean}
- */
-function isProjectRelative(p) {
-  return p !== '' && p !== '.' && !path.isAbsolute(p) && !p.split('/').includes('..');
-}
-
-/**
- * The run report's two fields, read defensively: how many migrations ran, and
- * the ledger they recorded into. An absent block reads zero with no ledger —
- * a runner that predates the marker says nothing about what it recorded, and
- * silence is the safe reading. A malformed one degrades to a warning: `ran`
- * survives when it alone is sound, and an implausible path — one git must
- * never be handed as a pathspec — is dropped, which costs the commit, not the
- * boot.
+ * The run report's count, read defensively: an absent block reads zero, and
+ * a malformed one reads zero with a warning.
  * @param {unknown} payload @param {string[]} warnings
- * @returns {{ran: number, tracking: string|null}}
+ * @returns {number}
  */
 function readRunReport(payload, warnings) {
-  if (payload === undefined) return { ran: 0, tracking: null };
-  const report = payload && typeof payload === 'object'
-    ? /** @type {{ran?: unknown, tracking?: unknown}} */ (payload)
-    : {};
-  const rawRan = report.ran;
-  const ran = typeof rawRan === 'number' && Number.isInteger(rawRan) && rawRan >= 0 ? rawRan : null;
-  const tracking = typeof report.tracking === 'string' && isProjectRelative(report.tracking) ? report.tracking : null;
-  if (ran === null || tracking === null) {
-    warnings.push(`migration run report unreadable: ${JSON.stringify(payload)}`);
-    return { ran: ran === null ? 0 : ran, tracking: null };
-  }
-  return { ran, tracking };
+  if (payload === undefined) return 0;
+  const ran = payload && typeof payload === 'object' ? /** @type {{ran?: unknown}} */ (payload).ran : undefined;
+  if (typeof ran === 'number' && Number.isInteger(ran) && ran >= 0) return ran;
+  warnings.push(`migration run report unreadable: ${JSON.stringify(payload)}`);
+  return 0;
 }
 
 /**
@@ -219,54 +199,12 @@ function trimReport(stdout) {
  */
 function boot(cwd) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
-  const mig = spawnSync('node', [MIGRATE_CJS], { cwd, encoding: 'utf8' });
-  if (mig.error || mig.status !== 0) {
-    const detail = mig.error
-      ? mig.error.message
-      : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
-    throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
-  }
   /** @type {string[]} */
   const warnings = [];
-
-  const outLines = (mig.stdout || '').split('\n');
-  const addenda = liftMarker(outLines, VERIFY_MARKER, 'verification addenda', warnings);
-  if (addenda !== undefined && !Array.isArray(addenda)) warnings.push('verification addenda unreadable: not an array');
-  const notices = liftMarker(outLines, NOTICES_MARKER, 'migration notices', warnings);
-  if (notices !== undefined && !Array.isArray(notices)) warnings.push('migration notices unreadable: not an array');
-  const { ran, tracking } = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
-  const stdout = outLines.join('\n');
-
-  const migrations = {
-    changed: stdout.includes(STOP_GATE_MARKER),
-    ran,
-    output: trimReport(stdout),
-    verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
-    notices: /** @type {MigrationNotice[]} */ (Array.isArray(notices) ? notices : []),
-  };
-
-  // A migration that ran while changing no document still wrote the ledger,
-  // and that write has no other path to a commit: with nothing to review the
-  // calling skill says "up to date" and never reaches its `commit
-  // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
-  // will carry it — dirt this run recorded, and dirt an earlier boot left
-  // behind the same way, which is the state every install that met this bug
-  // is sitting in. When the review gate does fire, its own commit takes the
-  // ledger in with the diff the user approved and boot stays out of the way.
-  // The migrations are already applied, so a commit failure is a warning.
-  /** @type {string|null} */
-  let migrationsCommitted = null;
-  if (!migrations.changed && tracking) {
-    try {
-      if (git(cwd, ['status', '--porcelain', '--', tracking]).trim() !== '') {
-        migrationsCommitted = commitPathspecScoped(cwd, [tracking], 'chore: record workflow migrations');
-      }
-    } catch (err) {
-      warnings.push(`migration ledger commit failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
+  const { migrations, migrationsCommitted } = withStateLock(stateRoot(cwd), () => runMigrations(cwd, warnings));
 
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
+
 
   // While a reviewed migration commit follows, it takes every path the
   // workflows own, so boot's own writes there ride it as the ledger does —
@@ -288,6 +226,59 @@ function boot(cwd) {
   // mode choice, or fall back to the terminal wizard) without extra probes.
   if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
   return result;
+}
+
+/**
+ * Run the migrations into the state's ledger and, where no reviewed commit
+ * will carry it, commit the ledger.
+ * @param {string} cwd @param {string[]} warnings
+ * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}}
+ */
+function runMigrations(cwd, warnings) {
+  const mig = spawnSync('node', [MIGRATE_CJS, '--ledger', statePath(cwd, LEDGER)], { cwd, encoding: 'utf8' });
+  if (mig.error || mig.status !== 0) {
+    const detail = mig.error
+      ? mig.error.message
+      : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
+    throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
+  }
+
+  const outLines = (mig.stdout || '').split('\n');
+  const addenda = liftMarker(outLines, VERIFY_MARKER, 'verification addenda', warnings);
+  if (addenda !== undefined && !Array.isArray(addenda)) warnings.push('verification addenda unreadable: not an array');
+  const notices = liftMarker(outLines, NOTICES_MARKER, 'migration notices', warnings);
+  if (notices !== undefined && !Array.isArray(notices)) warnings.push('migration notices unreadable: not an array');
+  const ran = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
+  const stdout = outLines.join('\n');
+
+  const migrations = {
+    changed: stdout.includes(STOP_GATE_MARKER),
+    ran,
+    output: trimReport(stdout),
+    verify: /** @type {VerifyAddendum[]} */ (Array.isArray(addenda) ? addenda : []),
+    notices: /** @type {MigrationNotice[]} */ (Array.isArray(notices) ? notices : []),
+  };
+
+  // A migration that ran while changing no document still wrote the ledger,
+  // and that write has no other path to a commit: with nothing to review the
+  // calling skill says "up to date" and never reaches its `commit
+  // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
+  // will carry it — dirt this run recorded, and dirt an earlier boot left
+  // behind the same way. When the review gate does fire, its own commit takes
+  // the ledger in with the diff the user approved and boot stays out of the
+  // way. The migrations are already applied, so a commit failure is a warning.
+  /** @type {string|null} */
+  let migrationsCommitted = null;
+  if (!migrations.changed) {
+    try {
+      const committed = commitStateScoped(cwd, LEDGER, 'chore: record workflow migrations');
+      migrationsCommitted = committed.committed;
+      warnings.push(...committed.warnings);
+    } catch (err) {
+      warnings.push(`migration ledger commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  return { migrations, migrationsCommitted };
 }
 
 /**

@@ -5,12 +5,11 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { git } = harness;
+const { stateGit, commitAll, setupGitFixture, cleanupFixture } = harness;
 const { walkthroughState } = require('../../skills/workflow-engine/scripts/domain/walkthrough.cjs');
 
 function writeFile(dir, rel, content) {
@@ -25,21 +24,21 @@ function refuses(dir, args, pattern) {
   return parsed;
 }
 function projectManifest(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows/manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
 }
 function setProjectManifest(dir, mutate) {
   const m = projectManifest(dir);
   mutate(m);
-  writeFile(dir, '.workflows/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  writeFile(dir, '.leeway/manifest.json', JSON.stringify(m, null, 2) + '\n');
 }
 
 describe('walkthrough state', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-walkthrough-state-'));
-    writeFile(dir, '.workflows/manifest.json', JSON.stringify({ work_units: {} }, null, 2) + '\n');
+    dir = setupGitFixture('engine-walkthrough-state-');
+    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {} }, null, 2) + '\n');
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => cleanupFixture(dir));
 
   it('reads the recorded answer; anything else is the nothing-recorded state the offer keys on', () => {
     assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, 'an absent node');
@@ -51,9 +50,9 @@ describe('walkthrough state', () => {
       setProjectManifest(dir, (m) => { m.walkthrough = walkthrough; });
       assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, JSON.stringify(walkthrough));
     }
-    fs.rmSync(path.join(dir, '.workflows/manifest.json'));
+    fs.rmSync(path.join(dir, '.leeway/manifest.json'));
     assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, 'a missing project manifest');
-    writeFile(dir, '.workflows/manifest.json', '{ not json');
+    writeFile(dir, '.leeway/manifest.json', '{ not json');
     assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, 'a corrupt project manifest');
   });
 });
@@ -61,23 +60,18 @@ describe('walkthrough state', () => {
 describe('engine walkthrough record', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-walkthrough-'));
-    git(dir, ['init', '-q', '-b', 'main']);
-    git(dir, ['config', 'user.email', 'test@example.com']);
-    git(dir, ['config', 'user.name', 'Test']);
-    git(dir, ['config', 'commit.gpgsign', 'false']);
-    writeFile(dir, '.workflows/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
-    writeFile(dir, '.workflows/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
-    writeFile(dir, '.workflows/pay/discussion/pay.md', '# Discussion\n');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
+    dir = setupGitFixture('engine-walkthrough-');
+    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
+    writeFile(dir, '.leeway/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
+    writeFile(dir, '.leeway/pay/discussion/pay.md', '# Discussion\n');
+    commitAll(dir, 'init');
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => cleanupFixture(dir));
 
   it('walked: writes the answer and commits it confined to the project manifest — a peer session\'s dirt never rides', () => {
     // A peer mid-write: an untracked scratch note and a modified discussion.
-    writeFile(dir, '.workflows/pay/NOTES.md', 'peer scratch\n');
-    writeFile(dir, '.workflows/pay/discussion/pay.md', '# Discussion\n\npeer session dirt\n');
+    writeFile(dir, '.leeway/pay/NOTES.md', 'peer scratch\n');
+    writeFile(dir, '.leeway/pay/discussion/pay.md', '# Discussion\n\npeer session dirt\n');
 
     const res = run(dir, ['walkthrough', 'record', 'walked']);
     assert.strictEqual(res.ok, true);
@@ -86,10 +80,10 @@ describe('engine walkthrough record', () => {
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'walked' });
     assert.deepStrictEqual(projectManifest(dir).work_units, { pay: { work_type: 'feature' } }, 'sibling keys survive');
 
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore(help): walkthrough walked');
-    const landed = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
-    assert.deepStrictEqual(landed, ['.workflows/manifest.json']);
-    const status = git(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore(help): walkthrough walked');
+    const landed = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.deepStrictEqual(landed, ['manifest.json']);
+    const status = stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
     assert.ok(status.some((l) => l.startsWith('?? ') && l.includes('NOTES.md')), `the peer's untracked note is still untracked:\n${status.join('\n')}`);
     assert.ok(status.some((l) => l.startsWith(' M ') && l.includes('discussion/pay.md')), `the peer's modified discussion is still dirty:\n${status.join('\n')}`);
   });
@@ -98,7 +92,7 @@ describe('engine walkthrough record', () => {
     const res = run(dir, ['walkthrough', 'record', 'skipped']);
     assert.strictEqual(res.status, 'skipped');
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'skipped' });
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore(help): walkthrough skipped');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore(help): walkthrough skipped');
   });
 
   it('refuses any other value, and refuses once anything is recorded — the offer is answered once', () => {
@@ -117,12 +111,12 @@ describe('engine walkthrough record', () => {
 
   it('a nothing-recorded object and a missing project manifest both take the answer', () => {
     setProjectManifest(dir, (m) => { m.walkthrough = {}; });
-    git(dir, ['commit', '-q', '-am', 'nothing recorded']);
+    stateGit(dir, ['commit', '-q', '-am', 'nothing recorded']);
     run(dir, ['walkthrough', 'record', 'walked']);
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'walked' });
 
-    fs.rmSync(path.join(dir, '.workflows/manifest.json'));
-    git(dir, ['commit', '-q', '-am', 'drop the project manifest']);
+    fs.rmSync(path.join(dir, '.leeway/manifest.json'));
+    stateGit(dir, ['commit', '-q', '-am', 'drop the project manifest']);
     const res = run(dir, ['walkthrough', 'record', 'skipped']);
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'skipped' });
     assert.match(res.committed, /^[0-9a-f]+$/);

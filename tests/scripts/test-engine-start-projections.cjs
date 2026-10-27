@@ -43,7 +43,7 @@ const NB = (n) => '\u00a0'.repeat(n);
 function writeProjectBaseline(dir, baseline) {
   const fs = require('fs');
   const path = require('path');
-  const p = path.join(dir, '.workflows', 'manifest.json');
+  const p = path.join(dir, '.leeway', 'manifest.json');
   const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
   fs.writeFileSync(p, JSON.stringify({ ...existing, baseline }, null, 2));
 }
@@ -74,9 +74,9 @@ function fullFixture(dir) {
   });
   createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
   createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-  createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-  createFile(dir, '.workflows/.inbox/ideas/2026-06-02--dark-launch.md', '# Dark Launch\n');
-  createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
+  createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+  createFile(dir, '.leeway/.inbox/ideas/2026-06-02--dark-launch.md', '# Dark Launch\n');
+  createFile(dir, '.leeway/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
   return startDetail(dir);
 }
 
@@ -139,9 +139,9 @@ describe('start projections: overview', () => {
 
   it('renders the inbox section rows with each item\'s bracketed type inline', () => {
     createManifest(dir, 'auth-flow', {});
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--one.md', '# One\n');
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-02--qf-a.md', '# A\n');
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-03--qf-b.md', '# B\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--one.md', '# One\n');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-02--qf-a.md', '# A\n');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-03--qf-b.md', '# B\n');
     const out = startOverview(startDetail(dir));
     assert.ok(out.includes('\nInbox\n  ├─ One [idea]\n  ├─ A [quick-fix]\n  └─ B [quick-fix]\n'));
   });
@@ -177,8 +177,8 @@ describe('start projections: menu', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a single-topic unit with messages waiting carries the mail waiting cue on its row — an epic never does', () => {
-    createFile(dir, '.workflows/dark-mode/discussion/.mailbox/dark-mode/001-escalation-path.md', '### Escalation path\n');
-    createFile(dir, '.workflows/quiz-competition-v1/discussion/.mailbox/menu-admin/001-cost-model.md', '### Cost model\n');
+    createFile(dir, '.leeway/dark-mode/discussion/.mailbox/dark-mode/001-escalation-path.md', '### Escalation path\n');
+    createFile(dir, '.leeway/quiz-competition-v1/discussion/.mailbox/menu-admin/001-cost-model.md', '### Cost model\n');
     const detail = fullFixture(dir);
     assert.deepStrictEqual(detail.features.work_units.find((u) => u.name === 'dark-mode').mail_phases, ['discussion']);
     assert.strictEqual(detail.features.work_units.find((u) => u.name === 'auth-flow').mail_phases, undefined);
@@ -341,7 +341,7 @@ describe('start projections: empty state', () => {
   it('adds the counts line, singular inbox option, and view option when state has them', () => {
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled' });
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
     const detail = startDetail(dir);
     assert.strictEqual(emptyOverview(detail), [
       'No active work found.',
@@ -359,8 +359,8 @@ describe('start projections: empty state', () => {
   });
 
   it('pluralises the inbox option label', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    createFile(dir, '.leeway/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
     assert.ok(emptyMenu(startDetail(dir)).rendered.includes('triage its items (2 items)'));
   });
 });
@@ -376,18 +376,18 @@ describe('start projections: inbox pickup', () => {
   }
 
   it('renders the combined, date-ordered list with the multi-select menu and archived option', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-02--dark-launch.md', '# Dark Launch\n');
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-02--dark-launch.md', '# Dark Launch\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    createFile(dir, '.leeway/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     const v = pickup(dir);
     assert.strictEqual(v.data, [
       'inbox_count: 3',
       'has_archived: true',
       'ITEMS (n  type  date  slug  → path  — title):',
-      '  1  idea  2026-06-01  smart-retry  → .workflows/.inbox/ideas/2026-06-01--smart-retry.md  — Smart Retry',
-      '  2  idea  2026-06-02  dark-launch  → .workflows/.inbox/ideas/2026-06-02--dark-launch.md  — Dark Launch',
-      '  3  bug  2026-06-03  login-timeout  → .workflows/.inbox/bugs/2026-06-03--login-timeout.md  — Login Timeout',
+      `  1  idea  2026-06-01  smart-retry  → ${dir}/.leeway/.inbox/ideas/2026-06-01--smart-retry.md  — Smart Retry`,
+      `  2  idea  2026-06-02  dark-launch  → ${dir}/.leeway/.inbox/ideas/2026-06-02--dark-launch.md  — Dark Launch`,
+      `  3  bug  2026-06-03  login-timeout  → ${dir}/.leeway/.inbox/bugs/2026-06-03--login-timeout.md  — Login Timeout`,
     ].join('\n'));
     assert.strictEqual(v.display, [
       'Ideas',
@@ -410,7 +410,7 @@ describe('start projections: inbox pickup', () => {
   });
 
   it('renders the singular select option for one item without an archived store', () => {
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
+    createFile(dir, '.leeway/.inbox/bugs/2026-06-03--login-timeout.md', '# Login Timeout\n');
     const v = pickup(dir);
     assert.strictEqual(v.menu, [
       '· · · · · · · · · · · ·',
@@ -423,7 +423,7 @@ describe('start projections: inbox pickup', () => {
   });
 
   it('renders the empty inbox as its display alone — no pick to take, so no menu', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     const v = pickup(dir);
     assert.strictEqual(v.data, [
       'inbox_count: 0',
@@ -441,17 +441,17 @@ describe('start projections: archived store', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('the menu is the archived list — one numbered row per item, group-major, then back; no display beside it', () => {
-    createFile(dir, '.workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md', '# Tidy Logs\n');
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
-    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-05-03--tricky.md', '# A title with **bold**\n');
+    createFile(dir, '.leeway/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md', '# Tidy Logs\n');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.leeway/.inbox/.archived/bugs/2026-05-03--tricky.md', '# A title with **bold**\n');
     const detail = startDetail(dir);
     const v = archivedView(combinedInbox(detail.inbox.archived, { archived: true }));
     assert.strictEqual(v.data, [
       'archived_count: 3',
       'ITEMS (n  type  date  slug  → path  — title):',
-      '  1  idea  2026-05-01  old-idea  → .workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md  — Old Idea',
-      '  2  bug  2026-05-03  tricky  → .workflows/.inbox/.archived/bugs/2026-05-03--tricky.md  — A title with **bold**',
-      '  3  quick-fix  2026-05-02  tidy-logs  → .workflows/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md  — Tidy Logs',
+      `  1  idea  2026-05-01  old-idea  → ${dir}/.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md  — Old Idea`,
+      `  2  bug  2026-05-03  tricky  → ${dir}/.leeway/.inbox/.archived/bugs/2026-05-03--tricky.md  — A title with **bold**`,
+      `  3  quick-fix  2026-05-02  tidy-logs  → ${dir}/.leeway/.inbox/.archived/quickfixes/2026-05-02--tidy-logs.md  — Tidy Logs`,
     ].join('\n'));
     assert.strictEqual(v.display, undefined);
     assert.strictEqual(v.menu, [
@@ -473,9 +473,9 @@ describe('start projections: archived store', () => {
   });
 
   it('the archived-actions and delete gates render over the selected item by its store path, and refuse a path the store does not hold', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--live-idea.md', '# Live Idea\n');
-    const archived = '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md';
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--live-idea.md', '# Live Idea\n');
+    const archived = '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md';
 
     assert.strictEqual(renderSurface(dir, 'archived-actions', { path: archived }), [
       "=== MENU: archived actions (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
@@ -503,14 +503,14 @@ describe('start projections: archived store', () => {
       '',
     ].join('\n'));
 
-    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md', '# A title with **bold** and a [link]\n');
-    const tricky = renderSurface(dir, 'archived-actions', { path: '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md' });
+    createFile(dir, '.leeway/.inbox/.archived/bugs/2026-05-02--tricky.md', '# A title with **bold** and a [link]\n');
+    const tricky = renderSurface(dir, 'archived-actions', { path: '.leeway/.inbox/.archived/bugs/2026-05-02--tricky.md' });
     assert.match(tricky, /Selected: \*\*A title with \\\*\\\*bold\\\*\\\* and a \\\[link\\\]\*\* \(bug, archived\)/, 'user-authored title markup is escaped');
-    assert.match(renderSurface(dir, 'archived-delete-gate', { path: '.workflows/.inbox/.archived/bugs/2026-05-02--tricky.md' }), /deleting "A title with \\\*\\\*bold/);
+    assert.match(renderSurface(dir, 'archived-delete-gate', { path: '.leeway/.inbox/.archived/bugs/2026-05-02--tricky.md' }), /deleting "A title with \\\*\\\*bold/);
     assert.throws(() => renderSurface(dir, 'archived-actions', {}), /render archived-actions: --path is required — the selected archived item/);
     assert.throws(() => renderSurface(dir, 'archived-delete-gate', {}), /render archived-delete-gate: --path is required/);
-    assert.throws(() => renderSurface(dir, 'archived-actions', { path: '.workflows/.inbox/ideas/2026-06-01--live-idea.md' }), /not an archived inbox path/);
-    assert.throws(() => renderSurface(dir, 'archived-delete-gate', { path: '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md' }), /not in the archived store: "\.workflows\/\.inbox\/\.archived\/ideas\/2026-05-02--ghost\.md"/);
+    assert.throws(() => renderSurface(dir, 'archived-actions', { path: '.leeway/.inbox/ideas/2026-06-01--live-idea.md' }), /not an archived inbox path/);
+    assert.throws(() => renderSurface(dir, 'archived-delete-gate', { path: '.leeway/.inbox/.archived/ideas/2026-05-02--ghost.md' }), /not in the archived store: "\.leeway\/\.inbox\/\.archived\/ideas\/2026-05-02--ghost\.md"/);
   });
 });
 
@@ -520,16 +520,16 @@ describe('start projections: working set', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   function seedInbox(d) {
-    createFile(d, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
-    createFile(d, '.workflows/.inbox/bugs/2026-06-02--crash-on-save.md', '# Crash On Save\n');
-    createFile(d, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
+    createFile(d, '.leeway/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
+    createFile(d, '.leeway/.inbox/bugs/2026-06-02--crash-on-save.md', '# Crash On Save\n');
+    createFile(d, '.leeway/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
   }
 
   it('bug set: offers work and the roadmap row, and maps the bugfix pre-seed', () => {
     seedInbox(dir);
     const ws = workingSetDetail(dir, [
-      '.workflows/.inbox/bugs/2026-06-01--login-timeout.md',
-      '.workflows/.inbox/bugs/2026-06-02--crash-on-save.md',
+      '.leeway/.inbox/bugs/2026-06-01--login-timeout.md',
+      '.leeway/.inbox/bugs/2026-06-02--crash-on-save.md',
     ]);
     const v = workingSetView(ws);
     assert.strictEqual(v.data, [
@@ -537,10 +537,10 @@ describe('start projections: working set', () => {
       'set_type: bugfix',
       'addable_count: 1',
       'SET (n  type  date  slug  → path  — title):',
-      '  1  bug  2026-06-01  login-timeout  → .workflows/.inbox/bugs/2026-06-01--login-timeout.md  — Login Timeout',
-      '  2  bug  2026-06-02  crash-on-save  → .workflows/.inbox/bugs/2026-06-02--crash-on-save.md  — Crash On Save',
+      `  1  bug  2026-06-01  login-timeout  → ${dir}/.leeway/.inbox/bugs/2026-06-01--login-timeout.md  — Login Timeout`,
+      `  2  bug  2026-06-02  crash-on-save  → ${dir}/.leeway/.inbox/bugs/2026-06-02--crash-on-save.md  — Crash On Save`,
       'ADDABLE (n  type  date  slug  → path  — title):',
-      '  1  idea  2026-06-03  smart-retry  → .workflows/.inbox/ideas/2026-06-03--smart-retry.md  — Smart Retry',
+      `  1  idea  2026-06-03  smart-retry  → ${dir}/.leeway/.inbox/ideas/2026-06-03--smart-retry.md  — Smart Retry`,
     ].join('\n'));
     // The heading is the adapter's TITLE section — the display opens on the tree.
     assert.strictEqual(v.title, 'Working Set (2 items)');
@@ -593,11 +593,11 @@ describe('start projections: working set', () => {
 
   it('a mixed set takes the largest shape in it: any idea leaves the type to discovery, work and the roadmap offered', () => {
     seedInbox(dir);
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
     const ws = workingSetDetail(dir, [
-      '.workflows/.inbox/bugs/2026-06-01--login-timeout.md',
-      '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md',
-      '.workflows/.inbox/ideas/2026-06-03--smart-retry.md',
+      '.leeway/.inbox/bugs/2026-06-01--login-timeout.md',
+      '.leeway/.inbox/quickfixes/2026-06-04--tidy-logs.md',
+      '.leeway/.inbox/ideas/2026-06-03--smart-retry.md',
     ]);
     assert.strictEqual(ws.set_type, 'none');
     assert.strictEqual('uniform' in ws, false);
@@ -610,17 +610,17 @@ describe('start projections: working set', () => {
 
   it('a bug among quick-fixes and no idea makes a bugfix — the quick-fixes never set the type', () => {
     seedInbox(dir);
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
     const ws = workingSetDetail(dir, [
-      '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md',
-      '.workflows/.inbox/bugs/2026-06-02--crash-on-save.md',
+      '.leeway/.inbox/quickfixes/2026-06-04--tidy-logs.md',
+      '.leeway/.inbox/bugs/2026-06-02--crash-on-save.md',
     ]);
     assert.strictEqual(ws.set_type, 'bugfix');
   });
 
   it('idea set maps the none pre-seed; a fully-selected inbox refuses the add gate', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
-    const ws = workingSetDetail(dir, ['.workflows/.inbox/ideas/2026-06-03--smart-retry.md']);
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart Retry\n');
+    const ws = workingSetDetail(dir, ['.leeway/.inbox/ideas/2026-06-03--smart-retry.md']);
     assert.strictEqual(ws.set_type, 'none');
     const v = workingSetView(ws);
     assert.ok(v.data.includes('addable_count: 0'));
@@ -629,17 +629,17 @@ describe('start projections: working set', () => {
   });
 
   it('quick-fixes alone map the quick-fix pre-seed', () => {
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-06-05--bump-deps.md', '# Bump Deps\n');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-04--tidy-logs.md', '# Tidy Logs\n');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-06-05--bump-deps.md', '# Bump Deps\n');
     const ws = workingSetDetail(dir, [
-      '.workflows/.inbox/quickfixes/2026-06-04--tidy-logs.md',
-      '.workflows/.inbox/quickfixes/2026-06-05--bump-deps.md',
+      '.leeway/.inbox/quickfixes/2026-06-04--tidy-logs.md',
+      '.leeway/.inbox/quickfixes/2026-06-05--bump-deps.md',
     ]);
     assert.strictEqual(ws.set_type, 'quick-fix');
   });
 
   it('is loud on paths outside the live inbox', () => {
-    assert.throws(() => workingSetDetail(dir, ['.workflows/.inbox/bugs/2026-06-01--gone.md']), /not in the live inbox/);
+    assert.throws(() => workingSetDetail(dir, ['.leeway/.inbox/bugs/2026-06-01--gone.md']), /not in the live inbox/);
     assert.throws(() => workingSetDetail(dir, []), /working set is empty/);
   });
 });
@@ -769,7 +769,7 @@ describe('start projections: roadmap rows', () => {
   function writeProjectRoadmap(dir2, roadmap) {
     const fs = require('fs');
     const path = require('path');
-    const p = path.join(dir2, '.workflows', 'manifest.json');
+    const p = path.join(dir2, '.leeway', 'manifest.json');
     const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
     fs.writeFileSync(p, JSON.stringify({ ...existing, roadmap }, null, 2));
   }
@@ -820,7 +820,7 @@ describe('start projections: roadmap rows', () => {
     assert.strictEqual(empty[empty.length - 1].action, 'open_help', 'last on the empty menu');
 
     writeProjectRoadmap(dir, MAP);
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     const full = startMenu(fullFixture(dir));
     assert.deepStrictEqual(helpRow(full), HELP);
@@ -1023,7 +1023,7 @@ describe('start projections: manage unit', () => {
       work_type: 'epic',
       phases: { planning: { items: { 'topic-a': { status: 'in-progress', format: 'sample-format' } } } },
     });
-    const file = '.workflows/.cache/v1/planning/topic-a/plan-summary.json';
+    const file = '.leeway/.cache/v1/planning/topic-a/plan-summary.json';
     createFile(dir, file, JSON.stringify({ phases: [
       { name: 'Foundation', tasks: [{ id: 'topic-a-1-1', title: 'Wrap the command', done: true }, { id: 'topic-a-1-2', title: 'Drop the wait', done: false, note: 'blocked by topic-a-1-1' }] },
       { name: 'Regression Net', tasks: [] },
@@ -1049,7 +1049,7 @@ describe('start projections: manage unit', () => {
       phases: { planning: { items: { 'topic-a': { status: 'in-progress', format: 'sample-format' }, bare: { status: 'in-progress' } } } },
     });
     const write = (/** @type {string} */ name, /** @type {unknown} */ payload) => {
-      const rel = `.workflows/.cache/v1/planning/topic-a/${name}.json`;
+      const rel = `.leeway/.cache/v1/planning/topic-a/${name}.json`;
       createFile(dir, rel, JSON.stringify(payload));
       return rel;
     };

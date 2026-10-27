@@ -8,7 +8,7 @@ const { spawnSync } = require('child_process');
 const { validate } = require('./validate.cjs');
 
 const ENGINE_CLI = path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'engine.cjs');
-const { commitPathspecScoped } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'commit.cjs'));
+const { commitStateScoped } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'commit.cjs'));
 const { syncKnowledge } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'knowledge', 'sync.cjs'));
 const { ENGINE_COMMAND } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'call.cjs'));
 const { stateRoot } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'state-root.cjs'));
@@ -26,11 +26,11 @@ function runCli(cwd, args) {
   return r.stdout;
 }
 
-// Index-truth check: does git track this path? Reads the index, so it answers
-// correctly even after the file has been moved on disk (the index still records
-// the old path until we stage the move).
-function isTracked(cwd, relPath) {
-  const r = spawnSync('git', ['ls-files', '--error-unmatch', '--', relPath], { cwd, encoding: 'utf8' });
+// Index-truth check: does the state's git track this path? Reads the index,
+// so it answers correctly even after the file has been moved on disk (the
+// index still records the old path until we stage the move).
+function isTracked(cwd, file) {
+  const r = spawnSync('git', ['ls-files', '--error-unmatch', '--', file], { cwd: stateRoot(cwd), encoding: 'utf8' });
   return r.status === 0;
 }
 
@@ -212,35 +212,34 @@ function apply(cwd, workUnit, currentSource) {
   }
 
   // Stage 6: commit through the door, scoped to exactly the split's paths.
-  const sourceRel = path.relative(cwd, sourceFile);
   // Only reference the source's old path if git knows it. An untracked source
   // (never committed) was renamed away in Stage 2, so the old path matches
-  // nothing on disk and nothing in the index — `git add` on it would fatal.
-  const sourceTracked = isTracked(cwd, sourceRel);
+  // nothing on disk and nothing in the index.
+  const sourceTracked = isTracked(cwd, sourceFile);
   const addPaths = [
-    path.relative(cwd, path.join(wuDir, 'manifest.json')),
-    ...(sourceTracked ? [sourceRel] : []),
-    path.relative(cwd, supersededFile),
-    ...created.map(c => path.relative(cwd, c.path)),
+    path.join(wuDir, 'manifest.json'),
+    ...(sourceTracked ? [sourceFile] : []),
+    supersededFile,
+    ...created.map(c => c.path),
   ];
 
   // The split writes across several research topics at once, so no --topic
-  // scope covers it: the work-unit form is the confined retry, and it takes
-  // the commit lock the raw pair never did.
+  // scope covers it: the work-unit form is the confined retry.
   const retry = `${ENGINE_COMMAND} commit ${workUnit} `
     + `-m "discovery(${workUnit}): legacy-split ${currentSource}"`;
+  /** @type {string[]} */
+  let commitWarnings;
   try {
-    // Through the commit door: the split runs beside live research and
-    // discussion sessions on the same work unit, so it takes the commit lock
-    // and the index.lock retry every other engine commit takes, and stays
-    // confined to the paths it wrote.
-    commitPathspecScoped(cwd, addPaths, `discovery(${workUnit}): legacy-split ${currentSource}`);
+    // Through the state door: the split runs beside live research and
+    // discussion sessions on the same work unit, so it takes the writer lock
+    // every other state commit takes, and stays confined to the paths it
+    // wrote.
+    commitWarnings = commitStateScoped(cwd, addPaths, `discovery(${workUnit}): legacy-split ${currentSource}`).warnings;
   } catch (e) {
     const recovery_hint = sourceTracked
-      ? `commit failed (likely pre-commit hook). All file and manifest mutations are applied. ` +
-        `Resolve the hook issue, commit the split, then clean the cache: ` +
-        `${retry} && rm -rf ${cacheDir}`
-      : `commit failed — the source file ${sourceRel} was never committed, so its pre-split ` +
+      ? `commit failed. All file and manifest mutations are applied. ` +
+        `Commit the split, then clean the cache: ${retry} && rm -rf ${cacheDir}`
+      : `commit failed — the source file ${sourceFile} was never committed, so its pre-split ` +
         `history isn't in git. All file and manifest mutations are applied. Commit the split, ` +
         `then clean the cache: ${retry} && rm -rf ${cacheDir}`;
     return {
@@ -263,6 +262,7 @@ function apply(cwd, workUnit, currentSource) {
     applied: { themes: created.length },
   };
   if (kbWarnings.length > 0) result.kb_warnings = kbWarnings;
+  if (commitWarnings.length > 0) result.warnings = commitWarnings;
   return result;
 }
 

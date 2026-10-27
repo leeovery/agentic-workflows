@@ -26,8 +26,10 @@ TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
 
-# Create a temporary directory for test fixtures
-TEST_DIR=$(mktemp -d)
+# The test project: a git repository with its state worktree, the suites'
+# one fixture.
+TEST_DIR=$(node -e 'process.stdout.write(require(process.argv[1]).setupFixture("engine-manifest-"))' \
+  "$SCRIPT_DIR/discovery-test-utils.cjs")
 trap "rm -rf $TEST_DIR" EXIT
 
 echo "Test directory: $TEST_DIR"
@@ -37,9 +39,10 @@ echo ""
 # Helper functions
 #
 
+# An empty state: everything in the state worktree but its git link and
+# ignore rules taken away.
 setup_fixture() {
-    rm -rf "$TEST_DIR/.workflows"
-    mkdir -p "$TEST_DIR/.workflows"
+    find "$TEST_DIR/.leeway" -mindepth 1 -maxdepth 1 ! -name .git ! -name .gitignore -exec rm -rf {} +
 }
 
 # Fixture: create a work unit on disk — the same document `engine workunit
@@ -53,14 +56,14 @@ create_wu() {
     node -e '
       const fs = require("fs"), path = require("path");
       const [name, type, desc] = process.argv.slice(1);
-      const dir = path.join(".workflows", name);
+      const dir = path.join(".leeway", name);
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
         name, work_type: type, status: "in-progress",
         created: new Date().toISOString().slice(0, 10),
         description: desc, phases: {},
       }, null, 2) + "\n");
-      const projPath = path.join(".workflows", "manifest.json");
+      const projPath = path.join(".leeway", "manifest.json");
       const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
       proj.work_units = proj.work_units || {};
       proj.work_units[name] = { work_type: type };
@@ -215,16 +218,14 @@ assert_exit_code() {
 echo -e "${YELLOW}Test: work-unit document shape (asserted against the ENGINE-created manifest)${NC}"
 setup_fixture
 # Real contract: the engine writes the document; the assertions read what it
-# wrote. A git repo is required — workunit create commits.
+# wrote, and commits it on the state branch.
 cd "$TEST_DIR"
-git init -q -b main . >/dev/null 2>&1
-git config user.email test@example.com && git config user.name Test && git config commit.gpgsign false
-mkdir -p "$TEST_DIR/.workflows/.cache/dark-mode/discovery"
-printf '# Discovery Session 001\n\n## Exploration\n\nDark mode.\n' > "$TEST_DIR/.workflows/.cache/dark-mode/discovery/session-001.md"
-node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --session-log-file .workflows/.cache/dark-mode/discovery/session-001.md >/dev/null
+mkdir -p "$TEST_DIR/.leeway/.cache/dark-mode/discovery"
+printf '# Discovery Session 001\n\n## Exploration\n\nDark mode.\n' > "$TEST_DIR/.leeway/.cache/dark-mode/discovery/session-001.md"
+node "$ENGINE_JS" workunit create dark-mode feature --description "Add dark mode" --session-log-file .leeway/.cache/dark-mode/discovery/session-001.md >/dev/null
 
-assert_file_exists "$TEST_DIR/.workflows/dark-mode/manifest.json" "manifest.json created by the engine"
-content=$(cat "$TEST_DIR/.workflows/dark-mode/manifest.json")
+assert_file_exists "$TEST_DIR/.leeway/dark-mode/manifest.json" "manifest.json created by the engine"
+content=$(cat "$TEST_DIR/.leeway/dark-mode/manifest.json")
 assert_contains "$content" '"name": "dark-mode"' "name field set"
 assert_contains "$content" '"work_type": "feature"' "work_type field set"
 assert_contains "$content" '"status": "in-progress"' "status defaults to in-progress"
@@ -233,10 +234,9 @@ assert_contains "$content" '"phases": {}' "phases initialized empty"
 # Fixture↔engine equivalence, enforced: create_wu's document must match the
 # engine's byte-for-byte (modulo nothing — both stamp today's date).
 create_wu dark-mode-fixture feature "Add dark mode"
-engine_doc=$(sed 's/dark-mode/UNIT/g' "$TEST_DIR/.workflows/dark-mode/manifest.json")
-fixture_doc=$(sed 's/dark-mode-fixture/UNIT/g' "$TEST_DIR/.workflows/dark-mode-fixture/manifest.json")
+engine_doc=$(sed 's/dark-mode/UNIT/g' "$TEST_DIR/.leeway/dark-mode/manifest.json")
+fixture_doc=$(sed 's/dark-mode-fixture/UNIT/g' "$TEST_DIR/.leeway/dark-mode-fixture/manifest.json")
 assert_equals "$engine_doc" "$fixture_doc" "create_wu fixture matches the engine-created document byte-for-byte"
-rm -rf "$TEST_DIR/.git"
 
 echo ""
 
@@ -399,7 +399,7 @@ echo -e "${YELLOW}Test: set parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-test feature "Tilde test"
 response=$(run_cli set tilde-test.planning.tilde-test task '~' 2>/dev/null)
-stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.planning.items['tilde-test'].task))" "$TEST_DIR/.workflows/tilde-test/manifest.json")
+stored=$(node -e "const m=require(process.argv[1]); console.log(JSON.stringify(m.phases.planning.items['tilde-test'].task))" "$TEST_DIR/.leeway/tilde-test/manifest.json")
 
 assert_equals "$response" '{"ok":true,"path":"tilde-test.planning.tilde-test","set":{"task":null}}' "Response reports null for a bare tilde"
 assert_equals "$stored" "null" "Manifest stores JSON null, not the literal string"
@@ -412,7 +412,7 @@ echo -e "${YELLOW}Test: batch pair parses a bare tilde as null${NC}"
 setup_fixture
 create_wu tilde-batch feature "Tilde batch"
 run_cli set tilde-batch.planning.tilde-batch task='~' plan_format=local-markdown current='~' >/dev/null 2>&1
-stored=$(node -e "const i=require(process.argv[1]).phases.planning.items['tilde-batch']; console.log(JSON.stringify([i.task, i.plan_format, i.current]))" "$TEST_DIR/.workflows/tilde-batch/manifest.json")
+stored=$(node -e "const i=require(process.argv[1]).phases.planning.items['tilde-batch']; console.log(JSON.stringify([i.task, i.plan_format, i.current]))" "$TEST_DIR/.leeway/tilde-batch/manifest.json")
 
 assert_equals "$stored" '[null,"local-markdown",null]' "Positional and batch tildes both land as null"
 
@@ -765,12 +765,12 @@ echo -e "${YELLOW}Test: list skips dot-prefixed directories${NC}"
 setup_fixture
 create_wu visible feature "Visible"
 # Create dot-prefixed directories that should be skipped
-mkdir -p "$TEST_DIR/.workflows/.archive/old-thing"
-cat > "$TEST_DIR/.workflows/.archive/old-thing/manifest.json" << 'EOF'
+mkdir -p "$TEST_DIR/.leeway/.archive/old-thing"
+cat > "$TEST_DIR/.leeway/.archive/old-thing/manifest.json" << 'EOF'
 {"name":"old-thing","work_type":"feature","status":"cancelled"}
 EOF
-mkdir -p "$TEST_DIR/.workflows/.cache"
-mkdir -p "$TEST_DIR/.workflows/.state"
+mkdir -p "$TEST_DIR/.leeway/.cache"
+mkdir -p "$TEST_DIR/.leeway/.state"
 output=$(run_cli_stdout list)
 
 assert_contains "$output" '"name": "visible"' "Visible work unit listed"
@@ -803,7 +803,7 @@ output=$(run_cli_stdout get my-feat.discussion.my-feat status)
 assert_equals "$output" "in-progress" "Feature phase created with in-progress status"
 
 # Verify internal structure uses items (unified with epic)
-content=$(cat "$TEST_DIR/.workflows/my-feat/manifest.json")
+content=$(cat "$TEST_DIR/.leeway/my-feat/manifest.json")
 assert_contains "$content" '"items"' "Feature manifest has items key"
 assert_contains "$content" '"my-feat"' "Feature items key matches work unit name"
 
@@ -923,7 +923,7 @@ run_cli set routing-feat.discussion.routing-feat status in-progress >/dev/null 2
 run_cli set routing-feat.discussion.routing-feat status completed >/dev/null 2>&1
 
 # Verify internal structure uses items (same as epic)
-content=$(cat "$TEST_DIR/.workflows/routing-feat/manifest.json")
+content=$(cat "$TEST_DIR/.leeway/routing-feat/manifest.json")
 assert_contains "$content" '"discussion"' "Discussion phase exists"
 assert_contains "$content" '"items"' "Feature manifest has items key"
 assert_contains "$content" '"routing-feat"' "Items key matches work unit name"
@@ -941,7 +941,7 @@ run_cli set routing-epic.discussion.topic-b status in-progress >/dev/null 2>&1
 run_cli set routing-epic.discussion.topic-a status completed >/dev/null 2>&1
 
 # Verify internal structure has items
-content=$(cat "$TEST_DIR/.workflows/routing-epic/manifest.json")
+content=$(cat "$TEST_DIR/.leeway/routing-epic/manifest.json")
 assert_contains "$content" '"items"' "Epic manifest has items"
 assert_contains "$content" '"topic-a"' "topic-a exists"
 assert_contains "$content" '"topic-b"' "topic-b exists"
@@ -1154,7 +1154,7 @@ const m = JSON.parse(fs.readFileSync(p, 'utf8'));
 m.phases = m.phases || {};
 m.phases.implementation = {};
 fs.writeFileSync(p, JSON.stringify(m, null, 2) + '\n');
-" "$TEST_DIR/.workflows/wc-empty/manifest.json"
+" "$TEST_DIR/.leeway/wc-empty/manifest.json"
 output=$(run_cli_stdout get wc-empty.implementation.* status)
 assert_equals "$output" "" "Wildcard on empty phase returns empty stdout"
 run_cli_stdout get wc-empty.implementation.* status >/dev/null
@@ -1937,7 +1937,7 @@ assert_contains "$output" "imports/seed.md" "First entry preserved after append"
 assert_contains "$output" "imports/notes.md" "Second entry appended"
 
 # Verify it's a proper array of length 2
-length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/imp-append/manifest.json','utf8')); console.log(m.imports.length)")
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/imp-append/manifest.json','utf8')); console.log(m.imports.length)")
 assert_equals "$length" "2" "imports[] has two entries after two pushes"
 
 echo ""
@@ -1955,7 +1955,7 @@ output=$(run_cli_stdout get imp-pull imports)
 assert_not_contains "$output" "imports/seed.md" "Pull removed seed.md entry"
 assert_contains "$output" "imports/notes.md" "Pull kept notes.md entry"
 
-length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/imp-pull/manifest.json','utf8')); console.log(m.imports.length)")
+length=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/imp-pull/manifest.json','utf8')); console.log(m.imports.length)")
 assert_equals "$length" "1" "imports[] has one entry after pull"
 
 echo ""
@@ -2085,8 +2085,8 @@ setup_fixture
 create_wu payments epic "Payments"
 run_cli set payments.research.tracked status in-progress >/dev/null 2>&1
 # Create an untracked file on disk that is NOT in the manifest
-mkdir -p "$TEST_DIR/.workflows/payments/research"
-echo "untracked" > "$TEST_DIR/.workflows/payments/research/rogue.md"
+mkdir -p "$TEST_DIR/.leeway/payments/research"
+echo "untracked" > "$TEST_DIR/.leeway/payments/research/rogue.md"
 output=$(run_cli_stdout resolve payments.research)
 
 assert_contains "$output" "payments/research/tracked.md" "Includes tracked research item"
@@ -2147,7 +2147,7 @@ echo -e "${YELLOW}Test: corrupt project manifest aborts with clear error (no sil
 setup_fixture
 # Write a corrupt project manifest — invalid JSON with a trailing comma
 # (the exact pattern that silently wiped tick's work_units).
-cat > "$TEST_DIR/.workflows/manifest.json" <<'BADJSON'
+cat > "$TEST_DIR/.leeway/manifest.json" <<'BADJSON'
 {
   "work_units": {
     "existing-unit": {
@@ -2167,7 +2167,7 @@ assert_contains "$output" "by hand" "Error tells user to fix manually"
 
 # Verify the corrupt manifest was NOT overwritten — the trailing comma
 # should still be on disk.
-manifest_still_corrupt=$(cat "$TEST_DIR/.workflows/manifest.json" | node -e "let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>{try{JSON.parse(s);console.log('parsed');}catch(e){console.log('still-corrupt');}});")
+manifest_still_corrupt=$(cat "$TEST_DIR/.leeway/manifest.json" | node -e "let s=''; process.stdin.on('data',c=>s+=c); process.stdin.on('end',()=>{try{JSON.parse(s);console.log('parsed');}catch(e){console.log('still-corrupt');}});")
 assert_equals "$manifest_still_corrupt" "still-corrupt" "Corrupt manifest preserved on disk (not clobbered)"
 
 echo ""
@@ -2179,7 +2179,7 @@ setup_fixture
 # No manifest.json on disk — a project write should create it fresh.
 exit_code=$(run_cli_exit_code set project.defaults.plan_format tick)
 assert_equals "$exit_code" "0" "First project write succeeds without existing manifest"
-written=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TEST_DIR/.workflows/manifest.json', 'utf8')).defaults.plan_format)" 2>/dev/null)
+written=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TEST_DIR/.leeway/manifest.json', 'utf8')).defaults.plan_format)" 2>/dev/null)
 assert_equals "$written" "tick" "Manifest created with the written default"
 
 echo ""
@@ -2202,8 +2202,8 @@ exit_code=$(run_cli_exit_code set real work_type bogus)
 assert_equals "$exit_code" "1" "Invalid work-type → exit 1"
 
 # Corrupt manifest JSON → real error → exit 1.
-mkdir -p "$TEST_DIR/.workflows/corrupt-wu"
-echo "{not valid json" > "$TEST_DIR/.workflows/corrupt-wu/manifest.json"
+mkdir -p "$TEST_DIR/.leeway/corrupt-wu"
+echo "{not valid json" > "$TEST_DIR/.leeway/corrupt-wu/manifest.json"
 exit_code=$(run_cli_exit_code get corrupt-wu status)
 assert_equals "$exit_code" "1" "Corrupt work-unit JSON → exit 1"
 

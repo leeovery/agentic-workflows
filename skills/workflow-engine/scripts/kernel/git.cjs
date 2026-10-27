@@ -29,16 +29,10 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { sleepSync } = require('./process.cjs');
 
 const INDEX_RETRY_MS = 100;
 const INDEX_BUDGET_MS = 5000;
-
-// Block the thread for `ms` without burning CPU (Atomics.wait on a
-// throwaway buffer is never notified, so it sleeps the full timeout).
-/** @param {number} ms */
-function sleepSync(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
 
 // Test hook: WORKFLOWS_GIT_LOCK_BUDGET_MS overrides the retry budget.
 function indexBudgetMs() {

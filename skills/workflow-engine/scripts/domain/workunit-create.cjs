@@ -28,9 +28,9 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { parseInboxPaths, SEED_SOURCES } = require('./inbox.cjs');
+const { parseInboxPaths, INBOX, SEED_SOURCES } = require('./inbox.cjs');
 const {
   normaliseBasename,
   dedupe,
@@ -42,7 +42,7 @@ const {
   assertLandableSources,
 } = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -72,10 +72,10 @@ function assertLegalWorkUnitName(workUnit) {
  * @typedef {object} WorkUnitCreateResult
  * @property {string} work_unit
  * @property {string} work_type
- * @property {{path: string}[]} imports  landed import entries (work-unit-relative)
- * @property {{path: string, source: string}[]} seeds  landed seed entries (work-unit-relative)
+ * @property {{path: string}[]} imports  landed imports (absolute)
+ * @property {{path: string, source: string}[]} seeds  landed seeds (absolute)
  * @property {string[]} skipped_imports  source paths rejected by filename normalisation
- * @property {string} session_log  the installed log's project-relative path
+ * @property {string} session_log  the installed log (absolute)
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]  set when committed is null
  * @property {string[]} warnings  non-blocking failures (knowledge-base indexing)
@@ -175,7 +175,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
 
     if (seedPlan.length > 0) fs.mkdirSync(seedsDir, { recursive: true });
     for (const move of seedPlan) {
-      fs.renameSync(path.join(cwd, move.item.given), path.join(seedsDir, move.dest));
+      fs.renameSync(statePath(cwd, move.item.rel), path.join(seedsDir, move.dest));
       pushEntry(manifest, 'seeds', {
         path: `seeds/${move.dest}`,
         source: SEED_SOURCES[move.item.folder],
@@ -208,26 +208,26 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   syncKnowledge(cwd, [
     ...importMoves.filter((m) => isIndexableImport(m.dest))
       .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
-    ...seedMoves.map((move) => ({ index: stateRel(`${workUnit}/seeds/${move.dest}`), label: `knowledge index (seeds/${move.dest})` })),
+    ...seedMoves.map((move) => ({ index: `${workUnit}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
   ], warnings);
 
   // Seed removals ride along in the same commit as their new home, and the
   // project-manifest registration lands with it too.
-  const pathspecs = [stateRel(workUnit), stateRel('manifest.json')];
-  if (seedMoves.length > 0) pathspecs.push(stateRel('.inbox'));
-  const outcome = commitTailPathspec(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
+  const pathspecs = [workUnit, 'manifest.json'];
+  if (seedMoves.length > 0) pathspecs.push(INBOX);
+  const outcome = commitStateTail(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
   const result = {
     work_unit: workUnit,
     work_type: workType,
-    imports: importMoves.map((move) => ({ path: `imports/${move.dest}` })),
+    imports: importMoves.map((move) => ({ path: statePath(cwd, workUnit, 'imports', move.dest) })),
     seeds: seedMoves.map((move) => ({
-      path: `seeds/${move.dest}`,
+      path: statePath(cwd, workUnit, 'seeds', move.dest),
       source: SEED_SOURCES[move.item.folder],
     })),
     skipped_imports: skippedImports,
-    session_log: stateRel(`${workUnit}/discovery/sessions/session-001.md`),
+    session_log: statePath(cwd, workUnit, 'discovery', 'sessions', 'session-001.md'),
     committed: outcome.committed,
     warnings,
   };

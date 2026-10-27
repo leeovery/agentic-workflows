@@ -79,8 +79,8 @@ function workUnitNames(cwd) {
     return Object.keys(proj.work_units);
   }
   // Fallback: scan filesystem (pre-migration compat)
-  const workflowsDir = stateRoot(cwd);
-  return listDirs(workflowsDir).filter(n => !n.startsWith('.'));
+  const stateDir = stateRoot(cwd);
+  return listDirs(stateDir).filter(n => !n.startsWith('.'));
 }
 
 function loadActiveManifests(cwd) {

@@ -14,12 +14,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git } = require('../kernel/git.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { collectAnalysisInputs } = require('./derivations.cjs');
 const { filesChecksum } = require('./reads.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // Per-kind config: the model-authored cache file under `.state/` (the
 // analysis output the stamp checksums the inputs of, and the artifact the KB
@@ -90,28 +89,21 @@ function stampAnalysisCache(cwd, workUnit, kind) {
 
   /** @type {string[]} */
   const warnings = [];
-  syncKnowledge(cwd, [{ index: stateRel(`${workUnit}/.state/${cfg.cacheFile}`), label: `knowledge index (.state/${cfg.cacheFile})` }], warnings);
+  syncKnowledge(cwd, [{ index: `${workUnit}/.state/${cfg.cacheFile}`, label: `knowledge index (.state/${cfg.cacheFile})` }], warnings);
 
   return { ...stamped, warnings };
 }
 
 /**
- * Remove the work unit's scratch cache (`.workflows/.cache/{wu}`) at
+ * Remove the work unit's scratch cache (`.cache/{wu}` in the state) at
  * lifecycle close. Caches are rebuildable per-phase scratch — reactivation
- * regenerates them on demand — but analysis flows commit tracking files
- * there, so when the index holds entries the caller must include the
- * returned pathspec in its transaction commit to stage the deletions.
- * A purely-untracked dir purges disk-only (returns null; `git add` on a
- * pathspec matching nothing is fatal).
+ * regenerates them on demand — and the state ignores the cache, so there is
+ * nothing to commit.
  * @param {string} cwd project root
  * @param {string} workUnit
- * @returns {string|null} pathspec for the caller's commit, or null
  */
 function purgeWorkUnitCache(cwd, workUnit) {
-  const rel = stateRel(`.cache/${workUnit}`);
-  const tracked = git(cwd, ['ls-files', '--', rel]).trim() !== '';
-  fs.rmSync(path.join(cwd, rel), { recursive: true, force: true });
-  return tracked ? rel : null;
+  fs.rmSync(statePath(cwd, '.cache', workUnit), { recursive: true, force: true });
 }
 
 module.exports = { stampAnalysisCache, purgeWorkUnitCache };

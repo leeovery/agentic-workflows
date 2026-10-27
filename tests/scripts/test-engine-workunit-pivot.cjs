@@ -8,7 +8,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const {
+  git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+} = require('./engine-harness.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 
 function writeFile(dir, rel, content) {
@@ -35,31 +37,22 @@ function featureManifest(overrides = {}) {
   };
 }
 
-/** A git-repo project carrying the feature. */
+/** A project, its state committed, carrying the feature. */
 function setupFixture(manifest = featureManifest()) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-pivot-'));
-  const project = path.join(root, 'project');
-  fs.mkdirSync(project, { recursive: true });
-  git(project, ['init', '-q', '-b', 'main']);
-  git(project, ['config', 'user.email', 'test@example.com']);
-  git(project, ['config', 'user.name', 'Test']);
-  git(project, ['config', 'commit.gpgsign', 'false']);
-
-  // The knowledge directory is checkout-local, never committed.
-  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
+  const project = setupFixtureAt(path.join(root, 'project'));
   keywordOnlyKnowledge(project);
-  writeFile(project, '.workflows/manifest.json', JSON.stringify({
+  writeFile(project, '.leeway/manifest.json', JSON.stringify({
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
-  writeFile(project, '.workflows/auth-flow/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-  writeFile(project, '.workflows/auth-flow/research/exploration.md', '# Exploration\n');
-  writeFile(project, '.workflows/auth-flow/discussion/auth-flow.md', '# Discussion\n');
-  writeFile(project, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
-  writeFile(project, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
-  git(project, ['add', '-A']);
-  git(project, ['commit', '-q', '-m', 'init']);
+  writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+  writeFile(project, '.leeway/auth-flow/research/exploration.md', '# Exploration\n');
+  writeFile(project, '.leeway/auth-flow/discussion/auth-flow.md', '# Discussion\n');
+  writeFile(project, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
+  writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
+  commitAll(project, 'init');
 
-  return { root, project };
+  return { root, project, codeHead: git(project, ['rev-parse', 'HEAD']).trim() };
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
@@ -73,39 +66,44 @@ engine.lastSections = '';
 /** Run the engine expecting failure; returns the parsed stderr JSON. */
 const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env });
 
-/** The feature's artifacts the knowledge base holds. */
+/** The feature's artifacts the knowledge base holds, state-relative. */
 const UNIT_FILES = [
-  '.workflows/auth-flow/discussion/auth-flow.md',
-  '.workflows/auth-flow/imports/notes.md',
-  '.workflows/auth-flow/research/exploration.md',
-  '.workflows/auth-flow/seeds/seed.md',
+  'auth-flow/discussion/auth-flow.md',
+  'auth-flow/imports/notes.md',
+  'auth-flow/research/exploration.md',
+  'auth-flow/seeds/seed.md',
 ];
+
+/** Index each of the feature's artifacts. */
+function indexUnit(fix) {
+  for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
+}
 
 /** The distinct work types the store's chunks carry. */
 function chunkWorkTypes(fix) {
-  const chunks = store.allChunks(store.loadStore(path.join(fix.project, '.workflows/.knowledge/store.bin')));
+  const chunks = store.allChunks(store.loadStore(path.join(fix.project, '.leeway/.knowledge/store.bin')));
   return [...new Set(chunks.map((chunk) => chunk.work_type))];
 }
 
 function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 function readProjectManifest(fix) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
 }
 
 function shortHead(fix) {
-  return git(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
+  return stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
 /** Snapshot of everything pivot may touch, for nothing-touched assertions. */
 function snapshot(fix) {
   return {
-    manifest: fs.readFileSync(path.join(fix.project, '.workflows/auth-flow/manifest.json'), 'utf8'),
-    project: fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'),
-    commits: git(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
-    status: git(fix.project, ['status', '--porcelain']),
+    manifest: fs.readFileSync(path.join(fix.project, '.leeway/auth-flow/manifest.json'), 'utf8'),
+    project: fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'),
+    commits: stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
+    status: git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']),
   };
 }
 
@@ -115,7 +113,7 @@ describe('engine workunit pivot — happy path', () => {
 
   it('flips work_type in BOTH manifests, registers the backfill map item, re-indexes, commits', () => {
     fix = setupFixture();
-    for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', file]);
+    indexUnit(fix);
     assert.deepStrictEqual(chunkWorkTypes(fix), ['feature']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     const res = engine(fix, ['workunit', 'pivot', 'auth-flow']);
@@ -153,11 +151,13 @@ describe('engine workunit pivot — happy path', () => {
       payments: { work_type: 'epic' },
     });
 
-    // One commit, engine-owned message, scoped to the two manifests.
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(auth-flow): pivot to epic');
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '2');
-    const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.deepStrictEqual(staged.sort(), ['.workflows/auth-flow/manifest.json', '.workflows/manifest.json']);
+    // One state commit, engine-owned message, scoped to the two manifests;
+    // the default branch takes none.
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(auth-flow): pivot to epic');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--skip=1', '--pretty=%s']).trim(), 'init');
+    const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.deepStrictEqual(staged.sort(), ['auth-flow/manifest.json', 'manifest.json']);
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), fix.codeHead);
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // Chunk metadata carries work_type — pivot clears the unit's chunks then
@@ -182,9 +182,8 @@ describe('engine workunit pivot — happy path', () => {
 
   it('registers an unregistered legacy unit rather than skipping it', () => {
     fix = setupFixture();
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } } }, null, 2) + '\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'drop registration']);
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } } }, null, 2) + '\n');
+    commitAll(fix.project, 'drop registration');
 
     engine(fix, ['workunit', 'pivot', 'auth-flow']);
     assert.deepStrictEqual(readProjectManifest(fix).work_units['auth-flow'], { work_type: 'epic' });
@@ -234,10 +233,10 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
 
   it('refuses a corrupt project manifest before flipping anything', () => {
     fix = setupFixture();
-    for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', file]);
-    const storeFile = path.join(fix.project, '.workflows/.knowledge/store.bin');
+    indexUnit(fix);
+    const storeFile = path.join(fix.project, '.leeway/.knowledge/store.bin');
     const before = fs.readFileSync(storeFile);
-    writeFile(fix.project, '.workflows/manifest.json', '{ corrupt\n');
+    writeFile(fix.project, '.leeway/manifest.json', '{ corrupt\n');
     const err = engineFails(fix, ['workunit', 'pivot', 'auth-flow']);
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'feature');

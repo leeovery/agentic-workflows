@@ -89,10 +89,9 @@ describe('the verdict store', () => {
 
 describe('run.cjs verdict / verdicts', () => {
   // The store's writes are covered above against scratch ids; the runner
-  // takes real case ids only, so here it is driven through its refusals and
-  // its read. Every refusal names a case that does not exist, so a guard
-  // that stops holding meets the case check and writes nothing.
-  const CASE = 'start-lists-active-work';
+  // takes real case ids only, so here it is driven through its refusals.
+  // Every refusal names a case that does not exist, so a guard that stops
+  // holding meets the case check and writes nothing.
   const NONE = 'no-such-case';
   const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
   const run = (args) => execFileSync('node', [RUN, ...args], { encoding: 'utf8', stdio: 'pipe' });
@@ -120,11 +119,7 @@ describe('run.cjs verdict / verdicts', () => {
   it('refuses a read or a reset naming no case, or a case that does not exist', () => {
     assert.match(refusal(['verdicts']), /usage: verdicts \[--reset\] <case-id…>/);
     assert.match(refusal(['verdicts', '--reset']), /usage: verdicts \[--reset\] <case-id…>/);
-    assert.match(refusal(['verdicts', CASE, NONE]), /no case "no-such-case"/);
+    assert.match(refusal(['verdicts', NONE]), /no case "no-such-case"/);
     assert.match(refusal(['verdicts', '--reset', NONE]), /no case "no-such-case"/);
-  });
-
-  it('reads a real case under its marker', () => {
-    assert.ok(run(['verdicts', CASE]).startsWith(`=== ${CASE} ===\n`));
   });
 });

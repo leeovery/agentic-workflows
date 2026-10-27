@@ -5,10 +5,12 @@
 //
 // Two layers:
 //   - Real fleet: run the actual migrate.cjs against a temp project — the
-//     bash-3.2 execution path, idempotency, PROJECT_DIR pinning.
+//     bash-3.2 execution path, idempotency, PROJECT_DIR pinning, and a
+//     project with no state in its code tree left untouched.
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
-//     dir — mixed .sh/.cjs numeric ordering, legacy tracking-log honouring,
-//     failure-aborts-without-recording (both extensions), delete-log-reruns.
+//     dir — mixed .sh/.cjs numeric ordering, the ledger the caller names,
+//     failure-aborts-without-recording (both extensions), delete-log-reruns,
+//     the code-tree fleet recorded unrun where there is no code-tree state.
 //
 
 require('./hermetic-env.cjs');
@@ -33,9 +35,12 @@ function tmp(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-/** Run a migrate.cjs at `migrate` with cwd `project`. */
-function run(migrate, project, env = {}) {
-  const res = spawnSync('node', [migrate], {
+// Where boot keeps the ledger: the state's own.
+const LEDGER = '.leeway/.state/migrations';
+
+/** Run a migrate.cjs at `migrate` with cwd `project`, recording into the state's ledger. */
+function run(migrate, project, env = {}, args = ['--ledger', path.join(project, LEDGER)]) {
+  const res = spawnSync('node', [migrate, ...args], {
     cwd: project,
     encoding: 'utf8',
     env: { ...process.env, ...env },
@@ -57,14 +62,16 @@ function synthFleet(migrations) {
   return { migrate: path.join(scripts, 'migrate.cjs'), root };
 }
 
+// A project whose code tree still holds the state the fleet up to 072 was
+// written for — the synthetic fleet's ids fall in that range, so they run.
 function freshProject() {
   const project = tmp('mig-orch-proj-');
-  fs.mkdirSync(path.join(project, '.workflows', '.state'), { recursive: true });
+  fs.mkdirSync(path.join(project, '.workflows'), { recursive: true });
   return project;
 }
 
 function trackingLog(project) {
-  const p = path.join(project, '.workflows', '.state', 'migrations');
+  const p = path.join(project, LEDGER);
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
@@ -95,16 +102,27 @@ const cjsMig = (id) =>
   `    reportUpdate();\n  },\n};\n`;
 
 describe('migrate.cjs — real fleet', () => {
-  it('runs the whole fleet under stock /bin/bash 3.2 and writes the tracking file', () => {
+  it('runs the whole fleet under stock /bin/bash 3.2 and writes the ledger', () => {
     const project = freshProject();
     const res = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.ok(!/mapfile|command not found/i.test(res.stdout + res.stderr), 'no bash-3.2 failure');
-    assert.ok(
-      fs.existsSync(path.join(project, '.workflows/.state/migrations')),
-      'tracking file written'
-    );
+    assert.ok(fs.existsSync(path.join(project, LEDGER)), 'ledger written');
+    assert.ok(runReport(res.stdout).ran > 0, 'the fleet ran against the code tree\'s state');
+  });
+
+  it('leaves a project with no state in its code tree untouched, recording the fleet unrun', () => {
+    const project = tmp('mig-orch-none-');
+    const res = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
+
+    assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
+    assert.deepStrictEqual(fs.readdirSync(project), ['.leeway'], 'nothing written but the ledger');
+    assert.deepStrictEqual(fs.readdirSync(path.join(project, '.leeway/.state')), ['migrations']);
+    const ids = fs.readdirSync(path.join(path.dirname(REAL_MIGRATE), 'migrations'))
+      .map((name) => (name.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), ids, 'every migration recorded');
+    assert.deepStrictEqual(runReport(res.stdout), { ran: 0 });
   });
 
   it('is idempotent — a second run reports no changes', () => {
@@ -173,7 +191,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     );
   });
 
-  it('reports the migrations it ran and the ledger it recorded them in — a run that changed no file included', () => {
+  it('reports the migrations it ran — a run that changed no file included', () => {
     // 002 runs and reports nothing changed: it still recorded, and the report
     // counts runs, not files — the case the stop gate cannot speak for.
     const { migrate } = synthFleet({
@@ -185,26 +203,52 @@ describe('migrate.cjs — synthetic fleet', () => {
 
     const first = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(first.status, 0, first.stderr);
-    assert.deepStrictEqual(runReport(first.stdout), { ran: 2, tracking: '.workflows/.state/migrations' });
+    assert.deepStrictEqual(runReport(first.stdout), { ran: 2 });
 
     // Fully recorded: nothing ran, and the report says so.
     const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
     assert.ok(second.stdout.includes('[SKIP] No changes needed'), second.stdout);
-    assert.deepStrictEqual(runReport(second.stdout), { ran: 0, tracking: '.workflows/.state/migrations' });
+    assert.deepStrictEqual(runReport(second.stdout), { ran: 0 });
   });
 
-  it('reports the ledger where it ended up, not where it was found — a legacy log is stabilised first', () => {
+  it('records into the ledger the caller names, its folder made where missing', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
-    const project = tmp('mig-orch-legacy-');
-    fs.mkdirSync(path.join(project, 'docs/workflow/.cache'), { recursive: true });
-    fs.writeFileSync(path.join(project, 'docs/workflow/.cache/migrations.log'), '');
+    const project = freshProject();
+    const ledger = path.join(tmp('mig-orch-ledger-'), 'deep/ledger');
+
+    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH }, ['--ledger', ledger]);
+
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.strictEqual(fs.readFileSync(ledger, 'utf8'), '001\n');
+    assert.strictEqual(fs.existsSync(path.join(project, LEDGER)), false);
+  });
+
+  it('refuses to run without a ledger, running nothing', () => {
+    const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
+    const project = freshProject();
+
+    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH }, []);
+
+    assert.notStrictEqual(res.status, 0);
+    assert.match(res.stderr, /usage: migrate\.cjs --ledger <path>/);
+    assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false);
+  });
+
+  it('records the code-tree fleet (to 072) unrun where the code tree holds no state, and runs what follows', () => {
+    const { migrate } = synthFleet({
+      '001-a.sh': shMig('001'),
+      '072-b.cjs': cjsMig('072'),
+      '073-c.cjs': cjsMig('073'),
+    });
+    const project = tmp('mig-orch-none-');
 
     const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.deepStrictEqual(runReport(res.stdout), { ran: 1, tracking: 'docs/workflow/.state/migrations' });
-    assert.strictEqual(fs.readFileSync(path.join(project, 'docs/workflow/.state/migrations'), 'utf8'), '001\n');
+    assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '073\n', 'only 073 ran');
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n'), ['001', '072', '073']);
+    assert.deepStrictEqual(runReport(res.stdout), { ran: 1 });
   });
 
   it('an aborted run reports nothing — there is no completed run to account for', () => {
@@ -277,7 +321,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.notStrictEqual(mi, -1, 'the recovered run emits the journal');
     const addenda = JSON.parse(lines[mi + 1]);
     assert.deepStrictEqual(addenda.map((a) => a.id), ['001'], "001's addendum survived the abort");
-    assert.ok(!fs.existsSync(path.join(project, '.workflows/.state/pending-verify.json')), 'journal cleared after emission');
+    assert.ok(!fs.existsSync(path.join(project, '.leeway/.state/pending-verify.json')), 'journal cleared after emission');
 
     const third = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.ok(!third.stdout.includes('---VERIFY_ADDENDA---'), 'emitted once, never again');
@@ -316,7 +360,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     }], 'trimmed, and a blank notice is no notice');
     assert.deepStrictEqual(markerPayload(first.stdout, '---VERIFY_ADDENDA---').map((a) => a.verify),
       ['Check the things code cannot see.'], 'the checks travel on their own');
-    assert.ok(!fs.existsSync(path.join(project, '.workflows/.state/pending-notices.json')), 'journal cleared after emission');
+    assert.ok(!fs.existsSync(path.join(project, '.leeway/.state/pending-notices.json')), 'journal cleared after emission');
 
     const second = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(second.status, 0, second.stderr);
@@ -344,7 +388,7 @@ describe('migrate.cjs — synthetic fleet', () => {
       ['Something was removed.'], "001's notice survived the abort");
   });
 
-  it('honours a legacy tracking log written by the old migrate.sh', () => {
+  it('runs only what the ledger does not hold, appending after what it does', () => {
     const { migrate } = synthFleet({
       '001-a.sh': shMig('001'),
       '002-b.cjs': cjsMig('002'),
@@ -352,8 +396,8 @@ describe('migrate.cjs — synthetic fleet', () => {
       '004-d.cjs': cjsMig('004'),
     });
     const project = freshProject();
-    // A log the bash orchestrator would have left: numeric IDs, one per line.
-    fs.writeFileSync(path.join(project, '.workflows/.state/migrations'), '001\n003\n');
+    fs.mkdirSync(path.dirname(path.join(project, LEDGER)), { recursive: true });
+    fs.writeFileSync(path.join(project, LEDGER), '001\n003\n');
 
     const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
@@ -425,7 +469,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n002\n');
 
     // Delete the log — every migration re-runs.
-    fs.rmSync(path.join(project, '.workflows/.state/migrations'));
+    fs.rmSync(path.join(project, LEDGER));
     run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(
       fs.readFileSync(path.join(project, 'order.log'), 'utf8'),

@@ -2,7 +2,9 @@
  * The workflows' manifests are the engine's to write: in a session that
  * announced, in a conversation the engine has marked, a file tool aimed at a
  * work unit's manifest or the project manifest is refused, wherever its path
- * leads from.
+ * leads from. The manifests live in the state, `.leeway/` in the main
+ * checkout of the session's repository, whichever worktree the session runs
+ * in.
  */
 import type { EngineInterface, On } from 'claude-code'
 
@@ -12,6 +14,9 @@ const REFUSAL =
   'Workflow manifests are written through the engine, never edited directly — use `node .claude/skills/workflow-engine/scripts/engine.cjs manifest set|push|pull|delete|apply …` instead.'
 
 const MANIFEST = 'manifest.json'
+
+/** The state's folder in the main checkout. */
+const STATE = '.leeway'
 
 /**
  * Whether the session announced and the engine has marked its conversation
@@ -75,19 +80,70 @@ async function landing(
   return undefined
 }
 
+/** The parent of an absolute path; `/` its own. */
+function parentOf(path: string): string {
+  return path.slice(0, path.lastIndexOf('/')) || '/'
+}
+
 /**
- * Whether `path` lands on a manifest the engine keeps under the session's
- * project: `.workflows/manifest.json`, or a work unit's own one level down.
+ * The repository's common git directory, from the `.git` file of a linked
+ * worktree at `dir`: the git directory it names, and in it the `commondir`
+ * file naming the repository's — read as git reads them, so no process runs
+ * on every file tool call. Undefined where the file names none.
+ */
+async function commonDirOf($: EngineInterface, dir: string): Promise<string | undefined> {
+  const named = /^gitdir: (.+)$/m.exec(await $.fs.read(`${dir}/.git`))?.[1]?.trim()
+
+  if (named === undefined) {
+    return undefined
+  }
+
+  const gitDir = named.startsWith('/') ? named : `${dir}/${named}`
+  const common = (await $.fs.read(`${gitDir}/commondir`).catch(() => undefined))?.trim()
+
+  return landing($, common === undefined ? gitDir : common.startsWith('/') ? common : `${gitDir}/${common}`)
+}
+
+/**
+ * Where the state of the session's repository lives: `.leeway/` in the main
+ * checkout, the folder holding the repository's `.git` directory — found
+ * from the nearest `.git` at or above the session's root. Undefined outside
+ * a repository, or in one with no main checkout.
+ */
+async function stateOf($: EngineInterface): Promise<string | undefined> {
+  for (let dir = await $.session.root(); ; dir = parentOf(dir)) {
+    const kind = (await $.fs.stat(`${dir}/.git`).catch(() => undefined))?.kind
+
+    if (kind === 'dir') {
+      return `${dir}/${STATE}`
+    }
+
+    if (kind === 'file') {
+      const common = await commonDirOf($, dir).catch(() => undefined)
+
+      return common?.endsWith('/.git') ? `${parentOf(common)}/${STATE}` : undefined
+    }
+
+    if (dir === '/') {
+      return undefined
+    }
+  }
+}
+
+/**
+ * Whether `path` lands on a manifest the engine keeps in the state: its
+ * `manifest.json`, or a work unit's own one level down.
  */
 async function isManifest($: EngineInterface, path: string): Promise<boolean> {
-  const workflows = await landing($, `${await $.session.root()}/.workflows`)
+  const at = await stateOf($)
+  const state = at === undefined ? undefined : await landing($, at)
   const real = await landing($, path)
 
-  if (workflows === undefined || real === undefined || !real.startsWith(`${workflows}/`)) {
+  if (state === undefined || real === undefined || !real.startsWith(`${state}/`)) {
     return false
   }
 
-  const [first, second, ...deeper] = real.slice(workflows.length + 1).split('/')
+  const [first, second, ...deeper] = real.slice(state.length + 1).split('/')
 
   return second === undefined
     ? first === MANIFEST

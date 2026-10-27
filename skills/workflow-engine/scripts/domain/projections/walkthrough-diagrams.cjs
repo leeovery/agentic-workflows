@@ -27,6 +27,7 @@ const { startOverview, startMenu } = require('./start.cjs');
 const { roadmapMapView } = require('./roadmap.cjs');
 const { epicDashboard } = require('./epic.cjs');
 const { illustrate } = require('./surfaces.cjs');
+const { STATE_DIR_NAME, pinStateRoot } = require('../../kernel/state-root.cjs');
 
 // The column every diagram hangs off. Three columns reads as a figure inset
 // from the prose around it without costing the narrowest pane a wrap.
@@ -280,9 +281,15 @@ function asPlainText(text) {
     .join('\n');
 }
 
-/** The fixture tree one sample derives from. @param {string} surface */
+/**
+ * The fixture tree one sample derives from, its state the fixture's own —
+ * never the repository's the skills are installed in.
+ * @param {string} surface
+ */
 function fixtureDir(surface) {
-  return path.join(FIXTURES_DIR, surface);
+  const dir = path.join(FIXTURES_DIR, surface);
+  pinStateRoot(dir, path.join(dir, STATE_DIR_NAME));
+  return dir;
 }
 
 /** The start overview and the menu beneath it, as a first `/workflow-start` of the day shows them. @returns {string} */

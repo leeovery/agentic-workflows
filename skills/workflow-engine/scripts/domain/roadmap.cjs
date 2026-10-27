@@ -46,13 +46,13 @@ const {
   withWorkUnitLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { roadmapItems, itemJoin, itemPostponedFrom, postponeTarget, postponeClashPhrase } = require('./derivations.cjs');
 const { TERMINAL_STATUSES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { parseInboxPath, parseInboxPaths, refuseTakenDestinations, moveFiles, undoMoves, archivedDir, FOLDER_KIND } = require('./inbox.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { STATE_DIR_NAME, statePath } = require('../kernel/state-root.cjs');
 
 /** @typedef {import('./inbox.cjs').ItemKind} RoadmapKind */
 
@@ -61,7 +61,7 @@ const KINDS = /** @type {RoadmapKind[]} */ (Object.values(FOLDER_KIND));
 /** The kind an item takes where nothing names one. */
 const DEFAULT_KIND = /** @type {RoadmapKind} */ ('idea');
 
-const ROADMAP_DIR = stateRel('.roadmap');
+const ROADMAP_DIR = '.roadmap';
 const SESSIONS_DIR = `${ROADMAP_DIR}/sessions`;
 const NOTES_DIR = `${ROADMAP_DIR}/notes`;
 
@@ -88,23 +88,13 @@ function markedKind(kind) {
 }
 
 /**
- * Where an inbox note lives once its item is on the roadmap,
- * project-relative — the inbox's folder and file name kept.
+ * Where an inbox note lives once its item is on the roadmap, state-relative
+ * — the inbox's folder and file name kept — and so the source that names it.
  * @param {string} folder @param {string} file
  * @returns {string}
  */
 function notePath(folder, file) {
   return `${NOTES_DIR}/${folder}/${file}`;
-}
-
-/**
- * A project-relative path as a source — relative to `.workflows/`, as every
- * source is.
- * @param {string} projectPath
- * @returns {string}
- */
-function asSource(projectPath) {
-  return path.posix.relative(stateRel(), projectPath);
 }
 
 /**
@@ -114,7 +104,7 @@ function asSource(projectPath) {
  * @returns {{folder: string, file: string}|null}
  */
 function noteOfSource(source) {
-  const prefix = `${asSource(NOTES_DIR)}/`;
+  const prefix = `${NOTES_DIR}/`;
   if (typeof source !== 'string' || !source.startsWith(prefix)) return null;
   const [folder, file, ...deeper] = source.slice(prefix.length).split('/');
   const isNote = deeper.length === 0 && Object.keys(FOLDER_KIND).includes(folder)
@@ -144,10 +134,10 @@ function validateSources(sources) {
   }
   for (const s of sources) {
     if (s === '' || s.startsWith('/') || s.split('/').includes('..')) {
-      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative under ${stateRel()}/, never absolute or traversing`);
+      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative to the state, never absolute or traversing`);
     }
-    if (s.startsWith(`${stateRel()}/`)) {
-      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative to ${stateRel()}/, so drop the leading "${stateRel()}/" (${JSON.stringify(s.slice(`${stateRel()}/`.length))})`);
+    if (s.startsWith(`${STATE_DIR_NAME}/`)) {
+      throw new Error(`invalid sources entry ${JSON.stringify(s)} — paths are relative to the state, so drop the leading "${STATE_DIR_NAME}/" (${JSON.stringify(s.slice(`${STATE_DIR_NAME}/`.length))})`);
     }
   }
 }
@@ -156,11 +146,11 @@ function validateSources(sources) {
 // session log its session has not opened yet.
 /** @param {string} cwd @param {string[]} sources */
 function requireSourcesOnDisk(cwd, sources) {
-  const missing = [...new Set(sources)].filter((s) => !fs.existsSync(path.join(stateRoot(cwd), s)));
+  const missing = [...new Set(sources)].filter((s) => !fs.existsSync(statePath(cwd, s)));
   if (missing.length === 0) return;
   const named = missing.map((s) => JSON.stringify(s)).join(', ');
   const [what, verb] = missing.length === 1 ? ['source', 'does'] : ['sources', 'do'];
-  throw new Error(`${what} ${named} ${verb} not exist under ${stateRel()}/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
+  throw new Error(`${what} ${named} ${verb} not exist under ${statePath(cwd)}/ — a source must exist before an item records it; open a session log's session first (roadmap session open, or the session's own open)`);
 }
 
 /** @param {*} kind */
@@ -366,7 +356,7 @@ function deriveItemState(cwd, item) {
  * @returns {{exists: boolean, horizons: string[], items: RoadmapItemRow[], totals: {items: number, waiting: number, in_flight: number, shipped: number, orphaned: number}, active_session: string|null, session_logs: {number: number, path: string}[], next_session_number: number, imports: {path: string, origin: string}[]}}
  */
 function roadmapState(cwd) {
-  const sessionsDir = path.join(cwd, SESSIONS_DIR);
+  const sessionsDir = statePath(cwd, SESSIONS_DIR);
   /** @type {{number: number, path: string}[]} */
   let sessionLogs = [];
   try {
@@ -375,7 +365,7 @@ function roadmapState(cwd) {
       .sort()
       .map((f) => ({
         number: parseInt(/** @type {RegExpMatchArray} */ (f.match(/^session-(\d+)\.md$/))[1], 10),
-        path: `${SESSIONS_DIR}/${f}`,
+        path: path.join(sessionsDir, f),
       }));
   } catch {
     sessionLogs = [];
@@ -408,7 +398,7 @@ function roadmapState(cwd) {
   const importEntries = Array.isArray(roadmap.imports)
     ? roadmap.imports
       .filter((/** @type {*} */ e) => e && typeof e.path === 'string')
-      .map((/** @type {*} */ e) => ({ path: e.path, origin: typeof e.origin === 'string' ? e.origin : '' }))
+      .map((/** @type {*} */ e) => ({ path: statePath(cwd, ROADMAP_DIR, e.path), origin: typeof e.origin === 'string' ? e.origin : '' }))
     : [];
   const horizons = Array.isArray(roadmap.horizons) ? roadmap.horizons.filter((/** @type {*} */ h) => typeof h === 'string') : [];
   const itemsObj = roadmap.items && typeof roadmap.items === 'object' && !Array.isArray(roadmap.items) ? roadmap.items : {};
@@ -533,6 +523,15 @@ function withUndoFailure(err, failure) {
 }
 
 /**
+ * The notes a transaction moved, as its response names them: absolute.
+ * @param {string} cwd @param {{from: string, to: string}[]} moves state-relative
+ * @returns {{from: string, to: string}[]}
+ */
+function movedPaths(cwd, moves) {
+  return moves.map((m) => ({ from: statePath(cwd, m.from), to: statePath(cwd, m.to) }));
+}
+
+/**
  * Tail-commit the project manifest — and a work unit's alongside it, for the
  * mutations that reach across the boundary, and both ends of every file a
  * mutation moved — and stamp the result: the shared close of every mutation.
@@ -546,10 +545,10 @@ function withUndoFailure(err, failure) {
 function commitRoadmap(cwd, result, message, { workUnit, moves = [], warnings = [] } = {}) {
   const spec = [
     PROJECT_MANIFEST_SPEC,
-    ...(workUnit ? [stateRel(`${workUnit}/manifest.json`)] : []),
+    ...(workUnit ? [`${workUnit}/manifest.json`] : []),
     ...moves.flatMap((m) => [m.from, m.to]),
   ];
-  const outcome = commitTailPathspec(cwd, spec, message, warnings);
+  const outcome = commitStateTail(cwd, spec, message, warnings);
   result.committed = outcome.committed;
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome);
@@ -619,7 +618,7 @@ function addRoadmapItem(cwd, name, { horizon, summary, kind = DEFAULT_KIND, orig
  * @property {RoadmapKind} kind
  * @property {string} origin
  * @property {string[]} sources
- * @property {{from: string, to: string}} [move]  the note's move off the inbox, project-relative
+ * @property {{from: string, to: string}} [move]  the note's move off the inbox, state-relative
  */
 
 /**
@@ -628,10 +627,10 @@ function addRoadmapItem(cwd, name, { horizon, summary, kind = DEFAULT_KIND, orig
  * `kind` refused), the origin `inbox:{file stem}`, and the one source the
  * note's home on the roadmap, so an `origin` or `sources` beside it is
  * refused too.
- * @param {*} e
+ * @param {string} cwd @param {*} e
  * @returns {BatchEntry}
  */
-function resolveBatchEntry(e) {
+function resolveBatchEntry(cwd, e) {
   if (!e || typeof e !== 'object' || Array.isArray(e)) throw new Error('must be an object');
   assertLegalName('item', e.name);
   if (typeof e.horizon !== 'string' || e.horizon === '') throw new Error('"horizon" is required');
@@ -645,24 +644,24 @@ function resolveBatchEntry(e) {
     return { ...base, kind: e.kind ?? DEFAULT_KIND, origin: e.origin ?? 'harvest', sources: e.sources ?? [] };
   }
   if (typeof e.note !== 'string') throw new Error('"note" must be a live inbox path');
-  const note = parseInboxPath(e.note, { archived: false });
+  const note = parseInboxPath(cwd, e.note, { archived: false });
   const kind = FOLDER_KIND[note.folder];
   if (e.kind !== undefined && e.kind !== kind) {
-    throw new Error(`"kind" is ${e.kind}, but the note "${note.given}" is a ${kind} — a note's kind is its inbox folder's`);
+    throw new Error(`"kind" is ${e.kind}, but the note "${e.note}" is a ${kind} — a note's kind is its inbox folder's`);
   }
   if (e.origin !== undefined || e.sources !== undefined) {
     throw new Error('a note sets the entry\'s origin and source — drop "origin" and "sources"');
   }
   if (/\s/.test(note.file)) {
-    throw new Error(`the note "${note.given}" has a space in its file name — a note's name can't carry spaces; rename the file`);
+    throw new Error(`the note "${e.note}" has a space in its file name — a note's name can't carry spaces; rename the file`);
   }
   const home = notePath(note.folder, note.file);
   return {
     ...base,
     kind,
     origin: `inbox:${note.file.replace(/\.md$/, '')}`,
-    sources: [asSource(home)],
-    move: { from: note.given, to: home },
+    sources: [home],
+    move: { from: note.rel, to: home },
   };
 }
 
@@ -682,7 +681,7 @@ function planBatch(cwd, entries, items) {
   }
   const resolved = entries.map((e, i) => {
     try {
-      return resolveBatchEntry(e);
+      return resolveBatchEntry(cwd, e);
     } catch (err) {
       throw new Error(`entry ${i + 1} — ${messageOf(err)}`);
     }
@@ -693,7 +692,7 @@ function planBatch(cwd, entries, items) {
   const taken = names.find((n) => items[n]);
   if (taken) throw new Error(`"${taken}" is already on the roadmap — edit it, or pick a different name`);
   const moves = resolved.flatMap((e) => (e.move ? [e.move] : []));
-  parseInboxPaths(cwd, moves.map((m) => m.from), { archived: false });
+  parseInboxPaths(cwd, moves.map((m) => statePath(cwd, m.from)), { archived: false });
   refuseTakenDestinations(cwd, moves);
   requireSourcesOnDisk(cwd, resolved.flatMap((e) => (e.move ? [] : e.sources)));
   return { resolved, moves };
@@ -751,7 +750,7 @@ function addRoadmapItemsBatch(cwd, entries) {
       horizons: [...roadmap.horizons],
       item_total: Object.keys(roadmap.items).length,
     };
-    if (moves.length > 0) out.notes_moved = moves;
+    if (moves.length > 0) out.notes_moved = movedPaths(cwd, moves);
     return { out, moves };
   });
   return commitRoadmap(cwd, result, `roadmap: add ${entries.length} item${entries.length === 1 ? '' : 's'}`, { moves: result.notes_moved ?? [] });
@@ -849,7 +848,7 @@ function noteArchiveMoves(cwd, items, name) {
     const note = noteOfSource(source);
     if (!note || named.has(source)) return [];
     const from = notePath(note.folder, note.file);
-    return fs.existsSync(path.join(cwd, from)) ? [{ from, to: `${archivedDir(note.folder)}/${note.file}` }] : [];
+    return fs.existsSync(statePath(cwd, from)) ? [{ from, to: `${archivedDir(note.folder)}/${note.file}` }] : [];
   });
 }
 
@@ -885,7 +884,7 @@ function removeRoadmapItem(cwd, name) {
     delete roadmap.items[name];
     /** @type {RoadmapOpResult} */
     const out = { op: 'remove', name, item_total: Object.keys(roadmap.items).length };
-    if (moves.length > 0) out.notes_moved = moves;
+    if (moves.length > 0) out.notes_moved = movedPaths(cwd, moves);
     if (postponed) out.epic_row_cancelled = { work_unit: postponed.work_unit, topic: postponed.topic };
     return { out, moves };
   }, { leaving: true });
@@ -1512,9 +1511,9 @@ function flagJoined(cwd, name) {
   }
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(cwd, stateRel(`${join.work_unit}/manifest.json`), `roadmap: flag ${name} — input moved`, warnings);
+  const outcome = commitStateTail(cwd, `${join.work_unit}/manifest.json`, `roadmap: flag ${name} — input moved`, warnings);
   result.committed = outcome.committed;
-  if (outcome.failed) result.warnings = warnings;
+  if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome);
   return result;
 }

@@ -59,7 +59,6 @@ module.exports = {
   gateway,
   state: {
     stateRoot: state.stateRoot,
-    stateRel: state.stateRel,
   },
   schema: {
     VALID_PHASES: schema.VALID_PHASES,

@@ -10,9 +10,14 @@
 // mechanism: this module knows file locations, JSON parsing, temp-file
 // renames, and lock files; it knows nothing about what a manifest contains.
 //
-// Every function takes `workflowsDir` — the absolute path of the project's
-// `.workflows/` directory — so callers with different cwd conventions share
-// one implementation.
+// Every function takes `stateDir` — the absolute path of the state root — so
+// callers with different cwd conventions share one implementation.
+//
+// One lock guards every write to the state: the writer lock, `.lock` at the
+// state root, held for a whole verb — its writes and its commit — so
+// concurrent sessions write the state one after the other. A manifest write
+// takes it too, so a write made outside a verb's hold is serialised the
+// same way; inside one it is held already, and taken again for nothing.
 //
 // Errors throw `Error` with a stable message; read-surface callers translate
 // to their exit-code convention, transaction callers let them ride to the
@@ -21,7 +26,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ownerAlive, processStartTime } = require('./process.cjs');
+const { ownerAlive, processStartTime, sleepSync } = require('./process.cjs');
 
 // Lock discipline: a lock file created with O_EXCL is the mutex; a holder
 // that dies leaves a file whose mtime ages past LOCK_STALE_MS and is broken
@@ -35,24 +40,26 @@ const LOCK_TIMEOUT_MS = 10000;
 // writer's temp file exists only for the instant between write and rename.
 const TMP_STALE_MS = 60000;
 
-/** @param {string} workflowsDir @param {string} workUnit */
-function workUnitManifestPath(workflowsDir, workUnit) {
-  return path.join(workflowsDir, workUnit, 'manifest.json');
+// The writer lock is held across a verb's writes, its commit and its push.
+// It records its holder's process, so a holder that is gone is taken over at
+// once and a live one is never broken: a contender waits a minute for it —
+// longer than any push the holder makes under the lock may take.
+const WRITER_LOCK = '.lock';
+const WRITER_LOCK_TIMEOUT_MS = 60000;
+
+/** @param {string} stateDir @param {string} workUnit */
+function workUnitManifestPath(stateDir, workUnit) {
+  return path.join(stateDir, workUnit, 'manifest.json');
 }
 
-/** @param {string} workflowsDir @param {string} workUnit */
-function workUnitLockPath(workflowsDir, workUnit) {
-  return path.join(workflowsDir, workUnit, '.lock');
+/** @param {string} stateDir */
+function projectManifestPath(stateDir) {
+  return path.join(stateDir, 'manifest.json');
 }
 
-/** @param {string} workflowsDir */
-function projectManifestPath(workflowsDir) {
-  return path.join(workflowsDir, 'manifest.json');
-}
-
-/** @param {string} workflowsDir */
-function projectLockPath(workflowsDir) {
-  return path.join(workflowsDir, '.project-lock');
+/** @param {string} stateDir */
+function writerLockPath(stateDir) {
+  return path.join(stateDir, WRITER_LOCK);
 }
 
 /**
@@ -165,12 +172,12 @@ function writeJsonAtomic(file, data, { mode } = {}) {
  * Load and parse one work unit's manifest. Loud on a missing file and loud
  * on corrupt JSON — a manifest that cannot be read must never be silently
  * replaced by an empty document.
- * @param {string} workflowsDir
+ * @param {string} stateDir
  * @param {string} workUnit
  * @returns {any}
  */
-function readWorkUnitManifest(workflowsDir, workUnit) {
-  const file = workUnitManifestPath(workflowsDir, workUnit);
+function readWorkUnitManifest(stateDir, workUnit) {
+  const file = workUnitManifestPath(stateDir, workUnit);
   let raw;
   try {
     raw = fs.readFileSync(file, 'utf8');
@@ -186,10 +193,10 @@ function readWorkUnitManifest(workflowsDir, workUnit) {
 
 /**
  * Save one work unit's manifest atomically.
- * @param {string} workflowsDir @param {string} workUnit @param {object} manifest
+ * @param {string} stateDir @param {string} workUnit @param {object} manifest
  */
-function writeWorkUnitManifestAtomic(workflowsDir, workUnit, manifest) {
-  writeJsonAtomic(workUnitManifestPath(workflowsDir, workUnit), manifest);
+function writeWorkUnitManifestAtomic(stateDir, workUnit, manifest) {
+  writeJsonAtomic(workUnitManifestPath(stateDir, workUnit), manifest);
 }
 
 /**
@@ -197,11 +204,11 @@ function writeWorkUnitManifestAtomic(workflowsDir, workUnit, manifest) {
  * first-write state ({}); any other read error, and corrupt JSON in an
  * existing file, surface loudly — a write against a silently-empty document
  * would replace every registered work unit.
- * @param {string} workflowsDir
+ * @param {string} stateDir
  * @returns {Record<string, any>}
  */
-function readProjectManifest(workflowsDir) {
-  const file = projectManifestPath(workflowsDir);
+function readProjectManifest(stateDir) {
+  const file = projectManifestPath(stateDir);
   let raw = null;
   try {
     raw = fs.readFileSync(file, 'utf8');
@@ -223,12 +230,40 @@ function readProjectManifest(workflowsDir) {
 }
 
 /**
- * Save the project manifest atomically, creating `.workflows/` when absent.
- * @param {string} workflowsDir @param {object} data
+ * Every work unit's manifest: the registered names, or — while none are
+ * registered — the directories in the state. A name whose manifest is
+ * missing or unreadable is passed over; no state, no manifests. Loud on a
+ * corrupt project manifest, as its read is.
+ * @param {string} stateDir
+ * @param {Record<string, any>} [project]  the project manifest, where the caller has read it already
+ * @returns {Array<Record<string, any>>}
  */
-function writeProjectManifestAtomic(workflowsDir, data) {
-  fs.mkdirSync(workflowsDir, { recursive: true });
-  writeJsonAtomic(projectManifestPath(workflowsDir), data);
+function listWorkUnitManifests(stateDir, project) {
+  if (!fs.existsSync(stateDir)) return [];
+  const registered = Object.keys((project || readProjectManifest(stateDir)).work_units || {});
+  const names = registered.length > 0
+    ? registered
+    : fs.readdirSync(stateDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+      .map((e) => e.name);
+  /** @type {Array<Record<string, any>>} */
+  const manifests = [];
+  for (const name of names) {
+    try {
+      manifests.push(readWorkUnitManifest(stateDir, name));
+    } catch {
+      // missing or unreadable — passed over
+    }
+  }
+  return manifests;
+}
+
+/**
+ * Save the project manifest atomically.
+ * @param {string} stateDir @param {object} data
+ */
+function writeProjectManifestAtomic(stateDir, data) {
+  writeJsonAtomic(projectManifestPath(stateDir), data);
 }
 
 /**
@@ -405,54 +440,90 @@ function tryClaimFile(claimFile, staleMs = LOCK_STALE_MS) {
   return null;
 }
 
-// Block the thread for `ms` without burning CPU. Atomics.wait on a throwaway
-// zero-initialised SharedArrayBuffer int32 never gets notified, so it always
-// sleeps the full timeout — a real synchronous sleep, not a spin loop.
-/** @param {number} ms */
-function sleepSync(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+/** Who holds a claim, as its record names it. @param {string} claimFile @returns {string} */
+function claimHolder(claimFile) {
+  const owner = claimOwner(claimFile);
+  return owner && owner.pid ? `process ${owner.pid}` : 'another process';
 }
 
 /**
- * Run `fn` holding the work unit's manifest lock. A missing work-unit
- * directory refuses upfront with the same not-found error the read throws —
- * there is no manifest to protect, and creating a lock file would conjure
- * the directory.
+ * Claim the writer lock, waiting up to `timeoutMs` for a live holder.
+ * @param {string} lockFile @param {number} timeoutMs
+ * @returns {() => void} the release
+ */
+function claimWriterLock(lockFile, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let release = tryClaimFile(lockFile);
+  while (release === null) {
+    if (Date.now() >= deadline) {
+      throw new Error(`Timed out waiting for the state lock (lock file: ${lockFile}) — ${claimHolder(lockFile)} holds it`);
+    }
+    sleepSync(LOCK_RETRY_MS);
+    release = tryClaimFile(lockFile);
+  }
+  return release;
+}
+
+/** @type {Map<string, number>} the writer locks this process holds, by file, each with the depth of its holds */
+const writerHolds = new Map();
+
+/**
+ * Run `fn` holding the writer lock of the state at `stateDir`, taken again
+ * for nothing where this process holds it already. `fn` runs synchronously.
+ * Refuses where the state worktree is not there: the lock file would conjure
+ * a plain folder where the worktree belongs.
  * @template T
- * @param {string} workflowsDir @param {string} workUnit @param {() => T} fn
+ * @param {string} stateDir @param {() => T} fn
+ * @param {{timeoutMs?: number}} [opts]
  * @returns {T}
  */
-function withWorkUnitLock(workflowsDir, workUnit, fn) {
-  if (!fs.existsSync(path.join(workflowsDir, workUnit))) {
-    throw new Error(`manifest not found: ${workUnitManifestPath(workflowsDir, workUnit)}`);
-  }
-  const lockFile = workUnitLockPath(workflowsDir, workUnit);
-  acquireLockFile(lockFile, `Timed out waiting for lock on "${workUnit}"`);
+function withWriterLock(stateDir, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS } = {}) {
+  if (!fs.existsSync(stateDir)) throw new Error(`no state worktree at ${stateDir} — nothing written`);
+  const lockFile = writerLockPath(stateDir);
+  const depth = writerHolds.get(lockFile) || 0;
+  const release = depth === 0 ? claimWriterLock(lockFile, timeoutMs) : null;
+  writerHolds.set(lockFile, depth + 1);
   try {
-    assertWritableManifest(workUnitManifestPath(workflowsDir, workUnit));
     return fn();
   } finally {
-    releaseLockFile(lockFile);
+    if (release === null) {
+      writerHolds.set(lockFile, depth);
+    } else {
+      writerHolds.delete(lockFile);
+      release();
+    }
   }
 }
 
 /**
- * Run `fn` holding the project manifest lock (`.workflows/` created when
- * absent — the lock file lives inside it).
+ * Run `fn` holding the writer lock, over a work unit's manifest. A missing
+ * work-unit directory refuses upfront with the same not-found error the read
+ * throws — there is no manifest to protect.
  * @template T
- * @param {string} workflowsDir @param {() => T} fn
+ * @param {string} stateDir @param {string} workUnit @param {() => T} fn
  * @returns {T}
  */
-function withProjectLock(workflowsDir, fn) {
-  fs.mkdirSync(workflowsDir, { recursive: true });
-  const lockFile = projectLockPath(workflowsDir);
-  acquireLockFile(lockFile, 'Timed out waiting for project manifest lock');
-  try {
-    assertWritableManifest(projectManifestPath(workflowsDir));
-    return fn();
-  } finally {
-    releaseLockFile(lockFile);
+function withWorkUnitLock(stateDir, workUnit, fn) {
+  if (!fs.existsSync(path.join(stateDir, workUnit))) {
+    throw new Error(`manifest not found: ${workUnitManifestPath(stateDir, workUnit)}`);
   }
+  return withWriterLock(stateDir, () => {
+    assertWritableManifest(workUnitManifestPath(stateDir, workUnit));
+    return fn();
+  });
+}
+
+/**
+ * Run `fn` holding the writer lock, over the project manifest.
+ * @template T
+ * @param {string} stateDir @param {() => T} fn
+ * @returns {T}
+ */
+function withProjectLock(stateDir, fn) {
+  return withWriterLock(stateDir, () => {
+    assertWritableManifest(projectManifestPath(stateDir));
+    return fn();
+  });
 }
 
 module.exports = {
@@ -460,10 +531,11 @@ module.exports = {
   LOCK_RETRY_MS,
   LOCK_TIMEOUT_MS,
   TMP_STALE_MS,
+  WRITER_LOCK,
+  WRITER_LOCK_TIMEOUT_MS,
   workUnitManifestPath,
-  workUnitLockPath,
   projectManifestPath,
-  projectLockPath,
+  writerLockPath,
   breakStaleLockFile,
   acquireLockFile,
   releaseLockFile,
@@ -474,7 +546,9 @@ module.exports = {
   writeJsonAtomic,
   writeWorkUnitManifestAtomic,
   readProjectManifest,
+  listWorkUnitManifests,
   writeProjectManifestAtomic,
+  withWriterLock,
   withWorkUnitLock,
   withProjectLock,
 };

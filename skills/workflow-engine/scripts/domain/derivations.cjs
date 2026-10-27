@@ -11,7 +11,6 @@ const fs = require('fs');
 const path = require('path');
 const { fileExists, filesChecksum, listFiles } = require('./reads.cjs');
 const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, VALID_PHASE_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
-const { stateRel } = require('../kernel/state-root.cjs');
 
 function phaseStatus(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
@@ -1036,9 +1035,9 @@ function lastCompletedPhase(manifest, pipeline) {
  * specification menu hands its analysis to stamp) — so they can never
  * drift. Returns absolute paths, sorted.
  */
-function collectAnalysisInputs(manifest, workflowsDir, kind) {
+function collectAnalysisInputs(manifest, stateDir, kind) {
   if (!manifest || !manifest.name) return [];
-  const wuDir = path.join(workflowsDir, manifest.name);
+  const wuDir = path.join(stateDir, manifest.name);
   const completedFiles = (phase) => phaseItems(manifest, phase)
     .filter(it => it.status === 'completed')
     .map(it => path.join(wuDir, phase, `${it.name}.md`))
@@ -1073,14 +1072,14 @@ const ANALYSIS_KINDS = {
   },
 };
 
-function computeAnalysisCacheStatus(manifest, workflowsDir, kind) {
+function computeAnalysisCacheStatus(manifest, stateDir, kind) {
   if (!manifest || !manifest.name) return { status: 'absent', stamped: false, generated: null, files: [] };
 
   const cfg = ANALYSIS_KINDS[kind];
   if (!cfg) return { status: 'absent', stamped: false, generated: null, files: [] };
 
   const cache = cfg.cacheOf(manifest);
-  const inputPaths = collectAnalysisInputs(manifest, workflowsDir, kind);
+  const inputPaths = collectAnalysisInputs(manifest, stateDir, kind);
   const cachedFiles = () => (cache && cfg.filesField && Array.isArray(cache[cfg.filesField])) ? cache[cfg.filesField] : [];
 
   if (!cache || !cache.checksum) {
@@ -1329,28 +1328,28 @@ const MAILBOX_PHASES = Object.entries(VALID_PHASE_STATUSES)
   .map(([phase]) => phase);
 
 /**
- * A topic's mailbox directory, project-relative — the one place the layout
- * is spelled.
+ * A topic's mailbox directory, state-relative — the one place the layout is
+ * spelled.
  * @param {string} workUnit @param {string} phase @param {string} topic
  * @returns {string}
  */
 function mailboxDir(workUnit, phase, topic) {
-  return stateRel(`${workUnit}/${phase}/.mailbox/${topic}`);
+  return `${workUnit}/${phase}/.mailbox/${topic}`;
 }
 
 /**
  * A topic's messages: the mailbox's `.md` file names in the order the drain
  * takes them, `[]` when no mailbox exists. The one reader of a mailbox's
  * contents.
- * @param {string} cwd  project root
+ * @param {string} stateDir  the state root
  * @param {string} workUnit @param {string} phase @param {string} topic
  * @returns {string[]}
  */
-function mailboxFiles(cwd, workUnit, phase, topic) {
+function mailboxFiles(stateDir, workUnit, phase, topic) {
   /** @type {fs.Dirent[]} */
   let entries;
   try {
-    entries = fs.readdirSync(path.join(cwd, mailboxDir(workUnit, phase, topic)), { withFileTypes: true });
+    entries = fs.readdirSync(path.join(stateDir, mailboxDir(workUnit, phase, topic)), { withFileTypes: true });
   } catch {
     return [];
   }
@@ -1361,17 +1360,17 @@ function mailboxFiles(cwd, workUnit, phase, topic) {
 // fact about the mailbox directory, not the item's status: a landing on a
 // concluded topic reopens it to `in-progress`, and the drain deletes message
 // files, so an empty directory is the released signal with nothing to clear.
-/** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @returns {number} */
-function mailboxDepth(cwd, workUnit, phase, topic) {
-  return mailboxFiles(cwd, workUnit, phase, topic).length;
+/** @param {string} stateDir @param {string} workUnit @param {string} phase @param {string} topic @returns {number} */
+function mailboxDepth(stateDir, workUnit, phase, topic) {
+  return mailboxFiles(stateDir, workUnit, phase, topic).length;
 }
 
 // The epic map row's depths — the two conversation phases a map row joins.
-/** @param {string} cwd @param {string} workUnit @param {string} topic @returns {{research: number, discussion: number}} */
-function mailQueued(cwd, workUnit, topic) {
+/** @param {string} stateDir @param {string} workUnit @param {string} topic @returns {{research: number, discussion: number}} */
+function mailQueued(stateDir, workUnit, topic) {
   return {
-    research: mailboxDepth(cwd, workUnit, 'research', topic),
-    discussion: mailboxDepth(cwd, workUnit, 'discussion', topic),
+    research: mailboxDepth(stateDir, workUnit, 'research', topic),
+    discussion: mailboxDepth(stateDir, workUnit, 'discussion', topic),
   };
 }
 
@@ -1399,13 +1398,13 @@ function ownNamedItems(manifest, phase) {
  * rows' and the continue dashboard's cue — any mailbox phase owning one,
  * on the unit's name or, where the phase's items carry names of their own, on
  * any of them.
- * @param {string} cwd  project root @param {object} manifest @returns {string[]}
+ * @param {string} stateDir  the state root @param {object} manifest @returns {string[]}
  */
-function mailPhases(cwd, manifest) {
+function mailPhases(stateDir, manifest) {
   return MAILBOX_PHASES.filter((phase) => {
     const own = ownNamedItems(manifest, phase);
     const topics = own.length > 0 ? own.map((i) => i.name) : [manifest.name];
-    return topics.some((topic) => mailboxDepth(cwd, manifest.name, phase, topic) > 0);
+    return topics.some((topic) => mailboxDepth(stateDir, manifest.name, phase, topic) > 0);
   });
 }
 
@@ -1446,14 +1445,14 @@ function mailPhases(cwd, manifest) {
  * agree with the text; `description` carries the raw value for surfaces that
  * render it in full.
  * @param {object} manifest
- * @param {string} workflowsDir  the project's `.workflows` directory — the mailboxes are read from disk
+ * @param {string} stateDir  the state root — the mailboxes are read from disk
  * @returns {{map: DiscoveryMapRow[], summary: object, needs_sequencing: boolean}}
  */
-function buildDiscoveryMap(manifest, workflowsDir) {
+function buildDiscoveryMap(manifest, stateDir) {
   const discoveryItems = phaseItems(manifest, 'discovery');
   const map = discoveryItems.map((item) => {
     const { lifecycle, tier, current_phase, research_state, discussion_state, reconcile_pending } = computeTopicLifecycle(manifest, item.name);
-    const mail_queued = mailQueued(path.dirname(workflowsDir), manifest.name, item.name);
+    const mail_queued = mailQueued(stateDir, manifest.name, item.name);
     const summaryText = typeof item.summary === 'string' && item.summary.trim() ? item.summary : null;
     const descriptionText = typeof item.description === 'string' && item.description.trim() ? item.description : null;
     const discussion = discussion_state === 'promoted' ? itemOf(manifest, 'discussion', item.name) : undefined;

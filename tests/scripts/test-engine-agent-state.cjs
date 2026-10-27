@@ -8,7 +8,7 @@
 // rows without creating files; the content file's existence is the
 // completion signal scan promotes on; ack/announce/surface/incorporate walk
 // a validated lifecycle with loud refusals off the legal path. Store is
-// `.workflows/.cache/{wu}/state.json` — cache-resident, purged at close.
+// `.leeway/.cache/{wu}/state.json` — cache-resident, purged at close.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -19,6 +19,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 const { ok: engineJson, refuses: engineFails } = require('./engine-harness.cjs');
 
 /** Agent-store runner: the verb prefix is the suite's subject. */
@@ -27,11 +28,11 @@ const runJson = (dir, args) => engineJson(dir, ['agent', ...args]);
 const runFails = (dir, args) => engineFails(dir, ['agent', ...args]);
 
 function readStore(dir, wu, phase, topic) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', '.cache', wu, phase, topic, 'state.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', '.cache', wu, phase, topic, 'state.json'), 'utf8'));
 }
 
-function writeContent(dir, relFile, body = '# Findings\n\n## F1\n') {
-  const full = path.join(dir, relFile);
+function writeContent(dir, file, body = '# Findings\n\n## F1\n') {
+  const full = path.resolve(dir, file);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, body);
 }
@@ -39,20 +40,20 @@ function writeContent(dir, relFile, body = '# Findings\n\n## F1\n') {
 describe('engine agent — lifecycle store', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-state-'));
-    const wuDir = path.join(dir, '.workflows', 'pay');
+    dir = setupFixture('agent-state-');
+    const wuDir = path.join(dir, '.leeway', 'pay');
     fs.mkdirSync(wuDir, { recursive: true });
     fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress', phases: {},
     }, null, 2));
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('dispatch allocates sequential ids per kind, records in-flight, creates no file', () => {
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
-    assert.strictEqual(a.file, '.workflows/.cache/pay/discussion/alpha/review-001.md');
-    assert.ok(!fs.existsSync(path.join(dir, a.file)), 'no skeleton file');
+    assert.strictEqual(a.file, path.join(dir, '.leeway/.cache/pay/discussion/alpha/review-001.md'));
+    assert.ok(!fs.existsSync(a.file), 'no skeleton file');
     const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(b.id, 'review-002');
     const c = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
@@ -62,16 +63,16 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('dispatch numbers past legacy files already in the cache dir', () => {
-    writeContent(dir, '.workflows/.cache/pay/discussion/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
+    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-004', 'never collides with pre-programme files');
   });
 
   it('numbering survives past 999 — ids and sets stay distinct at four digits', () => {
-    writeContent(dir, '.workflows/.cache/pay/research/alpha/deep-dive-999-auth.md', 'legacy');
+    writeContent(dir, '.leeway/.cache/pay/research/alpha/deep-dive-999-auth.md', 'legacy');
     const a = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(a.id, 'deep-dive-1000-auth');
-    writeContent(dir, `.workflows/.cache/pay/research/alpha/${a.id}.md`);
+    writeContent(dir, `.leeway/.cache/pay/research/alpha/${a.id}.md`);
     const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     assert.ok(scan.pending.some((r) => r.id === 'deep-dive-1000-auth'), 'the four-digit row promotes like any other');
     const b = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
@@ -90,7 +91,7 @@ describe('engine agent — lifecycle store', () => {
     assert.match(err, /research carries no review — the deep dive is the phase's instrument \(--kind deep-dive\)/);
     assert.match(runFails(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'perspective', '--label', 'lens']).error,
       /research carries no perspective/);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/pay/research/alpha/state.json')), 'nothing recorded');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/pay/research/alpha/state.json')), 'nothing recorded');
     assert.strictEqual(runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']).id,
       'deep-dive-001-auth');
   });
@@ -100,8 +101,8 @@ describe('engine agent — lifecycle store', () => {
       id, kind: 'review', phase: 'research', topic: 'alpha', set: '001', status, announced: false,
       findings, surfaced, created: '2026-08-01T00:00:00.000Z',
     }];
-    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), JSON.stringify({
+    fs.mkdirSync(path.join(dir, '.leeway', '.cache', 'pay', 'research', 'alpha'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', '.cache', 'pay', 'research', 'alpha', 'state.json'), JSON.stringify({
       agents: Object.fromEntries([
         closed('review-001', 'in-flight'),
         closed('review-002', 'pending'),
@@ -109,7 +110,7 @@ describe('engine agent — lifecycle store', () => {
         closed('review-004', 'incorporated', ['F1'], ['F1']),
       ]),
     }));
-    writeContent(dir, '.workflows/.cache/pay/research/alpha/review-001.md');
+    writeContent(dir, '.leeway/.cache/pay/research/alpha/review-001.md');
     const scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     assert.deepStrictEqual([scan.in_flight, scan.pending, scan.acknowledged, scan.incorporated], [[], [], [], []],
       'no bucket carries a review row');
@@ -132,26 +133,26 @@ describe('engine agent — lifecycle store', () => {
   });
 
   it('review dispatch refuses while the mailbox holds entries, clears when it drains', () => {
-    writeContent(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
+    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
     const err = runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error;
     assert.match(err, /review dispatch blocked: 1 message/);
     assert.match(err, /topic absorb/, 'the refusal names the recovery path');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
-    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md'));
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/state.json')), 'nothing recorded');
+    fs.unlinkSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md'));
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001', 'a drained mailbox dispatches normally');
   });
 
   it('the mailbox guard holds review dispatches only — other kinds pass a full mailbox', () => {
-    writeContent(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
+    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md', '### Parked\n');
     const lens = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'auth']);
     assert.strictEqual(lens.id, 'perspective-001-auth');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']).error, /review dispatch blocked/);
     // Non-.md dirt (editor swap files, .DS_Store) and non-file entries never
     // count as waiting messages — only what mailboxStatus itself would count.
-    fs.unlinkSync(path.join(dir, '.workflows/pay/discussion/.mailbox/alpha/001-parked.md'));
-    writeContent(dir, '.workflows/pay/discussion/.mailbox/alpha/.DS_Store', 'dirt');
-    fs.mkdirSync(path.join(dir, '.workflows/pay/discussion/.mailbox/alpha/nested.md'), { recursive: true });
+    fs.unlinkSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/001-parked.md'));
+    writeContent(dir, '.leeway/pay/discussion/.mailbox/alpha/.DS_Store', 'dirt');
+    fs.mkdirSync(path.join(dir, '.leeway/pay/discussion/.mailbox/alpha/nested.md'), { recursive: true });
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review']);
     assert.strictEqual(a.id, 'review-001');
   });
@@ -162,8 +163,8 @@ describe('engine agent — lifecycle store', () => {
     assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth']);
     assert.ok(scan.in_flight[0].created, 'in-flight rows carry created for the earlier-session judgment');
 
-    fs.mkdirSync(path.dirname(path.join(dir, d.file)), { recursive: true });
-    fs.writeFileSync(path.join(dir, d.file), '');
+    fs.mkdirSync(path.dirname(d.file), { recursive: true });
+    fs.writeFileSync(d.file, '');
     scan = runJson(dir, ['scan', 'pay', 'research', 'alpha']);
     assert.deepStrictEqual(scan.in_flight.map((r) => r.id), ['deep-dive-001-auth'], 'an empty file is not completion');
 
@@ -280,7 +281,7 @@ describe('engine agent — lifecycle store', () => {
     runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', 'synthesis-001']);
     const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
     assert.strictEqual(again.id, 'synthesis-001', 'recovery re-dispatch after closing the dead row');
-    writeContent(dir, '.workflows/.cache/pay/discussion/beta/synthesis-001.md', 'stale legacy report');
+    writeContent(dir, '.leeway/.cache/pay/discussion/beta/synthesis-001.md', 'stale legacy report');
     const p2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'perspective', '--label', 'x', '--label', 'y']);
     for (const a of p2.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'beta']);
@@ -308,7 +309,7 @@ describe('engine agent — lifecycle store', () => {
   it('deleting the topic cache dir is a complete cleanse — state is colocated', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     runJson(dir, ['dispatch', 'pay', 'research', 'beta', '--kind', 'deep-dive', '--label', 'auth']);
-    fs.rmSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(path.join(dir, '.leeway', '.cache', 'pay', 'research', 'alpha'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'alpha']).in_flight, [],
       'the restart rm -rf removes rows with the content');
     assert.deepStrictEqual(runJson(dir, ['scan', 'pay', 'research', 'beta']).in_flight.map((r) => r.id), ['deep-dive-001-auth'],
@@ -389,13 +390,13 @@ describe('engine agent — lifecycle store', () => {
 
   it('corrupt store refuses loudly instead of resetting', () => {
     runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json'), '{nope');
+    fs.writeFileSync(path.join(dir, '.leeway', '.cache', 'pay', 'research', 'alpha', 'state.json'), '{nope');
     assert.match(runFails(dir, ['scan', 'pay', 'research', 'alpha']).error, /Corrupt agent state/);
   });
 
   it('a row whose findings or surfaced is not an array refuses loudly, never a TypeError', () => {
     const d = runJson(dir, ['dispatch', 'pay', 'research', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
-    const storeFile = path.join(dir, '.workflows', '.cache', 'pay', 'research', 'alpha', 'state.json');
+    const storeFile = path.join(dir, '.leeway', '.cache', 'pay', 'research', 'alpha', 'state.json');
     const state = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
     state.agents[d.id].status = 'acknowledged';
     state.agents[d.id].findings = 'F1';
@@ -417,14 +418,14 @@ describe('engine agent — lifecycle store', () => {
       assert.match(runFails(dir, ['surface', 'pay', 'research', topic, 'deep-dive-001-auth', 'F1']).error, /Invalid topic|Usage:/);
       assert.match(runFails(dir, ['incorporate', 'pay', 'research', topic, 'deep-dive-001-auth']).error, /Invalid topic|Usage:/);
     }
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', 'escape')), false);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.cache', 'pay', 'research', 'a')), false);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', 'escape')), false);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.cache', 'pay', 'research', 'a')), false);
   });
 
   it('synthesis recovery re-dispatch discards the dead row\'s stale report', () => {
     runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'perspective', '--label', 'a', '--label', 'b']);
-    writeContent(dir, '.workflows/.cache/pay/discussion/alpha/perspective-001-a.md');
-    writeContent(dir, '.workflows/.cache/pay/discussion/alpha/perspective-001-b.md');
+    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/perspective-001-a.md');
+    writeContent(dir, '.leeway/.cache/pay/discussion/alpha/perspective-001-b.md');
     runJson(dir, ['scan', 'pay', 'discussion', 'alpha']);
     const s1 = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
     writeContent(dir, s1.file, '# Stale synthesis report\n');
@@ -440,18 +441,18 @@ describe('engine agent — lifecycle store', () => {
 describe('engine agent — discussion review arming', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-arming-'));
-    const wuDir = path.join(dir, '.workflows', 'pay');
+    dir = setupFixture('agent-arming-');
+    const wuDir = path.join(dir, '.leeway', 'pay');
     fs.mkdirSync(wuDir, { recursive: true });
     writeMap({ tokens: 'exploring' });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   /** @param {Record<string, string>} statuses */
   function writeMap(statuses) {
     const subtopics = Object.fromEntries(Object.entries(statuses)
       .map(([name, status]) => [name, { status, parent: null }]));
-    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { discussion: { items: { auth: { status: 'in-progress', subtopics } } } },
     }, null, 2));
@@ -519,8 +520,8 @@ describe('engine agent — discussion review arming', () => {
   });
 
   it('rows predating the snapshot arm permissively once', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth', 'state.json'), JSON.stringify({
+    fs.mkdirSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth', 'state.json'), JSON.stringify({
       agents: { 'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'auth', set: '001', status: 'incorporated', announced: false, findings: ['F1'], surfaced: ['F1'], created: '2026-08-01T00:00:00.000Z' } },
     }));
     const b = runJson(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']);
@@ -580,8 +581,8 @@ describe('engine agent — discussion review arming', () => {
   });
 
   it('a corrupt store fails a dispatch loudly — mutations never run over garbage', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'auth', 'state.json'), '{not json');
+    fs.mkdirSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'auth', 'state.json'), '{not json');
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'auth', '--kind', 'review']).error,
       /Corrupt agent state/);
   });
@@ -595,7 +596,7 @@ describe('engine agent — discussion review arming', () => {
 
   /** Deliver one message to discussion/auth. @param {string} name */
   function deliver(name) {
-    writeContent(dir, `.workflows/pay/discussion/.mailbox/auth/${name}`,
+    writeContent(dir, `.leeway/pay/discussion/.mailbox/auth/${name}`,
       '### Ground\n*From: peer · discussion · 2026-09-01*\nbody\n');
   }
 
@@ -630,7 +631,7 @@ describe('engine agent — discussion review arming', () => {
     assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'discussion', 'auth',
       '--file', '001-new-ground.md', '-m', 'x']).error,
       /a discussion fold names its ground/);
-    writeContent(dir, '.workflows/pay/research/.mailbox/auth/001-x.md', '### X\nbody\n');
+    writeContent(dir, '.leeway/pay/research/.mailbox/auth/001-x.md', '### X\nbody\n');
     assert.match(engineFails(dir, ['topic', 'absorb', 'pay', 'research', 'auth',
       '--file', '001-x.md', '--subtopic', 'x', '-m', 'x']).error,
       /not legal in research/);

@@ -44,7 +44,7 @@ const {
 } = require('../kernel/manifest-schema.cjs');
 const { settleItemStatus } = require('./derivations.cjs');
 const { flagDownstream, releaseExperimentWaits, assertLegalTopicName } = require('./transitions.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { statePath, stateRelative } = require('../kernel/state-root.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
 // purpose: that transition is the briefing gate's freeze (`approve`).
@@ -126,14 +126,14 @@ function liveSubs(item, parentId) {
 }
 
 /**
- * The record's on-disk home, project-relative. A sub-experiment's record
+ * The record's on-disk home, state-relative. A sub-experiment's record
  * nests inside its parent's — the split is the laboratory's internal method,
  * so the parent directory holds the whole tree.
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {Record<string, ExperimentRecord>} experiments
  */
 function recordDir(workUnit, topic, id, experiments) {
-  const base = stateRel(`${workUnit}/experiment/${topic}`);
+  const base = `${workUnit}/experiment/${topic}`;
   if (isParentExperimentId(id)) return `${base}/${id}-${experiments[id].slug}`;
   const parentId = id.slice(0, id.indexOf('.'));
   return `${base}/${parentId}-${experiments[parentId].slug}/${id}-${experiments[id].slug}`;
@@ -209,9 +209,8 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
     // The scratch is consumed after the create — confine it to the cache so
     // a mis-passed path can never read (and delete) a live artifact.
     scratchAbs = path.resolve(cwd, problem);
-    const cacheRoot = path.join(stateRoot(cwd), '.cache') + path.sep;
-    if (!scratchAbs.startsWith(cacheRoot)) {
-      throw new Error(`--problem must point inside ${stateRel('.cache')}/ — got "${problem}"`);
+    if (!(stateRelative(cwd, scratchAbs) || '').startsWith('.cache/')) {
+      throw new Error(`--problem must point inside ${statePath(cwd, '.cache')}/ — got "${problem}"`);
     }
     try {
       problemBody = fs.readFileSync(scratchAbs, 'utf8');
@@ -238,7 +237,7 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
       const id = `${parent}.${m}`;
       experiments[id] = { slug, status: 'conceived' };
       saveWorkUnitManifest(cwd, workUnit, manifest);
-      return { topic, id, slug, status: 'conceived', parent, dir: recordDir(workUnit, topic, id, experiments) };
+      return { topic, id, slug, status: 'conceived', parent, dir: statePath(cwd, recordDir(workUnit, topic, id, experiments)) };
     }
 
     // The spawn is recorded mid-conversation, from the session that raised
@@ -267,13 +266,13 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem })
     experiments[id] = { slug, status: 'conceived' };
     const awaiting = Array.isArray(spawner.awaiting_experiments) ? spawner.awaiting_experiments : [];
     spawner.awaiting_experiments = [...awaiting, id];
-    const dir = recordDir(workUnit, topic, id, experiments);
+    const dir = statePath(cwd, recordDir(workUnit, topic, id, experiments));
     // The problem file lands before the manifest names the record — a crash
     // between the two writes must never leave a conceived record with no
     // problem statement.
-    fs.mkdirSync(path.join(cwd, dir), { recursive: true });
+    fs.mkdirSync(dir, { recursive: true });
     const body = /** @type {string} */ (problemBody);
-    fs.writeFileSync(path.join(cwd, dir, 'problem.md'), body.endsWith('\n') ? body : body + '\n');
+    fs.writeFileSync(path.join(dir, 'problem.md'), body.endsWith('\n') ? body : body + '\n');
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return {
       topic, id, slug, status: 'conceived',
@@ -303,7 +302,7 @@ function recordTransition(cwd, workUnit, topic, id, step) {
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return {
       topic, id, slug: record.slug, status: /** @type {string} */ (record.status),
-      dir: recordDir(workUnit, topic, id, /** @type {Record<string, ExperimentRecord>} */ (item.experiments)),
+      dir: statePath(cwd, recordDir(workUnit, topic, id, /** @type {Record<string, ExperimentRecord>} */ (item.experiments))),
       ...extra,
     };
   });

@@ -17,7 +17,7 @@ const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 
-const { git, initRepo, setupGitFixture, addSubmodule, cleanupFixture } = harness;
+const { git, commitAll, initRepo, setupGitFixture, addSubmodule, cleanupFixture } = harness;
 const { diffPatch } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
 
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
@@ -27,11 +27,6 @@ function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
-}
-
-function commitAll(dir, message) {
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', message]);
 }
 
 const sha = (dir, rev = 'HEAD') => git(dir, ['rev-parse', rev]).trim();
@@ -46,7 +41,7 @@ describe('engine code log and diff --subject: the commits a subject prefix selec
   let sdk;
   beforeEach(() => {
     dir = setupGitFixture('engine-code-log-');
-    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
     writeFile(dir, 'src/app.js', '1\n');
     writeFile(dir, 'src/other.js', '1\n');
     commitAll(dir, 'chore: init');
@@ -140,7 +135,7 @@ describe('engine code log and diff with a selection: what a commit carries', () 
 
   it('a move names both its paths, and its diff reads as a deletion and an addition', () => {
     const api = initRepo(path.join(dir, 'api'));
-    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
     commitAll(dir, 'chore: ignore the clone');
     writeFile(api, 'src/old.ts', 'export const x = 1;\n');
     commitAll(api, 'chore: init');
@@ -205,9 +200,9 @@ describe('engine code diff and status: the change not yet committed', () => {
   let fresh;
   beforeEach(() => {
     dir = setupGitFixture('engine-code-dirt-');
-    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
     writeFile(dir, 'src/app.js', '1\n');
-    writeFile(dir, '.workflows/pay/manifest.json', '{}\n');
+    writeFile(dir, '.leeway/pay/manifest.json', '{}\n');
     commitAll(dir, 'init');
     api = initRepo(path.join(dir, 'api'));
     writeFile(api, 'src/handler.js', '1\n');
@@ -222,13 +217,13 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('diff: one patch per repo in repo order, its tracked change and its untracked files as additions together — named from the project, .workflows/ and the parents\' view of a nested repo held out', () => {
+  it('diff: one patch per repo in repo order, its tracked change and its untracked files as additions together — named from the project, .leeway/ and the parents\' view of a nested repo held out', () => {
     writeFile(dir, 'src/app.js', '2\n');
     writeFile(dir, 'src/staged.js', 'staged\n');
     git(dir, ['add', 'src/staged.js']);
     writeFile(dir, 'src/new.js', 'new\n');
-    writeFile(dir, '.workflows/pay/manifest.json', '{"changed":true}\n');
-    writeFile(dir, '.workflows/pay/notes.md', 'a doc session\'s own\n');
+    writeFile(dir, '.leeway/pay/manifest.json', '{"changed":true}\n');
+    writeFile(dir, '.leeway/pay/notes.md', 'a doc session\'s own\n');
     writeFile(api, 'src/handler.js', '2\n');
     writeFile(api, 'src/extra.js', 'extra\n');
     writeFile(kit, 'kit.js', '2\n');
@@ -311,11 +306,12 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
 
   it('status names each untracked file in a new folder on its own, so a commit naming the task\'s file leaves a stranger\'s in left_dirty by name', () => {
-    writeFile(dir, '.workflows/pay/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/pay/manifest.json', JSON.stringify({
       name: 'pay', work_type: 'feature', status: 'in-progress',
       phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
     }));
-    git(dir, ['commit', '-q', '-m', 'chore: the work unit', '--', '.workflows/pay/manifest.json']);
+    harness.stateGit(dir, ['add', 'pay/manifest.json']);
+    harness.stateGit(dir, ['commit', '-q', '-m', 'chore: the work unit']);
     writeFile(dir, 'src/billing/charge.js', 'the task\'s\n');
     writeFile(dir, 'src/billing/stranger.js', 'not the task\'s\n');
     writeFile(api, 'src/billing/refund.js', 'not the task\'s\n');
@@ -330,8 +326,8 @@ describe('engine code diff and status: the change not yet committed', () => {
     assert.deepStrictEqual(res.left_dirty, ['src/billing/stranger.js', 'api/src/billing/refund.js']);
   });
 
-  it('a repo inside the project\'s .workflows/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
-    const imported = initRepo(path.join(dir, '.workflows/pay/imports/checkout'));
+  it('a repo inside the project\'s .leeway/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
+    const imported = initRepo(path.join(dir, '.leeway/pay/imports/checkout'));
     writeFile(imported, 'lib.js', '1\n');
     commitAll(imported, `${PREFIX}1 — an imported checkout`);
     writeFile(imported, 'lib.js', '2\n');
@@ -343,7 +339,7 @@ describe('engine code diff and status: the change not yet committed', () => {
 
   it('status: every repo\'s uncommitted files with their porcelain status, named from the project', () => {
     writeFile(dir, 'src/app.js', '2\n');
-    writeFile(dir, '.workflows/pay/notes.md', 'a doc session\'s own\n');
+    writeFile(dir, '.leeway/pay/notes.md', 'a doc session\'s own\n');
     writeFile(api, 'src/extra.js', 'extra\n');
     writeFile(fresh, 'loose.txt', 'loose\n');
 
@@ -405,7 +401,7 @@ describe('engine code log and diff <work-unit> <topic>: a topic\'s task commits'
   let api;
   beforeEach(() => {
     dir = setupGitFixture('engine-code-task-');
-    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
     commitAll(dir, 'chore: init');
     writeFile(dir, 'src/auth.js', '1\n');
     commitAll(dir, 'impl(pay): Tauth-1-1 — login');
@@ -413,7 +409,8 @@ describe('engine code log and diff <work-unit> <topic>: a topic\'s task commits'
     commitAll(dir, 'impl(pay): Tauth-2-1 — logout');
     writeFile(dir, 'src/stray.js', '1\n');
     commitAll(dir, 'impl(pay): Tauth-1-1x — no internal id');
-    writeFile(dir, '.workflows/pay/manifest.json', '{}\n');
+    // The state's own commit, on the state branch: never a task commit of the code.
+    writeFile(dir, '.leeway/pay/manifest.json', '{}\n');
     commitAll(dir, 'impl(pay): record Tauth-1-1');
     api = initRepo(path.join(dir, 'api'));
     writeFile(api, 'src/flow.js', '1\n');
@@ -432,7 +429,7 @@ describe('engine code log and diff <work-unit> <topic>: a topic\'s task commits'
       ['api', 'impl(pay): Tauth-1-2'],
     ]);
     assert.deepStrictEqual(res.files, ['api/src/api.js', 'src/auth.js', 'src/logout.js']);
-    assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~4') }, { repo: 'api', base: sha(api, 'HEAD~1') }]);
+    assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~3') }, { repo: 'api', base: sha(api, 'HEAD~1') }]);
     assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth-flow']).commits.map((c) => c.subject),
       ['impl(pay): Tauth-flow-1-1 — the sibling topic']);
   });
@@ -468,7 +465,7 @@ describe('engine code log and diff <work-unit> <topic>: a topic\'s task commits'
 
     assert.deepStrictEqual(res.commits.map((c) => [c.repo, c.subject]), [['.', 'impl(pay): Tauth-2-1 — logout']]);
     assert.deepStrictEqual(res.files, ['src/logout.js']);
-    assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~3') }]);
+    assert.deepStrictEqual(res.repos, [{ repo: '.', base: sha(dir, 'HEAD~2') }]);
     assert.deepStrictEqual(harness.ok(dir, ['code', 'log', 'pay', 'auth', '--phase', '1']).files, ['api/src/api.js', 'src/auth.js']);
   });
 
@@ -529,10 +526,10 @@ describe('engine code in a project nested inside a larger repository: the projec
     ]);
   });
 
-  it('diff and status: the uncommitted change in the project alone — the larger repository\'s dirt, .workflows/, the ignored clone\'s folder and the nested repo\'s held out of the root', () => {
+  it('diff and status: the uncommitted change in the project alone — the larger repository\'s dirt, .leeway/, the ignored clone\'s folder and the nested repo\'s held out of the root', () => {
     writeFile(project, 'src/app.js', '3\n');
     writeFile(project, 'src/new.js', 'new\n');
-    writeFile(project, '.workflows/pay/notes.md', 'a doc session\'s own\n');
+    writeFile(project, '.leeway/pay/notes.md', 'a doc session\'s own\n');
     writeFile(dir, 'other/o.js', '4\n');
     writeFile(dir, 'other/new.js', 'new\n');
     writeFile(api, 'src/handler.js', '2\n');

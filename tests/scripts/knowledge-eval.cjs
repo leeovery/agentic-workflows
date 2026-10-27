@@ -26,13 +26,14 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFile } = require('child_process');
+const { execFile, execFileSync } = require('child_process');
 const { promisify } = require('util');
 
 const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/config.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { deriveIdentity } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
+const { STATE_DIR, createState } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const { keyUnresolvedError } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
 const { boostProblem, querySettings, queryStore, renderQuery } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
 const { buildOptions } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
@@ -57,6 +58,10 @@ const FILTER_FLAGS = Object.keys(FILTERS);
 const NAMING_FLAGS = ['work-unit', 'phase', 'topic'];
 const OPTION_KEYS = new Set(['boosts', 'limit', ...FILTER_FLAGS]);
 const PINNED_CASE_FIELDS = ['first', 'first_primary', 'first_excerpt', 'primary_found', 'primary_total', 'results', 'bytes'];
+// A query prints each source by its absolute path; the output a run measures
+// names them under this one root, so its bytes never depend on where the
+// run's scratch directory sits.
+const RENDERED_STATE = path.join(path.sep, 'project', STATE_DIR);
 
 const TUNING_UNSET = Object.fromEntries(Object.keys(config.DEFAULTS).map((key) => [key, null]));
 const KEYWORD_SETTINGS = { provider: null, ...TUNING_UNSET };
@@ -65,7 +70,7 @@ const execFileAsync = promisify(execFile);
 
 /**
  * @typedef {object} Judgment
- * @property {string} source  project-relative path of the judged file
+ * @property {string} source  state-relative path of the judged file
  * @property {string} anchor  a verbatim phrase from the judged passage, once in its file
  * @property {'primary'|'supporting'} grade
  * @property {number} framing  the index of the term the passage answers
@@ -97,7 +102,8 @@ const execFileAsync = promisify(execFile);
 /**
  * @typedef {object} BuiltProject  a project indexed into a fresh copy of its fixture
  * @property {string} project
- * @property {string} root
+ * @property {string} root  the project's checkout
+ * @property {string} state  its state worktree, the fixture copied in
  * @property {Record<string, any>} cfg
  * @property {any} provider  embeds each query term — null in the keyword mode
  * @property {string|null} cacheDir  the embedding cache its `engine knowledge` embeds through — null in the keyword mode
@@ -137,9 +143,9 @@ function writeJson(file, value) {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + '\n');
 }
 
-/** @param {string} project */
+/** The project's frozen state. @param {string} project */
 function fixtureRoot(project) {
-  return path.join(EVAL_DIR, project);
+  return path.join(EVAL_DIR, project, STATE_DIR);
 }
 
 /** @param {string} dir @param {(file: string) => boolean} keep */
@@ -228,7 +234,7 @@ function fixtureReader() {
 /** @typedef {ReturnType<typeof fixtureReader>} FixtureReader */
 
 /**
- * Each markdown file of the project's fixture, by project-relative path,
+ * Each markdown file of the project's fixture, by state-relative path,
  * with the identity the index derives for it.
  * @param {string} project
  * @returns {Map<string, FileIdentity>}
@@ -236,7 +242,7 @@ function fixtureReader() {
 function indexableFiles(project) {
   const root = fixtureRoot(project);
   /** @param {string} unit */
-  const workType = (unit) => readJson(path.join(root, '.workflows', unit, 'manifest.json')).work_type;
+  const workType = (unit) => readJson(path.join(root, unit, 'manifest.json')).work_type;
   return new Map(filesUnder(root, (file) => file.endsWith('.md')).map((file) => {
     const source = path.relative(root, file);
     const { workUnit, phase, topic } = deriveIdentity(source);
@@ -380,23 +386,33 @@ function unmatchedJudgments(cases, chunks) {
 /**
  * A project's config as the engine resolves it there — its project config over
  * the system config, the key from the environment or the credentials file.
- * @param {string} root
+ * @param {string} state
  */
-function resolvedConfig(root) {
-  const cfg = config.loadConfig({ projectPath: knowledgeFiles(root).config });
+function resolvedConfig(state) {
+  const cfg = config.loadConfig({ projectPath: knowledgeFiles(state).config });
   return { cfg, provider: config.resolveProvider(cfg) };
 }
 
 /**
- * A copy of the project's fixture in a fresh directory under `parent`,
- * configured with `settings` as its project config.
+ * A fresh checkout under `parent`, its state worktree made by the machinery
+ * and holding a copy of the project's fixture, configured with `settings` as
+ * its project config.
  * @param {string} project @param {string} parent @param {Record<string, any>} settings
+ * @returns {{root: string, state: string}}
  */
 function stageFixture(project, parent, settings) {
-  const root = fs.mkdtempSync(path.join(parent, `${project}-`));
-  fs.cpSync(path.join(fixtureRoot(project), '.workflows'), path.join(root, '.workflows'), { recursive: true });
-  writeJson(knowledgeFiles(root).config, { knowledge: settings });
-  return root;
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(parent, `${project}-`)));
+  /** @param {string[]} args */
+  const git = (args) => execFileSync('git', args, { cwd: root, stdio: 'ignore' });
+  git(['init', '-q', '-b', 'main']);
+  git(['config', 'user.email', 'eval@example.com']);
+  git(['config', 'user.name', 'Eval']);
+  git(['config', 'commit.gpgsign', 'false']);
+  const state = path.join(root, STATE_DIR);
+  createState(state);
+  fs.cpSync(fixtureRoot(project), state, { recursive: true });
+  writeJson(knowledgeFiles(state).config, { knowledge: settings });
+  return { root, state };
 }
 
 /**
@@ -440,9 +456,9 @@ async function runKnowledge(root, args, cacheDir) {
  * @returns {Promise<BuiltProject>}
  */
 async function buildProject(project, parent, settings, cacheDir) {
-  const root = stageFixture(project, parent, settings);
+  const { root, state } = stageFixture(project, parent, settings);
   const { ms: indexMs } = await stopwatch(() => runKnowledge(root, ['index'], cacheDir));
-  return { project, root, ...resolvedConfig(root), cacheDir, indexMs };
+  return { project, root, state, ...resolvedConfig(state), cacheDir, indexMs };
 }
 
 /**
@@ -523,11 +539,11 @@ function workUnitsOf(root) {
  * the store's load took.
  * @param {BuiltProject} built
  */
-async function openStore({ root, cfg, provider }) {
-  const metadata = store.readMetadata(knowledgeFiles(root).metadata);
-  const { value: db, ms: loadMs } = await stopwatch(() => store.loadStore(knowledgeFiles(root).store));
+async function openStore({ root, state, cfg, provider }) {
+  const metadata = store.readMetadata(knowledgeFiles(state).metadata);
+  const { value: db, ms: loadMs } = await stopwatch(() => store.loadStore(knowledgeFiles(state).store));
   return {
-    root,
+    state,
     db,
     loadMs,
     settings: querySettings(metadata, cfg, provider),
@@ -559,18 +575,18 @@ async function runCase(opened, evalCase) {
     terms: evalCase.terms,
     options: buildOptions(flags, boosts),
     workUnits: opened.workUnits,
-    root: opened.root,
+    root: opened.state,
   }));
-  return { evalCase, results: outcome.results, bytes: Buffer.byteLength(renderQuery(outcome)), ms };
+  return { evalCase, results: outcome.results, bytes: Buffer.byteLength(renderQuery(outcome, { root: RENDERED_STATE })), ms };
 }
 
 /**
- * The project's median-sized indexed file — the one its single-file index is timed on.
- * @param {string} root @param {Array<Record<string, any>>} chunks  every chunk of its store
+ * The project's median-sized indexed file, absolute — the one its single-file index is timed on.
+ * @param {string} state @param {Array<Record<string, any>>} chunks  every chunk of its store
  */
-function representativeFile(root, chunks) {
-  const bySize = [...new Set(chunks.map((chunk) => chunk.source_file))]
-    .map((file) => ({ file, bytes: fs.statSync(path.join(root, file)).size }))
+function representativeFile(state, chunks) {
+  const bySize = [...new Set(chunks.map((chunk) => path.join(state, chunk.source_file)))]
+    .map((file) => ({ file, bytes: fs.statSync(file).size }))
     .sort((a, b) => a.bytes - b.bytes || a.file.localeCompare(b.file));
   return bySize[Math.floor(bySize.length / 2)].file;
 }
@@ -583,8 +599,8 @@ function representativeFile(root, chunks) {
  * @returns {Promise<ProjectTimings>}
  */
 async function projectTimings(built, opened, chunks, runs) {
-  const storeBytes = fs.statSync(knowledgeFiles(built.root).store).size;
-  const file = representativeFile(built.root, chunks);
+  const storeBytes = fs.statSync(knowledgeFiles(built.state).store).size;
+  const file = representativeFile(built.state, chunks);
   const { ms: singleFileMs } = await stopwatch(() => runKnowledge(built.root, ['index', file], built.cacheDir));
   return {
     project: built.project,

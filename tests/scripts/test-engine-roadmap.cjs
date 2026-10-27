@@ -21,16 +21,18 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/workflow-engine/scripts/domain/roadmap.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = harness;
+const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = harness;
 
 /** A temp-dir git repo with an empty project manifest committed. */
 function setupGitFixture() {
   const dir = harness.setupGitFixture('engine-roadmap-');
-  fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), '{}\n');
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', 'init']);
+  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), '{}\n');
+  commitAll(dir, 'init');
   return dir;
 }
+
+/** A path in the state as a state commit names it: from the state root. */
+const inState = (rel) => rel.replace(/^\.leeway\//, '');
 
 /** Run a roadmap command expecting success; returns the parsed JSON line. */
 const runOk = (dir, args) => ok(dir, ['roadmap', ...args]);
@@ -39,16 +41,16 @@ const runOk = (dir, args) => ok(dir, ['roadmap', ...args]);
 const runFail = (dir, args) => refuses(dir, ['roadmap', ...args]);
 
 function readProject(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
 }
 
 function projectManifestText(dir) {
-  return fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8');
+  return fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8');
 }
 
-/** Put a source on disk under `.workflows/` — an item records only a file already there. */
+/** Put a source on disk under `.leeway/` — an item records only a file already there. */
 function writeSource(dir, rel) {
-  const abs = path.join(dir, '.workflows', rel);
+  const abs = path.join(dir, '.leeway', rel);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, '# Session\n');
 }
@@ -57,7 +59,7 @@ function writeSource(dir, rel) {
 function joinItem(dir, name, workUnit, topic) {
   const manifest = readProject(dir);
   manifest.roadmap.items[name].pulled_to = topic ? { work_unit: workUnit, topic } : { work_unit: workUnit };
-  fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(manifest, null, 2));
 }
 
 describe('engine CLI: roadmap add / add-batch', () => {
@@ -74,8 +76,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.strictEqual(res.horizon_created, true);
     assert.deepStrictEqual(res.horizons, ['v1']);
     assert.strictEqual(res.item_total, 1);
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: add loyalty (v1)');
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: add loyalty (v1)');
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
@@ -123,7 +125,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
   it('refuses duplicates, illegal names, bad origins, bad sources — nothing written', () => {
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
     const before = projectManifestText(dir);
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
 
     assert.match(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']).error, /already on the roadmap/);
     assert.match(runFail(dir, ['add', 'bad.name', '--horizon', 'v1', '--summary', 's']).error, /not a legal item name/);
@@ -134,30 +136,30 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--origin', 'park:']).error, /unknown origin/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '/abs/path.md']).error, /never absolute/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '../escape.md']).error, /never absolute or traversing/);
-    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.workflows/.roadmap/sessions/session-001.md']).error,
-      /relative to \.workflows\/, so drop the leading "\.workflows\/" \("\.roadmap\/sessions\/session-001\.md"\)/);
+    assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's', '--source', '.leeway/.roadmap/sessions/session-001.md']).error,
+      /relative to the state, so drop the leading "\.leeway\/" \("\.roadmap\/sessions\/session-001\.md"\)/);
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'bad.h', '--summary', 's']).error, /not a legal horizon name/);
 
     assert.strictEqual(projectManifestText(dir), before);
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
   it('refuses a source not on disk, naming each missing path — the log opens before the op, nothing written', () => {
     const before = projectManifestText(dir);
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
 
     assert.strictEqual(runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.roadmap/sessions/session-002.md']).error,
-      'source ".roadmap/sessions/session-002.md" does not exist under .workflows/ — a source must exist before an item records it; '
+      `source ".roadmap/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
       + 'open a session log\'s session first (roadmap session open, or the session\'s own open)');
 
     writeSource(dir, '.roadmap/sessions/session-001.md');
     const several = runFail(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's',
       '--source', 'mvp/discussion/ordering.md', '--source', '.roadmap/sessions/session-001.md', '--source', '.roadmap/sessions/session-002.md']).error;
-    assert.match(several, /^sources "mvp\/discussion\/ordering\.md", "\.roadmap\/sessions\/session-002\.md" do not exist under \.workflows\/ — /);
+    assert.ok(several.startsWith(`sources "mvp/discussion/ordering.md", ".roadmap/sessions/session-002.md" do not exist under ${dir}/.leeway/ — `), several);
     assert.ok(!several.includes('session-001'), 'a source on disk is never named');
 
     assert.strictEqual(projectManifestText(dir), before);
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
 
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's', '--source', '.roadmap/sessions/session-001.md']);
     assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.sources, ['.roadmap/sessions/session-001.md']);
@@ -187,9 +189,8 @@ describe('engine CLI: roadmap add / add-batch', () => {
     assert.deepStrictEqual(res.horizons, ['mvp', 'v1']);
     assert.deepStrictEqual(res.horizons_created, ['mvp', 'v1']);
     assert.strictEqual(res.item_total, 3);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: add 3 items');
     // One commit for the batch on top of init.
-    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '2');
+    assert.deepStrictEqual(stateGit(dir, ['log', '-2', '--pretty=%s']).trim().split('\n'), ['roadmap: add 3 items', 'init']);
   });
 
   it('add-batch validates everything before applying anything', () => {
@@ -223,9 +224,9 @@ describe('engine CLI: roadmap add / add-batch', () => {
 
     fs.writeFileSync(path.join(dir, 'prefixed.json'), JSON.stringify([
       { name: 'ok', horizon: 'mvp', summary: 's', sources: ['.roadmap/sessions/session-001.md'] },
-      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.workflows/.roadmap/sessions/session-001.md'] },
+      { name: 'nope', horizon: 'mvp', summary: 's', sources: ['.leeway/.roadmap/sessions/session-001.md'] },
     ]));
-    assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.workflows\/"/);
+    assert.match(runFail(dir, ['add-batch', '--file', 'prefixed.json']).error, /entry 2 .*drop the leading "\.leeway\/"/);
 
     // One entry's source not yet on disk refuses the whole batch, the path named once.
     writeSource(dir, '.roadmap/sessions/session-001.md');
@@ -235,7 +236,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
       { name: 'later', horizon: 'v1', summary: 's', sources: ['.roadmap/sessions/session-002.md'] },
     ]));
     assert.strictEqual(runFail(dir, ['add-batch', '--file', 'unopened.json']).error,
-      'add-batch: source ".roadmap/sessions/session-002.md" does not exist under .workflows/ — a source must exist before an item records it; '
+      `add-batch: source ".roadmap/sessions/session-002.md" does not exist under ${dir}/.leeway/ — a source must exist before an item records it; `
       + 'open a session log\'s session first (roadmap session open, or the session\'s own open)');
 
     assert.strictEqual(projectManifestText(dir), before);
@@ -244,11 +245,11 @@ describe('engine CLI: roadmap add / add-batch', () => {
 
 describe('engine CLI: inbox notes onto the roadmap, and back to the archive', () => {
   let dir;
-  const IDEA = '.workflows/.inbox/ideas/2026-03-01--dark-mode.md';
-  const BUG = '.workflows/.inbox/bugs/2026-03-02--login-crash.md';
-  const QUICKFIX = '.workflows/.inbox/quickfixes/2026-03-03--footer-typo.md';
-  const IDEA_NOTE = '.workflows/.roadmap/notes/ideas/2026-03-01--dark-mode.md';
-  const BUG_NOTE = '.workflows/.roadmap/notes/bugs/2026-03-02--login-crash.md';
+  const IDEA = '.leeway/.inbox/ideas/2026-03-01--dark-mode.md';
+  const BUG = '.leeway/.inbox/bugs/2026-03-02--login-crash.md';
+  const QUICKFIX = '.leeway/.inbox/quickfixes/2026-03-03--footer-typo.md';
+  const IDEA_NOTE = '.leeway/.roadmap/notes/ideas/2026-03-01--dark-mode.md';
+  const BUG_NOTE = '.leeway/.roadmap/notes/bugs/2026-03-02--login-crash.md';
 
   beforeEach(() => {
     dir = setupGitFixture();
@@ -256,8 +257,7 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
       fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
       fs.writeFileSync(path.join(dir, rel), `# ${path.basename(rel)}\n`);
     }
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'inbox']);
+    commitAll(dir, 'inbox');
   });
   afterEach(() => { cleanup(dir); });
 
@@ -266,7 +266,7 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     fs.writeFileSync(path.join(dir, 'batch.json'), JSON.stringify(entries));
     return ['add-batch', '--file', 'batch.json'];
   };
-  const committedPaths = () => git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+  const committedPaths = () => stateGit(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
 
   it('moves every note off the inbox and lands every item — kind from the folder, origin the file stem, the note the one source — under one commit', () => {
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
@@ -281,7 +281,8 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
       { name: 'login-crash', horizon: 'later', kind: 'bug' },
       { name: 'loyalty', horizon: 'v1', kind: 'idea' },
     ]);
-    assert.deepStrictEqual(res.notes_moved, [{ from: IDEA, to: IDEA_NOTE }, { from: BUG, to: BUG_NOTE }]);
+    assert.deepStrictEqual(res.notes_moved, [{ from: IDEA, to: IDEA_NOTE }, { from: BUG, to: BUG_NOTE }]
+      .map(({ from, to }) => ({ from: path.join(dir, from), to: path.join(dir, to) })));
     const items = readProject(dir).roadmap.items;
     assert.deepStrictEqual(items['dark-mode'], {
       horizon: 'later', summary: 'a dark theme', kind: 'idea', origin: 'inbox:2026-03-01--dark-mode', sources: ['.roadmap/notes/ideas/2026-03-01--dark-mode.md'],
@@ -294,20 +295,20 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.strictEqual(fs.readFileSync(path.join(dir, IDEA_NOTE), 'utf8'), '# 2026-03-01--dark-mode.md\n');
     assert.ok(exists(QUICKFIX), 'an inbox item the batch never named stays');
 
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: add 3 items');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: add 3 items');
     assert.deepStrictEqual(committedPaths(), [
-      'M\t.workflows/manifest.json', `R100\t${BUG}\t${BUG_NOTE}`, `R100\t${IDEA}\t${IDEA_NOTE}`,
+      'M\tmanifest.json', `R100\t${inState(BUG)}\t${inState(BUG_NOTE)}`, `R100\t${inState(IDEA)}\t${inState(IDEA_NOTE)}`,
     ]);
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
-    assert.strictEqual(git(dir, ['status', '--porcelain', '--', '.workflows']).trim(), '');
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
   });
 
   it('refuses before anything moves — a clash, a contradicting kind, an origin or sources beside a note, a note not in the live inbox, one named twice, a taken home', () => {
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
-    fs.mkdirSync(path.dirname(path.join(dir, '.workflows/.inbox/.archived/ideas/x.md')), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-01-01--old.md'), 'old\n');
+    fs.mkdirSync(path.dirname(path.join(dir, '.leeway/.inbox/.archived/ideas/x.md')), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-01-01--old.md'), 'old\n');
     const before = projectManifestText(dir);
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const fresh = { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA };
 
     assert.match(runFail(dir, batch([fresh, { name: 'loyalty', horizon: 'v1', summary: 's', note: BUG }])).error,
@@ -316,29 +317,29 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
       `add-batch: entry 1 — "kind" is bug, but the note "${IDEA}" is a idea — a note's kind is its inbox folder's`);
     assert.match(runFail(dir, batch([{ ...fresh, origin: 'harvest' }])).error, /entry 1 — a note sets the entry's origin and source/);
     assert.match(runFail(dir, batch([{ ...fresh, sources: [] }])).error, /entry 1 — a note sets the entry's origin and source/);
-    assert.match(runFail(dir, batch([{ ...fresh, note: '.workflows/.inbox/.archived/ideas/2026-01-01--old.md' }])).error, /entry 1 — not a live inbox path/);
-    assert.match(runFail(dir, batch([{ ...fresh, note: '.workflows/.inbox/ideas/2026-09-09--ghost.md' }])).error, /add-batch: inbox file not found/);
+    assert.match(runFail(dir, batch([{ ...fresh, note: '.leeway/.inbox/.archived/ideas/2026-01-01--old.md' }])).error, /entry 1 — not a live inbox path/);
+    assert.match(runFail(dir, batch([{ ...fresh, note: '.leeway/.inbox/ideas/2026-09-09--ghost.md' }])).error, /add-batch: inbox file not found/);
     assert.match(runFail(dir, batch([fresh, { name: 'twin', horizon: 'later', summary: 's', note: IDEA }])).error, /add-batch: duplicate inbox path/);
     assert.match(runFail(dir, batch([{ ...fresh, note: 42 }])).error, /entry 1 — "note" must be a live inbox path/);
-    const spaced = '.workflows/.inbox/ideas/2026-03-04--dark mode.md';
+    const spaced = '.leeway/.inbox/ideas/2026-03-04--dark mode.md';
     fs.writeFileSync(path.join(dir, spaced), 'a hand-dropped file\n');
-    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — the note "\.workflows\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
+    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — the note "\.leeway\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
     fs.mkdirSync(path.dirname(path.join(dir, IDEA_NOTE)), { recursive: true });
     fs.writeFileSync(path.join(dir, IDEA_NOTE), 'taken\n');
     assert.match(runFail(dir, batch([fresh])).error, /add-batch: destination already exists/);
 
     assert.ok(exists(IDEA) && exists(BUG), 'every note stays in the inbox');
     assert.strictEqual(projectManifestText(dir), before);
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
   it('a move that throws midway puts back every note it moved and restores the manifest — no note is left in neither place', () => {
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
     const before = projectManifestText(dir);
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     // A file where the bugs folder belongs: the idea's note moves, the bug's cannot.
-    fs.mkdirSync(path.join(dir, '.workflows/.roadmap/notes'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/.roadmap/notes/bugs'), 'in the way\n');
+    fs.mkdirSync(path.join(dir, '.leeway/.roadmap/notes'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.roadmap/notes/bugs'), 'in the way\n');
 
     runFail(dir, batch([
       { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA },
@@ -348,14 +349,14 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.ok(exists(IDEA) && exists(BUG), 'both notes are back in the inbox');
     assert.strictEqual(exists(IDEA_NOTE), false);
     assert.strictEqual(projectManifestText(dir), before, 'the manifest as it was read');
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
   it('a remove whose archive move throws leaves the item and its note as they were', () => {
     runOk(dir, batch([{ name: 'login-crash', horizon: 'later', summary: 's', note: BUG }]));
     const before = projectManifestText(dir);
-    fs.mkdirSync(path.join(dir, '.workflows/.inbox/.archived'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/.inbox/.archived/bugs'), 'in the way\n');
+    fs.mkdirSync(path.join(dir, '.leeway/.inbox/.archived'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.inbox/.archived/bugs'), 'in the way\n');
 
     runFail(dir, ['remove', 'login-crash']);
 
@@ -364,9 +365,9 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
   });
 
   describe('a rollback rethrows the failure that started it, every reversal attempted', () => {
-    const ARCHIVED_IDEA = '.workflows/.inbox/.archived/ideas/2026-03-01--dark-mode.md';
-    const ARCHIVED_BUG = '.workflows/.inbox/.archived/bugs/2026-03-02--login-crash.md';
-    const manifestPath = () => path.join(dir, '.workflows', 'manifest.json');
+    const ARCHIVED_IDEA = '.leeway/.inbox/.archived/ideas/2026-03-01--dark-mode.md';
+    const ARCHIVED_BUG = '.leeway/.inbox/.archived/bugs/2026-03-02--login-crash.md';
+    const manifestPath = () => path.join(dir, '.leeway', 'manifest.json');
     const both = [
       { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA },
       { name: 'login-crash', horizon: 'later', summary: 's', note: BUG },
@@ -441,7 +442,7 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
         return to.endsWith(BUG_NOTE) ? 'the bug note would not go back' : null;
       });
       assert.strictEqual(runFail(dir, ['remove', 'dark-mode']).error,
-        `the manifest would not write — and a file could not be put back: "${ARCHIVED_BUG}" (belongs at "${BUG_NOTE}")`);
+        `the manifest would not write — and a file could not be put back: "${path.join(dir, ARCHIVED_BUG)}" (belongs at "${path.join(dir, BUG_NOTE)}")`);
       assert.ok(exists(IDEA_NOTE), 'the idea note, put back after the bug note failed');
       assert.ok(exists(ARCHIVED_BUG), 'the bug note stays where the failed put-back left it');
       assert.strictEqual(projectManifestText(dir), before);
@@ -452,13 +453,13 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     runOk(dir, batch([{ name: 'login-crash', horizon: 'later', summary: 's', note: BUG }]));
     const res = runOk(dir, ['remove', 'login-crash']);
 
-    const archived = '.workflows/.inbox/.archived/bugs/2026-03-02--login-crash.md';
-    assert.deepStrictEqual(res.notes_moved, [{ from: BUG_NOTE, to: archived }]);
+    const archived = '.leeway/.inbox/.archived/bugs/2026-03-02--login-crash.md';
+    assert.deepStrictEqual(res.notes_moved, [{ from: path.join(dir, BUG_NOTE), to: path.join(dir, archived) }]);
     assert.strictEqual(exists(BUG_NOTE), false);
     assert.ok(exists(archived));
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove login-crash');
-    assert.deepStrictEqual(committedPaths(), ['M\t.workflows/manifest.json', `R100\t${BUG_NOTE}\t${archived}`]);
-    assert.strictEqual(git(dir, ['status', '--porcelain', '--', '.workflows']).trim(), '');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove login-crash');
+    assert.deepStrictEqual(committedPaths(), ['M\tmanifest.json', `R100\t${inState(BUG_NOTE)}\t${inState(archived)}`]);
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
     // Restorable: the archive's own verb takes it back to the inbox.
     ok(dir, ['inbox', 'restore', archived]);
     assert.ok(exists(BUG));
@@ -472,13 +473,13 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
     assert.strictEqual('notes_moved' in runOk(dir, ['remove', 'dark-mode']), false);
     assert.ok(exists(IDEA_NOTE), 'the note waits on with light-mode');
     assert.deepStrictEqual(runOk(dir, ['remove', 'light-mode']).notes_moved,
-      [{ from: IDEA_NOTE, to: '.workflows/.inbox/.archived/ideas/2026-03-01--dark-mode.md' }]);
+      [{ from: path.join(dir, IDEA_NOTE), to: path.join(dir, '.leeway/.inbox/.archived/ideas/2026-03-01--dark-mode.md') }]);
     assert.strictEqual('notes_moved' in runOk(dir, ['remove', 'plain']), false);
   });
 
   it('remove refuses where the archive already holds the note\'s name — nothing moves, the item stays', () => {
     runOk(dir, batch([{ name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA }]));
-    const archived = '.workflows/.inbox/.archived/ideas/2026-03-01--dark-mode.md';
+    const archived = '.leeway/.inbox/.archived/ideas/2026-03-01--dark-mode.md';
     fs.mkdirSync(path.dirname(path.join(dir, archived)), { recursive: true });
     fs.writeFileSync(path.join(dir, archived), 'an older copy\n');
     const before = projectManifestText(dir);
@@ -505,8 +506,7 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
     joinItem(dir, 'ordering', 'mvp');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'join']);
+    commitAll(dir, 'join');
   });
   afterEach(() => { cleanup(dir); });
 
@@ -515,7 +515,7 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
     assert.strictEqual(res.op, 'edit');
     assert.strictEqual(res.state, 'in-flight');
     assert.strictEqual(readProject(dir).roadmap.items.ordering.summary, 'guests order from a menu');
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: edit ordering');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: edit ordering');
   });
 
   it('rename carries every field across — the join included — and keeps key order', () => {
@@ -664,8 +664,7 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     runOk(dir, ['add', 'kds', '--horizon', 'mvp', '--summary', 'orders reach the kitchen']);
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'fixture']);
+    commitAll(dir, 'fixture');
   });
   afterEach(() => { cleanup(dir); });
 
@@ -673,7 +672,7 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     const res = runOk(dir, ['pull', 'ordering', 'menus', '--into', 'mvp']);
     assert.deepStrictEqual(res.pulled, ['ordering', 'menus']);
     assert.deepStrictEqual(res.remainder, { mvp: 1 });
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: pull 2 items into mvp');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: pull 2 items into mvp');
     const items = readProject(dir).roadmap.items;
     assert.deepStrictEqual(items.ordering.pulled_to, { work_unit: 'mvp' });
     assert.deepStrictEqual(items.menus.pulled_to, { work_unit: 'mvp' });
@@ -699,9 +698,9 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
   it('bind names the topic the item crystallised as — validated against the map', () => {
     runOk(dir, ['pull', 'ordering', '--into', 'mvp']);
     assert.match(runFail(dir, ['bind', 'ordering', '--topic', 'guest-ordering']).error, /no discovery item "guest-ordering" on "mvp"/);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.items['guest-ordering'] = { routing: 'discussion', source: 'roadmap', summary: 's' };
-    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'guest-ordering']);
     assert.strictEqual(res.work_unit, 'mvp');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'guest-ordering' });
@@ -713,21 +712,21 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     assert.strictEqual(res.topic, 'loyalty');
     assert.strictEqual(res.state, 'in-flight');
     // The epic's map item, source roadmap, summary carried from the item.
-    const epicItem = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'))
+    const epicItem = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'))
       .phases.discovery.items.loyalty;
     assert.deepStrictEqual(epicItem, { routing: 'discussion', source: 'roadmap', summary: 'rewards' });
     assert.deepStrictEqual(readProject(dir).roadmap.items.loyalty.pulled_to, { work_unit: 'mvp', topic: 'loyalty' });
     // One commit, both manifests staged.
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: pull-forward loyalty into mvp');
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/manifest.json'), 'project manifest staged');
-    assert.ok(staged.includes('.workflows/mvp/manifest.json'), 'epic manifest staged');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: pull-forward loyalty into mvp');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('manifest.json'), 'project manifest staged');
+    assert.ok(staged.includes('mvp/manifest.json'), 'epic manifest staged');
   });
 
   it('pull-forward requires --routing on the creating branch — only the return names nothing', () => {
     assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp']).error, /--routing is required/);
     assert.strictEqual(
-      JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.loyalty,
+      JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.loyalty,
       undefined, 'nothing lands on the map');
   });
 
@@ -738,27 +737,27 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
     assert.match(runFail(dir, ['pull-forward', 'ordering', '--into', 'mvp', '--routing', 'discussion']).error, /already joined/);
     runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']);
     runOk(dir, ['move', 'kds', '--horizon', 'v1']);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.items.kds = { routing: 'discussion', source: 'discovery', summary: 'already here' };
-    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
     assert.match(runFail(dir, ['pull-forward', 'kds', '--into', 'mvp', '--routing', 'discussion']).error, /already on the map/);
   });
 
   it('pull-forward refuses a bug or a quick-fix, naming the pull as the way to start it — the epic\'s map never moves', () => {
     runOk(dir, ['add', 'login-crash', '--horizon', 'mvp', '--summary', 'sign-in crashes', '--kind', 'bug']);
     runOk(dir, ['add', 'typo', '--horizon', 'mvp', '--summary', 'the footer typo', '--kind', 'quick-fix']);
-    const epicBefore = fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8');
+    const epicBefore = fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
     assert.strictEqual(runFail(dir, ['pull-forward', 'login-crash', '--into', 'mvp', '--routing', 'discussion']).error,
       '"login-crash" is a bug — an epic grows by topics, and pull-forward takes ideas only; start it with the pull (roadmap pull), as work of its own');
     assert.match(runFail(dir, ['pull-forward', 'typo', '--into', 'mvp', '--routing', 'discussion']).error, /^"typo" is a quick-fix — /);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'), epicBefore);
     assert.strictEqual('pulled_to' in readProject(dir).roadmap.items['login-crash'], false);
   });
 
   it('pull-forward honours the dismissed list, force passing the confirmed re-add through', () => {
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
     manifest.phases.discovery.dismissed = ['loyalty'];
-    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(manifest, null, 2));
     assert.match(runFail(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion']).error, /previously dismissed/);
     const res = runOk(dir, ['pull-forward', 'loyalty', '--into', 'mvp', '--routing', 'discussion', '--force-dismissed']);
     assert.strictEqual(res.state, 'in-flight');
@@ -784,22 +783,21 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       },
     });
     for (const rel of ['discovery/briefs/ordering.md', 'research/ordering.md', 'discussion/ordering.md']) {
-      const abs = path.join(dir, '.workflows', 'mvp', rel);
+      const abs = path.join(dir, '.leeway', 'mvp', rel);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
       fs.writeFileSync(abs, '# x\n');
     }
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'fixture']);
+    commitAll(dir, 'fixture');
   });
   afterEach(() => { cleanup(dir); });
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
   const engineFails = (/** @type {string[]} */ args, /** @type {RegExp} */ p) => refuses(dir, args, p);
-  const epicText = () => fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8');
+  const epicText = () => fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
   const epic = () => JSON.parse(epicText());
 
-  const RESEARCH = '.workflows/mvp/research/ordering.md';
-  const SIBLING = '.workflows/mvp/discussion/menus.md';
+  const RESEARCH = '.leeway/mvp/research/ordering.md';
+  const SIBLING = '.leeway/mvp/discussion/menus.md';
   /**
    * The topic's completed research indexed into a keyword-only store — the
    * chunks a postpone takes — beside a sibling topic's discussion, which it
@@ -840,10 +838,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
     assert.strictEqual(m.phases.specification.items.grp, undefined, 'the proposed grouping is discarded, never stashed');
 
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'workflow(mvp): postpone ordering → next');
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/manifest.json'), 'project manifest staged');
-    assert.ok(staged.includes('.workflows/mvp/manifest.json'), 'epic manifest staged');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'workflow(mvp): postpone ordering → next');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('manifest.json'), 'project manifest staged');
+    assert.ok(staged.includes('mvp/manifest.json'), 'epic manifest staged');
   });
 
   it('a never-started topic with no files: the row alone, the summary falling back to its name', () => {
@@ -908,7 +906,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'v2.1']).error,
       /"v2\.1" is not a legal horizon name — dots and slashes break manifest addressing/);
     assert.strictEqual(epicText(), before, 'the hold is never written');
-    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH], 'and no chunk is removed for a topic that stayed');
+    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING), inState(RESEARCH)], 'and no chunk is removed for a topic that stayed');
   });
 
   it('a refusal at the landing leaves the epic manifest unsaved and its chunks in place', () => {
@@ -919,12 +917,12 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     indexResearch();
     const project = readProject(dir);
     project.roadmap = { horizons: {}, items: {} };
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(project, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(project, null, 2));
     const before = epicText();
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
       /roadmap\.horizons is malformed/);
     assert.strictEqual(epicText(), before, 'the topic is where the plan found it');
-    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH]);
+    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING), inState(RESEARCH)]);
   });
 
   it('the landing refuses a name a peer took between the plan and the project lock — a birth never overwrites', () => {
@@ -965,10 +963,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     engineFails(['manifest', 'delete', 'mvp.discussion.ordering', 'previous_status'],
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
     // A message for a topic that waits is mail that waits with it.
-    fs.mkdirSync(path.join(dir, '.workflows/.cache/scratch'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/.cache/scratch/message.md'), '### Ordering\n\nA question for later.\n');
+    fs.mkdirSync(path.join(dir, '.leeway/.cache/scratch'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), '### Ordering\n\nA question for later.\n');
     const parked = engineOk(['topic', 'send', 'mvp', 'research', 'ordering',
-      '--content', '.workflows/.cache/scratch/message.md', '--slug', 'a-question', '-m', 'send a-question']);
+      '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question', '-m', 'send a-question']);
     assert.strictEqual(parked.status, 'postponed', 'the send leaves the hold alone');
   });
 
@@ -983,22 +981,21 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(m.phases.research.items.ordering.status, 'cancelled');
     assert.strictEqual(m.phases.research.items.ordering.previous_status, 'completed');
     assert.strictEqual(readProject(dir).roadmap.items.ordering, undefined);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove ordering — ordering cancelled in mvp');
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/manifest.json') && staged.includes('.workflows/mvp/manifest.json'), 'both manifests ride one commit');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove ordering — ordering cancelled in mvp');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('manifest.json') && staged.includes('mvp/manifest.json'), 'both manifests ride one commit');
     // And the reactivate is then the way back, as for any cancelled unit.
     assert.deepStrictEqual(ok(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']).restored,
       [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
   });
 
   it('roadmap remove of a re-waited item brought from the inbox declines its note and cancels the epic\'s row, one commit over both manifests and the note', () => {
-    const inboxNote = '.workflows/.inbox/ideas/2026-03-01--guest-ordering.md';
-    const roadmapNote = '.workflows/.roadmap/notes/ideas/2026-03-01--guest-ordering.md';
-    const archived = '.workflows/.inbox/.archived/ideas/2026-03-01--guest-ordering.md';
+    const inboxNote = '.leeway/.inbox/ideas/2026-03-01--guest-ordering.md';
+    const roadmapNote = '.leeway/.roadmap/notes/ideas/2026-03-01--guest-ordering.md';
+    const archived = '.leeway/.inbox/.archived/ideas/2026-03-01--guest-ordering.md';
     fs.mkdirSync(path.dirname(path.join(dir, inboxNote)), { recursive: true });
     fs.writeFileSync(path.join(dir, inboxNote), '# Guest ordering\n');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'inbox']);
+    commitAll(dir, 'inbox');
     fs.writeFileSync(path.join(dir, 'batch.json'), JSON.stringify([{ name: 'guest-ordering', horizon: 'mvp', summary: 'customers order', note: inboxNote }]));
     runOk(dir, ['add-batch', '--file', 'batch.json']);
     runOk(dir, ['pull', 'guest-ordering', '--into', 'mvp']);
@@ -1007,16 +1004,16 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.ok(readProject(dir).roadmap.items['guest-ordering'].sources.includes('.roadmap/notes/ideas/2026-03-01--guest-ordering.md'));
 
     const res = runOk(dir, ['remove', 'guest-ordering']);
-    assert.deepStrictEqual(res.notes_moved, [{ from: roadmapNote, to: archived }]);
+    assert.deepStrictEqual(res.notes_moved, [{ from: path.join(dir, roadmapNote), to: path.join(dir, archived) }]);
     assert.deepStrictEqual(res.epic_row_cancelled, { work_unit: 'mvp', topic: 'ordering' });
     assert.strictEqual(fs.existsSync(path.join(dir, roadmapNote)), false);
     assert.ok(fs.existsSync(path.join(dir, archived)), 'the note is declined to the inbox archive');
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/mvp/research/ordering.md')), 'the topic\'s own files are its epic\'s, never archived');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/mvp/research/ordering.md')), 'the topic\'s own files are its epic\'s, never archived');
     assert.strictEqual(epic().phases.discovery.items.ordering.cancelled, true);
     assert.strictEqual(readProject(dir).roadmap.items['guest-ordering'], undefined);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove guest-ordering — ordering cancelled in mvp');
-    assert.deepStrictEqual(git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
-      'M\t.workflows/manifest.json', 'M\t.workflows/mvp/manifest.json', `R100\t${roadmapNote}\t${archived}`,
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: remove guest-ordering — ordering cancelled in mvp');
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
+      'M\tmanifest.json', 'M\tmvp/manifest.json', `R100\t${inState(roadmapNote)}\t${inState(archived)}`,
     ]);
   });
 
@@ -1027,7 +1024,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     delete m.phases.discovery.items.ordering.postponed;
     m.phases.research.items.ordering.status = 'completed';
     m.phases.discussion.items.ordering.status = 'in-progress';
-    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
     const before = epicText();
     assert.match(runFail(dir, ['remove', 'ordering']).error,
       /"ordering" was postponed from "ordering" in work unit "mvp", where nothing is postponed — the join is stale/);
@@ -1037,7 +1034,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   it('roadmap remove of an item whose epic is gone refuses rather than orphaning the row', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    fs.rmSync(path.join(dir, '.workflows', 'mvp'), { recursive: true, force: true });
+    fs.rmSync(path.join(dir, '.leeway', 'mvp'), { recursive: true, force: true });
     runFail(dir, ['remove', 'ordering']);
     assert.match(runFail(dir, ['remove', 'ordering']).error,
       /"ordering" was postponed from work unit "mvp", which no longer exists — the join is orphaned/);
@@ -1046,12 +1043,12 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   it('pull-forward back into the same epic restores the unit, re-indexes its completed artifacts, and drops postponed_from', () => {
     indexResearch();
     ok(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    assert.deepStrictEqual(indexedFiles(dir), [SIBLING], 'the postpone removes the topic\'s chunks, and only those');
+    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING)], 'the postpone removes the topic\'s chunks, and only those');
     const res = ok(dir, ['roadmap', 'pull-forward', 'ordering', '--into', 'mvp']);
     assert.strictEqual(res.op, 'pull-forward');
     assert.strictEqual(res.state, 'in-flight');
     assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
-    assert.deepStrictEqual(indexedFiles(dir), [SIBLING, RESEARCH], 'the return re-indexes the completed artifact');
+    assert.deepStrictEqual(indexedFiles(dir), [inState(SIBLING), inState(RESEARCH)], 'the return re-indexes the completed artifact');
     const m = epic();
     assert.strictEqual(m.phases.discovery.items.ordering.postponed, undefined, 'the marker is gone');
     assert.strictEqual(m.phases.discovery.items.ordering.order, 1, 'the map order returns');
@@ -1060,8 +1057,8 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     const item = readProject(dir).roadmap.items.ordering;
     assert.deepStrictEqual(item.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
     assert.strictEqual('postponed_from' in item, false, 'the item is in flight again — a later postpone re-sets it');
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/manifest.json') && staged.includes('.workflows/mvp/manifest.json'));
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('manifest.json') && staged.includes('mvp/manifest.json'));
   });
 
   it('a return whose re-index fails still lands, carrying the failure as a warning', () => {
@@ -1071,7 +1068,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.deepStrictEqual(res.restored, [{ phase: 'research', status: 'completed' }, { phase: 'discussion', status: 'in-progress' }]);
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the state write stands; the index is derived');
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the state write stands; the index is derived');
   });
 
   it('the re-wait merges into the sources the item already carries — never a duplicate', () => {
@@ -1099,7 +1096,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     createManifest(dir, 'v2', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
     const res = runOk(dir, ['pull-forward', 'ordering', '--into', 'v2', '--routing', 'discussion']);
     assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
-    const row = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
+    const row = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
     assert.deepStrictEqual(row, { routing: 'discussion', source: 'roadmap', summary: 'Customers order', prior: { work_unit: 'mvp', topic: 'ordering' } });
     assert.strictEqual(epic().phases.discovery.items.ordering.postponed, true, 'the prior epic keeps its record and its marker');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
@@ -1112,16 +1109,15 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       status: 'in-progress',
       phases: { discovery: { items: { checkout: { routing: 'discussion', source: 'discovery', summary: 's' } } } },
     });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'v2']);
+    commitAll(dir, 'v2');
     runOk(dir, ['pull', 'ordering', '--into', 'v2']);
     const res = runOk(dir, ['bind', 'ordering', '--topic', 'checkout']);
     assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
     assert.deepStrictEqual(
-      JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.checkout.prior,
+      JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.checkout.prior,
       { work_unit: 'mvp', topic: 'ordering' });
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/v2/manifest.json'), 'the map write rides the bind commit');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('v2/manifest.json'), 'the map write rides the bind commit');
   });
 
   it('a bind back into the epic that postponed the topic writes no prior', () => {
@@ -1154,8 +1150,7 @@ describe('engine CLI: the cancel-revert hop', () => {
         discussion: { items: { ordering: { status: 'in-progress' } } },
       },
     });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'fixture']);
+    commitAll(dir, 'fixture');
     runOk(dir, ['pull', 'ordering', 'menus', '--into', 'mvp']);
     runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
   });
@@ -1171,8 +1166,8 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.strictEqual(items.ordering.origin, 'harvest', 'origin survives the revert');
     // The wu-level joined sibling is untouched — its topic wasn't cancelled.
     assert.deepStrictEqual(items.menus.pulled_to, { work_unit: 'mvp' });
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/manifest.json'), 'project manifest rides the cancel commit');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('manifest.json'), 'project manifest rides the cancel commit');
     const state = runOk(dir, ['state']);
     assert.strictEqual(state.items.find((i) => i.name === 'ordering').state, 'waiting');
   });
@@ -1182,8 +1177,8 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.deepStrictEqual([...res.roadmap_reverted].sort(), ['menus', 'ordering']);
     const state = runOk(dir, ['state']);
     assert.deepStrictEqual(state.totals, { items: 2, waiting: 2, in_flight: 0, shipped: 0, orphaned: 0 });
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/manifest.json'), 'project manifest rides the cancel commit');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('manifest.json'), 'project manifest rides the cancel commit');
   });
 
   it('work-unit complete leaves joins in place — shipped by derivation, no revert', () => {
@@ -1194,7 +1189,7 @@ describe('engine CLI: the cancel-revert hop', () => {
   });
 
   it('a never-started topic\'s cancel reverts the join too — the marker alone reads cancelled', () => {
-    const p = path.join(dir, '.workflows', 'mvp', 'manifest.json');
+    const p = path.join(dir, '.leeway', 'mvp', 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
     delete manifest.phases.discussion;
     fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
@@ -1223,8 +1218,7 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
         discussion: { items: { ordering: { status: 'completed' } } },
       },
     });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'fixture']);
+    commitAll(dir, 'fixture');
     runOk(dir, ['pull', 'ordering', 'menus', '--into', 'mvp']);
     runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
   });
@@ -1233,22 +1227,22 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
   it('flags the live phase item, skips terminal ones, never clobbers', () => {
     const res = runOk(dir, ['flag', 'ordering']);
     assert.deepStrictEqual(res.flagged, [{ phase: 'discussion', topic: 'ordering' }]);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: flag ordering — input moved');
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: flag ordering — input moved');
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.discussion.items.ordering.reconcile_needed, 'roadmap');
     assert.strictEqual('reconcile_needed' in manifest.phases.research.items.ordering, false, 'terminal item skipped');
 
     // Never clobbered: a second flag finds the existing one and writes nothing.
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const again = runOk(dir, ['flag', 'ordering']);
     assert.deepStrictEqual(again.flagged, []);
     assert.strictEqual(again.committed, null);
     assert.strictEqual(again.note, 'nothing reached "mvp" — every live research or discussion of topic "ordering" already carries a flag');
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
   it('a topic whose research and discussion are all terminal: nothing reached the work, and the note says why', () => {
-    const p = path.join(dir, '.workflows', 'mvp', 'manifest.json');
+    const p = path.join(dir, '.leeway', 'mvp', 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
     manifest.phases.discussion.items.ordering.status = 'cancelled';
     fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
@@ -1290,22 +1284,22 @@ describe('engine CLI: roadmap sessions and imports', () => {
   }
 
   it('open installs the draft as session-001, resolves {NNN}, sets the marker, JIT-births the node — no commit', () => {
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const res = runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Roadmap Session {NNN}\n')]);
     assert.strictEqual(res.session, '001');
     assert.strictEqual(
-      fs.readFileSync(path.join(dir, '.workflows', '.roadmap', 'sessions', 'session-001.md'), 'utf8'),
+      fs.readFileSync(path.join(dir, '.leeway', '.roadmap', 'sessions', 'session-001.md'), 'utf8'),
       '# Roadmap Session 001\n',
       'the template-literal {NNN} resolves to the allocated number at install');
-    assert.strictEqual(res.path, '.workflows/.roadmap/sessions/session-001.md');
+    assert.strictEqual(res.path, path.join(dir, '.leeway/.roadmap/sessions/session-001.md'));
     assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), false, 'draft consumed (moved)');
     assert.strictEqual(readProject(dir).roadmap.active_session, '001');
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head, 'open never commits — the session is live');
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head, 'open never commits — the session is live');
 
     assert.match(runFail(dir, ['session', 'open', '--session-log-file', draft('d2.md', 'x')]).error, /already open/);
     const state = runOk(dir, ['state']);
     assert.strictEqual(state.active_session, '001');
-    assert.deepStrictEqual(state.session_logs, [{ number: 1, path: '.workflows/.roadmap/sessions/session-001.md' }]);
+    assert.deepStrictEqual(state.session_logs, [{ number: 1, path: path.join(dir, '.leeway/.roadmap/sessions/session-001.md') }]);
     assert.strictEqual(state.next_session_number, 2);
   });
 
@@ -1321,9 +1315,9 @@ describe('engine CLI: roadmap sessions and imports', () => {
     const res = runOk(dir, ['session', 'close', '-m', 'roadmap: session 001 — genesis']);
     assert.strictEqual(res.session, '001');
     assert.strictEqual('active_session' in readProject(dir).roadmap, false);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: session 001 — genesis');
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/.roadmap/sessions/session-001.md'), 'session log staged');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: session 001 — genesis');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.roadmap/sessions/session-001.md'), 'session log staged');
     assert.match(runFail(dir, ['session', 'close', '-m', 'again']).error, /no active roadmap session/);
 
     // The next open allocates from disk: session-002.
@@ -1336,22 +1330,22 @@ describe('engine CLI: roadmap sessions and imports', () => {
     fs.writeFileSync(path.join(dir, 'my-app-idea.md'), '# A colliding name\n');
     const res = runOk(dir, ['import', 'My App Idea.md', 'my-app-idea.md']);
     assert.deepStrictEqual(res.imports, [
-      { path: 'imports/my-app-idea.md', origin: 'roadmap' },
-      { path: 'imports/my-app-idea-2.md', origin: 'roadmap' },
+      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea.md'), origin: 'roadmap' },
+      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea-2.md'), origin: 'roadmap' },
     ]);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'my-app-idea.md')));
-    assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'my-app-idea-2.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'my-app-idea.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'my-app-idea-2.md')));
     const entries = readProject(dir).roadmap.imports;
     assert.strictEqual(entries.length, 2);
     assert.strictEqual(entries[0].path, 'imports/my-app-idea.md');
     assert.ok(entries[0].imported_at, 'entries carry a timestamp');
     assert.deepStrictEqual(entries.map((e) => e.origin), ['roadmap', 'roadmap'],
       'the product altitude is its own origin');
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: import 2 files');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: import 2 files');
     const state = runOk(dir, ['state']);
     assert.deepStrictEqual(state.imports, [
-      { path: 'imports/my-app-idea.md', origin: 'roadmap' },
-      { path: 'imports/my-app-idea-2.md', origin: 'roadmap' },
+      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea.md'), origin: 'roadmap' },
+      { path: path.join(dir, '.leeway/.roadmap/imports/my-app-idea-2.md'), origin: 'roadmap' },
     ]);
   });
 
@@ -1363,23 +1357,23 @@ describe('engine CLI: roadmap sessions and imports', () => {
     fs.writeFileSync(path.join(dir, 'notes.md'), '# notes\n');
     const res = runOk(dir, ['import', 'Board Sketch.PNG', 'notes.md']);
     assert.deepStrictEqual(res.imports, [
-      { path: 'imports/board-sketch.png', origin: 'roadmap' },
-      { path: 'imports/notes.md', origin: 'roadmap' },
+      { path: path.join(dir, '.leeway/.roadmap/imports/board-sketch.png'), origin: 'roadmap' },
+      { path: path.join(dir, '.leeway/.roadmap/imports/notes.md'), origin: 'roadmap' },
     ]);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')));
-    const mode = fs.statSync(path.join(dir, '.workflows', '.roadmap', 'imports', 'board-sketch.png')).mode & 0o777;
+    assert.ok(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'board-sketch.png')));
+    const mode = fs.statSync(path.join(dir, '.leeway', '.roadmap', 'imports', 'board-sketch.png')).mode & 0o777;
     assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
     // No index was attempted for the binary: indexing refuses a `.png` by
     // name, and the refusal would come back as a warning.
     assert.strictEqual('warnings' in res, false, JSON.stringify(res));
-    assert.deepStrictEqual(indexedFiles(dir), ['.workflows/.roadmap/imports/notes.md']);
+    assert.deepStrictEqual(indexedFiles(dir), ['.roadmap/imports/notes.md']);
   });
 
   it('import fails whole with missing_imports so the flow can re-prompt', () => {
     fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
     const res = runFail(dir, ['import', 'real.md', 'ghost.md']);
     assert.deepStrictEqual(res.missing_imports, ['ghost.md']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'nothing landed');
   });
 
   it('a directory among the paths refuses before any copy — no half-landed batch', () => {
@@ -1388,16 +1382,16 @@ describe('engine CLI: roadmap sessions and imports', () => {
     const res = runFail(dir, ['import', 'real.md', 'album']);
     assert.match(res.error, /import path\(s\) not found, not a file, or unreadable: album/);
     assert.deepStrictEqual(res.missing_imports, ['album']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'nothing landed');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'nothing landed');
   });
 
   it('commit --roadmap sweeps the roadmap dir + project manifest, nothing else', () => {
     runOk(dir, ['session', 'open', '--session-log-file', draft('draft.md', '# Session\n')]);
-    fs.appendFileSync(path.join(dir, '.workflows', '.roadmap', 'sessions', 'session-001.md'), '\nMore exploration.\n');
+    fs.appendFileSync(path.join(dir, '.leeway', '.roadmap', 'sessions', 'session-001.md'), '\nMore exploration.\n');
     fs.writeFileSync(path.join(dir, 'unrelated.txt'), 'outside the scope\n');
     const res = ok(dir, ['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
     assert.ok(res.committed);
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: exploration notes — session-001');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: exploration notes — session-001');
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
     const clean = ok(dir, ['commit', '--roadmap', '-m', 'nothing']);
     assert.strictEqual(clean.committed, null);
@@ -1456,7 +1450,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
   });
 
   it('reads corrupt shapes honestly: scalar node, array items, non-object item, stray horizon, malformed join', () => {
-    const write = (m) => fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify(m, null, 2));
+    const write = (m) => fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(m, null, 2));
 
     write({ roadmap: 'scalar' });
     assert.strictEqual(runOk(dir, ['state']).exists, false, 'a scalar node reads as never-born');
@@ -1480,14 +1474,14 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
   });
 
   it('refuses mutations loudly over a malformed horizons node — add, session open, and import alike', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ roadmap: { horizons: { not: 'a list' }, items: {} } }, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ roadmap: { horizons: { not: 'a list' }, items: {} } }, null, 2));
     assert.match(runFail(dir, ['add', 'x', '--horizon', 'v1', '--summary', 's']).error, /horizons is malformed/);
     fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
     assert.match(runFail(dir, ['session', 'open', '--session-log-file', 'draft.md']).error, /horizons is malformed/);
     assert.strictEqual(fs.existsSync(path.join(dir, 'draft.md')), true, 'the refused open leaves the draft in place');
     fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
     assert.match(runFail(dir, ['import', 'ref.md']).error, /horizons is malformed/);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'the refused import copies nothing');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'the refused import copies nothing');
   });
 });
 
@@ -1499,16 +1493,15 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
     runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'fixture']);
+    commitAll(dir, 'fixture');
   });
   afterEach(() => { cleanup(dir); });
 
   function epicManifest() {
-    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8'));
   }
   function writeEpic(m) {
-    fs.writeFileSync(path.join(dir, '.workflows', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
   }
 
   it('re-binding re-aims the join at the new topic, the unit carried', () => {
@@ -1571,8 +1564,7 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
     dir = setupGitFixture();
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'fixture']);
+    commitAll(dir, 'fixture');
   });
   afterEach(() => { cleanup(dir); });
 
@@ -1585,9 +1577,9 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
     const item = readProject(dir).roadmap.items.loyalty;
     assert.strictEqual('pulled_to' in item, false);
     assert.strictEqual(item.origin, 'harvest', 'origin survives the un-pull');
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: un-pull loyalty (loyalty removed from mvp)');
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.deepStrictEqual(staged, ['.workflows/manifest.json'], 'the un-pull commit carries the project manifest alone');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: un-pull loyalty (loyalty removed from mvp)');
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.deepStrictEqual(staged, ['manifest.json'], 'the un-pull commit carries the project manifest alone');
   });
 
   it('discovery-map remove of an unjoined fresh topic reverts nothing', () => {
@@ -1602,10 +1594,9 @@ describe('engine CLI: the un-pull and the re-aim — remove and absorb move join
       status: 'in-progress',
       phases: { discussion: { items: { 'loyalty-feat': { status: 'completed' } } } },
     });
-    fs.mkdirSync(path.join(dir, '.workflows', 'loyalty-feat', 'discussion'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', 'loyalty-feat', 'discussion', 'loyalty-feat.md'), '# Discussion\n');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'feature fixture']);
+    fs.mkdirSync(path.join(dir, '.leeway', 'loyalty-feat', 'discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'loyalty-feat', 'discussion', 'loyalty-feat.md'), '# Discussion\n');
+    commitAll(dir, 'feature fixture');
     runOk(dir, ['pull', 'loyalty', '--into', 'loyalty-feat']);
 
     const res = engineOk(['workunit', 'absorb', 'loyalty-feat', '--into', 'mvp', '--topic', 'loyalty']);
@@ -1626,7 +1617,7 @@ describe('engine CLI: import edge discipline and the commit scope', () => {
     fs.writeFileSync(path.join(dir, 'real.md'), '# real\n');
     fs.writeFileSync(path.join(dir, '.hidden'), 'x');
     const res = runOk(dir, ['import', 'real.md', '.hidden']);
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/real.md', origin: 'roadmap' }]);
+    assert.deepStrictEqual(res.imports, [{ path: path.join(dir, '.leeway/.roadmap/imports/real.md'), origin: 'roadmap' }]);
     assert.deepStrictEqual(res.skipped_imports, ['.hidden']);
 
     const fail = runFail(dir, ['import', '.hidden']);
@@ -1635,10 +1626,10 @@ describe('engine CLI: import edge discipline and the commit scope', () => {
   });
 
   it('a malformed imports node refuses before any file is copied', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ roadmap: { horizons: [], items: {}, imports: 'corrupt' } }, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ roadmap: { horizons: [], items: {}, imports: 'corrupt' } }, null, 2));
     fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
     assert.match(runFail(dir, ['import', 'ref.md']).error, /imports is malformed/);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows', '.roadmap', 'imports')), false, 'no orphan copy landed');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway', '.roadmap', 'imports')), false, 'no orphan copy landed');
   });
 
   it('close and import commit the roadmap and the project manifest — never the store', () => {
@@ -1646,15 +1637,15 @@ describe('engine CLI: import edge discipline and the commit scope', () => {
     fs.writeFileSync(path.join(dir, 'draft.md'), '# Session\n');
     runOk(dir, ['session', 'open', '--session-log-file', 'draft.md']);
     runOk(dir, ['session', 'close', '-m', 'roadmap: session 001']);
-    assert.deepStrictEqual(indexedFiles(dir), ['.workflows/.roadmap/sessions/session-001.md']);
-    const staged = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/.roadmap/sessions/session-001.md'), 'the close commits its log');
-    assert.ok(!staged.some((f) => f.startsWith('.workflows/.knowledge/')), 'and never the store its indexing touched');
+    assert.deepStrictEqual(indexedFiles(dir), ['.roadmap/sessions/session-001.md']);
+    const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('.roadmap/sessions/session-001.md'), 'the close commits its log');
+    assert.ok(!staged.some((f) => f.startsWith('.knowledge/')), 'and never the store its indexing touched');
 
     fs.writeFileSync(path.join(dir, 'ref.md'), '# ref\n');
     runOk(dir, ['import', 'ref.md']);
-    const staged2 = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged2.includes('.workflows/.roadmap/imports/ref.md'), 'the import commits its landing');
-    assert.ok(!staged2.some((f) => f.startsWith('.workflows/.knowledge/')), 'and never the store');
+    const staged2 = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged2.includes('.roadmap/imports/ref.md'), 'the import commits its landing');
+    assert.ok(!staged2.some((f) => f.startsWith('.knowledge/')), 'and never the store');
   });
 });

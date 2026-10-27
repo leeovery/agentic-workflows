@@ -8,7 +8,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const {
+  git, stateGit, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, commitAll, setupFixtureAt,
+} = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -58,31 +60,22 @@ function epicManifest(overrides = {}) {
   };
 }
 
-/** A git-repo project carrying the epic. */
+/** A project, its state committed, carrying the epic. */
 function setupFixture({ epic = epicManifest() } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-promote-'));
-  const project = path.join(root, 'project');
-  fs.mkdirSync(project, { recursive: true });
-  git(project, ['init', '-q', '-b', 'main']);
-  git(project, ['config', 'user.email', 'test@example.com']);
-  git(project, ['config', 'user.name', 'Test']);
-  git(project, ['config', 'commit.gpgsign', 'false']);
-
-  // The knowledge directory is checkout-local, never committed.
-  writeFile(project, '.workflows/.gitignore', '.knowledge/\n');
+  const project = setupFixtureAt(path.join(root, 'project'));
   keywordOnlyKnowledge(project);
-  writeFile(project, '.workflows/manifest.json', JSON.stringify({
+  writeFile(project, '.leeway/manifest.json', JSON.stringify({
     work_units: { payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
-  writeFile(project, '.workflows/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
-  writeFile(project, '.workflows/payments/discussion/cache-invalidation.md', '# Cache Invalidation\n');
-  writeFile(project, '.workflows/payments/discussion/ttl-policy.md', '# TTL Policy\n');
-  writeFile(project, '.workflows/payments/discussion/fee-model.md', '# Fee Model\n');
-  writeFile(project, '.workflows/payments/specification/caching-strategy/specification.md', '# Caching Spec\n');
-  writeFile(project, '.workflows/payments/specification/caching-strategy/review-input-tracking-c1.md', 'status: complete\n');
-  writeFile(project, '.workflows/payments/specification/old-spec/specification.md', '# Old Spec\n');
-  git(project, ['add', '-A']);
-  git(project, ['commit', '-q', '-m', 'init']);
+  writeFile(project, '.leeway/payments/manifest.json', JSON.stringify(epic, null, 2) + '\n');
+  writeFile(project, '.leeway/payments/discussion/cache-invalidation.md', '# Cache Invalidation\n');
+  writeFile(project, '.leeway/payments/discussion/ttl-policy.md', '# TTL Policy\n');
+  writeFile(project, '.leeway/payments/discussion/fee-model.md', '# Fee Model\n');
+  writeFile(project, '.leeway/payments/specification/caching-strategy/specification.md', '# Caching Spec\n');
+  writeFile(project, '.leeway/payments/specification/caching-strategy/review-input-tracking-c1.md', 'status: complete\n');
+  writeFile(project, '.leeway/payments/specification/old-spec/specification.md', '# Old Spec\n');
+  commitAll(project, 'init');
 
   return { root, project };
 }
@@ -100,18 +93,26 @@ const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env })
 
 /** Index each file as it stands, so the store holds chunks a transaction can remove. */
 function indexFiles(fix, files) {
-  for (const file of files) output(fix.project, ['knowledge', 'index', file]);
+  for (const file of files) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
 }
 
+/** Where a path in the promoted unit lands, absolute, as the response names it. @param {string} rel */
+function inUnit(fix, rel) {
+  return path.join(fix.project, '.leeway', 'caching', rel);
+}
+
+/** `text` as a regular expression matches it exactly. @param {string} text */
+const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 function shortHead(fix) {
-  return git(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
+  return stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
-/** Every file under `.workflows/`, rel path → content — the pristine check. */
+/** Every file under `.leeway/`, rel path → content — the pristine check. */
 function treeSnapshot(fix) {
   /** @type {Record<string, string>} */
   const files = {};
@@ -122,11 +123,11 @@ function treeSnapshot(fix) {
       else files[path.relative(fix.project, full)] = fs.readFileSync(full, 'utf8');
     }
   };
-  walk(path.join(fix.project, '.workflows'));
+  walk(path.join(fix.project, '.leeway'));
   return {
     files,
-    commits: git(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
-    status: git(fix.project, ['status', '--porcelain']),
+    commits: stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
+    status: git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']),
   };
 }
 
@@ -143,12 +144,14 @@ describe('engine workunit promote — happy path', () => {
   it('moves the spec and source discussions, completes the cc unit, marks promoted, commits all three pathspecs once', () => {
     fix = setupFixture();
     indexFiles(fix, [
-      '.workflows/payments/discussion/cache-invalidation.md',
-      '.workflows/payments/discussion/ttl-policy.md',
-      '.workflows/payments/discussion/fee-model.md',
-      '.workflows/payments/specification/caching-strategy/specification.md',
+      'payments/discussion/cache-invalidation.md',
+      'payments/discussion/ttl-policy.md',
+      'payments/discussion/fee-model.md',
+      'payments/specification/caching-strategy/specification.md',
     ]);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
+    const codeHead = git(fix.project, ['rev-parse', 'HEAD']);
+    const stateCommits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res, {
@@ -158,10 +161,10 @@ describe('engine workunit promote — happy path', () => {
       cc_work_unit: 'caching',
       cc_status: 'completed',
       discussions: [
-        { name: 'cache-invalidation', path: 'discussion/cache-invalidation.md' },
-        { name: 'ttl-policy', path: 'discussion/ttl-policy.md' },
+        { name: 'cache-invalidation', path: inUnit(fix, 'discussion/cache-invalidation.md') },
+        { name: 'ttl-policy', path: inUnit(fix, 'discussion/ttl-policy.md') },
       ],
-      specification: { path: 'specification/caching/specification.md' },
+      specification: { path: inUnit(fix, 'specification/caching/specification.md') },
       imports: [],
       status: 'promoted',
       promoted_to: 'caching',
@@ -185,15 +188,15 @@ describe('engine workunit promote — happy path', () => {
     // The spec directory moved whole — tracking file included — and the
     // source discussions landed at their cc identities; the epic keeps
     // everything else.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/specification/caching/specification.md'), 'utf8'), '# Caching Spec\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/specification/caching/review-input-tracking-c1.md'), 'utf8'), 'status: complete\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/discussion/cache-invalidation.md'), 'utf8'), '# Cache Invalidation\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/specification/caching-strategy')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/discussion/cache-invalidation.md')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/payments/discussion/ttl-policy.md')));
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/fee-model.md'), 'utf8'), '# Fee Model\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/specification/old-spec/specification.md'), 'utf8'), '# Old Spec\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/specification/caching/specification.md'), 'utf8'), '# Caching Spec\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/specification/caching/review-input-tracking-c1.md'), 'utf8'), 'status: complete\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/discussion/cache-invalidation.md'), 'utf8'), '# Cache Invalidation\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/specification/caching-strategy')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/discussion/cache-invalidation.md')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/discussion/ttl-policy.md')));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/fee-model.md'), 'utf8'), '# Fee Model\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/specification/old-spec/specification.md'), 'utf8'), '# Old Spec\n');
 
     // The cc manifest is the canonical document, already completed, with
     // origin provenance; each moved discussion's item travels whole under its
@@ -259,29 +262,30 @@ describe('engine workunit promote — happy path', () => {
     });
 
     // Both registrations present.
-    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
+    const project = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, {
       payments: { work_type: 'epic' },
       caching: { work_type: 'cross-cutting' },
     });
 
-    // ONE commit staging all three pathspecs — epic, cc unit, project
-    // manifest — with the prose's message.
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '2');
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'spec(payments): promote caching-strategy to cross-cutting work unit');
-    const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/payments/manifest.json'), 'epic manifest staged');
-    assert.ok(staged.includes('.workflows/caching/specification/caching/specification.md'), 'cc addition staged');
-    assert.ok(staged.includes('.workflows/manifest.json'), 'project manifest staged');
+    // ONE state commit staging all three pathspecs — epic, cc unit, project
+    // manifest — with the prose's message; none in the code tree.
+    assert.strictEqual(Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD'])), stateCommits + 1);
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), codeHead);
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'spec(payments): promote caching-strategy to cross-cutting work unit');
+    const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('payments/manifest.json'), 'epic manifest staged');
+    assert.ok(staged.includes('caching/specification/caching/specification.md'), 'cc addition staged');
+    assert.ok(staged.includes('manifest.json'), 'project manifest staged');
     assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
 
     // KB: moved artifacts indexed at their cc identities, the epic's old
     // chunks of each removed — the unmoved discussion's stay.
     assert.deepStrictEqual(indexedFiles(fix.project), [
-      '.workflows/caching/discussion/cache-invalidation.md',
-      '.workflows/caching/discussion/ttl-policy.md',
-      '.workflows/caching/specification/caching/specification.md',
-      '.workflows/payments/discussion/fee-model.md',
+      'caching/discussion/cache-invalidation.md',
+      'caching/discussion/ttl-policy.md',
+      'caching/specification/caching/specification.md',
+      'payments/discussion/fee-model.md',
     ]);
   });
 
@@ -290,20 +294,20 @@ describe('engine workunit promote — happy path', () => {
     delete epic.phases.specification.items['caching-strategy'].sources;
     fix = setupFixture({ epic });
     indexFiles(fix, [
-      '.workflows/payments/discussion/cache-invalidation.md',
-      '.workflows/payments/specification/caching-strategy/specification.md',
+      'payments/discussion/cache-invalidation.md',
+      'payments/specification/caching-strategy/specification.md',
     ]);
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res.discussions, []);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/discussion')));
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/cache-invalidation.md'), 'utf8'), '# Cache Invalidation\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching/discussion')));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/cache-invalidation.md'), 'utf8'), '# Cache Invalidation\n');
     assert.deepStrictEqual(readManifest(fix, 'caching').phases, {
       specification: { items: { caching: { status: 'completed', date: today() } } },
     });
     assert.deepStrictEqual(indexedFiles(fix.project), [
-      '.workflows/caching/specification/caching/specification.md',
-      '.workflows/payments/discussion/cache-invalidation.md',
+      'caching/specification/caching/specification.md',
+      'payments/discussion/cache-invalidation.md',
     ]);
   });
 
@@ -315,8 +319,8 @@ describe('engine workunit promote — happy path', () => {
     };
     fix = setupFixture({ epic });
     const res = engine(fix, PROMOTE);
-    assert.deepStrictEqual(res.discussions, [{ name: 'cache-invalidation', path: 'discussion/cache-invalidation.md' }]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/payments/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
+    assert.deepStrictEqual(res.discussions, [{ name: 'cache-invalidation', path: inUnit(fix, 'discussion/cache-invalidation.md') }]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/payments/discussion/ttl-policy.md'), 'utf8'), '# TTL Policy\n');
     // Only what moved is recorded as moved: the cc spec's sources are the
     // moved discussion alone, and the epic's other discussions read as before.
     assert.deepStrictEqual(readManifest(fix, 'caching').phases.specification.items.caching.sources,
@@ -347,7 +351,7 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Assert the refusal leaves every `.workflows/` byte identical, no commit, no cc unit, nothing indexed. */
+  /** Assert the refusal leaves every `.leeway/` byte identical, no commit, no cc unit, nothing indexed. */
   function refusedPristine(args, pattern) {
     const before = treeSnapshot(fix);
     const err = engineFails(fix, args);
@@ -390,10 +394,10 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
 
   it('refuses a spec artifact missing on disk', () => {
     fix = setupFixture();
-    fs.rmSync(path.join(fix.project, '.workflows/payments/specification/caching-strategy/specification.md'));
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'drop spec file']);
-    refusedPristine(PROMOTE, /specification file missing on disk: \.workflows\/payments\/specification\/caching-strategy\/specification\.md/);
+    fs.rmSync(path.join(fix.project, '.leeway/payments/specification/caching-strategy/specification.md'));
+    commitAll(fix.project, 'drop spec file');
+    const missing = path.join(fix.project, '.leeway/payments/specification/caching-strategy/specification.md');
+    refusedPristine(PROMOTE, new RegExp(`specification file missing on disk: ${literal(missing)}$`));
   });
 
   it('refuses illegal cc names — dots/slashes, phase names, reserved names', () => {
@@ -406,18 +410,16 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
 
   it('refuses a taken cc name — directory on disk, or registration only', () => {
     fix = setupFixture();
-    writeFile(fix.project, '.workflows/caching/manifest.json', '{}\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'existing unit']);
-    refusedPristine(PROMOTE, /work unit "caching" already exists \(\.workflows\/caching\)/);
+    writeFile(fix.project, '.leeway/caching/manifest.json', '{}\n');
+    commitAll(fix.project, 'existing unit');
+    refusedPristine(PROMOTE, new RegExp(`work unit "caching" already exists \\(${literal(inUnit(fix, ''))}\\)`));
     fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     fix = setupFixture();
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({
       work_units: { payments: { work_type: 'epic' }, caching: { work_type: 'feature' } },
     }, null, 2) + '\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'registration only']);
+    commitAll(fix.project, 'registration only');
     refusedPristine(PROMOTE, /work unit "caching" is already registered in the project manifest/);
   });
 
@@ -430,9 +432,8 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
 
   it('refuses a corrupt project manifest before anything moves', () => {
     fix = setupFixture();
-    writeFile(fix.project, '.workflows/manifest.json', '{ corrupt\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'corrupt']);
+    writeFile(fix.project, '.leeway/manifest.json', '{ corrupt\n');
+    commitAll(fix.project, 'corrupt');
     refusedPristine(PROMOTE, /not valid JSON/);
   });
 
@@ -466,21 +467,20 @@ describe('engine workunit promote — the import carry', () => {
     if (ghost) epic.imports.push({ path: 'imports/ghost.md', imported_at: '2026-06-05T09:00:00Z', origin: 'discussion/ttl-policy' });
     epic.imports.push({ path: 'imports/other.png', imported_at: '2026-06-06T09:00:00Z', origin: 'discovery' });
     fix = setupFixture({ epic });
-    writeFile(fix.project, '.workflows/payments/imports/spec-linked.md', '# Spec material\n');
-    writeFile(fix.project, '.workflows/payments/imports/diagram.png', 'png bytes\n');
-    writeFile(fix.project, '.workflows/payments/imports/attached.md', '# Attached\n');
-    writeFile(fix.project, '.workflows/payments/imports/fee-only.md', '# Fees\n');
-    writeFile(fix.project, '.workflows/payments/imports/other.png', 'other bytes\n');
+    writeFile(fix.project, '.leeway/payments/imports/spec-linked.md', '# Spec material\n');
+    writeFile(fix.project, '.leeway/payments/imports/diagram.png', 'png bytes\n');
+    writeFile(fix.project, '.leeway/payments/imports/attached.md', '# Attached\n');
+    writeFile(fix.project, '.leeway/payments/imports/fee-only.md', '# Fees\n');
+    writeFile(fix.project, '.leeway/payments/imports/other.png', 'other bytes\n');
     // The prose mention is a path in the product's own tree, not a link out
     // of this document — the carry must read the relative hop, not the word.
-    writeFile(fix.project, '.workflows/payments/specification/caching-strategy/specification.md',
+    writeFile(fix.project, '.leeway/payments/specification/caching-strategy/specification.md',
       '# Caching Spec\n\n![the sketch](../../imports/spec-linked.md)\n\nThe loader reads src/imports/other.png at boot.\n');
-    writeFile(fix.project, '.workflows/payments/discussion/cache-invalidation.md',
+    writeFile(fix.project, '.leeway/payments/discussion/cache-invalidation.md',
       '# Cache Invalidation\n\n![the diagram](../imports/diagram.png)\n');
-    writeFile(fix.project, '.workflows/payments/discussion/fee-model.md',
+    writeFile(fix.project, '.leeway/payments/discussion/fee-model.md',
       '# Fee Model\n\n![fees](../imports/fee-only.md)\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'imports']);
+    commitAll(fix.project, 'imports');
   }
 
   it('copies what the moved documents link and what a moved source attached — and nothing else', () => {
@@ -488,9 +488,9 @@ describe('engine workunit promote — the import carry', () => {
     const res = engine(fix, PROMOTE);
 
     assert.deepStrictEqual(res.imports, [
-      { path: 'imports/spec-linked.md', origin: 'discovery' },
-      { path: 'imports/diagram.png', origin: 'discussion/cache-invalidation' },
-      { path: 'imports/attached.md', origin: 'discussion/ttl-policy' },
+      { path: inUnit(fix, 'imports/spec-linked.md'), origin: 'discovery' },
+      { path: inUnit(fix, 'imports/diagram.png'), origin: 'discussion/cache-invalidation' },
+      { path: inUnit(fix, 'imports/attached.md'), origin: 'discussion/ttl-policy' },
     ]);
     // Entries ride unchanged onto the cc manifest — origin included.
     assert.deepStrictEqual(readManifest(fix, 'caching').imports, [
@@ -498,10 +498,10 @@ describe('engine workunit promote — the import carry', () => {
       { path: 'imports/diagram.png', imported_at: '2026-06-02T09:00:00Z', origin: 'discussion/cache-invalidation' },
       { path: 'imports/attached.md', imported_at: '2026-06-03T09:00:00Z', origin: 'discussion/ttl-policy' },
     ]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/caching/imports/diagram.png'), 'utf8'), 'png bytes\n');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports/fee-only.md')),
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/caching/imports/diagram.png'), 'utf8'), 'png bytes\n');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching/imports/fee-only.md')),
       "an unmoved topic's import stays behind");
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports/other.png')),
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching/imports/other.png')),
       'a prose mention of src/imports/other.png is not a link out of the document');
 
     // A copy, never a move: the epic keeps every file and every entry.
@@ -509,18 +509,18 @@ describe('engine workunit promote — the import carry', () => {
       'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md', 'imports/fee-only.md', 'imports/other.png',
     ]);
     for (const name of ['spec-linked.md', 'diagram.png', 'attached.md', 'fee-only.md', 'other.png']) {
-      assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/imports', name)), `epic lost ${name}`);
+      assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/imports', name)), `epic lost ${name}`);
     }
 
     // The markdown copies are indexed at the cc identity; the binary is not.
     const indexed = indexedFiles(fix.project).filter((file) => file.includes('/imports/'));
     assert.deepStrictEqual(indexed, [
-      '.workflows/caching/imports/attached.md',
-      '.workflows/caching/imports/spec-linked.md',
+      'caching/imports/attached.md',
+      'caching/imports/spec-linked.md',
     ]);
     // The copies ride the transaction's own commit.
-    const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(staged.includes('.workflows/caching/imports/diagram.png'), 'the carried binary is staged');
+    const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.ok(staged.includes('caching/imports/diagram.png'), 'the carried binary is staged');
   });
 
   it('an entry whose file is gone is named in warnings, never fatal', () => {
@@ -529,7 +529,7 @@ describe('engine workunit promote — the import carry', () => {
 
     assert.strictEqual(res.warnings[0], 'import carry skipped: imports/ghost.md is tracked on "payments" but missing on disk');
     assert.deepStrictEqual(res.imports.map((i) => i.path), [
-      'imports/spec-linked.md', 'imports/diagram.png', 'imports/attached.md',
+      inUnit(fix, 'imports/spec-linked.md'), inUnit(fix, 'imports/diagram.png'), inUnit(fix, 'imports/attached.md'),
     ]);
     assert.strictEqual(readManifest(fix, 'caching').status, 'completed');
   });
@@ -556,7 +556,7 @@ describe('engine workunit promote — the import carry', () => {
     fix = setupFixture();
     engine(fix, PROMOTE);
     assert.strictEqual('imports' in readManifest(fix, 'caching'), false);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching/imports')));
   });
 });
 
@@ -564,26 +564,25 @@ describe('engine workunit promote — roadmap sources follow the material', () =
   let fix;
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  const readProject = () => JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows/manifest.json'), 'utf8'));
+  const readProject = () => JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
 
   /** The fixture plus a roadmap holding `items`, and the files their sources name that promote leaves alone. */
   function setupRoadmap(items, { epic } = {}) {
     fix = setupFixture(epic ? { epic } : {});
-    writeFile(fix.project, '.workflows/payments/imports/notes.md', '# Notes\n');
-    writeFile(fix.project, '.workflows/payments/specification/caching-strategy-v2/specification.md', '# Next caching spec\n');
-    writeFile(fix.project, '.workflows/.roadmap/sessions/session-001.md', '# Roadmap session\n');
+    writeFile(fix.project, '.leeway/payments/imports/notes.md', '# Notes\n');
+    writeFile(fix.project, '.leeway/payments/specification/caching-strategy-v2/specification.md', '# Next caching spec\n');
+    writeFile(fix.project, '.leeway/.roadmap/sessions/session-001.md', '# Roadmap session\n');
     const project = readProject();
     project.roadmap = { horizons: ['v1'], items };
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify(project, null, 2) + '\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'roadmap']);
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify(project, null, 2) + '\n');
+    commitAll(fix.project, 'roadmap');
   }
 
   /** Every source the roadmap records names a file on disk. */
   function assertSourcesOnDisk() {
     for (const [name, item] of Object.entries(readProject().roadmap.items)) {
       for (const source of item.sources || []) {
-        assert.ok(fs.existsSync(path.join(fix.project, '.workflows', source)), `${name}: ${source} is on disk`);
+        assert.ok(fs.existsSync(path.join(fix.project, '.leeway', source)), `${name}: ${source} is on disk`);
       }
     }
   }
@@ -638,7 +637,7 @@ describe('engine workunit promote — roadmap sources follow the material', () =
     const before = readProject().roadmap;
     const res = engine(fix, PROMOTE);
 
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/notes.md', origin: 'discussion/cache-invalidation' }],
+    assert.deepStrictEqual(res.imports, [{ path: inUnit(fix, 'imports/notes.md'), origin: 'discussion/cache-invalidation' }],
       'the import was carried — as a copy, so the epic keeps the file its source names');
     assert.deepStrictEqual(readProject().roadmap, before, 'the roadmap node is exactly as it was');
     assert.strictEqual('roadmap_sources_rewritten' in res, false);
@@ -656,14 +655,14 @@ describe('engine workunit promote — roadmap sources follow the material', () =
   it("the rewrite rides promote's one commit — the project manifest committed, nothing left dirty", () => {
     setupRoadmap({ retention: { horizon: 'v1', summary: 'cache retention', origin: 'park:payments',
       sources: ['payments/specification/caching-strategy/specification.md'] } });
-    const commits = Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim());
+    const commits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim());
     engine(fix, PROMOTE);
 
-    assert.strictEqual(Number(git(fix.project, ['rev-list', '--count', 'HEAD']).trim()), commits + 1);
-    const committed = JSON.parse(git(fix.project, ['show', 'HEAD:.workflows/manifest.json']));
+    assert.strictEqual(Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim()), commits + 1);
+    const committed = JSON.parse(stateGit(fix.project, ['show', 'HEAD:manifest.json']));
     assert.deepStrictEqual(committed.roadmap.items.retention.sources, ['caching/specification/caching/specification.md']);
     assert.deepStrictEqual(committed.work_units.caching, { work_type: 'cross-cutting' }, 'one write carries the registration and the rewrite');
-    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']), '');
+    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '');
   });
 });
 
@@ -676,7 +675,7 @@ describe('engine workunit promote — source shape guard', () => {
     try {
       const err = engineFails(fix, ['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'caching-policy', '--description', 'x']);
       assert.match(err.error, /array-shaped sources/);
-      assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/caching-policy')), 'nothing created on refusal');
+      assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/caching-policy')), 'nothing created on refusal');
     } finally {
       fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }

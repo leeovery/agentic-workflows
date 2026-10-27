@@ -10,6 +10,7 @@ const path = require('path');
 
 const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { auditingRender } = require('./gate-audit.cjs');
+const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
 const renderSurface = auditingRender(require('../../skills/workflow-engine/scripts/domain/render.cjs').renderSurface);
 
@@ -23,14 +24,17 @@ const NB = (n) => '\u00a0'.repeat(n);
 // the byte-exact pins.
 const unwrap = (s) => s.replace(/\n\u00a0+/g, ' ');
 
+/** A string matched literally inside a regular expression. */
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function setup() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'render-surfaces-'));
+  return setupFixture('render-surfaces-');
 }
 function teardown(dir) {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  cleanupFixture(dir);
 }
 function writeManifest(dir, name, data) {
-  const mdir = path.join(dir, '.workflows', name);
+  const mdir = path.join(dir, '.leeway', name);
   fs.mkdirSync(mdir, { recursive: true });
   fs.writeFileSync(path.join(mdir, 'manifest.json'), JSON.stringify({
     name, work_type: 'epic', status: 'in-progress', description: 'Test', phases: {}, ...data,
@@ -197,8 +201,8 @@ describe('postpone-gate', () => {
 
   /** @param {object|null} roadmap */
   function writeProject(roadmap) {
-    fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+    fs.mkdirSync(path.join(dir, '.leeway'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'),
       JSON.stringify(roadmap === null ? { work_units: {} } : { work_units: {}, roadmap }, null, 2));
   }
 
@@ -310,8 +314,8 @@ describe('topic-receipt — the postpone verb', () => {
   afterEach(() => { teardown(dir); });
 
   function writeWorld(postponed) {
-    fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.mkdirSync(path.join(dir, '.leeway'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next'], items: {
         ordering: { horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'auth' } },
@@ -1357,8 +1361,8 @@ describe('render resume-gate variants', () => {
 
   /** The prior run's planning files — what makes `continue` an option. */
   const planFiles = (workUnit, topic) => {
-    fs.mkdirSync(path.join(dir, '.workflows', workUnit, 'planning', topic), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', workUnit, 'planning', topic, 'planning.md'), '# Plan\n');
+    fs.mkdirSync(path.join(dir, '.leeway', workUnit, 'planning', topic), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', workUnit, 'planning', topic, 'planning.md'), '# Plan\n');
   };
 
   it('plan derives the position parenthetical from the planning item', () => {
@@ -2174,7 +2178,7 @@ describe('render finding-announce', () => {
   // given its findings, reads it.
   const landed = (opts, findings) => {
     const row = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', opts);
-    fs.writeFileSync(path.join(dir, row.file), '# Report\n');
+    fs.writeFileSync(row.file, '# Report\n');
     agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
     if (findings) agents.ackAgent(dir, 'pay', 'discussion', 'checkout', row.id, { findings });
     return row.id;
@@ -2199,7 +2203,7 @@ describe('render finding-announce', () => {
 
   it('names a synthesis by its kind', () => {
     const { agents: pair } = agents.dispatchAgent(dir, 'pay', 'discussion', 'checkout', { kind: 'perspective', labels: ['ship-now', 'strategic-timing'] });
-    for (const lens of pair) fs.writeFileSync(path.join(dir, lens.file), '# Case\n');
+    for (const lens of pair) fs.writeFileSync(lens.file, '# Case\n');
     agents.scanAgents(dir, 'pay', 'discussion', 'checkout');
     const id = landed({ kind: 'synthesis', set: '001' }, ['T1', 'T2']);
     assert.match(announce(id, shape()), /^Background synthesis returned — 2 finding\(s\): /m);
@@ -2511,7 +2515,7 @@ describe('render mailbox surfaces', () => {
   afterEach(() => teardown(dir));
 
   function writeMailbox(topic, files) {
-    const mailbox = path.join(dir, '.workflows', 'wu', 'discussion', '.mailbox', topic);
+    const mailbox = path.join(dir, '.leeway', 'wu', 'discussion', '.mailbox', topic);
     fs.mkdirSync(mailbox, { recursive: true });
     for (const [f, body] of Object.entries(files)) fs.writeFileSync(path.join(mailbox, f), body);
   }
@@ -2597,7 +2601,7 @@ describe('render mailbox surfaces', () => {
     assert.ok(/\*\*`y\/yes`\*\* +→ Move it to this topic's research mailbox/.test(out), out);
     assert.ok(/\*\*`d\/discuss`\*\* +→ Work it here now/.test(out), out);
 
-    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.mailbox', 'measurement');
+    const rdir = path.join(dir, '.leeway', 'wu', 'research', '.mailbox', 'measurement');
     fs.mkdirSync(rdir, { recursive: true });
     fs.writeFileSync(path.join(rdir, '001-a-decision-owed.md'), 'x');
     const rout = renderSurface(dir, 'forward-offer', { dotpath: 'wu.research.measurement', file });
@@ -2627,7 +2631,7 @@ describe('render mailbox surfaces', () => {
       '=== DISPLAY: mail block guidance (emit verbatim as markdown (not a code block)) ===',
       '> Returning to the session to surface them before concluding.',
     ].join('\n')), out);
-    const rdir = path.join(dir, '.workflows', 'wu', 'research', '.mailbox', 'measurement');
+    const rdir = path.join(dir, '.leeway', 'wu', 'research', '.mailbox', 'measurement');
     fs.mkdirSync(rdir, { recursive: true });
     fs.writeFileSync(path.join(rdir, '001-a.md'), 'x');
     fs.writeFileSync(path.join(rdir, '002-b.md'), 'y');
@@ -3110,7 +3114,7 @@ describe('render findings-signoff-gate', () => {
   let dir;
   const dot = 'hooks.investigation.crash';
   const record = () => {
-    const p = path.join(dir, '.workflows', 'hooks', 'investigation', 'crash.md');
+    const p = path.join(dir, '.leeway', 'hooks', 'investigation', 'crash.md');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, '# Investigation — crash\n');
   };
@@ -3165,7 +3169,7 @@ describe('render validation-gate / validation-report', () => {
   const rcClean = {
     status: 'validated', confidence: 'high', checks: RC_CHECKS,
     summary: 'The diagnosis holds against a fresh trace.',
-    analysis_path: '.workflows/.cache/hooks/investigation/crash/agents/002.md',
+    analysis_path: '.leeway/.cache/hooks/investigation/crash/agents/002.md',
   };
   const fxClean = {
     status: 'validated', confidence: 'medium', direction: 'Make the address optional', checks: FX_CHECKS,
@@ -3194,7 +3198,7 @@ describe('render validation-gate / validation-report', () => {
     assert.ok(out.includes('**Root cause validation · high confidence** — validated, no gaps found'));
     assert.ok(out.includes('- **Symptom coverage**: all three trace to the same call'));
     assert.ok(out.includes('The diagnosis holds against a fresh trace.'));
-    assert.ok(out.includes('*Full analysis: `.workflows/.cache/hooks/investigation/crash/agents/002.md`*'));
+    assert.ok(out.includes('*Full analysis: `.leeway/.cache/hooks/investigation/crash/agents/002.md`*'));
     assert.ok(!out.includes('=== MENU'), 'a validated verdict asks nothing');
     const fx = report('fix', fxClean);
     assert.ok(fx.includes('**Fix validation · "Make the address optional" · medium confidence** — confirmed, no unaddressed risks'));
@@ -3206,13 +3210,13 @@ describe('render validation-gate / validation-report', () => {
     const out = report('root-cause', {
       ...rcClean, status: 'gaps_found', confidence: 'medium',
       items: [long, 'Empty-string addresses were never exercised.'],
-      analysis_path: '.workflows/.cache/hooks/investigation/crash/agents/003.md',
+      analysis_path: '.leeway/.cache/hooks/investigation/crash/agents/003.md',
     });
     assert.ok(out.includes('**Root cause validation · medium confidence** — 2 gaps'));
     assert.ok(out.includes('1\\. The trace stops at the tax context'), 'a batch list numbers its rows and never walks them');
     assert.ok(!out.includes('○ 1.'), 'nothing here is walked, so no state glyph');
     assert.ok(out.includes('- **Blast radius**: two further callers share the path'), 'the findings say what was examined too');
-    assert.ok(out.includes('*Full analysis: `.workflows/.cache/hooks/investigation/crash/agents/003.md`*'));
+    assert.ok(out.includes('*Full analysis: `.leeway/.cache/hooks/investigation/crash/agents/003.md`*'));
     assert.ok(out.includes('**`◆ How should these gaps be handled?`**'));
     assert.ok(unwrap(out).includes('**`a/address`** → Work through them and fold the answers into the investigation'));
     const fx = report('fix', { ...fxClean, status: 'risks_found', confidence: 'low', items: ['x'] });
@@ -4095,7 +4099,7 @@ describe('render proposed-task', () => {
   });
 
   it('incoherence-gate held-doc names the holder\'s last-active age, however long idle', () => {
-    const peer = path.join(dir, '.workflows', '.cache', 'pay', 'discussion', 'synonym-handling', 'presence');
+    const peer = path.join(dir, '.leeway', '.cache', 'pay', 'discussion', 'synonym-handling', 'presence');
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
     const idle = new Date(Date.now() - 3 * 3600 * 1000);
@@ -4203,9 +4207,9 @@ describe('render proposed-task', () => {
     assert.ok(gated.includes('MENU: construction gate'));
     assert.ok(gated.includes('**`◆ Record this to the specification verbatim?`**'));
     assert.ok(/\*\*`a\/auto`\*\* +→ Approve this and all remaining topics automatically/.test(unwrap(gated)));
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), 'utf8'));
     m.phases.implementation.items.portal.construction_gate_mode = 'auto';
-    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2));
+    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify(m, null, 2));
     const auto = renderSurface(dir, 'construction-gate', { dotpath: 'pay.implementation.portal' });
     assert.ok(auto.includes('DISPLAY: construction auto-approved'));
     assert.ok(auto.includes('Portal — auto-approved. Recording to the specification.'));
@@ -4698,7 +4702,7 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.ok(run(['epic-all-done-gate', 'pay']).includes('Mark this epic as completed'));
     assert.ok(run(['entry-gate', 'pay.specification.pay', '--own']).includes('was consolidated into'),
       '--own must survive boolean-flag registration through argv');
-    assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes('  Spec: .workflows/pay/specification/pay/specification.md'),
+    assert.ok(run(['phase-completed', 'pay', '--phase', 'scoping', '--paths']).includes(`  Spec: ${dir}/.leeway/pay/specification/pay/specification.md`),
       '--paths must survive boolean-flag registration through argv');
   });
 
@@ -4764,7 +4768,7 @@ describe('render step-opening', () => {
 
   it('do-now: counts the do-now actions the review synthesis wrote, the noun following the count', () => {
     writeManifest(dir, 'pay', {});
-    const actions = (list) => writePayload(dir, '.workflows/.cache/pay/review/checkout/actions.json', { verdict: 'pass', actions: list });
+    const actions = (list) => writePayload(dir, '.leeway/.cache/pay/review/checkout/actions.json', { verdict: 'pass', actions: list });
     actions([{ id: 'A1', route: 'do-now' }, { id: 'A2', route: 'replan' }, { id: 'A3', route: 'do-now' }]);
     assert.strictEqual(renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }), opening('Apply Do-Now',
       'Applying 2 contained corrections — low-impact, blast radius minimised. The whole body of work is verified and the suite run before anything lands.'));
@@ -4774,7 +4778,7 @@ describe('render step-opening', () => {
     assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.review.checkout', step: 'do-now' }),
       /actions\.json holds no do-now action — the step opens only over work to apply/);
     assert.throws(() => renderSurface(dir, 'step-opening', { dotpath: 'pay.review.other', step: 'do-now' }),
-      /\.workflows\/\.cache\/pay\/review\/other\/actions\.json is missing or not valid JSON — the do-now step follows the review synthesis/);
+      /\.leeway\/\.cache\/pay\/review\/other\/actions\.json is missing or not valid JSON — the do-now step follows the review synthesis/);
   });
 
   it('refuses a missing or unknown step, and a step outside its phase', () => {
@@ -4793,7 +4797,7 @@ describe('render format-version-check', () => {
   afterEach(() => teardown(dir));
 
   const found = { tool: 'acme', installed: '0.2.1', format: 'some-format', required: '>=0.3.*', update_instructions: 'the format\'s about.md' };
-  const payload = (obj) => writePayload(dir, '.workflows/.cache/pay/planning/checkout/format-version.json', obj);
+  const payload = (obj) => writePayload(dir, '.leeway/.cache/pay/planning/checkout/format-version.json', obj);
 
   it('the red blocker, then the guidance naming the tool, both versions and the format the payload carries — waiting on the user', () => {
     assert.strictEqual(renderSurface(dir, 'format-version-check', { file: payload(found) }), [
@@ -4847,11 +4851,14 @@ describe('render code-gate', () => {
   // process, never the pid-1 holder, so neither owns the other's rows.
   const PID_OF = { mine: process.pid, theirs: require('child_process').spawnSync('node', ['-e', '']).pid };
 
-  /** A held heartbeat owned by another session — pid 1, always alive and never a session here. */
-  function holdCode(workUnit, phase, topic, ageSeconds = 0) {
-    const file = path.join(dir, '.workflows', '.cache', workUnit, phase, topic, 'presence');
+  /**
+   * A held heartbeat owned by another session — pid 1, always alive and never
+   * a session here — working in `checkout`, this one by default.
+   */
+  function holdCode(workUnit, phase, topic, ageSeconds = 0, checkout = dir) {
+    const file = path.join(dir, '.leeway', '.cache', workUnit, phase, topic, 'presence');
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
+    fs.writeFileSync(file, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer', checkout }) + '\n');
     if (ageSeconds) {
       const when = new Date(Date.now() - ageSeconds * 1000);
       fs.utimesSync(file, when, when);
@@ -4881,7 +4888,7 @@ describe('render code-gate', () => {
   }
 
   const slotOf = (workUnit, phase, topic) =>
-    path.join(dir, '.workflows', '.cache', workUnit, phase, topic, 'presence');
+    path.join(dir, '.leeway', '.cache', workUnit, phase, topic, 'presence');
 
   it('renders nothing when no session holds the code slot', () => {
     assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
@@ -4950,6 +4957,17 @@ describe('render code-gate', () => {
     assert.match(unwrap(out), /presence clear ship review checkout-flow/, out);
   });
 
+  it('a hold from another checkout never takes this one\'s slot — each code worktree has its own', () => {
+    const { git } = require('./engine-harness.cjs');
+    const wt = path.join(dir, 'wt');
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', wt]);
+    holdCode('ship', 'implementation', 'checkout-flow', 0, wt);
+    assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '',
+      'the main checkout is free');
+    assert.match(renderSurface(wt, 'code-gate', { dotpath: 'pay.implementation.pay' }),
+      /⚑ Another session is implementing "Checkout Flow" \(ship\)/, 'the worktree is held');
+  });
+
   it('a doc-phase hold never takes the code slot', () => {
     holdCode('ship', 'discussion', 'checkout-flow');
     assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.pay' }), '');
@@ -4987,13 +5005,13 @@ describe('render code-gate', () => {
       /work unit "ghost" not found/);
     assert.throws(() => renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.a/b' }),
       /invalid topic name "a\/b"/);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/pay/implementation')), false,
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/pay/implementation')), false,
       'a refusal claims nothing');
   });
 
   it('gates before the item exists — a fresh entry has initialised nothing', () => {
     assert.strictEqual(renderSurface(dir, 'code-gate', { dotpath: 'pay.implementation.never-inited' }), '');
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/implementation/never-inited/presence')),
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/pay/implementation/never-inited/presence')),
       'and the slot is claimed all the same');
   });
 });
@@ -5200,7 +5218,7 @@ describe('render entry-gate --own', () => {
 
   /** The project's roadmap, holding auth's postponed item — `pulled_to` another epic when `taken`. */
   function writeRoadmap(taken) {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next'], items: {
         auth: {
@@ -5287,8 +5305,8 @@ describe('render phase-completed --paths', () => {
       '=== DISPLAY: phase completed (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Scoping completed for "Hotfix".',
       '',
-      '  Spec: .workflows/hotfix/specification/hotfix/specification.md',
-      '  Plan: .workflows/hotfix/planning/hotfix/',
+      `  Spec: ${dir}/.leeway/hotfix/specification/hotfix/specification.md`,
+      `  Plan: ${dir}/.leeway/hotfix/planning/hotfix/`,
       '',
     ].join('\n'));
   });
@@ -5310,7 +5328,7 @@ describe('selection not-found display', () => {
 
 describe('render review-findings-gate', () => {
   let dir;
-  const store = (phase, row) => writePayload(dir, `.workflows/.cache/pay/${phase}/checkout/state.json`, { agents: { 'review-001': {
+  const store = (phase, row) => writePayload(dir, `.leeway/.cache/pay/${phase}/checkout/state.json`, { agents: { 'review-001': {
     id: 'review-001', kind: 'review', phase, topic: 'checkout', set: 1, announced: false, created: '2026-09-11T10:00:00.000Z', ...row,
   } } });
   beforeEach(() => {
@@ -5367,7 +5385,7 @@ describe('render review-findings-gate', () => {
   });
 
   it('anchors on the latest review row, not an earlier drained one', () => {
-    writePayload(dir, '.workflows/.cache/pay/discussion/checkout/state.json', { agents: {
+    writePayload(dir, '.leeway/.cache/pay/discussion/checkout/state.json', { agents: {
       'review-001': { id: 'review-001', kind: 'review', phase: 'discussion', topic: 'checkout', set: 1, status: 'incorporated', announced: true, findings: ['F1'], surfaced: ['F1'], created: '2026-09-11T09:00:00.000Z' },
       'review-002': { id: 'review-002', kind: 'review', phase: 'discussion', topic: 'checkout', set: 2, status: 'acknowledged', announced: false, findings: ['F1', 'F2'], surfaced: [], created: '2026-09-11T10:00:00.000Z' },
     } });
@@ -5506,7 +5524,7 @@ describe('roadmap surfaces', () => {
 
   /** @param {object} roadmap @param {Record<string, object>} [workUnits] */
   function writeRoadmap(roadmap, workUnits = {}) {
-    const wf = path.join(dir, '.workflows');
+    const wf = path.join(dir, '.leeway');
     fs.mkdirSync(wf, { recursive: true });
     fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: {}, roadmap }, null, 2));
     for (const [name, manifest] of Object.entries(workUnits)) {
@@ -5729,9 +5747,9 @@ describe('roadmap surfaces', () => {
     writeRoadmap(TWO_HORIZONS);
     const out = unwrap(renderSurface(dir, 'park-gate', {
       name: 'csv-export', horizon: 'v2', summary: 'operators export orders as CSV',
-      source: '.workflows/mvp/specification/orders/specification.md',
+      source: '.leeway/mvp/specification/orders/specification.md',
     }));
-    assert.match(out, /under "v2" \(new\), waiting until it is pulled into work\. Its source is `\.workflows\/mvp\/specification\/orders\/specification\.md`\./);
+    assert.match(out, /under "v2" \(new\), waiting until it is pulled into work\. Its source is `\.leeway\/mvp\/specification\/orders\/specification\.md`\./);
     assert.ok(!out.includes('The roadmap is created with it.'), 'the map exists — only its horizon is new');
   });
 
@@ -5763,9 +5781,9 @@ describe('roadmap surfaces', () => {
   });
 
   // The gate takes the file `roadmap add-batch` takes; its notes are live inbox files.
-  const IDEA = '.workflows/.inbox/ideas/2026-03-01--dark-mode.md';
-  const BUG = '.workflows/.inbox/bugs/2026-03-02--login-crash.md';
-  const FIX = '.workflows/.inbox/quickfixes/2026-03-03--footer-typo.md';
+  const IDEA = '.leeway/.inbox/ideas/2026-03-01--dark-mode.md';
+  const BUG = '.leeway/.inbox/bugs/2026-03-02--login-crash.md';
+  const FIX = '.leeway/.inbox/quickfixes/2026-03-03--footer-typo.md';
   function inbox() {
     for (const rel of [IDEA, BUG, FIX]) {
       fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
@@ -5829,12 +5847,12 @@ describe('roadmap surfaces', () => {
     refused([{ ...item, horizon: 'v1.5' }], /render inbox-roadmap-gate: entry 1 — .*not a legal horizon name/);
     refused([{ ...item, horizon: 'q3/q4' }], /render inbox-roadmap-gate: entry 1 — .*not a legal horizon name/);
     refused([{ ...item, name: 'dark.mode' }], /render inbox-roadmap-gate: entry 1 — .*not a legal item name/);
-    refused([{ ...item, note: '.workflows/.inbox/ideas/2026-09-09--gone.md' }], /render inbox-roadmap-gate: inbox file not found/);
+    refused([{ ...item, note: '.leeway/.inbox/ideas/2026-09-09--gone.md' }], /render inbox-roadmap-gate: inbox file not found/);
     refused([{ ...item, kind: 'bug' }], /render inbox-roadmap-gate: entry 1 — "kind" is bug, but the note .* is a idea/);
-    fs.writeFileSync(path.join(dir, '.workflows/.inbox/ideas/2026-03-04--dark mode.md'), '# x\n');
-    refused([{ ...item, note: '.workflows/.inbox/ideas/2026-03-04--dark mode.md' }], /render inbox-roadmap-gate: entry 1 — the note "\.workflows\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
-    fs.mkdirSync(path.join(dir, '.workflows/.roadmap/notes/ideas'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/.roadmap/notes/ideas/2026-03-01--dark-mode.md'), 'taken\n');
+    fs.writeFileSync(path.join(dir, '.leeway/.inbox/ideas/2026-03-04--dark mode.md'), '# x\n');
+    refused([{ ...item, note: '.leeway/.inbox/ideas/2026-03-04--dark mode.md' }], /render inbox-roadmap-gate: entry 1 — the note "\.leeway\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
+    fs.mkdirSync(path.join(dir, '.leeway/.roadmap/notes/ideas'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/.roadmap/notes/ideas/2026-03-01--dark-mode.md'), 'taken\n');
     refused([item], /render inbox-roadmap-gate: destination already exists/);
     refused([{ name: 'login-crash', horizon: 'v1', summary: 's', note: BUG }, { name: 'typo', horizon: 'v2', summary: 's', note: FIX }],
       /render inbox-roadmap-gate: every entry goes under the one horizon/);
@@ -5869,7 +5887,7 @@ describe('baseline surfaces', () => {
   afterEach(() => { teardown(dir); });
 
   function writeBaseline(baseline) {
-    const wf = path.join(dir, '.workflows');
+    const wf = path.join(dir, '.leeway');
     fs.mkdirSync(wf, { recursive: true });
     fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: {}, baseline }, null, 2));
   }
@@ -5971,7 +5989,7 @@ describe('baseline surfaces', () => {
 
   it('baseline-area: the area\'s step marker counted across every area, the documented ones first, then the session\'s line and the answer guidance', () => {
     writeBaseline({ status: 'in-progress', areas: { overview: 'completed', boundaries: 'completed', 'job-dispatcher': 'researched', glossary: 'researched' } });
-    const file = writePayload(dir, '.workflows/.cache/baseline/area.json', { area: 'job-dispatcher', summary: 'How work reaches the workers, and why it polls.' });
+    const file = writePayload(dir, '.leeway/.cache/baseline/area.json', { area: 'job-dispatcher', summary: 'How work reaches the workers, and why it polls.' });
     assert.strictEqual(renderSurface(dir, 'baseline-area', { file }), [
       '=== DISPLAY: baseline area (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
       '**`□ Interviewing Job Dispatcher (3 of 4)`**',
@@ -5983,7 +6001,7 @@ describe('baseline surfaces', () => {
 
   it('baseline-area: refuses no payload, an unknown or unresearched area, and a summary missing or past one line', () => {
     writeBaseline({ status: 'in-progress', areas: { overview: 'completed', dispatcher: 'researched' } });
-    const area = (obj) => writePayload(dir, '.workflows/.cache/baseline/area.json', obj);
+    const area = (obj) => writePayload(dir, '.leeway/.cache/baseline/area.json', obj);
     assert.throws(() => renderSurface(dir, 'baseline-area', {}), /render baseline-area: --file <payload\.json> is required/);
     assert.throws(() => renderSurface(dir, 'baseline-area', { file: area({ area: 'ghost', summary: 'x' }) }), /unknown area "ghost"/);
     assert.throws(() => renderSurface(dir, 'baseline-area', { file: area({ area: 'overview', summary: 'x' }) }),
@@ -6035,7 +6053,7 @@ describe('baseline surfaces', () => {
   });
 
   it('migrations-applied: the session\'s summary above the run\'s counts, the counts left out where no file was updated', () => {
-    const counted = writePayload(dir, '.workflows/.cache/migrations-applied.json', {
+    const counted = writePayload(dir, '.leeway/.cache/migrations-applied.json', {
       summary: 'Recovered a message the converter missed.', migrations: 2, files: 3,
     });
     assert.strictEqual(renderSurface(dir, 'migrations-applied', { file: counted }), [
@@ -6047,12 +6065,12 @@ describe('baseline surfaces', () => {
       '2 migration(s), 3 file(s) updated.',
       '',
     ].join('\n'));
-    const fixesOnly = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'Recovered a message.' });
+    const fixesOnly = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'Recovered a message.' });
     assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a message.\n'));
   });
 
   it('migrations-applied: each notice the run handed back stands beneath the summary, above the counts', () => {
-    const told = writePayload(dir, '.workflows/.cache/migrations-applied.json', {
+    const told = writePayload(dir, '.leeway/.cache/migrations-applied.json', {
       summary: 'Removed a setting the workflows no longer use.',
       notices: ['Removed `showClearContextOnPlanAccept` — add it back if you want it. ', 'A second thing to know.'],
       migrations: 1,
@@ -6074,14 +6092,14 @@ describe('baseline surfaces', () => {
 
   it('migrations-applied: refuses a payload it cannot render truthfully', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', {}), /--file <payload\.json> is required/);
-    const blank = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: ' ' });
+    const blank = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: ' ' });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: blank }), /"summary" must be a non-empty string/);
-    const half = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', migrations: 1 });
+    const half = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'x', migrations: 1 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: half }), /come together/);
-    const zero = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
+    const zero = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: zero }), /"files" must be a positive integer/);
     for (const notices of ['one notice', [''], [3]]) {
-      const bad = writePayload(dir, '.workflows/.cache/migrations-applied.json', { summary: 'x', notices });
+      const bad = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'x', notices });
       assert.throws(() => renderSurface(dir, 'migrations-applied', { file: bad }), /"notices" must be a list of non-empty strings/);
     }
   });
@@ -6205,8 +6223,8 @@ describe('baseline surfaces', () => {
   });
 
   it('knowledge-ready names the configuration this checkout\'s store was built with, read from its metadata', () => {
-    const metadata = path.join(dir, '.workflows/.knowledge/metadata.json');
-    assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), /render knowledge-ready: no \.workflows\/\.knowledge\/metadata\.json — this checkout has no knowledge store yet/);
+    const metadata = path.join(dir, '.leeway/.knowledge/metadata.json');
+    assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), new RegExp(`render knowledge-ready: no ${esc(metadata)} — this checkout has no knowledge store yet`));
     fs.mkdirSync(path.dirname(metadata), { recursive: true });
     fs.writeFileSync(metadata, JSON.stringify({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 }));
     assert.strictEqual(renderSurface(dir, 'knowledge-ready', {}), [
@@ -6217,7 +6235,7 @@ describe('baseline surfaces', () => {
     fs.writeFileSync(metadata, JSON.stringify({ provider: null, model: null, dimensions: null }));
     assert.match(renderSurface(dir, 'knowledge-ready', {}), /^Knowledge base ready — keyword-only\.$/m);
     fs.writeFileSync(metadata, '{not json');
-    assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), /render knowledge-ready: \.workflows\/\.knowledge\/metadata\.json is not valid JSON/);
+    assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), new RegExp(`render knowledge-ready: ${esc(metadata)} is not valid JSON`));
   });
 
   it('the knowledge gate refuses a missing or unknown variant, a lone model, a configuration off the reuse variant, and a retry naming no provider it can store a key for', () => {
@@ -6821,8 +6839,8 @@ describe('render inbox-content and the archived item receipts', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
-  const IDEA = '.workflows/.inbox/ideas/2026-06-01--smart-retry.md';
-  const BUG = '.workflows/.inbox/.archived/bugs/2026-06-02--login-loop.md';
+  const IDEA = '.leeway/.inbox/ideas/2026-06-01--smart-retry.md';
+  const BUG = '.leeway/.inbox/.archived/bugs/2026-06-02--login-loop.md';
   const write = (rel, text) => {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), text);
@@ -6861,10 +6879,10 @@ describe('render inbox-content and the archived item receipts', () => {
     write(IDEA, '# Smart Retry\n');
     assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined }),
       /render inbox-content: --path is required — the inbox items to show, comma-joined/);
-    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined, path: `${IDEA},.workflows/pay/manifest.json` }),
+    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined, path: `${IDEA},.leeway/pay/manifest.json` }),
       /render inbox-content: not a live inbox path/);
-    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined, path: '.workflows/.inbox/bugs/2026-06-09--ghost.md' }),
-      /render inbox-content: not in the live inbox: ".workflows\/.inbox\/bugs\/2026-06-09--ghost.md"/);
+    assert.throws(() => renderSurface(dir, 'inbox-content', { dotpath: undefined, path: '.leeway/.inbox/bugs/2026-06-09--ghost.md' }),
+      /render inbox-content: not in the live inbox: ".leeway\/.inbox\/bugs\/2026-06-09--ghost.md"/);
   });
 
   const RECEIPT = '=== DISPLAY: confirmation (emit verbatim as a text code block (```text fence) after the response) ===';
@@ -6885,49 +6903,47 @@ describe('render inbox-content and the archived item receipts', () => {
     assert.throws(() => renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined, path: BUG }),
       /render inbox-restore-receipt: not a live inbox path/);
     assert.throws(() => renderSurface(dir, 'inbox-restore-receipt', { dotpath: undefined, path: IDEA }),
-      /render inbox-restore-receipt: not in the live inbox: "\.workflows\/\.inbox\/ideas\/2026-06-01--smart-retry\.md"/);
+      /render inbox-restore-receipt: not in the live inbox: "\.leeway\/\.inbox\/ideas\/2026-06-01--smart-retry\.md"/);
   });
 
+  // The inbox's history is the state branch's: git runs in the state worktree.
   const git = (...args) => {
-    const res = require('child_process').spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: dir, encoding: 'utf8' });
+    const res = require('child_process').spawnSync('git', args, { cwd: path.join(dir, '.leeway'), encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
   };
   const committed = (rel, text) => {
     write(rel, text);
-    git('add', '--', rel);
+    git('add', '--', path.join(dir, rel));
     git('commit', '-q', '-m', `add ${rel}`);
   };
 
   it('inbox-delete-receipt names the deleted item by the title git last held — the deleting commit\'s parent, however many commits sit above it', () => {
-    git('init', '-q');
     committed(BUG, '# Login Loop\n');
-    git('rm', '-q', '--', BUG);
+    git('rm', '-q', '--', path.join(dir, BUG));
     git('commit', '-q', '-m', 'delete');
-    committed('notes.md', 'later work\n');
+    committed('.leeway/notes.md', 'later work\n');
     assert.strictEqual(renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: BUG }),
       `${RECEIPT}\nDeleted "Login Loop".\n`);
   });
 
   it('inbox-delete-receipt reads HEAD while the deletion is only staged — a commit the delete could not land', () => {
-    git('init', '-q');
     committed(BUG, 'no heading here\n');
-    git('rm', '-q', '--', BUG);
+    git('rm', '-q', '--', path.join(dir, BUG));
     assert.strictEqual(renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: BUG }),
       `${RECEIPT}\nDeleted "login-loop".\n`);
   });
 
   it('inbox-delete-receipt refuses no path, a live path, a path the archive still holds, and one git holds no copy of', () => {
-    git('init', '-q');
     committed(BUG, '# Login Loop\n');
     assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined }),
       /render inbox-delete-receipt: --path is required — the archived path `inbox delete` answered/);
     assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: IDEA }),
       /render inbox-delete-receipt: not an archived inbox path/);
     assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: BUG }),
-      /render inbox-delete-receipt: still in the archived store, so nothing was deleted: "\.workflows\/\.inbox\/\.archived\/bugs\/2026-06-02--login-loop\.md"/);
-    const ghost = '.workflows/.inbox/.archived/ideas/2026-06-09--ghost.md';
+      /render inbox-delete-receipt: still in the archived store, so nothing was deleted: "\.leeway\/\.inbox\/\.archived\/bugs\/2026-06-02--login-loop\.md"/);
+    const ghost = '.leeway/.inbox/.archived/ideas/2026-06-09--ghost.md';
     assert.throws(() => renderSurface(dir, 'inbox-delete-receipt', { dotpath: undefined, path: ghost }),
-      /render inbox-delete-receipt: git holds no deleted file at "\.workflows\/\.inbox\/\.archived\/ideas\/2026-06-09--ghost\.md"/);
+      /render inbox-delete-receipt: git holds no deleted file at "\.leeway\/\.inbox\/\.archived\/ideas\/2026-06-09--ghost\.md"/);
   });
 });
 
@@ -7033,7 +7049,7 @@ describe('render — the adopted cross-flow static gates', () => {
   });
 
   it('query-failure-gate: the error output and its diagnosis above retry or proceed without context', () => {
-    const file = writePayload(dir, '.workflows/.cache/pay/discussion/pay/query-failure.json', {
+    const file = writePayload(dir, '.leeway/.cache/pay/discussion/pay/query-failure.json', {
       error: 'Error: metadata.json missing but store exists. Run the rebuild to fix it before the next query.\n  Provide the key and retry:\n\n    • export OPENAI_API_KEY=...\n',
     });
     assert.strictEqual(renderSurface(dir, 'query-failure-gate', { file }), [
@@ -7063,7 +7079,7 @@ describe('render — the adopted cross-flow static gates', () => {
 
   it('query-failure-gate: refuses without the error output it shows', () => {
     assert.throws(() => renderSurface(dir, 'query-failure-gate', {}), /--file <payload\.json> is required/);
-    const blank = writePayload(dir, '.workflows/.cache/pay/discussion/pay/query-failure.json', { error: '  ' });
+    const blank = writePayload(dir, '.leeway/.cache/pay/discussion/pay/query-failure.json', { error: '  ' });
     assert.throws(() => renderSurface(dir, 'query-failure-gate', { file: blank }), /"error" must be the query's error output, a non-empty string/);
   });
 
@@ -7108,7 +7124,7 @@ describe('render opener', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
-  const inbox = (rel) => writePayload(dir, `.workflows/.inbox/${rel}`, '# Item\n');
+  const inbox = (rel) => writePayload(dir, `.leeway/.inbox/${rel}`, '# Item\n');
   const opener = (args) => renderSurface(dir, 'opener', args);
 
   describe('inbox — before any work unit exists', () => {
@@ -7144,9 +7160,9 @@ describe('render opener', () => {
       assert.throws(() => opener({ variant: 'inbox', dotpath: 'pay', path: path1, file }),
         /render opener: --variant inbox takes no address — no work unit exists yet/);
       assert.throws(() => opener({ variant: 'inbox', file }), /render opener: --path is required — the inbox seeds read, comma-joined/);
-      assert.throws(() => opener({ variant: 'inbox', path: '.workflows/.inbox/ideas/2026-09-09--gone.md', file }),
+      assert.throws(() => opener({ variant: 'inbox', path: '.leeway/.inbox/ideas/2026-09-09--gone.md', file }),
         /render opener: inbox file not found/);
-      assert.throws(() => opener({ variant: 'inbox', path: '.workflows/.inbox/.archived/ideas/x.md', file }), /render opener: not a live inbox path/);
+      assert.throws(() => opener({ variant: 'inbox', path: '.leeway/.inbox/.archived/ideas/x.md', file }), /render opener: not a live inbox path/);
       assert.throws(() => opener({ variant: 'inbox', path: path1 }), /render opener: --file <payload\.json> is required/);
       assert.throws(() => opener({ variant: 'inbox', path: path1, file: writePayload(dir, 'n.json', { question: 'q?' }) }),
         /render opener: "sketch" must be a non-empty string/);
@@ -7303,24 +7319,35 @@ describe('render legacy-split-display', () => {
     ].join('\n'));
   });
 
+  // A cache row carries the absolute path, wrapped to the width wherever the
+  // fixture's temp folder puts the breaks: the rows are pinned with the path
+  // set aside, and each path is read back with its breaks taken out.
+  const CACHE_ROW = /   └─ Cache:[^\n]*(?:\n {6}\S[^\n]*)*/g;
+  const cachePaths = (out) => (out.match(CACHE_ROW) || [])
+    .map((row) => row.replace(/^ {3}└─ Cache:\s*/, '').replace(/\n {6}/g, ''));
+  const withoutCachePaths = (out) => out.replace(CACHE_ROW, '   └─ Cache: …');
+
   it('plan: each theme as a numbered summary/content/cache tree, then the rename footer naming the stamp apply mints', () => {
     const file = writePayload(dir, 'plan-display.json', { source: 'auth', work_unit: 'pay', themes: [
       { ...themes[0], paragraph_count: 4, content_preview: 'The auth flow begins at login' },
       { ...themes[1], paragraph_count: 2, content_preview: 'Responses are cached per route' },
     ] });
-    assert.strictEqual(renderSurface(dir, 'legacy-split-display', { variant: 'plan', file }), [
+    const out = renderSurface(dir, 'legacy-split-display', { variant: 'plan', file });
+    assert.deepStrictEqual(cachePaths(out), ['auth', 'caching']
+      .map((name) => path.join(dir, `.leeway/.cache/pay/legacy-split/auth/${name}.md`)));
+    assert.strictEqual(withoutCachePaths(out), [
       '=== DISPLAY: legacy split plan (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
       'Plan for auth.md:',
       '',
       '1. auth',
       '   ├─ Summary: Login, sessions, and token refresh',
       '   ├─ Content: 4 para(s) — "The auth flow begins at login..."',
-      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/auth.md',
+      '   └─ Cache: …',
       '',
       '2. caching',
       '   ├─ Summary: Response caching and invalidation',
       '   ├─ Content: 2 para(s) — "Responses are cached per route..."',
-      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/caching.md',
+      '   └─ Cache: …',
       '',
       'Source file will be renamed to auth-superseded-<datetime>.md.',
       '',
@@ -7332,10 +7359,10 @@ describe('render legacy-split-display', () => {
       { ...themes[0], paragraph_count: 4, content_preview: 'The auth flow begins at the login form and hands a session to' },
     ] });
     const out = renderSurface(dir, 'legacy-split-display', { variant: 'plan', file });
-    assert.ok(out.includes([
+    assert.ok(withoutCachePaths(out).includes([
       '   ├─ Content: 4 para(s) — "The auth flow begins at the login',
       '   │  form and hands a session to..."',
-      '   └─ Cache: .workflows/.cache/pay/legacy-split/auth/auth.md',
+      '   └─ Cache: …',
     ].join('\n')), out);
     for (const line of out.split('\n').slice(1)) assert.ok(line.length <= 65, `overflowing row: ${line}`);
   });
@@ -7394,7 +7421,7 @@ describe('render legacy-split-display', () => {
         } },
       },
     });
-    for (const name of ['auth', 'bad.name', 'parked']) writePayload(dir, `.workflows/pay/research/${name}.md`, '# Research\n');
+    for (const name of ['auth', 'bad.name', 'parked']) writePayload(dir, `.leeway/pay/research/${name}.md`, '# Research\n');
   };
 
   it('sources: the scan read from the epic — the interrupted splits, the unsplittable sources, then the qualifying files', () => {
@@ -7433,7 +7460,7 @@ describe('render legacy-split-display', () => {
         research: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    writePayload(dir, '.workflows/pay/research/auth.md', '# Auth\n');
+    writePayload(dir, '.leeway/pay/research/auth.md', '# Auth\n');
     const out = renderSurface(dir, 'legacy-split-display', { dotpath: 'pay', variant: 'sources' });
     assert.match(out, /^=== DISPLAY: legacy split sources /);
     assert.doesNotMatch(out, /interrupted|unsplittable/);
@@ -7740,8 +7767,8 @@ describe('render map-op-gate', () => {
   });
 
   it('a close over messages waiting in the topic\'s mailbox is refused, naming each mailbox that holds them', () => {
-    writePayload(dir, '.workflows/pay/research/.mailbox/auth-flow/001.md', 'a point\n');
-    writePayload(dir, '.workflows/pay/discussion/.mailbox/auth-flow/001.md', 'another\n');
+    writePayload(dir, '.leeway/pay/research/.mailbox/auth-flow/001.md', 'a point\n');
+    writePayload(dir, '.leeway/pay/discussion/.mailbox/auth-flow/001.md', 'another\n');
     assert.strictEqual(refusal(render('close', { name: 'auth-flow' }, 'w.json')),
       '"auth-flow" can\'t be closed as a dead end — messages wait in its research and discussion mailbox; start the topic to drain them, or cancel the topic from the epic menu instead.');
   });
@@ -8248,7 +8275,7 @@ describe('render — the adopted phase gates', () => {
       settled: { routing: 'discussion', source: 'discovery', order: 4, summary: 'Whole', description: 'Whole' },
     } } },
   });
-  const drafted = (summaries, name = 'summaries.json') => writePayload(dir, `.workflows/.cache/pay/discovery/${name}`, { summaries });
+  const drafted = (summaries, name = 'summaries.json') => writePayload(dir, `.leeway/.cache/pay/discovery/${name}`, { summaries });
   const backfill = (variant, extra = {}) => renderSurface(dir, 'summary-backfill-gate', { dotpath: 'pay', variant, ...extra });
   const PROPOSED_ROWS = [
     'Proposed summaries for 3 topic(s):',
@@ -8475,7 +8502,7 @@ describe('render — the adopted phase gates', () => {
       write('src/billing file.js', '2');
       write('README.md', '2');
       write('scratch/notes.txt', 'x');
-      write('.workflows/pay/implementation/checkout/notes.md', 'x');
+      write('.leeway/pay/implementation/checkout/notes.md', 'x');
       assert.strictEqual(checkpoint(), [
         '=== DATA (reason from this — never display or parse the sections below) ===',
         'implementation_files (2):',
@@ -8798,7 +8825,7 @@ describe('render — the adopted phase gates', () => {
   it('plan-format-gate: names the project default, and refuses when none is set', () => {
     assert.throws(() => renderSurface(dir, 'plan-format-gate', {}),
       /no project default plan_format — the offer only renders over an existing default/);
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'),
       JSON.stringify({ work_units: { pay: {} }, defaults: { plan_format: 'local-markdown' } }));
     assert.strictEqual(renderSurface(dir, 'plan-format-gate', {}), [
       "=== MENU: plan format gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
@@ -8877,7 +8904,7 @@ describe('render — the adopted phase gates', () => {
     assert.strictEqual(out, [
       "=== MENU: correction gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
-      'Correcting .workflows/done/specification/done/specification.md.',
+      `Correcting ${dir}/.leeway/done/specification/done/specification.md.`,
       '',
       '**`◆ Apply the correction protocol?`**',
       '',
@@ -8914,11 +8941,11 @@ describe('render — the adopted phase gates', () => {
 
   it('analysis-proceed-gate: says first that the analysis is outdated where the discussions moved since it ran, and only then', () => {
     writeManifest(dir, 'moved', { phases: { discussion: { analysis_cache: { checksum: 'from-before', generated: '2026-01-01' }, items: { auth: { status: 'completed' } } } } });
-    writePayload(dir, '.workflows/moved/discussion/auth.md', '# Auth\n');
+    writePayload(dir, '.leeway/moved/discussion/auth.md', '# Auth\n');
     assert.match(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'moved' }),
       /\n> Analysis outdated — discussions have changed since the last grouping analysis\. Your discussions will be analyzed for natural groupings/);
     writeManifest(dir, 'never', { phases: { discussion: { items: { auth: { status: 'completed' } } } } });
-    writePayload(dir, '.workflows/never/discussion/auth.md', '# Auth\n');
+    writePayload(dir, '.leeway/never/discussion/auth.md', '# Auth\n');
     assert.match(renderSurface(dir, 'analysis-proceed-gate', { dotpath: 'never' }), /\n> Your discussions will be analyzed/,
       'no analysis yet is not an outdated one');
   });
@@ -8933,17 +8960,17 @@ describe('render change-set-tree', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('is empty while the tree is clean outside .workflows/ — the review\'s own artifacts sit uncommitted there', () => {
-    writePayload(dir, '.workflows/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
+  it('is empty while the code tree is clean — the review\'s own artifacts sit uncommitted in the state', () => {
+    writePayload(dir, '.leeway/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
     assert.strictEqual(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }), '');
   });
 
-  it('names every modified or untracked path outside .workflows/ in the terminal blocker', () => {
+  it('names every modified or untracked path in the code tree in the terminal blocker', () => {
     writePayload(dir, 'src/probe.js', 'x\n');
     writePayload(dir, 'notes.txt', 'y\n');
     assert.strictEqual(renderSurface(dir, 'change-set-tree', { dotpath: 'pay.review.checkout' }), [
       '=== DISPLAY: entry blocker (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ The change-set verification left the working tree dirty outside .workflows/',
+      '⚑ The change-set verification left the working tree dirty',
       '',
       '=== DISPLAY: blocker guidance (emit verbatim as markdown (not a code block), then STOP — terminal condition) ===',
       '> The pass must leave the tree as it found it — these paths are modified or untracked: `notes.txt`, `src/probe.js`. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.',
@@ -8973,14 +9000,15 @@ describe('render change-set-tree', () => {
     const repo = setupGitFixture('render-nested-');
     try {
       const project = path.join(repo, 'apps/web');
-      writeManifest(project, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
+      fs.mkdirSync(project, { recursive: true });
+      writeManifest(repo, 'pay', { phases: { review: { items: { checkout: { status: 'in-progress' } } } } });
       writePayload(repo, 'other/x.js', 'x\n');
       git(repo, ['add', '-A']);
       git(repo, ['commit', '-q', '-m', 'init']);
       writePayload(repo, 'other/x.js', 'y\n');
-      writePayload(project, '.workflows/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
+      writePayload(repo, '.leeway/pay/review/checkout/change-set-c1-auth.md', '# Section\n');
       assert.strictEqual(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }), '',
-        'a sibling folder\'s dirt and the project\'s own .workflows/ are not the project\'s code');
+        'a sibling folder\'s dirt and the repository\'s state are not the project\'s code');
 
       writePayload(project, 'src/probe.js', 'x\n');
       assert.match(renderSurface(project, 'change-set-tree', { dotpath: 'pay.review.checkout' }),
@@ -9319,10 +9347,10 @@ describe('render spec-confirm-gate', () => {
       '  • auth-flow (has individual spec — will be incorporated)',
       '  • billing',
       '',
-      'Output: .workflows/pay/specification/payments/specification.md',
+      `Output: ${dir}/.leeway/pay/specification/payments/specification.md`,
       '',
       'After completion:',
-      '  .workflows/pay/specification/auth-flow/specification.md → marked as superseded',
+      `  ${dir}/.leeway/pay/specification/auth-flow/specification.md → marked as superseded`,
       '',
       MENU_HEAD,
       ...ASK,
@@ -9370,12 +9398,12 @@ describe('render spec-confirm-gate', () => {
       '  • billing',
       '',
       'Existing specifications to incorporate:',
-      '  • .workflows/pay/specification/auth-flow/specification.md →',
-      '    will be superseded',
-      '  • .workflows/pay/specification/billing/specification.md → will',
-      '    be superseded',
+      // An absolute path wraps wherever the fixture's temp folder puts the
+      // break: the bullet's own wrap lays the rows out.
+      ...bulletRow(`${dir}/.leeway/pay/specification/auth-flow/specification.md → will be superseded`),
+      ...bulletRow(`${dir}/.leeway/pay/specification/billing/specification.md → will be superseded`),
       '',
-      'Output: .workflows/pay/specification/unified/specification.md',
+      `Output: ${dir}/.leeway/pay/specification/unified/specification.md`,
       '',
       MENU_HEAD,
       ...ASK,
@@ -9406,7 +9434,7 @@ describe('render spec-confirm-gate', () => {
         'Sources:',
         '  • auth-flow',
         '',
-        'Output: .workflows/pay/specification/pay/specification.md',
+        `Output: ${dir}/.leeway/pay/specification/pay/specification.md`,
         '',
         MENU_HEAD,
         ...ASK,
@@ -9433,7 +9461,7 @@ describe('render spec-confirm-gate', () => {
         DISPLAY_HEAD,
         'Continuing specification: Core',
         '',
-        'Existing: .workflows/pay/specification/core/specification.md [in-progress]',
+        `Existing: ${dir}/.leeway/pay/specification/core/specification.md [in-progress]`,
         '',
         'Sources to extract:',
         '  • billing [pending]',
@@ -9456,14 +9484,14 @@ describe('render spec-confirm-gate', () => {
       assert.doesNotMatch(pending, /re-decided|Previously extracted/);
       unit({ core: { status: 'in-progress', sources: { 'auth-flow': { status: 'incorporated' }, ghost: { status: 'pending' } } } });
       const extracted = single('core');
-      assert.match(extracted, /Existing: \.workflows\/pay\/specification\/core\/specification\.md \[in-progress\]\n\nAll sources extracted:\n {2}• auth-flow\n\n=== MENU/);
+      assert.ok(extracted.includes(`Existing: ${dir}/.leeway/pay/specification/core/specification.md [in-progress]\n\nAll sources extracted:\n  • auth-flow\n\n=== MENU`), extracted);
       assert.doesNotMatch(extracted, /ghost/, 'a started specification leaves out a source whose discussion item is gone');
     });
 
     it('a completed specification with sources left to extract is a continue that names them as new', () => {
       unit({ core: { status: 'completed', sources: { 'auth-flow': { status: 'incorporated' }, refunds: { status: 'pending' } } } });
       const out = single('core');
-      assert.match(out, /Continuing specification: Core\n\nExisting: \.workflows\/pay\/specification\/core\/specification\.md \[completed\]/);
+      assert.ok(out.includes(`Continuing specification: Core\n\nExisting: ${dir}/.leeway/pay/specification/core/specification.md [completed]`), out);
       assert.match(out, /New sources to extract:\n {2}• refunds \[pending\]\n\nPreviously extracted \(for reference\):\n {2}• auth-flow/);
     });
 
@@ -9473,7 +9501,7 @@ describe('render spec-confirm-gate', () => {
         DISPLAY_HEAD,
         'Refining specification: Core',
         '',
-        'Existing: .workflows/pay/specification/core/specification.md [completed]',
+        `Existing: ${dir}/.leeway/pay/specification/core/specification.md [completed]`,
         '',
         'All sources extracted:',
         '  • auth-flow',
@@ -9568,7 +9596,7 @@ describe('render direct-entry-gate', () => {
 
   /** The project's roadmap, holding tau's item — `pulled_to` another epic when `taken`. */
   function writeRoadmap(taken) {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next'], items: {
         tau: {

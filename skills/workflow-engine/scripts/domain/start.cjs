@@ -6,7 +6,7 @@
 //
 // Collates every active work unit by type (with next-phase state), the inbox
 // (live and archived), and the completed/cancelled sets. Pure over the
-// project's `.workflows/` tree: same files, same answer. Shared manifest
+// project's state: same files, same answer. Shared manifest
 // semantics come from domain/reads and domain/derivations — never duplicated
 // here.
 // ---------------------------------------------------------------------------
@@ -17,6 +17,7 @@ const { loadActiveManifests, loadAllManifests } = require('./reads.cjs');
 const { baselineState } = require('./baseline.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { INBOX, ARCHIVED } = require('./inbox.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const {
   phaseItems,
   computeUnitPhaseState,
@@ -75,6 +76,7 @@ function pipelineOf(workType) {
  * @property {string} date
  * @property {string} title
  * @property {string} file
+ * @property {string} path  absolute
  */
 
 /**
@@ -169,7 +171,7 @@ function scanInboxDir(baseDir) {
       const parsed = parseInboxFile(f);
       if (!parsed) continue;
       const title = readTitle(path.join(dir, f)) || parsed.slug;
-      const item = { slug: parsed.slug, date: parsed.date, title, file: f };
+      const item = { slug: parsed.slug, date: parsed.date, title, file: f, path: path.join(dir, f) };
       if (type === 'ideas') ideas.push(item);
       else if (type === 'bugs') bugs.push(item);
       else quickfixes.push(item);
@@ -193,13 +195,13 @@ function scanInboxDir(baseDir) {
  * @returns {InboxDetail}
  */
 function discoverInbox(cwd) {
-  const inbox = scanInboxDir(path.join(cwd, INBOX));
-  return { ...inbox, archived: scanInboxDir(path.join(cwd, ARCHIVED)) };
+  const inbox = scanInboxDir(statePath(cwd, INBOX));
+  return { ...inbox, archived: scanInboxDir(statePath(cwd, ARCHIVED)) };
 }
 
 /**
  * Build the full workflow-start detail for one project.
- * @param {string} cwd  project root (the directory containing `.workflows/`)
+ * @param {string} cwd
  * @returns {StartDetail}
  */
 function startDetail(cwd) {
@@ -227,7 +229,7 @@ function startDetail(cwd) {
     // Single-topic types cue messages waiting on the unit's own topics; an
     // epic's row carries no phase state — its dashboard cues per topic.
     if (m.work_type !== 'epic') {
-      const waiting = mailPhases(cwd, m);
+      const waiting = mailPhases(stateRoot(cwd), m);
       if (waiting.length > 0) unit.mail_phases = waiting;
     }
 

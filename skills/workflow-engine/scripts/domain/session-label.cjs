@@ -63,11 +63,11 @@ const { execFileSync } = require('child_process');
 const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitStateTail, commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, isPlace, dropPosition, placeLine } = require('./position.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -89,7 +89,7 @@ const HOOK_MARKS = wantedByEvent({ session: true, workflows: true }).flatMap((e)
  */
 function resolveEnabled(cwd) {
   try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(stateRoot(cwd), 'manifest.json'), 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(statePath(cwd, 'manifest.json'), 'utf8'));
     const v = isObject(parsed) && isObject(parsed.defaults) ? parsed.defaults.tmux_labels : undefined;
     if (typeof v === 'boolean') return v;
   } catch { /* no project manifest */ }
@@ -204,9 +204,10 @@ function syncSessionHooks(cwd, want) {
 /**
  * workflow-start's one-time answer: record the opt-in, sync the session
  * hooks to match (the workflows' own stay whatever the answer), and commit
- * the two together, confined. The choice is recorded either way: a settings
- * file the sync could not read, or a commit git refused, comes back as a
- * warning — boot re-syncs, and the state is saved.
+ * each where it lives — the project manifest in the state, the settings in
+ * the code tree. The choice is recorded either way: a settings file the
+ * sync could not read, or a commit git refused, comes back as a warning —
+ * boot re-syncs, and the state is saved.
  * @param {string} cwd @param {boolean} value
  * @returns {{tmux_labels: boolean, warnings?: string[]}}
  */
@@ -214,13 +215,10 @@ function recordLabelChoice(cwd, value) {
   setLabelConfig(cwd, value);
   /** @type {string[]} */
   const warnings = [];
-  const specs = [PROJECT_MANIFEST_SPEC];
-  // Sequential with setLabelConfig's own hold, never nested: the lock is a
-  // file lock, not reentrant.
   const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: value, workflows: true }));
   if (sync.error) warnings.push(`session hooks not synced: ${sync.error}`);
-  if (sync.changed) specs.push(SETTINGS_SPEC);
-  commitTailPathspec(cwd, specs, 'chore: record session-label choice', warnings);
+  commitStateTail(cwd, PROJECT_MANIFEST_SPEC, 'chore: record session-label choice', warnings);
+  if (sync.changed) commitTailPathspec(cwd, SETTINGS_SPEC, 'chore: record session-label choice', warnings);
   return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
 }
 
@@ -269,7 +267,7 @@ function tmuxContext() {
 
 /** The checkout's stash store, under its gitignored cache. @param {string} cwd */
 function stashDir(cwd) {
-  return path.join(stateRoot(cwd), '.cache', '.session-labels');
+  return statePath(cwd, '.cache', '.session-labels');
 }
 
 /** @param {string} cwd @param {string|null} socket @param {string} tmuxId */
@@ -453,8 +451,9 @@ function applySessionLabel(cwd, name, phase, topic) {
 function resumeSessionLabel(cwd, sessionId) {
   if (!sessionId) return { resumed: false };
   const position = readPosition(sessionId);
-  if (!position || !isPlace(cwd, position.name, position.phase, position.topic)) return { resumed: false };
+  if (!position) return { resumed: false };
   try {
+    if (!isPlace(cwd, position.name, position.phase, position.topic)) return { resumed: false };
     return { resumed: applySessionLabel(cwd, position.name, position.phase, position.topic).labelled };
   } catch {
     return { resumed: false };
@@ -481,10 +480,14 @@ function resumeSessionLabel(cwd, sessionId) {
  */
 function restoreSessionLabel(cwd, sessionId) {
   if (!sessionId) return { restored: false };
-  const dir = stashDir(cwd);
+  /** @type {string} */
+  let dir;
   /** @type {string[]} */
   let files = [];
-  try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')); } catch { return { restored: false }; }
+  try {
+    dir = stashDir(cwd);
+    files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+  } catch { return { restored: false }; }
   let restored = false;
   /** @type {Map<string, {id: string, name: string}[]|null>} */
   const liveCache = new Map();

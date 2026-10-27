@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: `engine knowledge <verb>` — the knowledge base's one door.
-// Every verb acts on the project the call's directory sits in. The verbs
+// Every verb acts on the state the call's directory finds. The verbs
 // that talk to the embedding provider answer asynchronously — a bulk index,
 // a query, the vector fill, setup and rebuild; every other verb answers at
 // once. A failure is the command's own: said on stderr as `Error: …`, exit 1.
@@ -13,7 +13,7 @@ const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
-const { readProjectManifest } = require('../../kernel/manifest.cjs');
+const { readProjectManifest } = require('../../kernel/manifest-io.cjs');
 const { ENGINE_COMMAND, ExitSignal, messageOf } = require('../../kernel/call.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { RESERVED_IDENTITIES, discoverArtifacts, readManifestsOr, workUnitsOr } = require('./artifacts.cjs');
@@ -26,7 +26,7 @@ const { readiness, statusReport } = require('./status.cjs');
 const { countChunks, removeChunks, planCompaction, compact } = require('./maintenance.cjs');
 const { parseSetupForm, runFromSystem, runKeywordOnly, runProviderForm } = require('./setup-forms.cjs');
 const { runWizard, runKeyOnly } = require('./setup-wizard.cjs');
-const { stateRel } = require('../../kernel/state-root.cjs');
+const { STATE_DIR_NAME, findStateRoot, stateRelative } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -148,7 +148,7 @@ function buildOptions(flags, boosts) {
 
 /**
  * @typedef {object} Request
- * @property {string} root  the project the call acts on
+ * @property {string} root  the state the call acts on
  * @property {KnowledgeFiles} files
  * @property {string[]} args  the positionals after the verb
  * @property {Record<string, string|boolean>} flags
@@ -177,16 +177,18 @@ function runIndex(call, { root, files, args, options }) {
       if (indexFailed(summary)) throw new ExitSignal(1);
     });
   }
-  const file = args[0];
+  const given = path.resolve(call.cwd, args[0]);
+  const file = stateRelative(call.cwd, given);
+  if (file === null) stop(call, `Not in the workflows state: ${given}\n`);
   const artifact = artifactAt(root, file);
-  if (!artifact) stop(call, `File not found: ${path.resolve(root, file)}\n`);
+  if (!artifact) stop(call, `File not found: ${given}\n`);
   let written;
   try {
     written = indexArtifact(root, artifact, settings);
   } catch (err) {
-    stop(call, `Failed to index ${file}: ${messageOf(err)}\nThe next start will retry it.\n`);
+    stop(call, `Failed to index ${given}: ${messageOf(err)}\nThe next start will retry it.\n`);
   }
-  call.out(`Indexed ${written.chunks} chunks from ${file}\n`);
+  call.out(`Indexed ${written.chunks} chunks from ${given}\n`);
   launchFillIfAwaiting(root, written);
 }
 
@@ -213,7 +215,7 @@ async function runQuery(call, { root, files, args, options }) {
   if (boostError) stop(call, `${boostError}\n`);
 
   if (!fs.existsSync(files.store)) {
-    call.out(renderQuery(NO_RESULTS));
+    call.out(renderQuery(NO_RESULTS, { root }));
     return;
   }
   const db = store.loadStore(files.store);
@@ -222,7 +224,7 @@ async function runQuery(call, { root, files, args, options }) {
   }
   const settings = querySettings(store.readMetadata(files.metadata), cfg, provider);
   const outcome = await queryStore(db, settings, { terms: args, options, workUnits: workUnitsOr(root, call.err, 'query'), root });
-  call.out(renderQuery(outcome, { explain: options.explain }));
+  call.out(renderQuery(outcome, { root, explain: options.explain }));
 }
 
 // ---------------------------------------------------------------------------
@@ -390,7 +392,7 @@ async function runRebuild(call, { root, files }) {
     stop(call,
       'No artifacts to index. Aborting rebuild — ' +
       'the existing index has NOT been modified.\n' +
-      `(If you believe this is wrong, check that ${stateRel()}/ exists and ` +
+      `(If you believe this is wrong, check that ${root}/ exists and ` +
       'that work units have items with status "completed".)\n'
     );
   }
@@ -454,7 +456,7 @@ function runStatus(call, { root }) {
 async function runFill(call, { root }) {
   const vectoring = await fill(root);
   if (vectoring && vectoring.unembedded.length > 0) {
-    reportUnembedded(call, vectoring.unembedded);
+    reportUnembedded(call, root, vectoring.unembedded);
     throw new ExitSignal(1);
   }
 }
@@ -522,7 +524,9 @@ function runKnowledge(call, argv) {
   const handler = Object.hasOwn(VERBS, verb) ? VERBS[verb].run : null;
   if (!handler) stop(call, `Unknown command "${verb}".\n\n${USAGE}\n`);
 
-  const root = config.findProjectRoot(call.cwd);
+  // Where no state is found, the folder it would be: each verb meets its own
+  // not-initialised answer there.
+  const root = findStateRoot(call.cwd) || path.join(path.resolve(call.cwd), STATE_DIR_NAME);
   const request = { root, files: knowledgeFiles(root), args, flags, options: buildOptions(flags, boosts) };
   let answer;
   try {

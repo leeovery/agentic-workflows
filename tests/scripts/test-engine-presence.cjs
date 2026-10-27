@@ -19,12 +19,12 @@ const harness = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 
 function setup() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-'));
-  fs.mkdirSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+  const dir = harness.setupGitFixture('engine-presence-');
+  fs.mkdirSync(path.join(dir, '.leeway', 'pay'), { recursive: true });
   return dir;
 }
 function cleanup(dir) {
-  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  harness.cleanupFixture(dir);
 }
 // Two session identities. OWN is this process — alive with a real start
 // time, so its records read held — and is what every scan runs as. PEER is
@@ -42,12 +42,13 @@ const engineWith = (dir, args, { env = {}, input, cwd = dir } = {}) =>
   harness.ok(cwd, args, { env: { ...OWN, ...env }, stdin: input });
 const EPOCH_START = 'Thu Jan  1 00:00:00 1970';
 function presenceFile(dir, phase, topic) {
-  return path.join(dir, '.workflows/.cache/pay', phase, topic, 'presence');
+  return path.join(dir, '.leeway/.cache/pay', phase, topic, 'presence');
 }
+/** A heartbeat as a session working in `dir`'s checkout writes it, unless the record names another. */
 function craftRecord(dir, phase, topic, record) {
   const p = presenceFile(dir, phase, topic);
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(record) + '\n');
+  fs.writeFileSync(p, JSON.stringify({ checkout: dir, ...record }) + '\n');
 }
 
 describe('engine presence', () => {
@@ -58,7 +59,7 @@ describe('engine presence', () => {
   it('beat creates the heartbeat; scan reports it held with the deferral section', () => {
     const beat = engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER).res;
     assert.deepStrictEqual(beat, { ok: true, work_unit: 'pay', phase: 'discussion', topic: 'alpha', beat: true });
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/pay/discussion/alpha/presence')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/pay/discussion/alpha/presence')));
 
     const { res, sections } = engine(dir, ['presence', 'scan', 'pay']);
     auditMarkers(sections, 'presence scan');
@@ -66,7 +67,8 @@ describe('engine presence', () => {
       'one verdict — no live total, no staleness window');
     assert.strictEqual(res.held, 1);
     assert.strictEqual(res.held_sources, 1, 'a discussion session is source material an analysis reads');
-    assert.deepStrictEqual(Object.keys(res.sessions[0]), ['phase', 'topic', 'age_seconds', 'held', 'session_id', 'pid']);
+    assert.deepStrictEqual(Object.keys(res.sessions[0]), ['phase', 'topic', 'age_seconds', 'held', 'session_id', 'pid', 'checkout']);
+    assert.strictEqual(res.sessions[0].checkout, dir, 'the beat records the checkout its session works in');
     assert.strictEqual(res.sessions[0].phase, 'discussion');
     assert.strictEqual(res.sessions[0].topic, 'alpha');
     assert.strictEqual(res.sessions[0].held, true);
@@ -136,7 +138,7 @@ describe('engine presence', () => {
     // A session left idle for hours is still a session. The age is shown so
     // the user can weigh it; no surface turns it into a verdict.
     engine(dir, ['presence', 'beat', 'pay', 'research', 'beta'], PEER);
-    const p = path.join(dir, '.workflows/.cache/pay/research/beta/presence');
+    const p = path.join(dir, '.leeway/.cache/pay/research/beta/presence');
     const past = new Date(Date.now() - 20 * 60 * 1000);
     fs.utimesSync(p, past, past);
 
@@ -166,7 +168,7 @@ describe('engine presence', () => {
   });
 
   it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
-    fs.writeFileSync(path.join(dir, '.workflows/pay/manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway/pay/manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress',
       phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
     }) + '\n');
@@ -214,7 +216,7 @@ describe('engine presence', () => {
   });
 
   it('the work-unit-less scan walks the whole cache root, naming each row\'s work unit', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     engine(dir, ['presence', 'beat', 'ship', 'implementation', 'beta'], PEER);
 
@@ -232,7 +234,7 @@ describe('engine presence', () => {
   });
 
   it('the session-label store at the cache root is no work unit — the project scan reports nothing for it', () => {
-    const store = path.join(dir, '.workflows', '.cache', '.session-labels');
+    const store = path.join(dir, '.leeway', '.cache', '.session-labels');
     fs.mkdirSync(store, { recursive: true });
     fs.writeFileSync(path.join(store, 'abcd1234-7.json'), '{"tmux_id":"$7","original":"proj","applied":"proj · pay · discussion"}\n');
     const res = engine(dir, ['presence', 'scan']).res;
@@ -243,8 +245,7 @@ describe('engine presence', () => {
   });
 
   it('the project scan answers empty on a project that has never cached anything', () => {
-    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-presence-bare-'));
-    fs.mkdirSync(path.join(bare, '.workflows'), { recursive: true });
+    const bare = harness.setupGitFixture('engine-presence-bare-');
     const res = engine(bare, ['presence', 'scan']).res;
     assert.deepStrictEqual(res.sessions, []);
     assert.strictEqual(res.held, 0);
@@ -308,14 +309,14 @@ describe('engine presence', () => {
 
   it('the code-slot read takes held implementation and review rows, never the caller\'s own', () => {
     const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
     // Every row is held by this (alive) process; ownership is decided by
     // session id alone, with the pid arm switched off below.
     craftRecord(dir, 'implementation', 'alpha', { pid: process.pid, pid_start: null, session_id: 'peer' });
     craftRecord(dir, 'discussion', 'beta', { pid: process.pid, pid_start: null, session_id: 'peer' });
-    const shipRow = path.join(dir, '.workflows/.cache/ship/review/gamma/presence');
+    const shipRow = path.join(dir, '.leeway/.cache/ship/review/gamma/presence');
     fs.mkdirSync(path.dirname(shipRow), { recursive: true });
-    fs.writeFileSync(shipRow, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine' }) + '\n');
+    fs.writeFileSync(shipRow, JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'mine', checkout: dir }) + '\n');
 
     const beforeSession = process.env.CLAUDE_CODE_SESSION_ID;
     const beforePid = process.env.CLAUDE_PID;
@@ -332,6 +333,26 @@ describe('engine presence', () => {
       else process.env.CLAUDE_CODE_SESSION_ID = beforeSession;
       if (beforePid === undefined) delete process.env.CLAUDE_PID;
       else process.env.CLAUDE_PID = beforePid;
+    }
+  });
+
+  it('the code-slot read is the caller\'s checkout\'s — a code session in another worktree never holds it', () => {
+    const { heldCodeSessions } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
+    const worktree = path.join(dir, '..', `${path.basename(dir)}-code`);
+    harness.git(dir, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
+    try {
+      craftRecord(dir, 'implementation', 'alpha', { pid: 1, pid_start: null, session_id: 'peer', checkout: worktree });
+      const beforePid = process.env.CLAUDE_PID;
+      process.env.CLAUDE_PID = String(process.pid);
+      try {
+        assert.deepStrictEqual(heldCodeSessions(dir), [], 'the main checkout is free while the worktree codes');
+        assert.strictEqual(heldCodeSessions(worktree).length, 1, 'and the worktree\'s own slot is held');
+      } finally {
+        if (beforePid === undefined) delete process.env.CLAUDE_PID;
+        else process.env.CLAUDE_PID = beforePid;
+      }
+    } finally {
+      fs.rmSync(worktree, { recursive: true, force: true });
     }
   });
 
@@ -359,7 +380,7 @@ describe('engine presence', () => {
   });
 
   it('cleanup sweeps only the named session, argv or stdin, across work units', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', 'ship'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.leeway', 'ship'), { recursive: true });
     craftRecord(dir, 'discussion', 'alpha', { pid: null, pid_start: null, session_id: 'sess-a' });
     craftRecord(dir, 'research', 'beta', { pid: null, pid_start: null, session_id: 'sess-a' });
     craftRecord(dir, 'discussion', 'gamma', { pid: null, pid_start: null, session_id: 'sess-b' });
@@ -381,7 +402,7 @@ describe('engine presence', () => {
       assert.deepStrictEqual(swept.cleared, [{ work_unit: 'pay', phase: 'discussion', topic: 'alpha' }]);
       assert.ok(!fs.existsSync(presenceFile(dir, 'discussion', 'alpha')));
     } finally {
-      cleanup(outside);
+      fs.rmSync(outside, { recursive: true, force: true });
     }
   });
 
@@ -446,7 +467,7 @@ describe('engine presence', () => {
   });
 
   it('an agent-store scan stamps nothing where no heartbeat exists', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify({
+    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({
       name: 'pay', work_type: 'epic', status: 'in-progress', phases: {},
     }, null, 2));
     engineWith(dir, ['agent', 'scan', 'pay', 'discussion', 'alpha']);

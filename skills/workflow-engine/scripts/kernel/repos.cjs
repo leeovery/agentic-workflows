@@ -20,14 +20,15 @@
 // submodule's moved pointer is never the parent's dirt and never rides its
 // commit, but for one rule: a code commit that reaches into a submodule
 // records the submodule's new pointer in its parent, the child committing
-// first. The project's `.workflows/` is the workflows' own: never code dirt,
-// and never home to a repo of the project, whatever checkout it holds.
+// first. The state is a worktree of the root's own repository, so never a
+// repo of the project; in the main checkout, where its folder sits, a read
+// of the root's code holds it out, so it is never code dirt.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { git, tryGit, dirtyEntries, pathsTouchedBySubject } = require('./git.cjs');
-const { stateRel, isStatePath } = require('./state-root.cjs');
+const { stateRoot } = require('./state-root.cjs');
 
 /**
  * A repo in the project: `dir` its folder from the project root (`''` for
@@ -106,16 +107,12 @@ function projectPath(dir, repoRel) {
 }
 
 /**
- * The repo at `dir`, then every repo nested inside it, at any depth — never
- * one inside the project's `.workflows/`, whose content is the workflows'
- * own whatever it holds.
+ * The repo at `dir`, then every repo nested inside it, at any depth.
  * @param {string} dir @param {string} abs
  * @returns {Repo[]}
  */
 function searched(dir, abs) {
-  const found = nestedRepoFolders(abs);
-  const [untracked, submodules, ignored] = [found.untracked, found.submodules, found.ignored]
-    .map((folders) => folders.filter((rel) => !isStatePath(projectPath(dir, rel))));
+  const { untracked, submodules, ignored } = nestedRepoFolders(abs);
   const nested = [...untracked, ...submodules, ...ignored].flatMap((rel) => searched(projectPath(dir, rel), path.join(abs, rel)));
   return [{ dir, path: abs, heldOut: [...untracked, ...submodules], submodules }, ...nested];
 }
@@ -200,12 +197,16 @@ function commitGroups(repos, relPaths) {
 
 /**
  * What a read of the repo's code holds out: the folders its git holds out,
- * and in the root the project's `.workflows/`.
+ * and in the root the state's folder where it sits inside — the main
+ * checkout holds it, a linked worktree never does.
  * @param {Repo} repo
  * @returns {string[]}
  */
 function codeHeldOut(repo) {
-  return repo.dir === '' ? [...repo.heldOut, stateRel()] : repo.heldOut;
+  if (repo.dir !== '') return repo.heldOut;
+  const state = path.relative(fs.realpathSync(repo.path), stateRoot(repo.path));
+  const inside = !state.startsWith('..') && !path.isAbsolute(state);
+  return inside ? [...repo.heldOut, state.split(path.sep).join('/')] : repo.heldOut;
 }
 
 /**

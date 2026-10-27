@@ -9,7 +9,6 @@
 const fs = require('fs');
 const path = require('path');
 const { isoNow } = require('./dates.cjs');
-const { stateRel } = require('../kernel/state-root.cjs');
 
 // Sources the knowledge base can read as prose: they land as `{stem}.md` and
 // are indexed. Every other extension is kept, lowercased, and tracked on the
@@ -198,7 +197,7 @@ function isIndexableImport(dest) {
 }
 
 /**
- * A landed work-unit import's project-relative path — what the knowledge base
+ * A landed work-unit import's state-relative path — what the knowledge base
  * is handed and what the manifest entry's `path` hangs off. The roadmap's
  * imports live at the product altitude and have a root of their own.
  * @param {string} workUnit
@@ -206,7 +205,7 @@ function isIndexableImport(dest) {
  * @returns {string}
  */
 function importArtifact(workUnit, dest) {
-  return stateRel(`${workUnit}/imports/${dest}`);
+  return `${workUnit}/imports/${dest}`;
 }
 
 module.exports = {

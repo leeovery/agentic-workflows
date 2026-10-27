@@ -28,7 +28,8 @@ const fs = require('fs');
 const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
-const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
+const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
+const { withStateLock } = require('./domain/state-worktree.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
@@ -66,7 +67,7 @@ const walkthrough = require('./domain/walkthrough.cjs');
 const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf } = require('./kernel/call.cjs');
-const { STATE_DIR_NAME, stateRoot, stateRel, isStatePath } = require('./kernel/state-root.cjs');
+const { findStateRoot, stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
 
@@ -316,7 +317,7 @@ Commands:
   render summary-backfill-gate <wu> --variant batch|proposed|unsourced [--file <payload.json>]
   render external-dependency-gate <wu.planning.topic> --variant blocking|pick|exit --blocking <topic,topic,…>
   render checkpoint-files-gate <wu.implementation.topic>  (DATA alone when no file is unexpected)
-  render change-set-tree  <wu.review.topic>  (empty when the tree is clean outside ${stateRel()}/)
+  render change-set-tree  <wu.review.topic>  (empty when the tree is clean)
   render executor-block-gate <wu.implementation.topic> --result blocked --file <sides.json> | --result failed
   render dependency-approval-gate <wu.planning.topic> --variant graph|updated-graph --file <payload.json> | --variant resolution
   render task-count-gate  <wu.planning.topic> --file <payload.json>
@@ -907,15 +908,13 @@ function hookSessionId(call, rest, usage) {
 }
 
 /**
- * The project root a session hook acts on: the invocation cwd when it is
- * a project root (has `.workflows`), else CLAUDE_PROJECT_DIR for a hook
- * fired from a drifted cwd.
+ * The folder a session hook acts from: the invocation cwd when its
+ * repository holds the state, else CLAUDE_PROJECT_DIR for a hook fired from
+ * a drifted cwd.
  * @param {string} cwd @returns {string}
  */
 function hookProjectDir(cwd) {
-  return fs.existsSync(path.join(cwd, STATE_DIR_NAME))
-    ? cwd
-    : (process.env.CLAUDE_PROJECT_DIR || cwd);
+  return findStateRoot(cwd) !== null ? cwd : (process.env.CLAUDE_PROJECT_DIR || cwd);
 }
 
 /** @param {Call} call @param {string[]} argv */
@@ -1093,7 +1092,7 @@ function runTopic(call, argv) {
         throw new Error('Usage: engine topic incorporations <work-unit> <topic>');
       }
       const manifest = loadWorkUnitManifest(call.cwd, workUnit);
-      respond(call, { work_unit: workUnit, topic, incorporations: incorporations(manifest, workUnit, topic) });
+      respond(call, { work_unit: workUnit, topic, incorporations: incorporations(call.cwd, manifest, workUnit, topic) });
       return;
     }
     if (command === 'absorb') {
@@ -1630,11 +1629,14 @@ function runBoot(call) {
 
 // ---------------------------------------------------------------------------
 // commit — the scoped commit helper. Every form computes a pathspec and
-// commits confined to it: the work unit (`.workflows/{wu}`), the inbox, the
-// roadmap, the whole `.workflows` tree, one topic's artifacts (`--topic`),
-// the discovery session's paths (`--discovery`), the imports home and the
-// manifest that records its entries (`--imports`), a plan's declared storage
-// (`--plan`), or declared code paths (`--paths`). A clean scope is fine:
+// commits confined to it. The state's forms commit on the state branch: the
+// work unit, the inbox, the roadmap, the whole state, one topic's artifacts
+// (`--topic`), the discovery session's paths (`--discovery`), the imports
+// home and the manifest that records its entries (`--imports`). The code
+// tree's commit on the branch checked out: declared code paths (`--paths`).
+// Two forms make one commit on each side: a plan (`--plan`), its state and
+// its declared storage, and the migration review (`--migrations`), the state
+// and the files the workflows own in the code tree. A clean scope is fine:
 // {committed: null}, and for `--paths`, whose commits are listed per repo,
 // {committed: []}.
 // ---------------------------------------------------------------------------
@@ -1644,14 +1646,14 @@ function runBoot(call) {
 // mailbox phases carry the topic's mailbox so a drain's deletions
 // ride the same commit.
 const TOPIC_COMMIT_ARTIFACTS = /** @type {Record<string, (wu: string, topic: string) => string[]>} */ ({
-  research: (wu, t) => [stateRel(`${wu}/research/${t}.md`), mailboxDir(wu, 'research', t)],
-  experiment: (wu, t) => [stateRel(`${wu}/experiment/${t}`)],
-  discussion: (wu, t) => [stateRel(`${wu}/discussion/${t}.md`), mailboxDir(wu, 'discussion', t)],
-  investigation: (wu, t) => [stateRel(`${wu}/investigation/${t}.md`), mailboxDir(wu, 'investigation', t)],
-  specification: (wu, t) => [stateRel(`${wu}/specification/${t}`)],
-  planning: (wu, t) => [stateRel(`${wu}/planning/${t}`)],
-  implementation: (wu, t) => [stateRel(`${wu}/implementation/${t}`)],
-  review: (wu, t) => [stateRel(`${wu}/review/${t}`)],
+  research: (wu, t) => [`${wu}/research/${t}.md`, mailboxDir(wu, 'research', t)],
+  experiment: (wu, t) => [`${wu}/experiment/${t}`],
+  discussion: (wu, t) => [`${wu}/discussion/${t}.md`, mailboxDir(wu, 'discussion', t)],
+  investigation: (wu, t) => [`${wu}/investigation/${t}.md`, mailboxDir(wu, 'investigation', t)],
+  specification: (wu, t) => [`${wu}/specification/${t}`],
+  planning: (wu, t) => [`${wu}/planning/${t}`],
+  implementation: (wu, t) => [`${wu}/implementation/${t}`],
+  review: (wu, t) => [`${wu}/review/${t}`],
 });
 
 // A topic whose item reads one of these is finished: nothing further a
@@ -1669,7 +1671,7 @@ const TERMINAL_TOPIC_STATUSES = ['completed', ...TERMINAL_STATUSES];
  */
 function topicItem(cwd, wu, phase, topic) {
   try {
-    const manifest = JSON.parse(fs.readFileSync(path.join(stateRoot(cwd), wu, 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(statePath(cwd, wu, 'manifest.json'), 'utf8'));
     const item = manifest?.phases?.[phase]?.items?.[topic];
     return item && typeof item === 'object' ? item : null;
   } catch {
@@ -1705,10 +1707,10 @@ function codePathSpec(cwd, repos, given) {
   if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error(`commit --paths: "${given}" resolves outside the project`);
   }
-  const spec = rel.split(path.sep).join('/');
-  if (isStatePath(spec)) {
-    throw new Error(`commit --paths: "${given}" is a workflow artifact — those commit by their own scope (--topic/--discovery/--plan)`);
+  if (insideState(cwd, abs)) {
+    throw new Error(`commit --paths: "${given}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
   }
+  const spec = rel.split(path.sep).join('/');
   assertCommittable(repos, spec, given);
   return spec;
 }
@@ -1767,8 +1769,8 @@ function assertCodeTarget(cwd, target) {
   const { workUnit, phase, topic } = target;
   if (workUnit.includes('/') || workUnit.includes('..')) throw new Error(`invalid work unit name "${workUnit}"`);
   if (topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
-  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit))) {
-    throw new Error(`commit --paths: no work unit directory: ${stateRel(workUnit)}`);
+  if (!fs.existsSync(statePath(cwd, workUnit))) {
+    throw new Error(`commit --paths: no work unit directory: ${statePath(cwd, workUnit)}`);
   }
   if (topicItem(cwd, workUnit, phase, topic) === null) {
     throw new Error(`commit --paths: no ${phase} item "${topic}" in "${workUnit}" — check the --for target`);
@@ -1779,9 +1781,8 @@ function assertCodeTarget(cwd, target) {
  * The code commit: the declared paths, each committed confined in the repo
  * that owns it under that repo's commit lock, answering with what the
  * project's repos still hold. `left_dirty` is the backstop for a forgotten
- * path — every tracked modification and untracked file left outside
- * `.workflows` (a doc session's dirt is its own, and runs concurrently by
- * design).
+ * path — every tracked modification and untracked file left in the code
+ * (the state is never code dirt).
  * @param {string} cwd @param {string[]} paths @param {string} message
  * @param {{workUnit: string, phase: string, topic: string}} target
  * @returns {{committed: {repo: string, sha: string}[], left_dirty: string[], note?: string}}
@@ -1869,37 +1870,31 @@ function runCommit(call, argv) {
     }
     /** @type {string|string[]} */ let scope;
     if (globalState) {
-      // `.workflows/.state` — migrations, environment setup: project-level
-      // bookkeeping written from inside whatever session happened to need it.
-      scope = stateRel('.state');
+      // `.state` — migrations, environment setup: project-level bookkeeping
+      // written from inside whatever session happened to need it.
+      scope = '.state';
     } else if (workflows) {
-      scope = stateRel();
+      scope = '.';
     } else if (migrationsScope) {
-      // The reviewed migration commit: every path the workflows own, taken
-      // as the index records it — a migration may stage a removal there
-      // that the working tree cannot show.
-      const committed = commitStagedScoped(cwd, OWNED_PATHS, message);
-      if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
-      else respond(call, { committed });
+      // The reviewed migration commit: the whole state, and every path the
+      // workflows own in the code tree taken as the index records it — a
+      // migration may stage a removal there that the working tree cannot
+      // show. One commit on each side that changed.
+      respond(call, bothSides(commitStateScoped(cwd, '.', message), commitStagedScoped(cwd, OWNED_PATHS, message)));
       return;
     } else if (inbox) {
-      scope = stateRel('.inbox');
+      scope = '.inbox';
     } else if (roadmapScope) {
       // The product session's cadence commit: the roadmap dir (sessions,
       // imports) plus the project manifest (the roadmap node lives there).
-      const specs = stageableSpecs(cwd, [roadmap.ROADMAP_DIR, stateRel('manifest.json')]);
-      if (specs.length === 0) {
-        respond(call, { committed: null, note: 'nothing to commit' });
-        return;
-      }
-      scope = specs;
+      scope = [roadmap.ROADMAP_DIR, 'manifest.json'];
     } else {
       const wu = /** @type {string} */ (workUnit);
       if (wu === '' || wu.includes('/') || wu.includes('..')) throw new Error(`invalid work unit name "${wu}"`);
-      if (!fs.existsSync(path.join(stateRoot(cwd), wu))) {
-        throw new Error(`no work unit directory: ${stateRel(wu)}`);
+      if (!fs.existsSync(statePath(cwd, wu))) {
+        throw new Error(`no work unit directory: ${statePath(cwd, wu)}`);
       }
-      scope = stateRel(wu);
+      scope = wu;
       if (topicSpec !== null) {
         // --topic: the action-scoped pathspec commit. `git commit -- <paths>`
         // confines the commit to the topic's artifact paths plus the
@@ -1913,8 +1908,7 @@ function runCommit(call, argv) {
           throw new Error(`commit --topic: expected <phase>/<topic> with phase one of ${Object.keys(TOPIC_COMMIT_ARTIFACTS).join(', ')} — got "${topicSpec}"`);
         }
         if (topic === '' || topic.includes('..')) throw new Error(`invalid topic name "${topic}"`);
-        const specs = stageableSpecs(cwd, [stateRel(`${wu}/manifest.json`), ...artifact(wu, topic)]);
-        const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
+        const committed = commitStateScoped(cwd, [`${wu}/manifest.json`, ...artifact(wu, topic)], message);
         // `--sweep` outranks everything. It marks a commit on a topic this
         // session is not working — the conclude sweep's leavings, a
         // foreign-topic delivery's retry, a correction landed in another
@@ -1934,8 +1928,7 @@ function runCommit(call, argv) {
             else beatQuietly(cwd, wu, phase, topic);
           }
         }
-        if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
-        else respond(call, { committed });
+        respond(call, stateCommitted(committed));
         return;
       }
       if (stateScope) {
@@ -1944,12 +1937,7 @@ function runCommit(call, argv) {
         // analysis, build-order sequencing). Every one of them runs beside
         // live topic sessions whose half-written documents sit in the same
         // work unit, so the analysis slices its own paths and never theirs.
-        const committed = commitPathspecScoped(cwd, [
-          stateRel(`${wu}/.state`),
-          stateRel(`${wu}/manifest.json`),
-        ], message);
-        if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
-        else respond(call, { committed });
+        respond(call, stateCommitted(commitStateScoped(cwd, [`${wu}/.state`, `${wu}/manifest.json`], message)));
         return;
       }
       if (importsScope) {
@@ -1958,34 +1946,31 @@ function runCommit(call, argv) {
         // the same scope the landing's own tail took, so a peer session's
         // dirt elsewhere in the unit never rides. No presence beat: running
         // an owed commit is not a session's work on a topic.
-        scope = [stateRel(`${wu}/imports`), stateRel(`${wu}/manifest.json`)];
+        scope = [`${wu}/imports`, `${wu}/manifest.json`];
       }
       if (discovery) {
         // --discovery: the discovery session's cadence commit. Discovery runs
         // beside live research and discussion sessions, so it slices its own
         // paths — session logs, briefs, the manifest the map lives in.
-        const specs = stageableSpecs(cwd, discoveryScope(wu));
-        const committed = specs.length === 0 ? null : commitPathspecScoped(cwd, specs, message);
-        if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
-        else respond(call, { committed });
+        respond(call, stateCommitted(commitStateScoped(cwd, discoveryScope(wu), message)));
         return;
       }
       if (plan !== null) {
         // --plan: the planning topic's own directory and the work-unit
-        // manifest — the action scope, like --topic — plus the plan's
-        // declared storage pathspecs (recorded at plan init from the format's
-        // authoring doc, and often outside the work unit) and the project
-        // manifest (plan init writes project defaults). A pathspec that
-        // neither exists on disk nor has index entries is skipped, while a
-        // deleted-but-tracked path still commits its deletions (the
-        // restart-cleanup commits depend on that).
+        // manifest — the action scope, like --topic — and the project
+        // manifest (plan init writes project defaults), committed in the
+        // state; and the plan's declared storage pathspecs (recorded at plan
+        // init from the format's authoring doc), committed in the code tree.
+        // A storage pathspec that neither exists on disk nor has index
+        // entries is skipped, while a deleted-but-tracked path still commits
+        // its deletions (the restart-cleanup commits depend on that).
         if (plan.includes('/') || plan.includes('..')) throw new Error(`invalid planning topic name "${plan}"`);
-        const manifestFile = path.join(stateRoot(cwd), wu, 'manifest.json');
+        const manifestFile = statePath(cwd, wu, 'manifest.json');
         /** @type {any} */ let planItem;
         try {
           planItem = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).phases?.planning?.items?.[plan];
         } catch {
-          throw new Error(`commit --plan: cannot read ${stateRel(`${wu}/manifest.json`)}`);
+          throw new Error(`commit --plan: cannot read ${manifestFile}`);
         }
         if (!planItem) throw new Error(`commit --plan: no planning item "${plan}" in "${wu}"`);
         const declared = planItem.storage_paths;
@@ -2000,20 +1985,42 @@ function runCommit(call, argv) {
             throw new Error(`commit --plan: illegal storage_paths entry ${JSON.stringify(p)} — pathspecs are relative, never ".", "..", or absolute`);
           }
         }
-        scope = stageableSpecs(cwd, [
-          stateRel(`${wu}/planning/${plan}`),
-          stateRel(`${wu}/manifest.json`),
-          stateRel('manifest.json'),
-          ...declared,
-        ]);
+        const state = commitStateScoped(cwd, [`${wu}/planning/${plan}`, `${wu}/manifest.json`, 'manifest.json'], message);
+        const storage = stageableSpecs(cwd, declared);
+        respond(call, bothSides(state, storage.length === 0 ? null : commitPathspecScoped(cwd, storage, message)));
+        return;
       }
     }
-    const committed = commitPathspecScoped(cwd, scope, message);
-    if (committed === null) respond(call, { committed: null, note: 'nothing to commit' });
-    else respond(call, { committed });
+    respond(call, stateCommitted(commitStateScoped(cwd, scope, message)));
   } catch (err) {
     failJson(call, err);
   }
+}
+
+/**
+ * A state commit's answer: its sha, or nothing to commit, with any push
+ * warning.
+ * @param {{committed: string|null, warnings: string[]}} state
+ * @returns {Record<string, unknown>}
+ */
+function stateCommitted({ committed, warnings }) {
+  /** @type {Record<string, unknown>} */
+  const result = committed === null ? { committed: null, note: 'nothing to commit' } : { committed };
+  if (warnings.length > 0) result.warnings = warnings;
+  return result;
+}
+
+/**
+ * The answer of a commit made on each side: the state's sha, the code
+ * tree's beside it.
+ * @param {{committed: string|null, warnings: string[]}} state @param {string|null} code
+ * @returns {Record<string, unknown>}
+ */
+function bothSides(state, code) {
+  /** @type {Record<string, unknown>} */
+  const result = { ...stateCommitted(state), code_committed: code };
+  if (code !== null) delete result.note;
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -2129,12 +2136,58 @@ function runRender(call, argv) {
   }
 }
 
+// Every verb that writes the state runs whole under its writer lock, its
+// writes and its commit one hold, so no peer's write lands between them.
+// Per command, the sub-verbs that only read, or write nowhere a commit
+// reaches (the cache, a tmux label), run without it; a command absent here
+// never takes it — the knowledge base keeps its own lock, boot takes the
+// writer lock around its migrations alone, and the rest read.
+const WRITER_LOCK_EXEMPT = /** @type {Record<string, string[]>} */ ({
+  workunit: [],
+  'discussion-map': [],
+  'research-threads': [],
+  'discovery-map': [],
+  'build-order': [],
+  'discovery-session': [],
+  topic: ['mailbox', 'incorporations'],
+  experiment: [],
+  sources: [],
+  task: [],
+  inbox: [],
+  roadmap: ['state'],
+  baseline: [],
+  walkthrough: [],
+  cache: [],
+  agent: ['scan'],
+  session: ['label', 'repair', 'cleanup', 'resume'],
+});
+
+/** @param {string[]} argv @returns {boolean} */
+function takesWriterLock([command, sub, ...rest]) {
+  if (command === 'manifest') return !isRead(sub);
+  if (command === 'commit') return ![sub, ...rest].includes('--paths');
+  return Object.hasOwn(WRITER_LOCK_EXEMPT, command) && !WRITER_LOCK_EXEMPT[command].includes(sub);
+}
+
 /**
  * The command argv names — answering later only where the command waits on
  * the embedding provider.
  * @param {Call} call @param {string[]} argv @returns {void|Promise<void>}
  */
 function runCli(call, argv) {
+  if (!takesWriterLock(argv)) return runVerb(call, argv);
+  /** @type {string} */
+  let root;
+  try {
+    root = stateRoot(call.cwd);
+  } catch (err) {
+    failJson(call, err);
+  }
+  return withStateLock(root, () => runVerb(call, argv));
+}
+
+/** @param {Call} call @param {string[]} argv @returns {void|Promise<void>} */
+function runVerb(call, argv) {
   const [command, ...rest] = argv;
   switch (command) {
     case 'knowledge':

@@ -24,7 +24,7 @@ const COMPACTED = `${DEFAULT_CONFIG}/conversations/s0/compacted.json`
 
 const NOTE = [
   `The conversation was just compacted. This conversation is working in the discussion of "ledger" in the epic "payments". Follow the workflow-discussion-process skill's "Resuming After Context Refresh" steps now, before anything else: re-read ${ROOT}/.claude/skills/workflow-discussion-process/SKILL.md and its framework in full, then re-read these in full:`,
-  `- ${ROOT}/.workflows/payments/discussion/ledger.md`,
+  `- ${ROOT}/.leeway/payments/discussion/ledger.md`,
 ].join('\n')
 
 const PLACE = 'payments › discussion › ledger'
@@ -35,7 +35,7 @@ const AT_DISCUSSION = {
   position: { name: 'payments', phase: 'discussion', topic: 'ledger' },
   place: PLACE,
   skill: `${ROOT}/.claude/skills/workflow-discussion-process/SKILL.md`,
-  files: [`${ROOT}/.workflows/payments/discussion/ledger.md`],
+  files: [`${ROOT}/.leeway/payments/discussion/ledger.md`],
   text: NOTE,
 }
 

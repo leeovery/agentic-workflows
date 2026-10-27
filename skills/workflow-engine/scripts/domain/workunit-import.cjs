@@ -12,7 +12,7 @@ const {
   saveWorkUnitManifest,
   withWorkUnitLock,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const {
   planImports,
@@ -24,12 +24,12 @@ const {
 } = require('./import-landing.cjs');
 const { itemOf } = require('./derivations.cjs');
 const { IMPORT_PHASES, isImportOrigin } = require('../kernel/manifest-schema.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 /**
  * @typedef {object} WorkUnitImportResult
  * @property {'import'} op
- * @property {{path: string, origin: string}[]} imports  landed entries (work-unit-relative)
+ * @property {{path: string, origin: string}[]} imports  landed imports (absolute)
  * @property {string[]} skipped_imports  source paths rejected by filename normalisation
  * @property {string[]} [warnings]  non-blocking failures (knowledge-base indexing, the commit)
  * @property {string|null} committed  short commit sha, or null when nothing was staged
@@ -104,16 +104,16 @@ function importWorkUnitFiles(cwd, workUnit, paths, { origin }) {
   syncKnowledge(cwd, moves.filter((m) => isIndexableImport(m.dest))
     .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })), warnings);
 
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
-    [stateRel(`${workUnit}/imports`), stateRel(`${workUnit}/manifest.json`)],
+    [`${workUnit}/imports`, `${workUnit}/manifest.json`],
     `workflow(${workUnit}): import ${moves.length} file(s) for ${origin}`,
     warnings);
 
   /** @type {WorkUnitImportResult} */
   const result = {
     op: 'import',
-    imports: moves.map((move) => ({ path: `imports/${move.dest}`, origin })),
+    imports: moves.map((move) => ({ path: statePath(cwd, workUnit, 'imports', move.dest), origin })),
     skipped_imports: skipped,
     committed: outcome.committed,
   };

@@ -18,6 +18,7 @@ const { spawnSync } = require('child_process');
 
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
+const { setupGitFixture, statePath, cleanupFixture } = require('./engine-harness.cjs');
 
 const HERMETIC_MODULE = './hermetic-env.cjs';
 
@@ -41,13 +42,13 @@ function offenders(dir) {
     .sort();
 }
 
-/** A project holding one indexable document. */
+/** A project whose state holds one indexable document. */
 function setupProject() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermetic-'));
-  fs.mkdirSync(path.join(dir, '.workflows', 'auth', 'discussion'), { recursive: true });
-  fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'),
+  const dir = setupGitFixture('hermetic-');
+  fs.mkdirSync(statePath(dir, 'auth', 'discussion'), { recursive: true });
+  fs.writeFileSync(statePath(dir, 'auth', 'manifest.json'),
     JSON.stringify({ name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} }));
-  fs.writeFileSync(path.join(dir, '.workflows', 'auth', 'discussion', 'auth.md'),
+  fs.writeFileSync(statePath(dir, 'auth', 'discussion', 'auth.md'),
     '# Auth\n\nToken refresh is decided here.\n');
   return dir;
 }
@@ -65,11 +66,11 @@ function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
     const env = configDir === undefined ? {} : { WORKFLOWS_CONFIG_DIR: configDir };
-    const res = engine.run(['knowledge', 'index', '.workflows/auth/discussion/auth.md'], { cwd: project, env });
-    const metadataFile = path.join(project, '.workflows', '.knowledge', 'metadata.json');
+    const res = engine.run(['knowledge', 'index', statePath(project, 'auth', 'discussion', 'auth.md')], { cwd: project, env });
+    const metadataFile = statePath(project, '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
   } finally {
-    cleanup(project);
+    cleanupFixture(project);
   }
 }
 

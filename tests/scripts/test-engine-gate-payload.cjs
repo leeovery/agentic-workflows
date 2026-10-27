@@ -79,7 +79,7 @@ function seedTaskGate(dir, item = {}) {
  * @param {string} dir @param {string} wu @param {string} phase @param {string} topic
  */
 function heldByPeer(dir, wu, phase, topic) {
-  const presence = createFile(dir, `.workflows/.cache/${wu}/${phase}/${topic}/presence`,
+  const presence = createFile(dir, `.leeway/.cache/${wu}/${phase}/${topic}/presence`,
     JSON.stringify({ pid: process.pid, pid_start: null, session_id: 'peer' }) + '\n');
   const past = new Date(Date.now() - 240 * 1000);
   fs.utimesSync(presence, past, past);
@@ -262,7 +262,7 @@ describe('gate payload — the statement', () => {
 
   it('a statement label over the question stays the statement', () => {
     createManifest(dir, 'auth', { phases: { planning: { items: { auth: { status: 'in-progress', phase: 2, task: 3 } } } } });
-    createFile(dir, '.workflows/auth/planning/auth/planning.md', '# Plan');
+    createFile(dir, '.leeway/auth/planning/auth/planning.md', '# Plan');
     const gate = gateOf(output(dir, ['render', 'resume-gate', 'auth.planning.auth', '--variant', 'plan'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'How would you like to proceed?');
@@ -310,9 +310,9 @@ describe('gate payload — the statement', () => {
 
   it('every line above the question is statement, in order', () => {
     createManifest(dir, 'v1', { work_type: 'epic' });
-    createFile(dir, '.workflows/.cache/v1/names.json', JSON.stringify({ names: ['billing-core', 'auth'] }));
+    createFile(dir, '.leeway/.cache/v1/names.json', JSON.stringify({ names: ['billing-core', 'auth'] }));
     const gate = gateOf(output(dir, ['render', 'summary-backfill-gate', 'v1', '--variant', 'unsourced',
-      '--file', '.workflows/.cache/v1/names.json'], { env: ANNOUNCED }));
+      '--file', '.leeway/.cache/v1/names.json'], { env: ANNOUNCED }));
 
     assert.strictEqual(gate.question, 'How do you want to handle them?');
     assert.strictEqual(gate.statement, '2 topic(s) have no source file to draft from:\n- Billing Core\n- Auth');
@@ -325,8 +325,8 @@ describe('gate payload — a gateway menu', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('the unnamed MENU is the "menu" gate, and its range row is typed rather than pressable', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.workflows/.inbox/bugs/2026-03-20--bad-thing.md', '# Bad Thing\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
+    createFile(dir, '.leeway/.inbox/bugs/2026-03-20--bad-thing.md', '# Bad Thing\n\nContent.');
     const out = runGateway(dir, 'workflow-start', ['inbox'], ANNOUNCED);
 
     assert.deepStrictEqual(gateOf(out), {
@@ -402,7 +402,7 @@ describe('gate payload — a gateway menu', () => {
         specification: { items: { 'auth-spec': { status: 'in-progress', sources: { a: { status: 'incorporated' } } } } },
       },
     });
-    createFile(dir, '.workflows/v2/specification/auth-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v2/specification/auth-spec/specification.md', '# A');
     const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['spec-view', 'v2'], ANNOUNCED));
 
     assert.strictEqual(gate.question, 'What would you like to do?');
@@ -429,8 +429,8 @@ describe('gate payload — a gateway menu', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# Done');
-    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
+    createFile(dir, '.leeway/v1/specification/done-spec/specification.md', '# Done');
+    createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
     const gate = gateOf(runGateway(dir, 'workflow-continue-epic', ['spec-view', 'v1'], ANNOUNCED));
     const detailOf = (/** @type {string} */ head) => gate.options.find((/** @type {{head: string}} */ o) => o.head === head).detail;
 
@@ -446,8 +446,8 @@ describe('gate payload — a gateway menu', () => {
 describe('gate payload — every gateway verb', () => {
   const SKILLS = path.resolve(__dirname, '../../skills');
   const ENGINE_GATEWAY = path.join(SKILLS, 'workflow-engine/scripts/gateway.cjs');
-  const SET_ITEM = '.workflows/.inbox/ideas/2026-06-01--user-id.md';
-  const BUG_ITEM = '.workflows/.inbox/bugs/2026-06-02--login-timeout.md';
+  const SET_ITEM = '.leeway/.inbox/ideas/2026-06-01--user-id.md';
+  const BUG_ITEM = '.leeway/.inbox/bugs/2026-06-02--login-timeout.md';
 
   /** @typedef {{args: string[], gated: boolean, refused?: boolean}} GatewayCall */
 
@@ -529,7 +529,7 @@ describe('gate payload — every gateway verb', () => {
    * @param {string} dir
    */
   function seedEveryRowShape(dir) {
-    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+    createFile(dir, '.leeway/manifest.json', JSON.stringify({
       roadmap: {
         horizons: ['now_ish *core*', 'later [v2]'],
         items: {
@@ -542,8 +542,8 @@ describe('gate payload — every gateway verb', () => {
     }));
     createFile(dir, SET_ITEM, '# Fix user_id in *auth* [draft]\n');
     createFile(dir, BUG_ITEM, '# Login_timeout *spikes* [prod]\n');
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart retry\n');
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-03--smart-retry.md', '# Smart retry\n');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old *idea* [stale]_x\n');
     createFile(dir, 'proposed.json', JSON.stringify([{ name: 'gift-cards', horizon: 'later [v2]', summary: 'stored *value*' }]));
 
     createManifest(dir, 'v1', {
@@ -568,7 +568,7 @@ describe('gate payload — every gateway verb', () => {
         planning: { items: { tmpl: { status: 'in-progress', external_dependencies: { billing: { description: 'the ledger', state: 'unresolved' } } } } },
       },
     });
-    createFile(dir, '.workflows/v1/discussion/.mailbox/auth/001.md', '# A message\n');
+    createFile(dir, '.leeway/v1/discussion/.mailbox/auth/001.md', '# A message\n');
     heldByPeer(dir, 'v1', 'discussion', 'auth');
 
     createManifest(dir, 'v2', {
@@ -584,8 +584,8 @@ describe('gate payload — every gateway verb', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v2/specification/done-spec/specification.md', '# Done');
-    createFile(dir, '.workflows/v2/specification/data-spec/specification.md', '# Data');
+    createFile(dir, '.leeway/v2/specification/done-spec/specification.md', '# Done');
+    createFile(dir, '.leeway/v2/specification/data-spec/specification.md', '# Data');
 
     /** A linear unit whose phase concluded, so its view asks whether to proceed. @param {string} name @param {string} workType @param {string} phase @param {string} next */
     const concluded = (name, workType, phase, next) => createManifest(dir, name, {
@@ -599,7 +599,7 @@ describe('gate payload — every gateway verb', () => {
     concluded('typo', 'quick-fix', 'scoping', 'implementation');
     concluded('logging', 'cross-cutting', 'discussion', 'specification');
     createManifest(dir, 'payments', { phases: { discussion: { items: { payments: { status: 'in-progress' } } } } });
-    createFile(dir, '.workflows/payments/discussion/.mailbox/payments/001.md', '# A message\n');
+    createFile(dir, '.leeway/payments/discussion/.mailbox/payments/001.md', '# A message\n');
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'old-bug', { work_type: 'bugfix', status: 'cancelled' });
   }
@@ -757,7 +757,7 @@ describe('gate payload — escaped text', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a title the engine escaped reads as its own characters, and its markup as text', () => {
-    const archived = '.workflows/.inbox/.archived/ideas/2026-05-01--user-id.md';
+    const archived = '.leeway/.inbox/.archived/ideas/2026-05-01--user-id.md';
     createFile(dir, archived, '# Fix user_id in *auth* [draft]\n');
 
     const actions = gateOf(output(dir, ['render', 'archived-actions', '--path', archived], { env: ANNOUNCED }));
@@ -775,7 +775,7 @@ describe('gate payload — escaped text', () => {
 
   it('a side the model wrote reaches its row as text — its code span as content, its escape as the character', () => {
     seedTaskGate(dir);
-    const sides = createFile(dir, '.workflows/.cache/auth/implementation/auth-flow/sides.json', JSON.stringify({
+    const sides = createFile(dir, '.leeway/.cache/auth/implementation/auth-flow/sides.json', JSON.stringify({
       options: [
         { summary: 'Call `resolveUser` before the write' },
         { summary: 'Keep user\\_id on the \\*session\\*', recommended: true },

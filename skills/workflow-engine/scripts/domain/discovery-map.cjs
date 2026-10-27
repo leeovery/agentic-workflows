@@ -23,7 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
 const { computeTopicLifecycle, phaseItems, lifecyclePhrase, CLOSED_LIFECYCLES, mailboxDepth } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -187,10 +187,10 @@ function sequenceMap(cwd, workUnit, orders) {
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(cwd, discoveryScope(workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
+  const outcome = commitStateTail(cwd, discoveryScope(workUnit), `discovery(${workUnit}): sequence topic map`, warnings);
   /** @type {SequenceResult} */
   const result = { ordered: orders, committed: outcome.committed };
-  if (outcome.failed) result.warnings = warnings;
+  if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome, `${workUnit} --discovery`);
   return result;
 }
@@ -441,7 +441,7 @@ function removeItem(cwd, workUnit, name) {
     const { PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
     /** @type {string[]} */
     const warnings = [];
-    commitTailPathspec(cwd, PROJECT_MANIFEST_SPEC, `roadmap: un-pull ${reverted.join(', ')} (${name} removed from ${workUnit})`, warnings);
+    commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `roadmap: un-pull ${reverted.join(', ')} (${name} removed from ${workUnit})`, warnings);
     if (warnings.length > 0) result.warnings = warnings;
   }
   return result;
@@ -599,7 +599,7 @@ function markerRefusal(cwd, manifest, op, name) {
   if (Object.hasOwn(MARKER_CLOSED_PHRASES, lifecycle)) return MARKER_CLOSED_PHRASES[lifecycle];
   if (op === 'reopen') return lifecycle === 'handled' ? null : "it isn't closed as a dead end, so there's nothing to reopen";
   if (lifecycle === 'handled') return "it's already closed";
-  const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(cwd, manifest.name, phase, name) > 0);
+  const waiting = ['research', 'discussion'].filter((phase) => mailboxDepth(stateRoot(cwd), manifest.name, phase, name) > 0);
   return waiting.length > 0
     ? `messages wait in its ${waiting.join(' and ')} mailbox; start the topic to drain them, or cancel the topic from the epic menu instead`
     : null;

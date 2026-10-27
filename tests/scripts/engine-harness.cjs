@@ -19,6 +19,11 @@
 // keyword-only: the store they build is real, what it holds is the
 // assertion, and no vector fill is ever launched.
 //
+// A fixture is a git repository with its state worktree at `.leeway/`
+// (`discovery-test-utils.cjs` makes it). A suite reads a state commit off the
+// state branch (`stateGit`), and an owned code-tree file's off the code
+// tree's.
+//
 // A suite spawns a process only where the process is the subject: the real
 // CLI's pipe and exit behaviour, a child that must run concurrently (a lock
 // race), a script that is not the engine.
@@ -27,12 +32,13 @@ require('./hermetic-env.cjs');
 
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
 
-const { cleanupFixture } = require('./discovery-test-utils.cjs');
+const {
+  STATE_DIR, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+} = require('./discovery-test-utils.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
+const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
@@ -127,7 +133,7 @@ function harness(enginePath = ENGINE) {
  * @param {string} dir
  */
 function keywordOnlyKnowledge(dir) {
-  const config = knowledgeFiles(dir).config;
+  const config = knowledgeFiles(statePath(dir)).config;
   fs.mkdirSync(path.dirname(config), { recursive: true });
   fs.writeFileSync(config, '{ "knowledge": { "provider": null } }\n');
 }
@@ -139,34 +145,42 @@ function keywordOnlyKnowledge(dir) {
  */
 function unreadableKnowledge(dir) {
   keywordOnlyKnowledge(dir);
-  const files = knowledgeFiles(dir);
+  const files = knowledgeFiles(statePath(dir));
   store.writeMetadata(files.metadata, {});
   fs.writeFileSync(files.store, 'not a store');
 }
 
 /**
- * The files the store holds chunks of, sorted — none without a store.
+ * The files the store holds chunks of, state-relative and sorted — none
+ * without a store.
  * @param {string} dir @returns {string[]}
  */
 function indexedFiles(dir) {
-  const file = knowledgeFiles(dir).store;
+  const file = knowledgeFiles(statePath(dir)).store;
   if (!fs.existsSync(file)) return [];
   return [...new Set(store.allChunks(store.loadStore(file)).map((chunk) => chunk.source_file))].sort();
 }
 
-/** @param {string} dir @param {string[]} args */
-function git(dir, args) {
-  return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+/**
+ * Git in the world's state worktree.
+ * @param {string} dir @param {string[]} args
+ */
+function stateGit(dir, args) {
+  return git(statePath(dir), args);
 }
 
 /**
- * The test identity and no signing, on the repo at `dir`.
- * @param {string} dir
+ * Everything in the world committed, each side where it holds a change: the
+ * code tree on its branch, the state on the state branch where the
+ * repository has one.
+ * @param {string} dir @param {string} message
  */
-function testIdentity(dir) {
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
+function commitAll(dir, message) {
+  const state = findStateRoot(dir);
+  for (const side of state === null ? [dir] : [dir, state]) {
+    git(side, ['add', '-A']);
+    if (git(side, ['status', '--porcelain']) !== '') git(side, ['commit', '-q', '-m', message]);
+  }
 }
 
 /**
@@ -183,15 +197,13 @@ function initRepo(dir) {
 }
 
 /**
- * A temp git repo with a `.workflows/` tree, a test identity and no signing —
- * the world an engine commit lands in. Content and a first commit are the
- * suite's own; `cleanupFixture` removes it.
+ * A temp world — the git repo, its state worktree, a test identity and no
+ * signing — that an engine commit lands in. Content is the suite's own;
+ * `cleanupFixture` removes it.
  * @param {string} [prefix] temp-directory prefix, so a leftover names its suite
  */
 function setupGitFixture(prefix = 'engine-') {
-  const dir = initRepo(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
-  return dir;
+  return setupFixture(prefix);
 }
 
 /**
@@ -216,5 +228,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  git, initRepo, setupGitFixture, addSubmodule, cleanupFixture,
+  STATE_DIR, statePath, git, stateGit, commitAll, testIdentity, initRepo,
+  setupGitFixture, setupFixtureAt, addSubmodule, cleanupFixture,
 };

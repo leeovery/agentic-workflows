@@ -2,8 +2,8 @@
 
 // The shared engine runner's own contract: each shape answers what its name
 // says, the refusal shape asserts the refusal, the call's environment and
-// stdin reach the engine, the git fixture is a repo an engine commit lands
-// in, and a keyword-only checkout is one a transaction's index builds a real
+// stdin reach the engine, the git fixture is a repo with its state worktree
+// that an engine commit lands in, and a keyword-only checkout is one a transaction's index builds a real
 // store in.
 
 require('./hermetic-env.cjs');
@@ -14,14 +14,16 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
-const { call, ok, okSections, refuses, output, git, setupGitFixture, cleanupFixture } = harness;
+const {
+  call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
+} = harness;
 
 const OWN = { CLAUDE_PID: String(process.pid), CLAUDE_CODE_SESSION_ID: 'sess-own' };
 const PEER = { CLAUDE_PID: '1', CLAUDE_CODE_SESSION_ID: 'sess-peer' };
 
 /** A feature with one research item, committed. */
 function seed(dir, { commit = true } = {}) {
-  const wu = path.join(dir, '.workflows', 'pay');
+  const wu = statePath(dir, 'pay');
   fs.mkdirSync(path.join(wu, 'research'), { recursive: true });
   fs.writeFileSync(path.join(wu, 'manifest.json'), JSON.stringify({
     name: 'pay',
@@ -30,10 +32,7 @@ function seed(dir, { commit = true } = {}) {
     phases: { research: { items: { pay: { status: 'in-progress' } } } },
   }, null, 2) + '\n');
   fs.writeFileSync(path.join(wu, 'research', 'pay.md'), '# Research\n');
-  if (commit) {
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
-  }
+  if (commit) commitAll(dir, 'init');
 }
 
 describe('engine harness — the shapes', () => {
@@ -63,9 +62,9 @@ describe('engine harness — the shapes', () => {
   });
 
   it('refuses answers the refusal, and asserts exit 1 with nothing on stdout', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8');
+    const before = fs.readFileSync(statePath(dir, 'pay/manifest.json'), 'utf8');
     assert.match(refuses(dir, ['topic', 'complete', 'pay', 'research', 'absent']).error, /absent/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/pay/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(statePath(dir, 'pay/manifest.json'), 'utf8'), before);
   });
 
   it('refuses fails loudly when the call succeeds instead', () => {
@@ -90,11 +89,11 @@ describe('engine harness — the shapes', () => {
 
   it('the call\'s environment reaches the engine, and a key it takes away is gone', () => {
     ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: OWN });
-    const record = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/.cache/pay/research/pay/presence'), 'utf8'));
+    const record = JSON.parse(fs.readFileSync(statePath(dir, '.cache/pay/research/pay/presence'), 'utf8'));
     assert.strictEqual(record.session_id, 'sess-own');
 
     ok(dir, ['presence', 'beat', 'pay', 'research', 'pay'], { env: { ...OWN, CLAUDE_CODE_SESSION_ID: undefined } });
-    const anonymous = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/.cache/pay/research/pay/presence'), 'utf8'));
+    const anonymous = JSON.parse(fs.readFileSync(statePath(dir, '.cache/pay/research/pay/presence'), 'utf8'));
     assert.strictEqual(anonymous.session_id, null, 'the engine saw no session id at all');
   });
 
@@ -110,19 +109,43 @@ describe('engine harness — the git fixture', () => {
   beforeEach(() => { dir = setupGitFixture('harness-test-'); });
   afterEach(() => cleanupFixture(dir));
 
-  it('is a repo on main with a `.workflows/` tree and an identity that can commit', () => {
-    assert.ok(fs.existsSync(path.join(dir, '.workflows')));
+  it('is a repo on main, its path the one the engine names it by, with an identity that can commit', () => {
+    assert.strictEqual(fs.realpathSync(dir), dir);
     assert.strictEqual(git(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'main');
     seed(dir);
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%an']).trim(), 'Test');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%an %s']).trim(), 'Test init');
   });
 
-  it('is a repo an engine commit lands in', () => {
+  it('holds its state worktree, locked on the state branch, and the code tree ignores it', () => {
+    assert.strictEqual(stateGit(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'leeway-state');
+    assert.match(git(dir, ['worktree', 'list', '--porcelain']),
+      new RegExp(`worktree ${statePath(dir)}\nHEAD [0-9a-f]+\nbranch refs/heads/leeway-state\nlocked workflows state, do not remove`));
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.leeway/\n');
     seed(dir);
-    fs.writeFileSync(path.join(dir, '.workflows/pay/research/pay.md'), '# Research\n\nMore.\n');
+    assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n'), ['.gitignore']);
+    assert.strictEqual(git(dir, ['status', '--porcelain']), '', 'the code tree is clean');
+  });
+
+  it('is its own world: a write in one fixture lands in no other', () => {
+    const other = setupGitFixture('harness-test-');
+    try {
+      seed(dir);
+      assert.strictEqual(fs.existsSync(statePath(other, 'pay')), false);
+      assert.strictEqual(stateGit(other, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    } finally {
+      cleanupFixture(other);
+    }
+  });
+
+  it('is a repo an engine commit lands in — the state on the state branch, none on main', () => {
+    seed(dir);
+    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    fs.writeFileSync(statePath(dir, 'pay/research/pay.md'), '# Research\n\nMore.\n');
     const res = ok(dir, ['commit', 'pay', '-m', 'research(pay): notes', '--topic', 'research/pay']);
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'research(pay): notes');
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'research(pay): notes');
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 });
 
@@ -135,7 +158,7 @@ describe('engine harness — a keyword-only checkout', () => {
     harness.keywordOnlyKnowledge(dir);
     const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
     assert.deepStrictEqual(res.warnings, []);
-    assert.deepStrictEqual(harness.indexedFiles(dir), ['.workflows/pay/research/pay.md']);
+    assert.deepStrictEqual(harness.indexedFiles(dir), ['pay/research/pay.md']);
   });
 
   it('holds nothing where the checkout was never set up — the index a warning, no store built', () => {

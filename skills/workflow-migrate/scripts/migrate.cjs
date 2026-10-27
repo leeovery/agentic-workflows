@@ -10,9 +10,10 @@
 // once — a project stuck at 020 catches up through the frozen bash fleet then
 // the Node ones, in order.
 //
-// Tracking (identical to the retired migrate.sh):
-//   - Progress lives in .workflows/.state/migrations, one numeric-only ID per
-//     line (e.g. "001", "047"). The ID is the filename's leading digits,
+// Tracking:
+//   - Progress lives in the ledger the caller names (`--ledger <path>`; boot
+//     names the state's `.state/migrations`), one numeric-only ID per line
+//     (e.g. "001", "047"). The ID is the filename's leading digits,
 //     extension-independent — .sh and .cjs share the same ID space.
 //   - An ID recorded once is never re-run. Delete the log to force a full
 //     re-run. An ID is recorded only AFTER its migration completes; any
@@ -65,18 +66,24 @@ const HANDBACKS = [
 ];
 
 // Marker preceding the one-line JSON report of what the run recorded:
-// `{"ran": <migrations executed>, "tracking": "<cwd-relative ledger path>"}`.
-// Distinct from the stop gate, which counts files: a migration that ran and
-// found nothing to do still recorded its ID, so the ledger is dirty on a run
-// that updated nothing. The path travels with the count because migration 011
-// relocates the ledger — the runner is the only party that knows where it
-// ended up, and a caller cleaning up after an earlier run needs that path on a
-// run of its own that recorded nothing. Boot extracts and strips it.
+// `{"ran": <migrations executed>}`. Distinct from the stop gate, which counts
+// files: a migration that ran and found nothing to do still recorded its ID,
+// so the ledger is dirty on a run that updated nothing. Boot extracts and
+// strips it.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
-/** @param {string} cwd @param {string} trackingRel @param {string} journal */
-function journalPath(cwd, trackingRel, journal) {
-  return path.join(path.dirname(path.resolve(cwd, trackingRel)), journal);
+const LEDGER_FLAG = '--ledger';
+
+// The fleet released while the state lived in the code tree upgrades the
+// `.workflows/` there, and three of it (049, 053, 060) would create one from
+// nothing. In a project with none there is nothing for it to upgrade, so
+// each is recorded unrun.
+const LAST_CODE_TREE_MIGRATION = 72;
+const CODE_TREE_STATE = '.workflows';
+
+/** @param {string} ledger @param {string} journal */
+function journalPath(ledger, journal) {
+  return path.join(path.dirname(ledger), journal);
 }
 
 /** @param {string} file @returns {Record<string, string|null>[]} */
@@ -112,59 +119,17 @@ const SH_WRAPPER = [
   "printf '%s %s' \"$FILES_UPDATED\" \"$FILES_SKIPPED\" >&3",
 ].join('\n');
 
-// === LEGACY TRACKING SUPPORT (ported verbatim from migrate.sh) ===
-//
-// Handles tracking-file discovery across historical locations and formats so a
-// project part-way through the fleet (pre-migration-011, under docs/workflow/)
-// resumes cleanly.
-
-/** @param {string} cwd @returns {string} cwd-relative tracking path */
-function findTrackingFile(cwd) {
-  const candidates = [
-    '.workflows/.state/migrations',
-    'docs/workflow/.state/migrations',
-    'docs/workflow/.cache/migrations',
-    'docs/workflow/.cache/migrations.log',
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(path.resolve(cwd, candidate))) return candidate;
-  }
-  return '.workflows/.state/migrations';
+/**
+ * The ledger the caller names, resolved from the cwd.
+ * @param {string} cwd @param {string[]} args
+ * @returns {string}
+ */
+function ledgerOf(cwd, args) {
+  const at = args.indexOf(LEDGER_FLAG);
+  const given = at === -1 ? undefined : args[at + 1];
+  if (!given) fail(`usage: migrate.cjs ${LEDGER_FLAG} <path> — the ledger the run records into`);
+  return path.resolve(cwd, given);
 }
-
-/** Old "path: 001" rows → bare "001", sorted-unique. @param {string} cwd @param {string} rel */
-function normalizeTrackingFormat(cwd, rel) {
-  const full = path.resolve(cwd, rel);
-  let content;
-  try {
-    content = fs.readFileSync(full, 'utf8');
-  } catch (_) {
-    return;
-  }
-  if (!/: [0-9]/.test(content)) return;
-  const ids = [];
-  for (const line of content.split('\n')) {
-    const m = line.match(/[0-9]+$/); // grep -oE '[0-9]+$'
-    if (m) ids.push(m[0]);
-  }
-  const uniq = Array.from(new Set(ids)).sort(); // sort -u (lexical)
-  fs.writeFileSync(full, uniq.length ? uniq.join('\n') + '\n' : '');
-}
-
-/** Move a legacy .cache/ tracking file to .state/ so it survives migration 010.
- *  @param {string} cwd @param {string} rel @returns {string} possibly-updated rel */
-function stabilizeTrackingLocation(cwd, rel) {
-  const stable = 'docs/workflow/.state/migrations';
-  if (rel.startsWith('docs/workflow/.cache/')) {
-    const stableAbs = path.resolve(cwd, stable);
-    fs.mkdirSync(path.dirname(stableAbs), { recursive: true });
-    fs.renameSync(path.resolve(cwd, rel), stableAbs);
-    return stable;
-  }
-  return rel;
-}
-
-// === END LEGACY TRACKING SUPPORT ===
 
 /** Leading digits of a filename, or '' when none. @param {string} scriptPath */
 function migrationId(scriptPath) {
@@ -185,12 +150,12 @@ function compareMigrations(a, b) {
   return ba < bb ? -1 : ba > bb ? 1 : 0;
 }
 
-/** Whether `id` is already recorded in the tracking file (grep -q "^id$").
- *  @param {string} cwd @param {string} rel @param {string} id */
-function isRecorded(cwd, rel, id) {
+/** Whether `id` is already recorded in the ledger (grep -q "^id$").
+ *  @param {string} ledger @param {string} id */
+function isRecorded(ledger, id) {
   let content;
   try {
-    content = fs.readFileSync(path.resolve(cwd, rel), 'utf8');
+    content = fs.readFileSync(ledger, 'utf8');
   } catch (_) {
     return false;
   }
@@ -200,14 +165,14 @@ function isRecorded(cwd, rel, id) {
 /**
  * Run a `*.sh` migration by sourcing it in a spawned bash. Returns the counter
  * deltas; a non-zero exit surfaces the migration's stderr and aborts the run.
- * @param {string} cwd @param {string} scriptAbs @param {string} trackingRel
+ * @param {string} cwd @param {string} scriptAbs @param {string} ledger
  * @returns {{updated: number, skipped: number, stdout: string}}
  */
-function runShMigration(cwd, scriptAbs, trackingRel) {
+function runShMigration(cwd, scriptAbs, ledger) {
   const res = spawnSync(BASH, ['-c', SH_WRAPPER], {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, MG_SCRIPT: scriptAbs, MG_TRACKING: trackingRel, PROJECT_DIR: '.' },
+    env: { ...process.env, MG_SCRIPT: scriptAbs, MG_TRACKING: ledger, PROJECT_DIR: '.' },
     stdio: ['ignore', 'pipe', 'pipe', 'pipe'],
   });
   if (res.error || res.status !== 0) {
@@ -267,14 +232,10 @@ function fail(message, code) {
 
 function main() {
   const cwd = process.cwd();
-
-  // Resolve, normalise and stabilise the tracking file, then ensure it exists.
-  let trackingRel = findTrackingFile(cwd);
-  normalizeTrackingFormat(cwd, trackingRel);
-  trackingRel = stabilizeTrackingLocation(cwd, trackingRel);
-  const trackingAbs = () => path.resolve(cwd, trackingRel);
-  fs.mkdirSync(path.dirname(trackingAbs()), { recursive: true });
-  if (!fs.existsSync(trackingAbs())) fs.writeFileSync(trackingAbs(), '');
+  const ledger = ledgerOf(cwd, process.argv.slice(2));
+  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  if (!fs.existsSync(ledger)) fs.writeFileSync(ledger, '');
+  const codeTreeState = fs.existsSync(path.join(cwd, CODE_TREE_STATE));
 
   if (!fs.existsSync(MIGRATIONS_DIR)) {
     process.stdout.write(`No migrations directory found at ${MIGRATIONS_DIR}\n`);
@@ -308,19 +269,20 @@ function main() {
     }
 
     // Skip entire migration if already recorded.
-    if (isRecorded(cwd, trackingRel, id)) continue;
+    if (isRecorded(ledger, id)) continue;
+    if (!codeTreeState && parseInt(id, 10) <= LAST_CODE_TREE_MIGRATION) {
+      fs.appendFileSync(ledger, id + '\n');
+      continue;
+    }
 
     const result = script.endsWith('.cjs')
       ? runCjsMigration(script)
-      : runShMigration(cwd, script, trackingRel);
+      : runShMigration(cwd, script, ledger);
 
     if (result.stdout) process.stdout.write(result.stdout);
     filesUpdated += result.updated;
 
-    // Re-find the tracking file (migration 011 moves it), then record the ID.
-    trackingRel = findTrackingFile(cwd);
-    fs.mkdirSync(path.dirname(trackingAbs()), { recursive: true });
-    fs.appendFileSync(trackingAbs(), id + '\n');
+    fs.appendFileSync(ledger, id + '\n');
     migrationsRun += 1;
 
     // Journal what it handed back durably the moment its migration is
@@ -332,7 +294,7 @@ function main() {
       };
       for (const { key, journal } of HANDBACKS) {
         if (!entries[key]) continue;
-        const file = journalPath(cwd, trackingRel, journal);
+        const file = journalPath(ledger, journal);
         fs.writeFileSync(file, JSON.stringify([...readJournal(file), entries[key]]) + '\n');
       }
     }
@@ -352,7 +314,7 @@ function main() {
   // A fully successful run emits everything journaled — this run's entries
   // plus any stranded by an earlier aborted run — and clears each journal.
   for (const { marker, journal } of HANDBACKS) {
-    const file = journalPath(cwd, trackingRel, journal);
+    const file = journalPath(ledger, journal);
     const entries = readJournal(file);
     if (entries.length === 0) continue;
     process.stdout.write(marker + '\n');
@@ -361,7 +323,7 @@ function main() {
   }
 
   process.stdout.write(MIGRATIONS_RUN_MARKER + '\n');
-  process.stdout.write(JSON.stringify({ ran: migrationsRun, tracking: trackingRel }) + '\n');
+  process.stdout.write(JSON.stringify({ ran: migrationsRun }) + '\n');
 }
 
 try {

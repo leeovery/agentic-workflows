@@ -1,62 +1,106 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the engine's commit door. Every engine-made commit routes
-// through here, for two guarantees:
+// Domain ring: the engine's commit door — two doors, one per side.
 //
-// - Commits are confined: each one commits exactly the paths its action
-//   wrote (`-- <paths>`); the migration commit takes the paths the workflows
-//   own as the index records them, a removal a migration staged included
-//   (`commitStaged`, built in a scratch index). A peer session's dirty or
-//   staged files are never swept up under someone else's message, and no
-//   engine commit reaches outside its declared scope.
+// - The state: every path under `.leeway/` is committed in the state
+//   worktree on `leeway-state` (domain/state-worktree), under the writer
+//   lock, then pushed; a push that fails is a warning, never a stop. Paths
+//   are state-relative.
+// - The code tree: the files the workflows own outside the state — the
+//   project's Claude Code settings, the worktree include and the `.gitignore`
+//   — and declared code paths are committed in the checkout's own tree, on
+//   the branch checked out. A process-wide lock (`.git/workflows-commit.lock`,
+//   on a long clock) holds each add+commit sequence alone, so concurrent
+//   sessions never interleave on git's shared index. The code commit lands
+//   in each repo that owns one of its paths (kernel/repos), deepest first,
+//   under that repo's own lock.
 //
-// - Commits are serialised: a process-wide lock (`.git/workflows-commit.lock`,
-//   same discipline as the manifest lock, on a longer clock) holds each
-//   add+commit sequence alone, so concurrent sessions never interleave on
-//   git's shared index. The code commit lands in each repo that owns one of
-//   its paths (kernel/repos), deepest first, under that repo's own lock.
+// Every commit is confined: it commits exactly the paths its action wrote,
+// so a peer session's dirty or staged files are never swept up under someone
+// else's message. The migration commit takes the paths the workflows own as
+// the index records them on the code side, a removal a migration staged
+// included (`commitStaged`, built in a scratch index), and one commit on each
+// side that changed.
 // ---------------------------------------------------------------------------
 
 const { gitPath, commitPathspec, commitStaged } = require('../kernel/git.cjs');
+const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
+const { withStateLock, commitState } = require('./state-worktree.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
-const { stateRel } = require('../kernel/state-root.cjs');
 
-const PROJECT_MANIFEST_SPEC = stateRel('manifest.json');
+/** The project manifest, state-relative. */
+const PROJECT_MANIFEST_SPEC = 'manifest.json';
 
 /**
- * The paths the workflows own in a project — everything a migration or the
- * engine writes there: the `.workflows` tree (its git-ignored parts left to
- * git), the project's Claude Code settings, the worktree include, and the
- * project-root `.gitignore`. The migration commit's scope.
+ * The files the workflows own in the code tree — everything a migration or
+ * boot writes outside the state: the project's Claude Code settings, the
+ * worktree include, and the project-root `.gitignore`. The code side of the
+ * migration commit; its state side is the whole state worktree.
  * @type {readonly string[]}
  */
-const OWNED_PATHS = Object.freeze([stateRel(), SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
+const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
 
 /**
  * The discovery scope — what a discovery session writes: its session logs,
  * the briefs it synthesises at the harvest, and the work-unit manifest (the
- * map lives there). Shared by `commit --discovery` and the discovery
- * transaction tails so the session's every commit slices the same paths.
+ * map lives there), state-relative. Shared by `commit --discovery` and the
+ * discovery transaction tails so the session's every commit slices the same
+ * paths.
  * @param {string} workUnit
  * @returns {string[]}
  */
 function discoveryScope(workUnit) {
   return [
-    stateRel(`${workUnit}/discovery/sessions`),
-    stateRel(`${workUnit}/discovery/briefs`),
-    stateRel(`${workUnit}/manifest.json`),
+    `${workUnit}/discovery/sessions`,
+    `${workUnit}/discovery/briefs`,
+    `${workUnit}/manifest.json`,
   ];
 }
 
 /**
- * The commit lock lives in the `.git` dir (like git's own transient locks) —
- * a lock inside `.workflows` would be staged by the very commit it guards.
- * A linked worktree's lock is its own, which is the right scope: the index
- * being serialised is per-worktree too — and so is a nested repo's.
+ * The state commit: exactly `paths` in the state worktree on
+ * `leeway-state`, under the writer lock, then pushed. A push that fails
+ * comes back as a warning; the commit stands. The sha is short, as the code
+ * tree's commits answer it.
+ * @param {string} cwd @param {string|string[]} paths state-relative, or absolute
+ * @param {string} message
+ * @returns {{committed: string|null, warnings: string[]}}
+ */
+function commitStateScoped(cwd, paths, message) {
+  const root = stateRoot(cwd);
+  const { commit, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message));
+  return { committed: commit === null ? null : isolatedGit(root).run(['rev-parse', '--short', commit]).trim(), warnings };
+}
+
+/**
+ * Transaction-tail state commit: the state write has already landed, so a
+ * commit git refuses degrades to a warning and a pending note — it never
+ * fails the verb. A push that fails is a warning beside it.
+ * @param {string} cwd @param {string|string[]} paths state-relative
+ * @param {string} message @param {string[]} warnings
+ * @returns {{committed: string|null, failed: boolean}}
+ */
+function commitStateTail(cwd, paths, message, warnings) {
+  try {
+    const out = commitStateScoped(cwd, paths, message);
+    warnings.push(...out.warnings);
+    return { committed: out.committed, failed: false };
+  } catch (err) {
+    warnings.push(`commit failed: ${err instanceof Error ? err.message : String(err)}`);
+    return { committed: null, failed: true };
+  }
+}
+
+/**
+ * The code-tree commit lock lives in the `.git` dir (like git's own
+ * transient locks). A linked worktree's lock is its own, which is the right
+ * scope: the index being serialised is per-worktree too — and so is a nested
+ * repo's.
  * @param {string} cwd project root, or a nested repo's
  */
 function commitLockPath(cwd) {
@@ -88,8 +132,9 @@ function withCommitLock(cwd, fn) {
 }
 
 /**
- * `commitPathspec` under the commit lock: commit exactly the named paths,
- * leaving every other process's dirty or staged files untouched.
+ * The code-tree commit: `commitPathspec` under the commit lock, committing
+ * exactly the named paths and leaving every other process's dirty or staged
+ * files untouched.
  * @param {string} cwd @param {string|string[]} pathspec @param {string} message
  * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
  *   must run inside the same commit-lock hold as the commit that lands it
@@ -166,7 +211,7 @@ function noteIfNothingCommitted(result, committed) {
 }
 
 /**
- * Transaction-tail commit: the state write has already landed, so a git
+ * Transaction-tail code-tree commit: the write has already landed, so a git
  * failure here (index.lock contention from a concurrent session, a hook)
  * degrades to a warning and a pending note — it never fails the verb.
  * @param {string} cwd @param {string|string[]} pathspec @param {string} message
@@ -210,6 +255,8 @@ function noteCommitOutcome(result, outcome, retry) {
 }
 
 module.exports = {
+  commitStateScoped,
+  commitStateTail,
   commitPathspecScoped,
   commitAcrossRepos,
   commitStagedScoped,

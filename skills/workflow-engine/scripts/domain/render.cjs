@@ -71,7 +71,7 @@ const { discoverySpec, specConfirmation } = require('./specification.cjs');
 const { specificationConfirmation } = require('./projections/specification.cjs');
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -3394,14 +3394,14 @@ function checkpointFilesGate(cwd, { dotpath }) {
 /**
  * @param {string} cwd
  * @param {{dotpath: string}} args
- * @returns {string} the blocker's sections, or '' when the tree is clean outside .workflows/
+ * @returns {string} the blocker's sections, or '' when the tree is clean
  */
 function changeSetTree(cwd, { dotpath }) {
   resolvePhaseItem(cwd, dotpath, 'change-set-tree', ['review'], 'the review the verifiers ran for');
   const dirty = projectDirtyEntries(projectRepos(cwd)).map((e) => `\`${e.path}\``);
   if (dirty.length === 0) return '';
   return blocker(
-    `The change-set verification left the working tree dirty outside ${stateRel()}/`,
+    'The change-set verification left the working tree dirty',
     `The pass must leave the tree as it found it — these paths are modified or untracked: ${dirty.join(', ')}. Once the tree is clean, re-enter the review; it resumes at this step, keeping the section files already written.`,
   );
 }
@@ -3942,7 +3942,7 @@ function correctionGate(cwd, { dotpath }) {
   if (manifest.status !== 'completed') {
     throw new Error(`render correction-gate: "${workUnit}" is "${manifest.status}" — the corrigendum protocol serves completed work units`);
   }
-  const specPath = stateRel(`${workUnit}/specification/${topic}/specification.md`);
+  const specPath = statePath(cwd, workUnit, 'specification', topic, 'specification.md');
   return section('MENU: correction gate', MENU_INSTRUCTION, menu(
     `Correcting ${specPath}.`,
     [
@@ -4030,7 +4030,7 @@ function specConfirmGate(cwd, { dotpath, single, unify }) {
 
   return [
     section('DISPLAY: spec confirmation', emitAs('text', ', directly above the menu'), specificationConfirmation({
-      variant, work_unit: workUnit, name: topic, status: spec.status, sources, supersedes,
+      variant, state_root: stateRoot(cwd), work_unit: workUnit, name: topic, status: spec.status, sources, supersedes,
     })),
     section('MENU: spec confirm gate', MENU_INSTRUCTION, menu(variant === 'refine' ? REFINE_NOTE : '', yesNo(), { question: 'Proceed?' })),
   ].join('\n');
@@ -4423,7 +4423,7 @@ function mailOffer(cwd, { dotpath, file }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-offer');
   if (!file) throw new Error('render mail-offer: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'mail-offer');
-  const files = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
   if (!files.length) throw new Error(`render mail-offer: the ${topic} ${phase} mailbox is empty — nothing to offer`);
   if (!Array.isArray(p.items) || p.items.length === 0) throw new Error('render mail-offer: "items" must be a non-empty array');
   /** @type {Map<string, {file: string, title: string, origin: string, from_phase: string, from_date: string}>} */
@@ -4474,7 +4474,7 @@ function mailOffer(cwd, { dotpath, file }) {
  */
 function mailAnnounce(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-announce');
-  const files = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
   if (!files.length) throw new Error(`render mail-announce: the ${topic} ${phase} mailbox is empty — nothing to announce`);
   const line = files.length === 1
     ? "1 message from another topic waits in this topic's mailbox — I'll raise it once the session finds its footing."
@@ -4492,7 +4492,7 @@ function mailAnnounce(cwd, { dotpath }) {
  */
 function mailBlock(cwd, { dotpath }) {
   const { workUnit, phase, topic } = resolveAddress(cwd, dotpath, 'mail-block');
-  const files = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
   if (!files.length) throw new Error(`render mail-block: the ${topic} ${phase} mailbox is empty — nothing blocks conclusion`);
   const doing = phase === 'research' ? 'exploration' : phase === 'investigation' ? 'investigation' : 'discussion';
   // A true blocker — the red register (see blocker()), guidance as markdown.
@@ -4531,7 +4531,7 @@ function forwardOffer(cwd, { dotpath, file }) {
   for (const field of ['file', 'title', 'reason']) {
     if (!isFilled(p[field])) throw new Error(`render forward-offer: "${field}" must be a non-empty string`);
   }
-  const files = mailboxFiles(cwd, workUnit, phase, topic);
+  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic);
   if (!files.includes(p.file)) {
     throw new Error(`render forward-offer: "${p.file}" is not in the ${topic} ${phase} mailbox`);
   }
@@ -4586,7 +4586,7 @@ function phaseCompleted(cwd, { dotpath, phase, paths }) {
   const { workUnit } = resolveWorkUnit(cwd, dotpath, 'phase-completed');
   if (!isFilled(phase)) throw new Error('render phase-completed: --phase is required');
   const artefacts = paths
-    ? `\n\n  Spec: ${stateRel(`${workUnit}/specification/${workUnit}/specification.md`)}\n  Plan: ${stateRel(`${workUnit}/planning/${workUnit}`)}/`
+    ? `\n\n  Spec: ${statePath(cwd, workUnit, 'specification', workUnit, 'specification.md')}\n  Plan: ${statePath(cwd, workUnit, 'planning', workUnit)}/`
     : '';
   // A derived phase has no completion ceremony — the record closed, the
   // session ends, and sibling records may still live — so its line says what
@@ -5030,16 +5030,16 @@ const SESSION_OPENINGS = {
  * @param {string} cwd @param {string} workUnit @param {string} topic
  */
 function doNowCount(cwd, workUnit, topic) {
-  const rel = stateRel(`.cache/${workUnit}/review/${topic}/actions.json`);
+  const file = statePath(cwd, '.cache', workUnit, 'review', topic, 'actions.json');
   let parsed;
   try {
-    parsed = JSON.parse(fs.readFileSync(path.join(cwd, rel), 'utf8'));
+    parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
-    throw new Error(`render step-opening: ${rel} is missing or not valid JSON — the do-now step follows the review synthesis`);
+    throw new Error(`render step-opening: ${file} is missing or not valid JSON — the do-now step follows the review synthesis`);
   }
   const actions = Array.isArray(parsed && parsed.actions) ? parsed.actions : [];
   const count = actions.filter((a) => a && a.route === 'do-now').length;
-  if (count === 0) throw new Error(`render step-opening: ${rel} holds no do-now action — the step opens only over work to apply`);
+  if (count === 0) throw new Error(`render step-opening: ${file} holds no do-now action — the step opens only over work to apply`);
   return count;
 }
 
@@ -6080,7 +6080,7 @@ function inboxContentSurface(cwd, args) {
     throw new Error(`render inbox-content: ${messageOf(err)}`);
   }
   return inboxContent(items.map((item) => {
-    const { lines, bodyStart } = sourceLines(fs.readFileSync(path.join(cwd, item.path), 'utf8'));
+    const { lines, bodyStart } = sourceLines(fs.readFileSync(item.path, 'utf8'));
     return { item, body: lines.slice(bodyStart).join('\n').replace(/^\n+/, '').trimEnd() };
   }));
 }
@@ -6762,8 +6762,8 @@ function legacySplitApply(p) {
   return result.ok ? legacySplitApplied(p.source, result) : legacySplitApplyFailed(p.source, result);
 }
 
-/** The theme list or the drafted plan. @param {'candidates'|'plan'} variant @param {Record<string, any>} p @returns {string} */
-function legacySplitThemes(variant, p) {
+/** The theme list or the drafted plan. @param {'candidates'|'plan'} variant @param {Record<string, any>} p @param {string} cwd @returns {string} */
+function legacySplitThemes(variant, p, cwd) {
   const fields = LEGACY_SPLIT_THEME_FIELDS[variant];
   if (variant === 'plan' && !isFilled(p.work_unit)) {
     throw new Error('render legacy-split-display: "work_unit" must be a non-empty string');
@@ -6794,7 +6794,7 @@ function legacySplitThemes(variant, p) {
     lines.push(treeList([
       `Summary: ${t.summary}`,
       `Content: ${t.paragraph_count} para(s) — "${t.content_preview}..."`,
-      `Cache: ${stateRel(`.cache/${p.work_unit}/legacy-split/${p.source}/${t.kebab_name}.md`)}`,
+      `Cache: ${statePath(cwd, '.cache', p.work_unit, 'legacy-split', p.source, `${t.kebab_name}.md`)}`,
     ], { indent: '   ' }));
     lines.push('');
   });
@@ -6802,10 +6802,10 @@ function legacySplitThemes(variant, p) {
   return section('DISPLAY: legacy split plan', CONTINUE_INSTRUCTION, lines.join('\n'));
 }
 
-/** @type {Record<string, (p: Record<string, any>) => string>} */
+/** @type {Record<string, (p: Record<string, any>, cwd: string) => string>} */
 const LEGACY_SPLIT_PAYLOAD_DISPLAYS = {
-  candidates: (p) => legacySplitThemes('candidates', p),
-  plan: (p) => legacySplitThemes('plan', p),
+  candidates: (p, cwd) => legacySplitThemes('candidates', p, cwd),
+  plan: (p, cwd) => legacySplitThemes('plan', p, cwd),
   errors: legacySplitErrors,
   apply: legacySplitApply,
 };
@@ -6822,7 +6822,7 @@ function legacySplitDisplaySurface(cwd, args) {
   if (!file) throw new Error('render legacy-split-display: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'legacy-split-display');
   if (!isFilled(p.source)) throw new Error('render legacy-split-display: "source" must be a non-empty string');
-  return LEGACY_SPLIT_PAYLOAD_DISPLAYS[variant](p);
+  return LEGACY_SPLIT_PAYLOAD_DISPLAYS[variant](p, cwd);
 }
 
 // ---------------------------------------------------------------------------
@@ -7093,16 +7093,15 @@ function knowledgeGateSurface(_cwd, { variant, provider, model }) {
  * @param {string} cwd @returns {string}
  */
 function knowledgeReadySurface(cwd) {
-  const file = knowledgeFiles(cwd).metadata;
-  const shown = path.relative(cwd, file);
+  const file = knowledgeFiles(stateRoot(cwd)).metadata;
   if (!fs.existsSync(file)) {
-    throw new Error(`render knowledge-ready: no ${shown} — this checkout has no knowledge store yet`);
+    throw new Error(`render knowledge-ready: no ${file} — this checkout has no knowledge store yet`);
   }
   let metadata;
   try {
     metadata = readMetadata(file);
   } catch (err) {
-    throw new Error(`render knowledge-ready: ${shown} is not valid JSON — ${messageOf(err)}`);
+    throw new Error(`render knowledge-ready: ${file} is not valid JSON — ${messageOf(err)}`);
   }
   return knowledgeReady(metadata);
 }

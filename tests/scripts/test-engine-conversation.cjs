@@ -33,8 +33,7 @@ let config; // this test's system config directory
 let pinned; // the suite's own, put back after
 
 function setup() {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-'));
-  fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
+  dir = harness.setupGitFixture('engine-conversation-');
   config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-config-'));
   pinned = process.env.WORKFLOWS_CONFIG_DIR;
   process.env.WORKFLOWS_CONFIG_DIR = config;
@@ -43,6 +42,22 @@ function setup() {
 function teardown() {
   process.env.WORKFLOWS_CONFIG_DIR = pinned;
   for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+
+/** Another workflows project, removed after `fn`. @param {(other: string) => void} fn */
+function inOtherProject(fn) {
+  const other = harness.setupGitFixture('engine-conversation-other-');
+  try {
+    fn(other);
+  } finally {
+    harness.cleanupFixture(other);
+  }
+}
+
+/** Both trees as clean as the fixture left them. */
+function clean() {
+  return harness.git(dir, ['status', '--porcelain', '--untracked-files=all']) === ''
+    && harness.stateGit(dir, ['status', '--porcelain', '--untracked-files=all', '--ignored']) === '';
 }
 
 /** A directory beside the project, removed after `fn`. @param {(elsewhere: string) => void} fn */
@@ -94,7 +109,19 @@ describe('the mark', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
     assert.ok(fs.existsSync(marker('sess-1')));
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows')), []);
+    assert.ok(clean(), 'nothing lands in the project or its state');
+  });
+
+  it('a call from a code worktree marks its conversation — it runs the workflows as the main checkout does', () => {
+    const worktree = path.join(path.dirname(dir), `${path.basename(dir)}-code`);
+    harness.git(dir, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
+    try {
+      harness.ok(worktree, ['session', 'repair'], { env: session('sess-1') });
+      assert.ok(fs.existsSync(marker('sess-1')));
+      assert.ok(!fs.existsSync(path.join(worktree, '.leeway')), 'no state folder conjured in the code worktree');
+    } finally {
+      fs.rmSync(worktree, { recursive: true, force: true });
+    }
   });
 
   it('with no WORKFLOWS_CONFIG_DIR — unset or empty — the folder sits in the home directory\'s `.config/workflows`', () => {
@@ -155,7 +182,7 @@ describe('the mark', () => {
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()).sort(), gateways.map((g) => `via-${g}`).sort());
   });
 
-  it('marks only inside a workflows project — an engine call or a gateway run where no `.workflows/` exists makes none', () => {
+  it('marks only inside a workflows project — an engine call or a gateway run where no `.leeway/` exists makes none', () => {
     inScratch((bare) => {
       harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
       spawnSync('node', [path.join(SKILLS, 'workflow-start', 'scripts/gateway.cjs')],
@@ -185,8 +212,7 @@ describe('one folder, found by the id from anywhere', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
     const subdirectory = path.join(dir, 'src', 'lib');
     fs.mkdirSync(subdirectory, { recursive: true });
-    inScratch((other) => {
-      fs.mkdirSync(path.join(other, '.workflows'));
+    inOtherProject((other) => {
       assert.deepStrictEqual(harness.ok(other, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/a/sess-1.jsonl' }) }),
         { ok: true, recorded: true });
       assert.strictEqual(transcriptOf('sess-1'), '/a/sess-1.jsonl');
@@ -201,8 +227,7 @@ describe('one folder, found by the id from anywhere', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
     const past = new Date(Date.now() - 60_000);
     fs.utimesSync(marker('sess-1'), past, past);
-    inScratch((other) => {
-      fs.mkdirSync(path.join(other, '.workflows'));
+    inOtherProject((other) => {
       harness.ok(other, ['session', 'repair'], { env: session('sess-1') });
     });
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);

@@ -302,7 +302,7 @@ function discoveryUnits(manifest, discoveryMap) {
 function topicState(cwd, manifest, name, row) {
   if (row) return discoveryLifecycleLabel(row.lifecycle, row.routing, row.research_state, row.mail_waiting, row.reconcile_pending, row.waits, row.promoted_to);
   const { lifecycle, research_state, reconcile_pending } = computeTopicLifecycle(manifest, name);
-  return discoveryLifecycleLabel(lifecycle, null, research_state, mailWaiting(mailQueued(cwd, manifest.name, name)), reconcile_pending);
+  return discoveryLifecycleLabel(lifecycle, null, research_state, mailWaiting(mailQueued(stateRoot(cwd), manifest.name, name)), reconcile_pending);
 }
 
 /**
@@ -407,9 +407,9 @@ function postponedTopics(manifest, discoveryMap, project) {
  * @returns {{gap_analysis: AnalysisCache}}
  */
 function buildAnalysisCaches(cwd, manifest) {
-  const workflowsDir = stateRoot(cwd);
+  const stateDir = stateRoot(cwd);
   return {
-    gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
+    gap_analysis: computeAnalysisCacheStatus(manifest, stateDir, 'gap-analysis'),
   };
 }
 

@@ -137,7 +137,7 @@ function inboxView() {
 // menu — or the empty display when nothing is archived.
 function archivedView() {
   const detail = discover(process.cwd());
-  const v = engine.project.archivedView(engine.detail.combinedInbox(detail.inbox.archived, { archived: true }));
+  const v = engine.project.archivedView(engine.detail.combinedInbox(detail.inbox.archived));
   return pickSnapshot(v, 'Archived');
 }
 
