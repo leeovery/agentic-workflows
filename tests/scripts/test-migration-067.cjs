@@ -21,7 +21,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/067-remove-plan-accept-setting.cjs');
 
 const KEY = 'showClearContextOnPlanAccept';
@@ -53,7 +53,7 @@ function commitSettings(content, root = dir) {
 
 describe('migration 067: remove the plan-mode setting from the project settings', () => {
   beforeEach(() => {
-    dir = setupGitFixture('migration-067-');
+    dir = initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-067-'))));
     updates = 0;
     skips = 0;
   });

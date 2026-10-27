@@ -59,6 +59,13 @@ describe('prose-test snapshots', { concurrency: POOL_SIZE }, () => {
   const pool = createVerifyPool();
   after(() => pool.close());
 
+  // The corpus went in #1522 and is rebuilt phase by phase from 29.11. Until
+  // then there are no snapshots to rebuild, and the ignore check below has no
+  // files to test.
+  it('holds no cases until the prose tests are rewritten at the end of the build', () => {
+    assert.deepStrictEqual(all.map((c) => c.id), []);
+  });
+
   // A snapshot holds world state at whatever path the engine wrote it, so an
   // ignore rule matching inside one keeps the file out of the commit: the
   // checkout that snapped it still has it on disk and verifies clean, and

@@ -27,7 +27,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/072-roadmap-kinds-and-notes.cjs');
 
 let dir, updates, skips;
@@ -68,7 +68,7 @@ function roadmap(roadmapItems) {
 
 describe('migration 072: every roadmap item has a kind, and its note lives on the roadmap', () => {
   beforeEach(() => {
-    dir = setupGitFixture('migration-072-');
+    dir = initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-072-'))));
     updates = 0;
     skips = 0;
   });
