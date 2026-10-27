@@ -29,13 +29,15 @@ committed.
 There is **no automated CI**. The gates run locally, and the convention
 is to run them before every commit rather than at the end of a branch.
 
-| Command | What it covers |
-| --- | --- |
-| `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter |
-| `npm run test:cli` | Shell contract suites: manifest field surface, inbox promotion, the `engine knowledge` surface |
-| `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` |
-| `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) |
-| `npm run test:mod` | Both gate mods' suites (`workflow-gates` and `workflow-gates-rows`) under `claude plugin test` — owed for any change under `skills/workflow-gates*/` |
+| Command | What it covers | Layers |
+| --- | --- | --- |
+| `npm test` | Node suites: engine, gateways, knowledge, migrations, pipeline simulation, prose-test perimeter | unit, verb, git, process, simulation, migration (047 on), prose |
+| `npm run test:cli` | Shell contract suites: manifest field surface, inbox promotion, the `engine knowledge` surface | shell, closing into verb |
+| `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
+| `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |
+| `npm run test:mod` | Both gate mods' suites (`workflow-gates` and `workflow-gates-rows`) under `claude plugin test` — owed for any change under `skills/workflow-gates*/` | the mods' own |
+
+What each layer holds, and how a test in it is written, is `tests/README.md`.
 
 The mods need Claude Code 2.1.287 or newer; a change that relies on a newer Claude Code raises that floor in the same PR.
 
