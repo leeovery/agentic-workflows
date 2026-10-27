@@ -1,6 +1,6 @@
 # Review record: The workflows, reshaped — the specification
 
-As of 2026-10-26: 662 of 2704 lines approved explicitly, 2042 assessed by Claude and not ticked, 0 with an open conversation, 0 passed without review.
+As of 2026-10-27: 665 of 2707 lines approved explicitly, 2042 assessed by Claude and not ticked, 0 with an open conversation, 0 passed without review.
 
 A line ticked is the person's explicit approval. A line Claude assessed is Claude's approval, from a fresh pass, which the person let stand. A line not reviewed is carried through implicitly: it stands, but nobody has said yes to it.
 
@@ -8,7 +8,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 
 - 1.1.1 – 4.1.1
 - 4.1.3
-- 4.1.5 – 4.1.8
+- 4.1.5 – 4.1.9
 - 4.3.1 – 4.4.1
 - 4.4.3 – 4.4.5
 - 4.4.6 – 4.4.7
@@ -28,8 +28,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 5.S2 – 5.S6
 - 5.S8 – 6.1.20
 - 6.2.2
-- 6.2.4 – 6.3.14
-- 6.4.1 – 6.6.11
+- 6.2.4 – 6.6.11
 - 6.6.13 – 6.S2
 - 6.S7 – 6.S32
 - 7.1.1 – 7.S19
@@ -76,6 +75,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - note 1 after 20
 - 20.2.2
 - 21.5.16
+- 21.5.19
 - 21.6.2
 - 22.5.12
 - 24.1.1 – 24.1.2
@@ -120,7 +120,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.2.1: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.2.2: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.4.2: a rename to Leeway's names, by your ruling of 26 Oct
-- screen 1 after 4.4.5: a rename to Leeway's names, by your ruling of 26 Oct
+- screen 1 after 4.4.5: house y/yes rule; the row now matches 4.4.5's wording
 - screen 1 after 4.4.7: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.7.8: your ruling of 26 Oct
 - 4.9.2: a rename to Leeway's names, by your ruling of 26 Oct
@@ -131,7 +131,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.S8: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.S9: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.S11: a rename to Leeway's names, by your ruling of 26 Oct
-- 4.S12: a rename to Leeway's names, by your ruling of 26 Oct
+- 4.S12: follows 4.5.2's new wording; stands or falls with it
 - 4.S14: matches 4.7.2 and 4.7.8
 - 4.S15: matches 4.7.2 and 4.7.8
 - 4.S16: matches 4.7.4 and 4.7.8
@@ -143,13 +143,14 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.S25: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.S27: a rename to Leeway's names, by your ruling of 26 Oct
 - 4.S36: matches 4.7.8
+- 4.S37: proves 4.1.9 as written; stands or falls with it
+- 4.S38: proves 4.5.2's read of the remote's branches
 - 5.7.1: a rename to Leeway's names, by your ruling of 26 Oct
 - 5.8.12: a rename to Leeway's names, by your ruling of 26 Oct
 - 5.S1: a rename to Leeway's names, by your ruling of 26 Oct
 - 5.S7: a rename to Leeway's names, by your ruling of 26 Oct
 - 6.2.1: a rename to Leeway's names, by your ruling of 26 Oct
 - 6.2.3: a rename to Leeway's names, by your ruling of 26 Oct
-- 6.3.15: a rename to Leeway's names, by your ruling of 26 Oct
 - 6.6.12: a rename to Leeway's names, by your ruling of 26 Oct
 - 6.S3: matches 6.1 without the state commands
 - 6.S4: a rename to Leeway's names, by your ruling of 26 Oct
@@ -1687,7 +1688,6 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 21.5.15: follows from R21: a quick-fix keeps only its summary
 - 21.5.17: follows from 4.10.3, which you ruled on 16 Oct
 - 21.5.18: restates your 25 Oct ruling: Tick's store moves unchanged
-- 21.5.19: follows from your ruling of 26 Oct: today's other names move with the migration
 - 21.6.1: R37, as the record puts it
 - 21.6.3: restates your ruling of 17 Oct
 - 21.6.4: R37: spec-stage decisions become entries
@@ -1718,7 +1718,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 21.8.12: builder's call: nothing you'd see
 - 21.8.13: builder's call: none of your projects has such a plan
 - 21.9.1: R37: index the records, then commit on your yes
-- 21.9.2: plan 6.3's two commits; Tick's store per 21.5.18
+- 21.9.2: follows from 6.3.15 and 21.5.19: one commit on the code branch
 - 21.9.3: R38, as the record puts it
 - 21.9.4: screen: today's migration review, kept
 - 21.9.5: your ruling of 26 Oct: the state branch checked out at .leeway/
@@ -1798,7 +1798,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 21.S48: matches 21.10.13
 - 21.S49: matches 21.5.9, 21.5.16 and 21.5.17
 - 21.S50: matches 21.11.2 and 8.12.11
-- 21.S51: matches 21.5.19
+- 21.S51: matches 21.5.19 as now written
 - 22.1.1: today's boot, kept as plan 9.2 says
 - 22.1.2: your ruling of 26 Oct
 - 22.1.3: a rename to Leeway's names, by your ruling of 26 Oct
@@ -2052,7 +2052,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 27.1.1: restates your word of 19 Oct
 - 27.2.1: restates your ruling of 18 Oct
 - 27.2.2: restates what you parked on 19 Oct
-- 27.2.3: restates what you parked on 13 Oct
+- 27.2.3: restates your ruling of 26 Oct: after the release
 - 27.2.4: a rename to Leeway's names, by your ruling of 26 Oct
 - 27.2.5: restates your ruling of 16 Oct
 - 27.2.6: plan 12.5 and R22, unchanged
@@ -2082,7 +2082,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 29.2.6: follows from 1.6.4: weigh the spec before building
 - 29.2.7: checked: covers every section its scenarios cite
 - 29.2.8: the first part needs nothing before it
-- 29.2.9: the cut's list with 4.S36 placed
+- 29.2.9: adds 4.S38; the count of 25 checks out
 - 29.3.4: a rename to Leeway's names, by your ruling of 26 Oct
 - 29.3.5: checked: covers every section its scenarios cite
 - 29.3.6: the ledger lives on the state branch, so needs 29.2
@@ -2153,7 +2153,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 29.20.5: checked: 13 listed, count right
 - 29.21.1: restates your ruling of 18 Oct, as 27.2.1 says
 - 29.S1: matches 29.1.7 and 29.1.8
-- 29.S2: the total, 849, with 21.S51
+- 29.S2: 851 checks out: every scenario of §1 to §28 listed once
 - 29.S3: matches 29.1.10; 29.8.5 and 29.11.7 currently break it
 - 29.S4: matches 29.2.1
 - 29.S5: matches 29.1.8
@@ -2181,7 +2181,6 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 5.S7
 - 6.2.1
 - 6.2.3
-- 6.3.15
 - 6.6.12
 - 6.S3 – 6.S6
 - 6.S33
