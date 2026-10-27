@@ -19,7 +19,9 @@
 //   (5.5.1), and only a question moves or merges. An entry is replaced or
 //   held only while current — a replacement names one entry, its siblings
 //   untouched (5.3.13) — a question moves or merges only while current, and
-//   a merge goes into a current decision.
+//   a merge goes into a current decision — current by the one rule every
+//   read decides by (ledger-fold.cjs), which asks that its topic and unit be
+//   live too.
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
 //   (5.6.1) or held. Before the spec, an entry of the unit is written on only
@@ -49,19 +51,20 @@
 //   carries too.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { messageOf } = require('../kernel/call.cjs');
-const { isObject, workUnitManifestPath, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { appendEntry } = require('./ledger.cjs');
+const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
+const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
+/** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
 
 /**
@@ -101,7 +104,7 @@ const { commitStateTail } = require('./commit.cjs');
  *   flags: Flag[],
  *   fromTopic: boolean,
  *   checkGiven: (at: Address, given: Map<string, string[]>) => void,
- *   checkLinked: (linked: Linked, facts: Map<string, IdFacts>) => void,
+ *   checkLinked: (linked: Linked, read: Folded) => void,
  * }} Write
  */
 
@@ -118,9 +121,6 @@ const { commitStateTail } = require('./commit.cjs');
  * that kind's shape.
  * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>}} Request
  */
-
-/** The phases a topic exists in: those before the spec (4.11.2). */
-const TOPIC_PHASES = Object.freeze(['discovery', 'research', 'experiment', 'discussion', 'investigation']);
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
 function names(is, test) {
@@ -271,17 +271,6 @@ function phasesOf(manifest) {
   return ['discovery', ...(Object.hasOwn(WORK_TYPE_PIPELINES, workType) ? WORK_TYPE_PIPELINES[workType] : [])];
 }
 
-/** Whether the unit's manifest holds an item named `topic` in `phase`. @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
-function hasItem(manifest, phase, topic) {
-  const items = manifest.phases?.[phase]?.items;
-  return isObject(items) && Object.hasOwn(items, topic) && isObject(items[topic]);
-}
-
-/** Whether the unit has a topic of that name. @param {Address} at @param {string} topic */
-function hasTopic(at, topic) {
-  return TOPIC_PHASES.some((phase) => hasItem(at.manifest, phase, topic));
-}
-
 /**
  * Where a write is made, read from its dot-path. Refuses a path of another
  * shape, a phase that is none, a unit that does not exist, a phase its work
@@ -298,8 +287,8 @@ function addressOf(cwd, verb, dotpath) {
   const [unit, phase, topic = null] = parts;
   if (!VALID_PHASES.includes(phase)) throw new Error(`ledger ${verb}: "${phase}" is no phase — one of ${VALID_PHASES.join(', ')}`);
   const root = stateRoot(cwd);
-  if (!fs.existsSync(workUnitManifestPath(root, unit))) throw new Error(`ledger ${verb}: there is no work unit "${unit}"`);
-  const manifest = readWorkUnitManifest(root, unit);
+  const manifest = manifestOf(root, unit);
+  if (manifest === null) throw new Error(`ledger ${verb}: there is no work unit "${unit}"`);
   const phases = phasesOf(manifest);
   if (!phases.includes(phase)) throw new Error(`ledger ${verb}: ${unit} has no ${phase} phase — its work type, ${manifest.work_type}, has ${phases.join(', ')}`);
   if (topic !== null && !TOPIC_PHASES.includes(phase)) {
@@ -342,7 +331,7 @@ function checkCauseGiven(_at, given) {
 function checkDestination(at, given) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   if (to === at.topic) throw new Error(`ledger move: --to names ${to}, the topic it moves from — a question moves to another topic`);
-  if (!hasTopic(at, to)) throw new Error(`ledger move: ${at.unit} has no topic "${to}" to move the question to`);
+  if (!hasTopic(at.manifest, to)) throw new Error(`ledger move: ${at.unit} has no topic "${to}" to move the question to`);
 }
 
 /**
@@ -371,18 +360,6 @@ function placeOf(facts) {
   return facts.topic === null ? 'at the unit\'s level' : `on ${facts.topic}`;
 }
 
-/** The current entry of the chain `id` starts: the last replacement down it. @param {string} id @param {Map<string, IdFacts>} facts @returns {string} */
-function currentOf(id, facts) {
-  const by = /** @type {IdFacts} */ (facts.get(id)).replaced_by;
-  return by === null ? id : currentOf(by, facts);
-}
-
-/** The entries the replacement `id` replaced: the one it names, then each that one replaced, back down its chain. @param {string} id @param {Map<string, IdFacts>} facts @returns {string[]} */
-function replacedChain(id, facts) {
-  const replaced = /** @type {IdFacts} */ (facts.get(id)).replaces;
-  return replaced === null ? [] : [replaced, ...replacedChain(replaced, facts)];
-}
-
 /**
  * Why a link whose entries are `owner`'s may not name `named` from `at`, or
  * null where it may: another unit's, for a link of the unit's own; before
@@ -398,14 +375,31 @@ function strayed(owner, at, named) {
 }
 
 /**
- * The id a link's prefix names, checked against what the link must name: an
- * entry already replaced is refused for a link that must be current, naming
- * the current one, and an entry the link may not name from where the write
- * is made is refused, saying where it stands.
- * @param {string} verb @param {Address} at @param {Flag} flag @param {string} prefix @param {Map<string, IdFacts>} facts
+ * Why an entry that is not current cannot be named where a current one must
+ * be: what replaced it or merged it away as a duplicate, and where its chain
+ * leads now; or why its topic or unit is not live.
+ * @param {Folded} read @param {string} id @param {import('./ledger-fold.cjs').NotCurrent} why
+ * @param {(id: string) => string} short
  * @returns {string}
  */
-function resolveLink(verb, at, flag, prefix, facts) {
+function staleness(read, id, why, short) {
+  if ('dead' in why) return `which is not current: ${why.dead}`;
+  const currents = currentsOf(read, id).map(short);
+  const now = currents.length === 0 ? 'nothing it leads to is current' : `the current one${currents.length > 1 ? 's are' : ' is'} ${currents.join(', ')}`;
+  if ('replaced_by' in why) return `which ${short(why.replaced_by)} replaced — ${now}`;
+  return `which ${short(why.merged_by)} merged as a duplicate — ${now}`;
+}
+
+/**
+ * The id a link's prefix names, checked against what the link must name: an
+ * entry not current is refused for a link that must be current, saying why
+ * and naming the current one, and an entry the link may not name from where
+ * the write is made is refused, saying where it stands.
+ * @param {string} verb @param {Address} at @param {Flag} flag @param {string} prefix @param {Folded} read
+ * @returns {string}
+ */
+function resolveLink(verb, at, flag, prefix, read) {
+  const { facts } = read;
   const where = `ledger ${verb} ${flagName(flag)}`;
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   let id;
@@ -417,9 +411,8 @@ function resolveLink(verb, at, flag, prefix, facts) {
   const named = /** @type {IdFacts} */ (facts.get(id));
   const what = /** @type {Names} */ (flag.names);
   if (!what.test(named)) throw new Error(`${where} names ${short(id)}, ${described(named)} — it must name ${what.is}`);
-  if (flag.current && named.replaced_by !== null) {
-    throw new Error(`${where} names ${short(id)}, which ${short(named.replaced_by)} replaced — the current one is ${short(currentOf(id, facts))}`);
-  }
+  const stale = flag.current ? notCurrent(read, id) : null;
+  if (stale !== null) throw new Error(`${where} names ${short(id)}, ${staleness(read, id, stale, short)}`);
   const why = strayed(flag.owner, at, named);
   if (why !== null) throw new Error(`${where} names ${short(id)}, ${described(named)} ${why}`);
   return id;
@@ -428,16 +421,16 @@ function resolveLink(verb, at, flag, prefix, facts) {
 /**
  * Each flag's field as the event holds it: a link's prefixes resolved to
  * ids and checked, and a value as given.
- * @param {Request} request @param {Map<string, IdFacts>} facts
+ * @param {Request} request @param {Folded} read
  * @returns {Linked}
  */
-function linkFields(request, facts) {
+function linkFields(request, read) {
   const { verb, write, at, given } = request;
   /** @type {Linked} */
   const fields = {};
   for (const flag of write.flags) {
     const values = /** @type {string[]} */ (given.get(flag.field));
-    const resolved = flag.names === null ? values : [...new Set(values.map((prefix) => resolveLink(verb, at, flag, prefix, facts)))];
+    const resolved = flag.names === null ? values : [...new Set(values.map((prefix) => resolveLink(verb, at, flag, prefix, read)))];
     fields[flag.field] = flag.many ? resolved : resolved[0] ?? null;
   }
   return fields;
@@ -446,9 +439,9 @@ function linkFields(request, facts) {
 /**
  * Refuse a replacement's cause that is what it replaces, or that is not what
  * its reason needs (5.3.8).
- * @param {Linked} linked @param {Map<string, IdFacts>} facts
+ * @param {Linked} linked @param {Folded} read
  */
-function checkCause(linked, facts) {
+function checkCause(linked, { facts }) {
   if (linked.cause === null) return;
   const [cause, replaces, reason] = /** @type {string[]} */ ([linked.cause, linked.replaces, linked.reason]);
   const where = `ledger replace --cause names ${shortId(cause, facts.keys())}`;
@@ -463,11 +456,12 @@ function checkCause(linked, facts) {
 /**
  * Refuse a confirmation of an entry that relies on nothing the replacement
  * replaced, down its chain (5.6.10).
- * @param {Linked} linked @param {Map<string, IdFacts>} facts
+ * @param {Linked} linked @param {Folded} read
  */
-function checkHeld(linked, facts) {
+function checkHeld(linked, read) {
+  const { facts } = read;
   const [entry, after] = /** @type {string[]} */ ([linked.entry, linked.after]);
-  const chain = replacedChain(after, facts);
+  const chain = replacedChain(read, after);
   if (/** @type {IdFacts} */ (facts.get(entry)).relies_on.some((id) => chain.includes(id))) return;
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} replaced — it holds an entry relying on what the replacement replaced, or on an earlier entry of its chain`);
@@ -476,9 +470,9 @@ function checkHeld(linked, facts) {
 /**
  * Refuse a merge's duplicate that is the entry it goes into, or that answers
  * another question than the one merged (5.5.4, 5.5.5).
- * @param {Linked} linked @param {Map<string, IdFacts>} facts
+ * @param {Linked} linked @param {Folded} read
  */
-function checkDuplicate(linked, facts) {
+function checkDuplicate(linked, { facts }) {
   if (linked.duplicate === null) return;
   const [question, into, duplicate] = /** @type {string[]} */ ([linked.question, linked.into, linked.duplicate]);
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
@@ -505,16 +499,25 @@ function followed(write, linked, facts) {
 }
 
 /**
+ * The ledger folded, read against liveness as the manifests say it now.
+ * @param {Address} at @param {string[]} warnings
+ * @returns {Folded}
+ */
+function readNow(at, warnings) {
+  return { facts: foldLedger(at.root, ID_FACTS, warnings), live: liveness(at.root) };
+}
+
+/**
  * The entry a replacement replaces, read from the ledger before the lock:
  * its facts, its link checked as the lock checks it again.
  * @param {string} verb @param {Address} at @param {Map<string, string[]>} given @param {string[]} warnings
  * @returns {IdFacts}
  */
 function replacedEntry(verb, at, given, warnings) {
-  const facts = foldLedger(at.root, ID_FACTS, warnings);
+  const read = readNow(at, warnings);
   const flag = /** @type {Flag} */ (WRITES[verb].flags.find((f) => f.field === 'replaces'));
-  const id = resolveLink(verb, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], facts);
-  return /** @type {IdFacts} */ (facts.get(id));
+  const id = resolveLink(verb, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], read);
+  return /** @type {IdFacts} */ (read.facts.get(id));
 }
 
 /**
@@ -566,7 +569,6 @@ function contentFields(verb, write, given, replaced) {
  * @returns {Request}
  */
 function requestOf(cwd, verb, args, stdin, warnings) {
-  if (!Object.hasOwn(WRITES, verb)) throw new Error(`Usage: engine ledger <${Object.keys(WRITES).join('|')}> …\n${LEDGER_USAGE}`);
   const write = WRITES[verb];
   const { dotpath, given } = readArgs(verb, args);
   const at = addressOf(cwd, verb, dotpath);
@@ -590,18 +592,18 @@ function requestOf(cwd, verb, args, stdin, warnings) {
 
 /**
  * The event a request appends, its links resolved and checked against the
- * ledger's facts: its tags, its content, its links, what follows from them,
+ * folded ledger: its tags, its content, its links, what follows from them,
  * and what the engine gives.
- * @param {Request} request @param {Map<string, IdFacts>} facts
+ * @param {Request} request @param {Folded} read
  * @returns {Record<string, unknown>}
  */
-function eventOf(request, facts) {
+function eventOf(request, read) {
   const { write, at, session, kind, content } = request;
-  const linked = linkFields(request, facts);
-  write.checkLinked(linked, facts);
+  const linked = linkFields(request, read);
+  write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, facts), ...(kind === 'decision' ? { unchecked: true } : {}),
+    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked: true } : {}),
   };
 }
 
@@ -614,23 +616,11 @@ function eventOf(request, facts) {
  */
 function land(cwd, request, warnings) {
   const { at, write } = request;
-  const facts = foldLedger(at.root, ID_FACTS, warnings);
-  const entry = appendEntry(at.root, eventOf(request, facts), warnings);
+  const read = readNow(at, warnings);
+  const entry = appendEntry(at.root, eventOf(request, read), warnings);
   const id = /** @type {string} */ (entry.id);
   const message = `ledger(${at.unit}): ${write.event} ${id}${at.topic === null ? '' : ` in ${at.topic}`}`;
-  return { entry, id: shortId(id, facts.keys()), outcome: commitStateTail(cwd, LEDGER, message, warnings) };
-}
-
-/**
- * A refusal carrying, beside its own payload, what a landing finished on the
- * way said.
- * @param {unknown} err @param {string[]} warnings
- * @returns {unknown}
- */
-function carrying(err, warnings) {
-  if (warnings.length === 0 || !(err instanceof Error)) return err;
-  const { payload } = /** @type {Error & {payload?: object}} */ (err);
-  return Object.assign(err, { payload: { ...payload, warnings } });
+  return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, message, warnings) };
 }
 
 /**
@@ -656,4 +646,4 @@ function writeLedger(cwd, verb, args, stdin) {
   }
 }
 
-module.exports = { LEDGER_USAGE, writeLedger };
+module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger };

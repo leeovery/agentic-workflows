@@ -1,0 +1,84 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Domain ring: the work units and topics the ledger's entries are tagged
+// with, as today's manifests say them. The ledger reads a manifest here
+// alone, so a later phase that reshapes the manifests changes the ledger in
+// this one place.
+//
+// - A topic exists only before the spec (4.11.2): it is an item of its unit
+//   in one of the phases before it.
+// - Liveness (5.8.17): an entry is current only while its topic and unit are
+//   live. A unit is live while its manifest is there and its status is not
+//   cancelled. A topic is live while its lifecycle reads neither cancelled
+//   nor postponed: the map row's own mark, which a cancel or a postpone sets
+//   and a reactivate, or the pull back into its own epic, clears. An entry
+//   made at the unit's level carries no topic, and its unit alone decides.
+// ---------------------------------------------------------------------------
+
+const fs = require('fs');
+const { isObject, workUnitManifestPath, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const { computeTopicLifecycle } = require('./derivations.cjs');
+
+/** The phases a topic exists in: those before the spec (4.11.2). */
+const TOPIC_PHASES = Object.freeze(['discovery', 'research', 'experiment', 'discussion', 'investigation']);
+
+/** The topic lifecycles that are not live. */
+const SET_ASIDE = Object.freeze(['cancelled', 'postponed']);
+
+/**
+ * Whether a unit's manifest holds an item named `topic` in `phase`.
+ * @param {Record<string, any>} manifest @param {string} phase @param {string} topic
+ */
+function hasItem(manifest, phase, topic) {
+  const items = manifest.phases?.[phase]?.items;
+  return isObject(items) && Object.hasOwn(items, topic) && isObject(items[topic]);
+}
+
+/** Whether a unit's manifest holds a topic of that name. @param {Record<string, any>} manifest @param {string} topic */
+function hasTopic(manifest, topic) {
+  return TOPIC_PHASES.some((phase) => hasItem(manifest, phase, topic));
+}
+
+/** A unit's manifest, or null where the unit has none. @param {string} root @param {string} unit @returns {Record<string, any>|null} */
+function manifestOf(root, unit) {
+  return fs.existsSync(workUnitManifestPath(root, unit)) ? readWorkUnitManifest(root, unit) : null;
+}
+
+/**
+ * Why an entry of `unit` on `topic` — null at the unit's level — is not
+ * live, or null where it is.
+ * @param {string} unit @param {string|null} topic @param {Record<string, any>|null} manifest the unit's
+ * @returns {string|null}
+ */
+function deadReason(unit, topic, manifest) {
+  if (manifest === null) return `there is no work unit "${unit}"`;
+  if (manifest.status === 'cancelled') return `${unit} is cancelled`;
+  if (topic === null) return null;
+  const { lifecycle } = computeTopicLifecycle(manifest, topic);
+  return SET_ASIDE.includes(lifecycle) ? `its topic, ${topic}, is ${lifecycle}` : null;
+}
+
+/**
+ * Liveness as the project's manifests say it now (5.8.17): a reader of why
+ * an entry of a unit and topic is not live — null where it is — each
+ * manifest read once, however many entries ask.
+ * @param {string} root the project's state root
+ * @returns {(unit: string, topic: string|null) => string|null}
+ */
+function liveness(root) {
+  /** @type {Map<string, Record<string, any>|null>} */
+  const manifests = new Map();
+  /** @type {Map<string, string|null>} */
+  const reasons = new Map();
+  return (unit, topic) => {
+    const key = `${unit}\0${topic ?? ''}`;
+    if (!reasons.has(key)) {
+      if (!manifests.has(unit)) manifests.set(unit, manifestOf(root, unit));
+      reasons.set(key, deadReason(unit, topic, /** @type {Record<string, any>|null} */ (manifests.get(unit))));
+    }
+    return /** @type {string|null} */ (reasons.get(key));
+  };
+}
+
+module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness };

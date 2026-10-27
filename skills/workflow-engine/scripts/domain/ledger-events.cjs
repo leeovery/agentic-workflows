@@ -51,7 +51,11 @@ const { isId } = require('./ledger-ids.cjs');
 
 const LEDGER = '.ledger.jsonl';
 
-/** What a field holds, said for a refusal, and the test of it. @typedef {{is: string, test: (value: unknown) => boolean}} Type */
+/**
+ * What a field holds, said for a refusal, and the test of it; and for a
+ * field that names entries, whether it names one or a list.
+ * @typedef {{is: string, test: (value: unknown) => boolean, names?: 'one'|'many'}} Type
+ */
 
 /**
  * A field of an event: its name and type, and, for a field a release after
@@ -70,7 +74,7 @@ function type(is, test) {
 }
 
 const TEXT = type('non-empty text', (v) => typeof v === 'string' && v !== '');
-const ID = type('an entry id', isId);
+const ID = { ...type('an entry id', isId), names: /** @type {const} */ ('one') };
 const FLAG = type('true or false', (v) => typeof v === 'boolean');
 const TIME = type('a UTC time', (v) => typeof v === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(v) && !Number.isNaN(Date.parse(v)));
 
@@ -81,12 +85,12 @@ function oneOf(...values) {
 
 /** @param {Type} item @returns {Type} */
 function nullable(item) {
-  return type(`${item.is}, or null`, (v) => v === null || item.test(v));
+  return { ...type(`${item.is}, or null`, (v) => v === null || item.test(v)), ...(item.names === undefined ? {} : { names: item.names }) };
 }
 
 /** @param {Type} item @returns {Type} */
 function listOf(item) {
-  return type(`a list of ${item.is}`, (v) => Array.isArray(v) && v.every(item.test));
+  return { ...type(`a list of ${item.is}`, (v) => Array.isArray(v) && v.every(item.test)), ...(item.names === undefined ? {} : { names: 'many' }) };
 }
 
 /** @param {string} name @param {Type} fieldType @returns {Field} */
@@ -246,6 +250,16 @@ function fieldsOf(value, schema) {
 }
 
 /**
+ * The fields of `event`, an event of the current shape, that name entries,
+ * in its line's order: its id, and each link.
+ * @param {Record<string, unknown>} event
+ * @returns {Field[]}
+ */
+function linkFields(event) {
+  return fieldsOf(event, SCHEMA.events[/** @type {string} */ (event.event)]).filter((f) => f.type.names !== undefined);
+}
+
+/**
  * `value` as an event of the shape its version names: every field that
  * version holds, in the schema's order, and each field a later version added
  * at its default. Refuses anything else, saying why; and a version above the
@@ -304,5 +318,5 @@ function parseEntry(line, number, schema = SCHEMA) {
 }
 
 module.exports = {
-  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, LedgerLineError, LedgerNewer, entryKind, eventFields, validEvent, parseEntry,
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, LedgerLineError, LedgerNewer, entryKind, eventFields, linkFields, validEvent, parseEntry,
 };

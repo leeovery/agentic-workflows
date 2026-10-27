@@ -47,6 +47,8 @@ const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/script
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
+const { shortIds } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-ids.cjs'));
+const { liveness } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-units.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -143,8 +145,10 @@ function auditState(dir, label) {
 
   // The ledger reads whole: it starts byte for byte with the one the state
   // branch last committed, and every line is an event of its version's shape.
+  // Its projections show what is current in it.
   if (fs.existsSync(statePath(dir, LEDGER))) {
     assert.doesNotThrow(() => [...readLedger(statePath(dir), [])], ctx('the ledger does not read'));
+    auditLedger(dir, ctx);
   }
 
   for (const wu of listWorkUnits(dir)) {
@@ -260,6 +264,50 @@ function auditState(dir, label) {
       auditRoutes(dir, view().keys, `${label} — ${name} view`);
     }
   }
+}
+
+// The ledger's projections, held to the events themselves: an entry is
+// current while no replacement names it, no merge took it as a duplicate,
+// and its unit and topic — a question's, where it was last moved — are live
+// (5.8.17). Every unit's record shows its current entries once each and no
+// other, as does every topic's of its own; every topic's map holds a row for
+// each current question standing on it; the product record holds the
+// current entries marked product-wide.
+/** @param {string} dir @param {(msg: string) => string} ctx */
+function auditLedger(dir, ctx) {
+  const root = statePath(dir);
+  const events = [...readLedger(root, [])];
+  const shorts = shortIds(events.map((e) => e.id));
+  const live = liveness(root);
+  const gone = new Set(events.flatMap((e) => (e.event === 'replaced' ? [e.replaces] : e.event === 'merged' && e.duplicate !== null ? [e.duplicate] : [])));
+  const standsOn = new Map(events.map((e) => [e.id, e.topic]));
+  for (const e of events) if (e.event === 'moved') standsOn.set(e.question, e.to);
+  const current = events
+    .filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event) && !gone.has(e.id) && live(e.unit, standsOn.get(e.id)) === null)
+    .map((e) => ({ id: shorts.get(e.id), unit: e.unit, topic: standsOn.get(e.id), question: e.event === 'asked' || e.of === 'question', productWide: e.product_wide === true }));
+  /** @param {(e: typeof current[number]) => boolean} pick */
+  const ids = (pick) => current.filter(pick).map((e) => e.id).sort();
+  /** @param {string[]} args */
+  const ledger = (args) => {
+    const res = engine.run(['ledger', ...args], { cwd: dir });
+    assert.strictEqual(res.code, 0, ctx(`ledger ${args.join(' ')} does not read: ${res.stderr}`));
+    return JSON.parse(res.stdout);
+  };
+  /** @param {{questions: {id: string}[], findings: {id: string}[], decisions: {id: string}[]}} record */
+  const shown = (record) => [...record.questions, ...record.findings, ...record.decisions].map((e) => e.id).sort();
+  for (const unit of new Set(current.map((e) => e.unit))) {
+    assert.deepStrictEqual(shown(ledger(['record', unit])), ids((e) => e.unit === unit), ctx(`${unit}'s record does not show its current entries once each`));
+    for (const topic of new Set(current.filter((e) => e.unit === unit && e.topic !== null).map((e) => /** @type {string} */ (e.topic)))) {
+      assert.deepStrictEqual(shown(ledger(['record', unit, topic])), ids((e) => e.unit === unit && e.topic === topic),
+        ctx(`${unit}.${topic}'s record does not show its current entries once each`));
+      const standing = ledger(['map', unit, topic]).questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'moved-away');
+      assert.deepStrictEqual(standing.map((/** @type {{id: string}} */ row) => row.id).sort(), ids((e) => e.unit === unit && e.topic === topic && e.question),
+        ctx(`${unit}.${topic}'s map does not hold a row for each current question standing on it`));
+    }
+  }
+  const product = ledger(['product']);
+  assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => e.id).sort(), ids((e) => e.productWide),
+    ctx('the product record does not hold the current entries marked product-wide'));
 }
 
 // The skills a menu's route reaches in place: another menu, or help.
@@ -3605,7 +3653,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch', () => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record', () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -3621,16 +3669,16 @@ describe('pipeline simulation', () => {
     };
 
     const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
-    const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike' });
+    const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike', product_wide: true });
     const decision = ledger(['decide', note, '--answers', question, '--relies-on', finding], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
     const relying = ledger(['ask', note, '--relies-on', decision], { ...made, text: 'Does a floating panel take focus?' });
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
     sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ replaced/, null, JSON.stringify(made));
-    ledger(['hold', note, '--entry', relying, '--after', replacement], made);
+    const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
-    ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
-    ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
-    ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
+    const moved = ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
+    const merged = ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
+    const review = ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
     sim.refuses(['ledger', 'decide', note], /^ledger decide needs --answers <id>/, null, JSON.stringify({ ...made, text: 'Unanchored.', why: 'No question.' }));
     sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /the current one is/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
 
@@ -3642,6 +3690,25 @@ describe('pipeline simulation', () => {
       ['asked', null, 'sim-session'],
     ]);
     assert.strictEqual(stateGit(sim.dir, ['show', `HEAD:${LEDGER}`]), fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8'));
+
+    /** @param {{id: string}[]} shown */
+    const ids = (shown) => shown.map((e) => e.id);
+    const record = sim.run(['ledger', 'record', wu, 'note-window']);
+    assert.deepStrictEqual([ids(record.questions), ids(record.findings), ids(record.decisions)], [[question, relying], [finding], [replacement]]);
+    assert.deepStrictEqual([ids(record.decisions[0].replaced), ids(record.questions[1].holds), ids(record.moved), record.moved[0].to], [[decision], [held], [moved], 'space-homing']);
+    const homing = sim.run(['ledger', 'map', wu, 'space-homing']);
+    assert.deepStrictEqual(homing.questions.map((/** @type {Record<string, any>} */ q) => [q.id, q.stands, q.moved_from, ids(q.answers)]), [[moving, 'merged', 'note-window', [replacement]]]);
+    const there = sim.run(['ledger', 'record', wu, 'space-homing']);
+    assert.deepStrictEqual([ids(there.merged), ids(there.other_topics)], [[merged], [replacement]]);
+    const unit = sim.run(['ledger', 'record', wu]);
+    assert.deepStrictEqual(ids(unit.questions), [question, relying, moving, review]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'product']).findings), [finding]);
+
+    sim.run(['topic', 'cancel', wu, 'discovery', 'note-window']);
+    assert.deepStrictEqual(sim.run(['ledger', 'map', wu, 'space-homing']).questions[0].answers, [], 'a cancelled topic\'s entry answered a question');
+    assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
+    assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {

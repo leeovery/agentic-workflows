@@ -16,7 +16,9 @@
 // - The ledger is read a line at a time, never whole and never through a
 //   pipe (kernel/file-stream), each line validated against the shape its
 //   version names, a field a later version added taking its default
-//   (ledger-events). A line a newer release wrote stops the engine.
+//   (ledger-events). A line a newer release wrote stops the engine. A read
+//   that shows entries keeps where each line sits and reads the ones it
+//   shows again, from the file it opened.
 // - An entry is appended under the writer lock, its id, version and time
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
@@ -29,7 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
-const { fileLines, endsWithNewline } = require('../kernel/file-stream.cjs');
+const { fileLines, fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
 const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
@@ -116,6 +118,61 @@ function* readLedger(root, notes) {
   for (const line of fileLines(file)) yield entryAt(root, line, ++number);
 }
 
+/** Where an entry's line sits: its number, from 1, and its span. @typedef {{number: number} & import('../kernel/file-stream.cjs').LineSpan} EntryPlace */
+
+/**
+ * The ledger as `withLedger` hands it over: its entries in order, each with
+ * where its line sits, and the entry at any place read again.
+ * @typedef {{
+ *   entries: () => Generator<{event: Record<string, unknown>, place: EntryPlace}>,
+ *   entryAt: (place: EntryPlace) => Record<string, unknown>,
+ * }} OpenLedger
+ */
+
+/** @type {OpenLedger} */
+const NO_LEDGER = Object.freeze({
+  * entries() {},
+  entryAt: () => {
+    throw new Error(`there is no ${LEDGER} to read an entry from`);
+  },
+});
+
+/**
+ * `read` given the ledger opened once, checked first: its entries in order,
+ * each line read as an event of the shape its version names, and the entry
+ * at any place read again — both from the one file opened, so an append or
+ * a landing, each renaming a new file in, never shows mid-read.
+ * @template T
+ * @param {string} root @param {string[]} notes what a landing the check finished said, pushed to
+ * @param {(ledger: OpenLedger) => T} read
+ * @returns {T}
+ */
+function withLedger(root, notes, read) {
+  checkLedger(root, notes);
+  let fd;
+  try {
+    fd = fs.openSync(ledgerFile(root), 'r');
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') return read(NO_LEDGER);
+    throw err;
+  }
+  const open = fd;
+  try {
+    return read({
+      * entries() {
+        let number = 0;
+        for (const { text, span } of fdLines(open)) {
+          number += 1;
+          yield { event: entryAt(root, text, number), place: { number, ...span } };
+        }
+      },
+      entryAt: (place) => entryAt(root, lineAt(open, place), place.number),
+    });
+  } finally {
+    fs.closeSync(open);
+  }
+}
+
 /**
  * The ledger copied beside itself with `line` added, then renamed over it:
  * the copy cloned where the file system can, flushed before it is renamed
@@ -181,6 +238,18 @@ function shortIdOf(root, found) {
 }
 
 /**
+ * A refusal carrying, beside its own payload, what a landing finished on the
+ * way said.
+ * @param {unknown} err @param {string[]} notes
+ * @returns {unknown}
+ */
+function carrying(err, notes) {
+  if (notes.length === 0 || !(err instanceof Error)) return err;
+  const { payload } = /** @type {Error & {payload?: object}} */ (err);
+  return Object.assign(err, { payload: { ...payload, warnings: notes } });
+}
+
+/**
  * `render ledger-stop`: the screen of the engine's last stop on the ledger,
  * as the stop found it.
  * @param {string} cwd @param {object} _args
@@ -194,4 +263,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, appendEntry, ledgerStopSurface };
+module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, withLedger, appendEntry, carrying, ledgerStopSurface };

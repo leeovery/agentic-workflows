@@ -406,7 +406,7 @@ describe('content and links', () => {
     refused('hold', NOTE, ['--entry', question], {}, /^ledger hold needs --after <id> — Usage: engine ledger hold <work-unit>\.<phase>\[\.<topic>\] --entry <id> --after <id>/);
     refuses(dir, ['ledger', 'ask'], { env: SESSION, stdin: JSON.stringify(content) });
     refused('ask', NOTE, [SPACE], content, /^Usage: engine ledger ask /);
-    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge> …\nledger ask /);
+    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product> …\nledger ask [^]*\nledger record /);
   });
 
   it('resolves each link from any prefix of four characters or more to the full id, and shows an id by its shortest prefix no other id shares', () => {
@@ -489,7 +489,7 @@ describe('refusals', () => {
 
     const facts = foldLedger(statePath(dir), ID_FACTS, []);
     assert.deepStrictEqual([first, sibling, replacement, siblingReplacement, current].map((id) => facts.get(full(id)).replaced_by), [
-      full(replacement), full(siblingReplacement), full(current), null, null,
+      [full(replacement)], [full(siblingReplacement)], [full(current)], [], [],
     ]);
     assert.deepStrictEqual([current, siblingReplacement].map((id) => entries().find((e) => e.id === full(id)).answers), [full(question), full(question)]);
   });
