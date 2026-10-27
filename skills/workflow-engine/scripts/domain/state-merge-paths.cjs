@@ -95,16 +95,17 @@ function indexEntries(git, env) {
 }
 
 /**
- * Run `fn` with the private index, cleared before and after.
- * @template T @param {MergeContext} ctx @param {(env: Record<string, string>) => T} fn @returns {T}
+ * Run `fn` with git pointed at the private index at `index`, cleared before
+ * and after — the merge's, and the state commit's.
+ * @template T @param {string} index @param {(env: Record<string, string>) => T} fn @returns {T}
  */
-function withPrivateIndex(ctx, fn) {
+function withPrivateIndex(index, fn) {
   const clear = () => {
-    for (const file of [ctx.index, `${ctx.index}.lock`]) fs.rmSync(file, { force: true });
+    for (const file of [index, `${index}.lock`]) fs.rmSync(file, { force: true });
   };
   clear();
   try {
-    return fn({ GIT_INDEX_FILE: ctx.index });
+    return fn({ GIT_INDEX_FILE: index });
   } finally {
     clear();
   }
@@ -118,7 +119,7 @@ function fillIndex(ctx, entries, env) {
 
 /** @param {MergeContext} ctx @param {Entries} entries @returns {string} the tree's id */
 function writeTree(ctx, entries) {
-  return withPrivateIndex(ctx, (env) => {
+  return withPrivateIndex(ctx.index, (env) => {
     fillIndex(ctx, entries, env);
     return ctx.git.run(['write-tree'], { env }).trim();
   });

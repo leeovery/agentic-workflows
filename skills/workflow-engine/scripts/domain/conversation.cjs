@@ -18,7 +18,7 @@
 //                  phase in its spinner, to guard the manifests, to answer a
 //                  compaction and to record the task's executor — written by
 //                  every engine and gateway call that carries a session id,
-//                  run in a project whose `.workflows/` already exists
+//                  run in a project whose state already exists
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
 //   position.json  where in the workflows the conversation is working, the

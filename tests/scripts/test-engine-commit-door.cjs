@@ -18,7 +18,7 @@ const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
-const { withCommitLock, commitAcrossRepos } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
+const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
 
 const { ENGINE, git, stateGit, commitAll, cleanupFixture } = harness;
 
@@ -1505,6 +1505,31 @@ describe('commit door: never a code commit on the state branch', () => {
   });
 });
 
+describe('commit door: never a code commit inside an operation git holds open', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  for (const [marker, operation] of [
+    ['MERGE_HEAD', 'a merge'], ['CHERRY_PICK_HEAD', 'a cherry-pick'], ['REVERT_HEAD', 'a revert'], ['rebase-merge', 'a rebase'], ['rebase-apply', 'a rebase'],
+  ]) {
+    it(`the confined commit refuses while ${operation} is in progress (${marker}), staging nothing`, () => {
+      writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+      const at = path.join(dir, '.git', marker);
+      if (marker.startsWith('rebase')) fs.mkdirSync(at);
+      else fs.writeFileSync(at, git(dir, ['rev-parse', 'HEAD']));
+      const [head, status] = [git(dir, ['rev-parse', 'HEAD']), codeStatusLines(dir)];
+
+      assert.throws(() => commitPathspecScoped(dir, '.claude/settings.json', 'chore: install workflow session hooks'),
+        new RegExp(`^Error: ${operation} is in progress \\(${marker}\\) — finish or abort it, then commit again$`));
+
+      assert.strictEqual(git(dir, ['rev-parse', 'HEAD']), head);
+      assert.deepStrictEqual(codeStatusLines(dir), status);
+      assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '');
+    });
+  }
+});
+
 describe('commit door: index.lock retry and the commit lock', () => {
   let dir;
   beforeEach(() => {
@@ -1682,6 +1707,36 @@ describe('commit door: two live sessions on one checkout', () => {
       assert.ok(committed.trim().endsWith(`line ${turns}`), `${topic} lost a turn`);
     }
     assert.deepStrictEqual(statusLines(dir), [], 'nothing left dirty');
+  });
+});
+
+describe('commit door: a push the remote refuses (4.S4)', () => {
+  let dir;
+  let bare;
+  beforeEach(() => {
+    dir = setupTwoTopicFixture();
+    bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-remote-'));
+    git(bare, ['init', '-q', '--bare']);
+    git(dir, ['remote', 'add', 'origin', bare]);
+    git(dir, ['push', '-q', 'origin', 'leeway-state']);
+    fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });
+  });
+  afterEach(() => {
+    cleanupFixture(dir);
+    fs.rmSync(bare, { recursive: true, force: true });
+  });
+
+  it('a verb\'s commit stands, its response carries the warning, and it answers ok with exit 0', () => {
+    const pushed = git(bare, ['rev-parse', 'leeway-state']).trim();
+
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
+
+    assert.strictEqual(res.status, 'cancelled');
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the commit stands on leeway-state');
+    assert.deepStrictEqual(headFiles(dir), ['payments/manifest.json']);
+    assert.strictEqual(git(bare, ['rev-parse', 'leeway-state']).trim(), pushed, 'the remote refused it');
+    assert.strictEqual(res.warnings.length, 1, JSON.stringify(res.warnings));
+    assert.match(res.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
   });
 });
 

@@ -5,7 +5,7 @@
 // the provider's API key resolved, and the embedding provider it names.
 //
 // System config:  config.json in the workflows' system config directory
-// Project config: .workflows/.knowledge/config.json
+// Project config: .knowledge/config.json in the state
 //
 // Both wrap knowledge settings under a top-level "knowledge" key. Project
 // overrides system; missing fields fall through; absent files are fine. An

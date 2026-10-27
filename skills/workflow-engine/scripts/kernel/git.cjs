@@ -7,7 +7,8 @@
 //   confined to exactly those paths, report the sha. Every commit is
 //   pathspec-confined: no engine commit can sweep a path outside its
 //   declared scope, so concurrent sessions never take each other's work
-//   under their own messages.
+//   under their own messages. None lands while git is in the middle of a
+//   merge, cherry-pick, revert or rebase in the work tree.
 // - Reads of a repo's change — its dirt, each untracked file named on its
 //   own; the commits a subject selects and the paths they touched; a
 //   commit's parent or the empty tree; and the patches `git diff` answers,
@@ -20,7 +21,7 @@
 // clean scope is not a failure — `commitPathspec` reports it as `null` so
 // callers can treat an empty pause as fine.
 //
-// Index-mutating operations (add, commit, rm) retry on `index.lock`
+// Index-mutating operations (add, commit) retry on `index.lock`
 // contention — another process (a concurrent session, the user) holding
 // git's own lock is transient, not fatal. The retry budget is short; a
 // holder that outlives it surfaces git's original error.
@@ -253,6 +254,9 @@ function heldOutOf(nested, specs) {
  * the paths that reach inside them (`heldOutOf`). A nested folder named
  * itself is a submodule's pointer: tracked, so committed as the folder
  * stands, never added, and never held out of a path that holds it.
+ *
+ * Refuses while a merge, cherry-pick, revert or rebase is in progress,
+ * touching nothing.
  * @param {string} cwd      the repo's root, or the project root
  * @param {string|string[]} pathspec
  * @param {string} message
@@ -260,6 +264,7 @@ function heldOutOf(nested, specs) {
  * @returns {string|null} the short commit sha, or null when the paths are clean
  */
 function commitPathspec(cwd, pathspec, message, nested = []) {
+  refuseMidOperation(cwd);
   const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
   const pointers = specs.filter((spec) => nested.includes(spec));
   const files = specs.filter((spec) => !nested.includes(spec));
@@ -299,12 +304,25 @@ const OPERATION_MARKERS = [
 
 /**
  * The operation git is in the middle of, as `{operation, marker}`, or null.
+ * The markers are the work tree's own, so a linked worktree reads its own.
  * @param {string} cwd project root
  * @returns {{operation: string, marker: string}|null}
  */
 function operationInProgress(cwd) {
-  const open = OPERATION_MARKERS.find(([marker]) => fs.existsSync(gitPath(cwd, marker)));
+  const markers = git(cwd, ['rev-parse', ...OPERATION_MARKERS.flatMap(([marker]) => ['--git-path', marker])]).trim().split('\n');
+  const open = OPERATION_MARKERS.find((_, i) => fs.existsSync(path.resolve(cwd, markers[i])));
   return open ? { operation: open[1], marker: open[0] } : null;
+}
+
+/**
+ * Refuse, touching nothing, while git is in the middle of an operation in
+ * the work tree: a commit made then would take on its state — a merge's
+ * second parent, a pick's authorship — or land inside a rebase.
+ * @param {string} cwd
+ */
+function refuseMidOperation(cwd) {
+  const open = operationInProgress(cwd);
+  if (open) throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, then commit again`);
 }
 
 /**
@@ -325,8 +343,7 @@ function operationInProgress(cwd) {
  * @returns {string|null} the short commit sha, or null when the paths are clean
  */
 function commitStaged(cwd, specs, message) {
-  const open = operationInProgress(cwd);
-  if (open) throw new Error(`${open.operation} is in progress (${open.marker}) — finish or abort it, then commit again`);
+  refuseMidOperation(cwd);
   const addable = stageableSpecs(cwd, specs).filter((p) => !addRefused(cwd, p));
   if (addable.length > 0) gitIndexed(cwd, ['add', '--all', '--', ...literally(addable)]);
   return commitIndexEntries(cwd, specs, message);
@@ -540,18 +557,8 @@ function diffWithUntracked(cwd, base, args, exclude) {
   }
 }
 
-/**
- * `git rm` the given files, each taken literally (stages the deletions). One
- * call — git validates every pathspec before removing anything.
- * @param {string} cwd
- * @param {string[]} paths
- */
-function removeFiles(cwd, paths) {
-  gitIndexed(cwd, ['rm', '-q', '--', ...literally(paths)]);
-}
-
 module.exports = {
   READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally,
-  stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles,
+  stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused,
 };

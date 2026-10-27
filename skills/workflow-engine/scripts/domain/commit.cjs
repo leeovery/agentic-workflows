@@ -7,11 +7,10 @@
 //   worktree on `leeway-state` (domain/state-worktree), under the writer
 //   lock, then pushed; a push that fails is a warning, never a stop. Paths
 //   are state-relative.
-// - The code tree: the files the workflows own outside the state — the
-//   project's Claude Code settings, the worktree include and the `.gitignore`
-//   — and declared code paths are committed in the code root's own tree
-//   (kernel/code-root), on the branch checked out, and never on the state
-//   branch. A process-wide lock (`.git/workflows-commit.lock`, on a long
+// - The code tree: the files the workflows own outside the state
+//   (`OWNED_PATHS`) and declared code paths are committed in the code root's
+//   own tree (kernel/code-root), on the branch checked out, and never on the
+//   state branch. A process-wide lock (`.git/workflows-commit.lock`, on a long
 //   clock) holds each add+commit sequence alone, so concurrent sessions never
 //   interleave on git's shared index. The code commit lands in each repo that
 //   owns one of its paths (kernel/repos), deepest first, under that repo's
@@ -41,10 +40,10 @@ const PROJECT_MANIFEST_SPEC = 'manifest.json';
 const WORKTREE_INCLUDE = '.worktreeinclude';
 
 /**
- * The files the workflows own in the code tree — everything a migration or
- * boot writes outside the state: the project's Claude Code settings, the
- * worktree include, and the project-root `.gitignore`. The code side of the
- * migration commit; its state side is the whole state worktree.
+ * The files the workflows own in the code tree (6.3.15), named from the code
+ * root: the project's Claude Code settings and its `.gitignore`, which boot
+ * keeps, and the worktree include, which only a migration writes. The code
+ * side of the migration commit; its state side is the whole state worktree.
  * @type {readonly string[]}
  */
 const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
@@ -152,16 +151,11 @@ function withCommitLock(cwd, fn) {
  * lock, committing exactly the named paths and leaving every other process's
  * dirty or staged files untouched.
  * @param {string} cwd @param {string|string[]} pathspec as the code root names them @param {string} message
- * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
- *   must run inside the same commit-lock hold as the commit that lands it
  * @returns {string|null}
  */
-function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
+function commitPathspecScoped(cwd, pathspec, message) {
   const root = codeRoot(cwd);
-  return withCommitLock(root, () => {
-    if (beforeInLock) beforeInLock();
-    return commitPathspec(root, pathspec, message);
-  });
+  return withCommitLock(root, () => commitPathspec(root, pathspec, message));
 }
 
 /**
@@ -234,13 +228,11 @@ function noteIfNothingCommitted(result, committed) {
  * degrades to a warning and a pending note — it never fails the verb.
  * @param {string} cwd @param {string|string[]} pathspec @param {string} message
  * @param {string[]} warnings
- * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
- *   must run inside the same commit-lock hold as the commit that lands it
  * @returns {{committed: string|null, failed: boolean}}
  */
-function commitTailPathspec(cwd, pathspec, message, warnings, beforeInLock) {
+function commitTailPathspec(cwd, pathspec, message, warnings) {
   try {
-    return { committed: commitPathspecScoped(cwd, pathspec, message, beforeInLock), failed: false };
+    return { committed: commitPathspecScoped(cwd, pathspec, message), failed: false };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     warnings.push(`commit failed: ${detail}`);
@@ -285,5 +277,4 @@ module.exports = {
   discoveryScope,
   OWNED_PATHS,
   PROJECT_MANIFEST_SPEC,
-  WORKTREE_INCLUDE,
 };

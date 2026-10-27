@@ -65,7 +65,7 @@ const { openGate, drawLabel, bulletRow } = require(path.join(ROOT, 'skills/workf
 const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/position.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { initRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { initRepo, githubOffline, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
 // The epic specification menu's detail — the spec boundary's derived view.
@@ -5631,7 +5631,7 @@ describe('pipeline simulation', () => {
     // A remote on GitHub, out of reach: boot works on the state it has, and
     // offers the rule until the offer is answered.
     git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
-    sim.env = { ...sim.env, GIT_SSH_COMMAND: 'false' };
+    sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
     const offered = sim.run(['boot']);
     assert.deepStrictEqual([offered.state, offered.github_rule_offer], ['ready', true]);
     assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Set that rule on GitHub\?/);

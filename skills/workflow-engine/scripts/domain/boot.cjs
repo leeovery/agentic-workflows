@@ -9,13 +9,14 @@
 // embedding.
 //
 // The state comes first, before anything writes it (state-checks.cjs): the
-// branch and its worktree put in place — or set up, or, lost, the stop
-// whose yes is `boot --start-again`, or, on the layout before the state
-// branch, the stop for the migration — then, under the writer lock, the
-// catch-up from the remote, whose stop on a field both clones changed ends
-// boot there for the person's pick (state-merge.cjs). Then the main
-// checkout's `.gitignore` keeps the state's ignore line, committed through
-// the code door, and the migrations run, all under that one hold, so a
+// state folder kept out of every branch, the branch and its worktree put in
+// place — or set up, or, lost, the stop whose yes is `boot --start-again`,
+// or, on the layout before the state branch, the stop for the migration —
+// then, under the writer lock, the catch-up from the remote, whose stop on a
+// field both clones changed ends boot there for the person's pick
+// (state-merge.cjs). Then the session's own `.gitignore` keeps the state's
+// ignore line, the workflows' trace, committed through the code door
+// (code-trace.cjs), and the migrations run, all under that one hold, so a
 // second boot meanwhile finds each done.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
@@ -37,9 +38,8 @@
 // the load ignores, a failing index or compact, a provider key that does not
 // resolve, and a vector fill that fell short are warnings, never blocks.
 //
-// The migrations run from the code root (kernel/code-root): the fleet
-// released while the state lived in the code tree upgrades the `.workflows/`
-// there, whichever folder boot was called from.
+// The migrations run from the code root (kernel/code-root), whichever folder
+// boot was called from, recording into the state's ledger.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone. The start
@@ -74,7 +74,7 @@ const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workfl
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
-// session work may already be dirty under .workflows.) The marker's follow-on
+// session work may already be dirty in the state.) The marker's follow-on
 // instruction lines address a prose flow, not this caller, so the trimmed
 // report drops everything from the marker down.
 const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
@@ -234,7 +234,7 @@ function trimReport(stdout) {
 function boot(cwd, { startAgain = false } = {}) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
   const placed = placeState(cwd, { startAgain });
-  if ('stop' in placed) return { state: placed.stop, warnings: [] };
+  if ('stop' in placed) return { state: placed.stop, warnings: placed.warnings };
   const root = stateRoot(cwd);
   const warnings = [...placed.warnings];
   const migrated = withStateLock(root, () => {

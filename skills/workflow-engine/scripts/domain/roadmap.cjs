@@ -23,7 +23,7 @@
 // relabels the release, it never un-commits work (decision 28).
 //
 // Every mutation is one transaction under the project-manifest lock plus its
-// own pathspec-confined tail commit of `.workflows/manifest.json`: no
+// own pathspec-confined tail commit of the project manifest: no
 // work-unit commit cadence covers the project manifest, and a park fired
 // from the middle of any session must be durable immediately. The node and
 // any named horizon are created just-in-time — the roadmap has no genesis
@@ -124,9 +124,9 @@ function validateOrigin(origin) {
   }
 }
 
-// Source pointers are provenance indexes into session logs — relative paths
-// under `.workflows/`, never absolute, never traversing, and never carrying
-// the `.workflows/` they are relative to.
+// Source pointers are provenance indexes into session logs — state-relative
+// paths, never absolute, never traversing, and never carrying the `.leeway/`
+// they are relative to.
 /** @param {*} sources */
 function validateSources(sources) {
   if (!Array.isArray(sources) || sources.some((s) => typeof s !== 'string')) {
@@ -1362,7 +1362,7 @@ function postponeToRoadmap(cwd, workUnit, topic, { horizon, summary, sources }) 
 
 /**
  * Carry the roadmap's sources across a transaction's moves — `relocations`,
- * `.workflows/`-relative `[from, to]` pairs: a source at a moved path takes
+ * state-relative `[from, to]` pairs: a source at a moved path takes
  * its landing, and one beneath a moved directory keeps its place beneath the
  * landing; a source under `deleted/` that nothing moved goes with that unit,
  * the item's `sources` field with the last of them; every other source

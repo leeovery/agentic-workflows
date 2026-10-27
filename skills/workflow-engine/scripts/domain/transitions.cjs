@@ -1560,9 +1560,9 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
  */
 
 /**
- * The topic's own files, as the roadmap writes a source: project-relative
- * under `.workflows/`, and only those on disk — the pointers that carry the
- * record's depth to whoever pulls the item back.
+ * The topic's own files, as the roadmap writes a source: state-relative, and
+ * only those on disk — the pointers that carry the record's depth to whoever
+ * pulls the item back.
  * @param {string} cwd @param {object} manifest @param {string} workUnit @param {string} topic
  * @returns {string[]}
  */

@@ -56,8 +56,10 @@ const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError } = require('../kernel/git.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const {
-  STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState, askStateRemote, fetchStateTip, codeBranchSharing,
+  STATE_BRANCH, BRANCH_REF, FETCH_TIMEOUT_MS, PUSH_TIMEOUT_MS, NETWORK_ENV, trackingRef, noRemoteChosen, openWorktree, inspectState,
+  withStateLock, pushState, pushRefusal, askStateRemote, fetchStateTip, refuseCodeHistory,
 } = require('./state-worktree.cjs');
 const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
 const { changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
@@ -65,14 +67,10 @@ const { workingEntries, planWorktree } = require('./state-merge-worktree.cjs');
 const { readRecord, openMerge, startLanding, finishLanding } = require('./state-merge-landing.cjs');
 const { stateMergeGate } = require('./projections/state-merge.cjs');
 
-const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
 // Beside the merge's other files, in the worktree's git dir.
 const KEPT_STOP = 'leeway-merge.json';
 
 const MERGE_ATTEMPTS = 3;
-const FETCH_TIMEOUT_MS = 15000;
-const PUSH_TIMEOUT_MS = 15000;
-const NETWORK_ENV = { GIT_TERMINAL_PROMPT: '0' };
 const MERGE_MESSAGE = `state: merge onto the remote's ${STATE_BRANCH}`;
 
 /** @type {Record<string, 'local'|'remote'>} */
@@ -149,11 +147,6 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
  * }} Plan
  */
 
-/** @param {string} remote @returns {string} */
-function trackingRef(remote) {
-  return `refs/remotes/${remote}/${STATE_BRANCH}`;
-}
-
 /** @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string} ref @returns {string} */
 function tipOf(git, ref) {
   return git.run(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).trim();
@@ -173,10 +166,11 @@ function open(conflict) {
  */
 function openState(root, opts) {
   const seen = inspectState(root);
-  if (seen.folder !== 'linked' || seen.worktree === null || seen.worktree.branch !== STATE_BRANCH) {
+  const worktree = openWorktree(root);
+  if (!worktree.opened || seen.worktree === null || seen.worktree.branch !== STATE_BRANCH) {
     throw new Error(`the state worktree at ${root} is not checked out on ${STATE_BRANCH} — it cannot catch up until boot's checks put it right`);
   }
-  const merge = openMerge(root, STATE_BRANCH, opts);
+  const merge = openMerge(worktree, STATE_BRANCH, opts);
   return {
     ...merge,
     remote: seen.remote,
@@ -343,7 +337,7 @@ function pushWithLease(state, onto, timeoutMs) {
     return { pushed: true, warnings: [] };
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    return { pushed: false, warnings: [`${STATE_BRANCH} is merged here but was not pushed to ${remote}: ${err.message}`] };
+    return { pushed: false, warnings: [`${STATE_BRANCH} is merged here but was not pushed to ${remote}: ${pushRefusal(err)}`] };
   }
 }
 
@@ -376,9 +370,7 @@ function unreachable(state, why) {
 function fetchState(state, timeoutMs, asked) {
   const answer = asked ?? askStateRemote(state.root, { timeoutMs });
   if (answer.remote === null) {
-    const warnings = answer.remotes.length === 0 ? [] : [
-      `${STATE_BRANCH} was not fetched: the project has several remotes (${answer.remotes.join(', ')}), and none is named origin or tracked by the main checkout's branch`,
-    ];
+    const warnings = answer.remotes.length === 0 ? [] : [`${STATE_BRANCH} was not fetched: ${noRemoteChosen(answer.remotes)}`];
     return { outcome: outcome(state, 'nothing', { reason: 'no-remote', warnings }) };
   }
   if ('unreachable' in answer) return unreachable(state, answer.unreachable);
@@ -463,7 +455,7 @@ function gainedARoot(state, sides, known) {
  * to carry on. Two state lines — one started again — merge as ever.
  * @param {State} state @param {Sides} sides @param {string|null} known
  */
-function refuseCodeHistory(state, sides, known) {
+function refuseSideHoldingCode(state, sides, known) {
   if (!gainedARoot(state, sides, known)) return;
   const remote = /** @type {string} */ (state.remote);
   const looks = [
@@ -471,13 +463,7 @@ function refuseCodeHistory(state, sides, known) {
     { ref: BRANCH_REF, named: `this clone's ${STATE_BRANCH}`, way: `point ${STATE_BRANCH} back at the state's own line — ${remote}'s ${STATE_BRANCH} holds it` },
   ];
   for (const { ref, named, way } of looks) {
-    const code = codeBranchSharing(state.root, ref);
-    if (code !== null) {
-      throw new Error(
-        `${named} holds code history — it shares commits with ${code}, where the state branch is a line of its own — ` +
-        `so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, ${way}`,
-      );
-    }
+    refuseCodeHistory(state.root, ref, named, `so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, ${way}`);
   }
 }
 
@@ -497,7 +483,7 @@ function step(state, timeouts, retry, asked) {
   if (retry !== null && fetched.tip === retry.onto) return { outcome: retry.outcome };
   const sides = sidesOf(state, fetched.tip);
   if (sides.local === sides.remote) return { outcome: outcome(state, 'nothing', { reason: 'current' }) };
-  refuseCodeHistory(state, sides, known);
+  refuseSideHoldingCode(state, sides, known);
   if (sides.base === sides.remote) return pushAhead(state, sides, timeouts);
   return mergeSides(state, sides, timeouts);
 }
@@ -513,7 +499,7 @@ function step(state, timeouts, retry, asked) {
  * @returns {CatchUpOutcome}
  */
 function converge(state, timeouts, asked) {
-  const carried = { notes: finishLanding(state.root, STATE_BRANCH, state.gitDir), merged: /** @type {string[]} */ ([]) };
+  const carried = { notes: finishLanding(state, STATE_BRANCH), merged: /** @type {string[]} */ ([]) };
   /** @type {Retry|null} */
   let retry = null;
   /** @type {CatchUpOutcome|null} */

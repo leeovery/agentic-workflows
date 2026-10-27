@@ -307,17 +307,15 @@ describe('engine boot', () => {
    * A scratch repo beside the fixture, hermetic like it, with dated
    * commits and the state arriving on a date of the test's choosing. From
    * the first commit on, its settings carry the workflows' own hooks, like
-   * the fixture's, and its `.worktreeinclude` the knowledge files an earlier
-   * boot listed there; its `.gitignore` names the state, as boot keeps it,
-   * held out of the history by its own exclude: the history under test is
-   * the project's own.
+   * the fixture's; its `.gitignore` names the state, as boot keeps it, held
+   * out of the history by its own exclude: the history under test is the
+   * project's own.
    */
   function scratchRepo(name) {
     const project = harness.initRepo(path.join(fix.root, name));
     fs.appendFileSync(path.join(project, '.git/info/exclude'), '.gitignore\n');
     writeFile(project, '.gitignore', '.leeway/\n');
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-    writeFile(project, '.worktreeinclude', STORE_FILES.join('\n') + '\n');
     const at = (date) => (date.includes('T') ? date : `${date}T12:00:00Z`);
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
@@ -328,9 +326,8 @@ describe('engine boot', () => {
   }
 
   it('baseline_signal: a codebase committed before `.leeway/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
-    // A brownfield repo: two commits of code (the skills install and an
-    // earlier boot's `.worktreeinclude` beside it, which never count as
-    // project code), then the workflows land.
+    // A brownfield repo: two commits of code (the skills install beside it,
+    // which never counts as project code), then the workflows land.
     const { project, commit, arrive } = scratchRepo('brownfield');
     writeFile(project, 'src/app.js', 'export default 1;\n');
     writeFile(project, 'README.md', '# App\n');
@@ -425,6 +422,18 @@ describe('engine boot', () => {
     const signed = runEngine(stubbed, project, ['boot']).baseline_signal;
     assert.deepStrictEqual(signed, plain);
     assert.strictEqual(plain.commits_before, 1);
+  });
+
+  it('baseline_signal: a `.worktreeinclude` in the tree is the project\'s own file, counted as any other — boot writes none', () => {
+    const { project, commit, arrive } = scratchRepo('included');
+    writeFile(project, 'src/a.js', 'a\n');
+    writeFile(project, '.worktreeinclude', '.env\n');
+    commit('root', '2025-01-01');
+    arrive('2025-02-01');
+
+    const sig = runEngine(stubbed, project, ['boot']).baseline_signal;
+
+    assert.deepStrictEqual([sig.files_at_arrival, sig.tree_at_arrival], [2, ['.worktreeinclude', 'src/ (1)']]);
   });
 
   it('baseline_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {

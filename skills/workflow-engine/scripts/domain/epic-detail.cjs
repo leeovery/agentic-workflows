@@ -415,7 +415,7 @@ function buildAnalysisCaches(cwd, manifest) {
 
 /**
  * Build the full epic detail for one work unit's manifest.
- * @param {string} cwd       project root (the directory containing `.workflows/`)
+ * @param {string} cwd       project root
  * @param {object} manifest  the work unit's parsed manifest.json
  * @returns {EpicDetail}
  */

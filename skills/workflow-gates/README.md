@@ -185,16 +185,21 @@ its words.
 
 In a session that announced, in a conversation the engine has marked, a Write,
 Edit or NotebookEdit aimed at a manifest the engine keeps — the project's
-`.workflows/manifest.json`, or a work unit's
-`.workflows/{work-unit}/manifest.json` — is refused with one line telling
-Claude to write it through the engine's `manifest` verbs. Where the path leads
-is what counts: a path relative to the working directory, one from the home
-directory (`~/`), `..` and a symbolic link are followed — a `.workflows/` that
-is itself a link, and a file elsewhere linked to a manifest, included — and a
-manifest not written yet is placed by its nearest folder that exists. Any
-other file under `.workflows/`, a `manifest.json` anywhere else, and every
-write in a plain conversation or a session that did not announce go through.
-Bash is not guarded.
+`.leeway/manifest.json`, or a work unit's `.leeway/{work-unit}/manifest.json`
+— is refused with one line telling Claude to write it through the engine's
+`manifest` verbs. The state is `.leeway/` in the main checkout of the
+session's repository, whichever worktree the session runs in: the mod finds
+it from the nearest `.git` at or above the session's root, following a linked
+worktree's `.git` file and its `commondir` to the repository's own `.git`
+directory, and guards nothing where there is no repository or no main
+checkout. Where the path leads is what counts: a path relative to the working
+directory, one from the home directory (`~/`), `..` and a symbolic link are
+followed — a `.leeway/` that is itself a link, and a file elsewhere linked to
+a manifest, included — and a manifest not written yet is placed by its
+nearest folder that exists. Any other file under `.leeway/`, a
+`manifest.json` anywhere else — a code worktree's own `.leeway/` among them —
+and every write in a plain conversation or a session that did not announce
+go through. Bash is not guarded.
 
 ## How it compacts a workflow conversation
 

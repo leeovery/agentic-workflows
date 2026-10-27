@@ -14,7 +14,8 @@
 //
 // Real repositories in temp folders: a bare repository as the remote, and
 // clones of it. A remote on GitHub is a bare repository reached through a
-// stand-in ssh; `gh` is a stand-in on PATH. Boot runs from a copy of the
+// stand-in ssh, its URL rewritten to a port ssh refuses so nothing it misses
+// reaches github.com; `gh` is a stand-in on PATH. Boot runs from a copy of the
 // engine beside a stand-in migration runner, so the state checks are what
 // each test exercises.
 // ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 
-const { git, initRepo } = harness;
+const { git, initRepo, githubOffline } = harness;
 const SCRIPTS = path.dirname(harness.ENGINE);
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE, inspectState, createState, withStateLock, commitState,
@@ -310,7 +311,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual([signal.files_at_arrival, signal.tree_at_arrival], [1, ['README.md']]);
   });
 
-  it('keeps the line in the .gitignore at the repository\'s top for a project nested in a larger one', () => {
+  it('keeps the line in the .gitignore of a project nested in a larger one, beside its settings, the state at the repository\'s top ignored by the exclude file', () => {
     const top = initRepo(path.join(world, 'mono'));
     write(top, 'app/README.md', '# app\n');
     git(top, ['add', '-A']);
@@ -320,11 +321,121 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(boot(app).state, 'ready');
 
     assert.deepStrictEqual(placed(path.join(top, '.leeway')), IN_PLACE);
-    assert.strictEqual(read(top, '.gitignore'), '.leeway/\n');
-    assert.ok(!fs.existsSync(path.join(app, '.gitignore')));
-    assert.strictEqual(git(top, ['status', '--porcelain', '--', '.leeway', '.gitignore']), '');
+    assert.strictEqual(read(app, '.gitignore'), '.leeway/\n');
+    assert.ok(fs.existsSync(path.join(app, '.claude/settings.json')), 'the hooks it sits beside');
+    assert.ok(!fs.existsSync(path.join(top, '.gitignore')), 'nothing written outside the project');
+    assert.deepStrictEqual(git(top, ['show', '--name-only', '--format=', 'HEAD~1', 'HEAD']).trim().split('\n').filter(Boolean).sort(), ['app/.claude/settings.json', 'app/.gitignore']);
+    assert.strictEqual(git(top, ['status', '--porcelain']), '');
     assert.strictEqual(boot(app).state, 'ready');
-    assert.strictEqual(read(top, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(read(app, '.gitignore'), '.leeway/\n');
+  });
+
+  it('keeps the state folder in the repository\'s exclude file, once, on every boot — so no branch takes it in', () => {
+    const main = codeProject();
+    const exclude = path.join(main, '.git/info/exclude');
+
+    boot(main);
+    fs.writeFileSync(exclude, read(main, '.git/info/exclude').replace('/.leeway/\n', ''));
+    boot(main);
+    boot(main);
+
+    assert.strictEqual(read(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
+  });
+
+  it('a code branch cut before setup, checked out in the main checkout, takes nothing of the state in — `git add -A` stages none of it (4.1.2, 4.1.3)', () => {
+    const main = codeProject();
+    git(main, ['branch', 'before-setup']);
+    boot(main);
+    git(main, ['checkout', '-q', 'before-setup']);
+    assert.ok(!fs.existsSync(path.join(main, '.gitignore')), 'the branch holds no ignore line');
+
+    git(main, ['add', '-A']);
+
+    assert.strictEqual(git(main, ['status', '--porcelain']), '');
+    assert.strictEqual(git(main, ['ls-files', '--stage', '--', '.leeway']), '', 'no gitlink, no file of the state');
+  });
+
+  it('a fresh clone ignores the state at once, before any commit — even a boot killed as the worktree is locked', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main } = setUp({ remote: bare });
+    git(bare, ['update-ref', 'refs/heads/main', git(main, ['rev-parse', 'main~2']).trim()]);
+    const fresh = cloneOf(bare, 'fresh');
+    assert.ok(!fs.existsSync(path.join(fresh, '.gitignore')), 'the clone\'s branch holds no ignore line');
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const wrapper = fs.mkdtempSync(path.join(world, 'git-'));
+    write(wrapper, 'git', `#!/bin/sh\n"${real}" "$@"\nstatus=$?\ncase "$*" in *"worktree lock"*) kill -9 "$PPID" ;; esac\nexit $status\n`);
+    fs.chmodSync(path.join(wrapper, 'git'), 0o755);
+
+    const killed = spawnSync('node', [STUB_ENGINE, 'boot'], { cwd: fresh, encoding: 'utf8', env: { ...process.env, PATH: `${wrapper}:${process.env.PATH}` } });
+
+    assert.strictEqual(killed.signal, 'SIGKILL', killed.stderr);
+    assert.ok(fs.existsSync(path.join(fresh, '.leeway/.gitignore')), 'the state is checked out');
+    assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
+    git(fresh, ['add', '-A']);
+    assert.strictEqual(git(fresh, ['ls-files', '--stage', '--', '.leeway']), '');
+  });
+
+  it('a boot from a code worktree commits the line and the hooks on that worktree\'s branch, never on the main checkout\'s', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const main = codeProject({ remote: bare });
+    const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
+    boot(main);
+    const code = path.join(world, 'fresh-feature');
+    git(fresh, ['worktree', 'add', '-q', '-b', 'feature', code]);
+    const before = { main: tip(fresh, 'main'), feature: tip(fresh, 'feature') };
+
+    assert.strictEqual(boot(code).state, 'ready');
+
+    assert.strictEqual(tip(fresh, 'main'), before.main, 'the main checkout\'s branch gained nothing');
+    assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
+    assert.deepStrictEqual(git(fresh, ['log', '--format=%s', `${before.feature}..feature`]).trim().split('\n'),
+      ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+    assert.strictEqual(read(code, '.gitignore'), '.leeway/\n');
+    assert.ok(!fs.existsSync(path.join(code, '.leeway')));
+  });
+
+  describe('while git is in the middle of a rebase', () => {
+    /** A project set up, its ignore line dropped on a later commit, then a rebase stopped part-way in the main checkout. */
+    function midRebase() {
+      const main = codeProject();
+      boot(main);
+      fs.writeFileSync(path.join(main, '.gitignore'), '');
+      git(main, ['commit', '-q', '-am', 'drop the line']);
+      write(main, 'x.txt', 'x\n');
+      git(main, ['add', 'x.txt']);
+      git(main, ['commit', '-q', '-m', 'x']);
+      assert.throws(() => git(main, ['rebase', '--exec', 'false', 'HEAD~1']));
+      assert.ok(fs.existsSync(path.join(main, '.git/rebase-merge')), 'the rebase stopped part-way');
+      return main;
+    }
+
+    it('a boot in the main checkout leaves the line unwritten and commits nothing there — the next boot after it writes the line', () => {
+      const main = midRebase();
+      const head = tip(main, 'HEAD');
+
+      assert.strictEqual(boot(main).state, 'ready');
+
+      assert.strictEqual(tip(main, 'HEAD'), head, 'nothing committed into the rebase');
+      assert.strictEqual(read(main, '.gitignore'), '');
+      assert.strictEqual(git(main, ['status', '--porcelain']), '');
+      git(main, ['rebase', '--abort']);
+      boot(main);
+      assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
+      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .leeway/, the workflows state');
+    });
+
+    it('a boot from a code worktree commits nothing in the main checkout', () => {
+      const main = midRebase();
+      const code = path.join(world, 'portal-feature');
+      git(main, ['worktree', 'add', '-q', '-b', 'feature', code, 'main']);
+      const head = tip(main, 'HEAD');
+
+      assert.strictEqual(boot(code).state, 'ready');
+
+      assert.strictEqual(tip(main, 'HEAD'), head);
+      assert.strictEqual(git(main, ['status', '--porcelain']), '');
+      assert.ok(fs.existsSync(path.join(main, '.git/rebase-merge')), 'the rebase is the person\'s still');
+    });
   });
 
   it('a project on the layout before the state branch stops for the migration: boot writes nothing — and the next boot stops again', () => {
@@ -495,6 +606,69 @@ describe('a lost local branch (4.S8)', () => {
     assert.deepStrictEqual(placed(root), IN_PLACE);
     assert.strictEqual(read(root, 'notes.md'), 'not yet committed\n');
     bootsWithNothingToDo(main, bare);
+  });
+
+  it('deleted under its worktree while the remote moved on, its folder is brought to the remote\'s tip: the next write undoes nothing the remote changed, and edits not yet committed survive', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main, root } = setUp({ remote: bare });
+    commitOnState(root, { 'notes.md': 'one\ntwo\nthree\n' });
+    const other = cloneOf(bare, 'other');
+    boot(other);
+    commitOnState(path.join(other, '.leeway'), { 'notes.md': 'one\ntwo\nthree, theirs\n', 'theirs.md': 'from the other clone\n' });
+    write(root, 'notes.md', 'one, mine\ntwo\nthree\n');
+    write(root, 'draft.md', 'not yet committed\n');
+    git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+
+    const res = boot(main);
+
+    assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
+    assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
+    assert.deepStrictEqual(placed(root), IN_PLACE);
+    assert.strictEqual(read(root, 'theirs.md'), 'from the other clone\n');
+    assert.strictEqual(read(root, 'notes.md'), 'one, mine\ntwo\nthree, theirs\n');
+    assert.strictEqual(read(root, 'draft.md'), 'not yet committed\n');
+    assert.deepStrictEqual(git(root, ['status', '--porcelain']).split('\n').filter(Boolean), [' M notes.md', '?? draft.md'],
+      'the index reads the remote\'s tip: only the edits show');
+
+    const next = withStateLock(root, () => commitState(root, ['.'], 'state: everything'));
+
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:theirs.md`]), 'from the other clone\n');
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:notes.md`]), 'one, mine\ntwo\nthree, theirs\n');
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:draft.md`]), 'not yet committed\n');
+    assert.strictEqual(remoteTip(bare), next.commit);
+  });
+
+  it('deleted under its worktree holding a commit a failed push left behind, is restored with that commit, which the catch-up pushes', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main, root } = setUp({ remote: bare });
+    const hook = path.join(bare, 'hooks', 'pre-receive');
+    fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const left = commitOnState(root, { 'mine.md': 'committed, never pushed\n' }).commit;
+    fs.rmSync(hook);
+    git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+
+    assert.strictEqual(boot(main).state, 'ready');
+
+    assert.strictEqual(tip(main, STATE_BRANCH), left);
+    assert.strictEqual(remoteTip(bare), left);
+    assert.strictEqual(read(root, 'mine.md'), 'committed, never pushed\n');
+    assert.strictEqual(git(root, ['status', '--porcelain']), '');
+  });
+
+  it('deleted under its worktree whose HEAD log is gone, is refused: boot cannot tell where the folder stands, and writes nothing', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main, root } = setUp({ remote: bare });
+    git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+    const registration = read(root, '.git').replace(/^gitdir: /, '').trim();
+    fs.rmSync(path.join(registration, 'logs'), { recursive: true, force: true });
+    const before = git(main, ['for-each-ref']);
+
+    assert.match(bootRefused(main), new RegExp(
+      `^the state folder ${root} is still there, but leeway-state is gone from this clone, and its log no longer says which commit ` +
+      'the folder\'s files stand at, so boot wrote nothing — move .* aside, keeping what it holds, and boot again: leeway-state is restored from origin$',
+    ));
+
+    assert.strictEqual(git(main, ['for-each-ref']), before);
   });
 });
 
@@ -721,14 +895,19 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual(untouched(main, bare), before);
   });
 
-  for (const [file, line] of [['.gitignore', '.leeway/'], ['.worktreeinclude', '.leeway/.knowledge/store.bin']]) {
-    it(`a line naming the state in the ${file} is the trace too`, () => {
-      const main = lostProject({ trace: { [file]: `node_modules\n${line}\n` } });
+  it('a line naming the state in the .gitignore is the trace too', () => {
+    const main = lostProject({ trace: { '.gitignore': 'node_modules\n.leeway/\n' } });
 
-      assert.strictEqual(boot(main).state, 'lost');
-      assert.ok(!fs.existsSync(path.join(main, '.leeway')));
-    });
-  }
+    assert.strictEqual(boot(main).state, 'lost');
+    assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+  });
+
+  it('a .worktreeinclude naming the state is no trace — no version of the workflows wrote such a line — so the project is being set up', () => {
+    const main = lostProject({ trace: { '.worktreeinclude': 'node_modules\n.leeway/.knowledge/store.bin\n' } });
+
+    assert.strictEqual(boot(main).state, 'ready');
+    assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+  });
 
   it('gone with no remote at all, stops too', () => {
     const { main, root } = setUp();
@@ -916,7 +1095,10 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
 
 /**
  * A remote on GitHub, `git@github.com:acme/portal.git`, served by a bare
- * repository through a stand-in ssh: nothing leaves the machine.
+ * repository through a stand-in ssh. Nothing leaves the machine, and it fails
+ * closed: the URL is rewritten to GitHub on a port ssh refuses
+ * (`githubOffline`), so a git call the stand-in misses never reaches
+ * github.com.
  * @returns {{url: string, bare: string, env: Record<string, string>}}
  */
 function fakeGithub() {
@@ -925,9 +1107,16 @@ function fakeGithub() {
   fs.mkdirSync(path.dirname(bare), { recursive: true });
   bareRemote(bare);
   const ssh = path.join(world, 'fake-ssh');
-  write(world, 'fake-ssh', `#!/bin/sh\nfor last; do :; done\ncd "${served}" && exec /bin/sh -c "git \${last#git-}"\n`);
+  write(world, 'fake-ssh', [
+    '#!/bin/sh',
+    'for last; do :; done',
+    'service=${last%% *}',
+    "repo=${last#* }; repo=${repo#\\'}; repo=${repo%\\'}",
+    `exec git "\${service#git-}" "${served}/\${repo#/}"`,
+    '',
+  ].join('\n'));
   fs.chmodSync(ssh, 0o755);
-  return { url: 'git@github.com:acme/portal.git', bare, env: { GIT_SSH_COMMAND: ssh, GIT_SSH_VARIANT: 'simple' } };
+  return { url: 'git@github.com:acme/portal.git', bare, env: { ...githubOffline(world), GIT_SSH_COMMAND: ssh, GIT_SSH_VARIANT: 'ssh' } };
 }
 
 /**
@@ -1003,6 +1192,14 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
     assert.strictEqual(git(main, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'chore: the GitHub rule on leeway-state set');
     assert.deepStrictEqual(committedManifest(main).github_rule, { status: 'set' });
     assert.strictEqual(boot(main, { PATH: gh.PATH }).github_rule_offer, false);
+  });
+
+  it('fails closed: the remote reads as GitHub on a port ssh refuses, so a git call the stand-in misses never reaches github.com', () => {
+    const main = codeProject();
+    git(main, ['remote', 'add', 'origin', github.url]);
+
+    assert.strictEqual(git(main, ['remote', 'get-url', 'origin']).trim(), 'ssh://git@github.com:0/acme/portal.git');
+    assert.deepStrictEqual(githubRepository(git(main, ['remote', 'get-url', 'origin'])), { owner: 'acme', repo: 'portal' });
   });
 
   it('draws the offer: the rule and what it refuses, set on yes, left unset on no', () => {

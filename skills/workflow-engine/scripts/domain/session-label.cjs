@@ -34,13 +34,12 @@
 // resume` while labels are on. Recording the choice syncs the hooks
 // (`recordLabelChoice`) and every boot re-syncs them (`syncSessionHooks`).
 //
-// The original name is stashed in the checkout's cache
-// (`.workflows/.cache/.session-labels/`, keyed by tmux socket + session
-// id), so no other checkout's engine ever reads a record. Re-labels across
-// phases recompose from the true original instead of compounding suffixes.
-// A user rename mid-flight is adopted as the new original at the next
-// label; restore only ever renames a session whose current name is exactly
-// a name we applied.
+// The original name is stashed in the state's cache (`.cache/.session-labels/`,
+// keyed by tmux socket + session id), git-ignored, so no other clone's engine
+// ever reads a record. Re-labels across phases recompose from the true
+// original instead of compounding suffixes. A user rename mid-flight is
+// adopted as the new original at the next label; restore only ever renames a
+// session whose current name is exactly a name we applied.
 //
 // The stash key is not stable: tmux session ids renumber when the server
 // restarts, and name-restoring setups (tmux-resurrect, Portal) carry a

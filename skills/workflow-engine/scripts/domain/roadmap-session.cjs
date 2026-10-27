@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the product-road session lifecycle — the roadmap's project-
 // level sibling of discovery-session. Sessions live at
-// `.workflows/.roadmap/sessions/session-NNN.md`, the active marker at the
+// `.roadmap/sessions/session-NNN.md` in the state, the active marker at the
 // project manifest's `roadmap.active_session`, imports at
-// `.workflows/.roadmap/imports/` tracked under `roadmap.imports[]`.
+// `.roadmap/imports/` tracked under `roadmap.imports[]`.
 //
 // open starts a session at the log's first write: allocate the next number
 // from the on-disk logs, move the model-drafted log into place, set the

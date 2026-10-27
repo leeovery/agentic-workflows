@@ -158,7 +158,7 @@ function specSortRank(spec) {
  * The specification menu's discovery over one active epic: its discussions,
  * its specification items, and the grouping analysis's cache read against
  * the discussion files. Refuses a name with no active epic behind it.
- * @param {string} cwd  project root (the directory containing `.workflows/`)
+ * @param {string} cwd  project root
  * @param {string} workUnit
  * @returns {DiscoveryResult}
  */

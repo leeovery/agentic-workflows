@@ -28,9 +28,11 @@ const state = require(STATE);
 const { REPOSITORY_ENV, isolatedGit, mainCheckout } = require('../../skills/workflow-engine/scripts/kernel/isolated-git.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
+const { stateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
-  stateRoot, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
+  inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
   askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, withBootLock, commitState, pushState,
 } = state;
 
@@ -329,7 +331,7 @@ describe('creating the state', () => {
     assert.strictEqual(STATE_LOCK_REASON, 'workflows state, do not remove');
   });
 
-  it('puts .leeway/ in the main checkout when made from a code worktree, never in the worktree (4.S1)', () => {
+  it('puts .leeway/ in the main checkout when made from a code worktree, never in the worktree (4.1.4)', () => {
     const { main, root } = project();
     const code = path.join(world, 'code-worktree');
     git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
@@ -1178,11 +1180,11 @@ describe('committing state', () => {
     assert.strictEqual(git(root, ['show', `${STATE_BRANCH}:manifest.json`]), '{}\n');
     assert.strictEqual(out.pushed, false);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /^leeway-state is committed here but was not pushed to origin: .*no pushes today/s);
+    assert.match(out.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
     assert.strictEqual(remoteTip(bare), created.commit);
   });
 
-  it('never forces: a remote that moved ahead keeps its tip, and the push is a warning', () => {
+  it('never forces: a remote that moved ahead keeps its tip, and the push is a warning that says what is true, never git\'s advice to pull', () => {
     const { root, bare } = project({ remote: true });
     createState(root);
     const other = clone(bare, 'other');
@@ -1198,7 +1200,8 @@ describe('committing state', () => {
     assert.strictEqual(remoteTip(bare), theirs);
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.deepStrictEqual([out.pushed, out.warnings.length], [false, 1]);
-    assert.match(out.warnings[0], /rejected/);
+    assert.match(out.warnings[0], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: .*rejected/s);
+    assert.doesNotMatch(out.warnings[0], /hint:|git pull/);
   });
 
   it('gives up on a push the remote never answers, within the timeout, as a warning', () => {

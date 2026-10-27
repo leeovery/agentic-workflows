@@ -3,12 +3,13 @@
 // The suite's hermetic environment, pinned at require time and inherited by
 // every process a test spawns: an empty system-config directory, an empty
 // Claude Code config directory, no provider key, no gate surface or handoff
-// announcement, no Claude Code session, no user or system git config, a
-// fixed display width. A test never reads the developer's config or
-// credentials, never writes their Claude Code settings, never reaches an
-// embedding provider — every knowledge store a test builds is keyword-only —
-// never renders a gate or handoff payload it did not announce itself, and
-// never marks a conversation it did not name itself.
+// announcement, no Claude Code session, no user or system git config, no ssh
+// command of the developer's, a fixed display width. A test never reads the
+// developer's config or credentials, never writes their Claude Code
+// settings, never reaches an embedding provider — every knowledge store a
+// test builds is keyword-only — never reaches a remote through the
+// developer's ssh, never renders a gate or handoff payload it did not
+// announce itself, and never marks a conversation it did not name itself.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
@@ -78,5 +79,9 @@ delete process.env.WORKFLOWS_HANDOFF;
 // Claude Code hands every command it runs its conversation's id, and every
 // engine call marks that conversation's folder.
 delete process.env.CLAUDE_CODE_SESSION_ID;
+// The developer's own ssh command overrides any a suite stands in for a
+// remote with, and would carry their keys to it.
+delete process.env.GIT_SSH_COMMAND;
+delete process.env.GIT_SSH;
 
 module.exports = HERMETIC_ENV;

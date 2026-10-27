@@ -11,11 +11,15 @@
 //   the main checkout's branch, HEAD and index are never touched; then the
 //   worktree is added and locked. Each piece stands alone too, for the
 //   repairs: add the worktree for a local branch, make the local branch from
-//   the remote's, lock the worktree, relink a worktree whose project folder
-//   moved or was copied. The relink writes the two links itself, both inside
-//   the project: `git worktree repair` rewrites the link of every worktree
-//   the repository registers, and a copy's registrations name the
-//   original's, so it would take the original's worktrees over.
+//   the remote's or at the commit a folder still there holds, lock the
+//   worktree, relink a worktree whose project folder moved or was copied.
+//   The relink writes the two links itself, both inside the project: `git
+//   worktree repair` rewrites the link of every worktree the repository
+//   registers, and a copy's registrations name the original's, so it would
+//   take the original's worktrees over. The commit a folder holds is read
+//   from its registration's HEAD log, which git cannot read once the branch
+//   is gone, and which every state commit, landing and checkout writes:
+//   git's own log setting is overridden for the state's calls.
 // - The remote: asked where its `leeway-state` stands, its tip brought into
 //   the remote-tracking branch, and whether a branch by that name holds code
 //   history — a state branch is an orphan line of its own.
@@ -34,6 +38,10 @@
 //   time, or finds no remote chosen among several is a warning, and the
 //   commit stands.
 //
+// The state's branch, its remote, and their time limits are named here once,
+// for the catch-up too (state-merge.cjs), as is the refusal of a branch
+// holding code history.
+//
 // Every git call goes through kernel/isolated-git: hooks off, the caller's
 // repository environment cleared.
 // ---------------------------------------------------------------------------
@@ -43,11 +51,11 @@ const path = require('path');
 const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
 const { WRITER_LOCK, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
-const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
+const { withPrivateIndex } = require('./state-merge-paths.cjs');
+const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 
 const STATE_BRANCH = 'leeway-state';
-const STATE_DIR = STATE_DIR_NAME;
 const STATE_LOCK_REASON = 'workflows state, do not remove';
 // The lock's claim is written beside it and linked into place, and a
 // takeover holds a guard beside it: both are the lock's, ignored with it. A
@@ -116,15 +124,17 @@ const NETWORK_ENV = Object.freeze({ GIT_TERMINAL_PROMPT: '0' });
 /** @typedef {{commit: string|null, pushed: boolean, warnings: string[]}} CommitOutcome */
 
 /**
- * The state worktree as git opens it: a runner bound to it, the ref its HEAD
- * names (`HEAD` when detached), where its private index goes, and its own
- * git dir.
+ * The state worktree as git opens it: its root, a runner bound to it, the
+ * ref its HEAD names (`HEAD` when detached), where its private index goes,
+ * its own git dir, and the hash its objects are named by.
  * @typedef {{
  *   opened: true,
+ *   root: string,
  *   git: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   head: string,
  *   index: string,
  *   gitDir: string,
+ *   objectFormat: string,
  * }} OpenWorktree
  */
 
@@ -133,8 +143,8 @@ function mainOf(root) {
   return path.dirname(root);
 }
 
-/** @param {string} remote @returns {string} */
-function remoteRef(remote) {
+/** The remote's `leeway-state` as this clone last fetched it. @param {string} remote @returns {string} */
+function trackingRef(remote) {
   return `refs/remotes/${remote}/${STATE_BRANCH}`;
 }
 
@@ -197,17 +207,20 @@ function openWorktree(root) {
   const git = isolatedGit(root);
   let out;
   try {
-    out = git.run(['rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--symbolic-full-name', 'HEAD']);
+    out = git.run([
+      'rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--show-object-format',
+      '--symbolic-full-name', 'HEAD',
+    ]);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     return { opened: false, why: err.message };
   }
-  const [top, common, index, gitDir, head] = out.split('\n');
+  const [top, common, index, gitDir, objectFormat, head] = out.split('\n');
   const repository = realpathOrSelf(path.resolve(root, common));
   if (realpathOrSelf(top) !== root || repository !== path.join(mainOf(root), '.git')) {
     return { opened: false, why: `git reads it as part of ${top}, whose repository is ${repository}` };
   }
-  return { opened: true, git, head, index: path.resolve(root, index), gitDir };
+  return { opened: true, root, git, head, index: path.resolve(root, index), gitDir, objectFormat };
 }
 
 /** @param {string} root @returns {StateFolder} */
@@ -225,7 +238,7 @@ function inspectState(root) {
   const main = mainOf(root);
   const git = isolatedGit(main);
   const { remote, remotes } = stateRemote(git);
-  const wanted = remote === null ? [BRANCH_REF] : [BRANCH_REF, remoteRef(remote)];
+  const wanted = remote === null ? [BRANCH_REF] : [BRANCH_REF, trackingRef(remote)];
   const refs = git.run(['for-each-ref', '--format=%(refname)', ...wanted]).split('\n');
   return {
     main,
@@ -233,7 +246,7 @@ function inspectState(root) {
     branch: refs.includes(BRANCH_REF),
     remotes,
     remote,
-    remoteBranch: remote !== null && refs.includes(remoteRef(remote)),
+    remoteBranch: remote !== null && refs.includes(trackingRef(remote)),
     worktree: registeredWorktree(git, root),
     folder: folderAt(root),
   };
@@ -314,6 +327,18 @@ function replaceFile(file, text) {
 }
 
 /**
+ * The registration the state folder at `root` links to, and this
+ * repository's own registration of that name — the same one where the
+ * folder never moved — or null where the folder holds no link git can read.
+ * @param {string} root
+ * @returns {{named: string, own: string}|null}
+ */
+function registrationOf(root) {
+  const named = gitfileTarget(path.join(root, '.git'));
+  return named === null ? null : { named, own: path.join(mainOf(root), '.git', 'worktrees', path.basename(named)) };
+}
+
+/**
  * Relink the state worktree whose folder git can no longer open as this
  * repository's: the project folder moved, so its links name the old place,
  * or was copied, so they name the original's registration. The folder's
@@ -328,9 +353,9 @@ function replaceFile(file, text) {
  */
 function repairStateWorktree(root) {
   const dotgit = path.join(root, '.git');
-  const named = gitfileTarget(dotgit);
-  if (named === null) throw new Error(`${root} holds no worktree link git can read — nothing relinked`);
-  const own = path.join(mainOf(root), '.git', 'worktrees', path.basename(named));
+  const link = registrationOf(root);
+  if (link === null) throw new Error(`${root} holds no worktree link git can read — nothing relinked`);
+  const { named, own } = link;
   if (!fs.existsSync(own)) {
     throw new Error(`${root} links to ${named}, and this repository keeps no registration by that name — nothing relinked`);
   }
@@ -358,9 +383,45 @@ function createStateBranchFromRemote(root) {
       ? `the project has no remote to take ${STATE_BRANCH} from`
       : `cannot take ${STATE_BRANCH} from a remote: ${noRemoteChosen(remotes)}`);
   }
-  const tip = git.tryRun(['rev-parse', '--quiet', '--verify', `${remoteRef(remote)}^{commit}`]);
+  const tip = git.tryRun(['rev-parse', '--quiet', '--verify', `${trackingRef(remote)}^{commit}`]);
   if (tip === null) throw new Error(`${remote} holds no ${STATE_BRANCH}`);
   createBranchAt(git, tip.trim());
+}
+
+const NO_COMMIT = /^0+$/;
+
+/**
+ * The commit the files of the state folder at `root` were last checked out
+ * or committed at, whatever became of the branch since: the last its
+ * registration's HEAD log moved to. Null where the folder links to no
+ * registration of this repository's, or the log names no commit this clone
+ * holds.
+ * @param {string} root
+ * @returns {string|null}
+ */
+function folderCommit(root) {
+  const link = registrationOf(root);
+  if (link === null) return null;
+  let log;
+  try {
+    log = fs.readFileSync(path.join(link.own, 'logs', 'HEAD'), 'utf8');
+  } catch {
+    return null;
+  }
+  const moved = log.split('\n').map((entry) => entry.split(' ')[1]).filter((to) => to !== undefined && !NO_COMMIT.test(to));
+  if (moved.length === 0) return null;
+  const commit = isolatedGit(mainOf(root)).tryRun(['rev-parse', '--quiet', '--verify', `${moved[moved.length - 1]}^{commit}`]);
+  return commit === null ? null : commit.trim();
+}
+
+/**
+ * Make the local `leeway-state` at `commit` — the repair for a branch lost
+ * under a folder still there, made where the folder's files stand, so they
+ * are what the catch-up moves on from.
+ * @param {string} root @param {string} commit
+ */
+function createStateBranchAt(root, commit) {
+  createBranchAt(isolatedGit(mainOf(root)), commit);
 }
 
 /**
@@ -403,11 +464,11 @@ function askStateRemote(root, { timeoutMs = FETCH_TIMEOUT_MS } = {}) {
 function fetchStateTip(root, remote, tip, { timeoutMs = FETCH_TIMEOUT_MS } = {}) {
   const git = isolatedGit(mainOf(root));
   if (git.tryRun(['cat-file', '-e', `${tip}^{commit}`]) !== null) {
-    git.run(['update-ref', remoteRef(remote), tip]);
+    git.run(['update-ref', trackingRef(remote), tip]);
     return null;
   }
   try {
-    git.run(['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', remote, `+${BRANCH_REF}:${remoteRef(remote)}`], { timeoutMs, env: NETWORK_ENV });
+    git.run(['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', remote, `+${BRANCH_REF}:${trackingRef(remote)}`], { timeoutMs, env: NETWORK_ENV });
     return null;
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
@@ -437,6 +498,19 @@ function codeBranchSharing(root, ref) {
     if (code !== undefined) return code.replace(/^refs\/(heads|remotes)\//, '');
   }
   return null;
+}
+
+/**
+ * Refuse `ref` where it holds code history (`codeBranchSharing`): the
+ * refusal names it as `named`, then says what was left undone and the way
+ * on (`after`).
+ * @param {string} root @param {string} ref @param {string} named @param {string} after
+ */
+function refuseCodeHistory(root, ref, named, after) {
+  const code = codeBranchSharing(root, ref);
+  if (code !== null) {
+    throw new Error(`${named} holds code history — it shares commits with ${code}, where the state branch is a line of its own — ${after}`);
+  }
 }
 
 /**
@@ -508,11 +582,6 @@ function onDisk(file) {
   }
 }
 
-/** @param {string} index */
-function clearPrivateIndex(index) {
-  for (const file of [index, `${index}.lock`]) fs.rmSync(file, { force: true });
-}
-
 /**
  * Commit the working tree's state of the pathspecs onto `leeway-state`. The
  * tree is built in a private index seeded from HEAD — never the worktree's
@@ -520,15 +589,12 @@ function clearPrivateIndex(index) {
  * was built on. A kill at any step leaves the branch where it was or at the
  * whole commit, and the private index is cleared before and after. Null
  * where the tree comes out as HEAD's.
- * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the state worktree
- * @param {string} root @param {string} index @param {string[]} specs @param {string} message
+ * @param {OpenWorktree} worktree @param {string[]} specs @param {string} message
  * @returns {string|null}
  */
-function commitPaths(git, root, index, specs, message) {
+function commitPaths({ git, root, index }, specs, message) {
   const [head, headTree] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}']).trim().split('\n');
-  const env = { GIT_INDEX_FILE: index };
-  clearPrivateIndex(index);
-  try {
+  return withPrivateIndex(index, (env) => {
     git.run(['read-tree', head], { env });
     const known = git.run(['ls-files', '-z', '--', ...literally(specs)], { env }).split('\0').filter((file) => file !== '');
     // `add` refuses a pathspec that matches nothing on disk or in the index:
@@ -541,33 +607,24 @@ function commitPaths(git, root, index, specs, message) {
     const commit = git.run(['commit-tree', tree, '-p', head, '-m', message]).trim();
     git.run(['update-ref', '-m', `commit: ${message.split('\n')[0]}`, BRANCH_REF, commit, head]);
     return commit;
-  } finally {
-    clearPrivateIndex(index);
-  }
+  });
 }
 
 /**
- * Bring the worktree's own index into line with HEAD under the pathspecs,
- * so `git status` there reads what was committed; entries under other paths
- * stay as they are. The commit never reads this index, so a failure here —
- * another process holding it — is a warning.
- * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string[]} specs
- * @returns {string[]} warnings
+ * Why a push failed, as git says it, without git's hints: they advise
+ * pulling, and the state branch is never pulled — the catch-up merges it.
+ * @param {GitError} err
+ * @returns {string}
  */
-function alignIndex(git, specs) {
-  try {
-    git.run(['reset', '--quiet', '--', ...literally(specs)]);
-    return [];
-  } catch (err) {
-    if (!(err instanceof GitError)) throw err;
-    return [`the state worktree's index was not brought into line with ${STATE_BRANCH}: ${err.message}`];
-  }
+function pushRefusal(err) {
+  return err.message.split('\n').filter((line) => !line.startsWith('hint:')).join('\n').trim();
 }
 
 /**
  * Push `leeway-state` to the state's remote, never forcing, within
  * `timeoutMs`. No remote, no push; several remotes that choose none, a
- * refused push or a timed-out one is a warning.
+ * refused push or a timed-out one is a warning, and the commit stands for
+ * the next boot's catch-up to push.
  * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the main checkout
  * @param {number} timeoutMs
  * @returns {PushOutcome}
@@ -582,7 +639,10 @@ function push(git, timeoutMs) {
     return { pushed: true, warnings: [] };
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    return { pushed: false, warnings: [`${STATE_BRANCH} is committed here but was not pushed to ${remote}: ${err.message}`] };
+    return {
+      pushed: false,
+      warnings: [`${STATE_BRANCH} is committed here but was not pushed to ${remote} — the commit stands, and the next boot pushes it: ${pushRefusal(err)}`],
+    };
   }
 }
 
@@ -609,9 +669,9 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } =
     throw new Error(`the state worktree at ${root} has ${checkedOut} checked out, not ${STATE_BRANCH} — nothing committed`);
   }
   if (specs.length === 0) return { commit: null, pushed: false, warnings: [] };
-  const landed = finishLanding(root, STATE_BRANCH, worktree.gitDir);
-  const commit = commitPaths(worktree.git, root, worktree.index, specs, message);
-  const warnings = [...landed, ...alignIndex(worktree.git, specs)];
+  const landed = finishLanding(worktree, STATE_BRANCH);
+  const commit = commitPaths(worktree, specs, message);
+  const warnings = [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', specs)];
   if (commit === null) return { commit: null, pushed: false, warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };
@@ -630,22 +690,31 @@ function pushState(root, { timeoutMs = PUSH_TIMEOUT_MS } = {}) {
 
 module.exports = {
   STATE_BRANCH,
-  STATE_DIR,
   STATE_LOCK_REASON,
   STATE_GITIGNORE,
-  stateRoot,
+  BRANCH_REF,
+  FETCH_TIMEOUT_MS,
+  PUSH_TIMEOUT_MS,
+  NETWORK_ENV,
+  trackingRef,
+  noRemoteChosen,
+  openWorktree,
   inspectState,
   createState,
   addStateWorktree,
   repairStateWorktree,
   createStateBranchFromRemote,
+  createStateBranchAt,
+  folderCommit,
   lockStateWorktree,
   askStateRemote,
   fetchStateTip,
   codeBranchSharing,
+  refuseCodeHistory,
   stateRemoteUrl,
   withStateLock,
   withBootLock,
   commitState,
   pushState,
+  pushRefusal,
 };
