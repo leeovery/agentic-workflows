@@ -11,7 +11,8 @@
 //   it moves the branch, so a check that fails is made again under the
 //   writer lock, which the landing holds, once a landing a kill cut short is
 //   finished (state-merge-landing.cjs), before the engine stops. What that
-//   landing says on the way is handed to the reader or the appender.
+//   landing says on the way is handed to the reader or the appender, even
+//   where the engine then stops.
 // - The ledger is read a line at a time, never whole and never through a
 //   pipe (kernel/file-stream), each line validated against the shape its
 //   version names, a field a later version added taking its default
@@ -74,16 +75,15 @@ function ledgerChange(root) {
  * that fails checked again under the writer lock, a landing a kill cut short
  * finished first; then refused with the line found, the stop kept.
  * @param {string} root
- * @returns {string[]} what a landing finished here said
+ * @param {string[]} notes what a landing finished here said, pushed to before any stop
  */
-function checkLedger(root) {
-  if (ledgerChange(root) === null) return [];
-  return withStateLock(root, () => {
+function checkLedger(root, notes) {
+  if (ledgerChange(root) === null) return;
+  withStateLock(root, () => {
     const worktree = openWorktree(root);
-    const said = worktree.opened ? finishLanding(worktree, STATE_BRANCH) : [];
+    if (worktree.opened) notes.push(...finishLanding(worktree, STATE_BRANCH));
     const change = ledgerChange(root);
     if (change !== null) throw ledgerStopped(checkedTree(root), change, 'the engine stops here');
-    return said;
   });
 }
 
@@ -109,7 +109,7 @@ function entryAt(root, line, number) {
  * @returns {Generator<Record<string, unknown>>}
  */
 function* readLedger(root, notes) {
-  notes.push(...checkLedger(root));
+  checkLedger(root, notes);
   const file = ledgerFile(root);
   if (!fs.existsSync(file)) return;
   let number = 0;
@@ -153,7 +153,7 @@ function appendEntry(root, fields, notes) {
   const assigned = ASSIGNED.find((name) => Object.hasOwn(fields, name));
   if (assigned !== undefined) throw new Error(`a ledger entry's ${assigned} is the engine's to give — nothing appended`);
   return withStateLock(root, () => {
-    notes.push(...checkLedger(root));
+    checkLedger(root, notes);
     const file = ledgerFile(root);
     if (fs.existsSync(file) && !endsWithNewline(file)) throw new Error(`${file} ends in an unfinished line — nothing appended`);
     const entry = validEvent({ ...fields, v: LEDGER_VERSION, id: newId(), at: isoNow() });

@@ -138,7 +138,7 @@ function gitDirOf(root) {
 /** What the check found, the engine's stop it throws beside it, kept as found. @param {string} root */
 function stopped(root) {
   const change = ledgerChange(root);
-  assert.throws(() => checkLedger(root), (err) => err instanceof LedgerChanged && err.payload.stop === 'ledger' && /changed outside the engine/.test(err.message));
+  assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged && err.payload.stop === 'ledger' && /changed outside the engine/.test(err.message));
   assert.deepStrictEqual(keptStop(gitDirOf(root)), { stop: 'changed', ...change });
   return change;
 }
@@ -522,12 +522,12 @@ describe('the append', () => {
 describe('the append-only check on a read', () => {
   it('passes a ledger as committed, and one grown only at its end', () => {
     const { root } = project();
-    checkLedger(root);
+    checkLedger(root, []);
     threeCommitted(root);
     assert.strictEqual(ledgerChange(root), null);
     appendEntry(root, question(), []);
     assert.strictEqual(ledgerChange(root), null);
-    checkLedger(root);
+    checkLedger(root, []);
   });
 
   it('stops on a rewritten line, a removed one, two swapped, a truncated last line, a blank line put in, a file shorter than the committed one, and none: showing the first line not as committed', () => {
@@ -586,7 +586,7 @@ describe('the append-only check on a read', () => {
     ].join('\n'), { mode: 0o755 });
     holdLock(root);
 
-    const res = spawnSync('node', ['-e', 'require(process.argv[1]).checkLedger(process.argv[2]); process.stdout.write("as committed")', LEDGER_MODULE, root], {
+    const res = spawnSync('node', ['-e', 'require(process.argv[1]).checkLedger(process.argv[2], []); process.stdout.write("as committed")', LEDGER_MODULE, root], {
       encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: `${wrapper}:${process.env.PATH}` },
     });
 
@@ -600,7 +600,7 @@ describe('the append-only check on a read', () => {
     const [a, b] = threeCommitted(root);
     const lock = holdLock(root);
     writeLedger(root, `${b}\n${a}\n`);
-    const exit = settled(ledgerChild(root, 'ledger.checkLedger(root); process.stdout.write("as committed")'));
+    const exit = settled(ledgerChild(root, 'ledger.checkLedger(root, []); process.stdout.write("as committed")'));
 
     assert.ok(await stillRunning(exit, 1500), 'the check stopped without waiting for the lock');
     git(root, ['commit', '-q', '-m', 'state: the landing moves the branch', '--', LEDGER]);
@@ -620,7 +620,7 @@ describe('the append-only check on a read', () => {
       fs.writeFileSync(path.join(gitDir, `leeway-ledger.${running.pid}.abc`), 'x');
       writeLedger(root, `${b}\n${a}\n`);
 
-      assert.throws(() => checkLedger(root), LedgerChanged);
+      assert.throws(() => checkLedger(root, []), LedgerChanged);
 
       assert.deepStrictEqual(fs.readdirSync(gitDir).filter((name) => name.startsWith('leeway-ledger.')), [`leeway-ledger.${running.pid}.abc`]);
     } finally {
@@ -633,7 +633,7 @@ describe('the append-only check on a read', () => {
     const [a, b] = threeCommitted(root);
     const lock = holdLock(root);
     writeLedger(root, `${b}\n${a}\n`);
-    const exit = settled(ledgerChild(root, 'ledger.checkLedger(root)'));
+    const exit = settled(ledgerChild(root, 'ledger.checkLedger(root, [])'));
 
     assert.ok(await stillRunning(exit, 1500), 'the check stopped without waiting for the lock');
     fs.unlinkSync(lock);
@@ -756,7 +756,7 @@ describe('the stop\'s screen (5.4.4)', () => {
     assert.throws(() => ledgerStopSurface(main, {}), /render ledger-stop: no stop on the ledger is kept — nothing stopped the engine/);
     writeLedger(root, `${lines[1]}\n${lines[0]}\n`);
 
-    assert.throws(() => checkLedger(root), LedgerChanged);
+    assert.throws(() => checkLedger(root, []), LedgerChanged);
 
     const shared = [...a].findIndex((ch, i) => ch !== b[i]);
     assert.ok(ledgerStopSurface(main, {}).includes(`{"v":1,"id":"${b.slice(0, Math.max(6, shared + 1))}…"`));
@@ -927,15 +927,15 @@ describe('the conversion door (5.S25)', () => {
     };
 
     forge(`${lines[0]}\n${lines[2]}\n`);
-    assert.throws(() => checkLedger(root), (err) => err instanceof LedgerChanged && err.change.line === 2);
+    assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged && err.change.line === 2);
     assert.throws(() => commitLedger(root), LedgerChanged);
     const kept = lines.map((line) => `${JSON.stringify({ ...JSON.parse(line), text: 'Converted.' })}\n`).join('');
     forge(kept, false);
-    assert.throws(() => checkLedger(root), (err) => err instanceof LedgerChanged && err.change.line === 1);
+    assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged && err.change.line === 1);
     assert.strictEqual(tip(main, STATE_BRANCH), before);
 
     forge(kept);
-    checkLedger(root);
+    checkLedger(root, []);
     assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), kept);
   });

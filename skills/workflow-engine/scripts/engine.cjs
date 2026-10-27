@@ -478,8 +478,8 @@ function runManifest(call, argv) {
 // (domain/ledger-write.cjs). Each write verb appends one event and commits
 // the ledger to the state branch: its content as JSON on stdin, its links as
 // flags naming entries by short id. A write holds the writer lock itself,
-// around its read of the ledger, the append and the commit alone, never
-// runCli's.
+// never runCli's: around its fold of the ledger, the append and the commit
+// alone, so what its request alone refuses never waits on a peer.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

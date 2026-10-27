@@ -196,7 +196,7 @@ function projectManifest(horizon, extra = {}) {
  */
 function appendOnly(root) {
   try {
-    checkLedger(root);
+    checkLedger(root, []);
     checkLedgerCommit(/** @type {import('../../skills/workflow-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root)), `${STATE_BRANCH}^`, STATE_BRANCH);
     return true;
   } catch (err) {
@@ -1885,18 +1885,48 @@ describe('the ledger through a catch-up', () => {
   const CHART = 'unit/assets/chart.png';
   const UNIT = { 'fumi/manifest.json': json({ name: 'fumi', work_type: 'epic', status: 'in-progress', phases: { discussion: { items: { a: { status: 'in-progress' } } } } }) };
   const ASKING = JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Asked after the kill?' });
+  const DECIDING = JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Decided after the kill.', why: 'A reason.' });
+  const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 's1' });
+
+  /** What the landing says of the chart both machines changed. */
+  function chartNote() {
+    const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
+    return `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`;
+  }
+
+  /**
+   * A landing a kill cut short here, after it moved the files and before it
+   * moved the branch: the chart changed on both machines, and the ledger too
+   * where `ledgers` gives each machine's own line.
+   * @param {{here: string, there: string}|null} ledgers
+   */
+  function killedLanding(ledgers) {
+    const base = askedLine('Base?');
+    const { here, there } = twoMachines({ '.ledger.jsonl': base, ...UNIT, [CHART]: 'png\0base' });
+    commitUnpushed(here, { [CHART]: 'png\0here', ...(ledgers && { '.ledger.jsonl': `${base}${ledgers.here}` }) });
+    commitOn(there, { [CHART]: 'png\0there', ...(ledgers && { '.ledger.jsonl': `${base}${ledgers.there}` }) });
+    killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
+    return { here, base };
+  }
 
   for (const [what, act] of /** @type {[string, (root: string, notes: string[]) => unknown][]} */ ([
     ['a read', (root, notes) => [...readLedger(root, notes)]],
     ['an append', (root, notes) => appendEntry(root, { ...ASKED, text: 'Asked after the kill?' }, notes)],
-    ['a ledger write, among its warnings', (root, notes) => notes.push(...ok(path.dirname(root), ['ledger', 'ask', 'fumi.discussion.a'], { env: { CLAUDE_CODE_SESSION_ID: 's1' }, stdin: ASKING }).warnings)],
+    ['a ledger write, among its warnings', (root, notes) => notes.push(...ok(path.dirname(root), ['ledger', 'ask', 'fumi.discussion.a'], { env: SESSION, stdin: ASKING }).warnings)],
+    ['a ledger write the fold under the lock then refuses, among its refusal\'s warnings', (root, notes) => {
+      const res = refuses(path.dirname(root), ['ledger', 'decide', 'fumi.discussion.a', '--answers', 'Zz9Zz9'], { env: SESSION, stdin: DECIDING });
+      assert.strictEqual(res.error, 'ledger decide --answers: no ledger entry\'s id begins "Zz9Zz9"');
+      notes.push(...res.warnings);
+    }],
+    ['a replacement the fold before the lock then refuses, among its refusal\'s warnings', (root, notes) => {
+      const res = refuses(path.dirname(root), ['ledger', 'replace', 'fumi.discussion.a', '--replaces', 'Zz9Zz9', '--reason', 'changed-mind'], { env: SESSION, stdin: DECIDING });
+      assert.strictEqual(res.error, 'ledger replace --replaces: no ledger entry\'s id begins "Zz9Zz9"');
+      notes.push(...res.warnings);
+    }],
   ])) {
     it(`finishes a landing a kill cut short at ${what}, under the writer lock, so nothing the landing wrote reads as this machine's change, and hands on what the landing said`, () => {
-      const [base, a1, b1] = ['Base?', 'Here?', 'There?'].map(askedLine);
-      const { here, there } = twoMachines({ '.ledger.jsonl': base, ...UNIT, [CHART]: 'png\0base' });
-      commitUnpushed(here, { '.ledger.jsonl': `${base}${a1}`, [CHART]: 'png\0here' });
-      commitOn(there, { '.ledger.jsonl': `${base}${b1}`, [CHART]: 'png\0there' });
-      killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
+      const [a1, b1] = ['Here?', 'There?'].map(askedLine);
+      const { here, base } = killedLanding({ here: a1, there: b1 });
       assert.strictEqual(read(here.root, '.ledger.jsonl'), `${base}${b1}${a1}`, 'the kill left no merged ledger on disk');
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), `${base}${a1}`, 'the kill left the branch moved');
       /** @type {string[]} */
@@ -1907,10 +1937,29 @@ describe('the ledger through a catch-up', () => {
       assert.ok(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]).startsWith(`${base}${b1}${a1}`));
       assert.ok(read(here.root, '.ledger.jsonl').startsWith(`${base}${b1}${a1}`));
       assert.deepStrictEqual(mergeLeftovers(here.root), []);
-      const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
-      assert.deepStrictEqual(notes, [
-        `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`,
-      ]);
+      assert.deepStrictEqual(notes, [chartNote()]);
+    });
+  }
+
+  for (const [what, act] of /** @type {[string, (root: string, notes: string[]) => void][]} */ ([
+    ['a read', (root, notes) => assert.throws(() => [...readLedger(root, notes)], LedgerChanged)],
+    ['an append', (root, notes) => assert.throws(() => appendEntry(root, { ...ASKED, text: 'Asked after the kill?' }, notes), LedgerChanged)],
+    ['a ledger write, in its refusal\'s warnings', (root, notes) => {
+      const res = refuses(path.dirname(root), ['ledger', 'ask', 'fumi.discussion.a'], { env: SESSION, stdin: ASKING });
+      assert.deepStrictEqual([res.stop, res.error], ['ledger', '.ledger.jsonl changed outside the engine: line 1 is not the line committed there — the engine stops here']);
+      notes.push(...res.warnings);
+    }],
+  ])) {
+    it(`hands on what a landing it finished at ${what} said, though the engine then stops on a ledger changed outside it`, () => {
+      const { here } = killedLanding(null);
+      write(here.root, '.ledger.jsonl', askedLine('Changed by hand?'));
+      /** @type {string[]} */
+      const notes = [];
+
+      act(here.root, notes);
+
+      assert.deepStrictEqual(mergeLeftovers(here.root), [], 'the landing was not finished');
+      assert.deepStrictEqual(notes, [chartNote()]);
     });
   }
 

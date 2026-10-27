@@ -8,9 +8,12 @@
 //
 // The facts of each id the ledger holds: the event that wrote it; the kind
 // of entry it is, a replacement taking the kind it stands for, or none for
-// an event that is no entry; the question a decision answers, and the one a
-// question is part of; and the first replacement naming it, null while none
-// does — an entry is current only while none does (5.3.13).
+// an event that is no entry; its unit, and its topic — for a question, the
+// topic it was last moved to (5.3.3); the question a decision answers, the
+// one a question is part of, what it relies on, and what it replaces;
+// whether it is product-wide, null where its kind is never marked; and the
+// first replacement naming it, null while none does — an entry is current
+// only while none does (5.3.13).
 // ---------------------------------------------------------------------------
 
 const { readLedger } = require('./ledger.cjs');
@@ -27,8 +30,13 @@ const { entryKind } = require('./ledger-events.cjs');
  * @typedef {{
  *   event: string,
  *   kind: import('./ledger-events.cjs').EntryKind|null,
+ *   unit: string,
+ *   topic: string|null,
  *   answers: string|null,
  *   part_of: string|null,
+ *   relies_on: string[],
+ *   replaces: string|null,
+ *   product_wide: boolean|null,
  *   replaced_by: string|null,
  * }} IdFacts
  */
@@ -45,10 +53,18 @@ const ID_FACTS = {
     facts.set(/** @type {string} */ (event.id), {
       event: /** @type {string} */ (event.event),
       kind: entryKind(event),
+      unit: /** @type {string} */ (event.unit),
+      topic: idOrNull(event.topic),
       answers: idOrNull(event.answers),
       part_of: idOrNull(event.part_of),
+      relies_on: Array.isArray(event.relies_on) ? event.relies_on : [],
+      replaces: idOrNull(event.replaces),
+      product_wide: typeof event.product_wide === 'boolean' ? event.product_wide : null,
       replaced_by: null,
     });
+    if (event.event === 'moved') {
+      /** @type {IdFacts} */ (facts.get(/** @type {string} */ (event.question))).topic = /** @type {string} */ (event.to);
+    }
     if (event.event !== 'replaced') return;
     const replaced = /** @type {IdFacts} */ (facts.get(/** @type {string} */ (event.replaces)));
     replaced.replaced_by ??= /** @type {string} */ (event.id);

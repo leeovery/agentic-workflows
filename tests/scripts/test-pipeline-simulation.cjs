@@ -3623,20 +3623,23 @@ describe('pipeline simulation', () => {
     const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
     const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike' });
     const decision = ledger(['decide', note, '--answers', question, '--relies-on', finding], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
+    const relying = ledger(['ask', note, '--relies-on', decision], { ...made, text: 'Does a floating panel take focus?' });
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
-    ledger(['hold', note, '--entry', finding, '--after', replacement], made);
+    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ replaced/, null, JSON.stringify(made));
+    ledger(['hold', note, '--entry', relying, '--after', replacement], made);
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
     ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
     ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
     ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
     sim.refuses(['ledger', 'decide', note], /^ledger decide needs --answers <id>/, null, JSON.stringify({ ...made, text: 'Unanchored.', why: 'No question.' }));
-    sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /replace the current one/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
+    sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /the current one is/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
 
     const events = fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
     assert.deepStrictEqual(events.map((e) => [e.event, e.topic, e.session]), [
       ['asked', 'note-window', 'sim-session'], ['found', 'note-window', 'sim-session'], ['decided', 'note-window', 'sim-session'],
-      ['replaced', 'note-window', 'sim-session'], ['still-holds', 'note-window', 'sim-session'], ['asked', 'note-window', 'sim-session'],
-      ['moved', 'note-window', 'sim-session'], ['merged', 'space-homing', 'sim-session'], ['asked', null, 'sim-session'],
+      ['asked', 'note-window', 'sim-session'], ['replaced', 'note-window', 'sim-session'], ['still-holds', 'note-window', 'sim-session'],
+      ['asked', 'note-window', 'sim-session'], ['moved', 'note-window', 'sim-session'], ['merged', 'space-homing', 'sim-session'],
+      ['asked', null, 'sim-session'],
     ]);
     assert.strictEqual(stateGit(sim.dir, ['show', `HEAD:${LEDGER}`]), fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8'));
   });

@@ -46,18 +46,17 @@ const SPACE = `${UNIT}.discussion.space-homing`;
 const ID = /^[0-9A-Za-z]{21}$/;
 const ANSWERS_AT_ONCE_MS = 10000;
 
+const PHASES = Object.freeze({
+  discovery: { items: { 'note-window': {}, 'space-homing': {}, 'menu-bar': {} } },
+  discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
+});
+
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
   dir = setupGitFixture('ledger-write-');
-  createManifest(dir, UNIT, {
-    work_type: 'epic',
-    phases: {
-      discovery: { items: { 'note-window': {}, 'space-homing': {}, 'menu-bar': {} } },
-      discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
-    },
-  });
+  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
 });
 
 afterEach(() => {
@@ -154,9 +153,9 @@ function ask(text = 'What is a note, at its most basic?') {
   return write('ask', NOTE, [], { ...MADE, text });
 }
 
-/** A finding found on the note window: its response. */
-function find() {
-  return write('find', NOTE, [], { ...MADE, text: 'Spaces keep their ids across restarts.', how: 'seen in a spike' });
+/** A finding found on the note window, relying on what `flags` name: its response. @param {string[]} [flags] */
+function find(flags = []) {
+  return write('find', NOTE, flags, { ...MADE, text: 'Spaces keep their ids across restarts.', how: 'seen in a spike' });
 }
 
 /** A decision answering `question` on the note window: its response. @param {string} question @param {Record<string, unknown>} [content] */
@@ -164,14 +163,19 @@ function decide(question, content = {}) {
   return write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.', ...content });
 }
 
+/** A replacement of `old` on the note window, a changed mind: its response. @param {string} old @param {Record<string, unknown>} [content] */
+function change(old, content = { text: 'A frameless surface.', why: 'Lighter.' }) {
+  return write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], ...content });
+}
+
 /** Each event the verbs write, one of each, on the note window: their short ids. */
 function oneOfEach() {
   const q = ask().id;
-  const f = find().id;
   const d = decide(q).id;
-  const r = write('replace', NOTE, ['--replaces', d, '--reason', 'changed-mind'], { ...MADE, drops: ['a title bar'], text: 'A frameless surface.', why: 'Lighter.' }).id;
+  const f = find(['--relies-on', d]).id;
+  const r = change(d).id;
   const h = write('hold', NOTE, ['--entry', f, '--after', r], MADE).id;
-  const m = write('move', NOTE, ['--question', q, '--to', 'space-homing'], MADE).id;
+  const m = write('move', NOTE, ['--question', ask('Which display does a note open on?').id, '--to', 'space-homing'], MADE).id;
   return { q, f, d, r, h, m };
 }
 
@@ -271,11 +275,10 @@ describe('the write verbs (6.1.4)', () => {
     });
   });
 
-  it('hold: a topic confirms an entry still holds after a replacement it relied on, the line written field by field', () => {
-    const question = ask().id;
-    const finding = find().id;
-    const old = decide(question, {}).id;
-    const replacement = write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the frame'], text: 'Frameless.', why: 'Lighter.' }).id;
+  it('hold: a topic confirms an entry still holds after a replacement of what it relied on, the line written field by field', () => {
+    const old = decide(ask().id).id;
+    const finding = find(['--relies-on', old]).id;
+    const replacement = change(old).id;
 
     const res = write('hold', NOTE, ['--entry', finding, '--after', replacement], { by: 'person', who_moved_whom: 'person-moved-claude' });
 
@@ -328,9 +331,42 @@ describe('tags (5.2.3)', () => {
     refused('ask', 'mint.discussion.note-window', [], content, /^ledger ask: there is no work unit "mint"$/);
     refused('ask', `${UNIT}.discussion.menu-bar`, [], content, /^ledger ask: fumi has no topic "menu-bar" in discussion$/);
     refused('ask', `${UNIT}.research.note-window`, [], content, /^ledger ask: fumi has no topic "note-window" in research$/);
+    refused('ask', `${UNIT}.discussion.__proto__`, [], content, /^ledger ask: fumi has no topic "__proto__" in discussion$/);
     refused('ask', `${UNIT}.talk.note-window`, [], content, /^ledger ask: "talk" is no phase — one of discovery, research, /);
     for (const address of [UNIT, `${UNIT}.discussion.note-window.x`, `${UNIT}..note-window`, `.discussion`]) {
       refused('ask', address, [], content, /names no place to write — <work-unit>\.<phase>\.<topic>, or <work-unit>\.<phase> at the unit's level$/);
+    }
+  });
+
+  it('takes a phase the unit\'s work type has, or discovery, refusing another (4.11.2)', () => {
+    createManifest(dir, 'mend', { work_type: 'bugfix', phases: { investigation: { items: { mend: { status: 'in-progress' } } } } });
+    const content = { ...MADE, text: 'Which phase?' };
+
+    for (const address of [`${UNIT}.investigation`, `${UNIT}.investigation.note-window`, `${UNIT}.scoping`]) {
+      refused('ask', address, [], content,
+        /^ledger ask: fumi has no (investigation|scoping) phase — its work type, epic, has discovery, research, experiment, discussion, specification, planning, implementation, review$/);
+    }
+    refused('ask', 'mend.discussion.mend', [], content, /^ledger ask: mend has no discussion phase — its work type, bugfix, has discovery, investigation, specification, planning, implementation, review$/);
+
+    write('ask', 'mend.investigation.mend', [], content);
+    assert.deepStrictEqual([entries().at(-1).unit, entries().at(-1).phase, entries().at(-1).topic], ['mend', 'investigation', 'mend']);
+    write('ask', `${UNIT}.discovery.menu-bar`, [], content);
+    write('ask', `${UNIT}.discovery`, [], content);
+    assert.deepStrictEqual(entries().slice(-2).map((e) => [e.phase, e.topic]), [['discovery', 'menu-bar'], ['discovery', null]]);
+  });
+
+  it('refuses a topic from the spec on, where everything is the unit\'s (4.11.2, 5.2.3)', () => {
+    createManifest(dir, UNIT, {
+      work_type: 'epic',
+      phases: {
+        discussion: { items: { 'note-window': { status: 'completed' } } },
+        specification: { items: { 'note-window': { status: 'in-progress' } } },
+        review: { items: { 'note-window': { status: 'in-progress' } } },
+      },
+    });
+    for (const phase of ['specification', 'review']) {
+      refused('ask', `${UNIT}.${phase}.note-window`, [], { ...MADE, text: 'Which topic?' },
+        new RegExp(`^ledger ask: a topic exists only before the spec, and ${phase} is the unit's — write at fumi\\.${phase}$`));
     }
   });
 });
@@ -441,15 +477,15 @@ describe('refusals', () => {
     const question = ask().id;
     const first = decide(question, { text: 'Floats above every Space.' }).id;
     const sibling = decide(question, { text: 'Its controls appear on hover.' }).id;
-    const change = (/** @type {string} */ old, /** @type {string} */ text) => write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], text, why: 'Clearer.' }).id;
-    const replacement = change(first, 'Floats above every Space, on every display.');
+    const reworded = (/** @type {string} */ old, /** @type {string} */ text) => change(old, { text, why: 'Clearer.' }).id;
+    const replacement = reworded(first, 'Floats above every Space, on every display.');
 
     refused('replace', NOTE, ['--replaces', first, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Again.', why: 'Again.' },
-      new RegExp(`^ledger replace --replaces names ${first}, which ${replacement} replaced — replace the current one, ${replacement}$`));
-    const siblingReplacement = change(sibling, 'Its controls appear on hover, and on focus.');
-    const current = change(replacement, 'Floats above every Space and display.');
+      new RegExp(`^ledger replace --replaces names ${first}, which ${replacement} replaced — the current one is ${replacement}$`));
+    const siblingReplacement = reworded(sibling, 'Its controls appear on hover, and on focus.');
+    const current = reworded(replacement, 'Floats above every Space and display.');
     refused('replace', NOTE, ['--replaces', first, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'Again.', why: 'Again.' },
-      new RegExp(`^ledger replace --replaces names ${first}, which ${replacement} replaced — replace the current one, ${current}$`));
+      new RegExp(`^ledger replace --replaces names ${first}, which ${replacement} replaced — the current one is ${current}$`));
 
     const facts = foldLedger(statePath(dir), ID_FACTS, []);
     assert.deepStrictEqual([first, sibling, replacement, siblingReplacement, current].map((id) => facts.get(full(id)).replaced_by), [
@@ -469,7 +505,161 @@ describe('refusals', () => {
   it('refuses a move to a topic the unit does not have, and a move made at the unit\'s level, from no topic', () => {
     const question = ask().id;
     refused('move', NOTE, ['--question', question, '--to', 'dock-icon'], MADE, /^ledger move: fumi has no topic "dock-icon" to move the question to$/);
-    refused('move', `${UNIT}.specification`, ['--question', question, '--to', 'space-homing'], MADE, /^ledger move: a question moves from a topic — name it: fumi\.specification\.<topic>$/);
+    refused('move', NOTE, ['--question', question, '--to', '__proto__'], MADE, /^ledger move: fumi has no topic "__proto__" to move the question to$/);
+    refused('move', `${UNIT}.discussion`, ['--question', question, '--to', 'space-homing'], MADE, /^ledger move: a question moves from a topic — name it: fumi\.discussion\.<topic>$/);
+    refused('move', `${UNIT}.specification`, ['--question', question, '--to', 'space-homing'], MADE,
+      /^ledger move: a question moves from a topic, and specification has none — a topic exists only before the spec$/);
+  });
+});
+
+describe('whose entries a link names, and how they relate', () => {
+  const DECISION = Object.freeze({ ...MADE, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.' });
+  const CHANGE = Object.freeze({ ...MADE, drops: ['near-frameless'], text: 'A frameless surface.', why: 'Lighter.' });
+  const BEFORE_THE_SPEC = 'before the spec a topic writes on its own entries alone, and another topic\'s change goes to it by message';
+
+  /** A question space-homing asks, and the decision answering it there: their short ids. */
+  function spaceHomings() {
+    const question = write('ask', SPACE, [], { ...MADE, text: 'Does a note follow the person across Spaces?' }).id;
+    return { question, decision: write('decide', SPACE, ['--answers', question], { ...MADE, text: 'A note follows the person.', why: 'Furniture moves with you.' }).id };
+  }
+
+  /** A second epic on the project, mint, with a question and the decision answering it on its own topic: their short ids. */
+  function mints() {
+    createManifest(dir, 'mint', { work_type: 'epic', phases: { discussion: { items: { 'dock-icon': { status: 'in-progress' } } } } });
+    const question = write('ask', 'mint.discussion.dock-icon', [], { ...MADE, text: 'Does the app show in the dock?' }).id;
+    return { question, decision: write('decide', 'mint.discussion.dock-icon', ['--answers', question], { ...MADE, text: 'No dock icon.', why: 'A menu-bar app.' }).id };
+  }
+
+  it('refuses a decision answering, and a move or a merge taking, another unit\'s question, and a move to a topic of another unit; another unit\'s decision is replaced, never recorded beside it (5.6.1)', () => {
+    const mint = mints();
+    const owned = decide(ask().id).id;
+    const ours = ask('Does a note show in the dock?').id;
+    const another = (/** @type {string} */ flag) => new RegExp(`^ledger \\w+ ${flag} names ${mint.question}, a question of mint — it must be fumi's own$`);
+
+    refused('decide', NOTE, ['--answers', mint.question], DECISION, another('--answers'));
+    refused('move', NOTE, ['--question', mint.question, '--to', 'space-homing'], MADE, another('--question'));
+    refused('merge', NOTE, ['--question', mint.question, '--into', owned], MADE, another('--question'));
+    refused('move', NOTE, ['--question', ours, '--to', 'dock-icon'], MADE, /^ledger move: fumi has no topic "dock-icon" to move the question to$/);
+
+    write('replace', NOTE, ['--replaces', mint.decision, '--reason', 'changed-mind'], { ...CHANGE, drops: ['no dock icon'], text: 'A dock icon while a note is open.' });
+    const replacement = entries().at(-1);
+    assert.deepStrictEqual([replacement.unit, replacement.topic, replacement.replaces, replacement.answers], ['fumi', 'note-window', full(mint.decision), full(mint.question)]);
+  });
+
+  it('refuses, before the spec, a topic replacing or confirming another topic\'s entry, or answering its question, which goes to the owner by message (5.6.9, 10.S6); from the spec on, a change is settled where it is found (12.15.4)', () => {
+    const theirs = spaceHomings();
+    const unitLevel = write('find', `${UNIT}.discovery`, [], { ...MADE, text: 'Notes sync through iCloud.', how: 'the brief' }).id;
+    const ours = decide(ask().id).id;
+    const relying = write('find', SPACE, ['--relies-on', ours], { ...MADE, text: 'Homing reads the note\'s frame.', how: 'the spike' }).id;
+    const replacement = change(ours).id;
+
+    refused('replace', NOTE, ['--replaces', theirs.decision, '--reason', 'changed-mind'], CHANGE,
+      new RegExp(`^ledger replace --replaces names ${theirs.decision}, a decision on space-homing — ${BEFORE_THE_SPEC}$`));
+    refused('decide', NOTE, ['--answers', theirs.question], DECISION,
+      new RegExp(`^ledger decide --answers names ${theirs.question}, a question on space-homing — ${BEFORE_THE_SPEC}$`));
+    refused('replace', NOTE, ['--replaces', unitLevel, '--reason', 'was-wrong'], { ...MADE, drops: ['iCloud'], text: 'Notes stay local.', how: 'the brief, reread' },
+      new RegExp(`^ledger replace --replaces names ${unitLevel}, a finding at the unit's level — ${BEFORE_THE_SPEC}$`));
+    refused('hold', NOTE, ['--entry', relying, '--after', replacement], MADE,
+      new RegExp(`^ledger hold --entry names ${relying}, a finding on space-homing — ${BEFORE_THE_SPEC}$`));
+
+    write('hold', SPACE, ['--entry', relying, '--after', replacement], MADE);
+    write('replace', `${UNIT}.specification`, ['--replaces', theirs.decision, '--reason', 'changed-mind'], CHANGE);
+    write('decide', `${UNIT}.specification`, ['--answers', theirs.question], DECISION);
+    assert.deepStrictEqual(entries().slice(-3).map((e) => [e.event, e.phase, e.topic]), [
+      ['still-holds', 'discussion', 'space-homing'], ['replaced', 'specification', null], ['decided', 'specification', null],
+    ]);
+  });
+
+  it('reads a question as standing on the topic it was last moved to: it is moved and answered from there alone, and moves to another topic of its unit (5.3.3)', () => {
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, specification: { items: { 'notes-spec': {} } } } });
+    const question = ask().id;
+    const staying = ask('Does a note remember its size?').id;
+
+    write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
+    refused('move', NOTE, ['--question', question, '--to', 'menu-bar'], MADE, new RegExp(`^ledger move --question names ${question}, a question on space-homing — ${BEFORE_THE_SPEC}$`));
+    refused('decide', NOTE, ['--answers', question], DECISION, new RegExp(`^ledger decide --answers names ${question}, a question on space-homing — `));
+    write('decide', SPACE, ['--answers', question], DECISION);
+    write('move', SPACE, ['--question', question, '--to', 'menu-bar'], MADE);
+    refused('move', SPACE, ['--question', question, '--to', 'note-window'], MADE, /a question on menu-bar — /);
+    assert.strictEqual(foldLedger(statePath(dir), ID_FACTS, []).get(full(question)).topic, 'menu-bar');
+
+    refused('move', NOTE, ['--question', staying, '--to', 'note-window'], MADE, /^ledger move: --to names note-window, the topic it moves from — a question moves to another topic$/);
+    refused('move', NOTE, ['--question', staying, '--to', 'notes-spec'], MADE, /^ledger move: fumi has no topic "notes-spec" to move the question to$/);
+  });
+
+  it('merges into a current decision, a duplicate being another current decision answering the question merged (5.5.4, 5.5.5)', () => {
+    const owned = decide(ask().id).id;
+    const here = write('ask', SPACE, [], { ...MADE, text: 'Is a note a window?' }).id;
+    const duplicate = write('decide', SPACE, ['--answers', here], DECISION).id;
+    const elsewhere = spaceHomings();
+    const current = change(owned).id;
+    const merge = (/** @type {string[]} */ flags, /** @type {RegExp} */ pattern) => refused('merge', SPACE, ['--question', here, ...flags], MADE, pattern);
+
+    merge(['--into', owned], new RegExp(`^ledger merge --into names ${owned}, which ${current} replaced — the current one is ${current}$`));
+    merge(['--into', current, '--duplicate', current], new RegExp(`^ledger merge --duplicate names ${current}, the decision --into names — a duplicate is another entry$`));
+    merge(['--into', current, '--duplicate', elsewhere.decision],
+      new RegExp(`^ledger merge --duplicate names ${elsewhere.decision}, which answers ${elsewhere.question} — a duplicate answers the question merged, ${here}$`));
+    const reworded = write('replace', SPACE, ['--replaces', duplicate, '--reason', 'changed-mind'], CHANGE).id;
+    merge(['--into', current, '--duplicate', duplicate], new RegExp(`^ledger merge --duplicate names ${duplicate}, which ${reworded} replaced — the current one is ${reworded}$`));
+
+    write('merge', SPACE, ['--question', here, '--into', current, '--duplicate', reworded], MADE);
+    assert.deepStrictEqual([entries().at(-1).into, entries().at(-1).duplicate], [full(current), full(reworded)]);
+  });
+
+  it('holds a current entry relying on what the replacement replaced, or on an earlier entry of its chain (5.6.10)', () => {
+    const first = decide(ask().id).id;
+    const relying = find(['--relies-on', first]).id;
+    const unrelated = find().id;
+    const second = change(first).id;
+    const onSecond = find(['--relies-on', second]).id;
+    const third = change(second, { text: 'A translucent surface.', why: 'Lighter still.' }).id;
+    const nothingReplaced = (/** @type {string} */ entry, /** @type {string} */ after) => new RegExp(
+      `^ledger hold --entry names ${entry}, which relies on nothing ${after} replaced — it holds an entry relying on what the replacement replaced, or on an earlier entry of its chain$`);
+
+    refused('hold', NOTE, ['--entry', unrelated, '--after', second], MADE, nothingReplaced(unrelated, second));
+    refused('hold', NOTE, ['--entry', onSecond, '--after', second], MADE, nothingReplaced(onSecond, second));
+    write('hold', NOTE, ['--entry', relying, '--after', second], MADE);
+    write('hold', NOTE, ['--entry', relying, '--after', third], MADE);
+    write('hold', NOTE, ['--entry', onSecond, '--after', third], MADE);
+
+    const corrected = write('replace', NOTE, ['--replaces', relying, '--reason', 'was-wrong', '--relies-on', first], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' }).id;
+    refused('hold', NOTE, ['--entry', relying, '--after', third], MADE, new RegExp(`^ledger hold --entry names ${relying}, which ${corrected} replaced — the current one is ${corrected}$`));
+    write('hold', NOTE, ['--entry', corrected, '--after', third], MADE);
+  });
+
+  it('refuses a cause a reason cannot have: none for a new fact or another topic\'s decision, a new fact\'s that is no finding, another topic\'s that is no decision on another topic, and the entry replaced itself (5.3.8)', () => {
+    const question = ask().id;
+    const ours = decide(question).id;
+    const sibling = decide(question, { text: 'Its controls appear on hover.' }).id;
+    const finding = find().id;
+    const theirs = spaceHomings().decision;
+    const replace = (/** @type {string} */ reason, /** @type {string|null} */ cause, /** @type {RegExp} */ pattern) => refused(
+      'replace', NOTE, ['--replaces', ours, '--reason', reason, ...(cause === null ? [] : ['--cause', cause])], CHANGE, pattern);
+    const otherTopic = '--reason other-topic needs a decision on a topic other than the replaced entry\'s';
+
+    replace('new-fact', null, /^ledger replace --reason new-fact needs --cause <id>: a finding$/);
+    replace('new-fact', theirs, new RegExp(`^ledger replace --cause names ${theirs}, a decision on space-homing — --reason new-fact needs a finding$`));
+    replace('other-topic', sibling, new RegExp(`^ledger replace --cause names ${sibling}, a decision on note-window — ${otherTopic}$`));
+    replace('other-topic', finding, new RegExp(`^ledger replace --cause names ${finding}, a finding on note-window — ${otherTopic}$`));
+    for (const reason of ['new-fact', 'other-topic', 'changed-mind', 'was-wrong']) {
+      replace(reason, ours, new RegExp(`^ledger replace --cause names ${ours}, the entry it replaces — a cause is what made the change$`));
+    }
+
+    write('replace', NOTE, ['--replaces', ours, '--reason', 'new-fact', '--cause', finding], CHANGE);
+    write('replace', NOTE, ['--replaces', sibling, '--reason', 'changed-mind', '--cause', theirs], CHANGE);
+    assert.deepStrictEqual(entries().slice(-2).map((e) => [e.reason, e.cause]), [['new-fact', full(finding)], ['changed-mind', full(theirs)]]);
+  });
+
+  it('keeps the replaced entry\'s product-wide mark where the replacement leaves it out, and takes the one it gives (5.2.5)', () => {
+    const wide = decide(ask().id, { product_wide: true }).id;
+    const kept = change(wide).id;
+    const narrowed = change(kept, { text: 'Frameless, on this product alone.', why: 'Scoped.', product_wide: false }).id;
+    const fact = write('find', NOTE, [], { ...MADE, text: 'CKSyncEngine ships from macOS 14.', how: 'Apple\'s documentation', product_wide: true }).id;
+    const corrected = write('replace', NOTE, ['--replaces', fact, '--reason', 'was-wrong'], { ...MADE, drops: ['14'], text: 'CKSyncEngine ships from macOS 14.4.', how: 'the release notes' }).id;
+    const plain = find().id;
+    const reworded = write('replace', NOTE, ['--replaces', plain, '--reason', 'was-wrong'], { ...MADE, drops: ['restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' }).id;
+
+    assert.deepStrictEqual([kept, narrowed, corrected, reworded].map((id) => entries().find((e) => e.id === full(id)).product_wide), [true, false, true, false]);
   });
 });
 
@@ -485,15 +675,18 @@ describe('scenarios', () => {
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().find((e) => e.id === full(persons)).by], [full(persons), 'was-wrong', 'person']);
   });
 
-  it('names, in a change caused by another topic\'s decision, that decision by its short id (5.S13)', () => {
+  it('names, in a change caused by another topic\'s decision, that decision by its short id, and refuses the change naming none (5.S13)', () => {
     const theirs = write('ask', SPACE, [], { ...MADE, text: 'Does a note follow the person across Spaces?' }).id;
     const cause = write('decide', SPACE, ['--answers', theirs], { ...MADE, text: 'A note follows the person.', why: 'Furniture moves with you.' }).id;
     const ours = decide(ask().id, { text: 'A note stays on its Space.' }).id;
+    const content = { ...MADE, drops: ['stays on its Space'], text: 'A note floats above every Space.', why: 'space-homing decided it follows the person.' };
 
-    write('replace', NOTE, ['--replaces', ours, '--reason', 'other-topic', '--cause', cause], { ...MADE, drops: ['stays on its Space'], text: 'A note floats above every Space.', why: 'space-homing decided it follows the person.' });
+    refused('replace', NOTE, ['--replaces', ours, '--reason', 'other-topic'], content,
+      /^ledger replace --reason other-topic needs --cause <id>: a decision on a topic other than the replaced entry's$/);
+    write('replace', NOTE, ['--replaces', ours, '--reason', 'other-topic', '--cause', cause], content);
 
-    assert.strictEqual(entries().at(-1).cause, full(cause));
-    assert.strictEqual(entries().at(-1).reason, 'other-topic');
+    assert.strictEqual(cause.length, 6, 'the cause was named by its short id');
+    assert.deepStrictEqual([entries().at(-1).reason, entries().at(-1).cause], ['other-topic', full(cause)]);
   });
 
   it('records a review\'s finding as a question the review asked, and links the later answer to it (5.S14)', () => {
@@ -576,20 +769,24 @@ describe('the writer lock and the commit', () => {
     assert.deepStrictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]).split('\n').slice(0, -1).map((line) => JSON.parse(line).text), ['Committed later?', 'Committed with it?']);
   });
 
-  it('takes the writer lock itself: a write waits on a live peer holding it and lands once it is released, while what it refuses without the ledger answers at once', async () => {
-    ask();
+  it('takes the writer lock itself: a write waits on a live peer holding it and lands once it is released, while what it refuses without the lock — its argv, its place, its content in the shape of the kind it writes — answers at once', async () => {
+    const question = ask().id;
     const lock = statePath(dir, '.lock');
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
     const stdin = JSON.stringify({ ...MADE, text: 'Waited its turn?' });
     const env = { ...process.env, ...SESSION };
 
-    for (const [args, childEnv] of /** @type {[string[], NodeJS.ProcessEnv][]} */ ([
-      [['ledger', 'ask', NOTE], { ...process.env, CLAUDE_CODE_SESSION_ID: '' }],
-      [['ledger', 'ask', 'mint.discussion.note-window'], env],
-      [['ledger', 'decide', NOTE], env],
+    for (const [args, childEnv, refusal] of /** @type {[string[], NodeJS.ProcessEnv, RegExp][]} */ ([
+      [['ledger', 'ask', NOTE], { ...process.env, CLAUDE_CODE_SESSION_ID: '' }, /no session to tag the entry with/],
+      [['ledger', 'ask', 'mint.discussion.note-window'], env, /there is no work unit "mint"/],
+      [['ledger', 'decide', NOTE], env, /needs --answers/],
+      [['ledger', 'decide', NOTE, '--answers', question], env, /the content needs why/],
+      [['ledger', 'replace', NOTE, '--replaces', question, '--reason', 'new-fact'], env, /--reason new-fact needs --cause/],
+      [['ledger', 'replace', NOTE, '--replaces', question, '--reason', 'changed-mind'], env, /the content needs drops/],
     ])) {
       const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, env: childEnv, input: stdin, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
       assert.strictEqual(res.status, 1, `engine ${args.join(' ')}: ${res.signal ? 'waited on the lock' : res.stderr}`);
+      assert.match(JSON.parse(res.stderr).error, refusal);
     }
 
     const child = spawn('node', [ENGINE, 'ledger', 'ask', NOTE], { cwd: dir, env });
