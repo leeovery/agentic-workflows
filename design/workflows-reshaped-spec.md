@@ -513,6 +513,8 @@ Screen, drawn by Claude: the build's position, shown on its step marker. [Claude
 
 4.1.8 State is never kept on code branches made mergeable, never in a hidden ref written by plumbing, and never written by the engine in the main checkout on the default branch. [R23, rejected there]
 
+4.1.9 Every branch ignores `.leeway/`, one cut before the workflows were set up among them: boot keeps it in the repository's own exclude file, which is never committed, from the first boot on. [4.1.2, 4.1.3; Claude's derivation 2026-10-27, from the build: a branch whose `.gitignore` lacks the line took the folder in as a submodule pointer]
+
 ### 4.2 Finding the state
 
 4.2.1 The engine resolves `.leeway/` through the common git directory and hands out absolute paths in its responses. [R23, plan 4.2, plan 10.1; Claude's]
@@ -556,8 +558,8 @@ Screen, drawn by Claude: boot's stop, the state branch gone here and on the remo
 
 ◆ Start again with a fresh state?
 
-s/start → Start again — a fresh state branch, then plan the
-          product reads Portal's code to rebuild what it can
+y/yes   → Start again — a fresh state branch, then the product
+          researcher reads Portal's code to rebuild what it can
 n/no    → Not now — look for another clone first; nothing is
           written
 ```
@@ -594,7 +596,7 @@ n/no  → Leave it unset — setup carries on without it
 
 4.5.1 Boot finds the remote's state branch with no worktree and adds the worktree, locked. [plan 10.5, plan 9.2; Claude's]
 
-4.5.2 Finding neither a state worktree nor a state branch on the remote, on a project being set up, boot creates the orphan branch. A project being set up is one whose code tree holds nothing the workflows commit there (6.3.11, 6.3.15): no workflows hook in its `.claude/settings.json`, and no workflows line in its `.worktreeinclude` or `.gitignore`. Where any of these is there, the state was lost, and boot stops as 4.4.5 says; a project on today's layout, its `.workflows/` still on the code branch, is the migration's (§21). [plan 10.5; Claude's; Claude's derivation 2026-10-25: the code tree's own trace tells a new project from lost state]
+4.5.2 Finding neither a state worktree nor a state branch on the remote, on a project being set up, boot creates the orphan branch. A project being set up is one whose repository holds nothing the workflows commit to its code (6.3.11, 6.3.15): no workflows hook in its `.claude/settings.json` and no line naming `.leeway/` in its `.gitignore`, on any branch, this clone's or the remote's, or in any tree checked out. Where either is there, the state was lost, and boot stops as 4.4.5 says; a project on today's layout, its `.workflows/` still on the code branch, is the migration's (§21). Boot commits the `.gitignore` line only once the state exists, so the trace never stands without it. [plan 10.5; Claude's; Claude's derivation 2026-10-25: the code tree's own trace tells a new project from lost state; Claude's derivation 2026-10-27, from the build: each boot leaves the trace on the branch its session has checked out, so the whole repository is read]
 
 ### 4.7 A second clone
 
@@ -834,7 +836,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 4.S11 Given a fresh clone whose remote holds `leeway-state` and which has no state worktree, when boot runs, then the state worktree is added and locked. (4.5.1)
 
-4.S12 Given a project being set up, its code tree holding nothing the workflows commit there, with no state worktree and no state branch on the remote, when boot runs, then an orphan `leeway-state` branch exists afterwards. (4.5.2, 4.9.1)
+4.S12 Given a project being set up, its repository holding nothing the workflows commit to its code, with no state worktree and no state branch on the remote, when boot runs, then an orphan `leeway-state` branch exists afterwards. (4.5.2, 4.9.1)
 
 4.S14 Given two clones that each appended ledger entries since their last push, when boot runs in the clone that is behind, then its ledger holds the remote's entries first and its own unpushed entries after them in their order, the new commit's parent is the remote's tip, the push is made with lease, the append-only check passes on both clones afterwards, and neither clone's config holds a merge driver for the state. (4.7.1, 4.7.2, 4.7.3, 4.7.8)
 
@@ -879,6 +881,8 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 4.S35 Given work started from an inbox idea and a roadmap item with a note, when the unit's folder is listed, then `seeds/` holds both files under their own names and the unit's manifest records each seed's source and the roadmap item as it stood, its horizon included; when the work is cancelled, then the item is back on that horizon. (4.11.16, 18.8.20)
 
 4.S36 Given work on one machine pushed to the remote, when boot runs on another machine whose state branch is behind, then before anything writes state the branch fast-forwards to the remote's tip and no merge commit is made; given a clone holding state commits a failed push left behind, with the remote not moved, when boot runs, then they are pushed. (4.7.8, 4.3.3)
+
+4.S37 Given a project set up, and a code branch cut before setup checked out in the main checkout, when every change there is staged, then nothing of `.leeway/` is staged. (4.1.9)
 
 ## 5. The ledger
 
@@ -1238,7 +1242,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.3.14 Left to the builder: the code commit's message beyond the task's id. [Claude's sort, B17]
 
-6.3.15 The files the workflows own outside `.leeway/` are not code: the project's `.claude/settings.json`, `.worktreeinclude` and `.gitignore`. Boot commits its own changes to them on the branch checked out, as today. A migration's changes to them go through the migration review, whose one yes makes one commit on the code branch and one on the state branch where it changed both (21.9.2). [today's product (`engine-commands.md:26`, `:436`); R15, R35, plan 6.3; Claude's derivation, T9]
+6.3.15 The files the workflows own outside `.leeway/` are not code: the project's `.claude/settings.json` and `.gitignore`. Boot commits its own changes to them on the branch checked out, as today, waiting out a merge, rebase or bisect git holds open there. A migration's changes to them go through the migration review, whose one yes makes one commit on the code branch and one on the state branch where it changed both (21.9.2). [today's product (`engine-commands.md:26`, `:436`); R15, R35, plan 6.3; Claude's derivation, T9]
 
 ### 6.4 The checklists
 
@@ -9962,7 +9966,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.18 Tick's store, `.tick/` at the project root today, moves into the state worktree, its contents unchanged (7.5.2, 4.11.3); the default branch drops it in the migration's commit (21.9.2). [7.5.1, 7.5.2, 4.11.3; Claude's derivation 2026-10-25: the tracker's state lives in the state worktree; ruled by the person 2026-10-25, Tick needing no change]
 
-21.5.19 The move takes today's other names to the product's (28.1.2): `~/.config/workflows/` moves to `~/.config/leeway/`, its contents unchanged, and the project's settings hooks, `.gitignore` and `.worktreeinclude` are rewritten to the new names. [ruled by the person 2026-10-26; Claude's derivation]
+21.5.19 The move takes today's other names to the product's (28.1.2): `~/.config/workflows/` moves to `~/.config/leeway/`, its contents unchanged, the project's settings hooks and `.gitignore` are rewritten to the new names, and the workflows' lines in its `.worktreeinclude` are removed: every worktree reads the one state in the main checkout, so nothing is copied into a worktree (4.1.4). [ruled by the person 2026-10-26; Claude's derivation; Claude's derivation 2026-10-27, from the build: one state, nothing to copy]
 
 ### 21.6 Step 4: the records
 
@@ -10250,7 +10254,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S50 Given a project whose baseline status records `native`, and another whose status records `skipped`, when the migration runs, then neither holds a baseline status field, each project manifest remembers the brownfield offer's answer, and the start menu makes neither the offer. (21.11.2, 8.12.11)
 
-21.S51 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows/` is gone, and the project's settings hooks, `.gitignore` and `.worktreeinclude` name `.leeway/` and the engine under its new name. (21.5.19)
+21.S51 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows/` is gone, the project's settings hooks and `.gitignore` name `.leeway/` and the engine under its new name, and its `.worktreeinclude` holds none of the workflows' lines. (21.5.19)
 
 ## 22. Setup, environment and the knowledge base
 
@@ -11429,8 +11433,9 @@ parked by the person 2026-10-19]
 
 27.2.3 Uninstalling and reinstalling is not built in this release. It is
 parked by the person for a proper conversation, nothing about it is
-decided, and it is raised with the person when the work reaches install.
-[plan 12.3, Open; parked by the person 2026-10-13]
+decided, and it is raised with the person after the release.
+[plan 12.3, Open; parked by the person 2026-10-13; after the release,
+ruled by the person 2026-10-26]
 
 27.2.4 The conversation on uninstalling and reinstalling starts from what
 was raised, none of it decided:
@@ -11597,7 +11602,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.2.8 Relies on: none. [R14; Claude's derivation]
 
-29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S36 (23). [R14; Claude's derivation]
+29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S36, 4.S37 (24). [R14; Claude's derivation]
 
 ### 29.3 The ledger
 
@@ -11847,7 +11852,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 849 listed are the 849 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 850 listed are the 850 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
