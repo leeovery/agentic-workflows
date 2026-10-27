@@ -42,15 +42,16 @@
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
-//   write never waits on a peer; then a decision is judged, one rule or
-//   several, by the separate Claude call, which no peer waits on either.
-//   Under the lock the ledger is folded
-//   (ledger-fold.cjs), every link resolved and its currency and relations
-//   checked, the event appended and the ledger committed, so no peer's write
-//   lands between the fold and the append. The answer is made once the lock
-//   is released: the entry's short id, the commit, and as warnings a push
-//   that failed and what a landing finished on the way said, which a refusal
-//   carries too.
+//   write never waits on a peer; then a decision's links are resolved and
+//   checked against the ledger as it stands, so no call is spent on a write
+//   they refuse, and it is judged, one rule or several, by the separate
+//   Claude call, which no peer waits on either. Under the lock the ledger is
+//   folded (ledger-fold.cjs), every link resolved and its currency and
+//   relations checked again, the event appended and the ledger committed, so
+//   no peer's write lands between the fold and the append. The answer is made
+//   once the lock is released: the entry's short id, the commit, and as
+//   warnings a push that failed and what a landing finished on the way said,
+//   which a refusal carries too.
 // ---------------------------------------------------------------------------
 
 const { messageOf } = require('../kernel/call.cjs');
@@ -613,6 +614,30 @@ function eventOf(request, read) {
 }
 
 /**
+ * A decision's links resolved and checked before the one-decision call, as
+ * the lock checks them again, so no call is spent on a write its links
+ * refuse. Answers the entries they name, by short id, for the call's
+ * refusal.
+ * @param {Request} request @param {string[]} warnings
+ * @returns {import('./ledger-one-decision.cjs').Named}
+ */
+function linkedBeforeCall(request, warnings) {
+  const read = readNow(request.at, warnings);
+  const { answers, replaces } = eventOf(request, read);
+  const short = (/** @type {unknown} */ id) => shortId(/** @type {string} */ (id), read.facts.keys());
+  return { answers: short(answers), replaces: replaces === undefined ? null : short(replaces) };
+}
+
+/**
+ * A write as asked, a decision among them judged by the one-decision check.
+ * @param {Request} request @param {string[]} warnings
+ * @returns {Request}
+ */
+function oneDecisionChecked(request, warnings) {
+  return request.kind === 'decision' ? checkOneDecision(request, linkedBeforeCall(request, warnings)) : request;
+}
+
+/**
  * A ledger commit's message: the unit, the event and its id, and the topic
  * it stands on.
  * @param {string} unit @param {string} event @param {string} id @param {string|null} topic
@@ -647,7 +672,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const request = checkOneDecision(requestOf(cwd, verb, args, stdin, warnings));
+    const request = oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings), warnings);
     const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
     const result = { id, committed: outcome.committed };

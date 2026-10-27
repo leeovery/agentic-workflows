@@ -70,7 +70,11 @@ function arm(answers) {
   setEnv({ CLAUDE_STUB_LOG: log, CLAUDE_STUB_ANSWERS: answers === undefined ? undefined : JSON.stringify(answers) });
 }
 
-/** What each call handed the stub. @returns {{argv: string[], cwd: string, held: string[], env: Record<string, string>, input: string}[]} */
+/**
+ * What each call handed the stub: its environment by name, a value only
+ * where the test named it in CLAUDE_STUB_LOG_VALUES.
+ * @returns {{argv: string[], cwd: string, held: string[], env: Record<string, string|null>, input: string}[]}
+ */
 function calls() {
   return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
 }
@@ -122,18 +126,20 @@ describe('the call\'s command line (16.19.4, 16.19.5)', () => {
     assert.ok(!fs.existsSync(first.cwd) && !fs.existsSync(second.cwd), 'a call left its folder behind');
   });
 
-  it('clears the environment of the calling session, the project and the workflows\' and Leeway\'s own variables, keeps the login and the person\'s setup, and turns auto-memory off', () => {
+  it('clears the environment of the calling session, the project, the session\'s plugins and harness settings and the workflows\' and Leeway\'s own variables, keeps the login and the person\'s setup, and turns auto-memory off', () => {
     const session = {
       CLAUDE_CODE_SESSION_ID: 'c6b74014', CLAUDE_PROJECT_DIR: '/work/portal', CLAUDECODE: '1', CLAUDE_CODE_CHILD_SESSION: '1',
       CLAUDE_CODE_SESSION_ATTENDED: '1', CLAUDE_PID: '8618', AI_AGENT: 'claude-code_2-1-311_agent', CLAUDE_EFFORT: 'xhigh',
       TRACEPARENT: '00-abc-def-01', CLAUDE_CODE_EXECPATH: '/opt/claude/2.1.311', CLAUDE_CODE_INVOKED_SKILLS: 'workflow-start',
       CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_CODE_MESSAGING_SOCKET: '/tmp/cc-socks/8618.sock', CLAUDE_CODE_MESSAGING_TOKEN: 'secret',
-      CLAUDE_CODE_SSE_PORT: '51234',
+      CLAUDE_CODE_SSE_PORT: '51234', CLAUDE_CODE_PLUGIN_DIRS: '/work/portal/.claude/skills', CLAUDE_CODE_PEWTER_OWL_TOOL: 'true',
+      CLAUDE_CODE_THINKING_DISPLAY_UPDATES: 'false', CLAUDE_CODE_SILENT_TURN_REMINDER: 'false',
     };
     const own = { WORKFLOWS_GATE_SURFACE: '1', WORKFLOWS_HANDOFF: '1', LEEWAY_STATE: 'x' };
     const login = { ANTHROPIC_API_KEY: 'sk-test', CLAUDE_CODE_OAUTH_TOKEN: 'oauth-test', ANTHROPIC_BASE_URL: 'http://127.0.0.1:4747', CLAUDE_CODE_USE_BEDROCK: '1', HTTPS_PROXY: 'http://proxy:3128' };
     setEnv({ ...session, ...own, ...login });
     arm({ '': ANSWER });
+    setEnv({ CLAUDE_STUB_LOG_VALUES: [...Object.keys(login), 'HOME', 'PATH', 'CLAUDE_CONFIG_DIR', 'CLAUDE_CODE_DISABLE_AUTO_MEMORY'].join(',') });
 
     askClaude(ASK);
 
@@ -178,12 +184,23 @@ describe('the call\'s answer', () => {
     assert.deepStrictEqual(askClaude(ASK), { cannot: 'rate-limit', detail: 'API Error: Request rejected (429) · rate limited' });
   });
 
-  it('cannot run past its time: the call is stopped, and no answer stands', () => {
+  it('cannot run past its time: the call is killed outright — one deaf to SIGTERM too — and no answer stands', () => {
     arm({ '': 'timeout' });
     const started = Date.now();
 
     assert.deepStrictEqual(askClaude({ ...ASK, timeoutMs: 400 }), { cannot: 'timeout', detail: 'no answer within 0.4 s' });
-    assert.ok(Date.now() - started < 10000, 'the call outlived its time');
+    assert.ok(Date.now() - started < 5000, 'the call outlived its time');
+  });
+
+  it('cannot run where there is no empty folder to run it from, saying so — never a throw', () => {
+    arm({ '': ANSWER });
+    setEnv({ TMPDIR: path.join(scratch, 'nowhere') });
+
+    const answer = askClaude(ASK);
+
+    assert.strictEqual('cannot' in answer && answer.cannot, 'failed');
+    assert.match(/** @type {{detail: string}} */ (answer).detail, /^no empty folder to run the call from: .*ENOENT/);
+    assert.deepStrictEqual(calls(), [], 'a call ran with no folder of its own');
   });
 
   it('cannot run where Claude Code gives up on an answer that fits the schema', () => {
@@ -223,6 +240,23 @@ describe('the call\'s answer', () => {
 
     for (const schema of [{ ...SCHEMA, pattern: '^r' }, deep]) {
       assert.throws(() => askClaude({ ...ASK, schema }), /the call's schema uses pattern, which the engine cannot check an answer against/);
+    }
+    assert.deepStrictEqual(calls(), [], 'a call was made with a schema the answer could not be checked against');
+  });
+
+  it('refuses a schema giving a keyword it checks in a form it cannot check — additionalProperties as a schema, a type of several or of none it knows — at any depth, before any call', () => {
+    arm({ '': ANSWER });
+    /** @param {Record<string, unknown>} id the inner schema of a row's id */
+    const deep = (id) => ({ ...SCHEMA, properties: { rows: { type: 'array', items: { type: 'object', properties: { id } } } } });
+
+    for (const [schema, refusal] of /** @type {[Record<string, unknown>, RegExp][]} */ ([
+      [{ ...SCHEMA, additionalProperties: { type: 'string' } }, /the call's schema gives additionalProperties as \{"type":"string"\}, and the engine checks an answer against true or false/],
+      [deep({ type: 'object', additionalProperties: { type: 'string' } }), /gives additionalProperties as \{"type":"string"\}/],
+      [{ ...SCHEMA, type: ['object', 'null'] }, /the call's schema gives type as \["object","null"\], and the engine checks an answer against one of object, /],
+      [deep({ type: ['string', 'null'] }), /gives type as \["string","null"\]/],
+      [deep({ type: 'date' }), /the call's schema gives type as "date", and the engine checks an answer against one of /],
+    ])) {
+      assert.throws(() => askClaude({ ...ASK, schema }), refusal, JSON.stringify(schema));
     }
     assert.deepStrictEqual(calls(), [], 'a call was made with a schema the answer could not be checked against');
   });

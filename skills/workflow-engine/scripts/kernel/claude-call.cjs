@@ -15,14 +15,18 @@
 // - Its environment: the engine's own with auto-memory off, cleared of what
 //   would carry the calling session or project in — the session's id, the
 //   project's folder, what Claude Code gives every command its session runs,
-//   and the workflows' and Leeway's own variables. The login is left as it
-//   is: its variables and the person's own setup pass through.
+//   the person's plugin folders, the gate mod's harness, and the workflows'
+//   and Leeway's own variables. The login is left as it is: its variables
+//   pass through.
 // - The binary: `claude` on PATH, or the one LEEWAY_CLAUDE names — the test
 //   suite pins it to a stub, so no test reaches a real Claude.
 // - Its answer: the structured output, where it fits the schema, and what
 //   the call cost; or why the call cannot run — no login serves it, a rate
 //   limit, a timeout, an answer that does not fit the schema, or another
-//   failure, said.
+//   failure, no folder to run from among them, said. A call past its time is
+//   killed outright, so nothing it does holds its caller longer. Only a
+//   schema an answer cannot be checked against — the caller's mistake — is
+//   refused, before any call.
 // - Generic: the prompt, the schema, the model, the effort, the input and the
 //   time it may take are the caller's.
 // ---------------------------------------------------------------------------
@@ -32,6 +36,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { isObject } = require('./manifest-io.cjs');
+const { messageOf } = require('./call.cjs');
 
 /** The variable naming the binary, where it is not `claude` on PATH. */
 const BINARY_VAR = 'LEEWAY_CLAUDE';
@@ -39,14 +44,18 @@ const BINARY_VAR = 'LEEWAY_CLAUDE';
 /**
  * The calling session's id and project folder; what else Claude Code gives
  * every command its session runs — the marks of a child of that session, its
- * process, effort, trace and skills; and the session's entrypoint, its
- * channel to its peers and its link to an IDE.
+ * process, effort, trace and skills; the session's entrypoint, its channel
+ * to its peers and its link to an IDE; the person's plugin folders, which
+ * Claude Code loads whatever the settings sources say; and the harness the
+ * gate mod sets in a workflow session.
  */
 const CLEARED = Object.freeze([
   'CLAUDE_CODE_SESSION_ID', 'CLAUDE_PROJECT_DIR',
   'CLAUDECODE', 'CLAUDE_CODE_CHILD_SESSION', 'CLAUDE_CODE_SESSION_ATTENDED', 'CLAUDE_PID', 'AI_AGENT', 'CLAUDE_EFFORT', 'TRACEPARENT',
   'CLAUDE_CODE_EXECPATH', 'CLAUDE_CODE_INVOKED_SKILLS',
   'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_MESSAGING_SOCKET', 'CLAUDE_CODE_MESSAGING_TOKEN', 'CLAUDE_CODE_SSE_PORT',
+  'CLAUDE_CODE_PLUGIN_DIRS',
+  'CLAUDE_CODE_PEWTER_OWL_TOOL', 'CLAUDE_CODE_THINKING_DISPLAY_UPDATES', 'CLAUDE_CODE_SILENT_TURN_REMINDER',
 ]);
 
 /** The workflows' and Leeway's own variables. */
@@ -70,9 +79,6 @@ const SETTINGS = JSON.stringify({ disableAllHooks: true, autoMemoryEnabled: fals
  * @typedef {{answer: unknown, cost: number|null}|{cannot: CannotRun, detail: string}} Answer
  */
 
-/** The schema keywords a fit is checked against; `description` is for the model alone. */
-const KEYWORDS = new Set(['type', 'properties', 'required', 'additionalProperties', 'items', 'minItems', 'maxItems', 'minLength', 'enum', 'description']);
-
 /** @type {Readonly<Record<string, (value: unknown) => boolean>>} */
 const TYPES = Object.freeze({
   object: isObject,
@@ -82,6 +88,29 @@ const TYPES = Object.freeze({
   integer: Number.isInteger,
   number: (value) => typeof value === 'number' && Number.isFinite(value),
   null: (value) => value === null,
+});
+
+/** @param {unknown} value */
+function isCount(value) {
+  return Number.isInteger(value) && /** @type {number} */ (value) >= 0;
+}
+
+/**
+ * The schema keywords a fit is checked against, each with what its value
+ * must be for the check to read it; `description` is for the model alone.
+ * @type {Readonly<Record<string, {is: string, test: (value: unknown) => boolean}>>}
+ */
+const KEYWORDS = Object.freeze({
+  type: { is: `one of ${Object.keys(TYPES).join(', ')}`, test: (value) => typeof value === 'string' && Object.hasOwn(TYPES, value) },
+  properties: { is: 'an object of schemas', test: (value) => isObject(value) && Object.values(value).every(isObject) },
+  required: { is: 'a list of names', test: (value) => Array.isArray(value) && value.every((name) => typeof name === 'string') },
+  additionalProperties: { is: 'true or false', test: (value) => typeof value === 'boolean' },
+  items: { is: 'a schema', test: isObject },
+  minItems: { is: 'a count', test: isCount },
+  maxItems: { is: 'a count', test: isCount },
+  minLength: { is: 'a count', test: isCount },
+  enum: { is: 'a list', test: Array.isArray },
+  description: { is: 'text', test: (value) => typeof value === 'string' },
 });
 
 /**
@@ -119,13 +148,16 @@ function objectMisfit(value, schema, at) {
 }
 
 /**
- * Refuse a schema using a keyword an answer cannot be checked against, at
- * any depth — the caller's mistake, so no part of a schema goes unchecked.
+ * Refuse a schema an answer cannot be checked against, at any depth — a
+ * keyword the check does not read, or one whose value it cannot read — the
+ * caller's mistake, so no part of a schema goes unchecked.
  * @param {Record<string, any>} schema
  */
 function assertCheckable(schema) {
-  const unknown = Object.keys(schema).find((key) => !KEYWORDS.has(key));
-  if (unknown !== undefined) throw new Error(`the call's schema uses ${unknown}, which the engine cannot check an answer against`);
+  for (const [key, value] of Object.entries(schema)) {
+    if (!Object.hasOwn(KEYWORDS, key)) throw new Error(`the call's schema uses ${key}, which the engine cannot check an answer against`);
+    if (!KEYWORDS[key].test(value)) throw new Error(`the call's schema gives ${key} as ${JSON.stringify(value)}, and the engine checks an answer against ${KEYWORDS[key].is}`);
+  }
   for (const inner of Object.values(schema.properties ?? {})) assertCheckable(inner);
   if (schema.items !== undefined) assertCheckable(schema.items);
 }
@@ -242,18 +274,26 @@ function answerOf(run, ask) {
 
 /**
  * Put one question to the separate Claude call, from a fresh empty folder.
- * Refuses a schema an answer cannot be checked against, before any call.
+ * Refuses a schema an answer cannot be checked against, before any call;
+ * every other failure is an answer, never a throw.
  * @param {Ask} ask
  * @returns {Answer}
  */
 function askClaude(ask) {
   assertCheckable(ask.schema);
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-call-'));
+  let folder;
   try {
-    const run = spawnSync(binary(), argsOf(ask), { cwd: folder, env: envOf(), input: ask.input, encoding: 'utf8', timeout: ask.timeoutMs });
+    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-call-'));
+  } catch (err) {
+    return cannot('failed', `no empty folder to run the call from: ${messageOf(err)}`);
+  }
+  try {
+    const run = spawnSync(binary(), argsOf(ask), { cwd: folder, env: envOf(), input: ask.input, encoding: 'utf8', timeout: ask.timeoutMs, killSignal: 'SIGKILL' });
     return answerOf(run, ask);
   } finally {
-    fs.rmSync(folder, { recursive: true, force: true });
+    try {
+      fs.rmSync(folder, { recursive: true, force: true });
+    } catch { /* a folder that will not go stays in the temp folder, and the answer stands */ }
   }
 }
 

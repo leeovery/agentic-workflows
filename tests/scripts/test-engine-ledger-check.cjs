@@ -4,9 +4,10 @@
 // The one-decision check (workflow-engine/scripts/domain/ledger-one-decision
 // .cjs) and its late check (domain/ledger-late-check.cjs): every decision
 // `ledger decide` writes, and every one `ledger replace` writes in place of
-// a decision, judged by the separate Claude call before the writer lock —
-// one rule lands checked, several are refused for the writer to split, and
-// a call that cannot run lands the entry unchecked; then, at a later start,
+// a decision, judged by the separate Claude call before the writer lock,
+// once its links pass — one rule lands checked, several are refused for the
+// writer to split, and a call that cannot run, or fails in any way, lands
+// the entry unchecked; then, at a later start,
 // boot launches the late check, detached and one at a time, which records
 // what it finds beside each unchecked decision and commits it, never
 // touching the entry's line, a decision found holding several rules showing
@@ -31,8 +32,10 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
-const { PROMPT, SCHEMA } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
-const { launcher } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
+const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
+const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
+const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
+const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const UNIT = 'fumi';
@@ -153,6 +156,24 @@ function flagValue(argv, flag) {
   return argv[argv.indexOf(flag) + 1];
 }
 
+/**
+ * The separate call answered in process, in turn, by `answers` — each a
+ * call's answer, or an error it throws — for the length of the test; how
+ * many times it was called.
+ * @param {import('node:test').TestContext} t @param {unknown[]} answers
+ * @returns {{count: number}}
+ */
+function callAnswering(t, answers) {
+  const made = { count: 0 };
+  t.mock.method(claudeCall, 'askClaude', () => {
+    const answer = answers[made.count];
+    made.count += 1;
+    if (answer instanceof Error) throw answer;
+    return answer;
+  });
+  return made;
+}
+
 describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.6)', () => {
   it('lands a decision holding one rule checked: the call judged the entry\'s own content alone — its answer, why and what it rules out — on Opus, with the check\'s prompt and schema', () => {
     const question = ask();
@@ -215,21 +236,53 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
       env: armed({ [BOTH]: rules(PANEL, SYNC) }), stdin: JSON.stringify({ ...MADE, drops: [], text: BOTH, why: 'Two things at once.' }),
     });
 
-    assert.strictEqual(res.error, `ledger replace: the decision holds 2 rules, and an entry holds one — nothing appended. Split it: replace ${decision} with one of them, and decide each other as its own entry answering the question it answers:\n  1. ${PANEL}\n  2. ${SYNC}`);
+    assert.strictEqual(res.error, `ledger replace: the decision holds 2 rules, and an entry holds one — nothing appended. Split it: replace ${decision} with one of them, and decide each other as its own entry answering ${question}:\n  1. ${PANEL}\n  2. ${SYNC}`);
     assert.deepStrictEqual({ ledger: ledgerText(), tip: stateTip() }, before, 'a refusal appended or committed');
   });
 
-  it('lands the decision unchecked where the call cannot run — no login, a rate limit, an answer that does not fit — and the write answers as ever, recording never stopped for the call', () => {
+  it('spends no call on a decision its links refuse: an answer to no question, to a prefix naming nothing, a replacement caused by what it replaces — each refused as under the lock, no call made, nothing appended', () => {
     const question = ask();
+    const finding = write('find', NOTE, [], { ...MADE, text: 'Panels float above every Space.', how: 'a spike' }).id;
+    const decision = decide(question, PANEL, { '': rules(PANEL) });
+    const before = { ledger: ledgerText(), calls: calls().length };
+    const content = JSON.stringify({ ...MADE, text: SYNC, why: 'Because.' });
+    const env = armed({ '': rules(SYNC) });
 
-    for (const [i, answer] of /** @type {unknown[]} */ ([undefined, 'rate-limit', 'misfit', { rules: [] }, { rules: 'one' }]).entries()) {
+    assert.match(refuses(dir, ['ledger', 'decide', NOTE, '--answers', finding], { env, stdin: content }).error, new RegExp(`^ledger decide --answers names ${finding}, .* — it must name a question$`));
+    assert.match(refuses(dir, ['ledger', 'decide', NOTE, '--answers', 'fffffff'], { env, stdin: content }).error, /^ledger decide --answers: no ledger entry's id begins "fffffff"$/);
+    assert.match(refuses(dir, ['ledger', 'replace', NOTE, '--replaces', decision, '--reason', 'changed-mind', '--cause', decision], {
+      env, stdin: JSON.stringify({ ...MADE, drops: [], text: SYNC, why: 'Because.' }),
+    }).error, new RegExp(`^ledger replace --cause names ${decision}, the entry it replaces`));
+    assert.deepStrictEqual({ ledger: ledgerText(), calls: calls().length }, before, 'a call was spent on a write its links refuse');
+  });
+
+  it('lands the decision unchecked where the call cannot run — no login, a rate limit, an outage, an answer that does not fit, no temp folder to run it from — and the write answers as ever, recording never stopped for the call', () => {
+    const question = ask();
+    const nowhere = { TMPDIR: path.join(dir, 'nowhere') };
+
+    for (const [i, [answer, overlay]] of /** @type {[unknown, Record<string, string>][]} */ ([
+      [undefined, {}], ['rate-limit', {}], ['failed', {}], ['misfit', {}], [{ rules: [] }, {}], [{ rules: 'one' }, {}], [rules(PANEL), nowhere],
+    ]).entries()) {
       const text = `Answer ${i}.`;
-      const res = write('decide', NOTE, ['--answers', question], { ...MADE, text, why: 'Because.' }, answer === undefined ? undefined : { '': answer });
+      const res = ok(dir, ['ledger', 'decide', NOTE, '--answers', question], {
+        env: { ...armed(answer === undefined ? undefined : { '': answer }), ...overlay }, stdin: JSON.stringify({ ...MADE, text, why: 'Because.' }),
+      });
       assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed'], JSON.stringify(answer));
       assert.strictEqual(eventOf(res.id).unchecked, true, JSON.stringify(answer));
       assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
     }
-    assert.strictEqual(calls().length, 5);
+    assert.strictEqual(calls().length, 6, 'a call ran with no temp folder to run it from');
+  });
+
+  it('lands the decision unchecked where the call throws, whatever it throws — the call\'s failure is the check\'s, never the write\'s', (t) => {
+    const question = ask();
+    const made = callAnswering(t, [new Error('spawnSync claude EAGAIN'), new Error('spawnSync claude EAGAIN')]);
+
+    assert.deepStrictEqual(judgeDecision({ text: PANEL, why: 'Because.', rules_out: [] }), { cannot: 'failed', detail: 'spawnSync claude EAGAIN' });
+    const res = write('decide', NOTE, ['--answers', question], { ...MADE, text: PANEL, why: 'Because.' });
+
+    assert.strictEqual(made.count, 2);
+    assert.strictEqual(eventOf(res.id).unchecked, true);
   });
 
   it('runs before the writer lock: a peer holding the lock never holds the call up — a decision holding several rules is refused at once, and one holding one is judged while the write waits its turn', async () => {
@@ -264,7 +317,9 @@ describe('the late check (16.19.8, 5.S34)', () => {
   it('is launched by boot, detached, where a decision landed unchecked and nothing has checked it — and not where none is owed', (t) => {
     /** @type {string[]} */
     const launched = [];
-    t.mock.method(launcher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+    t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => {
+      if (argv.join(' ') === 'ledger late-check') launched.push(root);
+    });
 
     ok(dir, ['boot']);
     decide(ask(), PANEL, { '': rules(PANEL) });
@@ -342,14 +397,19 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.ok(!fs.existsSync(claim), 'the check left its claim behind');
   });
 
-  it('leaves a decision the call still cannot judge owed, for the next start: no login or a rate limit leaves every decision after it owed too, an answer that does not fit only that one', () => {
+  it('leaves a decision the call still cannot judge owed, for the next start: no login, a rate limit, an outage or a timeout leaves every decision after it owed too, an answer that does not fit only that one', (t) => {
     const first = decide(ask(), PANEL);
     const second = decide(ask(NOTE, 'How do notes reach a second Mac?'), SYNC);
     const written = calls().length;
 
     assert.deepStrictEqual(lateCheck(), { ok: true, ran: true, checked: 0, several: 0, owed: 2, cannot: { reason: 'no-login', detail: 'Not logged in · Please run /login' } });
     assert.strictEqual(lateCheck({ '': 'rate-limit' }).cannot.reason, 'rate-limit');
-    assert.strictEqual(calls().length - written, 2, 'a check went on past a call no login or rate limit would let run');
+    assert.strictEqual(lateCheck({ '': 'failed' }).cannot.reason, 'failed');
+    assert.strictEqual(calls().length - written, 3, 'a check went on past a call that would meet every decision after it');
+    const timedOut = callAnswering(t, [{ cannot: 'timeout', detail: 'no answer within 60 s' }, { answer: rules(SYNC), cost: 0 }]);
+    assert.deepStrictEqual(lateCheck(), { ok: true, ran: true, checked: 0, several: 0, owed: 2, cannot: { reason: 'timeout', detail: 'no answer within 60 s' } });
+    assert.strictEqual(timedOut.count, 1, 'a check went on past a timeout');
+    t.mock.restoreAll();
     assert.ok(!events().some((e) => e.event === 'checked'), 'a check recorded a result it never had');
 
     const res = lateCheck({ [PANEL]: 'misfit', [SYNC]: rules(SYNC) });
@@ -366,7 +426,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
     Object.assign(process.env, armed({ '': rules(PANEL, SYNC) }));
     const started = Date.now();
     try {
-      launcher.launch(fs.realpathSync(statePath(dir)));
+      assert.strictEqual(launchLateCheck(fs.realpathSync(statePath(dir)), []), true);
     } finally {
       for (const key of Object.keys(process.env)) if (!Object.hasOwn(saved, key)) delete process.env[key];
       Object.assign(process.env, saved);

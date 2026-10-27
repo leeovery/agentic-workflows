@@ -49,7 +49,7 @@ const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domai
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 const { shortIds } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-ids.cjs'));
 const { liveness } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-units.cjs'));
-const { launcher: lateCheckLauncher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-late-check.cjs'));
+const { launcher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/call.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -3725,7 +3725,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(events.filter((e) => e.event === 'decided' || e.of === 'decision').map((e) => e.unchecked), [true, true]);
     /** @type {string[]} */
     const launched = [];
-    t.mock.method(lateCheckLauncher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+    t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => { if (argv.join(' ') === 'ledger late-check') launched.push(root); });
     sim.run(['boot']);
     assert.deepStrictEqual(launched, [fs.realpathSync(statePath(sim.dir))]);
     const withoutLogin = sim.env;

@@ -117,6 +117,21 @@ describe('hermetic environment — the pins', () => {
     assert.strictEqual(JSON.parse(res.stdout).result, 'Not logged in · Please run /login');
   });
 
+  it('the stub writes down its environment\'s names, and no value a test did not name — a login the environment holds never lands in its log', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-stub-log-'));
+    try {
+      const log = path.join(dir, 'calls.jsonl');
+      const env = { ...process.env, CLAUDE_STUB_LOG: log, CLAUDE_STUB_LOG_VALUES: 'PATH', ANTHROPIC_API_KEY: 'sk-developer', CLAUDE_CODE_OAUTH_TOKEN: 'oauth-developer' };
+      spawnSync(process.env.LEEWAY_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question', env });
+      const text = fs.readFileSync(log, 'utf8');
+      const logged = JSON.parse(text).env;
+      assert.deepStrictEqual([logged.ANTHROPIC_API_KEY, logged.CLAUDE_CODE_OAUTH_TOKEN, logged.PATH], [null, null, process.env.PATH]);
+      assert.ok(!text.includes('sk-developer') && !text.includes('oauth-developer'), 'a login reached the log');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('git reads no user or system config, and the display width is pinned', () => {
     assert.strictEqual(process.env.GIT_CONFIG_GLOBAL, '/dev/null');
     assert.strictEqual(process.env.GIT_CONFIG_SYSTEM, '/dev/null');

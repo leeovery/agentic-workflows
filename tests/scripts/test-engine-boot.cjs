@@ -168,14 +168,17 @@ const stubbed = harness.harness(STUB_ENGINE);
 const real = harness;
 
 /**
- * The vector fill's launches from the stubbed copy recorded, not spawned.
+ * The vector fill's launches from the stubbed copy recorded, not spawned;
+ * any other detached job's launch dropped, never spawned either.
  * @param {import('node:test').TestContext} t @returns {string[]}
  */
 function recordStubbedLaunches(t) {
-  const { launcher } = require(path.join(path.dirname(STUB_ENGINE), 'domain/knowledge/vectors.cjs'));
+  const { launcher } = require(path.join(path.dirname(STUB_ENGINE), 'kernel/call.cjs'));
   /** @type {string[]} */
   const launched = [];
-  t.mock.method(launcher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+  t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => {
+    if (argv.join(' ') === 'knowledge fill') launched.push(root);
+  });
   return launched;
 }
 

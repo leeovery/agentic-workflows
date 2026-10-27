@@ -18,13 +18,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const childProcess = require('child_process');
 const store = require('../../kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { withRetry } = require('../../kernel/knowledge/retry.cjs');
 const { InvalidRequestError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { tryClaimFile } = require('../../kernel/manifest-io.cjs');
-const { messageOf } = require('../../kernel/call.cjs');
+const { messageOf, launcher } = require('../../kernel/call.cjs');
 const { currentStore, recordWrite, readStore } = require('./indexing.cjs');
 const { loadSettings, indexProvider, canEmbed, storeMetadata, assertStoreEmbedder } = require('./embedder.cjs');
 const { readManifests } = require('./artifacts.cjs');
@@ -306,33 +305,17 @@ async function fillVectors(files, cfg, embedder, owed, { snapshot = readStore(fi
 // The background fill
 // ---------------------------------------------------------------------------
 
-const ENGINE_CJS = path.join(__dirname, '..', '..', 'engine.cjs');
-
 /**
- * The one door a fill is launched through — replaced by a test that must
- * observe a launch without a process.
- */
-const launcher = {
-  /** @param {string} root */
-  launch(root) {
-    const child = childProcess.spawn(process.execPath, [ENGINE_CJS, 'knowledge', 'fill'], { cwd: root, detached: true, stdio: 'ignore' });
-    // A fill that could not start leaves its chunks awaiting, for the next
-    // launch — never an unhandled error in the command that launched it.
-    child.on('error', () => {});
-    child.unref();
-  },
-};
-
-/**
- * Launch the vector fill when a write left chunks awaiting vectors a
- * provider can give — never for a keyword-only store, nor for a keyed
- * provider whose key does not resolve.
+ * Launch the vector fill, detached, when a write left chunks awaiting
+ * vectors a provider can give — never for a keyword-only store, nor for a
+ * keyed provider whose key does not resolve. A fill that could not start
+ * leaves its chunks awaiting, for the next launch.
  * @param {string} root @param {{embedder: EmbeddingProvider|KeylessProvider|null, snapshot: Snapshot}} written
  * @returns {boolean} whether it launched
  */
 function launchFillIfAwaiting(root, { embedder, snapshot }) {
   if (!canEmbed(embedder) || !snapshot.db || store.chunksWithoutVector(snapshot.db).length === 0) return false;
-  launcher.launch(root);
+  launcher.launch(root, ['knowledge', 'fill']);
   return true;
 }
 
@@ -370,7 +353,6 @@ async function fill(root) {
 
 module.exports = {
   fillShortfall,
-  launcher,
   launchFillIfAwaiting,
   fillVectors,
   fill,

@@ -12,16 +12,17 @@
 //   in place of a decision, before the writer lock, so no peer waits on the
 //   call.
 // - What follows: one rule, and the entry lands checked. Several, and the
-//   write is refused, nothing appended, naming the rules found, so the
-//   writer splits it, each part answering the question the whole answered
-//   (5.3.13). Where the call cannot run, the entry lands unchecked, for the
-//   late check at the next start (ledger-late-check.cjs): a check never
-//   stops an entry being recorded.
+//   write is refused, nothing appended, naming the rules found and the
+//   question, so the writer splits it, each part answering the question the
+//   whole answered (5.3.13). Where the call cannot run, or fails in any way,
+//   the entry lands unchecked, for the late check at the next start
+//   (ledger-late-check.cjs): a check never stops an entry being recorded.
 // - The call runs on Opus (16.19.6), at the effort the measured raw call ran
 //   (`trust/label_raw.py`).
 // ---------------------------------------------------------------------------
 
-const { askClaude } = require('../kernel/claude-call.cjs');
+const { messageOf } = require('../kernel/call.cjs');
+const claudeCall = require('../kernel/claude-call.cjs');
 
 /** @typedef {import('../kernel/claude-call.cjs').CannotRun} CannotRun */
 /** @typedef {import('./ledger-write.cjs').Request} Request */
@@ -62,45 +63,54 @@ function entryText({ text, why, rules_out: rulesOut }) {
 
 /**
  * The rules a decision holds, as the separate call judges them from its own
- * content; or why the call cannot run.
+ * content; or why the call cannot run — a call that throws among them.
  * @param {Record<string, unknown>} content
  * @returns {{rules: string[]}|{cannot: CannotRun, detail: string}}
  */
 function judgeDecision(content) {
-  const answered = askClaude({ system: PROMPT, schema: SCHEMA, model: MODEL, effort: EFFORT, input: entryText(content), timeoutMs: TIMEOUT_MS });
-  if ('cannot' in answered) return answered;
-  return { rules: /** @type {{rules: string[]}} */ (answered.answer).rules };
+  try {
+    const answered = claudeCall.askClaude({ system: PROMPT, schema: SCHEMA, model: MODEL, effort: EFFORT, input: entryText(content), timeoutMs: TIMEOUT_MS });
+    if ('cannot' in answered) return answered;
+    return { rules: /** @type {{rules: string[]}} */ (answered.answer).rules };
+  } catch (err) {
+    return { cannot: 'failed', detail: messageOf(err) };
+  }
 }
+
+/**
+ * The entries a decision's links name, by short id: the question it answers,
+ * and, for a replacement, the entry it replaces.
+ * @typedef {{answers: string, replaces: string|null}} Named
+ */
 
 /**
  * The refusal of an entry holding several rules: nothing appended, the rules
  * named, and how to split it — each part answering the question the whole
  * answered.
- * @param {Request} request @param {string[]} rules
+ * @param {string} verb @param {Named} named @param {string[]} rules
  * @returns {Error}
  */
-function holdsSeveral({ verb, given }, rules) {
+function holdsSeveral(verb, { answers, replaces }, rules) {
   const listed = rules.map((rule, i) => `  ${i + 1}. ${rule}`).join('\n');
-  const split = verb === 'replace'
-    ? `replace ${(/** @type {string[]} */ (given.get('replaces')))[0]} with one of them, and decide each other as its own entry answering the question it answers`
-    : `decide each as its own entry answering ${(/** @type {string[]} */ (given.get('answers')))[0]}`;
+  const split = replaces === null
+    ? `decide each as its own entry answering ${answers}`
+    : `replace ${replaces} with one of them, and decide each other as its own entry answering ${answers}`;
   const err = new Error(`ledger ${verb}: the decision holds ${rules.length} rules, and an entry holds one — nothing appended. Split it: ${split}:\n${listed}`);
   return Object.assign(err, { payload: { rules } });
 }
 
 /**
- * A write as asked, with the one-decision check's result riding on it: a
- * decision holding one rule lands checked; one the call cannot judge lands
- * unchecked, as asked. Refuses a decision holding several rules. Any other
- * write passes as it is.
- * @param {Request} request
+ * A decision as asked, with the one-decision check's result riding on it:
+ * one holding one rule lands checked; one the call cannot judge lands
+ * unchecked, as asked. Refuses a decision holding several rules, naming the
+ * entries its links name.
+ * @param {Request} request @param {Named} named
  * @returns {Request}
  */
-function checkOneDecision(request) {
-  if (request.kind !== 'decision') return request;
+function checkOneDecision(request, named) {
   const judged = judgeDecision(request.content);
   if ('cannot' in judged) return request;
-  if (judged.rules.length > 1) throw holdsSeveral(request, judged.rules);
+  if (judged.rules.length > 1) throw holdsSeveral(request.verb, named, judged.rules);
   return { ...request, unchecked: false };
 }
 
