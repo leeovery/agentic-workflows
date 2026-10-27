@@ -27,6 +27,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, tryGit, dirtyEntries, pathsTouchedBySubject } = require('./git.cjs');
+const { stateRel, isStatePath } = require('./state-root.cjs');
 
 /**
  * A repo in the project: `dir` its folder from the project root (`''` for
@@ -105,15 +106,6 @@ function projectPath(dir, repoRel) {
 }
 
 /**
- * Whether the project path lies in the project's `.workflows/`.
- * @param {string} relPath
- * @returns {boolean}
- */
-function isWorkflowsPath(relPath) {
-  return relPath === '.workflows' || relPath.startsWith('.workflows/');
-}
-
-/**
  * The repo at `dir`, then every repo nested inside it, at any depth — never
  * one inside the project's `.workflows/`, whose content is the workflows'
  * own whatever it holds.
@@ -123,7 +115,7 @@ function isWorkflowsPath(relPath) {
 function searched(dir, abs) {
   const found = nestedRepoFolders(abs);
   const [untracked, submodules, ignored] = [found.untracked, found.submodules, found.ignored]
-    .map((folders) => folders.filter((rel) => !isWorkflowsPath(projectPath(dir, rel))));
+    .map((folders) => folders.filter((rel) => !isStatePath(projectPath(dir, rel))));
   const nested = [...untracked, ...submodules, ...ignored].flatMap((rel) => searched(projectPath(dir, rel), path.join(abs, rel)));
   return [{ dir, path: abs, heldOut: [...untracked, ...submodules], submodules }, ...nested];
 }
@@ -213,7 +205,7 @@ function commitGroups(repos, relPaths) {
  * @returns {string[]}
  */
 function codeHeldOut(repo) {
-  return repo.dir === '' ? [...repo.heldOut, '.workflows'] : repo.heldOut;
+  return repo.dir === '' ? [...repo.heldOut, stateRel()] : repo.heldOut;
 }
 
 /**

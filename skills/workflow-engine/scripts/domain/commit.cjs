@@ -23,8 +23,9 @@ const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
 const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
+const { stateRel } = require('../kernel/state-root.cjs');
 
-const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
+const PROJECT_MANIFEST_SPEC = stateRel('manifest.json');
 
 /**
  * The paths the workflows own in a project — everything a migration or the
@@ -33,7 +34,7 @@ const PROJECT_MANIFEST_SPEC = '.workflows/manifest.json';
  * project-root `.gitignore`. The migration commit's scope.
  * @type {readonly string[]}
  */
-const OWNED_PATHS = Object.freeze(['.workflows', SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
+const OWNED_PATHS = Object.freeze([stateRel(), SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
 
 /**
  * The discovery scope — what a discovery session writes: its session logs,
@@ -45,9 +46,9 @@ const OWNED_PATHS = Object.freeze(['.workflows', SETTINGS_SPEC, WORKTREE_INCLUDE
  */
 function discoveryScope(workUnit) {
   return [
-    `.workflows/${workUnit}/discovery/sessions`,
-    `.workflows/${workUnit}/discovery/briefs`,
-    `.workflows/${workUnit}/manifest.json`,
+    stateRel(`${workUnit}/discovery/sessions`),
+    stateRel(`${workUnit}/discovery/briefs`),
+    stateRel(`${workUnit}/manifest.json`),
   ];
 }
 

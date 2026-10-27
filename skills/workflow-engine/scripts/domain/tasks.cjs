@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
 const { GATE_FIELDS } = require('../kernel/manifest-schema.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 const FIX_THRESHOLD = 3;
 const CYCLE_LIMIT = 3;
@@ -105,7 +106,7 @@ function safeName(value, label) {
 function fixTrackingPath(cwd, workUnit, topic, internalId) {
   safeName(topic, 'topic');
   safeName(workUnit, 'work unit');
-  return path.join(cwd, '.workflows', workUnit, 'implementation', topic, `fix-tracking-${internalId}.md`);
+  return path.join(stateRoot(cwd), workUnit, 'implementation', topic, `fix-tracking-${internalId}.md`);
 }
 
 /**

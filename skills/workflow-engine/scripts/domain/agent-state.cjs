@@ -27,6 +27,7 @@ const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { subtopicStatuses } = require('./discussion-map.cjs');
 const { mailboxDepth } = require('./derivations.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 const AGENT_KINDS = [
   'review',
@@ -56,25 +57,20 @@ const MOVEMENT_CAP = 3;
 // counts.
 const SUBTOPIC_RANK = { pending: 0, exploring: 1, converging: 2, decided: 3, deferred: 0 };
 
-/** @param {string} cwd */
-function workflowsDir(cwd) {
-  return path.join(cwd, '.workflows');
-}
-
 /** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
 function statePath(cwd, workUnit, phase, topic) {
-  return path.join(cwd, '.workflows', '.cache', workUnit, phase, topic, 'state.json');
+  return path.join(stateRoot(cwd), '.cache', workUnit, phase, topic, 'state.json');
 }
 
 /** @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic */
 function agentDir(cwd, workUnit, phase, topic) {
-  return path.join(cwd, '.workflows', '.cache', workUnit, phase, topic);
+  return path.join(stateRoot(cwd), '.cache', workUnit, phase, topic);
 }
 
 /** @param {string} cwd @param {string} workUnit */
 function requireWorkUnit(cwd, workUnit) {
   validateSegment(workUnit, 'work unit');
-  if (!fs.existsSync(io.workUnitManifestPath(workflowsDir(cwd), workUnit))) {
+  if (!fs.existsSync(io.workUnitManifestPath(stateRoot(cwd), workUnit))) {
     throw new Error(`Work unit "${workUnit}" not found`);
   }
 }
@@ -274,7 +270,7 @@ function anchorReviewRow(dir) {
  */
 function settleFoldedSubtopic(cwd, workUnit, topic, subtopic) {
   try {
-    return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+    return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
       const dir = agentDir(cwd, workUnit, 'discussion', topic);
       const anchor = anchorReviewRow(dir);
       if (!anchor) return { settled: false, reason: 'no anchored review to settle against' };
@@ -406,7 +402,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
   if (final && !(kind === 'review' && phase === 'discussion')) {
     throw new Error('--final bypasses a discussion review\'s movement gate — legal only with --kind review in the discussion phase');
   }
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     /** @type {Record<string, string> | null} */
     let mapSnapshot = null;
     if (kind === 'review' && phase === 'discussion') {
@@ -546,7 +542,7 @@ function scanAgents(cwd, workUnit, phase, topic) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const rows = phaseRows(phase, state)
       .sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
@@ -593,7 +589,7 @@ function ackAgent(cwd, workUnit, phase, topic, id, { findings }) {
   if (new Set(findings).size !== findings.length) {
     throw new Error('Invalid findings: duplicate ids');
   }
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (NEVER_SURFACED.includes(row.kind)) {
@@ -618,7 +614,7 @@ function announceAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
@@ -649,7 +645,7 @@ function surfaceFinding(cwd, workUnit, phase, topic, id, finding) {
   if (new Set(batch).size !== batch.length) {
     throw new Error('Invalid findings: duplicate ids');
   }
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status !== 'acknowledged') {
@@ -683,7 +679,7 @@ function incorporateAgent(cwd, workUnit, phase, topic, id) {
   requireWorkUnit(cwd, workUnit);
   validatePhase(phase);
   validateSegment(topic, 'topic');
-  return io.withWorkUnitLock(workflowsDir(cwd), workUnit, () => {
+  return io.withWorkUnitLock(stateRoot(cwd), workUnit, () => {
     const state = loadState(cwd, workUnit, phase, topic);
     const row = requireRow(state, phase, topic, id);
     if (row.status === 'incorporated') {

@@ -15,8 +15,9 @@ const fs = require('fs');
 const path = require('path');
 const { removeFiles } = require('../kernel/git.cjs');
 const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { stateRel } = require('../kernel/state-root.cjs');
 
-const INBOX = '.workflows/.inbox';
+const INBOX = stateRel('.inbox');
 const ARCHIVED = `${INBOX}/.archived`;
 const FOLDERS = ['ideas', 'bugs', 'quickfixes'];
 

@@ -15,6 +15,7 @@
 const { box, renderTree, wrap, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase, title, SPEC_LEGEND } = require('../conventions.cjs');
 const { menuFrame, cmdOption, bulletRow, optionDetail, autoSelectLine } = require('./surfaces.cjs');
+const { stateRel } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../specification.cjs').SpecificationDetail} SpecificationDetail */
 /** @typedef {import('../specification.cjs').SpecRow} SpecRow */
@@ -438,7 +439,7 @@ function bulletRows(texts) {
  * @returns {string}
  */
 function specificationConfirmation(c) {
-  const specPath = (name) => `.workflows/${c.work_unit}/specification/${name}/specification.md`;
+  const specPath = (name) => stateRel(`${c.work_unit}/specification/${name}/specification.md`);
   const named = (status) => c.sources.filter((s) => s.status === status).map((s) => s.name);
   const head = `${CONFIRM_VERBS[c.variant]} specification: ${titlecase(c.name)}`;
   const output = `Output: ${specPath(c.name)}`;

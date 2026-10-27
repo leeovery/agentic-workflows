@@ -26,6 +26,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureCont
 const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
 const { computeTopicLifecycle, phaseItems, lifecyclePhrase, CLOSED_LIFECYCLES, mailboxDepth } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 /**
  * @typedef {object} SequenceResult
@@ -416,7 +417,7 @@ function removeItem(cwd, workUnit, name) {
     // Drop the topic's brief — it's regenerable by design, and leaving it on
     // disk would orphan the file and later block a `rename … <this-name>` on the
     // brief-collision guard. Manifest first, file second (self-heals on retry).
-    const brief = path.join(cwd, '.workflows', workUnit, 'discovery', 'briefs', `${name}.md`);
+    const brief = path.join(stateRoot(cwd), workUnit, 'discovery', 'briefs', `${name}.md`);
     let briefRemoved = false;
     if (fs.existsSync(brief)) { fs.unlinkSync(brief); briefRemoved = true; }
 
@@ -479,7 +480,7 @@ function renameItem(cwd, workUnit, oldName, newName) {
     if (items[newName]) {
       throw new Error(`"${newName}" is already on the map — pick a different name`);
     }
-    const briefsDir = path.join(cwd, '.workflows', workUnit, 'discovery', 'briefs');
+    const briefsDir = path.join(stateRoot(cwd), workUnit, 'discovery', 'briefs');
     const oldBrief = path.join(briefsDir, `${oldName}.md`);
     const newBrief = path.join(briefsDir, `${newName}.md`);
     const briefOnDisk = fs.existsSync(oldBrief);

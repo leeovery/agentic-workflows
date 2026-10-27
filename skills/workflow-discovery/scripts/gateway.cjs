@@ -16,10 +16,11 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadManifest } = engine.reads;
+const { stateRoot, stateRel } = engine.state;
 const { computeAnalysisCacheStatus, buildDiscoveryMap } = engine.derivations;
 
 function listSessionLogs(cwd, workUnit) {
-  const dir = path.join(cwd, '.workflows', workUnit, 'discovery', 'sessions');
+  const dir = path.join(stateRoot(cwd), workUnit, 'discovery', 'sessions');
   let files;
   try {
     files = fs.readdirSync(dir).filter(f => /^session-\d+\.md$/.test(f)).sort();
@@ -28,7 +29,7 @@ function listSessionLogs(cwd, workUnit) {
   }
   return files.map(filename => ({
     number: parseInt(filename.match(/^session-(\d+)\.md$/)[1], 10),
-    path: path.posix.join('.workflows', workUnit, 'discovery', 'sessions', filename),
+    path: path.posix.join(stateRel(), workUnit, 'discovery', 'sessions', filename),
   }));
 }
 
@@ -42,7 +43,7 @@ function discover(cwd, workUnit) {
   const activeSession = (typeof discoveryPhase.active_session === 'string' && discoveryPhase.active_session !== '')
     ? discoveryPhase.active_session
     : null;
-  const workflowsDir = path.join(cwd, '.workflows');
+  const workflowsDir = stateRoot(cwd);
   const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest, workflowsDir);
   const nextSessionNumber = engine.session.nextSessionNumber(path.join(workflowsDir, workUnit, 'discovery', 'sessions'));
   const analysisCaches = {

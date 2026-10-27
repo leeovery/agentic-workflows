@@ -19,6 +19,7 @@ const { EPIC_DETAIL_PHASES } = require('./epic-detail.cjs');
 const { parseInboxPaths } = require('./inbox.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 
 const HANDOFF_ENV = 'WORKFLOWS_HANDOFF';
 
@@ -62,7 +63,7 @@ function assertOneOf(kind, value, allowed) {
  */
 function assertWorkUnit(cwd, name, type) {
   assertLegalName('work unit', name);
-  if (!fs.existsSync(path.join(cwd, '.workflows', name, 'manifest.json'))) {
+  if (!fs.existsSync(path.join(stateRoot(cwd), name, 'manifest.json'))) {
     throw new Error(`work unit "${name}" not found`);
   }
   const manifest = loadWorkUnitManifest(cwd, name);

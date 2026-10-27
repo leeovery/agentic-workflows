@@ -42,6 +42,7 @@ const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
@@ -540,9 +541,9 @@ function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }
   // The scratch is consumed after delivery — confine it to the cache so a
   // mis-passed path can never read (and delete) a live artifact.
   const scratchAbs = path.resolve(cwd, contentFile);
-  const cacheRoot = path.join(cwd, '.workflows', '.cache') + path.sep;
+  const cacheRoot = path.join(stateRoot(cwd), '.cache') + path.sep;
   if (!scratchAbs.startsWith(cacheRoot)) {
-    throw new Error(`--content must point inside .workflows/.cache/ — got "${contentFile}"`);
+    throw new Error(`--content must point inside ${stateRel('.cache')}/ — got "${contentFile}"`);
   }
   /** @type {string} */
   let content;
@@ -591,7 +592,7 @@ function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }
   const warnings = [];
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${workUnit}/manifest.json`, result.message_path],
+    [stateRel(`${workUnit}/manifest.json`), result.message_path],
     message,
     warnings,
   );
@@ -631,8 +632,8 @@ function mailboxStatus(cwd, workUnit, phase, topic) {
     throw new Error(`mailboxes exist for ${MAILBOX_PHASES.join('|')} only — got "${phase}"`);
   }
   assertLegalTopicName(topic);
-  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
-    throw new Error(`no work unit directory: .workflows/${workUnit}`);
+  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit))) {
+    throw new Error(`no work unit directory: ${stateRel(workUnit)}`);
   }
   const dirRel = mailboxDir(workUnit, phase, topic);
   const files = mailboxFiles(cwd, workUnit, phase, topic).map((name) => `${dirRel}/${name}`);
@@ -690,13 +691,13 @@ function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic })
     result.arming_settled = settled.settled;
     if (!settled.settled && settled.reason) result.arming_note = settled.reason;
   }
-  const artifactRel = `.workflows/${workUnit}/${phase}/${topic}.md`;
+  const artifactRel = stateRel(`${workUnit}/${phase}/${topic}.md`);
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitTailPathspec(
     cwd,
     [
-      `.workflows/${workUnit}/manifest.json`,
+      stateRel(`${workUnit}/manifest.json`),
       rel,
       ...(fs.existsSync(path.join(cwd, artifactRel)) ? [artifactRel] : []),
     ],
@@ -825,7 +826,7 @@ function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
   const warnings = [];
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${workUnit}/manifest.json`, sourceRel, result.message_path],
+    [stateRel(`${workUnit}/manifest.json`), sourceRel, result.message_path],
     message,
     warnings,
   );
@@ -1424,8 +1425,8 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   // roadmap join reverted) and nothing else on disk — it runs from the epic
   // menu, beside sessions holding the unit's other topics.
   const cancelSpec = reverted.length > 0
-    ? [`.workflows/${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC]
-    : `.workflows/${workUnit}/manifest.json`;
+    ? [stateRel(`${workUnit}/manifest.json`), PROJECT_MANIFEST_SPEC]
+    : stateRel(`${workUnit}/manifest.json`);
   const outcome = commitTailPathspec(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
   /** @type {TopicCancelResult} */
   const result = { topic, phase: stage, status: 'cancelled', ...taken, committed: outcome.committed, warnings };
@@ -1532,7 +1533,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   const warnings = [];
   indexRestored(cwd, workUnit, topic, returned.restored, warnings);
 
-  const outcome = commitTailPathspec(cwd, `.workflows/${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
+  const outcome = commitTailPathspec(cwd, stateRel(`${workUnit}/manifest.json`), `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
   /** @type {TopicReactivateResult} */
   const result = { topic, phase: stage, status: 'reactivated', ...returned, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -1574,7 +1575,7 @@ function postponedSources(cwd, manifest, workUnit, topic) {
     ...(brief ? [`${workUnit}/${brief}`] : []),
     `${workUnit}/research/${topic}.md`,
     `${workUnit}/discussion/${topic}.md`,
-  ].filter((rel) => fs.existsSync(path.join(cwd, '.workflows', rel)));
+  ].filter((rel) => fs.existsSync(path.join(stateRoot(cwd), rel)));
 }
 
 /**
@@ -1626,7 +1627,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
 
   const outcome = commitTailPathspec(
     cwd,
-    [`.workflows/${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC],
+    [stateRel(`${workUnit}/manifest.json`), PROJECT_MANIFEST_SPEC],
     `workflow(${workUnit}): postpone ${topic} → ${horizon}`,
     warnings,
   );
@@ -1679,7 +1680,7 @@ function restorePostponedUnit(cwd, workUnit, topic) {
  * @returns {CancelledItem[]}
  */
 function cancelPostponedUnit(cwd, workUnit, topic, item) {
-  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit, 'manifest.json'))) {
+  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, 'manifest.json'))) {
     throw new Error(`"${item}" was postponed from work unit "${workUnit}", which no longer exists — the join is orphaned`);
   }
   return withWorkUnitLock(cwd, workUnit, () => {

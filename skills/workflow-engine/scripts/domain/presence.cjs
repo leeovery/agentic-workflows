@@ -45,6 +45,7 @@ const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 // Every phase a session sits in — the schema's list minus discovery.
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
@@ -59,7 +60,7 @@ const DOCUMENT_PHASES = ['research', 'discussion', 'investigation'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
-  return path.join(cwd, '.workflows', '.cache', wu, phase, topic, 'presence');
+  return path.join(stateRoot(cwd), '.cache', wu, phase, topic, 'presence');
 }
 
 /** @param {string} cwd @param {string} workUnit @param {string} [phase] @param {string} [topic] */
@@ -70,8 +71,8 @@ function assertArgs(cwd, workUnit, phase, topic) {
   if (topic !== undefined && (!topic || /[\\/]/.test(topic) || topic.includes('..'))) {
     throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
   }
-  if (!fs.existsSync(path.join(cwd, '.workflows', workUnit))) {
-    throw new Error(`no work unit directory: .workflows/${workUnit}`);
+  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit))) {
+    throw new Error(`no work unit directory: ${stateRel(workUnit)}`);
   }
 }
 
@@ -239,7 +240,7 @@ function collectRows(cwd, workUnit, startOf) {
   /** @type {PresenceRow[]} */
   const rows = [];
   for (const phase of PHASES) {
-    const dir = path.join(cwd, '.workflows', '.cache', workUnit, phase);
+    const dir = path.join(stateRoot(cwd), '.cache', workUnit, phase);
     /** @type {string[]} */
     let topics = [];
     try {
@@ -319,7 +320,7 @@ function scanPresence(cwd, workUnit) {
  * @returns {{scope: string, held: number, sessions: (PresenceRow & {work_unit: string})[]}}
  */
 function scanProject(cwd) {
-  const cacheRoot = path.join(cwd, '.workflows', '.cache');
+  const cacheRoot = path.join(stateRoot(cwd), '.cache');
   /** @type {string[]} */
   let workUnits = [];
   try {
@@ -365,7 +366,7 @@ function cleanupPresence(cwd, sessionId) {
   /** @type {{work_unit: string, phase: string, topic: string}[]} */
   const cleared = [];
   if (!sessionId) return { session_id: null, cleared };
-  const cacheRoot = path.join(cwd, '.workflows', '.cache');
+  const cacheRoot = path.join(stateRoot(cwd), '.cache');
   /** @type {string[]} */
   let workUnits = [];
   try {

@@ -19,6 +19,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureCont
 const { collectAnalysisInputs } = require('./derivations.cjs');
 const { filesChecksum } = require('./reads.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 
 // Per-kind config: the model-authored cache file under `.state/` (the
 // analysis output the stamp checksums the inputs of, and the artifact the KB
@@ -72,7 +73,7 @@ function stampAnalysisCache(cwd, workUnit, kind) {
   const cfg = KIND_CONFIG[/** @type {keyof typeof KIND_CONFIG} */ (kind)];
   const stamped = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
-    const inputs = collectAnalysisInputs(manifest, path.join(cwd, '.workflows'), kind);
+    const inputs = collectAnalysisInputs(manifest, stateRoot(cwd), kind);
     if (inputs.length === 0) {
       throw new Error(cfg.emptyError);
     }
@@ -89,7 +90,7 @@ function stampAnalysisCache(cwd, workUnit, kind) {
 
   /** @type {string[]} */
   const warnings = [];
-  syncKnowledge(cwd, [{ index: `.workflows/${workUnit}/.state/${cfg.cacheFile}`, label: `knowledge index (.state/${cfg.cacheFile})` }], warnings);
+  syncKnowledge(cwd, [{ index: stateRel(`${workUnit}/.state/${cfg.cacheFile}`), label: `knowledge index (.state/${cfg.cacheFile})` }], warnings);
 
   return { ...stamped, warnings };
 }
@@ -107,7 +108,7 @@ function stampAnalysisCache(cwd, workUnit, kind) {
  * @returns {string|null} pathspec for the caller's commit, or null
  */
 function purgeWorkUnitCache(cwd, workUnit) {
-  const rel = `.workflows/.cache/${workUnit}`;
+  const rel = stateRel(`.cache/${workUnit}`);
   const tracked = git(cwd, ['ls-files', '--', rel]).trim() !== '';
   fs.rmSync(path.join(cwd, rel), { recursive: true, force: true });
   return tracked ? rel : null;

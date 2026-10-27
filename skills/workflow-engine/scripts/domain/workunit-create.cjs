@@ -42,6 +42,7 @@ const {
   assertLandableSources,
 } = require('./import-landing.cjs');
 const { todayStamp, isoNow } = require('./dates.cjs');
+const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
 const {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -115,7 +116,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   }
   assertLegalWorkUnitName(workUnit);
 
-  const wuDir = path.join(cwd, '.workflows', workUnit);
+  const wuDir = path.join(stateRoot(cwd), workUnit);
   if (fs.existsSync(path.join(wuDir, 'manifest.json'))) {
     throw new Error(`work unit "${workUnit}" already exists — pick a different name`);
   }
@@ -207,13 +208,13 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
   syncKnowledge(cwd, [
     ...importMoves.filter((m) => isIndexableImport(m.dest))
       .map((move) => ({ index: importArtifact(workUnit, move.dest), label: `knowledge index (imports/${move.dest})` })),
-    ...seedMoves.map((move) => ({ index: `.workflows/${workUnit}/seeds/${move.dest}`, label: `knowledge index (seeds/${move.dest})` })),
+    ...seedMoves.map((move) => ({ index: stateRel(`${workUnit}/seeds/${move.dest}`), label: `knowledge index (seeds/${move.dest})` })),
   ], warnings);
 
   // Seed removals ride along in the same commit as their new home, and the
   // project-manifest registration lands with it too.
-  const pathspecs = [`.workflows/${workUnit}`, '.workflows/manifest.json'];
-  if (seedMoves.length > 0) pathspecs.push('.workflows/.inbox');
+  const pathspecs = [stateRel(workUnit), stateRel('manifest.json')];
+  if (seedMoves.length > 0) pathspecs.push(stateRel('.inbox'));
   const outcome = commitTailPathspec(cwd, pathspecs, `discovery(${workUnit}): create work unit (${workType})`, warnings);
 
   /** @type {WorkUnitCreateResult} */
@@ -226,7 +227,7 @@ function createWorkUnit(cwd, workUnit, workType, { description, sessionLogFile, 
       source: SEED_SOURCES[move.item.folder],
     })),
     skipped_imports: skippedImports,
-    session_log: `.workflows/${workUnit}/discovery/sessions/session-001.md`,
+    session_log: stateRel(`${workUnit}/discovery/sessions/session-001.md`),
     committed: outcome.committed,
     warnings,
   };
