@@ -169,16 +169,18 @@ function arrivalIn(cwd) {
 
 /**
  * Where the arrival cuts a repo: at the commit its branch stood on when the
- * state took its first commit — the last on its first-parent line made no
- * later, so a side branch merged afterwards is never history before it. No
- * state commit means the workflows are arriving now, into HEAD's tree, and
- * the whole history came before them.
+ * state took its first commit — the last on its first-parent line made
+ * before that second, so a side branch merged afterwards is never history
+ * before it. A commit in the arrival's own second is the arrival's: the
+ * setup boot commits its ignore line and hooks in it. No state commit means
+ * the workflows are arriving now, into HEAD's tree, and the whole history
+ * came before them.
  * @param {string} cwd @param {{time: string}|null} arrival
  * @returns {Cut}
  */
 function cutAt(cwd, arrival) {
   if (arrival === null) return { before: 'HEAD', tree: 'HEAD' };
-  const last = git(cwd, ['rev-list', '-1', '--first-parent', `--before=@${arrival.time}`, 'HEAD']).trim() || null;
+  const last = git(cwd, ['rev-list', '-1', '--first-parent', `--before=@${Number(arrival.time) - 1}`, 'HEAD']).trim() || null;
   return { before: last, tree: last };
 }
 

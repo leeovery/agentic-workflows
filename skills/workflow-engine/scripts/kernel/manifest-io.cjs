@@ -18,6 +18,9 @@
 // concurrent sessions write the state one after the other. A manifest write
 // takes it too, so a write made outside a verb's hold is serialised the
 // same way; inside one it is held already, and taken again for nothing.
+// A lock file elsewhere is held the same way (`withStateLockFile`): the one
+// boot's checks hold while the state worktree, and so the writer lock, may
+// not be there yet.
 //
 // Errors throw `Error` with a stable message; read-surface callers translate
 // to their exit-code convention, transaction callers let them ride to the
@@ -447,11 +450,11 @@ function claimHolder(claimFile) {
 }
 
 /**
- * Claim the writer lock, waiting up to `timeoutMs` for a live holder.
+ * Claim a state lock, waiting up to `timeoutMs` for a live holder.
  * @param {string} lockFile @param {number} timeoutMs
  * @returns {() => void} the release
  */
-function claimWriterLock(lockFile, timeoutMs) {
+function claimStateLock(lockFile, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   let release = tryClaimFile(lockFile);
   while (release === null) {
@@ -464,8 +467,33 @@ function claimWriterLock(lockFile, timeoutMs) {
   return release;
 }
 
-/** @type {Map<string, number>} the writer locks this process holds, by file, each with the depth of its holds */
-const writerHolds = new Map();
+/** @type {Map<string, number>} the state locks this process holds, by file, each with the depth of its holds */
+const stateHolds = new Map();
+
+/**
+ * Run `fn` holding the state lock at `lockFile` — waiting for a live holder,
+ * taking over from one that is gone — taken again for nothing where this
+ * process holds it already. `fn` runs synchronously.
+ * @template T
+ * @param {string} lockFile @param {() => T} fn
+ * @param {{timeoutMs?: number}} [opts]
+ * @returns {T}
+ */
+function withStateLockFile(lockFile, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS } = {}) {
+  const depth = stateHolds.get(lockFile) || 0;
+  const release = depth === 0 ? claimStateLock(lockFile, timeoutMs) : null;
+  stateHolds.set(lockFile, depth + 1);
+  try {
+    return fn();
+  } finally {
+    if (release === null) {
+      stateHolds.set(lockFile, depth);
+    } else {
+      stateHolds.delete(lockFile);
+      release();
+    }
+  }
+}
 
 /**
  * Run `fn` holding the writer lock of the state at `stateDir`, taken again
@@ -477,22 +505,9 @@ const writerHolds = new Map();
  * @param {{timeoutMs?: number}} [opts]
  * @returns {T}
  */
-function withWriterLock(stateDir, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS } = {}) {
+function withWriterLock(stateDir, fn, opts) {
   if (!fs.existsSync(stateDir)) throw new Error(`no state worktree at ${stateDir} — nothing written`);
-  const lockFile = writerLockPath(stateDir);
-  const depth = writerHolds.get(lockFile) || 0;
-  const release = depth === 0 ? claimWriterLock(lockFile, timeoutMs) : null;
-  writerHolds.set(lockFile, depth + 1);
-  try {
-    return fn();
-  } finally {
-    if (release === null) {
-      writerHolds.set(lockFile, depth);
-    } else {
-      writerHolds.delete(lockFile);
-      release();
-    }
-  }
+  return withStateLockFile(writerLockPath(stateDir), fn, opts);
 }
 
 /**
@@ -548,6 +563,7 @@ module.exports = {
   readProjectManifest,
   listWorkUnitManifests,
   writeProjectManifestAtomic,
+  withStateLockFile,
   withWriterLock,
   withWorkUnitLock,
   withProjectLock,

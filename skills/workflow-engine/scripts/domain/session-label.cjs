@@ -126,6 +126,15 @@ function marksOf(group) {
 }
 
 /**
+ * Whether a settings document carries a hook of ours, under any event.
+ * @param {Record<string, any>} settings @returns {boolean}
+ */
+function carriesOurHooks(settings) {
+  const hooks = isObject(settings.hooks) ? settings.hooks : {};
+  return Object.values(hooks).some((groups) => Array.isArray(groups) && groups.some((group) => marksOf(group).length > 0));
+}
+
+/**
  * What each hook event wants: the label hooks while labels are on
  * (`session`) — SessionEnd restores the name, and SessionStart brings a
  * resumed session's label back, its matcher having Claude Code fire it on
@@ -594,5 +603,5 @@ function repairSessionLabels(cwd) {
 
 module.exports = {
   applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
-  resolveEnabled, labelConfigStatus, syncSessionHooks, recordLabelChoice,
+  resolveEnabled, labelConfigStatus, syncSessionHooks, carriesOurHooks, recordLabelChoice,
 };

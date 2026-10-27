@@ -44,7 +44,7 @@ const { openGate } = require('../../skills/workflow-engine/scripts/domain/projec
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
-  STATE_BRANCH, stateRoot, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
+  STATE_BRANCH, stateRoot, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, askStateRemote,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
 const {
@@ -347,6 +347,28 @@ describe('catching up when one side moved (4.S36)', () => {
 
     assert.deepStrictEqual([out.action, out.reason, out.commit, out.warnings], ['nothing', 'current', before, []]);
     assert.deepStrictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).map((c) => c.split(' ')[0]), ['ls-remote']);
+  });
+
+  it('starts from the remote\'s answer boot gives it, asking the remote nothing again', () => {
+    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') }).commit;
+    const listing = askStateRemote(here.root);
+
+    const { result: out, traced: commands } = traced(() => catchUpState(here.root, { listing }));
+
+    assert.deepStrictEqual([out.action, out.commit], ['fast-forwarded', theirs]);
+    assert.ok(!commands.some((c) => c.startsWith('ls-remote ')), 'the remote was asked again');
+  });
+
+  it('takes an answer saying the remote was out of reach as its warning, asking nothing', () => {
+    const { here } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    const before = tip(here.main, STATE_BRANCH);
+    const listing = { remote: 'origin', remotes: ['origin'], unreachable: 'git ls-remote failed: no route' };
+
+    const { result: out, traced: commands } = traced(() => catchUpState(here.root, { listing }));
+
+    assert.deepStrictEqual([out.action, out.commit, out.warnings], ['unreachable', before, ['leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: no route']]);
+    assert.ok(!commands.some((c) => /^(ls-remote|fetch|push) /.test(c)), `the network was reached: ${commands}`);
   });
 
   it('does nothing, fetching nothing, where the project has no remote', () => {

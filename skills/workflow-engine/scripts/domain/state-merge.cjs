@@ -6,13 +6,18 @@
 // only where a push failed. Boot runs the catch-up before anything writes
 // state (4.7.8); it loses nothing, and never rewrites what was pushed.
 //
-// - Catching up: ask the state's remote where its `leeway-state` stands,
-//   and fetch it where this clone lacks that tip. Where only the remote
+// - Catching up: ask the state's remote where its `leeway-state` stands —
+//   or take the answer boot's checks got, so a boot asks once — and fetch
+//   it where this clone lacks that tip. Where only the remote
 //   moved, the branch fast-forwards to it with no commit; where only this
 //   clone moved, it pushes what a failed push left behind; where both moved,
 //   it merges. No remote, or a remote holding no state branch, leaves
 //   nothing to do. A remote that cannot be reached is a warning, and the
-//   session works on the state it has.
+//   session works on the state it has. A side holding code history — code
+//   pushed or pointed at by the state branch's name — is refused before
+//   anything is merged or pushed; it is looked for only where a side's new
+//   commits hold a commit with no parent, so a catch-up with nothing new
+//   pays nothing for it.
 // - The merge: one new commit whose parent is the remote's tip, its tree
 //   merged path by path (state-merge-paths.cjs) from the common ancestor,
 //   this clone's tip and the remote's: committed state only. This clone's
@@ -51,7 +56,9 @@ const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError } = require('../kernel/git.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState } = require('./state-worktree.cjs');
+const {
+  STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState, askStateRemote, fetchStateTip, codeBranchSharing,
+} = require('./state-worktree.cjs');
 const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
 const { changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
 const { workingEntries, planWorktree } = require('./state-merge-worktree.cjs');
@@ -79,6 +86,7 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
 /** @typedef {import('./state-merge-paths.cjs').PickOf} PickOf */
 /** @typedef {import('./state-merge-worktree.cjs').WorktreePlan} WorktreePlan */
 /** @typedef {import('./state-merge-landing.cjs').Landing} Landing */
+/** @typedef {import('./state-worktree.cjs').RemoteAnswer} RemoteAnswer */
 
 /**
  * The state worktree opened for a catch-up: the merge's context, the
@@ -342,54 +350,44 @@ function pushWithLease(state, onto, timeoutMs) {
 // --- one catch-up step, and the bounded loop -------------------------------
 
 /**
- * A call to the remote: its output, or, where it fails, the outcome that
- * leaves the session on the state it has.
- * @param {State} state @param {string[]} args @param {number} timeoutMs
- * @returns {{out: string}|{outcome: CatchUpOutcome}}
+ * The outcome that leaves the session on the state it has, the remote out
+ * of reach.
+ * @param {State} state @param {string} why
+ * @returns {{outcome: CatchUpOutcome}}
  */
-function overNetwork(state, args, timeoutMs) {
-  try {
-    return { out: state.main.run(args, { timeoutMs, env: NETWORK_ENV }) };
-  } catch (err) {
-    if (!(err instanceof GitError)) throw err;
-    return {
-      outcome: outcome(state, 'unreachable', {
-        warnings: [`${STATE_BRANCH} could not be fetched from ${state.remote}, so this session works on the state it has: ${err.message}`],
-      }),
-    };
-  }
+function unreachable(state, why) {
+  return {
+    outcome: outcome(state, 'unreachable', {
+      warnings: [`${STATE_BRANCH} could not be fetched from ${state.remote}, so this session works on the state it has: ${why}`],
+    }),
+  };
 }
 
 /**
  * Bring the remote's state branch here, answering its tip, or the outcome
  * where there is nothing to bring or the remote cannot be reached. The
- * remote is asked once where its tip stands; a tip this clone already holds
- * needs no fetch, and a remote holding no state branch leaves its stale
+ * remote is asked once where its tip stands — or its answer is the one
+ * given, asked already by the caller; a tip this clone already holds needs
+ * no fetch, and a remote holding no state branch leaves its stale
  * remote-tracking branch to go.
- * @param {State} state @param {number} timeoutMs
+ * @param {State} state @param {number} timeoutMs @param {RemoteAnswer} [asked]
  * @returns {{tip: string}|{outcome: CatchUpOutcome}}
  */
-function fetchState(state, timeoutMs) {
-  const { remote, remotes } = state;
-  if (remote === null) {
-    const warnings = remotes.length === 0 ? [] : [
-      `${STATE_BRANCH} was not fetched: the project has several remotes (${remotes.join(', ')}), and none is named origin or tracked by the main checkout's branch`,
+function fetchState(state, timeoutMs, asked) {
+  const answer = asked ?? askStateRemote(state.root, { timeoutMs });
+  if (answer.remote === null) {
+    const warnings = answer.remotes.length === 0 ? [] : [
+      `${STATE_BRANCH} was not fetched: the project has several remotes (${answer.remotes.join(', ')}), and none is named origin or tracked by the main checkout's branch`,
     ];
     return { outcome: outcome(state, 'nothing', { reason: 'no-remote', warnings }) };
   }
-  const listed = overNetwork(state, ['ls-remote', remote, BRANCH_REF], timeoutMs);
-  if ('outcome' in listed) return listed;
-  const tip = listed.out.split('\n').map((line) => line.split('\t')).find(([, ref]) => ref === BRANCH_REF)?.[0];
-  if (tip === undefined) {
-    state.main.tryRun(['update-ref', '-d', trackingRef(remote)]);
+  if ('unreachable' in answer) return unreachable(state, answer.unreachable);
+  if (answer.tip === null) {
+    state.main.tryRun(['update-ref', '-d', trackingRef(answer.remote)]);
     return { outcome: outcome(state, 'nothing', { reason: 'no-remote-branch' }) };
   }
-  if (state.main.tryRun(['cat-file', '-e', `${tip}^{commit}`]) !== null) {
-    state.main.run(['update-ref', trackingRef(remote), tip]);
-    return { tip };
-  }
-  const fetched = overNetwork(state, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', remote, `+${BRANCH_REF}:${trackingRef(remote)}`], timeoutMs);
-  return 'outcome' in fetched ? fetched : { tip: tipOf(state.main, trackingRef(remote)) };
+  const failed = fetchStateTip(state.root, answer.remote, answer.tip, { timeoutMs });
+  return failed === null ? { tip: tipOf(state.main, trackingRef(answer.remote)) } : unreachable(state, failed);
 }
 
 /**
@@ -432,39 +430,96 @@ function mergeSides(state, sides, timeouts) {
 }
 
 /**
+ * Where this clone last knew the remote's state branch: its remote-tracking
+ * branch, read before a fetch moves it. Null where there is none.
+ * @param {State} state
+ * @returns {string|null}
+ */
+function lastKnown(state) {
+  if (state.remote === null) return null;
+  const known = state.main.tryRun(['rev-parse', '--verify', '--quiet', `${trackingRef(state.remote)}^{commit}`]);
+  return known === null ? null : known.trim();
+}
+
+/**
+ * Whether either side gained a commit with no parent since the two were
+ * last in step — the remote's commits since this clone last knew it, this
+ * clone's since it last pushed; with no remote-tracking branch to go by,
+ * each side's commits the other lacks. Only the new commits are walked, so
+ * a step with nothing new costs nothing. A state started again elsewhere
+ * gains one; so does a branch by the state's name holding code.
+ * @param {State} state @param {Sides} sides @param {string|null} known
+ * @returns {boolean}
+ */
+function gainedARoot(state, sides, known) {
+  return [[sides.remote, known ?? sides.local], [sides.local, known ?? sides.remote]]
+    .some(([from, past]) => state.git.run(['rev-list', '--max-parents=0', from, `^${past}`]).trim() !== '');
+}
+
+/**
+ * Refuse a side holding code history, before anything is merged or pushed:
+ * where a side gained a commit with no parent, each side is held against
+ * the code branches, and one sharing commits with them is named, with how
+ * to carry on. Two state lines — one started again — merge as ever.
+ * @param {State} state @param {Sides} sides @param {string|null} known
+ */
+function refuseCodeHistory(state, sides, known) {
+  if (!gainedARoot(state, sides, known)) return;
+  const remote = /** @type {string} */ (state.remote);
+  const looks = [
+    { ref: trackingRef(remote), named: `${remote}'s ${STATE_BRANCH}`, way: `put the state's own line back on ${remote} — this clone's ${STATE_BRANCH} holds it` },
+    { ref: BRANCH_REF, named: `this clone's ${STATE_BRANCH}`, way: `point ${STATE_BRANCH} back at the state's own line — ${remote}'s ${STATE_BRANCH} holds it` },
+  ];
+  for (const { ref, named, way } of looks) {
+    const code = codeBranchSharing(state.root, ref);
+    if (code !== null) {
+      throw new Error(
+        `${named} holds code history — it shares commits with ${code}, where the state branch is a line of its own — ` +
+        `so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, ${way}`,
+      );
+    }
+  }
+}
+
+/**
  * One step: fetch, then act on where the two sides stand. After a push that
  * failed, a remote that has not moved since ends the loop with that failure.
  * @param {State} state @param {Timeouts} timeouts @param {Retry|null} retry
+ * @param {RemoteAnswer} [asked] the remote's answer, where the caller asked it already
  * @returns {{outcome: CatchUpOutcome}|{retry: Retry}}
  */
-function step(state, timeouts, retry) {
-  const fetched = fetchState(state, timeouts.fetchMs);
+function step(state, timeouts, retry, asked) {
+  const known = lastKnown(state);
+  const fetched = fetchState(state, timeouts.fetchMs, asked);
   if ('outcome' in fetched) {
     return { outcome: retry === null ? fetched.outcome : { ...retry.outcome, warnings: [...retry.outcome.warnings, ...fetched.outcome.warnings] } };
   }
   if (retry !== null && fetched.tip === retry.onto) return { outcome: retry.outcome };
   const sides = sidesOf(state, fetched.tip);
   if (sides.local === sides.remote) return { outcome: outcome(state, 'nothing', { reason: 'current' }) };
+  refuseCodeHistory(state, sides, known);
   if (sides.base === sides.remote) return pushAhead(state, sides, timeouts);
   return mergeSides(state, sides, timeouts);
 }
 
 /**
  * Catch up: first finish a landing a kill cut short, then step, retrying
- * while the remote moves under the push. What earlier steps merged rides on
- * the outcome the last one answers. A kept stop goes once the catch-up
- * settles anywhere but at a stop or an unreachable remote.
- * @param {State} state @param {Timeouts} timeouts
+ * while the remote moves under the push — the first step on the remote's
+ * answer where the caller asked it already, each retry asking afresh. What
+ * earlier steps merged rides on the outcome the last one answers. A kept
+ * stop goes once the catch-up settles anywhere but at a stop or an
+ * unreachable remote.
+ * @param {State} state @param {Timeouts} timeouts @param {RemoteAnswer} [asked]
  * @returns {CatchUpOutcome}
  */
-function converge(state, timeouts) {
+function converge(state, timeouts, asked) {
   const carried = { notes: finishLanding(state.root, STATE_BRANCH, state.gitDir), merged: /** @type {string[]} */ ([]) };
   /** @type {Retry|null} */
   let retry = null;
   /** @type {CatchUpOutcome|null} */
   let settled = null;
   for (let attempt = 1; attempt <= MERGE_ATTEMPTS && settled === null; attempt++) {
-    const next = step(state, timeouts, retry);
+    const next = step(state, timeouts, retry, attempt === 1 ? asked : undefined);
     if ('outcome' in next) {
       settled = next.outcome;
     } else {
@@ -495,13 +550,14 @@ function timeoutsOf({ fetchTimeoutMs = FETCH_TIMEOUT_MS, pushTimeoutMs = PUSH_TI
 /**
  * Bring the state up to date with the remote's (4.7.8), under the writer
  * lock: fast-forward, push what a failed push left behind, or merge. Boot
- * runs it before anything writes state.
+ * runs it before anything writes state, on the remote's answer its own
+ * checks asked (`listing`), so the remote is asked once.
  * @param {string} root  the state root
- * @param {CatchUpOptions} [opts]
+ * @param {CatchUpOptions & {listing?: RemoteAnswer}} [opts]
  * @returns {CatchUpOutcome}
  */
 function catchUpState(root, opts = {}) {
-  return withStateLock(root, () => converge(openState(root, opts), timeoutsOf(opts)));
+  return withStateLock(root, () => converge(openState(root, opts), timeoutsOf(opts), opts.listing));
 }
 
 /**

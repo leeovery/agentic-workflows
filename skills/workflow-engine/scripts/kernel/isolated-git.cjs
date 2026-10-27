@@ -155,26 +155,96 @@ function isolatedGit(cwd) {
   };
 }
 
+/** @param {string} file @returns {string} */
+function realpathOrSelf(file) {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return file;
+  }
+}
+
+/** Whether `inner` is `outer` or lies below it. @param {string} inner @param {string} outer */
+function within(inner, outer) {
+  return inner === outer || inner.startsWith(`${outer}${path.sep}`);
+}
+
+/**
+ * The git directory a gitfile names, absolute, or null where there is no
+ * gitfile to read there.
+ * @param {string} gitfile
+ * @returns {string|null}
+ */
+function gitfileTarget(gitfile) {
+  let text;
+  try {
+    text = fs.readFileSync(gitfile, 'utf8');
+  } catch {
+    return null;
+  }
+  const named = /^gitdir: (.+)$/m.exec(text);
+  return named === null ? null : path.resolve(path.dirname(gitfile), named[1].trim());
+}
+
+/**
+ * The gitfile a linked worktree's registration names as its worktree's —
+ * absolute — or null for a git directory that is no linked worktree's.
+ * @param {string} gitDir
+ * @returns {string|null}
+ */
+function registeredGitfile(gitDir) {
+  try {
+    return path.resolve(gitDir, fs.readFileSync(path.join(gitDir, 'gitdir'), 'utf8').trim());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Refuse a cwd in a copy of a linked worktree: its `.git` names a
+ * registration whose own worktree is another folder, still linked to it —
+ * the project folder was copied, and git reads the copy as the original's
+ * worktree, in the original's repository. A worktree moved away from its
+ * registration leaves no folder linked to it at the old place, and is not
+ * refused.
+ * @param {string} cwd @param {string} gitDir the cwd's own git directory
+ */
+function refuseCopiedWorktree(cwd, gitDir) {
+  const dotgit = registeredGitfile(gitDir);
+  if (dotgit === null) return;
+  const holder = realpathOrSelf(path.dirname(dotgit));
+  if (within(fs.realpathSync(cwd), holder)) return;
+  const linked = gitfileTarget(dotgit);
+  if (linked === null || realpathOrSelf(linked) !== realpathOrSelf(gitDir)) return;
+  throw new Error(
+    `${cwd} is in a copy of the worktree at ${holder}: git reads it as that worktree, in that repository, ` +
+    'so the workflows read and write nothing through it — run from the copy\'s own project folder',
+  );
+}
+
 /**
  * The repository's main checkout, from any cwd inside the repository — its
  * own folder, a linked worktree, or a folder below either: the folder
  * holding the common git directory. A repository whose common directory is
- * not a `.git` folder has no main checkout, and is refused.
+ * not a `.git` folder has no main checkout, and is refused; so is a copy of
+ * a linked worktree, which git reads as the copied-from repository's.
  * @param {string} cwd
  * @returns {string} absolute, every symbolic link resolved
  */
 function mainCheckout(cwd) {
   // `--path-format=absolute` is git 2.31's: the relative answer resolves
   // against the cwd it was asked from.
-  const out = isolatedGit(cwd).tryRun(['rev-parse', '--git-common-dir']);
+  const out = isolatedGit(cwd).tryRun(['rev-parse', '--git-common-dir', '--absolute-git-dir']);
   if (out === null) throw new Error(`${cwd} is not inside a git repository`);
-  const common = fs.realpathSync(path.resolve(cwd, out.trim()));
+  const [commonDir, gitDir] = out.trim().split('\n');
+  const common = fs.realpathSync(path.resolve(cwd, commonDir));
   if (path.basename(common) !== '.git') {
     throw new Error(
       `the repository at ${common} has no main checkout — a bare repository, or a git directory kept apart from its ` +
       'work tree; the workflows keep their state in the main checkout',
     );
   }
+  refuseCopiedWorktree(cwd, gitDir);
   return path.dirname(common);
 }
 
@@ -190,4 +260,4 @@ function workTree(cwd) {
   return fs.realpathSync(out.trim());
 }
 
-module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree };
+module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf };

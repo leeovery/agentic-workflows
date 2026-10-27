@@ -1,8 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: workflow-start's boot gates — the static menus Step 0 puts to
-// the user before any work is on the table, and the knowledge gate's
+// Domain ring: workflow-start's boot gates — the menus Step 0 puts to the
+// user before any work is on the table: the state lost, the GitHub rule's
+// offer, the migration confirm, the label opt-in — and the knowledge gate's
 // displays. Pure renderers; none reads state (the calling prose branches on
 // the boot response and fetches the gate at its display point, and the
 // render surface reads what a display names).
@@ -12,6 +13,7 @@ const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_M
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
+const { escapeMarkdown } = require('./worklist.cjs');
 
 const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
@@ -49,6 +51,50 @@ function migrationGate() {
     { question: 'Ready to continue?' },
   );
   return section('MENU: migration gate', MENU_INSTRUCTION, body);
+}
+
+/**
+ * Boot's stop where the state branch is gone here and on the remote, in a
+ * project whose code tree holds the workflows' trace (4.4.5): what was lost,
+ * the other clone that can put it back, and the fresh start on yes.
+ * @param {string} project the project's name
+ * @returns {string}
+ */
+function stateLostGate(project) {
+  const name = escapeMarkdown(project);
+  const account = [
+    `> ${name} keeps its Leeway state on a branch of its own, \`leeway-state\`. Boot found it neither in this clone nor on the remote.`,
+    '>',
+    `> If another clone of ${name} still has it, on this machine or another, run Leeway there: boot pushes it back to the remote, and this clone restores it when it next starts.`,
+    '>',
+    `> Otherwise the state is lost: the decisions, the logs and the ledger. ${name}'s code and its history are untouched.`,
+  ];
+  return [
+    section('DISPLAY: state lost stop', emitAs('properties'), "⚑ Boot stopped: Leeway's state branch is gone"),
+    section('DISPLAY: state lost account', emitAs('markdown'), account.join('\n')),
+    section('MENU: state lost gate', MENU_INSTRUCTION, menu('', [
+      cmdOption('y', 'yes', { head: 'Start again', tail: `a fresh state branch, then the product researcher reads ${name}'s code to rebuild what it can` }),
+      cmdOption('n', 'no', { head: 'Not now', tail: 'look for another clone first; nothing is written' }),
+    ], { question: 'Start again with a fresh state?' })),
+  ].join('\n');
+}
+
+/**
+ * Setup's offer of the rule on GitHub against deleting or force-pushing the
+ * state branch (4.4.7), acted on only on yes.
+ * @param {string} project the project's name
+ * @returns {string}
+ */
+function githubRuleGate(project) {
+  const name = escapeMarkdown(project);
+  return section('MENU: github rule gate', MENU_INSTRUCTION, menu(
+    `${name}'s remote is on GitHub. A rule there can refuse deleting or force-pushing \`leeway-state\` for anything run outside Claude Code; inside it, Leeway already refuses both.`,
+    [
+      cmdOption('y', 'yes', `Set it on ${name}'s repository`),
+      cmdOption('n', 'no', { head: 'Leave it unset', tail: 'setup carries on without it' }),
+    ],
+    { question: 'Set that rule on GitHub?' },
+  ));
 }
 
 /**
@@ -189,4 +235,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
