@@ -6,8 +6,10 @@
 // its JSON on stdin as Claude Code sends it. It refuses a write to the ledger
 // with exit 2 and the reason on stderr (5.S7), reached by any route — from
 // the main checkout, from a code worktree, through a symbolic link, through
-// `..` — and allows everything else silently: the rest of `.leeway/`, the
-// code tree, and any project with no state.
+// `..` read from the text, in another case where the filesystem ignores
+// case — against the state of the project the target is in, whatever project
+// the conversation sits in; and allows everything else silently: the rest of
+// `.leeway/`, the code tree, and any project with no state.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -21,6 +23,7 @@ const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/state-merge-rules.cjs');
+const { ignoresCase } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 
 /** @type {string} */
 let dir;
@@ -119,29 +122,55 @@ describe('the ledger, refused (5.S7, 5.1.9, 5.4.2)', () => {
     assertAllowed(guard(wt, path.join(wt, '.leeway', LEDGER)), 'the worktree holds no state');
   });
 
-  it('through a symbolic link: to the state folder, to the ledger itself — dangling until the ledger is written — and a `..` climbing from the link\'s target', () => {
+  it('through a symbolic link: to the state folder, to the ledger itself — dangling until the ledger is written — by a relative link read from the folder it sits in, and to the project', () => {
     const elsewhere = outside('links');
     fs.symlinkSync(root, path.join(elsewhere, 'state'));
     fs.symlinkSync(ledger, path.join(elsewhere, 'ledger'));
-    fs.mkdirSync(path.join(root, 'pay'));
-    fs.symlinkSync(path.join(root, 'pay'), path.join(elsewhere, 'unit'));
+    fs.symlinkSync(path.relative(elsewhere, ledger), path.join(elsewhere, 'relative'));
     fs.symlinkSync(dir, path.join(elsewhere, 'project'));
 
     assertRefused(guard(dir, path.join(elsewhere, 'state', LEDGER)), 'a link to the state folder');
     assertRefused(guard(dir, path.join(elsewhere, 'ledger')), 'a dangling link to the ledger');
-    assertRefused(guard(dir, `${path.join(elsewhere, 'unit')}/../${LEDGER}`), 'up from the linked unit folder');
+    assertRefused(guard(dir, path.join(elsewhere, 'relative')), 'a relative link to the ledger');
     assertRefused(guard(path.join(elsewhere, 'project'), `.leeway/${LEDGER}`), 'from the project reached through a link');
   });
 
-  it('a `..` after a link climbs from where the link points, so a path that only reads as the ledger is not it', () => {
+  it('a `..` is read from the path\'s text before any link is followed, as Claude Code\'s tools read it', () => {
     const elsewhere = outside('away');
-    fs.symlinkSync(path.join(elsewhere), path.join(root, 'away'));
-    assertAllowed(guard(dir, `${path.join(root, 'away', 'sub')}/../../${LEDGER}`), 'lands beside the folder the link points to');
+    fs.symlinkSync(elsewhere, path.join(root, 'away'));
+    fs.mkdirSync(path.join(root, 'pay'));
+    fs.symlinkSync(path.join(root, 'pay'), path.join(elsewhere, 'unit'));
+    assertRefused(guard(dir, `${path.join(root, 'away', 'sub')}/../../${LEDGER}`), 'the text climbs back to the state root');
+    assertAllowed(guard(dir, `${path.join(elsewhere, 'unit')}/../${LEDGER}`), 'the text climbs out of the link, beside it');
   });
 
-  it('from a conversation whose folder has drifted out of the project, the project\'s ledger is refused through CLAUDE_PROJECT_DIR', () => {
-    const drifted = outside('drifted');
-    assertRefused(guard(drifted, ledger, { env: { CLAUDE_PROJECT_DIR: dir } }), 'drifted');
+  it('in any case the filesystem reads as the ledger\'s — the ledger there or not yet written — and only there', () => {
+    const variants = [`.leeway/.LEDGER.jsonl`, `.Leeway/${LEDGER}`, `.leeway/.ledger.JSONL`];
+    const check = (/** @type {string} */ what) => {
+      for (const rel of variants) {
+        const res = guard(dir, path.join(dir, rel));
+        if (ignoresCase(root)) assertRefused(res, `${rel} ${what}`);
+        else assertAllowed(res, `${rel} ${what}: another file on a filesystem that keeps case`);
+      }
+    };
+    check('before the ledger is written');
+    fs.writeFileSync(ledger, '{"id":"e1"}\n');
+    check('over the ledger');
+    assertAllowed(guard(dir, path.join(root, 'Manifest.JSON')), 'another file in another case');
+  });
+
+  it('the state is the target\'s own project\'s: a conversation sitting in another project with state, or out of every project, is refused this one\'s ledger', () => {
+    const other = fs.realpathSync(harness.setupGitFixture('engine-layout-hook-other-'));
+    scratch.push(other);
+    assertRefused(guard(other, ledger), 'from another project');
+    assertRefused(guard(dir, path.join(other, '.leeway', LEDGER)), 'the other project\'s, from this one');
+    assertAllowed(guard(other, path.join(other, '.leeway', 'manifest.json')), 'the other project\'s manifest');
+    assertRefused(guard(outside('drifted'), ledger), 'from a folder in no project');
+  });
+
+  it('a relative target with no folder in the input is read from CLAUDE_PROJECT_DIR where the hook runs outside the project', () => {
+    const stdin = JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Write', tool_input: { file_path: `.leeway/${LEDGER}`, content: 'x' } });
+    assertRefused(harness.call(outside('drifted'), ['layout', 'guard'], { env: { CLAUDE_PROJECT_DIR: dir }, stdin }), 'relative');
   });
 });
 

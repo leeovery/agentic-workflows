@@ -6,8 +6,8 @@
 // repository or any of its worktrees, symbolic links resolved and memoised
 // per folder; a root pinned for a world no repository holds; the nullable
 // find; and the two path forms — absolute for a
-// file, state-relative for a pathspec or an identity, a given path walked as
-// the filesystem walks it — with what lies
+// file, state-relative for a pathspec or an identity, a given path's `..`
+// read from its text and its links followed — with what lies
 // outside the state, a sibling whose name only begins with the state's,
 // answered as outside.
 // ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ const path = require('path');
 
 const { git, initRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const {
-  STATE_DIR_NAME, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
+  STATE_DIR_NAME, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState, ignoresCase,
 } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 
 /** @type {string} */
@@ -163,19 +163,26 @@ describe('stateRelative', () => {
     }
   });
 
-  it('walks a path as the filesystem does: a `..` after a link climbs from where the link points, and a dangling link lands where it points', () => {
+  it('reads a `..` from the text, then follows every link — a dangling one to where it points', () => {
     const away = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'state-root-away-')));
     try {
       fs.mkdirSync(path.join(root, 'pay'));
       fs.symlinkSync(path.join(root, 'pay'), path.join(away, 'unit'));
       fs.symlinkSync(away, path.join(root, 'away'));
       fs.symlinkSync(path.join(root, 'not-yet.md'), path.join(away, 'dangling'));
-      assert.strictEqual(stateRelative(dir, `${path.join(away, 'unit')}/../manifest.json`), 'manifest.json');
-      assert.strictEqual(stateRelative(dir, `${path.join(root, 'away', 'sub')}/../../manifest.json`), null);
+      assert.strictEqual(stateRelative(dir, `${path.join(away, 'unit')}/../manifest.json`), null);
+      assert.strictEqual(stateRelative(dir, `${path.join(root, 'away', 'sub')}/../../manifest.json`), 'manifest.json');
+      assert.strictEqual(stateRelative(dir, path.join(away, 'unit', 'manifest.json')), 'pay/manifest.json');
       assert.strictEqual(stateRelative(dir, path.join(away, 'dangling')), 'not-yet.md');
     } finally {
       fs.rmSync(away, { recursive: true, force: true });
     }
+  });
+
+  it('names the part that exists as the disk spells it, where the filesystem ignores case', () => {
+    if (!ignoresCase(root)) return;
+    fs.mkdirSync(path.join(root, 'pay'));
+    assert.strictEqual(stateRelative(dir, path.join(dir, '.LEEWAY', 'PAY', 'New.md')), 'pay/New.md');
   });
 
   it('is null for a path outside the state: the code tree, a parent, a sibling whose name begins with the state\'s', () => {

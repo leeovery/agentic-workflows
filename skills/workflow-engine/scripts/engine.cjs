@@ -1027,7 +1027,7 @@ function runSession(call, argv) {
 function runLayout(call, argv) {
   if (argv.length !== 1 || argv[0] !== 'guard') die(call, 'Usage: engine layout guard');
   const input = hookInput(call);
-  const reason = layoutRefusal(hookProjectDir(typeof input.cwd === 'string' ? input.cwd : call.cwd), input);
+  const reason = layoutRefusal(typeof input.cwd === 'string' ? input.cwd : hookProjectDir(call.cwd), input);
   if (reason === null) return;
   call.err(`${reason}\n`);
   throw new ExitSignal(2);
