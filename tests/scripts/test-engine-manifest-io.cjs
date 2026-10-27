@@ -25,14 +25,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const readline = require('readline');
-const { execFileSync, spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/workflow-engine/scripts/engine.cjs');
 
-const { ENGINE, stateGit, commitAll, cleanupFixture, lockAttempts, ok: engine } = harness;
+const { stateGit, commitAll, cleanupFixture, lockAttempts, ok: engine } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-io-');
 
@@ -105,13 +105,20 @@ const CONTENDER = [
 ].join('\n');
 
 /**
- * One contender, a node child running `script`: the `lines` it prints;
- * `printed(n)`, resolved once it has printed `n` of them or exited; and
- * `done`, with its exit code, its stderr and its lines.
+ * Well inside the writer lock's 60s wait: a contender still running then
+ * has hung on a lock that never comes free, and is killed.
+ */
+const CONTENDER_TIMEOUT_MS = 30000;
+
+/**
+ * One contender, a node child running `script`, killed should it run past
+ * CONTENDER_TIMEOUT_MS: the `lines` it prints; `printed(n)`, resolved once
+ * it has printed `n` of them or exited; and `done`, with its exit code, the
+ * signal that killed it, its stderr and its lines.
  * @param {string} script @param {string[]} args @param {NodeJS.ProcessEnv} env
  */
 function contender(script, args, env) {
-  const child = spawn(process.execPath, ['-e', script, ...args], { env });
+  const child = spawn(process.execPath, ['-e', script, ...args], { env, timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL' });
   child.stdin.on('error', () => {}); // one that has exited has no stdin left to write to
   /** @type {string[]} */
   const lines = [];
@@ -122,8 +129,8 @@ function contender(script, args, env) {
   const changed = () => { for (const wake of waiters) wake(); };
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   readline.createInterface({ input: child.stdout }).on('line', (line) => { lines.push(line); changed(); });
-  /** @type {Promise<{code: number|null, stderr: string, lines: string[]}>} */
-  const done = new Promise((resolve) => child.on('close', (code) => { exited = true; changed(); resolve({ code, stderr, lines }); }));
+  /** @type {Promise<{code: number|null, signal: NodeJS.Signals|null, stderr: string, lines: string[]}>} */
+  const done = new Promise((resolve) => child.on('close', (code, signal) => { exited = true; changed(); resolve({ code, signal, stderr, lines }); }));
   /** @param {number} count @returns {Promise<void>} */
   const printed = (count) => new Promise((resolve) => {
     const check = () => {
@@ -155,7 +162,9 @@ async function contend(n, body, args, env = process.env) {
   }
   for (const run of runs) run.child.stdin.end();
   const results = await Promise.all(runs.map((run) => run.done));
-  for (const { code, stderr } of results) assert.strictEqual(code, 0, stderr);
+  for (const { code, signal, stderr } of results) {
+    assert.strictEqual(code, 0, signal ? `a contender still running after ${CONTENDER_TIMEOUT_MS}ms was killed\n${stderr}` : stderr);
+  }
   return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
 }
 
@@ -485,7 +494,10 @@ describe('the claim — one holder at a time, never waited on', () => {
       'atBarrier();',
       'for (let i = 0; i < Number(holds); i++) {',
       '  let release;',
-      '  while ((release = io.tryClaimFile(claim)) === null) taken += 1;',
+      '  for (let tries = 1; (release = io.tryClaimFile(claim)) === null; tries++) {',
+      '    taken += 1;',
+      "    if (tries === 10000) throw new Error('the claim never came free in 10000 tries');",
+      '  }',
       "  let alone = true; try { fs.closeSync(fs.openSync(inside, 'wx')); } catch { alone = false; twice += 1; }",
       "  let owner = null; try { owner = JSON.parse(fs.readFileSync(claim, 'utf8')).pid; } catch { /* removed */ }",
       '  if (owner !== process.pid) lost += 1;',
@@ -589,12 +601,6 @@ describe('structurally corrupt manifests refuse writes', () => {
 });
 
 /**
- * Well inside the writer lock's 60s wait: a call still running at this
- * point was waiting on the lock, and is killed.
- */
-const ANSWERS_AT_ONCE_MS = 10000;
-
-/**
  * One call per entry of the writer lock's exempt table, each one that
  * succeeds in the epic fixture with a specification beside its research.
  * Boot and the ledger's writes are the table's verbs that wait on the lock,
@@ -665,22 +671,21 @@ describe('engine writes take the writer lock', () => {
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('a command the engine does not dispatch answers the usage at once — no lock waited on, no state looked for', () => {
+  it('a command the engine does not dispatch answers the usage without trying the lock, nor looking for a state', (t) => {
     fs.writeFileSync(lock, live());
+    const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
     const stateless = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-io-stateless-'));
-    try {
-      for (const [where, args] of [[dir, ['not-a-verb']], [dir, []], [dir, ['toString']], [stateless, ['not-a-verb']], [stateless, []]]) {
-        const res = spawnSync('node', [ENGINE, ...args], { cwd: where, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
-        assert.strictEqual(res.status, 1, `engine ${args.join(' ')} in ${where}: ${res.signal ? 'waited on the lock' : res.stderr}`);
-        assert.match(res.stderr, /^Usage: engine <command>/);
-      }
-    } finally {
-      fs.rmSync(stateless, { recursive: true, force: true });
+    t.after(() => fs.rmSync(stateless, { recursive: true, force: true }));
+    for (const [where, args] of [[dir, ['not-a-verb']], [dir, []], [dir, ['toString']], [stateless, ['not-a-verb']], [stateless, []]]) {
+      const res = harness.call(where, args);
+      assert.strictEqual(res.code, 1, `engine ${args.join(' ')} in ${where}: ${res.stderr}`);
+      assert.match(res.stderr, /^Usage: engine <command>/);
     }
+    assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers at once while a live holder has the lock — none but boot and the ledger take it anywhere', () => {
+  it('every exempt command answers without trying the lock while a live holder has it — none but boot and the ledger take it anywhere', (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
     assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside');
@@ -690,11 +695,13 @@ describe('engine writes take the writer lock', () => {
     manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     fs.writeFileSync(lock, live());
+    const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
 
     for (const args of EXEMPT_CALLS) {
-      const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
-      assert.strictEqual(res.status, 0, `engine ${args.join(' ')}: ${res.signal ? 'waited on the lock' : res.stderr}`);
+      const res = harness.call(dir, args);
+      assert.strictEqual(res.code, 0, `engine ${args.join(' ')}: ${res.stderr}`);
     }
+    assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
