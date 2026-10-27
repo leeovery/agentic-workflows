@@ -425,6 +425,7 @@ Commands:
   render knowledge-ready
   render legacy-split-gate --variant themes|plan | --variant remove --theme <name>
   render state-merge-gate
+  render ledger-stop
   render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)

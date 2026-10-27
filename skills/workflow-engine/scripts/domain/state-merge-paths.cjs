@@ -31,9 +31,8 @@ const path = require('path');
 const {
   MergeError, ruleOf, linesToAdd, entryId, migrationId, mergeManifest, conflictLabel,
 } = require('./state-merge-rules.cjs');
-const {
-  withScratch, readBlobs, blobOf, blobToFile, fileLines, endsWithNewline,
-} = require('./state-merge-blobs.cjs');
+const { withScratch, readBlobs, blobOf } = require('./state-merge-blobs.cjs');
+const { blobToFile, fileLines, endsWithNewline } = require('../kernel/file-stream.cjs');
 
 /** @typedef {import('../kernel/isolated-git.cjs').IsolatedGit} IsolatedGit */
 /** @typedef {import('./state-merge-rules.cjs').Choice} Choice */
@@ -279,8 +278,8 @@ function mergeManifestFile(ctx, file, versions, pickOf) {
 function unionLines(ctx, versions, keyOf) {
   return withScratch(ctx, (dir) => {
     const [remote, local, union] = ['remote', 'local', 'union'].map((name) => path.join(dir, name));
-    blobToFile(ctx, versions.remote?.oid, remote);
-    blobToFile(ctx, versions.local?.oid, local);
+    blobToFile(ctx.git, versions.remote?.oid, remote);
+    blobToFile(ctx.git, versions.local?.oid, local);
     const added = linesToAdd(fileLines(remote), fileLines(local), keyOf);
     try {
       let line = added.next();

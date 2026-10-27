@@ -33,10 +33,12 @@
 //   worktree's own index, so nothing a killed verb or a person left staged
 //   there can break it. A merge's landing a kill cut short is finished
 //   first (state-merge-landing.cjs), so the commit moves the branch on from
-//   where that landing put it. Then the branch is pushed wherever the
-//   project has a remote, never forced; a push that fails, runs out of
-//   time, or finds no remote chosen among several is a warning, and the
-//   commit stands.
+//   where that landing put it. A commit whose ledger does not start, byte
+//   for byte, with its parent's is refused (ledger-check.cjs), but for the
+//   one a migration's conversion lets through. Then the branch is pushed
+//   wherever the project has a remote, never forced; a push that fails,
+//   runs out of time, or finds no remote chosen among several is a
+//   warning, and the commit stands.
 //
 // The state's branch, its remote, and their time limits are named here once,
 // for the catch-up too (state-merge.cjs), as is the refusal of a branch
@@ -54,14 +56,17 @@ const { WRITER_LOCK, withWriterLock, withStateLockFile } = require('../kernel/ma
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
+const { checkLedgerCommit, spendPass } = require('./ledger-check.cjs');
+const { LEDGER } = require('./ledger-events.cjs');
 
 const STATE_BRANCH = 'leeway-state';
 const STATE_LOCK_REASON = 'workflows state, do not remove';
 // The lock's claim is written beside it and linked into place, and a
 // takeover holds a guard beside it: both are the lock's, ignored with it. A
-// manifest's atomic write is a temp file beside it until it is renamed in.
+// manifest's atomic write, and the ledger's append, is a temp file beside
+// it until it is renamed in.
 const STATE_GITIGNORE = [
-  '/.knowledge/', '/.cache/', `/${WRITER_LOCK}`, `/${WRITER_LOCK}.*`, '.manifest.json.*.tmp', '',
+  '/.knowledge/', '/.cache/', `/${WRITER_LOCK}`, `/${WRITER_LOCK}.*`, '.manifest.json.*.tmp', `/${LEDGER}.*.tmp`, '',
 ].join('\n');
 const FIRST_COMMIT_MESSAGE = `chore: begin ${STATE_BRANCH}`;
 
@@ -607,13 +612,16 @@ function onDisk(file) {
  * Commit the working tree's state of the pathspecs onto `leeway-state`. The
  * tree is built in a private index seeded from HEAD — never the worktree's
  * own, whatever it holds staged — and the branch moves only from the HEAD it
- * was built on. A kill at any step leaves the branch where it was or at the
- * whole commit, and the private index is cleared before and after. Null
- * where the tree comes out as HEAD's.
+ * was built on. A tree whose ledger does not start with HEAD's is refused
+ * (ledger-check.cjs), but for a conversion's, whose pass the commit spends.
+ * A kill at any step leaves the branch where it was or at the whole commit,
+ * and the private index is cleared before and after. Null where the tree
+ * comes out as HEAD's.
  * @param {OpenWorktree} worktree @param {string[]} specs @param {string} message
  * @returns {string|null}
  */
-function commitPaths({ git, root, index }, specs, message) {
+function commitPaths(worktree, specs, message) {
+  const { git, root, index, gitDir } = worktree;
   const [head, headTree] = git.run(['rev-parse', 'HEAD', 'HEAD^{tree}']).trim().split('\n');
   return withPrivateIndex(index, (env) => {
     git.run(['read-tree', head], { env });
@@ -625,8 +633,10 @@ function commitPaths({ git, root, index }, specs, message) {
     if (stageable.length > 0) git.run(['add', '--all', '--', ...literally(stageable)], { env });
     const tree = git.run(['write-tree'], { env }).trim();
     if (tree === headTree) return null;
+    const conversion = checkLedgerCommit(worktree, head, tree);
     const commit = git.run(['commit-tree', tree, '-p', head, '-m', message]).trim();
     git.run(['update-ref', '-m', `commit: ${message.split('\n')[0]}`, BRANCH_REF, commit, head]);
+    if (conversion !== null) spendPass(gitDir);
     return commit;
   });
 }

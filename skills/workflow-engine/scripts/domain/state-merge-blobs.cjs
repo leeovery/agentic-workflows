@@ -1,15 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the state's blobs and files, read for a merge (4.7) — and the
-// code branches' blobs the trace is read from where the state is lost
+// Domain ring: the state's blobs, read for a merge (4.7) — and the code
+// branches' blobs the trace is read from where the state is lost
 // (domain/code-trace). A merge reads many blobs, so it reads them together:
 // their sizes in one git call, then the bytes of each within the limit its
 // caller reads it to in one more, written to a file, so no answer is held to
 // a pipe's limit. A blob over its limit is never read. A blob the merge reads
 // a line at a time, as it does the ledger at any size, is written to a file
-// whole by git; that file, and any file in the working tree, is read a chunk
-// at a time, so no file is held in memory whole for its size alone.
+// whole and read a chunk at a time (kernel/file-stream).
 //
 // A blob's id names its bytes for good, so each blob read is kept on the
 // merge's context by its id and never read again.
@@ -18,8 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
-
-const CHUNK_BYTES = 64 * 1024;
+const { runToFile } = require('../kernel/file-stream.cjs');
 
 /** A blob's size, and its bytes: null where it is over the limit it was read to. @typedef {{size: number, bytes: Buffer|null}} Blob */
 
@@ -49,16 +47,6 @@ function withScratch(ctx, fn) {
     return fn(ctx.scratch);
   } finally {
     fs.rmSync(ctx.scratch, { recursive: true, force: true });
-  }
-}
-
-/** Git's output for `args` written to `file` whole. @param {BlobContext} ctx @param {string[]} args @param {string} file @param {string} [input] */
-function runToFile(ctx, args, file, input) {
-  const fd = fs.openSync(file, 'w');
-  try {
-    ctx.git.run(args, { input, out: fd });
-  } finally {
-    fs.closeSync(fd);
   }
 }
 
@@ -95,7 +83,7 @@ function readBlobs(ctx, wanted) {
   if (unread.length === 0) return;
   const batch = withScratch(ctx, (dir) => {
     const file = path.join(dir, 'blobs');
-    runToFile(ctx, ['cat-file', '--batch=%(objectname) %(objectsize)'], file, listed(unread));
+    runToFile(ctx.git, ['cat-file', '--batch=%(objectname) %(objectsize)'], file, listed(unread));
     return fs.readFileSync(file);
   });
   for (let at = 0; at < batch.length;) {
@@ -113,57 +101,4 @@ function blobOf(ctx, oid, limit) {
   return /** @type {Blob} */ (ctx.blobs.get(oid));
 }
 
-/** A blob written whole to `file` by git, whatever its size; an empty file where there is none. @param {BlobContext} ctx @param {string|undefined} oid @param {string} file */
-function blobToFile(ctx, oid, file) {
-  if (oid === undefined) fs.writeFileSync(file, '');
-  else runToFile(ctx, ['cat-file', 'blob', oid], file);
-}
-
-/**
- * A file's bytes, a chunk at a time; each chunk holds until the next is
- * read.
- * @param {string} file @returns {Generator<Buffer>}
- */
-function* fileChunks(file) {
-  const fd = fs.openSync(file, 'r');
-  try {
-    const chunk = Buffer.alloc(CHUNK_BYTES);
-    for (let read = fs.readSync(fd, chunk); read > 0; read = fs.readSync(fd, chunk)) yield chunk.subarray(0, read);
-  } finally {
-    fs.closeSync(fd);
-  }
-}
-
-/**
- * A file's lines, each without its newline, read a chunk at a time.
- * @param {string} file @returns {Generator<string>}
- */
-function* fileLines(file) {
-  let rest = Buffer.alloc(0);
-  for (const chunk of fileChunks(file)) {
-    const data = Buffer.concat([rest, chunk]);
-    let start = 0;
-    for (let eol = data.indexOf(0x0a); eol !== -1; eol = data.indexOf(0x0a, start)) {
-      yield data.toString('utf8', start, eol);
-      start = eol + 1;
-    }
-    rest = data.subarray(start);
-  }
-  if (rest.length > 0) yield rest.toString('utf8');
-}
-
-/** Whether a file is empty or ends with a newline. @param {string} file */
-function endsWithNewline(file) {
-  const { size } = fs.statSync(file);
-  if (size === 0) return true;
-  const last = Buffer.alloc(1);
-  const fd = fs.openSync(file, 'r');
-  try {
-    fs.readSync(fd, last, 0, 1, size - 1);
-  } finally {
-    fs.closeSync(fd);
-  }
-  return last[0] === 0x0a;
-}
-
-module.exports = { withScratch, readBlobs, blobOf, blobToFile, fileChunks, fileLines, endsWithNewline };
+module.exports = { withScratch, readBlobs, blobOf };

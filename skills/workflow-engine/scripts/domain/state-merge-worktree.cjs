@@ -39,7 +39,7 @@ const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
-const { fileChunks } = require('./state-merge-blobs.cjs');
+const { fileChunks } = require('../kernel/file-stream.cjs');
 const {
   sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');

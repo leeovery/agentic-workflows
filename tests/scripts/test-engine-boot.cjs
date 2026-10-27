@@ -659,7 +659,7 @@ describe('engine boot', () => {
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger baseline');
   });
 
-  it('a failing ledger commit is a warning, never a block — the ledger is already right on disk', () => {
+  it('a failing commit of the migrations record is a warning, never a block — the record is already right on disk', () => {
     // Another git process holding the state branch's ref lock.
     fs.writeFileSync(path.join(fix.project, '.git/refs/heads/leeway-state.lock'), '');
 
@@ -669,7 +669,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.ran, 1);
     assert.strictEqual(res.migrations_committed, null);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /migration ledger commit failed/);
+    assert.match(res.warnings[0], /migrations record commit failed/);
     assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.state/migrations')), 'the recorded run survives');
   });
 

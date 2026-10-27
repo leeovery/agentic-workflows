@@ -44,8 +44,10 @@ const { openGate } = require('../../skills/workflow-engine/scripts/domain/projec
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
-  STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, askStateRemote,
+  STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, askStateRemote, openWorktree,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { checkLedger } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { LedgerChanged, checkLedgerCommit } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
 const {
@@ -185,15 +187,20 @@ function projectManifest(horizon, extra = {}) {
 }
 
 /**
- * Whether the append-only check passes in the state worktree: the ledger on
- * disk starts byte for byte with the one the branch last committed (5.4.3),
- * and that one with its parent's (5.4.5).
+ * Whether the engine's append-only check passes in the state worktree: the
+ * ledger on disk starts byte for byte with the one the branch last committed
+ * (5.4.3), and that one with its parent's (5.4.5).
  * @param {string} root
  */
 function appendOnly(root) {
-  const committed = git(root, ['show', `${STATE_BRANCH}:.ledger.jsonl`]);
-  const parent = spawnSync('git', ['show', `${STATE_BRANCH}^:.ledger.jsonl`], { cwd: root, encoding: 'utf8' }).stdout;
-  return read(root, '.ledger.jsonl').startsWith(committed) && committed.startsWith(parent);
+  try {
+    checkLedger(root);
+    checkLedgerCommit(/** @type {import('../../skills/workflow-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root)), `${STATE_BRANCH}^`, STATE_BRANCH);
+    return true;
+  } catch (err) {
+    if (err instanceof LedgerChanged) return false;
+    throw err;
+  }
 }
 
 /** The merge drivers a clone's config names. @param {string} dir */
