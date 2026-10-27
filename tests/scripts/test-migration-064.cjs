@@ -18,7 +18,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/064-untrack-knowledge-store.cjs');
 
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
@@ -51,7 +51,7 @@ const head = (root = dir) => git(root, ['rev-parse', 'HEAD']).trim();
 
 describe('migration 064: untrack the knowledge directory', () => {
   beforeEach(() => {
-    dir = setupGitFixture('migration-064-');
+    dir = initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-064-'))));
     write('.workflows/payments/manifest.json', '{"name":"payments"}\n');
     commit(['.workflows/payments/manifest.json'], 'init');
     updates = 0;
@@ -119,7 +119,6 @@ describe('migration 064: untrack the knowledge directory', () => {
       'M\t.workflows/payments/manifest.json',
     ].sort());
     assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n').sort(), [
-      '.gitignore',
       '.workflows/.knowledge-notes.md',
       '.workflows/payments/manifest.json',
       'src/app.js',
