@@ -117,7 +117,9 @@ function made(makers) {
   return [field('by', oneOf(...makers)), field('who_moved_whom', oneOf(...MOVED))];
 }
 
-/** The content of each kind of entry a replacement can stand for. @type {Record<string, Field[]>} */
+/** A kind of entry: what a replacement can stand for. @typedef {'question'|'finding'|'decision'} EntryKind */
+
+/** The content of each kind of entry. @type {Record<EntryKind, Field[]>} */
 const CONTENT = {
   question: [
     field('text', TEXT),
@@ -174,6 +176,39 @@ const SCHEMA = {
 
 const LEDGER_VERSION = SCHEMA.version;
 
+/** The kind of entry each event that writes one makes; a replacement makes the kind it stands for. @type {Readonly<Record<string, EntryKind>>} */
+const ENTRY_EVENTS = Object.freeze({ asked: 'question', found: 'finding', decided: 'decision' });
+
+/**
+ * The kind of entry an event is, or null for an event that is no entry: a
+ * confirmation, a move, a merge or a check.
+ * @param {Record<string, unknown>} event
+ * @returns {EntryKind|null}
+ */
+function entryKind(event) {
+  if (event.event === 'replaced') return /** @type {EntryKind} */ (event.of);
+  return Object.hasOwn(ENTRY_EVENTS, /** @type {string} */ (event.event)) ? ENTRY_EVENTS[/** @type {string} */ (event.event)] : null;
+}
+
+/**
+ * The fields an event holds after the header, in its schema's order: its
+ * own, and for a replacement the content of the kind it stands for.
+ * @param {EventSchema} schema @param {EntryKind|null} of
+ * @returns {Field[]}
+ */
+function ownFields(schema, of) {
+  return of === null ? schema.fields : [...schema.fields, ...CONTENT[of]];
+}
+
+/**
+ * The fields event `name` of the current shape holds after the header.
+ * @param {string} name @param {EntryKind|null} [of] the kind a replacement stands for
+ * @returns {Field[]}
+ */
+function eventFields(name, of = null) {
+  return ownFields(SCHEMA.events[name], of);
+}
+
 /** A line the ledger cannot hold: not an event of the shape its version names. */
 class LedgerLineError extends Error {}
 
@@ -206,8 +241,8 @@ function addedIn(f) {
  * @returns {Field[]}
  */
 function fieldsOf(value, schema) {
-  const content = value.event === 'replaced' && typeof value.of === 'string' && Object.hasOwn(CONTENT, value.of) ? CONTENT[value.of] : [];
-  return [...HEADER, ...schema.fields, ...content];
+  const of = value.event === 'replaced' && typeof value.of === 'string' && Object.hasOwn(CONTENT, value.of) ? /** @type {EntryKind} */ (value.of) : null;
+  return [...HEADER, ...ownFields(schema, of)];
 }
 
 /**
@@ -268,4 +303,6 @@ function parseEntry(line, number, schema = SCHEMA) {
   }
 }
 
-module.exports = { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry };
+module.exports = {
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, LedgerLineError, LedgerNewer, entryKind, eventFields, validEvent, parseEntry,
+};

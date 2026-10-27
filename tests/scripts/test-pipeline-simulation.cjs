@@ -45,6 +45,8 @@ const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts
 const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
+const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
+const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -138,6 +140,12 @@ function auditState(dir, label) {
     }
   };
   if (project) auditImports(project.roadmap && project.roadmap.imports, 'roadmap');
+
+  // The ledger reads whole: it starts byte for byte with the one the state
+  // branch last committed, and every line is an event of its version's shape.
+  if (fs.existsSync(statePath(dir, LEDGER))) {
+    assert.doesNotThrow(() => [...readLedger(statePath(dir), [])], ctx('the ledger does not read'));
+  }
 
   for (const wu of listWorkUnits(dir)) {
     const raw = fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8');
@@ -515,10 +523,10 @@ class Sim {
   }
 
   /** Engine call that must refuse loudly: exit 1, {ok:false} JSON on stderr. */
-  refuses(args, pattern, identity = null) {
+  refuses(args, pattern, identity = null, stdin = '') {
     this.step += 1;
     const label = `step ${this.step}: engine ${args.join(' ')} (expected refusal)`;
-    const res = this.engine(args, identity);
+    const res = this.engine(args, identity, stdin);
     assert.strictEqual(res.code, 1, `[${label}] expected exit 1, got ${res.code}\nstdout: ${res.stdout}`);
     const parsed = JSON.parse(res.stderr.trim());
     assert.strictEqual(parsed.ok, false, `[${label}] refusal is not clean {ok:false} JSON`);
@@ -3595,6 +3603,42 @@ describe('pipeline simulation', () => {
     const rewaited = sim.run(['topic', 'postpone', wu, 'researched', '--horizon', 'someday']);
     assert.deepStrictEqual(rewaited.roadmap, { name: 'researched', horizon: 'someday', born_map: false, born_horizon: false, reverted_join: true });
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
+  });
+
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch', () => {
+    const wu = 'fumi';
+    mappedEpic(sim, wu, ['note-window', 'space-homing']);
+    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    sim.run(['topic', 'start', wu, 'discussion', 'space-homing']);
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    const note = `${wu}.discussion.note-window`;
+    /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */
+    const ledger = (args, content) => {
+      const res = sim.run(['ledger', ...args], null, JSON.stringify(content));
+      assert.strictEqual(res.committed, stateGit(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
+      assert.strictEqual(stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
+      return res.id;
+    };
+
+    const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
+    const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike' });
+    const decision = ledger(['decide', note, '--answers', question, '--relies-on', finding], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
+    const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
+    ledger(['hold', note, '--entry', finding, '--after', replacement], made);
+    const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
+    ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
+    ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
+    ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
+    sim.refuses(['ledger', 'decide', note], /^ledger decide needs --answers <id>/, null, JSON.stringify({ ...made, text: 'Unanchored.', why: 'No question.' }));
+    sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /replace the current one/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
+
+    const events = fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+    assert.deepStrictEqual(events.map((e) => [e.event, e.topic, e.session]), [
+      ['asked', 'note-window', 'sim-session'], ['found', 'note-window', 'sim-session'], ['decided', 'note-window', 'sim-session'],
+      ['replaced', 'note-window', 'sim-session'], ['still-holds', 'note-window', 'sim-session'], ['asked', 'note-window', 'sim-session'],
+      ['moved', 'note-window', 'sim-session'], ['merged', 'space-homing', 'sim-session'], ['asked', null, 'sim-session'],
+    ]);
+    assert.strictEqual(stateGit(sim.dir, ['show', `HEAD:${LEDGER}`]), fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8'));
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {
