@@ -22,18 +22,19 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
+const it = require('./shards.cjs').shardedIt(__filename);
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 
-const { git, initRepo, githubOffline } = harness;
+const { git, initRepo, testIdentity, githubOffline } = harness;
 const SCRIPTS = path.dirname(harness.ENGINE);
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE, inspectState, createState, withStateLock, commitState,
@@ -136,9 +137,7 @@ function codeProject({ name = 'portal', remote = null } = {}) {
 function cloneOf(remote, name, args = []) {
   const dir = path.join(world, name);
   git(world, ['clone', '-q', ...args, remote, dir]);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
-  git(dir, ['config', 'commit.gpgsign', 'false']);
+  testIdentity(dir);
   return dir;
 }
 

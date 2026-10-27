@@ -5,7 +5,9 @@
 // default branch holds one commit, the code tree's `.gitignore` naming it.
 // Both first commits carry one fixed date, so a suite's own commits always
 // come after them. One template is made per process and copied for each
-// fixture, its state worktree relinked by the machinery's repair.
+// fixture, its state worktree relinked by the machinery's repair
+// (`copyWorld`) — as is every richer world the harness makes once per
+// process (`fixtureFrom`, engine-harness.cjs).
 
 require('./hermetic-env.cjs');
 
@@ -23,13 +25,18 @@ function git(dir, args) {
 }
 
 /**
- * The test identity and no signing, on the repo at `dir`.
+ * The test identity, no signing, and no auto maintenance, on the repo at
+ * `dir`. Git otherwise ends every commit and fetch by starting its
+ * maintenance in the background, which outlives the call: a test pays for
+ * the process, and a copy or removal of the repository meets its lock file
+ * coming and going.
  * @param {string} dir
  */
 function testIdentity(dir) {
   git(dir, ['config', 'user.email', 'test@example.com']);
   git(dir, ['config', 'user.name', 'Test']);
   git(dir, ['config', 'commit.gpgsign', 'false']);
+  git(dir, ['config', 'maintenance.auto', 'false']);
 }
 
 /** When the template's two commits were made. */
@@ -74,16 +81,26 @@ function fixtureTemplate() {
 }
 
 /**
+ * A copy of the world at `from` at `dir`, the folder made where it is
+ * missing, its state worktree relinked to the copy's own repository.
+ * @param {string} from @param {string} dir
+ * @returns {string} dir, symbolic links resolved — the path the engine names it by
+ */
+function copyWorld(from, dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  const at = fs.realpathSync(dir);
+  fs.cpSync(from, at, { recursive: true });
+  repairStateWorktree(path.join(at, STATE_DIR_NAME));
+  return at;
+}
+
+/**
  * A fresh world at `dir`, the folder made where it is missing.
  * @param {string} dir
  * @returns {string} dir, symbolic links resolved — the path the engine names it by
  */
 function setupFixtureAt(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-  const at = fs.realpathSync(dir);
-  fs.cpSync(fixtureTemplate(), at, { recursive: true });
-  repairStateWorktree(path.join(at, STATE_DIR_NAME));
-  return at;
+  return copyWorld(fixtureTemplate(), dir);
 }
 
 /**
@@ -133,6 +150,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
   createManifest, createFile,
 };

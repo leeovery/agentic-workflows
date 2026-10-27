@@ -2,16 +2,17 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawn } = require('child_process');
+const it = require('./shards.cjs').shardedIt(__filename);
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git, stateGit, commitAll, setupFixtureAt } = harness;
+const { git, stateGit, commitAll, fixtureFrom } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
@@ -61,8 +62,14 @@ const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${
  * booted project reaches, so boot's own plumbing commits never join the
  * history a test reads. A test about the install takes the hooks away first.
  * The gate mod is not installed, so boot reports it unavailable; a test
- * about the mod installs it.
+ * about the mod installs it. Made once per process, copied for each test.
  */
+const projectWorld = fixtureFrom('engine-boot-project-', (project) => {
+  writeFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
+  writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  commitAll(project, 'init');
+});
+
 /**
  * A project still on the layout before the state worktree: its `.workflows/`
  * in the code tree, committed there, for the legacy fleet to upgrade.
@@ -74,12 +81,9 @@ function legacyLayout(project) {
   git(project, ['commit', '-q', '-m', 'the old layout']);
 }
 
+/** The project fixture at `{root}/project`. @param {string} root */
 function setupProject(root) {
-  const project = setupFixtureAt(path.join(root, 'project'));
-  writeFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
-  writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-  commitAll(project, 'init');
-  return project;
+  return projectWorld(path.join(root, 'project'));
 }
 
 // Stub migrate.cjs: env-driven behaviour, mimicking the real report format

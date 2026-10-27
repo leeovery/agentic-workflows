@@ -21,11 +21,12 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
+const it = require('./shards.cjs').shardedIt(__filename);
 
 const { ENGINE, git, ok, output, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');

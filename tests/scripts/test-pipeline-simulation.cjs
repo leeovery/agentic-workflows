@@ -24,17 +24,20 @@
 // Scenarios cover the happy paths AND the supported edges — reopen (going
 // backwards), supersession, cancel/reactivate at topic and work-unit level,
 // pivot, absorption, promotion, restarts. Add new permutations here as the
-// system grows: a scenario is just an ordered list of sim.run() calls.
+// system grows: a scenario is just an ordered list of sim.run() calls. The
+// scenarios are dealt across this file and its shard files, which the run
+// takes side by side (`shards.cjs`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
+const it = require('./shards.cjs').shardedIt(__filename);
 
 const ROOT = path.join(__dirname, '../..');
 const engine = require(path.join(ROOT, 'skills/workflow-engine/scripts/engine.cjs'));
@@ -68,7 +71,7 @@ const { openGate, drawLabel, bulletRow } = require(path.join(ROOT, 'skills/workf
 const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/position.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { initRepo, githubOffline, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { initRepo, githubOffline, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
 // The epic specification menu's detail — the spec boundary's derived view.
@@ -575,36 +578,41 @@ function auditGatePayload(sim, args, identity) {
 // Simulator
 // ---------------------------------------------------------------------------
 
+// The project every scenario starts from, made once per process.
+const simWorld = fixtureFrom('pipeline-sim-', (dir) => {
+  // This checkout's knowledge setup: keyword-only, pinned as setup records
+  // it, so the transactions' indexing builds a store as a set-up project's does.
+  fs.mkdirSync(statePath(dir, KNOWLEDGE_DIR), { recursive: true });
+  fs.writeFileSync(statePath(dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
+  // The skills a conversation carries on in after a compaction, installed
+  // as a project installs them — kept out of git's sight, so no commit or
+  // dirt check ever meets them.
+  const skills = [...schema.VALID_PHASES.map((phase) => skillAt('unit', phase)), ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))];
+  for (const skill of /** @type {string[]} */ (skills)) {
+    fs.mkdirSync(path.join(dir, '.claude/skills', skill), { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(dir, '.claude/skills', skill, 'SKILL.md'));
+  }
+  fs.mkdirSync(path.join(dir, '.git/info'), { recursive: true });
+  fs.appendFileSync(path.join(dir, '.git/info/exclude'), '.claude/skills/\n');
+  // Part of the project's code lives in an ignored clone: a repo of its own
+  // that the project's git ignores. A code commit naming a path in it lands
+  // in the clone's history, and every dirt read reaches into it.
+  const api = initRepo(path.join(dir, 'api'));
+  fs.writeFileSync(path.join(api, 'README.md'), '# API\n');
+  git(api, ['add', '-A']);
+  git(api, ['commit', '-q', '-m', 'init']);
+  fs.appendFileSync(path.join(dir, '.git/info/exclude'), 'api/\n');
+});
+
 class Sim {
   constructor() {
     // A project with its state worktree at `.leeway/`, which ignores the
     // cache and the checkout's own knowledge directory.
-    this.dir = setupGitFixture('pipeline-sim-');
+    this.dir = simWorld();
     // The system config directory sits beside the project, as a real one
     // does: the conversation folders the sim's calls mark live there.
     this.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-config-'));
-    // This checkout's knowledge setup: keyword-only, pinned as setup records
-    // it, so the transactions' indexing builds a store as a set-up project's does.
-    fs.mkdirSync(statePath(this.dir, KNOWLEDGE_DIR), { recursive: true });
-    fs.writeFileSync(statePath(this.dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
-    // The skills a conversation carries on in after a compaction, installed
-    // as a project installs them — kept out of git's sight, so no commit or
-    // dirt check ever meets them.
-    const skills = [...schema.VALID_PHASES.map((phase) => skillAt('unit', phase)), ...schema.PROJECT_IDENTITIES.map((name) => skillAt(name))];
-    for (const skill of /** @type {string[]} */ (skills)) {
-      fs.mkdirSync(path.join(this.dir, '.claude/skills', skill), { recursive: true });
-      fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(this.dir, '.claude/skills', skill, 'SKILL.md'));
-    }
-    fs.mkdirSync(path.join(this.dir, '.git/info'), { recursive: true });
-    fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), '.claude/skills/\n');
-    // Part of the project's code lives in an ignored clone: a repo of its own
-    // that the project's git ignores. A code commit naming a path in it lands
-    // in the clone's history, and every dirt read reaches into it.
-    this.api = initRepo(path.join(this.dir, 'api'));
-    fs.writeFileSync(path.join(this.api, 'README.md'), '# API\n');
-    git(this.api, ['add', '-A']);
-    git(this.api, ['commit', '-q', '-m', 'init']);
-    fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), 'api/\n');
+    this.api = path.join(this.dir, 'api');
     this.step = 0;
     this.conversations = 0;
     // Hermetic environment, as a delta from this process's — the engine runs

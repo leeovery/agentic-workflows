@@ -23,13 +23,22 @@ const harness = require('./engine-harness.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = harness;
 
-/** A temp-dir git repo with an empty project manifest committed. */
-function setupGitFixture() {
-  const dir = harness.setupGitFixture('engine-roadmap-');
-  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), '{}\n');
-  commitAll(dir, 'init');
-  return dir;
+/**
+ * A world made once per process from a temp-dir git repo with an empty
+ * project manifest committed, and `build`'s own fixture on top; each call
+ * answers a copy.
+ * @param {(dir: string) => void} [build]
+ */
+function roadmapWorld(build = () => {}) {
+  return harness.fixtureFrom('engine-roadmap-', (dir) => {
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), '{}\n');
+    commitAll(dir, 'init');
+    build(dir);
+  });
 }
+
+/** A temp-dir git repo with an empty project manifest committed. */
+const setupGitFixture = roadmapWorld();
 
 /** A path in the state as a state commit names it: from the state root. */
 const inState = (rel) => rel.replace(/^\.leeway\//, '');
@@ -251,14 +260,14 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
   const IDEA_NOTE = '.leeway/.roadmap/notes/ideas/2026-03-01--dark-mode.md';
   const BUG_NOTE = '.leeway/.roadmap/notes/bugs/2026-03-02--login-crash.md';
 
-  beforeEach(() => {
-    dir = setupGitFixture();
+  const setup = roadmapWorld((at) => {
     for (const rel of [IDEA, BUG, QUICKFIX]) {
-      fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-      fs.writeFileSync(path.join(dir, rel), `# ${path.basename(rel)}\n`);
+      fs.mkdirSync(path.dirname(path.join(at, rel)), { recursive: true });
+      fs.writeFileSync(path.join(at, rel), `# ${path.basename(rel)}\n`);
     }
-    commitAll(dir, 'inbox');
+    commitAll(at, 'inbox');
   });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   const exists = (rel) => fs.existsSync(path.join(dir, rel));
@@ -499,15 +508,15 @@ describe('engine CLI: inbox notes onto the roadmap, and back to the archive', ()
 });
 
 describe('engine CLI: roadmap item ops and the joined-item guards', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
-    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
-    joinItem(dir, 'ordering', 'mvp');
-    commitAll(dir, 'join');
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
+    runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    createManifest(at, 'mvp', { work_type: 'epic', status: 'in-progress' });
+    joinItem(at, 'ordering', 'mvp');
+    commitAll(at, 'join');
   });
+  let dir;
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   it('edit rewrites the summary — on a pulled item too (cosmetic; the row is a window)', () => {
@@ -583,13 +592,13 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
 });
 
 describe('engine CLI: roadmap horizon ops', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
-    runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
+    runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
+    runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
   });
+  let dir;
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   it('add inserts at a position; refuses duplicates and bad positions', () => {
@@ -656,16 +665,16 @@ describe('engine CLI: roadmap horizon ops', () => {
 });
 
 describe('engine CLI: roadmap pull / bind / pull-forward', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
-    runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
-    runOk(dir, ['add', 'kds', '--horizon', 'mvp', '--summary', 'orders reach the kitchen']);
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
-    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    commitAll(dir, 'fixture');
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
+    runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
+    runOk(at, ['add', 'kds', '--horizon', 'mvp', '--summary', 'orders reach the kitchen']);
+    runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    createManifest(at, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    commitAll(at, 'fixture');
   });
+  let dir;
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   it('pull joins a subset and names the remainder per touched horizon', () => {
@@ -766,9 +775,8 @@ describe('engine CLI: roadmap pull / bind / pull-forward', () => {
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
   let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    createManifest(dir, 'mvp', {
+  const setup = roadmapWorld((at) => {
+    createManifest(at, 'mvp', {
       work_type: 'epic',
       status: 'in-progress',
       phases: {
@@ -783,12 +791,13 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       },
     });
     for (const rel of ['discovery/briefs/ordering.md', 'research/ordering.md', 'discussion/ordering.md']) {
-      const abs = path.join(dir, '.leeway', 'mvp', rel);
+      const abs = path.join(at, '.leeway', 'mvp', rel);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
       fs.writeFileSync(abs, '# x\n');
     }
-    commitAll(dir, 'fixture');
+    commitAll(at, 'fixture');
   });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
@@ -1138,11 +1147,10 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
 describe('engine CLI: the cancel-revert hop', () => {
   let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
-    runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
-    createManifest(dir, 'mvp', {
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
+    runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
+    createManifest(at, 'mvp', {
       work_type: 'epic',
       status: 'in-progress',
       phases: {
@@ -1150,10 +1158,11 @@ describe('engine CLI: the cancel-revert hop', () => {
         discussion: { items: { ordering: { status: 'in-progress' } } },
       },
     });
-    commitAll(dir, 'fixture');
-    runOk(dir, ['pull', 'ordering', 'menus', '--into', 'mvp']);
-    runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
+    commitAll(at, 'fixture');
+    runOk(at, ['pull', 'ordering', 'menus', '--into', 'mvp']);
+    runOk(at, ['bind', 'ordering', '--topic', 'ordering']);
   });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
@@ -1205,11 +1214,10 @@ describe('engine CLI: the cancel-revert hop', () => {
 
 describe('engine CLI: roadmap flag — reconcile across the join', () => {
   let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
-    runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
-    createManifest(dir, 'mvp', {
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
+    runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
+    createManifest(at, 'mvp', {
       work_type: 'epic',
       status: 'in-progress',
       phases: {
@@ -1218,10 +1226,11 @@ describe('engine CLI: roadmap flag — reconcile across the join', () => {
         discussion: { items: { ordering: { status: 'completed' } } },
       },
     });
-    commitAll(dir, 'fixture');
-    runOk(dir, ['pull', 'ordering', 'menus', '--into', 'mvp']);
-    runOk(dir, ['bind', 'ordering', '--topic', 'ordering']);
+    commitAll(at, 'fixture');
+    runOk(at, ['pull', 'ordering', 'menus', '--into', 'mvp']);
+    runOk(at, ['bind', 'ordering', '--topic', 'ordering']);
   });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   it('flags the live phase item, skips terminal ones, never clobbers', () => {
@@ -1487,14 +1496,14 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
 
 describe('engine CLI: roadmap guards the first pass left unexercised', () => {
   let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
-    runOk(dir, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
-    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    commitAll(dir, 'fixture');
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
+    runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
+    runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    createManifest(at, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    commitAll(at, 'fixture');
   });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   function epicManifest() {
@@ -1560,12 +1569,12 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
 
 describe('engine CLI: the un-pull and the re-aim — remove and absorb move joins, never orphan them', () => {
   let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
-    createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
-    commitAll(dir, 'fixture');
+  const setup = roadmapWorld((at) => {
+    runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
+    createManifest(at, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
+    commitAll(at, 'fixture');
   });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanup(dir); });
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);

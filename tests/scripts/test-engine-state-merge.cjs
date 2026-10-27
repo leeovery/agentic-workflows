@@ -28,15 +28,16 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
+const it = require('./shards.cjs').shardedIt(__filename);
 
 const {
-  ENGINE, git, initRepo, ok, output, refuses,
+  ENGINE, git, initRepo, testIdentity, ok, output, refuses,
 } = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
@@ -160,8 +161,7 @@ function twoMachines(base = {}) {
 
   const other = path.join(world, 'other-machine');
   git(world, ['clone', '-q', bare, other]);
-  git(other, ['config', 'user.email', 'test@example.com']);
-  git(other, ['config', 'user.name', 'Test']);
+  testIdentity(other);
   const there = { main: other, root: stateRoot(other) };
   createStateBranchFromRemote(there.root);
   addStateWorktree(there.root);

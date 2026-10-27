@@ -3,17 +3,21 @@
 // The shared engine runner's own contract: each shape answers what its name
 // says, the refusal shape asserts the refusal, the call's environment and
 // stdin reach the engine, the git fixture is a repo with its state worktree
-// that an engine commit lands in, and a keyword-only checkout is one a transaction's index builds a real
-// store in.
+// that an engine commit lands in, a world made once is copied whole and
+// apart, a keyword-only checkout is one a transaction's index builds a real
+// store in, and a long suite's shards hold every test once.
 
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const shards = require('./shards.cjs');
 const {
   call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
 } = harness;
@@ -146,6 +150,95 @@ describe('engine harness — the git fixture', () => {
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'research(pay): notes');
     assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('runs no auto maintenance after a commit, so nothing of git\'s outlives the call', () => {
+    const trace = path.join(dir, '.git', 'trace.log');
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'a\n');
+    git(dir, ['add', 'a.txt']);
+    execFileSync('git', ['commit', '-q', '-m', 'a'], { cwd: dir, env: { ...process.env, GIT_TRACE: trace } });
+    assert.match(fs.readFileSync(trace, 'utf8'), /built-in: git commit/, 'the trace caught nothing');
+    assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
+  });
+});
+
+describe('engine harness — a world made once and copied', () => {
+  /** @type {string[]} */
+  const made = [];
+  const world = harness.fixtureFrom('harness-test-', (at) => {
+    made.push(at);
+    seed(at);
+  });
+  /** @type {string[]} */
+  let copies = [];
+  afterEach(() => { copies.forEach(cleanupFixture); copies = []; });
+
+  it('is built once, at the first copy, and each copy holds what the build left', () => {
+    copies = [world(), world()];
+    assert.strictEqual(made.length, 1);
+    for (const copy of copies) {
+      assert.strictEqual(stateGit(copy, ['log', '-1', '--pretty=%s']).trim(), 'init');
+      assert.strictEqual(fs.readFileSync(statePath(copy, 'pay/research/pay.md'), 'utf8'), '# Research\n');
+    }
+  });
+
+  it('is a world of its own each time: its state worktree is its own repository\'s, and a commit in one reaches neither the other nor the template', () => {
+    copies = [world(), world()];
+    const [one, two] = copies;
+    assert.strictEqual(stateGit(one, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim(), path.join(one, '.git'));
+    fs.writeFileSync(statePath(one, 'pay/research/pay.md'), '# Research\n\nMore.\n');
+    ok(one, ['commit', 'pay', '-m', 'research(pay): notes', '--topic', 'research/pay']);
+    for (const other of [two, made[0]]) {
+      assert.strictEqual(stateGit(other, ['log', '-1', '--pretty=%s']).trim(), 'init');
+      assert.strictEqual(fs.readFileSync(statePath(other, 'pay/research/pay.md'), 'utf8'), '# Research\n');
+    }
+  });
+
+  it('is copied to the folder given, where one is', () => {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-')));
+    copies = [root];
+    const at = world(path.join(root, 'project'));
+    assert.strictEqual(at, path.join(root, 'project'));
+    assert.strictEqual(stateGit(at, ['log', '-1', '--pretty=%s']).trim(), 'init');
+  });
+});
+
+describe('the shards a long suite runs as', () => {
+  /** @type {string} */
+  let folder;
+  beforeEach(() => { folder = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-shards-')); });
+  afterEach(() => fs.rmSync(folder, { recursive: true, force: true }));
+
+  /** @param {...string} names */
+  const files = (...names) => names.forEach((name) => fs.writeFileSync(path.join(folder, name), ''));
+  const suite = () => path.join(folder, 'test-long.cjs');
+  const script = (/** @type {string[]} */ names) => `node --test ${names.map((name) => `tests/scripts/${name}`).join(' ')}`;
+
+  it('deals every test to exactly one shard, round the shards in the order they are registered', () => {
+    for (const count of [1, 2, 3, 6]) {
+      for (let dealt = 0; dealt < 20; dealt++) {
+        const holders = Array.from({ length: count }, (_, i) => i + 1).filter((shard) => shards.dealtTo(dealt, count, shard));
+        assert.deepStrictEqual(holders, [dealt % count + 1], `test ${dealt} of ${count} shards`);
+      }
+    }
+  });
+
+  it('counts the suite and its shard files, a suite of its own alone and another suite\'s shards apart', () => {
+    files('test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-3.cjs', 'test-long-er-shard-2.cjs');
+    assert.strictEqual(shards.shardCount(suite(), script(['test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-3.cjs'])), 3);
+    fs.rmSync(path.join(folder, 'test-long-shard-2.cjs'));
+    fs.rmSync(path.join(folder, 'test-long-shard-3.cjs'));
+    assert.strictEqual(shards.shardCount(suite(), script(['test-long.cjs'])), 1);
+  });
+
+  it('refuses shard files numbered with a gap, or not from 2', () => {
+    files('test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-4.cjs');
+    assert.throws(() => shards.shardCount(suite(), script(['test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-4.cjs'])), /numbered 2, 4 — they run from 2 on, with no gap/);
+  });
+
+  it('refuses a shard file the npm test script does not run, so no share goes unrun', () => {
+    files('test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-3.cjs');
+    assert.throws(() => shards.shardCount(suite(), script(['test-long.cjs', 'test-long-shard-2.cjs'])), /the npm test script does not run test-long-shard-3\.cjs$/);
   });
 });
 

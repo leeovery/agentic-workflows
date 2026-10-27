@@ -39,6 +39,12 @@ is to run them before every commit rather than at the end of a branch.
 
 The mods need Claude Code 2.1.287 or newer; a change that relies on a newer Claude Code raises that floor in the same PR.
 
+`npm test` runs its files side by side, a process each, in the order its
+script lists them: the slowest first, so no long file starts last and runs
+on alone. A new suite goes where its serial time places it. A suite too
+long for one process runs as shards, `{suite}-shard-{n}.cjs` beside it,
+each listed in the script (`tests/scripts/shards.cjs`).
+
 **Never pipe a gate's output.** A pipe swallows the exit code, and a
 suite that aborts halfway then reads as green. Redirect to a file and
 check `$?` instead. This has produced a falsely-green report before.

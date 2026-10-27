@@ -21,7 +21,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity } = require('./engine-harness.cjs');
 
 const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
@@ -70,8 +70,7 @@ function project({ remote = false, name = 'project' } = {}) {
 function clone(bare, name) {
   const dir = path.join(world, name);
   git(world, ['clone', '-q', bare, dir]);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
+  testIdentity(dir);
   return dir;
 }
 

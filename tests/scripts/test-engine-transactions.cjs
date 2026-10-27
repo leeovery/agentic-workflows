@@ -64,12 +64,10 @@ function send(dir, phase, topic, slug) {
   return engine(dir, sendArgv(dir, phase, topic, slug));
 }
 
-function setupEpicFixture() {
-  const dir = setupGitFixture();
+const setupEpicFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n');
   commitAll(dir, 'init');
-  return dir;
-}
+});
 
 // An epic whose map carries every unit shape the cancel meets: a never-
 // started topic, a started one with a live evidence wait and a proposed
@@ -115,12 +113,10 @@ function unitManifest() {
   };
 }
 
-function setupUnitFixture() {
-  const dir = setupGitFixture();
+const setupUnitFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
   commitAll(dir, 'init');
-  return dir;
-}
+});
 
 describe('engine topic cancel — the discovery unit', () => {
   let dir;
@@ -1796,8 +1792,7 @@ function featureManifest() {
   };
 }
 
-function setupFeatureFixture() {
-  const dir = setupGitFixture();
+const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
@@ -1815,12 +1810,10 @@ function setupFeatureFixture() {
   writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
   harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
-  return dir;
-}
+});
 
 /** A cross-cutting unit whose pipeline is finished (derived next phase `done`). */
-function setupFinishedCrossCuttingFixture() {
-  const dir = setupGitFixture();
+const setupFinishedCrossCuttingFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/caching/manifest.json', JSON.stringify({
     name: 'caching',
     work_type: 'cross-cutting',
@@ -1838,8 +1831,7 @@ function setupFinishedCrossCuttingFixture() {
   writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
   harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
-  return dir;
-}
+});
 
 describe('engine workunit complete', () => {
   let dir;
