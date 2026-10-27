@@ -31,7 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
-const { fileLines, fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
+const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
 const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
@@ -104,6 +104,38 @@ function entryAt(root, line, number) {
   }
 }
 
+/** Where an entry's line sits: its number, from 1, and its span. @typedef {{number: number} & import('../kernel/file-stream.cjs').LineSpan} EntryPlace */
+
+/**
+ * The ledger checked, then opened for reading: its file descriptor, or null
+ * where there is no ledger yet.
+ * @param {string} root @param {string[]} notes what a landing the check finished said, pushed to
+ * @returns {number|null}
+ */
+function openChecked(root, notes) {
+  checkLedger(root, notes);
+  try {
+    return fs.openSync(ledgerFile(root), 'r');
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+/**
+ * The entries of the ledger open at `fd`, in order, each with where its line
+ * sits. Refuses a line that is no entry.
+ * @param {string} root @param {number} fd
+ * @returns {Generator<{event: Record<string, unknown>, place: EntryPlace}>}
+ */
+function* entriesAt(root, fd) {
+  let number = 0;
+  for (const { text, span } of fdLines(fd)) {
+    number += 1;
+    yield { event: entryAt(root, text, number), place: { number, ...span } };
+  }
+}
+
 /**
  * The ledger's entries in order, checked first, each line read as an event
  * of the shape its version names. Refuses a line that is not one.
@@ -111,14 +143,14 @@ function entryAt(root, line, number) {
  * @returns {Generator<Record<string, unknown>>}
  */
 function* readLedger(root, notes) {
-  checkLedger(root, notes);
-  const file = ledgerFile(root);
-  if (!fs.existsSync(file)) return;
-  let number = 0;
-  for (const line of fileLines(file)) yield entryAt(root, line, ++number);
+  const fd = openChecked(root, notes);
+  if (fd === null) return;
+  try {
+    for (const { event } of entriesAt(root, fd)) yield event;
+  } finally {
+    fs.closeSync(fd);
+  }
 }
-
-/** Where an entry's line sits: its number, from 1, and its span. @typedef {{number: number} & import('../kernel/file-stream.cjs').LineSpan} EntryPlace */
 
 /**
  * The ledger as `withLedger` hands it over: its entries in order, each with
@@ -148,28 +180,15 @@ const NO_LEDGER = Object.freeze({
  * @returns {T}
  */
 function withLedger(root, notes, read) {
-  checkLedger(root, notes);
-  let fd;
-  try {
-    fd = fs.openSync(ledgerFile(root), 'r');
-  } catch (err) {
-    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') return read(NO_LEDGER);
-    throw err;
-  }
-  const open = fd;
+  const fd = openChecked(root, notes);
+  if (fd === null) return read(NO_LEDGER);
   try {
     return read({
-      * entries() {
-        let number = 0;
-        for (const { text, span } of fdLines(open)) {
-          number += 1;
-          yield { event: entryAt(root, text, number), place: { number, ...span } };
-        }
-      },
-      entryAt: (place) => entryAt(root, lineAt(open, place), place.number),
+      entries: () => entriesAt(root, fd),
+      entryAt: (place) => entryAt(root, lineAt(fd, place), place.number),
     });
   } finally {
-    fs.closeSync(open);
+    fs.closeSync(fd);
   }
 }
 

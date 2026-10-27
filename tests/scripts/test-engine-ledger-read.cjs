@@ -4,17 +4,20 @@
 // The ledger's read verbs (workflow-engine/scripts/domain/ledger-read.cjs),
 // the fold they read through (domain/ledger-fold.cjs) and the one liveness
 // rule (domain/ledger-units.cjs): `engine ledger record|map|product`, each a
-// projection of the ledger answered as JSON — a unit's or a topic's current
-// entries, each with the answers it replaced folded beneath it and the
-// confirmations that it still holds, its moves and merges, and the other
-// topics' current entries it relies on read from their own lines; a
-// topic's questions and where each stands; the entries marked
-// product-wide. Siblings stand apart; a merged duplicate is no second
-// entry; a cancelled topic or unit, or a postponed topic while it waits,
-// holds nothing current until it comes back, and the write verbs decide by
-// the same rule. A ledger past the 64 MiB a pipe holds is read without being
-// held: each read answers under a heap a reader holding its lines cannot
-// fit in.
+// projection of the ledger answered as JSON — the current entries standing
+// in a unit or a topic, each where the first entry of its chain stands,
+// with the live answers it replaced folded beneath it and the confirmations
+// that it still holds, its moves, its merges each with its duplicate, and
+// the current entries standing elsewhere that it relies on or that answer
+// its questions, read from their own lines; a topic's questions, where each
+// stands and its answers, which its record shows too; the entries marked
+// product-wide. Siblings stand apart; a reworded question keeps its
+// answers and its parts; a merged duplicate is no second entry; a cancelled
+// topic or unit, or a postponed topic while it waits, holds nothing current
+// until it comes back — and a replacement or a merge made there counts for
+// nothing meanwhile — and the write verbs decide by the same rule. A ledger
+// past the 64 MiB a pipe holds is read without being held: each read
+// answers under a heap a reader holding its lines cannot fit in.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // units' manifests written there; the lifecycle verbs cancel, postpone and
@@ -154,6 +157,44 @@ function current(short, replaced = [], holds = []) {
 /** @param {{id: string}[]} shown */
 function ids(shown) {
   return shown.map((entry) => entry.id);
+}
+
+/** A topic's map, each row its question, where it stands, and its answers' ids. @param {string} topic */
+function answered(topic) {
+  return read('map', UNIT, topic).questions.map((/** @type {{id: string, stands: string, answers: {id: string}[]}} */ r) => [r.id, r.stands, ids(r.answers)]);
+}
+
+/**
+ * Assert a topic's map and its record agree: the record shows each question
+ * standing on the map, and every answer the map shows it, among its own
+ * decisions or from where it stands, tied to the question it answers.
+ * @param {string} topic
+ */
+function assertAgree(topic) {
+  const record = read('record', UNIT, topic);
+  const rows = read('map', UNIT, topic).questions.filter((/** @type {{stands: string}} */ r) => r.stands !== 'moved-away');
+  assert.deepStrictEqual(ids(rows), ids(record.questions), `${topic}'s map and record show different questions`);
+  for (const row of rows) {
+    for (const { id } of row.answers) {
+      const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => o.id === id);
+      assert.ok(ids(record.decisions).includes(id) || elsewhere?.named.includes(row.id), `${topic}'s record does not show ${id}, which its map shows answering ${row.id}`);
+    }
+  }
+}
+
+/** `old` replaced from the spec, at the unit's level, a changed mind: the replacement's short id. @param {string} old @param {Record<string, unknown>} content */
+function changeFromSpec(old, content) {
+  return write('replace', `${UNIT}.specification`, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], ...content }).id;
+}
+
+/** `question` reworded at `address`: the new wording's short id. @param {string} address @param {string} question @param {string} text */
+function reword(address, question, text) {
+  return write('replace', address, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], text }).id;
+}
+
+/** A second unit on the project, mint, a feature discussing itself. */
+function mint() {
+  createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
 }
 
 describe('a record (5.6.5, 5.8.4)', () => {
@@ -321,7 +362,8 @@ describe('a topic\'s map (5.8.5)', () => {
     const [rowShown] = read('map', UNIT, 'space-homing').questions;
     assert.deepStrictEqual([rowShown.id, rowShown.stands, rowShown.answers], [reached, 'merged', [{ id: owners, unit: UNIT, topic: 'note-window', by: 'claude', text: 'Notes float above every Space.' }]]);
     const record = read('record', UNIT, 'space-homing');
-    assert.deepStrictEqual([record.decisions, record.merged, record.other_topics], [[], [line(merged)], [{ ...line(owners), named: [owners] }]]);
+    assert.deepStrictEqual([record.decisions, record.merged, record.other_topics], [[], [{ ...line(merged), duplicate_entry: null }], [{ ...line(owners), named: [reached, owners] }]]);
+    assertAgree('space-homing');
   });
 
   it('takes a duplicate merged where it is found out of the current entries, so its question stands answered by the owner\'s entry alone, and no write names it as current (5.5.4, 5.5.5)', () => {
@@ -331,7 +373,8 @@ describe('a topic\'s map (5.8.5)', () => {
 
     const merged = write('merge', SPACE, ['--question', reached, '--into', owners, '--duplicate', duplicate], MADE).id;
 
-    assert.deepStrictEqual(read('record', UNIT, 'space-homing').decisions, []);
+    const record = read('record', UNIT, 'space-homing');
+    assert.deepStrictEqual([record.decisions, record.merged], [[], [{ ...line(merged), duplicate_entry: line(duplicate) }]], 'the merge does not show the duplicate it set aside');
     assert.deepStrictEqual(read('map', UNIT, 'space-homing').questions[0].answers.map((/** @type {{id: string}} */ a) => a.id), [owners]);
     const refusal = refuses(dir, ['ledger', 'replace', SPACE, '--replaces', duplicate, '--reason', 'changed-mind'], { env: SESSION, stdin: JSON.stringify({ ...MADE, drops: [], text: 'Again.', why: 'Again.' }) });
     assert.match(refusal.error, new RegExp(`^ledger replace --replaces names ${duplicate}, which ${merged} merged as a duplicate — the current one is ${owners}$`));
@@ -345,7 +388,113 @@ describe('a topic\'s map (5.8.5)', () => {
     const replaced = change(NOTE, owners, 'Notes float above every Space and display.');
 
     assert.deepStrictEqual(read('map', UNIT, 'space-homing').questions[0].answers.map((/** @type {{id: string}} */ a) => a.id), [replaced]);
-    assert.deepStrictEqual(read('record', UNIT, 'space-homing').other_topics, [{ ...line(replaced), named: [owners] }]);
+    assert.deepStrictEqual(read('record', UNIT, 'space-homing').other_topics, [{ ...line(replaced), named: [reached, owners] }]);
+  });
+
+  it('keeps a reworded question\'s answers: a decision naming any earlier wording answers the current one, beside one naming it (5.3.13)', () => {
+    const first = ask(NOTE, 'Is a note a window?');
+    const decided = decide(NOTE, first, 'A panel.', [], { product_wide: true });
+
+    const reworded = reword(NOTE, first, 'Is a note a window or a panel?');
+
+    assert.deepStrictEqual(answered('note-window'), [[reworded, 'answered', [decided]]]);
+    const record = read('record', UNIT, 'note-window');
+    assert.deepStrictEqual([record.questions, record.decisions], [[current(reworded, [first])], [current(decided)]]);
+    assert.deepStrictEqual(read('product').decisions, [current(decided)]);
+    const later = decide(NOTE, reworded, 'A panel, on every display.');
+    assert.deepStrictEqual(answered('note-window'), [[reworded, 'answered', [decided, later]]]);
+    assertAgree('note-window');
+  });
+
+  it('keeps a reworded question merged: it stands answered by the entry an earlier wording was merged into (5.5.5)', () => {
+    const owners = decide(NOTE, ask(NOTE, 'Does a note float above every Space?'), 'Notes float above every Space.');
+    const reached = ask(SPACE, 'Does a note stay on its Space?');
+    write('merge', SPACE, ['--question', reached, '--into', owners], MADE);
+
+    const reworded = reword(SPACE, reached, 'Does a note stay on the Space it opened on?');
+
+    assert.deepStrictEqual(answered('space-homing'), [[reworded, 'merged', [owners]]]);
+    assertAgree('space-homing');
+  });
+
+  it('lists a reworded question\'s parts, each shown part of the question\'s current wording (5.3.11)', () => {
+    const whole = ask(NOTE, 'How does a note look and behave?');
+    const part = ask(NOTE, 'How does a note behave?', ['--part-of', whole]);
+
+    const reworded = reword(NOTE, whole, 'How does a note look, behave and sound?');
+    const later = ask(NOTE, 'How does a note sound?', ['--part-of', reworded]);
+
+    const rows = read('map', UNIT, 'note-window').questions;
+    assert.deepStrictEqual(rows.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.part_of, r.parts]), [
+      [part, reworded, []],
+      [reworded, null, [part, later]],
+      [later, reworded, []],
+    ]);
+  });
+});
+
+describe('where an entry stands (5.3.3, 5.8.4)', () => {
+  it('keeps a decision replaced from the spec on its topic\'s record and map, the replacement current with the decision beneath it, and once on the unit\'s record', () => {
+    const question = ask(NOTE, 'Is a note a window?');
+    const decided = decide(NOTE, question, 'A panel.');
+
+    const replacement = changeFromSpec(decided, { text: 'A sheet.', why: 'Sheets stack.' });
+
+    assert.strictEqual(line(replacement).topic, null);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(replacement, [decided])]);
+    const [rowShown] = read('map', UNIT, 'note-window').questions;
+    assert.deepStrictEqual(rowShown.answers, [{ id: replacement, unit: UNIT, topic: null, by: 'claude', text: 'A sheet.' }]);
+    assert.deepStrictEqual(read('record', UNIT).decisions, [current(replacement, [decided])]);
+    assertAgree('note-window');
+  });
+
+  it('keeps another unit\'s replacement of a topic\'s decision on that topic\'s record and map, where its chain stands, and off the replacing unit\'s record (5.6.1)', () => {
+    mint();
+    const question = ask(NOTE, 'Is a note a window?');
+    const decided = decide(NOTE, question, 'A panel.');
+
+    const replacement = change('mint.discussion.mint', decided, 'A sheet.');
+
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(replacement, [decided])]);
+    assert.deepStrictEqual(read('map', UNIT, 'note-window').questions[0].answers, [{ id: replacement, unit: 'mint', topic: 'mint', by: 'claude', text: 'A sheet.' }]);
+    assert.deepStrictEqual(read('record', 'mint').decisions, []);
+    assertAgree('note-window');
+  });
+
+  it('keeps a question reworded from the spec on its topic\'s map and record, the old wording beneath it', () => {
+    const first = ask(NOTE, 'Is a note a window?');
+
+    const reworded = changeFromSpec(first, { text: 'Is a note a window or a panel?' });
+
+    assert.deepStrictEqual(answered('note-window'), [[reworded, 'open', []]]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').questions, [current(reworded, [first])]);
+    assert.deepStrictEqual(ids(read('record', UNIT).questions), [reworded]);
+  });
+
+  it('shows a question moved after it was answered with its answer on the topic it moved to, read from the answer\'s own line where it was given (5.S16)', () => {
+    const question = ask(NOTE, 'Which Space does a new note open on?');
+    const decided = decide(NOTE, question, 'The active one.');
+
+    const moved = write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE).id;
+
+    const there = read('record', UNIT, 'space-homing');
+    assert.deepStrictEqual([there.questions, there.decisions, there.other_topics], [[current(question)], [], [{ ...line(decided), named: [question] }]]);
+    assert.deepStrictEqual(answered('space-homing'), [[question, 'answered', [decided]]]);
+    const here = read('record', UNIT, 'note-window');
+    assert.deepStrictEqual([here.questions, here.decisions, ids(here.moved)], [[], [current(decided)], [moved]]);
+    assertAgree('space-homing');
+    assertAgree('note-window');
+  });
+
+  it('moves a reworded question whole: its every wording stands where it moved, and the old topic\'s map shows it moved away', () => {
+    const first = ask(NOTE, 'Which Space does a new note open on?');
+    const reworded = reword(NOTE, first, 'Which Space, on which display, does a new note open on?');
+
+    write('move', NOTE, ['--question', reworded, '--to', 'space-homing'], MADE);
+
+    assert.deepStrictEqual(read('record', UNIT, 'space-homing').questions, [current(reworded, [first])]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').questions, []);
+    assert.deepStrictEqual(answered('note-window'), [[reworded, 'moved-away', []]]);
   });
 });
 
@@ -367,11 +516,12 @@ describe('the product record (5.8.6)', () => {
 
 describe('liveness (5.8.17)', () => {
   /**
-   * A topic's entries and another topic's relying on them, and every read
-   * that shows them.
+   * A topic's entries, a question it moved to another topic, and another
+   * topic's entries relying on them.
    */
   function relyingTopics() {
     const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.', [], { product_wide: true });
+    write('move', NOTE, ['--question', ask(NOTE, 'Which Space does a new note open on?'), '--to', 'space-homing'], MADE);
     const relying = decide(SPACE, ask(SPACE, 'Does a note open on the active Space?'), 'Yes.', ['--relies-on', decided]);
     return { decided, relying };
   }
@@ -389,12 +539,12 @@ describe('liveness (5.8.17)', () => {
 
   /**
    * Assert the note window's entries are not current: off its record and
-   * its map, off the unit's record and the product record, off the record
-   * relying on them, and refused where a write needs a current entry, the
-   * ledger keeping every line.
-   * @param {string} decided @param {RegExp} reason @param {{note: boolean, unit: boolean}} live
+   * its map, off the unit's record — its move with them — and the product
+   * record, off the record relying on them, and refused where a write needs
+   * a current entry, the ledger keeping every line.
+   * @param {string} decided @param {RegExp} reason @param {{note: boolean, unit: boolean}} live @param {string} [from] where the write is made
    */
-  function assertSetAside(decided, reason, live) {
+  function assertSetAside(decided, reason, live, from = SPACE) {
     const lines = rawLines();
     const now = reads();
     const empty = { questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [] };
@@ -402,9 +552,9 @@ describe('liveness (5.8.17)', () => {
     assert.deepStrictEqual(now.map, { ok: true, unit: UNIT, topic: 'note-window', live: live.note, questions: [] });
     assert.deepStrictEqual(now.product.decisions, []);
     assert.deepStrictEqual(now.space.other_topics, []);
-    assert.strictEqual(now.unit.live, live.unit);
+    assert.deepStrictEqual([now.unit.live, now.unit.moved], [live.unit, []]);
     assert.ok(!JSON.stringify(now.unit).includes(`"id":"${decided}"`), 'the unit\'s record shows an entry that is not current');
-    const refusal = refuses(dir, ['ledger', 'hold', SPACE, '--entry', decided, '--after', decided], { env: SESSION, stdin: JSON.stringify(MADE) });
+    const refusal = refuses(dir, ['ledger', 'hold', from, '--entry', decided, '--after', decided], { env: SESSION, stdin: JSON.stringify(MADE) });
     assert.match(refusal.error, reason);
     assert.deepStrictEqual(rawLines(), lines, 'the ledger did not keep its lines');
   }
@@ -432,7 +582,7 @@ describe('liveness (5.8.17)', () => {
   });
 
   it('takes a cancelled unit\'s entries out of every read, another unit\'s included, until the unit is reactivated', () => {
-    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    mint();
     const { decided } = relyingTopics();
     decide('mint.discussion.mint', ask('mint.discussion.mint', 'Does Mint float its notes too?'), 'Yes, as Fumi does.', ['--relies-on', decided]);
     const before = { ...reads(), mint: read('record', 'mint') };
@@ -440,10 +590,81 @@ describe('liveness (5.8.17)', () => {
     ok(dir, ['workunit', 'cancel', UNIT]);
     assert.deepStrictEqual(read('record', 'mint').other_topics, []);
     assert.deepStrictEqual(read('record', UNIT, 'space-homing').decisions, []);
-    assertSetAside(decided, new RegExp(`^ledger hold --entry names ${decided}, which is not current: ${UNIT} is cancelled$`), { note: false, unit: false });
+    assertSetAside(decided, new RegExp(`^ledger hold --entry names ${decided}, which is not current: ${UNIT} is cancelled$`), { note: false, unit: false }, 'mint.discussion.mint');
 
     ok(dir, ['workunit', 'reactivate', UNIT]);
     assert.deepStrictEqual({ ...reads(), mint: read('record', 'mint') }, before);
+  });
+
+  it('counts a replacement only while it is live: another unit\'s, cancelled with its unit, leaves what it replaced current, until the unit is reactivated', () => {
+    mint();
+    const question = ask(NOTE, 'Is a note a window?');
+    const decided = decide(NOTE, question, 'A panel.');
+    const minted = change('mint.discussion.mint', decided, 'A sheet.');
+    const before = { record: read('record', UNIT, 'note-window'), map: read('map', UNIT, 'note-window') };
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(decided)]);
+    assert.deepStrictEqual(answered('note-window'), [[question, 'answered', [decided]]]);
+    assertAgree('note-window');
+
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+    assert.deepStrictEqual({ record: read('record', UNIT, 'note-window'), map: read('map', UNIT, 'note-window') }, before);
+    assert.deepStrictEqual(answered('note-window'), [[question, 'answered', [minted]]]);
+  });
+
+  it('reads a chain as though a replacement that is not live were not there: what it replaced stands again, and what replaced it stands with nothing beneath', () => {
+    mint();
+    const question = ask(NOTE, 'Is a note a window?');
+    const decided = decide(NOTE, question, 'A panel.');
+    const minted = change('mint.discussion.mint', decided, 'A sheet.');
+    const reworked = change(NOTE, minted, 'A sheet that stacks.');
+    const before = read('record', UNIT, 'note-window');
+    assert.deepStrictEqual(before.decisions, [current(reworked, [minted, decided])]);
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(decided), current(reworked)]);
+    assert.deepStrictEqual(answered('note-window'), [[question, 'answered', [decided, reworked]]]);
+    assertAgree('note-window');
+
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window'), before);
+  });
+
+  it('leads an entry to its live replacements alone: a replacement that is not live, and what replaced it, are no current form of it', () => {
+    mint();
+    const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.');
+    find(SPACE, 'Homing reads the note\'s frame.', ['--relies-on', decided]);
+    const minted = change('mint.discussion.mint', decided, 'A sheet.');
+    const reworked = change(NOTE, minted, 'A sheet that stacks.');
+    ok(dir, ['workunit', 'cancel', 'mint']);
+
+    const replacement = change(NOTE, decided, 'A framed panel.');
+
+    assert.deepStrictEqual(read('record', UNIT, 'space-homing').other_topics, [{ ...line(replacement), named: [decided] }]);
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+    assert.deepStrictEqual(ids(read('record', UNIT, 'space-homing').other_topics), [reworked, replacement]);
+  });
+
+  it('sets a merged duplicate aside only while the entry it went into has a current form: the owner\'s topic cancelled, the duplicate answers its question again, until the topic is reactivated (5.5.5)', () => {
+    const owners = decide(NOTE, ask(NOTE, 'Does a note float above every Space?'), 'Notes float above every Space.');
+    const reached = ask(SPACE, 'Does a note stay on its Space?');
+    const duplicate = decide(SPACE, reached, 'Notes float above every Space.');
+    const merged = write('merge', SPACE, ['--question', reached, '--into', owners, '--duplicate', duplicate], MADE).id;
+    const before = { record: read('record', UNIT, 'space-homing'), map: read('map', UNIT, 'space-homing') };
+    assert.deepStrictEqual(answered('space-homing'), [[reached, 'merged', [owners]]]);
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+
+    assert.deepStrictEqual(answered('space-homing'), [[reached, 'answered', [duplicate]]]);
+    const record = read('record', UNIT, 'space-homing');
+    assert.deepStrictEqual([record.decisions, record.merged, record.other_topics], [[current(duplicate)], [{ ...line(merged), duplicate_entry: line(duplicate) }], []]);
+    assertAgree('space-homing');
+
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+    assert.deepStrictEqual({ record: read('record', UNIT, 'space-homing'), map: read('map', UNIT, 'space-homing') }, before);
   });
 });
 

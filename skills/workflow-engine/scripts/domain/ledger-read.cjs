@@ -11,12 +11,16 @@
 //   pass opened, so its cost in memory is the fold's plus what it shows.
 // - Current entries only, by the one rule (5.8.17), so a session in any unit
 //   reads any unit's entries directly (5.1.5, 5.8.11): `ledger record` reads
-//   a unit's, or one topic's, each current entry with the entries it
-//   replaced folded beneath it, newest first, and the confirmations that it
-//   still holds (5.6.5); the questions moved away and the duplicates merged
-//   where they were found; and, read from their own current entries, never
-//   copied, the other topics' entries it relies on or merged into (5.8.4). A
-//   unit or topic that is not live has no current entry to show.
+//   the entries standing in a unit, or one topic — each where the first
+//   entry of its chain stands, a question where it was last moved — each
+//   current entry with the live entries it replaced folded beneath it,
+//   newest first, and the confirmations that it still holds (5.6.5); the
+//   questions moved away, and the merges made there, each with the
+//   duplicate it set aside; and, read from their own current entries, never
+//   copied, the entries standing elsewhere that it relies on, merged into,
+//   or that answer its questions (5.8.4). `ledger map` reads a topic's
+//   questions, each answered as its record shows it. A unit or topic that is
+//   not live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
 //   as written but its schema version.
 // - A read takes no lock. What a landing its check finished said rides the
@@ -27,7 +31,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, replacedChain, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -86,7 +90,7 @@ function held({ folded, show }, id) {
 
 /** A current entry with its chain folded beneath it, newest first (5.6.5). @param {Shower} shower @param {string} id @returns {Shown} */
 function chained(shower, id) {
-  return { ...held(shower, id), replaced: replacedChain(shower.folded, id).map((old) => held(shower, old)) };
+  return { ...held(shower, id), replaced: foldedBeneath(shower.folded, id).map((old) => held(shower, old)) };
 }
 
 /** A move, with the text of the question it moved. @param {Shower} shower @param {string} id @returns {Shown} */
@@ -95,10 +99,17 @@ function movedRow({ folded, show }, id) {
   return { ...show(id), text: show(question).text };
 }
 
+/** A merge, with the line of the duplicate it set aside, or null for none. @param {Shower} shower @param {string} id @returns {Shown} */
+function mergedRow({ folded, show }, id) {
+  const { duplicate } = factsOf(folded, id);
+  return { ...show(id), duplicate_entry: duplicate === null ? null : show(duplicate) };
+}
+
 /**
  * `ledger record`: a unit's or a topic's current entries by kind, each with
- * its chain and its confirmations; its moves and its merges; and the other
- * topics' current entries it relies on or merged into.
+ * its chain and its confirmations; its moves, and its merges each with its
+ * duplicate; and the current entries standing elsewhere it relies on,
+ * merged into, or that answer its questions.
  * @param {Shower} shower @param {Place} place
  */
 function answerRecord(shower, { unit, topic }) {
@@ -111,7 +122,7 @@ function answerRecord(shower, { unit, topic }) {
     findings: ids.findings.map((id) => chained(shower, id)),
     decisions: ids.decisions.map((id) => chained(shower, id)),
     moved: ids.moved.map((id) => movedRow(shower, id)),
-    merged: ids.merged.map(shower.show),
+    merged: ids.merged.map((id) => mergedRow(shower, id)),
     other_topics: ids.other_topics.map(({ id, named }) => ({ ...shower.show(id), named: named.map(shower.short) })),
   };
 }
@@ -173,7 +184,7 @@ const LEDGER_READ_USAGE = Object.values(READS).map((read) => read.usage).join('\
  * @param {string} root @param {string} verb @param {string[]} args
  * @returns {Place}
  */
-function placeOf(root, verb, args) {
+function namedPlace(root, verb, args) {
   const read = READS[verb];
   if (!read.names.includes(args.length) || args.some((arg) => arg.startsWith('-'))) throw new Error(`Usage: engine ${read.usage}`);
   const [unit = null, topic = null] = args;
@@ -195,7 +206,7 @@ function readLedgerVerb(cwd, verb, args) {
   const warnings = [];
   try {
     const root = stateRoot(cwd);
-    const place = placeOf(root, verb, args);
+    const place = namedPlace(root, verb, args);
     const live = liveness(root);
     const answer = readFolded(root, ID_FACTS, warnings, (facts, entryAt) => READS[verb].answer(showerOf({ facts, live }, entryAt), place));
     return warnings.length > 0 ? { ...answer, warnings } : answer;

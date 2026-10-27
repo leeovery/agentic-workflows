@@ -7,11 +7,12 @@
 // event, tagged with its unit, topic, phase and session, and committing the
 // ledger to the state branch; its content as JSON on stdin and its links as
 // flags, each naming an entry by a prefix of its id that the engine resolves
-// to the full id; what follows from a link set by the engine; every refusal
-// appending nothing and committing nothing; the writer lock taken by the
-// verb itself, a refusal it needs no ledger for answering while a peer holds
-// it; two processes appending at once; and a ledger changed outside the
-// engine stopping the next write, showing the line found.
+// to the full id; what follows from a link set by the engine; a write made
+// on a live unit and topic alone; every refusal appending nothing and
+// committing nothing; the writer lock taken by the verb itself, a refusal it
+// needs no ledger for answering while a peer holds it; two processes
+// appending at once; and a ledger changed outside the engine stopping the
+// next write, showing the line found.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there. A `git` first on PATH plays a commit git
@@ -502,6 +503,29 @@ describe('refusals', () => {
     refused('merge', SPACE, ['--question', f, '--into', r], MADE, new RegExp(`^ledger merge --question names ${f}, a finding — it must name a question$`));
   });
 
+  it('refuses a write on a topic set aside or a unit cancelled, and a move to a topic set aside, by the rule every read decides by (5.8.17)', () => {
+    const row = (/** @type {number} */ order) => ({ order, summary: 'A topic', routing: 'discussion', source: 'discovery' });
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { 'note-window': row(1), 'space-homing': row(2), 'menu-bar': row(3) } } } });
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const question = ask().id;
+    const content = { ...MADE, text: 'Does a note open on the active Space?' };
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
+    refused('ask', SPACE, [], content, /^ledger ask: fumi\.discussion\.space-homing takes no writes — its topic, space-homing, is cancelled$/);
+    refused('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE,
+      /^ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled$/);
+    ok(dir, ['topic', 'postpone', UNIT, 'menu-bar', '--horizon', 'later']);
+    refused('move', NOTE, ['--question', question, '--to', 'menu-bar'], MADE, /^ledger move: --to names menu-bar, which takes no question — its topic, menu-bar, is postponed$/);
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    refused('ask', 'mint.discussion.mint', [], content, /^ledger ask: mint\.discussion\.mint takes no writes — mint is cancelled$/);
+    refused('find', 'mint.specification', [], { ...MADE, text: 'Notes sync.', how: 'the brief' }, /^ledger find: mint\.specification takes no writes — mint is cancelled$/);
+
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
+    write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
+    write('ask', SPACE, [], content);
+  });
+
   it('refuses a move to a topic the unit does not have, and a move made at the unit\'s level, from no topic', () => {
     const question = ask().id;
     refused('move', NOTE, ['--question', question, '--to', 'dock-icon'], MADE, /^ledger move: fumi has no topic "dock-icon" to move the question to$/);
@@ -587,18 +611,37 @@ describe('whose entries a link names, and how they relate', () => {
     refused('move', NOTE, ['--question', staying, '--to', 'notes-spec'], MADE, /^ledger move: fumi has no topic "notes-spec" to move the question to$/);
   });
 
-  it('moves and merges a question only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
+  it('reads an entry as standing where the first entry of its chain stands: one replaced, or a question reworded, from the spec is written on from its topic alone (5.6.9)', () => {
+    const question = ask().id;
+    const decision = decide(question).id;
+    const fromSpec = write('replace', `${UNIT}.specification`, ['--replaces', decision, '--reason', 'changed-mind'], CHANGE).id;
+    const reworded = write('replace', `${UNIT}.specification`, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note, at its simplest?' }).id;
+
+    refused('replace', SPACE, ['--replaces', fromSpec, '--reason', 'changed-mind'], CHANGE, new RegExp(`^ledger replace --replaces names ${fromSpec}, a decision on note-window — ${BEFORE_THE_SPEC}$`));
+    refused('decide', SPACE, ['--answers', reworded], DECISION, new RegExp(`^ledger decide --answers names ${reworded}, a question on note-window — ${BEFORE_THE_SPEC}$`));
+
+    write('replace', NOTE, ['--replaces', fromSpec, '--reason', 'changed-mind'], { ...CHANGE, text: 'A frameless panel.' });
+    write('decide', NOTE, ['--answers', reworded], DECISION);
+  });
+
+  it('answers a question, asks a part of it, and moves and merges it only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
     const asked = ask().id;
     const reworded = write('replace', NOTE, ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note, at its simplest?' }).id;
     const owned = decide(ask('Is a note a window?').id).id;
-    const superseded = (/** @type {string} */ verb) => new RegExp(`^ledger ${verb} --question names ${asked}, which ${reworded} replaced — the current one is ${reworded}$`);
+    const superseded = (/** @type {string} */ verb, /** @type {string} */ flag) => new RegExp(`^ledger ${verb} ${flag} names ${asked}, which ${reworded} replaced — the current one is ${reworded}$`);
 
-    refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move'));
-    refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge'));
+    refused('decide', NOTE, ['--answers', asked], DECISION, superseded('decide', '--answers'));
+    refused('ask', NOTE, ['--part-of', asked], { ...MADE, text: 'Is a note a window?' }, superseded('ask', '--part-of'));
+    refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move', '--question'));
+    refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge', '--question'));
 
+    write('decide', NOTE, ['--answers', reworded], DECISION);
+    write('ask', NOTE, ['--part-of', reworded], { ...MADE, text: 'Is a note a window?' });
     write('move', NOTE, ['--question', reworded, '--to', 'space-homing'], MADE);
     write('merge', SPACE, ['--question', reworded, '--into', owned], MADE);
-    assert.deepStrictEqual(entries().slice(-2).map((e) => [e.event, e.question]), [['moved', full(reworded)], ['merged', full(reworded)]]);
+    assert.deepStrictEqual(entries().slice(-4).map((e) => [e.event, e.answers ?? e.part_of ?? e.question]), [
+      ['decided', full(reworded)], ['asked', full(reworded)], ['moved', full(reworded)], ['merged', full(reworded)],
+    ]);
   });
 
   it('merges into a current decision, a duplicate being another current decision answering the question merged (5.5.4, 5.5.5)', () => {

@@ -10,6 +10,7 @@
 //   exist, and the phase be discovery or one of its work type's. A topic
 //   exists only before the spec (4.11.2) and must hold an item in the phase;
 //   from the spec on every entry is the unit's, carrying no topic (5.2.3).
+//   The unit and topic must be live (5.8.17), as a move's destination must.
 //   The session is the conversation's own (CLAUDE_CODE_SESSION_ID); a write
 //   without one is refused.
 // - What: the content comes as one JSON object on stdin, the links as flags.
@@ -18,15 +19,16 @@
 //   (5.3.5), and must name what it links to: a decision answers a question
 //   (5.5.1), and only a question moves or merges. An entry is replaced or
 //   held only while current — a replacement names one entry, its siblings
-//   untouched (5.3.13) — a question moves or merges only while current, and
-//   a merge goes into a current decision — current by the one rule every
-//   read decides by (ledger-fold.cjs), which asks that its topic and unit be
-//   live too.
+//   untouched (5.3.13) — a question is answered, has parts, moves or merges
+//   only while current, and a merge goes into a current decision — current
+//   by the one rule every read decides by (ledger-fold.cjs).
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
-//   (5.6.1) or held. Before the spec, an entry of the unit is written on only
-//   from the topic it stands on, a question standing where it was last
-//   moved: another topic's change goes to it by message (5.6.9, 10.2.2).
+//   (5.6.1) or held. An entry is the unit's, and stands on the topic, where
+//   the first entry of its chain stands, a question where it was last moved;
+//   before the spec, an entry of the unit is written on only from the topic
+//   it stands on: another topic's change goes to it by message (5.6.9,
+//   10.2.2).
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
 //   other than the one it goes into (5.5.4, 5.5.5); a held entry relies on
@@ -58,13 +60,14 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, standingOf, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** @typedef {import('./ledger-fold.cjs').Standing} Standing */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
 
 /**
@@ -180,9 +183,9 @@ function writeOf(event, flags, { fromTopic = false, checkGiven = nothingToCheck,
 
 /** @type {Readonly<Record<string, Write>>} */
 const WRITES = Object.freeze({
-  ask: writeOf('asked', [link('part_of', A_QUESTION), links('relies_on', AN_ENTRY)]),
+  ask: writeOf('asked', [link('part_of', A_QUESTION, { current: true }), links('relies_on', AN_ENTRY)]),
   find: writeOf('found', [links('relies_on', AN_ENTRY)]),
-  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, owner: 'unit' }), links('relies_on', AN_ENTRY)]),
+  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, current: true, owner: 'unit' }), links('relies_on', AN_ENTRY)]),
   replace: writeOf('replaced', [
     link('replaces', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
     plain('reason', `<${REASONS.join('|')}>`),
@@ -274,8 +277,8 @@ function phasesOf(manifest) {
 /**
  * Where a write is made, read from its dot-path. Refuses a path of another
  * shape, a phase that is none, a unit that does not exist, a phase its work
- * type does not have, a topic from the spec on, and a topic with no item in
- * the phase.
+ * type does not have, a topic from the spec on, a topic with no item in the
+ * phase, and a unit or topic that is not live.
  * @param {string} cwd @param {string} verb @param {string} dotpath
  * @returns {Address}
  */
@@ -295,6 +298,8 @@ function addressOf(cwd, verb, dotpath) {
     throw new Error(`ledger ${verb}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
   }
   if (topic !== null && !hasItem(manifest, phase, topic)) throw new Error(`ledger ${verb}: ${unit} has no topic "${topic}" in ${phase}`);
+  const dead = liveness(root)(unit, topic);
+  if (dead !== null) throw new Error(`ledger ${verb}: ${dotpath} takes no writes — ${dead}`);
   return { root, unit, manifest, phase, topic };
 }
 
@@ -324,14 +329,16 @@ function checkCauseGiven(_at, given) {
 }
 
 /**
- * Refuse a move to the topic it is made from, or to a topic the unit does
- * not have (5.3.3).
+ * Refuse a move to the topic it is made from, to a topic the unit does not
+ * have (5.3.3), or to a topic that is not live (5.8.17).
  * @param {Address} at @param {Map<string, string[]>} given
  */
 function checkDestination(at, given) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   if (to === at.topic) throw new Error(`ledger move: --to names ${to}, the topic it moves from — a question moves to another topic`);
   if (!hasTopic(at.manifest, to)) throw new Error(`ledger move: ${at.unit} has no topic "${to}" to move the question to`);
+  const dead = liveness(at.root)(at.unit, to);
+  if (dead !== null) throw new Error(`ledger move: --to names ${to}, which takes no question — ${dead}`);
 }
 
 /**
@@ -355,23 +362,24 @@ function described(facts) {
   return facts.kind === null ? `a ${facts.event} event` : `a ${facts.kind}`;
 }
 
-/** Where an entry stands in its unit. @param {IdFacts} facts */
-function placeOf(facts) {
-  return facts.topic === null ? 'at the unit\'s level' : `on ${facts.topic}`;
+/** Where in its unit an entry stands, or was made. @param {{topic: string|null}} place */
+function whereItStands({ topic }) {
+  return topic === null ? 'at the unit\'s level' : `on ${topic}`;
 }
 
 /**
- * Why a link whose entries are `owner`'s may not name `named` from `at`, or
- * null where it may: another unit's, for a link of the unit's own; before
- * the spec, one of the unit's on another topic than the write's (5.6.9).
- * @param {Owner} owner @param {Address} at @param {IdFacts} named
+ * Why a link whose entries are `owner`'s may not name an entry standing at
+ * `standing` from `at`, or null where it may: another unit's, for a link of
+ * the unit's own; before the spec, one of the unit's on another topic than
+ * the write's (5.6.9).
+ * @param {Owner} owner @param {Address} at @param {Standing} standing
  * @returns {string|null}
  */
-function strayed(owner, at, named) {
+function strayed(owner, at, standing) {
   if (owner === null) return null;
-  if (named.unit !== at.unit) return owner === 'unit' ? `of ${named.unit} — it must be ${at.unit}'s own` : null;
-  if (!TOPIC_PHASES.includes(at.phase) || named.topic === at.topic) return null;
-  return `${placeOf(named)} — before the spec a topic writes on its own entries alone, and another topic's change goes to it by message`;
+  if (standing.unit !== at.unit) return owner === 'unit' ? `of ${standing.unit} — it must be ${at.unit}'s own` : null;
+  if (!TOPIC_PHASES.includes(at.phase) || standing.topic === at.topic) return null;
+  return `${whereItStands(standing)} — before the spec a topic writes on its own entries alone, and another topic's change goes to it by message`;
 }
 
 /**
@@ -413,7 +421,7 @@ function resolveLink(verb, at, flag, prefix, read) {
   if (!what.test(named)) throw new Error(`${where} names ${short(id)}, ${described(named)} — it must name ${what.is}`);
   const stale = flag.current ? notCurrent(read, id) : null;
   if (stale !== null) throw new Error(`${where} names ${short(id)}, ${staleness(read, id, stale, short)}`);
-  const why = strayed(flag.owner, at, named);
+  const why = strayed(flag.owner, at, standingOf(read, id));
   if (why !== null) throw new Error(`${where} names ${short(id)}, ${described(named)} ${why}`);
   return id;
 }
@@ -424,7 +432,7 @@ function resolveLink(verb, at, flag, prefix, read) {
  * @param {Request} request @param {Folded} read
  * @returns {Linked}
  */
-function linkFields(request, read) {
+function resolvedLinks(request, read) {
   const { verb, write, at, given } = request;
   /** @type {Linked} */
   const fields = {};
@@ -449,7 +457,7 @@ function checkCause(linked, { facts }) {
   if (!Object.hasOwn(CAUSES, reason)) return;
   const named = /** @type {IdFacts} */ (facts.get(cause));
   if (!CAUSES[reason].test(named, /** @type {IdFacts} */ (facts.get(replaces)))) {
-    throw new Error(`${where}, ${described(named)} ${placeOf(named)} — --reason ${reason} needs ${CAUSES[reason].is}`);
+    throw new Error(`${where}, ${described(named)} ${whereItStands(named)} — --reason ${reason} needs ${CAUSES[reason].is}`);
   }
 }
 
@@ -599,7 +607,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
  */
 function eventOf(request, read) {
   const { write, at, session, kind, content } = request;
-  const linked = linkFields(request, read);
+  const linked = resolvedLinks(request, read);
   write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,

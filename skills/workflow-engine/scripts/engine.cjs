@@ -2270,12 +2270,13 @@ const COMMANDS = Object.freeze({
 // the writer lock around each state write it makes and no longer, so its
 // knowledge pass never holds a peer up; a `ledger` write holds it around its
 // read of the ledger, the append and the commit alone, so what it does
-// before and after holds no peer up, and a `ledger` read takes none; `presence`, `session label`, `repair`,
-// `cleanup` and `resume`, and the hold `topic mailbox` refreshes write only
-// the session files the state ignores; a conversation's folder is outside
-// the project; and the rest read, `layout guard` among them, run before
-// every file Claude writes. `manifest` takes it to write alone, and `commit`
-// but for a code commit (`--paths`).
+// before and after holds no peer up, and a `ledger` read takes none;
+// `presence`, `session label`, `repair`, `cleanup` and `resume`, and the
+// hold `topic mailbox` refreshes write only the session files the state
+// ignores; a conversation's folder is outside the project; and the rest
+// read, `layout guard` among them, run before every file Claude writes.
+// `manifest` takes it to write alone, and `commit` but for a code commit
+// (`--paths`).
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',

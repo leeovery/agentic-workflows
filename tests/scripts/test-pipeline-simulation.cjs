@@ -266,43 +266,128 @@ function auditState(dir, label) {
   }
 }
 
-// The ledger's projections, held to the events themselves: an entry is
-// current while no replacement names it, no merge took it as a duplicate,
-// and its unit and topic — a question's, where it was last moved — are live
-// (5.8.17). Every unit's record shows its current entries once each and no
-// other, as does every topic's of its own; every topic's map holds a row for
-// each current question standing on it; the product record holds the
-// current entries marked product-wide.
+// The ledger's projections, held to the events themselves. An entry is live
+// while its own unit and topic are — a question's every wording of its unit
+// taking the topic it was last moved to — and current while it is live, no
+// live replacement names it, and no merge that holds took it as a duplicate;
+// a merge holds while it is live and the entry it went into leads, down its
+// live replacements and the merges that hold, to a current entry (5.8.17,
+// 5.5.5). An entry stands where the first entry of its chain stands. Every
+// live unit's record shows the current entries standing in it once each and
+// no other, as does every live topic's, each with its chain down to the
+// first entry that is not live; every live topic's map holds a row for each
+// current question standing on it, answered by the current entries
+// answering any wording of it and what its holding merges lead to, and its
+// record shows each of those answers; a place that is not live shows
+// nothing; the product record holds the current entries marked
+// product-wide.
 /** @param {string} dir @param {(msg: string) => string} ctx */
 function auditLedger(dir, ctx) {
   const root = statePath(dir);
+  /** @type {Record<string, any>[]} */
   const events = [...readLedger(root, [])];
   const shorts = shortIds(events.map((e) => e.id));
+  const fulls = new Map([...shorts].map(([id, short]) => [short, id]));
   const live = liveness(root);
-  const gone = new Set(events.flatMap((e) => (e.event === 'replaced' ? [e.replaces] : e.event === 'merged' && e.duplicate !== null ? [e.duplicate] : [])));
-  const standsOn = new Map(events.map((e) => [e.id, e.topic]));
-  for (const e of events) if (e.event === 'moved') standsOn.set(e.question, e.to);
-  const current = events
-    .filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event) && !gone.has(e.id) && live(e.unit, standsOn.get(e.id)) === null)
-    .map((e) => ({ id: shorts.get(e.id), unit: e.unit, topic: standsOn.get(e.id), question: e.event === 'asked' || e.of === 'question', productWide: e.product_wide === true }));
+  const byId = new Map(events.map((e) => [e.id, e]));
+  const entries = events.filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event));
+  const merges = events.filter((e) => e.event === 'merged');
+  /** @param {string} id @returns {string|null} */
+  const replacedBy = (id) => (byId.get(id).event === 'replaced' ? byId.get(id).replaces : null);
+  /** @param {string} id @returns {string[]} */
+  const wordings = (id) => (replacedBy(id) === null ? [id] : [id, ...wordings(/** @type {string} */ (replacedBy(id)))]);
+  const topicOf = new Map(events.map((e) => [e.id, e.topic]));
+  for (const move of events.filter((e) => e.event === 'moved')) {
+    for (const wording of wordings(move.question)) if (byId.get(wording).unit === move.unit) topicOf.set(wording, move.to);
+  }
+  /** @param {string} id */
+  const isLive = (id) => live(byId.get(id).unit, topicOf.get(id)) === null;
+  /** @param {string} id */
+  const standing = (id) => {
+    const first = /** @type {string} */ (wordings(id).at(-1));
+    return { unit: byId.get(first).unit, topic: topicOf.get(first) };
+  };
+  /** @param {string} id */
+  const liveReplacers = (id) => entries.filter((e) => e.event === 'replaced' && e.replaces === id && isLive(e.id)).map((e) => e.id);
+  /** @type {Map<string, boolean>} */
+  const holding = new Map();
+  /** @param {Record<string, any>} merge @returns {boolean} */
+  const holds = (merge) => {
+    if (!holding.has(merge.id)) {
+      holding.set(merge.id, false);
+      holding.set(merge.id, isLive(merge.id) && leadsTo(merge.into).length > 0);
+    }
+    return /** @type {boolean} */ (holding.get(merge.id));
+  };
+  /** @param {string} id */
+  const setAside = (id) => merges.find((m) => m.duplicate === id && holds(m));
+  /** @param {string} id */
+  const isCurrent = (id) => isLive(id) && liveReplacers(id).length === 0 && setAside(id) === undefined;
+  /** @param {string} id @param {Set<string>} [seen] @returns {string[]} */
+  const leadsTo = (id, seen = new Set()) => {
+    if (seen.has(id)) return [];
+    seen.add(id);
+    if (isCurrent(id)) return [id];
+    const merge = setAside(id);
+    const next = liveReplacers(id).length > 0 ? liveReplacers(id) : merge === undefined ? [] : [merge.into];
+    return [...new Set(next.flatMap((n) => leadsTo(n, seen)))];
+  };
+  /** @param {string} id */
+  const short = (id) => /** @type {string} */ (shorts.get(id));
+  const current = entries.filter((e) => isCurrent(e.id))
+    .map((e) => ({ id: e.id, ...standing(e.id), question: e.event === 'asked' || e.of === 'question', productWide: e.product_wide === true }));
   /** @param {(e: typeof current[number]) => boolean} pick */
-  const ids = (pick) => current.filter(pick).map((e) => e.id).sort();
+  const ids = (pick) => current.filter(pick).map((e) => short(e.id)).sort();
+  /** @param {string} question */
+  const answersOf = (question) => {
+    const asked = wordings(question);
+    const own = entries.filter((e) => asked.includes(e.answers) && isCurrent(e.id)).map((e) => e.id);
+    const merged = merges.filter((m) => asked.includes(m.question) && holds(m)).flatMap((m) => leadsTo(m.into));
+    return [...new Set([...own, ...merged])].map(short).sort();
+  };
+  /** @param {string} id @returns {string[]} */
+  const chainOf = (id) => {
+    const replaced = replacedBy(id);
+    return replaced === null || !isLive(replaced) ? [] : [short(replaced), ...chainOf(replaced)];
+  };
   /** @param {string[]} args */
   const ledger = (args) => {
     const res = engine.run(['ledger', ...args], { cwd: dir });
     assert.strictEqual(res.code, 0, ctx(`ledger ${args.join(' ')} does not read: ${res.stderr}`));
     return JSON.parse(res.stdout);
   };
-  /** @param {{questions: {id: string}[], findings: {id: string}[], decisions: {id: string}[]}} record */
-  const shown = (record) => [...record.questions, ...record.findings, ...record.decisions].map((e) => e.id).sort();
-  for (const unit of new Set(current.map((e) => e.unit))) {
-    assert.deepStrictEqual(shown(ledger(['record', unit])), ids((e) => e.unit === unit), ctx(`${unit}'s record does not show its current entries once each`));
-    for (const topic of new Set(current.filter((e) => e.unit === unit && e.topic !== null).map((e) => /** @type {string} */ (e.topic)))) {
-      assert.deepStrictEqual(shown(ledger(['record', unit, topic])), ids((e) => e.unit === unit && e.topic === topic),
-        ctx(`${unit}.${topic}'s record does not show its current entries once each`));
-      const standing = ledger(['map', unit, topic]).questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'moved-away');
-      assert.deepStrictEqual(standing.map((/** @type {{id: string}} */ row) => row.id).sort(), ids((e) => e.unit === unit && e.topic === topic && e.question),
-        ctx(`${unit}.${topic}'s map does not hold a row for each current question standing on it`));
+  /** @param {Record<string, any>} record @returns {Record<string, any>[]} */
+  const shown = (record) => [...record.questions, ...record.findings, ...record.decisions];
+  /** @param {string} unit @param {string|null} topic */
+  const auditRecord = (unit, topic) => {
+    const where = topic === null ? unit : `${unit}.${topic}`;
+    const record = ledger(topic === null ? ['record', unit] : ['record', unit, topic]);
+    const expected = live(unit, topic) === null ? ids((e) => e.unit === unit && (topic === null || e.topic === topic)) : [];
+    assert.deepStrictEqual(shown(record).map((e) => e.id).sort(), expected, ctx(`${where}'s record does not show the current entries standing there once each`));
+    for (const e of shown(record)) {
+      assert.deepStrictEqual(e.replaced.map((/** @type {{id: string}} */ r) => r.id), chainOf(/** @type {string} */ (fulls.get(e.id))), ctx(`${where}'s record does not fold ${e.id}'s live chain beneath it`));
+    }
+    return record;
+  };
+  const places = new Set(events.flatMap((e) => [`${e.unit}\0`, `${standing(e.id).unit}\0`, `${standing(e.id).unit}\0${standing(e.id).topic ?? ''}`]));
+  for (const place of places) {
+    const [unit, topic] = place.split('\0');
+    if (topic === '') {
+      auditRecord(unit, null);
+      continue;
+    }
+    const record = auditRecord(unit, topic);
+    const inRecord = new Map([...record.decisions.map((/** @type {{id: string}} */ d) => [d.id, null]), ...record.other_topics.map((/** @type {{id: string, named: string[]}} */ o) => [o.id, o.named])]);
+    const standingRows = ledger(['map', unit, topic]).questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'moved-away');
+    assert.deepStrictEqual(standingRows.map((/** @type {{id: string}} */ row) => row.id).sort(), live(unit, topic) === null ? ids((e) => e.unit === unit && e.topic === topic && e.question) : [],
+      ctx(`${unit}.${topic}'s map does not hold a row for each current question standing on it`));
+    for (const row of standingRows) {
+      const answers = row.answers.map((/** @type {{id: string}} */ a) => a.id);
+      assert.deepStrictEqual([...answers].sort(), answersOf(/** @type {string} */ (fulls.get(row.id))), ctx(`${unit}.${topic}'s map does not answer ${row.id} by its current answers`));
+      for (const answer of answers) {
+        const named = inRecord.get(answer);
+        assert.ok(named === null || (named !== undefined && named.includes(row.id)), ctx(`${unit}.${topic}'s record does not show ${answer}, which its map shows answering ${row.id}`));
+      }
     }
   }
   const product = ledger(['product']);
@@ -3704,11 +3789,33 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(ids(unit.questions), [question, relying, moving, review]);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'product']).findings), [finding]);
 
+    const homingAt = `${wu}.discussion.space-homing`;
+    const reached = ledger(['ask', homingAt], { ...made, text: 'Does a note stay on its Space?' });
+    const duplicate = ledger(['decide', homingAt, '--answers', reached], { ...made, text: 'Notes float above every Space.', why: 'Furniture.' });
+    ledger(['merge', homingAt, '--question', reached, '--into', replacement, '--duplicate', duplicate], made);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'map', wu, 'space-homing']).questions[1].answers), [replacement]);
+
     sim.run(['topic', 'cancel', wu, 'discovery', 'note-window']);
-    assert.deepStrictEqual(sim.run(['ledger', 'map', wu, 'space-homing']).questions[0].answers, [], 'a cancelled topic\'s entry answered a question');
+    const cancelledOwner = sim.run(['ledger', 'map', wu, 'space-homing']).questions;
+    assert.deepStrictEqual(cancelledOwner[0].answers, [], 'a cancelled topic\'s entry answered a question');
+    assert.deepStrictEqual(ids(cancelledOwner[1].answers), [duplicate], 'a duplicate merged into a cancelled topic\'s entry stayed set aside');
     assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
     assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
+
+    // Another unit's replacement counts while that unit is live: cancelled,
+    // the entry it replaced stands again; reactivated, it replaces it again.
+    const mint = 'mint';
+    sim.run(['workunit', 'create', mint, 'feature', '--description', 'Mint', '--session-log-file', sessionLog(sim, mint)]);
+    sim.run(['topic', 'start', mint, 'discussion', mint]);
+    const overruled = ledger(['replace', `${mint}.discussion.${mint}`, '--replaces', replacement, '--reason', 'changed-mind'],
+      { ...made, drops: ['frameless'], text: 'A framed panel.', why: 'Mint frames its notes.' });
+    const overruling = sim.run(['ledger', 'record', wu, 'note-window']);
+    assert.deepStrictEqual([ids(overruling.decisions), ids(overruling.decisions[0].replaced)], [[overruled], [replacement, decision]]);
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
+    sim.run(['workunit', 'reactivate', mint]);
+    assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), overruling);
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {
