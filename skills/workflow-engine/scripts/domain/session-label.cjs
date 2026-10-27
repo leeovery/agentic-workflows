@@ -220,14 +220,17 @@ function sessionHooksText(text, want) {
  * Bring the session hooks in the project's `.claude/settings.json` in line
  * with what is wanted (`withSessionHooks`). Not while git is in the middle
  * of an operation in the code tree, where a write would wait uncommitted
- * inside it: the next call writes them. A settings file that does not parse
- * is left untouched and reported rather than thrown: neither caller may
- * fail over hook plumbing it cannot read.
+ * inside it: the sync names the operation it waits on, and the next boot
+ * writes them. A settings file that does not parse is left untouched and
+ * reported rather than thrown: neither caller may fail over hook plumbing it
+ * cannot read.
  * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
  * @returns {import('./settings.cjs').SettingsSync}
  */
 function syncSessionHooks(cwd, want) {
-  if (settingsHeld() || operationInProgress(codeRoot(cwd)) !== null) return { changed: false };
+  if (settingsHeld()) return { changed: false };
+  const open = operationInProgress(codeRoot(cwd));
+  if (open !== null) return { changed: false, waiting: open.operation };
   const read = readProjectSettings(cwd);
   if (read.error) return { changed: false, error: read.error };
   const next = withSessionHooks(read.settings, want);
@@ -252,8 +255,9 @@ function commitSessionHooks(cwd, want, message, failure, warnings) {
  * hooks to match (the workflows' own stay whatever the answer), and commit
  * each where it lives — the project manifest in the state, the settings in
  * the code tree. The choice is recorded either way: a settings file the
- * sync could not read, or a commit git refused, comes back as a warning —
- * boot re-syncs, and the state is saved.
+ * sync could not read, hooks left unwritten while git holds an operation
+ * open, or a commit git refused, comes back as a warning — boot re-syncs,
+ * and the state is saved.
  * @param {string} cwd @param {boolean} value
  * @returns {{tmux_labels: boolean, warnings?: string[]}}
  */
@@ -264,6 +268,7 @@ function recordLabelChoice(cwd, value) {
   const want = { session: value, workflows: true };
   const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, want));
   if (sync.error) warnings.push(`session hooks not synced: ${sync.error}`);
+  if (sync.waiting) warnings.push(`session hooks not written: ${sync.waiting} is in progress in the code tree — the next boot writes them`);
   commitStateTail(cwd, PROJECT_MANIFEST_SPEC, 'chore: record session-label choice', warnings);
   if (!sync.error) commitSessionHooks(cwd, want, 'chore: record session-label choice', 'commit failed', warnings);
   return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };

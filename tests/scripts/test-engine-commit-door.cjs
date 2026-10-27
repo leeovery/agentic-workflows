@@ -1512,6 +1512,7 @@ describe('commit door: never a code commit inside an operation git holds open', 
 
   for (const [marker, operation] of [
     ['MERGE_HEAD', 'a merge'], ['CHERRY_PICK_HEAD', 'a cherry-pick'], ['REVERT_HEAD', 'a revert'], ['rebase-merge', 'a rebase'], ['rebase-apply', 'a rebase'],
+    ['BISECT_START', 'a bisect'],
   ]) {
     it(`the confined commit refuses while ${operation} is in progress (${marker}), staging nothing`, () => {
       writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
@@ -1528,6 +1529,45 @@ describe('commit door: never a code commit inside an operation git holds open', 
       assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '');
     });
   }
+});
+
+describe('commit door: a confined commit that does not land leaves the index as it found it', () => {
+  let dir;
+  beforeEach(() => {
+    dir = setupGitFixture();
+    writeFile(dir, 'a.txt', 'one\n');
+    commitAll(dir, 'a');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('a commit a hook refuses unstages what it staged and puts back what the person had staged — on its own paths and elsewhere', () => {
+    writeFile(dir, 'a.txt', 'staged\n');
+    writeFile(dir, 'c.txt', 'elsewhere\n');
+    git(dir, ['add', 'a.txt', 'c.txt']);
+    writeFile(dir, 'a.txt', 'on disk\n');
+    writeFile(dir, 'b.txt', 'new\n');
+    writeFile(dir, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+    fs.chmodSync(path.join(dir, '.git/hooks/pre-commit'), 0o755);
+    const [head, index] = [git(dir, ['rev-parse', 'HEAD']), git(dir, ['ls-files', '--stage'])];
+
+    assert.throws(() => commitPathspecScoped(dir, ['a.txt', 'b.txt'], 'chore: refused'), /git commit failed/);
+
+    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']), head);
+    assert.strictEqual(git(dir, ['ls-files', '--stage']), index);
+    assert.strictEqual(git(dir, ['show', ':a.txt']), 'staged\n');
+    assert.deepStrictEqual(git(dir, ['diff', '--cached', '--name-only']).trim().split('\n'), ['a.txt', 'c.txt']);
+    assert.strictEqual(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8'), 'on disk\n');
+  });
+
+  it('paths that turn out clean leave the person\'s staged change to them as it was', () => {
+    writeFile(dir, 'a.txt', 'staged\n');
+    git(dir, ['add', 'a.txt']);
+    writeFile(dir, 'a.txt', 'one\n');
+
+    assert.strictEqual(commitPathspecScoped(dir, 'a.txt', 'chore: nothing'), null);
+
+    assert.strictEqual(git(dir, ['show', ':a.txt']), 'staged\n');
+  });
 });
 
 describe('commit door: index.lock retry and the commit lock', () => {

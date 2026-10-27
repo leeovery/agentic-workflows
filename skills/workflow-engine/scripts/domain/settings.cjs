@@ -17,7 +17,11 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 /** The project's settings file, as a pathspec — what a confined commit names. */
 const SETTINGS_SPEC = '.claude/settings.json';
 
-/** @typedef {{changed: boolean, error?: string}} SettingsSync */
+/**
+ * A sync's outcome: whether it wrote, why it could not read the file, and
+ * the operation git holds open that it waits on.
+ * @typedef {{changed: boolean, error?: string, waiting?: string}} SettingsSync
+ */
 
 /**
  * Whether the test harness holds the settings file still — its hermeticity

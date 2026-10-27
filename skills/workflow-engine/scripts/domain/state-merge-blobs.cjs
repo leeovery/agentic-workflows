@@ -1,10 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the state's blobs and files, read for a merge (4.7). A merge
-// reads many blobs, so it reads them together: their sizes in one git call,
-// then the bytes of each within the limit its caller reads it to in one
-// more, written to a file, so no answer is held to a pipe's limit. A blob
+// Domain ring: the state's blobs and files, read for a merge (4.7) — and the
+// code branches' blobs the trace is read from where the state is lost
+// (domain/code-trace). A merge reads many blobs, so it reads them together:
+// their sizes in one git call, then the bytes of each within the limit its
+// caller reads it to in one more, written to a file, so no answer is held to
+// a pipe's limit. A blob
 // over its limit is never read. A blob the merge reads a line at a time, as
 // it does the ledger at any size, is written to a file whole by git; that
 // file, and any file in the working tree, is read a chunk at a time, so no

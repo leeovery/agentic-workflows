@@ -8,7 +8,8 @@
 //   pathspec-confined: no engine commit can sweep a path outside its
 //   declared scope, so concurrent sessions never take each other's work
 //   under their own messages. None lands while git is in the middle of a
-//   merge, cherry-pick, revert or rebase in the work tree.
+//   merge, cherry-pick, revert, rebase or bisect in the work tree, and one
+//   that does not land leaves the index as it found it.
 // - Reads of a repo's change — its dirt, each untracked file named on its
 //   own; the commits a subject selects and the paths they touched; a
 //   commit's parent or the empty tree; and the patches `git diff` answers,
@@ -96,13 +97,14 @@ function isIndexLockError(message) {
  * `.git/index.lock`.
  * @param {string} cwd
  * @param {string[]} args
+ * @param {string} [input] written to git's stdin
  * @returns {string}
  */
-function gitIndexed(cwd, args) {
+function gitIndexed(cwd, args, input) {
   const deadline = Date.now() + indexBudgetMs();
   while (true) {
     try {
-      return git(cwd, args);
+      return git(cwd, args, undefined, input);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (!isIndexLockError(message) || Date.now() >= deadline) throw err;
@@ -255,8 +257,10 @@ function heldOutOf(nested, specs) {
  * itself is a submodule's pointer: tracked, so committed as the folder
  * stands, never added, and never held out of a path that holds it.
  *
- * Refuses while a merge, cherry-pick, revert or rebase is in progress,
- * touching nothing.
+ * Refuses while a merge, cherry-pick, revert, rebase or bisect is in
+ * progress, touching nothing. Where no commit lands — git refuses it, a hook
+ * among them, or the paths turn out clean — the index is put back as the
+ * call found it for the paths it staged (`stagedAside`).
  * @param {string} cwd      the repo's root, or the project root
  * @param {string|string[]} pathspec
  * @param {string} message
@@ -270,13 +274,56 @@ function commitPathspec(cwd, pathspec, message, nested = []) {
   const files = specs.filter((spec) => !nested.includes(spec));
   const held = heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files);
   const addable = stageableSpecs(cwd, files);
-  if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
-  const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
-  if (known.length === 0) return null;
-  const scope = [...literally(known), ...held];
-  if (!hasChangesInPaths(cwd, scope)) return null;
-  gitIndexed(cwd, ['commit', '-m', message, '--', ...scope]);
-  return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  return stagedAside(cwd, addable, () => {
+    if (addable.length > 0) gitIndexed(cwd, ['add', '--', ...literally(addable), ...held]);
+    const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
+    if (known.length === 0) return null;
+    const scope = [...literally(known), ...held];
+    if (!hasChangesInPaths(cwd, scope)) return null;
+    gitIndexed(cwd, ['commit', '-m', message, '--', ...scope]);
+    return git(cwd, ['rev-parse', '--short', 'HEAD']).trim();
+  });
+}
+
+/**
+ * The index's entries under `paths`, each as `update-index --index-info`
+ * reads it, named from the top of the work tree.
+ * @param {string} cwd @param {string[]} paths
+ * @returns {string[]}
+ */
+function indexEntries(cwd, paths) {
+  return git(cwd, ['ls-files', '--stage', '--full-name', '-z', '--', ...literally(paths)]).split('\0').filter(Boolean);
+}
+
+/** The path an index entry names. @param {string} entry */
+function entryPath(entry) {
+  return entry.slice(entry.indexOf('\t') + 1);
+}
+
+/**
+ * Run `stage`, which stages `paths` and may commit them, and where it lands
+ * no commit — answering null, or throwing — put the index back as it was
+ * under `paths`: entries it added go, and every entry there before returns
+ * as it stood, the person's own staged changes among them.
+ * @template T @param {string} cwd @param {string[]} paths @param {() => T|null} stage
+ * @returns {T|null}
+ */
+function stagedAside(cwd, paths, stage) {
+  if (paths.length === 0) return stage();
+  const before = indexEntries(cwd, paths);
+  let landed = null;
+  try {
+    landed = stage();
+    return landed;
+  } finally {
+    if (landed === null) {
+      const top = git(cwd, ['rev-parse', '--show-toplevel']).trim();
+      const had = new Set(before.map(entryPath));
+      const added = indexEntries(cwd, paths).map(entryPath).filter((p) => !had.has(p));
+      if (added.length > 0) gitIndexed(top, ['update-index', '--force-remove', '--', ...added]);
+      if (before.length > 0) gitIndexed(top, ['update-index', '-z', '--index-info'], before.map((entry) => `${entry}\0`).join(''));
+    }
+  }
 }
 
 /**
@@ -292,14 +339,17 @@ function gitPath(cwd, name) {
 }
 
 // The operations git holds open across commands, by the marker each leaves
-// in the git dir. A commit made while one is open takes on its state — a
-// merge's second parent, a pick's authorship — and consumes the marker.
+// in the work tree's git dir. A commit made while one is open takes on its
+// state — a merge's second parent, a pick's authorship — and consumes the
+// marker; one made mid-bisect moves HEAD off the commit under test, and the
+// bisect's reset leaves it behind.
 const OPERATION_MARKERS = [
   ['MERGE_HEAD', 'a merge'],
   ['CHERRY_PICK_HEAD', 'a cherry-pick'],
   ['REVERT_HEAD', 'a revert'],
   ['rebase-merge', 'a rebase'],
   ['rebase-apply', 'a rebase'],
+  ['BISECT_START', 'a bisect'],
 ];
 
 /**

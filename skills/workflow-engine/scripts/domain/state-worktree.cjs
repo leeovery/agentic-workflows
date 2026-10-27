@@ -476,6 +476,27 @@ function fetchStateTip(root, remote, tip, { timeoutMs = FETCH_TIMEOUT_MS } = {})
   }
 }
 
+/**
+ * Bring every branch the remote holds into its remote-tracking branches, in
+ * one fetch — a branch pushed from another clone this one never fetched
+ * included. Null once fetched, else why the fetch failed.
+ * @param {string} root @param {string} remote
+ * @param {{timeoutMs?: number}} [opts]
+ * @returns {string|null}
+ */
+function fetchRemoteBranches(root, remote, { timeoutMs = FETCH_TIMEOUT_MS } = {}) {
+  try {
+    isolatedGit(mainOf(root)).run(
+      ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', remote, `+refs/heads/*:refs/remotes/${remote}/*`],
+      { timeoutMs, env: NETWORK_ENV },
+    );
+    return null;
+  } catch (err) {
+    if (!(err instanceof GitError)) throw err;
+    return err.message;
+  }
+}
+
 /** Whether a ref is a state branch: this clone's, or a remote's as last fetched. @param {string} ref */
 function isStateRef(ref) {
   return ref === BRANCH_REF || (ref.startsWith('refs/remotes/') && ref.endsWith(`/${STATE_BRANCH}`));
@@ -709,6 +730,7 @@ module.exports = {
   lockStateWorktree,
   askStateRemote,
   fetchStateTip,
+  fetchRemoteBranches,
   codeBranchSharing,
   refuseCodeHistory,
   stateRemoteUrl,

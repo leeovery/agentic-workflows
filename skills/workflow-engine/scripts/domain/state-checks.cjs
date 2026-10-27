@@ -25,7 +25,8 @@
 //   was copied, the copy's state becoming its own and the original's left
 //   alone.
 // - No branch here or on the remote: a project being set up gets the orphan
-//   branch; one whose code tree holds the workflows' trace lost its state,
+//   branch; one whose repository holds the workflows' trace — on any branch,
+//   the remote's fetched first, or in any tree checked out — lost its state,
 //   and boot stops there, starting again only on the person's yes (4.4.5,
 //   4.5.2); one on the layout before the state branch stops for the
 //   migration, and boot writes nothing.
@@ -43,7 +44,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { titlecase } = require('./conventions.cjs');
 const {
   STATE_BRANCH, trackingRef, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote,
-  createStateBranchAt, folderCommit, lockStateWorktree, askStateRemote, fetchStateTip, refuseCodeHistory, pushState, withBootLock,
+  createStateBranchAt, folderCommit, lockStateWorktree, askStateRemote, fetchStateTip, fetchRemoteBranches, refuseCodeHistory, pushState, withBootLock,
 } = require('./state-worktree.cjs');
 const { holdsTrace, onLegacyLayout, keepStateExcluded } = require('./code-trace.cjs');
 
@@ -124,7 +125,10 @@ function restoreBranch(root, seen, answer) {
 /**
  * The state branch is neither here nor on the remote: set the state up —
  * on a project being set up, or on the person's yes where it was lost — or
- * stop. The orphan branch comes first, and the trace after it.
+ * stop. Which of the two it is, the trace says, read across the repository
+ * once the remote's branches are fetched: a fetch that fails stops boot
+ * rather than read as a project being set up. The orphan branch comes
+ * first, and the trace after it.
  * @param {string} cwd @param {string} root @param {RemoteAnswer} answer @param {boolean} startAgain @param {string[]} warnings
  * @returns {Placed}
  */
@@ -138,6 +142,15 @@ function startState(cwd, root, answer, startAgain, warnings) {
     );
   }
   if (onLegacyLayout(cwd)) return { stop: 'migrate', warnings };
+  if (answer.remote !== null) {
+    const failed = fetchRemoteBranches(root, answer.remote);
+    if (failed !== null) {
+      throw new Error(
+        `${answer.remote}'s branches could not be fetched, so boot cannot tell a project being set up from one whose state was lost, ` +
+        `and wrote nothing — start again once ${answer.remote} can be reached: ${failed}`,
+      );
+    }
+  }
   const lost = holdsTrace(cwd);
   if (lost && !startAgain) return { stop: 'lost', warnings };
   const created = createState(root);
@@ -196,7 +209,8 @@ function pushBack(root, answer, warnings) {
  * or the stop where it is lost, or where the project is on the layout
  * before the state branch. Held one boot at a time. Refuses, with nothing
  * written to the state or the code, where the remote is out of reach and
- * this clone holds no state, where a `leeway-state` holds code history, and
+ * this clone holds no state, where the remote's branches cannot be fetched
+ * to read the trace from, where a `leeway-state` holds code history, and
  * where the state's folder is there in a shape boot cannot account for.
  * @param {string} cwd
  * @param {{startAgain?: boolean}} [opts]

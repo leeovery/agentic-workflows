@@ -1673,7 +1673,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^project settings commit failed: /);
+    assert.match(res.warnings[0], /^project settings commit failed, and the next boot tries again: /);
     assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
     assert.strictEqual(head().subject, 'no settings', 'nothing landed');
   });

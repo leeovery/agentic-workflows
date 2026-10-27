@@ -403,20 +403,24 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       return () => fs.rmSync(hook);
     }
 
-    it('a commit git refused is made by the next boot — the line and the hooks both', () => {
+    it('a commit git refused is made by the next boot — the line and the hooks both — and leaves the index as it found it, the person\'s own staged edit still staged', () => {
       const main = codeProject();
       const allow = refusingCommits(main);
       const head = tip(main, 'main');
+      write(main, 'README.md', '# portal, staged\n');
+      git(main, ['add', 'README.md']);
 
       const refused = boot(main);
 
       assert.strictEqual(refused.state, 'ready');
       assert.deepStrictEqual(refused.warnings.map((w) => w.split(':')[0]), [
-        `the state's ignore line is in ${path.join(main, '.gitignore')} but was not committed`,
-        'project settings commit failed',
+        `the state's ignore line is in ${path.join(main, '.gitignore')} but was not committed, and the next boot tries again`,
+        'project settings commit failed, and the next boot tries again',
       ]);
       assert.strictEqual(tip(main, 'main'), head);
+      assert.strictEqual(git(main, ['diff', '--cached', '--name-only']), 'README.md\n', 'nothing of the workflows\' left staged');
       allow();
+      git(main, ['commit', '-q', '-m', 'the person\'s own']);
 
       assert.deepStrictEqual(boot(main).warnings, []);
 
@@ -458,6 +462,76 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
         'commit yours, and the next boot commits theirs',
       ));
       assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install workflow session hooks');
+    });
+
+    it('a settings file git ignores is owed nothing: the hooks stay on disk, uncommitted, with no warning — the line still commits', () => {
+      const main = codeProject();
+      write(main, '.gitignore', '.claude/\n');
+      git(main, ['add', '.gitignore']);
+      git(main, ['commit', '-q', '-m', 'keep .claude out']);
+      const head = tip(main, 'main');
+
+      for (const res of [boot(main), boot(main)]) assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
+
+      assert.ok(fs.existsSync(path.join(main, '.claude/settings.json')), 'the hooks are on disk');
+      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: ignore .leeway/, the workflows state');
+      assert.strictEqual(git(main, ['status', '--porcelain']), '');
+    });
+
+    it('a .gitignore checked out with CRLF line endings under core.autocrlf is compared as git stages it: the line commits, with no warning', () => {
+      const main = codeProject();
+      git(main, ['config', 'core.autocrlf', 'true']);
+      write(main, '.gitignore', 'node_modules\n');
+      git(main, ['add', '.gitignore']);
+      git(main, ['commit', '-q', '-m', 'ignore']);
+      fs.rmSync(path.join(main, '.gitignore'));
+      git(main, ['checkout', '--', '.gitignore']);
+      assert.strictEqual(read(main, '.gitignore'), 'node_modules\r\n', 'checked out with CRLF');
+
+      assert.deepStrictEqual(boot(main).warnings, []);
+
+      assert.strictEqual(git(main, ['show', 'HEAD~1:.gitignore']), 'node_modules\n.leeway/\n');
+      assert.deepStrictEqual(boot(main).warnings, []);
+    });
+  });
+
+  describe('while git is in the middle of a bisect', () => {
+    /** A project with three commits and a bisect started across them in the main checkout. */
+    function midBisect() {
+      const main = codeProject();
+      for (const n of ['two', 'three']) {
+        write(main, 'README.md', `# ${n}\n`);
+        git(main, ['commit', '-q', '-am', n]);
+      }
+      git(main, ['bisect', 'start', 'HEAD', 'HEAD~2']);
+      return main;
+    }
+
+    it('a boot in the main checkout commits nothing and HEAD stays on the commit under test — after the reset, the next boot commits both', () => {
+      const main = midBisect();
+      const testing = tip(main, 'HEAD');
+
+      assert.strictEqual(boot(main).state, 'ready');
+
+      assert.strictEqual(tip(main, 'HEAD'), testing);
+      assert.strictEqual(git(main, ['status', '--porcelain']), '');
+      git(main, ['bisect', 'reset']);
+      assert.deepStrictEqual(boot(main).warnings, []);
+      assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
+        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+    });
+
+    it('a boot from a code worktree reads its own tree\'s bisect, not the main checkout\'s, and commits on its branch', () => {
+      const main = midBisect();
+      const code = path.join(world, 'portal-feature');
+      git(main, ['worktree', 'add', '-q', '-b', 'feature', code, 'main']);
+      const testing = tip(main, 'HEAD');
+
+      assert.strictEqual(boot(code).state, 'ready');
+
+      assert.strictEqual(tip(main, 'HEAD'), testing);
+      assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s', 'feature']).trim().split('\n'),
+        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
     });
   });
 
@@ -971,11 +1045,11 @@ function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.cl
   return main;
 }
 
-/** Lose the state everywhere: its worktree and branch here, its branch on the remote. @param {string} main @param {string} bare */
-function loseState(main, bare) {
+/** Lose the state everywhere: its worktree and branch here, its branch on the remote. @param {string} main @param {string|null} [bare] */
+function loseState(main, bare = null) {
   git(main, ['worktree', 'remove', '--force', '--force', path.join(main, '.leeway')]);
   git(main, ['branch', '-D', STATE_BRANCH]);
-  git(bare, ['branch', '-D', STATE_BRANCH]);
+  if (bare !== null) git(bare, ['branch', '-D', STATE_BRANCH]);
 }
 
 /** What a stopped boot must leave as it was. @param {string} main @param {string|null} bare */
@@ -1050,6 +1124,74 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       assert.deepStrictEqual(boot(fresh), { ok: true, state: 'lost', warnings: [] });
 
       assert.deepStrictEqual(untouched(fresh, bare), before);
+    });
+
+    it('the trace written in another worktree but never committed there: a boot in the main checkout stops at the lost state', () => {
+      const main = codeProject();
+      const code = path.join(world, 'portal-feature');
+      git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+      write(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+      fs.chmodSync(path.join(main, '.git/hooks/pre-commit'), 0o755);
+      assert.strictEqual(boot(code).state, 'ready');
+      assert.strictEqual(git(main, ['rev-list', '--count', 'main..feature']).trim(), '0', 'nothing of the trace committed');
+      loseState(main);
+      const before = untouched(main, null);
+
+      assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+
+      assert.deepStrictEqual(untouched(main, null), before);
+    });
+
+    it('a project nested in a larger repository, set up from a worktree on a branch since checked out nowhere: stops at the lost state', () => {
+      const top = initRepo(path.join(world, 'mono'));
+      write(top, 'app/README.md', '# app\n');
+      git(top, ['add', '-A']);
+      git(top, ['commit', '-q', '-m', 'code']);
+      const code = path.join(world, 'mono-feature');
+      git(top, ['worktree', 'add', '-q', '-b', 'feature', code]);
+      assert.strictEqual(boot(path.join(code, 'app')).state, 'ready');
+      git(code, ['checkout', '-q', '-b', 'elsewhere', 'main']);
+      loseState(top);
+      const before = untouched(top, null);
+
+      assert.deepStrictEqual(boot(path.join(top, 'app')), { ok: true, state: 'lost', warnings: [] });
+
+      assert.deepStrictEqual(untouched(top, null), before);
+    });
+
+    it('the trace pushed from another clone on a branch this one never fetched: the remote\'s branches are fetched first, and boot stops at the lost state', () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      const main = codeProject({ remote: bare });
+      const old = cloneOf(bare, 'old', ['--branch', 'main']);
+      const code = path.join(world, 'portal-feature');
+      git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+      assert.strictEqual(boot(code).state, 'ready');
+      git(code, ['push', '-q', 'origin', 'feature']);
+      loseState(main, bare);
+      assert.strictEqual(git(old, ['for-each-ref', 'refs/remotes/origin/feature']), '', 'the old clone never fetched it');
+
+      assert.deepStrictEqual(boot(old), { ok: true, state: 'lost', warnings: [] });
+
+      assert.ok(!fs.existsSync(path.join(old, '.leeway')));
+      assert.strictEqual(remoteTip(bare), '', 'no fresh state pushed for every other clone to restore');
+    });
+
+    it('a fetch of the remote\'s branches that fails is never read as a project being set up: boot stops, writing nothing', () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      const main = codeProject({ remote: bare });
+      const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+      const wrapper = fs.mkdtempSync(path.join(world, 'git-'));
+      write(wrapper, 'git', `#!/bin/sh\ncase "$*" in *" fetch "*) echo "fatal: the remote hung up" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
+      fs.chmodSync(path.join(wrapper, 'git'), 0o755);
+      const before = untouched(main, bare);
+
+      assert.match(bootRefused(main, { PATH: `${wrapper}:${process.env.PATH}` }), new RegExp(
+        '^origin\'s branches could not be fetched, so boot cannot tell a project being set up from one whose state was lost, ' +
+        'and wrote nothing — start again once origin can be reached: git fetch failed: fatal: the remote hung up$',
+      ));
+
+      assert.deepStrictEqual(untouched(main, bare), before);
+      assert.ok(!fs.existsSync(path.join(main, '.leeway')));
     });
 
     it('a project with no trace on any branch, local or remote-tracking, nor in any tree checked out, is being set up', () => {

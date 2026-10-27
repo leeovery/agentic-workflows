@@ -40,11 +40,14 @@ const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 const { commitOwnChange } = require('./commit.cjs');
 const { SETTINGS_SPEC, parseSettings } = require('./settings.cjs');
 const { carriesOurHooks } = require('./session-label.cjs');
+const { readBlobs } = require('./state-merge-blobs.cjs');
 
 const GITIGNORE = '.gitignore';
 const STATE_IGNORE_LINE = `${STATE_DIR_NAME}/`;
 const STATE_EXCLUDE_LINE = `/${STATE_DIR_NAME}/`;
 const LEGACY_STATE_DIR = '.workflows';
+/** The folder in the git dir the branch tips' blobs are read through, cleared after. */
+const TRACE_SCRATCH = 'leeway-trace-read';
 
 /** A file's text, null where it cannot be read. @param {string} file @returns {string|null} */
 function textOf(file) {
@@ -103,8 +106,8 @@ const TRACED = Object.freeze({
 
 /**
  * Every distinct text `rel` holds at the tip of a branch, local or
- * remote-tracking: one read per tip for where it stands, and one per
- * distinct blob.
+ * remote-tracking: where each tip holds it, in one read, then the distinct
+ * blobs through the merge's batch reader, whole.
  * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string} rel from the tree's top
  * @returns {string[]}
  */
@@ -112,8 +115,12 @@ function textsAcrossBranches(git, rel) {
   const tips = git.run(['for-each-ref', '--format=%(objectname)', 'refs/heads', 'refs/remotes']).split('\n').filter(Boolean);
   if (tips.length === 0) return [];
   const listed = git.run(['cat-file', '--batch-check=%(objectname) %(objecttype)'], { input: tips.map((tip) => `${tip}:${rel}\n`).join('') });
-  const blobs = new Set(listed.split('\n').map((entry) => entry.split(' ')).filter(([, type]) => type === 'blob').map(([sha]) => sha));
-  return [...blobs].map((sha) => git.run(['cat-file', 'blob', sha]));
+  const oids = [...new Set(listed.split('\n').map((entry) => entry.split(' ')).filter(([, type]) => type === 'blob').map(([oid]) => oid))];
+  if (oids.length === 0) return [];
+  /** @type {import('./state-merge-blobs.cjs').BlobContext} */
+  const ctx = { git, scratch: path.join(git.run(['rev-parse', '--absolute-git-dir']).trim(), TRACE_SCRATCH), blobs: new Map() };
+  readBlobs(ctx, oids.map((oid) => [oid, Infinity]));
+  return oids.map((oid) => /** @type {Buffer} */ (/** @type {import('./state-merge-blobs.cjs').Blob} */ (ctx.blobs.get(oid)).bytes).toString('utf8'));
 }
 
 /**

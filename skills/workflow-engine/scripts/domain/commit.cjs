@@ -26,7 +26,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { gitPath, tryGit, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
+const { git, gitPath, tryGit, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
@@ -248,29 +248,30 @@ function commitTailPathspec(cwd, pathspec, message, warnings) {
  * commit, which this one retries — where the file's whole difference from
  * the branch checked out is that change. `ours` makes the file's committed
  * content, null where the branch lacks it, into what the workflows want it
- * to read; null where it already does. A file that also holds the person's
- * own changes is theirs to commit, and a warning says so; a commit git
- * refuses is a warning led by `failure`. Nothing is committed while git is
- * in the middle of an operation there: the next boot commits it.
+ * to read; null where it already does. The file is compared as git would
+ * stage it, through the checkout's own conversions. A file that also holds
+ * the person's own changes is theirs to commit, and a warning says so; a
+ * commit git refuses is a warning led by `failure`. Nothing is committed
+ * while git is in the middle of an operation there — the next boot commits
+ * it — nor where git ignores the file there: the person keeps it out of git.
  * @param {string} cwd @param {string} spec as the code root names it
  * @param {(committed: string|null) => string|null} ours
  * @param {string} message @param {string} failure @param {string[]} warnings
  */
 function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
   const root = codeRoot(cwd);
-  if (operationInProgress(root) !== null) return;
-  const committed = tryGit(root, ['cat-file', 'blob', `HEAD:./${spec}`]);
-  const wanted = ours(committed);
+  if (operationInProgress(root) !== null || tryGit(root, ['check-ignore', '-q', '--', spec]) !== null) return;
+  const committedId = tryGit(root, ['rev-parse', '--verify', '-q', `HEAD:./${spec}`])?.trim() ?? null;
+  const wanted = ours(committedId === null ? null : git(root, ['cat-file', 'blob', committedId]));
   if (wanted === null) return;
-  const file = path.join(root, spec);
-  const onDisk = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-  if (onDisk === wanted) {
+  const onDisk = fs.existsSync(path.join(root, spec)) ? git(root, ['hash-object', '--', spec]).trim() : null;
+  if (onDisk === git(root, ['hash-object', '--no-filters', '--stdin'], undefined, wanted).trim()) {
     try {
       commitPathspecScoped(root, spec, message);
     } catch (err) {
-      warnings.push(`${failure}: ${err instanceof Error ? err.message : String(err)}`);
+      warnings.push(`${failure}, and the next boot tries again: ${err instanceof Error ? err.message : String(err)}`);
     }
-  } else if (onDisk !== committed) {
+  } else if (onDisk !== committedId) {
     warnings.push(
       `${spec} holds changes of yours not yet committed, so the workflows' own change to it was not committed either — ` +
       'commit yours, and the next boot commits theirs',
