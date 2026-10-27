@@ -46,6 +46,7 @@ const {
   linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf,
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
 const { stateMergeGate } = require(path.join(SCRIPTS, 'domain/projections/state-merge.cjs'));
+const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 
 /** @type {string} */
 let world;
@@ -678,6 +679,23 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.ok(read(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
   });
 
+  it('merges a text file whose merged copy is past what git\'s answer is read to, each side within the budget', () => {
+    const SPEC = 'unit/spec.md';
+    const lines = (/** @type {string} */ tag, /** @type {number} */ mib) => Array.from({ length: mib * 1024 }, (_, i) => `${tag} ${i} ${'x'.repeat(1000)}\n`).join('');
+    const base = lines('base', 61);
+    const { here, there } = twoMachines({ [SPEC]: base });
+    commitUnpushed(here, { [SPEC]: lines('here', 2) + base });
+    commitOn(there, { [SPEC]: base + lines('there', 2) });
+    assert.ok(Buffer.byteLength(read(here.root, SPEC)) <= READ_BUDGET_BYTES);
+
+    const out = catchUpState(here.root);
+
+    assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
+    const merged = lines('here', 2) + base + lines('there', 2);
+    assert.ok(Buffer.byteLength(merged) > READ_BUDGET_BYTES);
+    assert.ok(read(here.root, SPEC) === merged, 'the merged copy is not both sides\' lines');
+  });
+
   it('keeps a line both sides hold by id once', () => {
     const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
     commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'both', 'a1') });
@@ -704,27 +722,62 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.strictEqual(read(here.root, '.ledger.jsonl'), `${held}\n{"id":"b2"}\n${ledger('a1')}`);
   });
 
-  it('merges a ledger over the read budget a line at a time, and keeps a manifest or any other file over it whole, never read', () => {
+  it('merges over the read budget a ledger a line at a time and a manifest field by field, stopping on its conflict, and keeps any other file whole, never read', () => {
     const budget = 16 * 1024;
     const long = Array.from({ length: 200 }, (_, i) => entry({ v: 1, id: `e${i}`, event: 'decided', text: 'y'.repeat(100) })).join('');
     const notes = Array.from({ length: 2000 }, (_, i) => `line ${i}\n`).join('');
-    const unit = (/** @type {object} */ extra) => projectManifest('now', { padding: 'p'.repeat(budget), ...extra });
-    assert.ok([long, notes, unit({})].every((text) => Buffer.byteLength(text) > budget));
-    const { here, there } = twoMachines({ '.ledger.jsonl': long, 'unit/notes.md': notes, 'unit/manifest.json': unit({}) });
-    commitUnpushed(here, { '.ledger.jsonl': long + ledger('a1'), 'unit/notes.md': `${notes}here\n`, 'unit/manifest.json': unit({ here: 1 }) });
-    commitOn(there, { '.ledger.jsonl': long + ledger('b1'), 'unit/notes.md': `there\n${notes}`, 'unit/manifest.json': unit({ there: 1 }) });
+    const unit = (/** @type {string} */ horizon, /** @type {object} */ extra) => projectManifest(horizon, { padding: 'p'.repeat(budget), ...extra });
+    assert.ok([long, notes, unit('now', {})].every((text) => Buffer.byteLength(text) > budget));
+    const { here, there } = twoMachines({ '.ledger.jsonl': long, 'unit/notes.md': notes, 'unit/manifest.json': unit('now', {}) });
+    commitUnpushed(here, { '.ledger.jsonl': long + ledger('a1'), 'unit/notes.md': `${notes}here\n`, 'unit/manifest.json': unit('next', { here: 1 }) });
+    commitOn(there, { '.ledger.jsonl': long + ledger('b1'), 'unit/notes.md': `there\n${notes}`, 'unit/manifest.json': unit('someday', { there: 1 }) });
 
-    const out = catchUpState(here.root, { readBudgetBytes: budget });
+    const stopped = catchUpState(here.root, { readBudgetBytes: budget });
+
+    assert.strictEqual(stopped.action, 'stopped');
+    assert.deepStrictEqual(stopped.conflicts.map((c) => [c.manifest, c.field.join('.'), c.local, c.remote]), [
+      ['unit/manifest.json', 'roadmap.items.a-lifetime-tier.horizon', { set: true, value: 'next' }, { set: true, value: 'someday' }],
+    ]);
+
+    const out = pickStateMerge(here.root, '1', shownChoice(here), { readBudgetBytes: budget });
 
     const notesBeside = `unit/notes.${blobId(`${notes}here\n`).slice(0, 8)}.md`;
-    const manifestBeside = `unit/manifest.${blobId(unit({ here: 1 })).slice(0, 8)}.json`;
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.ok(read(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
     assert.strictEqual(read(here.root, 'unit/notes.md'), `there\n${notes}`);
     assert.strictEqual(read(here.root, notesBeside), `${notes}here\n`);
-    assert.strictEqual(read(here.root, 'unit/manifest.json'), unit({ there: 1 }));
-    assert.strictEqual(read(here.root, manifestBeside), unit({ here: 1 }));
-    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]).sort(), ['unit/manifest.json', 'unit/notes.md']);
+    assert.strictEqual(read(here.root, 'unit/manifest.json'), unit('next', { there: 1, here: 1 }));
+    assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/notes.md']);
+  });
+
+  it('carries a line across the chunks the ledger is read in whole, a character split between them included', () => {
+    const CHUNK = 64 * 1024;
+    const added = entry({ v: 1, id: 'a1', event: 'decided', text: '€'.repeat(100) });
+    const lead = Buffer.byteLength('{"v":1,"id":"a1","event":"decided","text":"');
+    const head = Buffer.byteLength(entry({ v: 1, id: 'base', event: 'decided', text: '' }));
+    const base = entry({ v: 1, id: 'base', event: 'decided', text: 'x'.repeat(CHUNK - lead - 1 - head) });
+    assert.strictEqual(Buffer.from(base + added)[CHUNK] & 0xc0, 0x80, 'no character straddles the first chunk\'s end');
+    const { here, there } = twoMachines({ '.ledger.jsonl': base });
+    commitUnpushed(here, { '.ledger.jsonl': base + added });
+    commitOn(there, { '.ledger.jsonl': base + ledger('b1') });
+
+    catchUpState(here.root);
+
+    assert.ok(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]) === base + ledger('b1') + added, 'the line read across the chunks came out changed');
+  });
+
+  it('merges a ledger and a text file holding CRLF byte for byte, whatever line-ending filters the repository names', () => {
+    const crlf = (/** @type {string} */ text) => text.replace(/\n/g, '\r\n');
+    const { here, there } = twoMachines({ '.ledger.jsonl': crlf(ledger('base')), 'unit/spec.md': crlf('one\n\ntwo\n') });
+    commitUnpushed(here, { '.ledger.jsonl': crlf(ledger('base', 'a1')), 'unit/spec.md': crlf('ONE\n\ntwo\n') });
+    commitOn(there, { '.ledger.jsonl': crlf(ledger('base', 'b1')), 'unit/spec.md': crlf('one\n\nTWO\n') });
+    git(here.main, ['config', 'core.autocrlf', 'true']);
+    write(path.join(here.main, '.git/info'), 'attributes', '* text eol=crlf\n');
+
+    assert.strictEqual(catchUpState(here.root).action, 'merged');
+
+    assert.ok(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]) === crlf(ledger('base', 'b1', 'a1')), 'the merged ledger lost its CRLF');
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:unit/spec.md`]), crlf('ONE\n\nTWO\n'));
   });
 
   it('merges histories with no common ancestor as if each side added every file', () => {
@@ -1174,6 +1227,23 @@ describe('any other file both sides changed', () => {
     assert.strictEqual(status(here.root), '');
   });
 
+  it('reads in one batch an empty file and a file of any bytes, LFs and lines like the batch\'s own headers in it, beside text files', () => {
+    const header = `${'e'.repeat(40)} 7\n`;
+    const binary = (/** @type {string} */ side) => Buffer.from(`\0\n${header}${side}\n\n${header}`);
+    const { here, there } = twoMachines({ 'unit/empty.md': '', 'unit/blob.bin': binary('base'), 'unit/spec.md': 'one\n\ntwo\n' });
+    commitUnpushed(here, { 'unit/empty.md': 'here\n', 'unit/blob.bin': binary('here'), 'unit/spec.md': 'ONE\n\ntwo\n' });
+    commitOn(there, { 'unit/empty.md': 'there\n', 'unit/blob.bin': binary('there'), 'unit/spec.md': 'one\n\nTWO\n' });
+
+    const { result: out, traced: commands } = traced(() => catchUpState(here.root));
+
+    const beside = `unit/blob.${blobId(binary('here')).slice(0, 8)}.bin`;
+    assert.deepStrictEqual([out.action, commands.filter((c) => c.startsWith("cat-file '--batch=")).length], ['merged', 1]);
+    assert.strictEqual(read(here.root, 'unit/empty.md'), 'there\nhere\n');
+    assert.strictEqual(read(here.root, 'unit/spec.md'), 'ONE\n\nTWO\n');
+    assert.ok(fs.readFileSync(path.join(here.root, 'unit/blob.bin')).equals(binary('there')), 'the remote\'s bytes are not at the path');
+    assert.ok(fs.readFileSync(path.join(here.root, beside)).equals(binary('here')), 'this machine\'s bytes are not beside it');
+  });
+
   it('keeps whole a file whose bytes are not UTF-8, though it holds no NUL', () => {
     const latin = (/** @type {string} */ text) => Buffer.from(text, 'latin1');
     const { here, there } = twoMachines({ 'unit/notes.txt': latin('café\n\none\n\ntwo\n') });
@@ -1304,21 +1374,26 @@ describe('a catch-up killed between its steps', () => {
     });
   }
 
-  it('is finished by a state commit before it moves the branch, so the next catch-up reads nothing it wrote as this machine\'s', () => {
-    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base'), 'manifest.json': projectManifest('now') });
-    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
-    commitOn(there, { 'manifest.json': projectManifest('someday') });
+  it('is finished by a state commit before it moves the branch, its notes first, so the next catch-up reads nothing it wrote as this machine\'s', () => {
+    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base'), 'manifest.json': projectManifest('now'), [CHART]: 'png\0base' });
+    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1'), [CHART]: 'png\0here' });
+    commitOn(there, { 'manifest.json': projectManifest('someday'), [CHART]: 'png\0there' });
     killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
 
-    const live = commitOn(here, { '.ledger.jsonl': ledger('base', 'a1', 'a2') });
+    const live = pushFailing(here, () => commitOn(here, { '.ledger.jsonl': ledger('base', 'a1', 'a2') }));
     assert.notStrictEqual(catchUpState(there.root).action, 'stopped');
     commitOn(there, { 'manifest.json': projectManifest('later') });
     const out = catchUpState(here.root);
 
-    assert.deepStrictEqual([live.pushed, out.action, out.conflicts], [true, 'fast-forwarded', []]);
+    const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
+    assert.strictEqual(live.warnings.length, 2, live.warnings.join('\n'));
+    assert.strictEqual(live.warnings[0], `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`);
+    assert.match(live.warnings[1], /^leeway-state is committed here but was not pushed to origin: /);
+    assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('later'));
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'), 'a field the killed landing wrote came back');
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), ledger('base', 'a1', 'a2'));
+    assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:${beside}`]), 'png\0here');
     assert.strictEqual(status(here.root), '');
     assert.deepStrictEqual(mergeLeftovers(here.root), []);
   });
@@ -1356,7 +1431,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
     return commands.filter((command) => command.startsWith(prefix)).length;
   }
 
-  it('reads the blobs a merge needs in two calls, and spends two more on each text file both sides changed', () => {
+  it('lists each tree and reads the working tree once, reads the blobs in two calls, and spends two more on each text file both sides changed', () => {
     const { here, there } = twoMachines(each('one\n\ntwo\n\nthree\n'));
     commitUnpushed(here, each('ONE\n\ntwo\n\nthree\n'));
     commitOn(there, each('one\n\ntwo\n\nTHREE\n'));
@@ -1366,12 +1441,13 @@ describe('the git calls a merge makes, all under the writer lock', () => {
     assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
     for (const file of FILES) assert.strictEqual(read(here.root, file), 'ONE\n\ntwo\n\nTHREE\n');
     assert.deepStrictEqual(
-      ["cat-file '--batch-check=", "cat-file '--batch=", 'cat-file blob ', 'merge-file ', 'hash-object '].map((prefix) => calls(commands, prefix)),
-      [1, 1, 0, FILES.length, FILES.length],
+      ['ls-tree ', 'read-tree ', "cat-file '--batch-check=", "cat-file '--batch=", 'cat-file blob ', 'merge-file ', 'hash-object ']
+        .map((prefix) => calls(commands, prefix)),
+      [3, 1, 1, 1, 0, FILES.length, FILES.length],
     );
   });
 
-  it('works the whole merge out once, at the pick that finishes it; the stop and its screen read the manifests alone', () => {
+  it('works the whole merge out once, at the pick that finishes it, listing each tree once; the stop and its screen read the manifests alone', () => {
     const { here, there } = twoMachines({ ...each('one\n\ntwo\n\nthree\n'), 'manifest.json': projectManifest('now') });
     commitUnpushed(here, { ...each('ONE\n\ntwo\n\nthree\n'), 'manifest.json': projectManifest('next') });
     commitOn(there, { ...each('one\n\ntwo\n\nTHREE\n'), 'manifest.json': projectManifest('someday') });
@@ -1382,6 +1458,52 @@ describe('the git calls a merge makes, all under the writer lock', () => {
 
     assert.deepStrictEqual([stop.result.action, pick.result.action], ['stopped', 'merged']);
     assert.deepStrictEqual([stop, screen, pick].map((run) => calls(run.traced, 'merge-file ')), [0, 0, FILES.length]);
+    assert.deepStrictEqual(['ls-tree ', 'read-tree '].map((prefix) => calls(pick.traced, prefix)), [3, 1]);
+  });
+
+  it('reads no file in the working tree whole as it lands, the ledger included', () => {
+    const LOG = 'unit/topics/a/log.md';
+    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base'), [LOG]: '# a\n' });
+    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
+    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), [LOG]: '# a\n\n## there\n' });
+    const readWhole = fs.readFileSync;
+    /** @type {string[]} */
+    const readInTree = [];
+    // @ts-ignore a spy on every whole read
+    fs.readFileSync = (/** @type {any} */ file, /** @type {any[]} */ ...rest) => {
+      if (typeof file === 'string' && file.startsWith(`${here.root}${path.sep}`) && !path.basename(file).startsWith('.lock')) readInTree.push(path.relative(here.root, file));
+      return readWhole(file, ...rest);
+    };
+    let out;
+    try {
+      out = catchUpState(here.root);
+    } finally {
+      fs.readFileSync = readWhole;
+    }
+
+    assert.deepStrictEqual([out.action, readInTree], ['merged', []]);
+    assert.strictEqual(read(here.root, LOG), '# a\n\n## there\n');
+  });
+
+  it('leaves no file open where writing the ledger\'s union fails part-way', () => {
+    const { here, there } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1', 'a2') });
+    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') });
+    const writeSync = fs.writeSync;
+    // @ts-ignore a disk that fills on the first line the union adds
+    fs.writeSync = (/** @type {number} */ fd, /** @type {any} */ data, /** @type {any[]} */ ...rest) => {
+      if (typeof data === 'string' && data.includes('"id":"a1"')) throw Object.assign(new Error('no space left on device'), { code: 'ENOSPC' });
+      return writeSync(fd, data, ...rest);
+    };
+    const opened = () => fs.readdirSync('/dev/fd').length;
+    const before = opened();
+    try {
+      assert.throws(() => catchUpState(here.root), /no space left on device/);
+    } finally {
+      fs.writeSync = writeSync;
+    }
+
+    assert.strictEqual(opened(), before);
   });
 });
 

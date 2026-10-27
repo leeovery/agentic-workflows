@@ -8,16 +8,16 @@
 //
 // - A path only one side changed takes that side's version whole.
 // - A path both sides changed goes to its rule. The ledger, the migrations
-//   record and the manifests merge by state-merge-rules.cjs; the ledger and
-//   the migrations record are read a line at a time, so they merge at any
-//   size. Any other text goes through git's three-way merge, the remote's
-//   copy the one merged into; where both changed the same lines, both
-//   versions' lines are kept, the remote's first. A file that is not text, a
-//   JSON file that is none of the above, and a manifest or any other file
-//   over the read budget (state-merge-blobs.cjs) is kept whole, never read:
-//   the remote's copy at the path and this machine's beside it, named by its
-//   blob's id. A file deleted on one side and changed on the other keeps the
-//   changed copy.
+//   record and the manifests merge by state-merge-rules.cjs, whatever their
+//   size: the ledger and the migrations record are read a line at a time,
+//   and a manifest is read whole, since its fields must merge. Any other
+//   text goes through git's three-way merge, the remote's copy the one
+//   merged into; where both changed the same lines, both versions' lines are
+//   kept, the remote's first. A file that is not text, a JSON file that is
+//   none of the above, and any other file over the read budget is kept
+//   whole, the last never read: the remote's copy at the path and this
+//   machine's beside it, named by its blob's id. A file deleted on one side
+//   and changed on the other keeps the changed copy.
 // - The versions a whole tree's merge reads whole are read together, before
 //   any path is merged.
 // - A file on one side where the other side has a folder cannot sit in one
@@ -45,9 +45,9 @@ const {
 
 /**
  * What a merge works with: what reading blobs takes (state-merge-blobs.cjs),
- * the private index it may use, in the worktree's git dir, and the project's
- * name for the screen's labels.
- * @typedef {import('./state-merge-blobs.cjs').BlobContext & {index: string, project: string}} MergeContext
+ * the read budget in bytes, the private index it may use, in the worktree's
+ * git dir, and the project's name for the screen's labels.
+ * @typedef {import('./state-merge-blobs.cjs').BlobContext & {budget: number, index: string, project: string}} MergeContext
  */
 
 /** @typedef {(manifest: string, choice: Choice) => 'local'|'remote'|null} PickOf */
@@ -129,12 +129,28 @@ function blob(ctx, text, mode) {
   return { mode, oid: ctx.git.run(['hash-object', '-w', '--stdin'], { input: text }).trim() };
 }
 
+/** A file's bytes written to the object store as they are, whatever filters the config names. @param {MergeContext} ctx @param {string} file @param {string} mode @returns {Entry} */
+function fileBlob(ctx, file, mode) {
+  return { mode, oid: ctx.git.run(['hash-object', '-w', '--no-filters', '--', file]).trim() };
+}
+
 /** @param {Versions} versions @returns {string} the merged file's mode: the remote's, else this machine's */
 function modeOf({ local, remote }) {
   return /** @type {Entry} */ (remote ?? local).mode;
 }
 
 const TEXT_MODES = ['100644', '100755'];
+
+/**
+ * The most bytes of a version its rule reads whole: a manifest all of it,
+ * since its fields must merge, and any other file the read budget; null
+ * where the rule reads none whole.
+ * @param {MergeContext} ctx @param {import('./state-merge-rules.cjs').MergeRule} rule @returns {number|null}
+ */
+function readLimit(ctx, rule) {
+  if (rule === 'manifest') return Infinity;
+  return rule === 'file' ? ctx.budget : null;
+}
 
 /**
  * A file's text, or null where it is not text the merge can take whole: a
@@ -145,15 +161,10 @@ const TEXT_MODES = ['100644', '100755'];
 function textOf(ctx, entry) {
   if (entry === undefined) return '';
   if (!TEXT_MODES.includes(entry.mode)) return null;
-  const { bytes } = blobOf(ctx, entry.oid);
+  const { bytes } = blobOf(ctx, entry.oid, /** @type {number} */ (readLimit(ctx, 'file')));
   if (bytes === null || bytes.includes(0)) return null;
   const text = bytes.toString('utf8');
   return Buffer.from(text).equals(bytes) ? text : null;
-}
-
-/** Whether every version of a path is within the read budget. @param {MergeContext} ctx @param {Versions} versions */
-function withinBudget(ctx, { base, local, remote }) {
-  return [base, local, remote].every((entry) => entry === undefined || blobOf(ctx, entry.oid).bytes !== null);
 }
 
 // --- one path both sides changed --------------------------------------------
@@ -192,23 +203,23 @@ function keepWhole(file, versions) {
 
 /**
  * A text file both sides changed, through git's three-way merge with the
- * remote's copy as the one merged into; where both changed the same lines,
- * the union of both, the remote's lines first.
+ * remote's copy as the one merged into, which git writes the result over;
+ * where both changed the same lines, the union of both, the remote's lines
+ * first.
  * @param {MergeContext} ctx @param {string} file @param {Versions} versions @param {string[]} texts  base, local, remote
  * @returns {PathMerge}
  */
 function mergeText(ctx, file, versions, [base, local, remote]) {
   return withScratch(ctx, (dir) => {
-    const [remoteFile, baseFile, localFile] = [['remote', remote], ['base', base], ['local', local]].map(([name, text]) => {
-      const at = path.join(dir, name);
-      fs.writeFileSync(at, text);
-      return at;
-    });
-    const merge = (/** @type {string[]} */ how) => ['merge-file', '-p', ...how, remoteFile, baseFile, localFile];
-    const clean = ctx.git.tryRun(merge([]));
-    if (clean !== null) return { entry: blob(ctx, clean, modeOf(versions)) };
+    const [remoteFile, baseFile, localFile] = ['remote', 'base', 'local'].map((name) => path.join(dir, name));
+    fs.writeFileSync(remoteFile, remote);
+    fs.writeFileSync(baseFile, base);
+    fs.writeFileSync(localFile, local);
+    if (ctx.git.tryRun(['merge-file', remoteFile, baseFile, localFile]) !== null) return { entry: fileBlob(ctx, remoteFile, modeOf(versions)) };
+    fs.writeFileSync(remoteFile, remote);
+    ctx.git.run(['merge-file', '--union', remoteFile, baseFile, localFile]);
     return {
-      entry: blob(ctx, ctx.git.run(merge(['--union'])), modeOf(versions)),
+      entry: fileBlob(ctx, remoteFile, modeOf(versions)),
       note: `${file} was changed in the same place on both machines: both machines' lines are kept there, the remote's first — read it through`,
     };
   });
@@ -231,7 +242,7 @@ function mergeOtherFile(ctx, file, versions) {
 function manifestOf(ctx, file, entry, whose) {
   let value;
   try {
-    value = JSON.parse(/** @type {Buffer} */ (blobOf(ctx, entry.oid).bytes).toString('utf8'));
+    value = JSON.parse(/** @type {Buffer} */ (blobOf(ctx, entry.oid, /** @type {number} */ (readLimit(ctx, 'manifest'))).bytes).toString('utf8'));
   } catch {
     value = null;
   }
@@ -243,7 +254,7 @@ function manifestOf(ctx, file, entry, whose) {
 
 /** @param {MergeContext} ctx @param {string} file @param {Versions} versions @param {PickOf} pickOf @returns {PathMerge} */
 function mergeManifestFile(ctx, file, versions, pickOf) {
-  if (versions.local === undefined || versions.remote === undefined || !withinBudget(ctx, versions)) return keepWhole(file, versions);
+  if (versions.local === undefined || versions.remote === undefined) return keepChanged(file, versions);
   const base = versions.base === undefined ? undefined : manifestOf(ctx, file, versions.base, "the common ancestor's");
   const merged = mergeManifest(
     base,
@@ -270,17 +281,21 @@ function unionLines(ctx, versions, keyOf) {
     blobToFile(ctx, versions.remote?.oid, remote);
     blobToFile(ctx, versions.local?.oid, local);
     const added = linesToAdd(fileLines(remote), fileLines(local), keyOf);
-    let line = added.next();
-    if (line.done && versions.remote !== undefined) return { entry: versions.remote };
-    fs.copyFileSync(remote, union);
-    const fd = fs.openSync(union, 'a');
     try {
-      if (!endsWithNewline(remote)) fs.writeSync(fd, '\n');
-      for (; !line.done; line = added.next()) fs.writeSync(fd, `${line.value}\n`);
+      let line = added.next();
+      if (line.done && versions.remote !== undefined) return { entry: versions.remote };
+      fs.copyFileSync(remote, union);
+      const fd = fs.openSync(union, 'a');
+      try {
+        if (!endsWithNewline(remote)) fs.writeSync(fd, '\n');
+        for (; !line.done; line = added.next()) fs.writeSync(fd, `${line.value}\n`);
+      } finally {
+        fs.closeSync(fd);
+      }
+      return { entry: fileBlob(ctx, union, modeOf(versions)) };
     } finally {
-      fs.closeSync(fd);
+      added.return(undefined);
     }
-    return { entry: { mode: modeOf(versions), oid: ctx.git.run(['hash-object', '-w', '--no-filters', '--', union]).trim() } };
   });
 }
 
@@ -292,9 +307,6 @@ const MERGERS = {
   whole: (ctx, file, versions) => keepWhole(file, versions),
   file: (ctx, file, versions) => mergeOtherFile(ctx, file, versions),
 };
-
-/** The rules that read a path's versions whole. @type {import('./state-merge-rules.cjs').MergeRule[]} */
-const READ_WHOLE = ['manifest', 'file'];
 
 /**
  * A path at most one side changed, merged: that side's version; null where
@@ -319,14 +331,18 @@ function mergePath(ctx, file, versions, pickOf) {
 
 /**
  * Read together the versions of each path both sides changed whose rule
- * reads them whole, so each path's merge finds its bytes in hand.
+ * reads them whole, each to its rule's limit, so each path's merge finds its
+ * bytes in hand.
  * @param {MergeContext} ctx @param {[string, Versions][]} paths
  */
 function readContested(ctx, paths) {
-  readBlobs(ctx, paths
-    .filter(([file, versions]) => oneSided(versions) === null && READ_WHOLE.includes(ruleOf(file)))
-    .flatMap(([, { base, local, remote }]) => [base, local, remote])
-    .flatMap((entry) => (entry !== undefined && TEXT_MODES.includes(entry.mode) ? [entry.oid] : [])));
+  readBlobs(ctx, paths.flatMap(([file, { base, local, remote }]) => {
+    const limit = readLimit(ctx, ruleOf(file));
+    if (limit === null || oneSided({ base, local, remote }) !== null) return [];
+    return [base, local, remote].flatMap((entry) => (entry !== undefined && TEXT_MODES.includes(entry.mode)
+      ? [/** @type {[string, number]} */ ([entry.oid, limit])]
+      : []));
+  }));
 }
 
 // --- a file against a folder ------------------------------------------------

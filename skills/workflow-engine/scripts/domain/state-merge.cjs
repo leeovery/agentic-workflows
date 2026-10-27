@@ -80,13 +80,15 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
 
 /**
  * The state worktree opened for a catch-up: the merge's context, the
- * state's remote, a runner bound to the main checkout, and where the stop is
- * kept.
+ * state's remote, a runner bound to the main checkout, where the stop is
+ * kept, and the files each commit and the working tree hold, listed once a
+ * run.
  * @typedef {import('./state-merge-landing.cjs').LandingContext & {
  *   remote: string|null,
  *   remotes: string[],
  *   main: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   stopFile: string,
+ *   listings: Map<string, Entries>,
  * }} State
  */
 
@@ -171,6 +173,7 @@ function openState(root, opts) {
     remotes: seen.remotes,
     main: isolatedGit(seen.main),
     stopFile: path.join(merge.gitDir, KEPT_STOP),
+    listings: new Map(),
   };
 }
 
@@ -244,6 +247,21 @@ function scoped(entries, scope) {
 }
 
 /**
+ * Files listed once a run: a commit's never change, and the working tree's
+ * are read once over each tip, so the questions and the merge they lead to
+ * read the same files.
+ * @param {State} state @param {string} key @param {() => Entries} list @returns {Entries}
+ */
+function listedOnce(state, key, list) {
+  let entries = state.listings.get(key);
+  if (entries === undefined) {
+    entries = list();
+    state.listings.set(key, entries);
+  }
+  return entries;
+}
+
+/**
  * The merge of the two sides worked out over the paths `scope` keeps, with
  * the kept stop's picks: the branch's tree from committed state alone, then,
  * once every field on it is picked, the working tree's move to it.
@@ -251,13 +269,12 @@ function scoped(entries, scope) {
  * @returns {Plan}
  */
 function planMerge(state, sides, stop, scope = () => true) {
-  const entries = (/** @type {string} */ treeish) => scoped(entriesOf(state.git, treeish), scope);
+  const entries = (/** @type {string} */ commit) => scoped(listedOnce(state, commit, () => entriesOf(state.git, commit)), scope);
   const local = entries(sides.local);
   const merged = mergeTrees(state, sides.base === null ? new Map() : entries(sides.base), local, entries(sides.remote), picksOf(stop, false));
   const committed = merged.conflicts.map((c) => ({ ...c, uncommitted: false }));
-  const worktree = committed.some(open)
-    ? null
-    : planWorktree(state, local, merged.entries, scoped(workingEntries(state, sides.local), scope), picksOf(stop, true));
+  const working = () => scoped(listedOnce(state, `working ${sides.local}`, () => workingEntries(state, sides.local)), scope);
+  const worktree = committed.some(open) ? null : planWorktree(state, local, merged.entries, working(), picksOf(stop, true));
   return {
     local,
     target: merged.entries,

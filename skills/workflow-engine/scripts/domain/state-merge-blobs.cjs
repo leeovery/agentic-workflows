@@ -1,13 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the state's blobs, read for a merge (4.7). A merge reads
-// many blobs, so it reads them together: their sizes in one git call, then
-// the bytes of those within the read budget in one more, written to a file,
-// so no answer is held to a pipe's limit. A blob over the budget is never
-// read; the merge keeps its path whole by its object id. A blob the merge
-// reads a line at a time, as it does the ledger at any size, is written to a
-// file whole by git, and its lines are read from there a chunk at a time.
+// Domain ring: the state's blobs and files, read for a merge (4.7). A merge
+// reads many blobs, so it reads them together: their sizes in one git call,
+// then the bytes of each within the limit its caller reads it to in one
+// more, written to a file, so no answer is held to a pipe's limit. A blob
+// over its limit is never read. A blob the merge reads a line at a time, as
+// it does the ledger at any size, is written to a file whole by git; that
+// file, and any file in the working tree, is read a chunk at a time, so no
+// file is held in memory whole for its size alone.
 //
 // A blob's id names its bytes for good, so each blob read is kept on the
 // merge's context by its id and never read again.
@@ -19,17 +20,15 @@ const { GitError } = require('../kernel/git.cjs');
 
 const CHUNK_BYTES = 64 * 1024;
 
-/** A blob's size, and its bytes: null where it is over the read budget. @typedef {{size: number, bytes: Buffer|null}} Blob */
+/** A blob's size, and its bytes: null where it is over the limit it was read to. @typedef {{size: number, bytes: Buffer|null}} Blob */
 
 /**
  * What reading blobs takes: a runner bound to the state worktree, the
- * scratch folder in its git dir, the blobs read so far by id, and the read
- * budget in bytes.
+ * scratch folder in its git dir, and the blobs read so far by id.
  * @typedef {{
  *   git: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   scratch: string,
  *   blobs: Map<string, Blob>,
- *   budget: number,
  * }} BlobContext
  */
 
@@ -76,23 +75,26 @@ function sizesOf(ctx, oids) {
 }
 
 /**
- * Read the blobs not read yet: every one's size, then the bytes of each
- * within the read budget.
- * @param {BlobContext} ctx @param {string[]} oids
+ * Read blobs: the size of each not sized yet, then the bytes of each not
+ * read yet that is within the limit it is asked for with.
+ * @param {BlobContext} ctx @param {[string, number][]} wanted  each blob's id, and the most bytes it is read to
  */
-function readBlobs(ctx, oids) {
-  const wanted = [...new Set(oids)].filter((oid) => !ctx.blobs.has(oid));
-  if (wanted.length === 0) return;
-  /** @type {string[]} */
-  const within = [];
-  for (const [oid, size] of sizesOf(ctx, wanted)) {
-    if (size <= ctx.budget) within.push(oid);
-    else ctx.blobs.set(oid, { size, bytes: null });
+function readBlobs(ctx, wanted) {
+  /** @type {Map<string, number>} */
+  const limits = new Map();
+  for (const [oid, limit] of wanted) limits.set(oid, Math.max(limit, limits.get(oid) ?? 0));
+  const unsized = [...limits.keys()].filter((oid) => !ctx.blobs.has(oid));
+  if (unsized.length > 0) {
+    for (const [oid, size] of sizesOf(ctx, unsized)) ctx.blobs.set(oid, { size, bytes: null });
   }
-  if (within.length === 0) return;
+  const unread = [...limits].filter(([oid, limit]) => {
+    const blob = /** @type {Blob} */ (ctx.blobs.get(oid));
+    return blob.bytes === null && blob.size <= limit;
+  }).map(([oid]) => oid);
+  if (unread.length === 0) return;
   const batch = withScratch(ctx, (dir) => {
     const file = path.join(dir, 'blobs');
-    runToFile(ctx, ['cat-file', '--batch=%(objectname) %(objectsize)'], file, listed(within));
+    runToFile(ctx, ['cat-file', '--batch=%(objectname) %(objectsize)'], file, listed(unread));
     return fs.readFileSync(file);
   });
   for (let at = 0; at < batch.length;) {
@@ -104,9 +106,9 @@ function readBlobs(ctx, oids) {
   }
 }
 
-/** A blob, read now where it was not read before. @param {BlobContext} ctx @param {string} oid @returns {Blob} */
-function blobOf(ctx, oid) {
-  readBlobs(ctx, [oid]);
+/** A blob, read now to `limit` bytes where it was not read before. @param {BlobContext} ctx @param {string} oid @param {number} limit @returns {Blob} */
+function blobOf(ctx, oid, limit) {
+  readBlobs(ctx, [[oid, limit]]);
   return /** @type {Blob} */ (ctx.blobs.get(oid));
 }
 
@@ -117,27 +119,36 @@ function blobToFile(ctx, oid, file) {
 }
 
 /**
+ * A file's bytes, a chunk at a time; each chunk holds until the next is
+ * read.
+ * @param {string} file @returns {Generator<Buffer>}
+ */
+function* fileChunks(file) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const chunk = Buffer.alloc(CHUNK_BYTES);
+    for (let read = fs.readSync(fd, chunk); read > 0; read = fs.readSync(fd, chunk)) yield chunk.subarray(0, read);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/**
  * A file's lines, each without its newline, read a chunk at a time.
  * @param {string} file @returns {Generator<string>}
  */
 function* fileLines(file) {
-  const fd = fs.openSync(file, 'r');
-  try {
-    const chunk = Buffer.alloc(CHUNK_BYTES);
-    let rest = Buffer.alloc(0);
-    for (let read = fs.readSync(fd, chunk); read > 0; read = fs.readSync(fd, chunk)) {
-      const data = Buffer.concat([rest, chunk.subarray(0, read)]);
-      let start = 0;
-      for (let eol = data.indexOf(0x0a); eol !== -1; eol = data.indexOf(0x0a, start)) {
-        yield data.toString('utf8', start, eol);
-        start = eol + 1;
-      }
-      rest = data.subarray(start);
+  let rest = Buffer.alloc(0);
+  for (const chunk of fileChunks(file)) {
+    const data = Buffer.concat([rest, chunk]);
+    let start = 0;
+    for (let eol = data.indexOf(0x0a); eol !== -1; eol = data.indexOf(0x0a, start)) {
+      yield data.toString('utf8', start, eol);
+      start = eol + 1;
     }
-    if (rest.length > 0) yield rest.toString('utf8');
-  } finally {
-    fs.closeSync(fd);
+    rest = data.subarray(start);
   }
+  if (rest.length > 0) yield rest.toString('utf8');
 }
 
 /** Whether a file is empty or ends with a newline. @param {string} file */
@@ -154,4 +165,4 @@ function endsWithNewline(file) {
   return last[0] === 0x0a;
 }
 
-module.exports = { withScratch, readBlobs, blobOf, blobToFile, fileLines, endsWithNewline };
+module.exports = { withScratch, readBlobs, blobOf, blobToFile, fileChunks, fileLines, endsWithNewline };

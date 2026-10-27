@@ -39,6 +39,7 @@ const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
+const { fileChunks } = require('./state-merge-blobs.cjs');
 const {
   sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
@@ -157,8 +158,9 @@ function exists(at) {
 
 /**
  * Whether the working tree holds exactly `entry`'s bytes at `file`, nothing
- * where it is undefined. Hashed here, as git names a blob, so no git call
- * stands between the check and the write it guards.
+ * where it is undefined. Hashed here, as git names a blob, a chunk at a time,
+ * so no git call stands between the check and the write it guards, and no
+ * file is held in memory whole.
  * @param {WorktreeContext} ctx @param {string} file @param {Entry|undefined} entry
  */
 function holds(ctx, file, entry) {
@@ -170,8 +172,15 @@ function holds(ctx, file, entry) {
     return entry === undefined;
   }
   if (entry === undefined || !(stat.isFile() || stat.isSymbolicLink())) return false;
-  const bytes = stat.isSymbolicLink() ? fs.readlinkSync(at, { encoding: 'buffer' }) : fs.readFileSync(at);
-  return crypto.createHash(ctx.objectFormat).update(`blob ${bytes.length}\0`).update(bytes).digest('hex') === entry.oid;
+  const hash = crypto.createHash(ctx.objectFormat);
+  if (stat.isSymbolicLink()) {
+    const target = fs.readlinkSync(at, { encoding: 'buffer' });
+    hash.update(`blob ${target.length}\0`).update(target);
+  } else {
+    hash.update(`blob ${stat.size}\0`);
+    for (const chunk of fileChunks(at)) hash.update(chunk);
+  }
+  return hash.digest('hex') === entry.oid;
 }
 
 /**
