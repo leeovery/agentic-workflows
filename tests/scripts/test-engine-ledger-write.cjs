@@ -587,6 +587,20 @@ describe('whose entries a link names, and how they relate', () => {
     refused('move', NOTE, ['--question', staying, '--to', 'notes-spec'], MADE, /^ledger move: fumi has no topic "notes-spec" to move the question to$/);
   });
 
+  it('moves and merges a question only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
+    const asked = ask().id;
+    const reworded = write('replace', NOTE, ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note, at its simplest?' }).id;
+    const owned = decide(ask('Is a note a window?').id).id;
+    const superseded = (/** @type {string} */ verb) => new RegExp(`^ledger ${verb} --question names ${asked}, which ${reworded} replaced — the current one is ${reworded}$`);
+
+    refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move'));
+    refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge'));
+
+    write('move', NOTE, ['--question', reworded, '--to', 'space-homing'], MADE);
+    write('merge', SPACE, ['--question', reworded, '--into', owned], MADE);
+    assert.deepStrictEqual(entries().slice(-2).map((e) => [e.event, e.question]), [['moved', full(reworded)], ['merged', full(reworded)]]);
+  });
+
   it('merges into a current decision, a duplicate being another current decision answering the question merged (5.5.4, 5.5.5)', () => {
     const owned = decide(ask().id).id;
     const here = write('ask', SPACE, [], { ...MADE, text: 'Is a note a window?' }).id;

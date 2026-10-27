@@ -18,7 +18,8 @@
 //   (5.3.5), and must name what it links to: a decision answers a question
 //   (5.5.1), and only a question moves or merges. An entry is replaced or
 //   held only while current — a replacement names one entry, its siblings
-//   untouched (5.3.13) — and a merge goes into a current decision.
+//   untouched (5.3.13) — a question moves or merges only while current, and
+//   a merge goes into a current decision.
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
 //   (5.6.1) or held. Before the spec, an entry of the unit is written on only
@@ -192,9 +193,9 @@ const WRITES = Object.freeze({
     link('entry', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
     link('after', A_REPLACEMENT, { required: true }),
   ], { checkLinked: checkHeld }),
-  move: writeOf('moved', [link('question', A_QUESTION, { required: true, owner: 'unit' }), plain('to', '<topic>')], { fromTopic: true, checkGiven: checkDestination }),
+  move: writeOf('moved', [link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }), plain('to', '<topic>')], { fromTopic: true, checkGiven: checkDestination }),
   merge: writeOf('merged', [
-    link('question', A_QUESTION, { required: true, owner: 'unit' }),
+    link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }),
     link('into', A_DECISION, { required: true, current: true }),
     link('duplicate', A_DECISION, { current: true }),
   ], { checkLinked: checkDuplicate }),
