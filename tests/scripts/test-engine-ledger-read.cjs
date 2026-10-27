@@ -18,11 +18,11 @@
 // merged duplicate is no second entry; a finished unit stays finished when
 // a later one replaces its decision; a cancelled topic or unit, or a
 // postponed topic while it waits, holds nothing current until it comes
-// back — and a replacement, a move, a merge or a confirmation made there
-// counts for nothing meanwhile, while another unit's replacement of an
-// entry there stands where it was made — and the write verbs decide by the
-// same rule; of merges crossing each other, the later holds, whichever
-// entry is read first. A ledger past the 64 MiB a pipe holds is read
+// back — and a replacement, a merge or a confirmation made there counts
+// for nothing meanwhile, while a question moved away stays where it was
+// moved, and another unit's replacement of an entry there stands where it
+// was made — and the write verbs decide by the same rule; of merges
+// crossing each other, the later holds, whichever entry is read first. A ledger past the 64 MiB a pipe holds is read
 // without being held: each read answers under a heap a reader holding its
 // lines cannot fit in.
 //
@@ -616,7 +616,7 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     assert.deepStrictEqual(moves(UNIT, 'note-window'), [[question, 'moved-away', null, 'space-homing']]);
   });
 
-  it('places a question where the last live move its unit made of it took it, a move live while the topic it was made from is: one made from a topic set aside counts for nothing', () => {
+  it('places a question where the last move its unit made of it took it, a move outliving the topic it was made from: it stands there, set aside with that topic alone, and names where it moved from while that is live', () => {
     menuBar();
     const once = ask(NOTE, 'Does a note snap to the grid?');
     write('move', NOTE, ['--question', once, '--to', 'space-homing'], MADE);
@@ -631,11 +631,15 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     ]);
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
-    assert.deepStrictEqual(maps(), [[], [[twice, 'moved-away', null, 'menu-bar']], [[twice, 'open', 'space-homing', null]]]);
+    assert.deepStrictEqual(maps(), [[], [[once, 'open', null, null], [twice, 'moved-away', null, 'menu-bar']], [[twice, 'open', 'space-homing', null]]]);
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
-    assert.deepStrictEqual(maps(), [[], [], []]);
+    assert.deepStrictEqual(maps(), [[[twice, 'moved-away', null, 'menu-bar']], [], [[twice, 'open', null, null]]]);
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'menu-bar']);
+    assert.deepStrictEqual(maps(), [[[once, 'moved-away', null, 'space-homing']], [[once, 'open', 'note-window', null]], []]);
   });
 });
 
@@ -699,8 +703,7 @@ describe('merges crossing each other (5.5.5)', () => {
     menuBar();
     const settled = ask(NOTE, 'Does a note float above every Space?');
     const floats = decide(NOTE, settled, 'Notes float above every Space.');
-    write('move', NOTE, ['--question', settled, '--to', 'space-homing'], MADE);
-    write('move', SPACE, ['--question', settled, '--to', 'menu-bar'], MADE);
+    write('move', NOTE, ['--question', settled, '--to', 'menu-bar'], MADE);
     const owners = decide(SPACE, ask(SPACE, 'Does a note follow the person?'), 'A note follows the person, floating.');
     const reached = ask(MENU, 'Does a note stay on its Space?');
     const stays = decide(MENU, reached, 'Notes float, and never stay.');
@@ -760,9 +763,10 @@ describe('liveness (5.8.17)', () => {
    */
   function relyingTopics() {
     const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.', [], { product_wide: true });
-    write('move', NOTE, ['--question', ask(NOTE, 'Which Space does a new note open on?'), '--to', 'space-homing'], MADE);
+    const moving = ask(NOTE, 'Which Space does a new note open on?');
+    const moved = write('move', NOTE, ['--question', moving, '--to', 'space-homing'], MADE).id;
     const relying = decide(SPACE, ask(SPACE, 'Does a note open on the active Space?'), 'Yes.', ['--relies-on', decided]);
-    return { decided, relying };
+    return { decided, moving, moved, relying };
   }
 
   /** Every read over the unit. */
@@ -778,12 +782,13 @@ describe('liveness (5.8.17)', () => {
 
   /**
    * Assert the note window's entries are not current: off its record and
-   * its map, off the unit's record — its move with them — and the product
-   * record, off the record relying on them, and refused where a write needs
-   * a current entry, the ledger keeping every line.
-   * @param {string} decided @param {RegExp} reason @param {{note: boolean, unit: boolean}} live @param {string} [from] where the write is made
+   * its map, off the unit's record and the product record, off the record
+   * relying on them, and refused where a write needs a current entry, the
+   * ledger keeping every line; while the unit is live, the question it
+   * moved away stays where it moved, its move on the unit's record.
+   * @param {{decided: string, moving: string, moved: string}} topics @param {RegExp} reason @param {{note: boolean, unit: boolean}} live @param {string} [from] where the write is made
    */
-  function assertSetAside(decided, reason, live, from = SPACE) {
+  function assertSetAside({ decided, moving, moved }, reason, live, from = SPACE) {
     const lines = rawLines();
     const now = reads();
     const empty = { questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [] };
@@ -791,7 +796,7 @@ describe('liveness (5.8.17)', () => {
     assert.deepStrictEqual(now.map, { ok: true, unit: UNIT, topic: 'note-window', live: live.note, questions: [] });
     assert.deepStrictEqual(now.product.decisions, []);
     assert.deepStrictEqual(now.space.other_topics, []);
-    assert.deepStrictEqual([now.unit.live, now.unit.moved], [live.unit, []]);
+    assert.deepStrictEqual([now.unit.live, ids(now.unit.moved), ids(now.space.questions).includes(moving)], [live.unit, live.unit ? [moved] : [], live.unit]);
     assert.ok(!JSON.stringify(now.unit).includes(`"id":"${decided}"`), 'the unit\'s record shows an entry that is not current');
     const refusal = refuses(dir, ['ledger', 'hold', from, '--entry', decided, '--after', decided], { env: SESSION, stdin: JSON.stringify(MADE) });
     assert.match(refusal.error, reason);
@@ -799,22 +804,24 @@ describe('liveness (5.8.17)', () => {
   }
 
   it('takes a cancelled topic\'s entries out of every read until the topic is reactivated, the ledger holding them throughout', () => {
-    const { decided } = relyingTopics();
+    const topics = relyingTopics();
+    const { decided } = topics;
     const before = reads();
 
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
-    assertSetAside(decided, new RegExp(`^ledger hold --entry names ${decided}, which is not current: its topic, note-window, is cancelled$`), { note: false, unit: true });
+    assertSetAside(topics, new RegExp(`^ledger hold --entry names ${decided}, which is not current: its topic, note-window, is cancelled$`), { note: false, unit: true });
 
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
     assert.deepStrictEqual(reads(), before);
   });
 
   it('takes a postponed topic\'s entries out of every read while it waits, and back once it is pulled back into its own epic', () => {
-    const { decided } = relyingTopics();
+    const topics = relyingTopics();
+    const { decided } = topics;
     const before = reads();
 
     ok(dir, ['topic', 'postpone', UNIT, 'note-window', '--horizon', 'later']);
-    assertSetAside(decided, new RegExp(`^ledger hold --entry names ${decided}, which is not current: its topic, note-window, is postponed$`), { note: false, unit: true });
+    assertSetAside(topics, new RegExp(`^ledger hold --entry names ${decided}, which is not current: its topic, note-window, is postponed$`), { note: false, unit: true });
 
     ok(dir, ['roadmap', 'pull-forward', 'note-window', '--into', UNIT]);
     assert.deepStrictEqual(reads(), before);
@@ -822,14 +829,15 @@ describe('liveness (5.8.17)', () => {
 
   it('takes a cancelled unit\'s entries out of every read, another unit\'s included, until the unit is reactivated', () => {
     mint();
-    const { decided } = relyingTopics();
+    const topics = relyingTopics();
+    const { decided } = topics;
     decide('mint.discussion.mint', ask('mint.discussion.mint', 'Does Mint float its notes too?'), 'Yes, as Fumi does.', ['--relies-on', decided]);
     const before = { ...reads(), mint: read('record', 'mint') };
 
     ok(dir, ['workunit', 'cancel', UNIT]);
     assert.deepStrictEqual(read('record', 'mint').other_topics, []);
     assert.deepStrictEqual(read('record', UNIT, 'space-homing').decisions, []);
-    assertSetAside(decided, new RegExp(`^ledger hold --entry names ${decided}, which is not current: ${UNIT} is cancelled$`), { note: false, unit: false }, 'mint.discussion.mint');
+    assertSetAside(topics, new RegExp(`^ledger hold --entry names ${decided}, which is not current: ${UNIT} is cancelled$`), { note: false, unit: false }, 'mint.discussion.mint');
 
     ok(dir, ['workunit', 'reactivate', UNIT]);
     assert.deepStrictEqual({ ...reads(), mint: read('record', 'mint') }, before);

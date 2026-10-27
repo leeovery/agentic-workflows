@@ -19,7 +19,9 @@
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
-//   (ledger-units.cjs). A move is made on the topic it moved from, and a
+//   (ledger-units.cjs). A move, made on the topic it moved from, is live
+//   while its unit is: it hands the question to the topic it moved to, and
+//   setting aside the topic it came from never takes that back. A
 //   question's wording is made on the topic the last live move its unit
 //   made of the question took it to (5.3.3), or where none is, the topic it
 //   was written on.
@@ -59,10 +61,10 @@
 // - A topic's map (5.8.5): its questions, where each stands, and the
 //   answers to each, its current answer and what its merges resolve to —
 //   which the topic's record shows too. A map shows where a question stands
-//   now: one moved in, the topic it came from; one moved away, in its
-//   current wording, the topic it stands on now — each only by a live move
-//   the map's unit made, while the question is current and stands in that
-//   unit.
+//   now: one moved in, the topic it came from while that is live; one moved
+//   away, in its current wording, the topic it stands on now — each only by
+//   a live move the map's unit made, while the question is current and
+//   stands in that unit.
 // - A record: the current entries standing in a unit or a topic, the moves
 //   and merges made there while live, and the current entries standing
 //   elsewhere that its entries rely on, its merges that hold went into, or
@@ -243,8 +245,7 @@ function liveMovesBy(folded, root, unit) {
 /**
  * The unit and topic `id` was made on: the ones it was written on, but a
  * question's wording, made on the topic the last live move its unit made of
- * the question took it to, where there is one (5.3.3). A move is made on the
- * topic it moved from, so no move's place turns on another.
+ * the question took it to, where there is one (5.3.3).
  * @param {Folded} folded @param {string} id
  * @returns {Standing}
  */
@@ -254,8 +255,14 @@ function madeOn(folded, id) {
   return { unit, topic: move === undefined ? topic : factsOf(folded, move).to };
 }
 
-/** Why `id` is not live — the unit or topic it was made on set aside — or null where it is. @param {Folded} folded @param {string} id */
+/**
+ * Why `id` is not live — the unit or topic it was made on set aside, of a
+ * move its unit alone — or null where it is.
+ * @param {Folded} folded @param {string} id
+ */
 function whyDead(folded, id) {
+  const facts = factsOf(folded, id);
+  if (facts.event === 'moved') return folded.live(facts.unit, null);
   const { unit, topic } = madeOn(folded, id);
   return folded.live(unit, topic);
 }
@@ -482,18 +489,20 @@ function wholeOf(folded, whole) {
 
 /**
  * A current question standing on the map of a topic of `unit`, as its row:
- * moved in from the topic the last live move `unit` made of it was made on.
+ * moved in from the topic the last live move `unit` made of it was made on,
+ * while that topic is live.
  * @param {Folded} folded @param {string} id @param {string} unit
  * @returns {MapRow}
  */
 function standingRow(folded, id, unit) {
   const answers = answersOf(folded, id);
   const lastMove = liveMovesBy(folded, factsOf(folded, id).root, unit).at(-1);
+  const from = lastMove === undefined ? null : movedFrom(folded, lastMove);
   const parts = wordingsOf(folded, id).flatMap((w) => factsOf(folded, w).parts).filter((part) => isCurrent(folded, part));
   return {
     id,
     stands: mergedAnswer(folded, id).length > 0 ? 'merged' : answers.length > 0 ? 'answered' : 'open',
-    moved_from: lastMove === undefined ? null : movedFrom(folded, lastMove),
+    moved_from: from === null || folded.live(unit, from) !== null ? null : from,
     moved_to: null,
     answers,
     part_of: wholeOf(folded, factsOf(folded, id).part_of),

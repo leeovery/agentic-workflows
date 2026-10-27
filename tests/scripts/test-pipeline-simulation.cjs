@@ -268,28 +268,29 @@ function auditState(dir, label) {
 // settle whatever the fold does inside, both read here directly: a unit is
 // live while its manifest is there and not cancelled, a topic while its map
 // row is neither cancelled nor postponed; an event is in a live place while
-// the unit and topic it was made on are live — a move made on the topic it
-// moved from, a question's wording on the topic the last move its unit made
-// of the question in a live place took it to — and an entry stands where
-// the earliest entry of its chain in a live place was made, or where the
-// first was when none is. Current is what the records show. Every entry in
-// a live place is shown, or leads to a shown entry down its live
-// replacements or, with none, its live merges; a shown entry is in a live
-// place, no live replacement names it, no live merge that would still lead
-// to a shown entry took it as a duplicate, and it shows exactly once in its
-// unit's record and once in its topic's. Each map holds a row for each
-// shown question standing on the topic — answered by the shown entries
-// answering any wording of it and those its leading merges lead to, merged
-// while one leads, moved in from where the last live move the map's unit
-// made of it was made — and a row for each shown question standing on
-// another topic of the map's unit that the unit moved away from the topic
-// by a live move, leading to where it stands now. Each record shows those
-// answers, with exactly the entries standing elsewhere that its entries
-// rely on, its leading merges went into or that answer its questions; its
-// live moves and merges, a merge's duplicate where it is live and whether
-// the merge leads; each entry's live confirmations, and its chain down to
-// the first entry not in a live place. A place that is not live shows
-// nothing; the product record holds the shown entries marked product-wide.
+// the unit and topic it was made on are live — a move while its unit is, a
+// question's wording made on the topic the last move its unit made of the
+// question in a live place took it to — and an entry stands where the
+// earliest entry of its chain in a live place was made, or where the first
+// was when none is. Current is what the records show. Every entry in a live
+// place is shown, or leads to a shown entry down its live replacements or,
+// with none, its live merges; a shown entry is in a live place, no live
+// replacement names it, no live merge that would still lead to a shown
+// entry took it as a duplicate, and it shows exactly once in its unit's
+// record and once in its topic's. Each map holds a row for each shown
+// question standing on the topic — answered by the shown entries answering
+// any wording of it and those its leading merges lead to, merged while one
+// leads, moved in from where the last live move the map's unit made of it
+// was made, while that is live — and a row for each shown question
+// standing on another topic of the map's unit that the unit moved away from
+// the topic by a live move, leading to where it stands now. Each record
+// shows those answers, with exactly the entries standing elsewhere that its
+// entries rely on, its leading merges went into or that answer its
+// questions; its live moves and merges, a merge's duplicate where it is
+// live and whether the merge leads; each entry's live confirmations, and
+// its chain down to the first entry not in a live place. A place that is
+// not live shows nothing; the product record holds the shown entries marked
+// product-wide.
 /** @param {string} dir @param {(msg: string) => string} ctx */
 function auditLedger(dir, ctx) {
   const root = statePath(dir);
@@ -319,7 +320,7 @@ function auditLedger(dir, ctx) {
   const firstOf = (id) => byId.get(/** @type {string} */ (chainOf(id).at(-1)));
   /** @param {Record<string, any>} e */
   const isQuestion = (e) => e.event === 'asked' || e.of === 'question';
-  const moves = events.filter((e) => e.event === 'moved' && placeLive(e.unit, e.topic));
+  const moves = events.filter((e) => e.event === 'moved' && placeLive(e.unit, null));
   /** The moves in a live place `unit` made of `id`'s question, in the ledger's order. @param {string} id @param {string} unit */
   const movesOf = (id, unit) => moves.filter((m) => m.unit === unit && firstOf(m.question).id === firstOf(id).id);
   /** @type {Map<string, string|null>} */
@@ -459,7 +460,8 @@ function auditLedger(dir, ctx) {
       ctx(`${place}'s map does not hold a row for each shown question standing on it`));
     for (const row of standingHere) {
       const movedIn = movesOf(full(row.id), unit).at(-1);
-      assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined ? null : movedIn.topic, null], ctx(`${place}'s map does not show where ${row.id} moved in from by its unit's last live move`));
+      assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, null],
+        ctx(`${place}'s map does not show the live topic ${row.id} moved in from by its unit's last live move`));
       const { answers, merged } = answersOf(full(row.id));
       assert.deepStrictEqual([row.answers.map((/** @type {{id: string}} */ a) => full(a.id)).sort(), row.stands], [answers, merged ? 'merged' : answers.length > 0 ? 'answered' : 'open'],
         ctx(`${place}'s map does not answer ${row.id} by its shown answers`));
@@ -3881,8 +3883,9 @@ describe('pipeline simulation', () => {
 
     sim.run(['topic', 'cancel', wu, 'discovery', 'note-window']);
     const cancelledOwner = sim.run(['ledger', 'map', wu, 'space-homing']).questions;
-    assert.deepStrictEqual(ids(cancelledOwner), [reached], 'a move made on a cancelled topic still took its question');
-    assert.deepStrictEqual(ids(cancelledOwner[0].answers), [duplicate], 'a duplicate merged into a cancelled topic\'s entry stayed set aside');
+    assert.deepStrictEqual([cancelledOwner[0].id, cancelledOwner[0].moved_from], [moving, null], 'a move did not outlive the topic it was made from');
+    assert.deepStrictEqual(cancelledOwner[0].answers, [], 'a cancelled topic\'s entry answered a question');
+    assert.deepStrictEqual(ids(cancelledOwner[1].answers), [duplicate], 'a duplicate merged into a cancelled topic\'s entry stayed set aside');
     assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
     assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
