@@ -3829,7 +3829,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record; a decision the one-decision check could not judge is checked at a later start', (t) => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects and Claude\'s calls since the person last looked; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -3849,8 +3849,11 @@ describe('pipeline simulation', () => {
     const decision = ledger(['decide', note, '--answers', question, '--relies-on', finding], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
     const relying = ledger(['ask', note, '--relies-on', decision], { ...made, text: 'Does a floating panel take focus?' });
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
+    const affected = () => sim.run(['ledger', 'affected', wu]).affected.map((/** @type {{id: string}} */ e) => e.id);
+    assert.deepStrictEqual(affected(), [relying], 'what the replacement affects is not what relies on the decision it replaced');
     sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ replaced/, null, JSON.stringify(made));
     const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
+    assert.deepStrictEqual(affected(), [], 'a confirmation that it still holds left the entry affected');
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
     const moved = ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
     const merged = ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
@@ -3879,6 +3882,14 @@ describe('pipeline simulation', () => {
     const unit = sim.run(['ledger', 'record', wu]);
     assert.deepStrictEqual(ids(unit.questions), [question, relying, moving, review]);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'product']).findings), [finding]);
+
+    // Claude's calls since the person last looked: a look moves the mark in
+    // the cache, and commits nothing.
+    const looked = stateGit(sim.dir, ['rev-parse', 'HEAD']);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu, 'note-window']).calls), [replacement]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'shown', wu, 'note-window']).calls), [replacement]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu]).calls), []);
+    assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']), looked, 'a look made a commit');
 
     const homingAt = `${wu}.discussion.space-homing`;
     const reached = ledger(['ask', homingAt], { ...made, text: 'Does a note stay on its Space?' });

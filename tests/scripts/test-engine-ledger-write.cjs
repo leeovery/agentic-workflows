@@ -408,7 +408,7 @@ describe('content and links', () => {
     refused('hold', NOTE, ['--entry', question], {}, /^ledger hold needs --after <id> — Usage: engine ledger hold <work-unit>\.<phase>\[\.<topic>\] --entry <id> --after <id>/);
     refuses(dir, ['ledger', 'ask'], { env: SESSION, stdin: JSON.stringify(content) });
     refused('ask', NOTE, [SPACE], content, /^Usage: engine ledger ask /);
-    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product\|late-check> …\nledger ask [^]*\nledger record [^]*\nledger late-check /);
+    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product\|affected\|since\|shown\|late-check> …\nledger ask [^]*\nledger record [^]*\nledger shown [^]*\nledger late-check /);
   });
 
   it('resolves each link from any prefix of four characters or more to the full id, and shows an id by its shortest prefix no other id shares', () => {

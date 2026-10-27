@@ -485,8 +485,9 @@ function runManifest(call, argv) {
 // never runCli's: around its fold of the ledger, the append and the commit
 // alone, so what its request alone refuses never waits on a peer. Each read
 // verb (domain/ledger-read.cjs) answers a projection of the ledger as JSON,
-// holding no lock. The late one-decision check (domain/ledger-late-check.cjs)
-// is boot's detached job, taking the lock for each result it records.
+// holding no lock but `shown`, which holds the last-looked mark's, in the
+// cache. The late one-decision check (domain/ledger-late-check.cjs) is
+// boot's detached job, taking the lock for each result it records.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */

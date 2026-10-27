@@ -14,6 +14,8 @@
 //   nor postponed: the map row's own mark, which a cancel or a postpone sets
 //   and a reactivate, or the pull back into its own epic, clears. An entry
 //   made at the unit's level carries no topic, and its unit alone decides.
+// - A unit is finished once its status reads completed; until then it is
+//   still under way.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -81,4 +83,19 @@ function liveness(root) {
   };
 }
 
-module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness };
+/**
+ * Whether a unit is finished as the project's manifests say it now: a reader
+ * of a unit's name, each manifest read once, however many entries ask.
+ * @param {string} root the project's state root
+ * @returns {(unit: string) => boolean}
+ */
+function finishedUnits(root) {
+  /** @type {Map<string, boolean>} */
+  const finished = new Map();
+  return (unit) => {
+    if (!finished.has(unit)) finished.set(unit, manifestOf(root, unit)?.status === 'completed');
+    return /** @type {boolean} */ (finished.get(unit));
+  };
+}
+
+module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits };

@@ -9,15 +9,15 @@
 // The fold keeps, of each id the ledger holds, what the reads decide by and
 // never what they show: the event that wrote it; the kind of entry it is, a
 // replacement taking the kind it stands for, or none for an event that is no
-// entry; the unit and topic it was written on; the first entry of its chain;
-// its links; every entry linking back to it — the replacements naming it,
-// the merges that took it as a duplicate, the entries answering it, the
-// merges of it, the questions part of it (5.3.11), the confirmations that it
-// still holds, and on the first entry of a question's chain, the moves of
-// any wording; and where its line sits, so a read shows an entry by reading
-// that one line again. It keeps one thing a read shows that the entry's line
-// never holds: what the late one-decision check last found of a decision
-// that landed unchecked (16.19.8).
+// entry; who made it; the unit and topic it was written on; the first entry
+// of its chain; its links; every entry linking back to it — the
+// replacements naming it, the merges that took it as a duplicate, the
+// entries answering it, the merges of it, the questions part of it
+// (5.3.11), the confirmations that it still holds, and on the first entry of
+// a question's chain, the moves of any wording; and where its line sits, so
+// a read shows an entry by reading that one line again. It keeps one thing a
+// read shows that the entry's line never holds: what the late one-decision
+// check last found of a decision that landed unchecked (16.19.8).
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -54,7 +54,8 @@
 //   before it leading nowhere.
 // - The current form of an entry: the current entries its chain leads to,
 //   down every live replacement, and through each merge that holds to the
-//   entry the duplicate was merged into.
+//   entry the duplicate was merged into; and the live replacements met on
+//   the way, which are what changed it.
 // - A question's current answer: every current entry naming it or any
 //   earlier wording of it, so a replaced sibling never touches the others
 //   and a rewording keeps its answers (5.3.13).
@@ -94,6 +95,7 @@ const { entryKind } = require('./ledger-events.cjs');
  * @typedef {{
  *   event: string,
  *   kind: EntryKind|null,
+ *   by: string|null,
  *   unit: string,
  *   topic: string|null,
  *   root: string,
@@ -169,6 +171,7 @@ const ID_FACTS = {
     facts.set(id, {
       event: /** @type {string} */ (event.event),
       kind,
+      by: typeof event.by === 'string' ? event.by : null,
       unit: /** @type {string} */ (event.unit),
       topic: idOrNull(event.topic),
       root: event.event === 'replaced' ? named(facts, event.replaces).root : id,
@@ -300,6 +303,18 @@ function intoOf(folded, merge) {
 }
 
 /**
+ * Where `id`'s chain goes one step on while the merges `holding` hold: every
+ * live replacement naming it, or, while none does, the entry each holding
+ * merge that took it as a duplicate went into.
+ * @param {Folded} folded @param {ReadonlySet<string>} holding @param {string} id
+ * @returns {string[]}
+ */
+function nextOf(folded, holding, id) {
+  const replacers = liveReplacers(folded, id);
+  return replacers.length > 0 ? replacers : factsOf(folded, id).merged_by.filter((m) => holding.has(m)).map((m) => intoOf(folded, m));
+}
+
+/**
  * The current entries `id` leads to while the merges `holding` hold: itself
  * where it is a live entry nothing sets aside; else those of every live
  * replacement naming it, or, while none does, of the entry each holding
@@ -311,9 +326,7 @@ function intoOf(folded, merge) {
 function leadsTo(folded, holding, id, seen) {
   if (seen.has(id)) return [];
   seen.add(id);
-  const replacers = liveReplacers(folded, id);
-  const merges = factsOf(folded, id).merged_by.filter((m) => holding.has(m));
-  const next = replacers.length > 0 ? replacers : merges.map((m) => intoOf(folded, m));
+  const next = nextOf(folded, holding, id);
   if (next.length === 0) return factsOf(folded, id).kind !== null && isLive(folded, id) ? [id] : [];
   return [...new Set(next.flatMap((n) => leadsTo(folded, holding, n, seen)))];
 }
@@ -397,6 +410,29 @@ function isCurrent(folded, id) {
  */
 function currentsOf(folded, id) {
   return leadsTo(folded, holdingMerges(folded), id, new Set());
+}
+
+/**
+ * The live replacements `id`'s chain meets while the merges `holding` hold,
+ * on its way to its current forms. An entry met twice adds nothing.
+ * @param {Folded} folded @param {ReadonlySet<string>} holding @param {string} id @param {Set<string>} seen
+ * @returns {string[]}
+ */
+function replacementsDown(folded, holding, id, seen) {
+  if (seen.has(id)) return [];
+  seen.add(id);
+  return [...liveReplacers(folded, id), ...nextOf(folded, holding, id).flatMap((next) => replacementsDown(folded, holding, next, seen))];
+}
+
+/**
+ * What changed `id`: the live replacements down its chain to its current
+ * forms, past each merge that holds, a merge changing nothing — a duplicate
+ * gives the same answer (5.5.5). None while it is current.
+ * @param {Folded} folded @param {string} id
+ * @returns {string[]}
+ */
+function replacementsOf(folded, id) {
+  return [...new Set(replacementsDown(folded, holdingMerges(folded), id, new Set()))];
 }
 
 /** The confirmations that `id` still holds, made where it is live. @param {Folded} folded @param {string} id */
@@ -622,6 +658,6 @@ function productOf(folded) {
 }
 
 module.exports = {
-  ID_FACTS, readFolded, foldLedger, factsOf, standingOf, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, holdsOf, replacedChain,
-  foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, productOf,
+  ID_FACTS, readFolded, foldLedger, factsOf, madeOn, standingOf, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
+  replacedChain, foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, productOf,
 };
