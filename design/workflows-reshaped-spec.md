@@ -1162,7 +1162,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.S33 Given a project on two machines, when a topic's map shows in a conversation on one, then that machine's `.cache/{unit}/last-looked.json` moves to the newest entry shown and the state branch gains no commit; on the other machine, "since you last looked" still counts from its own last look. (5.8.14, 5.8.15)
 
-5.S34 Given the one-decision check cannot run, when an entry is written, then it lands marked unchecked; when the next start checks it and finds it holds one rule, the entry stands checked; when it finds several, the entry is put to its topic to be split by replacement and nothing already landed is changed. (5.5.2, 16.19.8)
+5.S34 Given the one-decision check cannot run, when an entry is written, then it lands marked unchecked; when the next start checks it, then the result is recorded beside the entry and the entry's line is byte for byte unchanged; given the check finds it holds several rules, then its record shows it flagged. (5.5.2, 5.4.1, 16.19.8)
 
 ## 6. The engine's doors
 
@@ -6469,7 +6469,7 @@ Comment → Tell me how to word it
 
 16.19.7 A decision model (Jev, Clef) is not in the release. One is offered later, as the person's choice at setup, only once a rerun of the same scripts on a new version shows it labels as well as a Claude call. When it is offered: each label names the labeller that wrote it, and a switch relabels the log from the questions' text, so the counts follow. Kept for that day: neutral wording; a threshold per question from the person's labels by the lower-bound rule, checked on held-out items; a per-question signal refining the per-kind counts last; the loop adjusting only on evidence larger than noise (§27). [R28, plan 4.8; the person 2026-10-18: "we can very much let the user decide"]
 
-16.19.8 When the labelling call fails, or no login serves it, the question asks the person; a typed gate answer the call cannot read stands as typed text; a ledger entry that fails the one-decision check is sent back to be split before it lands (5.5.3). Where the one-decision check cannot run — no login serves it, a rate limit, a timeout — the entry lands marked unchecked and is checked at the next start, so recording never stops for the call; one the late check finds holding several rules is put to its topic, to be split by replacement. [R24, R28; Claude's derivation, O63; the person 2026-10-14; Claude's derivation 2026-10-25: a check that cannot run never stops an entry being recorded; Claude's derivation 2026-10-27: a landed entry changes only by replacement]
+16.19.8 When the labelling call fails, or no login serves it, the question asks the person; a typed gate answer the call cannot read stands as typed text; a ledger entry that fails the one-decision check is sent back to be split before it lands (5.5.3). Where the one-decision check cannot run — no login serves it, a rate limit, a timeout — the entry lands marked unchecked and is checked at the next start, so recording never stops for the call; what the late check finds is recorded beside the entry, never by changing it, and an entry it finds holding several rules shows flagged wherever its record is read. [R24, R28; Claude's derivation, O63; the person 2026-10-14; Claude's derivation 2026-10-25: a check that cannot run never stops an entry being recorded; Claude's derivation 2026-10-27: a landed entry is never rewritten, and a split by replacement would take a reason 5.6.2 does not have and mark what relies on it as affected]
 
 16.19.9 Left to the builder: the labeller's effort, as the measured raw form ran it (`trust/label_raw.py`). [Claude's sort, B1]
 
@@ -11610,7 +11610,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 ### 29.3 The ledger
 
-29.3.1 Step 1's second part builds the ledger: the events and their schemas, ids, the append-only check, the write hook, and the projections — the record, the map, the product record, "since you last looked", and the entries a replacement affects (§5). [plan 11.2; Claude's proposal; the verdict queue moved to 29.19, Claude's derivation 2026-10-27: verdicts are trust-log events (16.10.9), and nothing writes one before 29.19]
+29.3.1 Step 1's second part builds the ledger: the events and their schemas, ids, the append-only check, the write hook, and the projections — the record, the map, the product record, "since you last looked", the entries a replacement affects, and the verdict queue (§5). [plan 11.2; Claude's proposal]
 
 29.3.2 It builds the one-thing-per-entry check, judged by a separate Claude call as an entry is written (5.5, 16.19). [plan 11.2, plan 4.8; Claude's proposal]
 
@@ -11824,7 +11824,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 ### 29.19 The ask rule
 
-29.19.1 Step 3 builds the ask rule: the arithmetic, the labeller as a raw call (16.19), the verdict page and the verdict queue (5.8.10), blind questions, convergence, the matrix screen, replay tuning, and the record of the person with its care entries (§16). [plan 11.4; Claude's proposal]
+29.19.1 Step 3 builds the ask rule: the arithmetic, the labeller as a raw call (16.19), the verdict page, blind questions, convergence, the matrix screen, replay tuning, and the record of the person with its care entries (§16). [plan 11.4; Claude's proposal]
 
 29.19.2 From here the decision point asks by the rule, no longer every call Claude has a lean on (29.5.2). [plan 11.2, plan 11.4; Claude's proposal]
 
