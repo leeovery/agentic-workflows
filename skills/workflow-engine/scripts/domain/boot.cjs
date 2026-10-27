@@ -53,7 +53,7 @@ const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
-const { commitPathspecScoped, commitStateScoped } = require('./commit.cjs');
+const { commitStateScoped } = require('./commit.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { placeState } = require('./state-checks.cjs');
 const { catchUpState } = require('./state-merge.cjs');
@@ -61,11 +61,10 @@ const { keepStateIgnored } = require('./code-trace.cjs');
 const { githubRuleOffered } = require('./github-rule.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
-const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, commitSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { dropPosition } = require('./position.cjs');
-const { SETTINGS_SPEC } = require('./settings.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 
@@ -324,37 +323,24 @@ function runMigrations(cwd, warnings) {
 }
 
 /**
- * Commit a file boot wrote, confined to it. The write is already on disk, so
- * a commit git refuses is a warning, never a block.
- * @param {string} cwd @param {string} spec @param {string} message
- * @param {string} failure the warning's lead @param {string[]} warnings
- */
-function commitPlumbing(cwd, spec, message, failure, warnings) {
-  try {
-    commitPathspecScoped(cwd, spec, message);
-  } catch (err) {
-    warnings.push(`${failure}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/**
  * Keep the session hooks in the project's settings — SessionEnd's `presence
  * cleanup` and `conversation end` for every project, `session cleanup` and
  * SessionStart's `session resume` while labels are on — so a checkout that
  * predates them, or lost them to a hand edit, gets them back; committed
- * where `commit` says so. The opt-in read and the write share the project
- * lock: a `label-config` landing between them would have this boot strip
- * the hook it just installed. A file that cannot be read is a warning,
- * never a block.
+ * where `commit` says so, this boot's write or one an earlier boot could not
+ * commit. The opt-in read and the write share the project lock: a
+ * `label-config` landing between them would have this boot strip the hook
+ * it just installed. A file that cannot be read is a warning, never a block.
  * @param {string} cwd @param {boolean} commit @param {string[]} warnings
  * @returns {boolean} this boot wrote the hooks
  */
 function installSessionHooks(cwd, commit, warnings) {
-  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, workflows: true }));
+  const { want, sync } = withProjectLock(cwd, () => {
+    const wanted = { session: resolveEnabled(cwd) === true, workflows: true };
+    return { want: wanted, sync: syncSessionHooks(cwd, wanted) };
+  });
   if (sync.error) warnings.push(`session hooks not installed: ${sync.error}`);
-  if (sync.changed && commit) {
-    commitPlumbing(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
-  }
+  if (commit && !sync.error) commitSessionHooks(cwd, want, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
   return sync.changed;
 }
 

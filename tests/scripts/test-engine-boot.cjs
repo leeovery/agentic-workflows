@@ -451,11 +451,10 @@ describe('engine boot', () => {
   it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
     const empty = harness.initRepo(path.join(fix.root, 'empty'));
     createState(path.join(empty, '.leeway'));
-    // The hooks and the state's ignore line already there, uncommitted:
-    // boot's plumbing would otherwise make the root commit — the history
-    // this test needs absent.
-    writeFile(empty, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-    writeFile(empty, '.gitignore', '.leeway/\n');
+    // A hook refusing every code commit: boot's plumbing would otherwise
+    // make the root commit — the history this test needs absent.
+    writeFile(empty, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+    fs.chmodSync(path.join(empty, '.git/hooks/pre-commit'), 0o755);
     const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal, null);

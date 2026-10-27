@@ -61,10 +61,11 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
-const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { commitStateTail, commitTailPathspec, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
-const { SETTINGS_SPEC, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
+const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { operationInProgress } = require('../kernel/git.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, isPlace, dropPosition, placeLine } = require('./position.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 
@@ -175,22 +176,16 @@ function reconcileEventGroups(groups, commands, matcher) {
 }
 
 /**
- * Ensure the session hooks in the project's `.claude/settings.json` match
- * what is wanted: SessionEnd carries `session cleanup` iff `session`, and
- * `presence cleanup` and `conversation end` iff `workflows`; SessionStart
- * carries `session resume` iff `session` — each event reconciled on its
- * own, every other key (permissions, other events, foreign groups and their
- * matchers) preserved, an event emptied by a removal gone. A settings file that does
- * not parse is left untouched and reported rather than thrown: neither
- * caller may fail over hook plumbing it cannot read.
- * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
- * @returns {import('./settings.cjs').SettingsSync}
+ * A settings document with the session hooks as wanted: SessionEnd carries
+ * `session cleanup` iff `session`, and `presence cleanup` and `conversation
+ * end` iff `workflows`; SessionStart carries `session resume` iff `session`
+ * — each event reconciled on its own, every other key (permissions, other
+ * events, foreign groups and their matchers) preserved, an event emptied by
+ * a removal gone. Null where the document already carries exactly those.
+ * @param {Record<string, any>} settings @param {{session: boolean, workflows: boolean}} want
+ * @returns {Record<string, any>|null}
  */
-function syncSessionHooks(cwd, want) {
-  if (settingsHeld()) return { changed: false };
-  const read = readProjectSettings(cwd);
-  if (read.error) return { changed: false, error: read.error };
-  const settings = read.settings;
+function withSessionHooks(settings, want) {
   const hooks = isObject(settings.hooks) ? settings.hooks : {};
   const nextHooks = { ...hooks };
   let changed = false;
@@ -201,12 +196,55 @@ function syncSessionHooks(cwd, want) {
     if (groups.length > 0) nextHooks[event] = groups;
     else delete nextHooks[event];
   }
-  if (!changed) return { changed: false };
+  if (!changed) return null;
   const next = { ...settings };
   if (Object.keys(nextHooks).length > 0) next.hooks = nextHooks;
   else delete next.hooks;
+  return next;
+}
+
+/**
+ * What the project's settings file reads with the session hooks as wanted,
+ * made from `text` — its committed content, null where there is none; null
+ * where `text` already carries exactly those, or does not parse.
+ * @param {string|null} text @param {{session: boolean, workflows: boolean}} want
+ * @returns {string|null}
+ */
+function sessionHooksText(text, want) {
+  const read = text === null ? { settings: {} } : parseSettings(text);
+  const next = read.error ? null : withSessionHooks(read.settings, want);
+  return next === null ? null : jsonText(next);
+}
+
+/**
+ * Bring the session hooks in the project's `.claude/settings.json` in line
+ * with what is wanted (`withSessionHooks`). Not while git is in the middle
+ * of an operation in the code tree, where a write would wait uncommitted
+ * inside it: the next call writes them. A settings file that does not parse
+ * is left untouched and reported rather than thrown: neither caller may
+ * fail over hook plumbing it cannot read.
+ * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
+ * @returns {import('./settings.cjs').SettingsSync}
+ */
+function syncSessionHooks(cwd, want) {
+  if (settingsHeld() || operationInProgress(codeRoot(cwd)) !== null) return { changed: false };
+  const read = readProjectSettings(cwd);
+  if (read.error) return { changed: false, error: read.error };
+  const next = withSessionHooks(read.settings, want);
+  if (next === null) return { changed: false };
   writeProjectSettings(cwd, next);
   return { changed: true };
+}
+
+/**
+ * Commit the workflows' own change to the session hooks — this call's
+ * write, or one an earlier call could not commit (`commitOwnChange`).
+ * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
+ * @param {string} message @param {string} failure the warning's lead where git refuses @param {string[]} warnings
+ */
+function commitSessionHooks(cwd, want, message, failure, warnings) {
+  if (settingsHeld()) return;
+  commitOwnChange(cwd, SETTINGS_SPEC, (text) => sessionHooksText(text, want), message, failure, warnings);
 }
 
 /**
@@ -223,10 +261,11 @@ function recordLabelChoice(cwd, value) {
   setLabelConfig(cwd, value);
   /** @type {string[]} */
   const warnings = [];
-  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: value, workflows: true }));
+  const want = { session: value, workflows: true };
+  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, want));
   if (sync.error) warnings.push(`session hooks not synced: ${sync.error}`);
   commitStateTail(cwd, PROJECT_MANIFEST_SPEC, 'chore: record session-label choice', warnings);
-  if (sync.changed) commitTailPathspec(cwd, SETTINGS_SPEC, 'chore: record session-label choice', warnings);
+  if (!sync.error) commitSessionHooks(cwd, want, 'chore: record session-label choice', 'commit failed', warnings);
   return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
 }
 
@@ -602,5 +641,5 @@ function repairSessionLabels(cwd) {
 
 module.exports = {
   applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
-  resolveEnabled, labelConfigStatus, syncSessionHooks, carriesOurHooks, recordLabelChoice,
+  resolveEnabled, labelConfigStatus, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
 };

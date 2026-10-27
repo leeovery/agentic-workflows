@@ -79,15 +79,16 @@ function projectName(cwd) {
  * @param {string} root @param {string} remote
  */
 function restoreUnderFolder(root, remote) {
+  const moveAside = `move ${root} aside, keeping what it holds, and boot again: ${STATE_BRANCH} is restored from ${remote}`;
   const at = folderCommit(root);
   if (at === null) {
     throw new Error(
       `the state folder ${root} is still there, but ${STATE_BRANCH} is gone from this clone, and its log no longer says which commit ` +
-      `the folder's files stand at, so boot wrote nothing — move ${root} aside, keeping what it holds, and boot again: ` +
-      `${STATE_BRANCH} is restored from ${remote}`,
+      `the folder's files stand at, so boot wrote nothing — ${moveAside}`,
     );
   }
-  refuseCodeHistory(root, at, `the commit the state folder ${root} stands at`, BOOT_REFUSES);
+  refuseCodeHistory(root, at, `the commit the state folder ${root} stands at`,
+    `so boot makes no ${STATE_BRANCH} there, and wrote nothing. To carry on, ${moveAside}`);
   createStateBranchAt(root, at);
 }
 

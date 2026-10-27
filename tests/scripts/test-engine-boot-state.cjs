@@ -394,13 +394,82 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(path.join(code, '.leeway')));
   });
 
+  describe('the trace\'s commit, owed until it lands', () => {
+    /** A hook in the main checkout refusing every code commit, and its removal. @param {string} main */
+    function refusingCommits(main) {
+      const hook = path.join(main, '.git/hooks/pre-commit');
+      write(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+      fs.chmodSync(hook, 0o755);
+      return () => fs.rmSync(hook);
+    }
+
+    it('a commit git refused is made by the next boot — the line and the hooks both', () => {
+      const main = codeProject();
+      const allow = refusingCommits(main);
+      const head = tip(main, 'main');
+
+      const refused = boot(main);
+
+      assert.strictEqual(refused.state, 'ready');
+      assert.deepStrictEqual(refused.warnings.map((w) => w.split(':')[0]), [
+        `the state's ignore line is in ${path.join(main, '.gitignore')} but was not committed`,
+        'project settings commit failed',
+      ]);
+      assert.strictEqual(tip(main, 'main'), head);
+      allow();
+
+      assert.deepStrictEqual(boot(main).warnings, []);
+
+      assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
+        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+      assert.strictEqual(git(main, ['status', '--porcelain']), '');
+    });
+
+    it('a settings file holding the person\'s own uncommitted edit beside the hooks is left as it is, with a warning — their edit is never committed under the workflows\' name', () => {
+      const main = codeProject();
+      const allow = refusingCommits(main);
+      boot(main);
+      allow();
+      const settings = JSON.parse(read(main, '.claude/settings.json'));
+      write(main, '.claude/settings.json', JSON.stringify({ model: 'opus', ...settings }, null, 2));
+      const theirs = read(main, '.claude/settings.json');
+
+      const res = boot(main);
+
+      assert.deepStrictEqual(res.warnings, [
+        '.claude/settings.json holds changes of yours not yet committed, so the workflows\' own change to it was not committed either — ' +
+        'commit yours, and the next boot commits theirs',
+      ]);
+      assert.strictEqual(read(main, '.claude/settings.json'), theirs);
+      assert.strictEqual(git(main, ['ls-tree', '--name-only', 'HEAD', '--', '.claude']), '', 'nothing of the file committed');
+      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .leeway/, the workflows state', 'the line, the workflows\' alone, committed');
+    });
+
+    it('a .gitignore of the person\'s never committed takes the line, and is left for them to commit, with a warning', () => {
+      const main = codeProject();
+      write(main, '.gitignore', 'node_modules\n');
+      const head = tip(main, 'main');
+
+      const res = boot(main);
+
+      assert.strictEqual(read(main, '.gitignore'), 'node_modules\n.leeway/\n');
+      assert.ok(res.warnings.includes(
+        '.gitignore holds changes of yours not yet committed, so the workflows\' own change to it was not committed either — ' +
+        'commit yours, and the next boot commits theirs',
+      ));
+      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install workflow session hooks');
+    });
+  });
+
   describe('while git is in the middle of a rebase', () => {
-    /** A project set up, its ignore line dropped on a later commit, then a rebase stopped part-way in the main checkout. */
+    /** A project set up, its ignore line and hooks dropped on a later commit, then a rebase stopped part-way in the main checkout. */
     function midRebase() {
       const main = codeProject();
       boot(main);
       fs.writeFileSync(path.join(main, '.gitignore'), '');
-      git(main, ['commit', '-q', '-am', 'drop the line']);
+      fs.rmSync(path.join(main, '.claude'), { recursive: true });
+      git(main, ['add', '-A']);
+      git(main, ['commit', '-q', '-m', 'drop the trace']);
       write(main, 'x.txt', 'x\n');
       git(main, ['add', 'x.txt']);
       git(main, ['commit', '-q', '-m', 'x']);
@@ -409,7 +478,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       return main;
     }
 
-    it('a boot in the main checkout leaves the line unwritten and commits nothing there — the next boot after it writes the line', () => {
+    it('a boot in the main checkout writes neither the line nor the hooks and commits nothing there, leaving nothing dirty — the next boot after it commits both', () => {
       const main = midRebase();
       const head = tip(main, 'HEAD');
 
@@ -417,11 +486,14 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       assert.strictEqual(tip(main, 'HEAD'), head, 'nothing committed into the rebase');
       assert.strictEqual(read(main, '.gitignore'), '');
+      assert.ok(!fs.existsSync(path.join(main, '.claude')), 'no hooks waiting to be swept into the rebase');
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
       git(main, ['rebase', '--abort']);
-      boot(main);
+      assert.deepStrictEqual(boot(main).warnings, []);
       assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
-      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .leeway/, the workflows state');
+      assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
+        ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
+      assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
     it('a boot from a code worktree commits nothing in the main checkout', () => {
@@ -670,6 +742,22 @@ describe('a lost local branch (4.S8)', () => {
     assert.strictEqual(git(root, ['status', '--porcelain']), '');
   });
 
+  it('deleted under a folder with a code branch checked out, is refused: the commit the folder stands at holds code history — nothing written, no ref made', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main, root } = setUp({ remote: bare });
+    git(root, ['checkout', '-q', '--ignore-other-worktrees', 'main']);
+    git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+    const before = untouched(main, bare);
+
+    assert.strictEqual(bootRefused(main), [
+      `the commit the state folder ${root} stands at holds code history — it shares commits with main, where the state branch is a line of its own — `,
+      `so boot makes no leeway-state there, and wrote nothing. To carry on, move ${root} aside, keeping what it holds, and boot again: `,
+      'leeway-state is restored from origin',
+    ].join(''));
+
+    assert.deepStrictEqual(untouched(main, bare), before);
+  });
+
   it('deleted under its worktree whose HEAD log is gone, is refused: boot cannot tell where the folder stands, and writes nothing', () => {
     const bare = bareRemote(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
@@ -883,6 +971,13 @@ function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.cl
   return main;
 }
 
+/** Lose the state everywhere: its worktree and branch here, its branch on the remote. @param {string} main @param {string} bare */
+function loseState(main, bare) {
+  git(main, ['worktree', 'remove', '--force', '--force', path.join(main, '.leeway')]);
+  git(main, ['branch', '-D', STATE_BRANCH]);
+  git(bare, ['branch', '-D', STATE_BRANCH]);
+}
+
 /** What a stopped boot must leave as it was. @param {string} main @param {string|null} bare */
 function untouched(main, bare) {
   return {
@@ -915,6 +1010,63 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     assert.strictEqual(boot(main).state, 'lost');
     assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+  });
+
+  describe('the trace read across the repository, not one checkout (4.5.2)', () => {
+    it('set up from a code worktree, its trace on that branch alone: a boot in the main checkout stops at the lost state, nothing written', () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      const main = codeProject({ remote: bare });
+      const code = path.join(world, 'portal-feature');
+      git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
+      assert.strictEqual(boot(code).state, 'ready');
+      loseState(main, bare);
+      assert.ok(!fs.existsSync(path.join(main, '.gitignore')), 'the main checkout\'s branch holds no trace');
+      const before = untouched(main, bare);
+
+      assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+
+      assert.deepStrictEqual(untouched(main, bare), before);
+    });
+
+    it('the main checkout on a branch cut before setup, the trace on a branch checked out nowhere: stops at the lost state, nothing written', () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      const main = lostProject({ remote: bare });
+      git(main, ['checkout', '-q', '-b', 'before-setup', 'main~1']);
+      const before = untouched(main, bare);
+
+      assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+
+      assert.deepStrictEqual(untouched(main, bare), before);
+    });
+
+    it('the trace on a remote-tracking branch alone: a clone whose own branches never carried it stops at the lost state, nothing written', () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      lostProject({ remote: bare });
+      const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
+      git(fresh, ['checkout', '-q', '-b', 'before-setup', 'origin/main~1']);
+      git(fresh, ['branch', '-q', '-D', 'main']);
+      const before = untouched(fresh, bare);
+
+      assert.deepStrictEqual(boot(fresh), { ok: true, state: 'lost', warnings: [] });
+
+      assert.deepStrictEqual(untouched(fresh, bare), before);
+    });
+
+    it('a project with no trace on any branch, local or remote-tracking, nor in any tree checked out, is being set up', () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      const main = codeProject({ remote: bare });
+      git(main, ['checkout', '-q', '-b', 'feature']);
+      write(main, '.gitignore', 'node_modules\n');
+      write(main, '.claude/settings.json', JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: 'echo bye' }] }] } }));
+      git(main, ['add', '-A']);
+      git(main, ['commit', '-q', '-m', 'the person\'s own']);
+      git(main, ['push', '-q', 'origin', 'feature']);
+      git(main, ['checkout', '-q', 'main']);
+      git(main, ['worktree', 'add', '-q', path.join(world, 'portal-feature'), 'feature']);
+
+      assert.strictEqual(boot(main).state, 'ready');
+      assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+    });
   });
 
   it('a .worktreeinclude naming the state is no trace — no version of the workflows wrote such a line — so the project is being set up', () => {

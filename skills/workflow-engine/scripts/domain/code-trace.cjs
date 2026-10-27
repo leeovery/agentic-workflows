@@ -18,10 +18,14 @@
 //   repository keeps it in its own `.gitignore`, beside its own settings,
 //   where the trace is read: the exclude file does the ignoring, so the line
 //   reaches nothing outside the project. Never while git is in the middle of
-//   a merge, cherry-pick, revert or rebase there: the next boot writes it.
-//   The main checkout's `.gitignore` is read for the trace too, as a boot
-//   there writes it, so a session in a code worktree on a branch cut before
-//   setup still finds it.
+//   a merge, cherry-pick, revert or rebase there; a line written but not
+//   committed is committed by the next boot (domain/commit,
+//   `commitOwnChange`).
+// - Reading the trace: each boot leaves it on the branch its session had
+//   checked out, so no one checkout answers for the project. Where the state
+//   is missing everywhere, and only there, the trace is read across the
+//   repository: every tree checked out, and the tip of every branch, local
+//   and remote-tracking.
 //
 // The layout before the state branch — `.workflows/` on the code branch — is
 // read here too: its state moves onto `leeway-state` by the migration alone.
@@ -33,8 +37,8 @@ const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
-const { commitPathspecScoped } = require('./commit.cjs');
-const { readProjectSettings } = require('./settings.cjs');
+const { commitOwnChange } = require('./commit.cjs');
+const { SETTINGS_SPEC, parseSettings } = require('./settings.cjs');
 const { carriesOurHooks } = require('./session-label.cjs');
 
 const GITIGNORE = '.gitignore';
@@ -42,12 +46,12 @@ const STATE_IGNORE_LINE = `${STATE_DIR_NAME}/`;
 const STATE_EXCLUDE_LINE = `/${STATE_DIR_NAME}/`;
 const LEGACY_STATE_DIR = '.workflows';
 
-/** A file's lines, none where it cannot be read. @param {string} file @returns {string[]} */
-function linesOf(file) {
+/** A file's text, null where it cannot be read. @param {string} file @returns {string|null} */
+function textOf(file) {
   try {
-    return fs.readFileSync(file, 'utf8').split('\n');
+    return fs.readFileSync(file, 'utf8');
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -68,32 +72,79 @@ function ignoresState(line) {
 }
 
 /**
- * Append `line` to the ignore-syntax `file` where no line there ignores the
- * state folder whole, making the file and its folder where they are not
- * there. Answers whether it wrote.
- * @param {string} file @param {string} line
- * @returns {boolean}
+ * Ignore-syntax `content` with `line` appended, or null where a line there
+ * already ignores the state folder whole.
+ * @param {string} content @param {string} line
+ * @returns {string|null}
  */
-function keepLine(file, line) {
-  const content = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-  if (content.split('\n').some(ignoresState)) return false;
+function withLine(content, line) {
+  if (content.split('\n').some(ignoresState)) return null;
   const separator = content === '' || content.endsWith('\n') ? '' : '\n';
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `${content}${separator}${line}\n`);
-  return true;
+  return `${content}${separator}${line}\n`;
 }
 
 /**
- * Whether the code tree holds the workflows' trace: one of their hooks in
- * the project's settings, or a line naming the state in its `.gitignore` or
- * the main checkout's.
+ * Keep `line` in the ignore-syntax `file` (`withLine`), making the file and
+ * its folder where they are not there.
+ * @param {string} file @param {string} line
+ */
+function keepLine(file, line) {
+  const next = withLine(textOf(file) ?? '', line);
+  if (next === null) return;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, next);
+}
+
+/** Whether a file's text carries the trace, by the file it is, named from the project. */
+const TRACED = Object.freeze({
+  [GITIGNORE]: (/** @type {string} */ text) => text.split('\n').some(namesState),
+  [SETTINGS_SPEC]: (/** @type {string} */ text) => carriesOurHooks(parseSettings(text).settings),
+});
+
+/**
+ * Every distinct text `rel` holds at the tip of a branch, local or
+ * remote-tracking: one read per tip for where it stands, and one per
+ * distinct blob.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string} rel from the tree's top
+ * @returns {string[]}
+ */
+function textsAcrossBranches(git, rel) {
+  const tips = git.run(['for-each-ref', '--format=%(objectname)', 'refs/heads', 'refs/remotes']).split('\n').filter(Boolean);
+  if (tips.length === 0) return [];
+  const listed = git.run(['cat-file', '--batch-check=%(objectname) %(objecttype)'], { input: tips.map((tip) => `${tip}:${rel}\n`).join('') });
+  const blobs = new Set(listed.split('\n').map((entry) => entry.split(' ')).filter(([, type]) => type === 'blob').map(([sha]) => sha));
+  return [...blobs].map((sha) => git.run(['cat-file', 'blob', sha]));
+}
+
+/**
+ * Every text `rel` holds in a tree checked out: the main checkout's and
+ * every linked worktree's.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string} rel from the tree's top
+ * @returns {string[]}
+ */
+function textsCheckedOut(git, rel) {
+  return git.run(['worktree', 'list', '--porcelain']).split('\n')
+    .filter((entry) => entry.startsWith('worktree '))
+    .map((entry) => textOf(path.join(entry.slice('worktree '.length), rel)))
+    .filter((text) => text !== null);
+}
+
+/**
+ * Whether the repository holds the workflows' trace for the project: one of
+ * their hooks in its settings, or a line naming the state in its
+ * `.gitignore` — in a tree checked out, or at the tip of any branch, local
+ * or remote-tracking. It reads every branch, so it is asked only where the
+ * state is missing everywhere.
  * @param {string} cwd
  * @returns {boolean}
  */
 function holdsTrace(cwd) {
-  if (carriesOurHooks(readProjectSettings(cwd).settings)) return true;
-  const files = new Set([path.join(codeRoot(cwd), GITIGNORE), path.join(path.dirname(stateRoot(cwd)), GITIGNORE)]);
-  return [...files].some((file) => linesOf(file).some(namesState));
+  const git = isolatedGit(codeRoot(cwd));
+  const prefix = git.run(['rev-parse', '--show-prefix']).trim();
+  return Object.entries(TRACED).some(([spec, carries]) => {
+    const rel = `${prefix}${spec}`;
+    return textsCheckedOut(git, rel).some(carries) || textsAcrossBranches(git, rel).some(carries);
+  });
 }
 
 /**
@@ -127,28 +178,26 @@ function keepStateExcluded(cwd) {
 /**
  * Keep the state's ignore line, the trace, in the session's own code tree:
  * append it to its `.gitignore` where no line ignores the state folder
- * whole, and commit the file through the code door, confined to it — not
- * while git is in the middle of an operation there, which the next boot
- * waits out. The state stands without the line, so a file that cannot be
- * written, or a commit git refuses, is a warning.
+ * whole, and commit the workflows' own change to the file through the code
+ * door (`commitOwnChange`) — not while git is in the middle of an operation
+ * there, which the next boot waits out. The state stands without the line,
+ * so a file that cannot be written, or a commit git refuses, is a warning.
  * @param {string} cwd @param {string[]} warnings
- * @returns {boolean} this boot wrote the line
  */
 function keepStateIgnored(cwd, warnings) {
   const root = codeRoot(cwd);
+  if (operationInProgress(root) !== null) return;
   const file = path.join(root, GITIGNORE);
   try {
-    if (operationInProgress(root) !== null || !keepLine(file, STATE_IGNORE_LINE)) return false;
+    keepLine(file, STATE_IGNORE_LINE);
   } catch (err) {
     warnings.push(`the state's ignore line was not written to ${file}: ${err instanceof Error ? err.message : String(err)}`);
-    return false;
+    return;
   }
-  try {
-    commitPathspecScoped(root, GITIGNORE, `chore: ignore ${STATE_IGNORE_LINE}, the workflows state`);
-  } catch (err) {
-    warnings.push(`the state's ignore line is in ${file} but was not committed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  return true;
+  commitOwnChange(
+    root, GITIGNORE, (committed) => withLine(committed ?? '', STATE_IGNORE_LINE),
+    `chore: ignore ${STATE_IGNORE_LINE}, the workflows state`, `the state's ignore line is in ${file} but was not committed`, warnings,
+  );
 }
 
 module.exports = { holdsTrace, onLegacyLayout, keepStateExcluded, keepStateIgnored };

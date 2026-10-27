@@ -303,14 +303,17 @@ const OPERATION_MARKERS = [
 ];
 
 /**
- * The operation git is in the middle of, as `{operation, marker}`, or null.
- * The markers are the work tree's own, so a linked worktree reads its own.
+ * The operation git is in the middle of, as `{operation, marker}`, or null —
+ * as it is for a folder in no repository, where git holds nothing open. The
+ * markers are the work tree's own, so a linked worktree reads its own.
  * @param {string} cwd project root
  * @returns {{operation: string, marker: string}|null}
  */
 function operationInProgress(cwd) {
-  const markers = git(cwd, ['rev-parse', ...OPERATION_MARKERS.flatMap(([marker]) => ['--git-path', marker])]).trim().split('\n');
-  const open = OPERATION_MARKERS.find((_, i) => fs.existsSync(path.resolve(cwd, markers[i])));
+  const markers = tryGit(cwd, ['rev-parse', ...OPERATION_MARKERS.flatMap(([marker]) => ['--git-path', marker])]);
+  if (markers === null) return null;
+  const paths = markers.trim().split('\n');
+  const open = OPERATION_MARKERS.find((_, i) => fs.existsSync(path.resolve(cwd, paths[i])));
   return open ? { operation: open[1], marker: open[0] } : null;
 }
 
