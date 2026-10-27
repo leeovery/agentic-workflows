@@ -26,7 +26,10 @@
 //
 // A suite spawns a process only where the process is the subject: the real
 // CLI's pipe and exit behaviour, a child that must run concurrently (a lock
-// race), a script that is not the engine.
+// race), a script that is not the engine. A call that must wait on a lock
+// another holds runs in process, its attempts at the lock watched
+// (`lockAttempts`): the test lets the lock go at the call's own attempt,
+// never when a timer guesses the call has reached its wait.
 
 require('./hermetic-env.cjs');
 
@@ -239,11 +242,45 @@ function addSubmodule(dir, rel, source, { force = false } = {}) {
   return clone;
 }
 
+/**
+ * Each attempt this process makes at the lock `file` for the rest of the
+ * test — a claim linked into place, or a lock file opened exclusively —
+ * `made`, or `taken` where another holds it. `onTaken` runs at each attempt
+ * that finds it taken, given how many have, before the attempt answers.
+ * @param {import('node:test').TestContext} t @param {string} file
+ * @param {(taken: number) => void} [onTaken]
+ * @returns {Array<'made'|'taken'>}
+ */
+function lockAttempts(t, file, onTaken = () => {}) {
+  /** @type {Array<'made'|'taken'>} */
+  const attempts = [];
+  /** @param {'linkSync'|'openSync'} name @param {(args: any[]) => unknown} target */
+  const watch = (name, target) => {
+    const real = /** @type {(...args: any[]) => any} */ (fs[name]);
+    t.mock.method(fs, name, (/** @type {any[]} */ ...args) => {
+      if (target(args) !== file) return real(...args);
+      try {
+        const made = real(...args);
+        attempts.push('made');
+        return made;
+      } catch (err) {
+        if (/** @type {NodeJS.ErrnoException} */ (err).code !== 'EEXIST') throw err;
+        attempts.push('taken');
+        onTaken(attempts.filter((attempt) => attempt === 'taken').length);
+        throw err;
+      }
+    });
+  };
+  watch('linkSync', ([, to]) => to);
+  watch('openSync', ([at, flags]) => (flags === 'wx' ? at : null));
+  return attempts;
+}
+
 const { call, callAsync, ok, okSections, refuses, output } = harness();
 
 module.exports = {
   ENGINE, harness,
-  call, callAsync, ok, okSections, refuses, output,
+  call, callAsync, ok, okSections, refuses, output, lockAttempts,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
   STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, initRepo, githubOffline,
   setupGitFixture, setupFixtureAt, addSubmodule, cleanupFixture,

@@ -8,7 +8,13 @@
 // Proves the concurrency contract: every manifest writer holds the one
 // writer lock at the state's root — a live holder blocks the engine until it
 // lets go, a dead holder's claim is taken over at once, a read never waits,
-// and no lock file ever leaks into a transaction's commit.
+// and a transaction holds the lock across its commit.
+//
+// A race runs its contenders as children that wait at a barrier until every
+// one is ready, reports evidence that they met, and fails where they did
+// not: a race that never happened proves nothing. A call that waits on a
+// lock runs in process, and the test lets the lock go at the call's own
+// attempts (`lockAttempts`), never on a timer.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -18,14 +24,15 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const readline = require('readline');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/workflow-engine/scripts/engine.cjs');
 
-const { ENGINE, stateGit, commitAll, cleanupFixture, ok: engine } = harness;
+const { ENGINE, stateGit, commitAll, cleanupFixture, lockAttempts, ok: engine } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-io-');
 
@@ -63,9 +70,79 @@ const DEAD = JSON.stringify({ pid: 2147483646, pid_start: null });
 /** A claim this test's own process holds: alive, and never a child's. */
 const live = () => JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
 
-/** @param {number} ms */
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** A claim another live process holds: the one running this suite. */
+const peer = () => JSON.stringify({ pid: process.ppid, pid_start: processStartTime(process.ppid) });
+
+const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
+
+/**
+ * What every contender's script opens with: the kernel loaded, and its
+ * calls — `atBarrier()`, where it says it is ready and waits until every
+ * contender is; `report(r)`, its one line back, last; and
+ * `untilAllReported()`, where it waits, holding what it holds, until every
+ * contender has reported.
+ */
+const CONTENDER = [
+  "const fs = require('fs');",
+  `const io = require(${JSON.stringify(IO_PATH)});`,
+  "const atBarrier = () => { fs.writeSync(1, 'ready\\n'); fs.readSync(0, Buffer.alloc(1)); };",
+  "const report = (r) => fs.writeSync(1, JSON.stringify(r) + '\\n');",
+  'const untilAllReported = () => fs.readSync(0, Buffer.alloc(1));',
+].join('\n');
+
+/**
+ * One contender, a node child running `script`: the `lines` it prints;
+ * `printed(n)`, resolved once it has printed `n` of them or exited; and
+ * `done`, with its exit code, its stderr and its lines.
+ * @param {string} script @param {string[]} args @param {NodeJS.ProcessEnv} env
+ */
+function contender(script, args, env) {
+  const child = spawn(process.execPath, ['-e', script, ...args], { env });
+  child.stdin.on('error', () => {}); // one that has exited has no stdin left to write to
+  /** @type {string[]} */
+  const lines = [];
+  let stderr = '';
+  let exited = false;
+  /** @type {Set<() => void>} */
+  const waiters = new Set();
+  const changed = () => { for (const wake of waiters) wake(); };
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  readline.createInterface({ input: child.stdout }).on('line', (line) => { lines.push(line); changed(); });
+  /** @type {Promise<{code: number|null, stderr: string, lines: string[]}>} */
+  const done = new Promise((resolve) => child.on('close', (code) => { exited = true; changed(); resolve({ code, stderr, lines }); }));
+  /** @param {number} count @returns {Promise<void>} */
+  const printed = (count) => new Promise((resolve) => {
+    const check = () => {
+      if (lines.length < count && !exited) return;
+      waiters.delete(check);
+      resolve();
+    };
+    waiters.add(check);
+    check();
+  });
+  return { child, lines, printed, done };
+}
+
+/**
+ * Race `n` contenders, each running CONTENDER and then `body` with argv
+ * `args`. Each barrier lifts once every one has reached it, so they go on
+ * together however slowly each got there; their stdin closes once every
+ * one has reported. Answers each one's report.
+ * @param {number} n @param {string} body @param {string[]} args
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {Promise<any[]>}
+ */
+async function contend(n, body, args, env = process.env) {
+  const runs = Array.from({ length: n }, () => contender(`${CONTENDER}\n${body}`, args, env));
+  for (let line = 1; ; line++) {
+    await Promise.all(runs.map((run) => run.printed(line)));
+    if (!runs.every((run) => run.lines[line - 1] === 'ready')) break;
+    for (const run of runs) run.child.stdin.write('g');
+  }
+  for (const run of runs) run.child.stdin.end();
+  const results = await Promise.all(runs.map((run) => run.done));
+  for (const { code, stderr } of results) assert.strictEqual(code, 0, stderr);
+  return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
 }
 
 describe('manifest-io — shared lock constants and IO contract', () => {
@@ -144,13 +221,12 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.ok(!fs.existsSync(path.join(dir, 'ghost')), 'no directory conjured for the lock file');
   });
 
-  it('the manifest locks run inside a verb\'s writer lock without waiting on it', () => {
+  it('the manifest locks run inside a verb\'s writer lock without claiming it again', (t) => {
     fs.mkdirSync(path.join(dir, 'unit'));
-    const started = Date.now();
-    const ran = io.withWriterLock(dir, () => io.withWorkUnitLock(dir, 'unit', () => io.withProjectLock(dir, () => 'ran')),
-      { timeoutMs: 300 });
+    const attempts = lockAttempts(t, path.join(dir, '.lock'), () => { throw new Error('a nested hold claimed the lock again'); });
+    const ran = io.withWriterLock(dir, () => io.withWorkUnitLock(dir, 'unit', () => io.withProjectLock(dir, () => 'ran')));
     assert.strictEqual(ran, 'ran');
-    assert.ok(Date.now() - started < 300, `the nested holds waited ${Date.now() - started}ms`);
+    assert.deepStrictEqual(attempts, ['made'], 'one claim, the outer hold\'s');
     assert.ok(!fs.existsSync(path.join(dir, '.lock')));
   });
 
@@ -197,19 +273,14 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), String(process.pid), 'fresh lock never touched');
   });
 
-  it('a contended timeout sleeps instead of spinning — CPU stays far below wall time', () => {
-    fs.mkdirSync(path.join(dir, 'unit'));
-    const lock = path.join(dir, 'unit', '.lock');
+  it('a contended wait sleeps between attempts instead of spinning: no more than one attempt a retry interval', (t) => {
+    const lock = path.join(dir, '.lock');
     fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
-    const cpu0 = process.cpuUsage();
-    const wall0 = Date.now();
-    assert.throws(() => io.acquireLockFile(lock, 'Timed out', 400));
-    const wallMs = Date.now() - wall0;
-    const cpuMs = (() => { const c = process.cpuUsage(cpu0); return (c.user + c.system) / 1000; })();
-    // It blocks for the full timeout…
-    assert.ok(wallMs >= 350, `timed out too early: ${wallMs}ms`);
-    // …but a real sleep burns almost no CPU; a busy-wait would burn ~all of it.
-    assert.ok(cpuMs < wallMs * 0.5, `CPU ${cpuMs.toFixed(1)}ms of ${wallMs}ms wall — busy-wait regression?`);
+    const attempts = lockAttempts(t, lock);
+    const timeoutMs = 250;
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', timeoutMs), /Timed out/);
+    assert.deepStrictEqual([...new Set(attempts)], ['taken'], 'every attempt found the lock taken');
+    assert.ok(attempts.length <= timeoutMs / io.LOCK_RETRY_MS + 1, `${attempts.length} attempts in ${timeoutMs}ms — a busy wait`);
   });
 
   it('write sweeps orphaned temp files past TMP_STALE_MS and spares fresh ones', () => {
@@ -229,88 +300,51 @@ describe('manifest-io — shared lock constants and IO contract', () => {
 });
 
 describe('stale-lock break is atomic — one winner, mutual exclusion holds', () => {
-  const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
   let dir;
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-break-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  /** Spawn a node child running `script` with argv, resolving with its exit code. */
-  function child(script, args) {
-    const proc = spawn('node', ['-e', script, ...args]);
-    let stderr = '';
-    proc.stderr.on('data', (chunk) => { stderr += chunk; });
-    return new Promise((resolve) => proc.on('exit', (code) => resolve({ code, stderr })));
-  }
-
-  it('N contenders racing the break primitive: exactly one wins, no residue', async () => {
+  it('contenders that each judged a lock stale race to break it: exactly one breaks it, and no guard is left', async () => {
     const lock = path.join(dir, '.lock');
-    const log = path.join(dir, 'break.log');
     fs.writeFileSync(lock, '99999');
     makeStale(lock);
+    const reports = await contend(6, [
+      'const [lock] = process.argv.slice(1);',
+      'const stale = Date.now() - fs.statSync(lock).mtimeMs > io.LOCK_STALE_MS;',
+      'atBarrier();',
+      'report({ stale, won: io.breakStaleLockFile(lock) });',
+    ].join('\n'), [lock]);
 
-    const script = [
-      "const fs = require('fs');",
-      'const [ioPath, lock, fenceStr, log] = process.argv.slice(1);',
-      'const io = require(ioPath);',
-      'const fence = Number(fenceStr);',
-      'while (Date.now() < fence) {}',
-      'const won = io.breakStaleLockFile(lock);',
-      "fs.appendFileSync(log, process.pid + ' ' + won + '\\n');",
-    ].join('\n');
-
-    // Fence far enough out that every child has booted before contending.
-    const fence = Date.now() + 700;
-    const results = await Promise.all(
-      Array.from({ length: 6 }, () => child(script, [IO_PATH, lock, String(fence), log])));
-    for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
-
-    const lines = fs.readFileSync(log, 'utf8').trim().split('\n');
-    assert.strictEqual(lines.length, 6, 'every contender reported');
-    const winners = lines.filter((line) => line.endsWith(' true'));
-    assert.strictEqual(winners.length, 1, `exactly one contender may break the stale lock:\n${lines.join('\n')}`);
-    assert.ok(!fs.existsSync(lock), 'stale lock gone');
-    assert.deepStrictEqual(fs.readdirSync(dir).filter((n) => n.includes('.breaking.')), [],
-      'the winner removed its renamed file');
+    assert.deepStrictEqual(reports.map((report) => report.stale), reports.map(() => true), 'every contender judged the lock stale before any broke it');
+    assert.strictEqual(reports.filter((report) => report.won).length, 1, `exactly one breaker:\n${JSON.stringify(reports)}`);
+    assert.deepStrictEqual(fs.readdirSync(dir), [], 'the stale lock gone, and no breaker\'s guard left beside it');
   });
 
-  it('N contenders racing a dead holder\'s claim through withProjectLock: all acquire, never concurrently', async () => {
+  it('contenders racing a dead holder\'s claim through withProjectLock: each holds it in turn while the rest wait, never two at once', async () => {
     const lock = path.join(dir, '.lock');
-    const log = path.join(dir, 'hold.log');
     fs.writeFileSync(lock, DEAD);
+    const reports = await contend(5, [
+      'const [dir] = process.argv.slice(1);',
+      "const waiting = dir + '/waiting-' + process.pid;",
+      "const inside = dir + '/inside';",
+      "fs.writeFileSync(waiting, '');",
+      'atBarrier();',
+      'report(io.withProjectLock(dir, () => {',
+      '  fs.unlinkSync(waiting);',
+      "  let alone = true; try { fs.closeSync(fs.openSync(inside, 'wx')); } catch { alone = false; }",
+      "  const others = fs.readdirSync(dir).filter((name) => name.startsWith('waiting-')).length;",
+      '  if (alone) fs.unlinkSync(inside);',
+      '  return { alone, others };',
+      '}));',
+    ].join('\n'), [dir]);
 
-    const script = [
-      "const fs = require('fs');",
-      'const [ioPath, wfDir, fenceStr, log] = process.argv.slice(1);',
-      'const io = require(ioPath);',
-      'const fence = Number(fenceStr);',
-      'while (Date.now() < fence) {}',
-      'io.withProjectLock(wfDir, () => {',
-      '  const t0 = Date.now();',
-      '  const end = t0 + 40;',
-      '  while (Date.now() < end) {}',
-      "  fs.appendFileSync(log, process.pid + ' ' + t0 + ' ' + Date.now() + '\\n');",
-      '});',
-    ].join('\n');
-
-    const fence = Date.now() + 700;
-    const results = await Promise.all(
-      Array.from({ length: 5 }, () => child(script, [IO_PATH, dir, String(fence), log])));
-    for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
-
-    const holds = fs.readFileSync(log, 'utf8').trim().split('\n')
-      .map((line) => line.split(' ').map(Number))
-      .sort((a, b) => a[1] - b[1]);
-    assert.strictEqual(holds.length, 5, 'every contender eventually acquired');
-    for (let i = 1; i < holds.length; i++) {
-      assert.ok(holds[i][1] >= holds[i - 1][2],
-        `holds overlap — two contenders held the lock at once:\n${holds.map((h) => h.join(' ')).join('\n')}`);
-    }
-    assert.ok(!fs.existsSync(lock), 'lock released after the last holder');
+    assert.deepStrictEqual(reports.map((report) => report.alone), reports.map(() => true), 'two contenders held the lock at once');
+    assert.deepStrictEqual(reports.map((report) => report.others).sort((a, b) => a - b), [0, 1, 2, 3, 4], 'the waiting each hold saw: every other contender, then one fewer each time');
+    assert.deepStrictEqual(fs.readdirSync(dir), [], 'the lock let go after the last holder');
   });
 });
 
 describe('the claim — one holder at a time, never waited on', () => {
-  const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
   let dir;
   let claim;
   beforeEach(() => {
@@ -360,30 +394,73 @@ describe('the claim — one holder at a time, never waited on', () => {
     assert.ok(fs.existsSync(claim), 'a claim another took is theirs to release');
   });
 
-  it('N contenders racing a dead owner\'s claim: exactly one takes it over', async () => {
+  it('a claim found gone is made again, never broken: a claim another makes meanwhile is never removed', (t) => {
+    const theirs = peer();
+    fs.writeFileSync(claim, theirs);
+    const unlink = fs.unlinkSync;
+    // The owner lets go just as this contender finds the claim taken…
+    lockAttempts(t, claim, () => unlink(claim));
+    // …and a peer claims in the instant before this contender removes one.
+    /** @type {string[]} */
+    const removed = [];
+    t.mock.method(fs, 'unlinkSync', (/** @type {string} */ file) => {
+      if (file === claim) {
+        fs.writeFileSync(claim, theirs);
+        removed.push(theirs);
+      }
+      return unlink(file);
+    });
+
+    const release = io.tryClaimFile(claim);
+
+    assert.ok(release, 'the claim made again');
+    assert.deepStrictEqual(removed, [], 'a claim removed after it was found gone');
+    assert.strictEqual(fs.readFileSync(claim, 'utf8'), live());
+  });
+
+  it('contenders that each found a dead owner\'s claim race to take it over: exactly one does', async () => {
     fs.writeFileSync(claim, DEAD);
-    const log = path.join(dir, 'claim.log');
-    const script = [
-      "const fs = require('fs');",
-      'const [ioPath, claim, fenceStr, log] = process.argv.slice(1);',
-      'const io = require(ioPath);',
-      'while (Date.now() < Number(fenceStr)) {}',
-      'const won = io.tryClaimFile(claim) !== null;',
-      "fs.appendFileSync(log, process.pid + ' ' + won + '\\n');",
-      'const hold = Date.now() + 600;',
-      'while (Date.now() < hold) {}',
-    ].join('\n');
-    const fence = Date.now() + 700;
-    const results = await Promise.all(Array.from({ length: 6 }, () => new Promise((resolve) => {
-      const proc = spawn('node', ['-e', script, IO_PATH, claim, String(fence), log]);
-      let stderr = '';
-      proc.stderr.on('data', (chunk) => { stderr += chunk; });
-      proc.on('exit', (code) => resolve({ code, stderr }));
-    })));
-    for (const r of results) assert.strictEqual(r.code, 0, r.stderr);
-    const lines = fs.readFileSync(log, 'utf8').trim().split('\n');
-    assert.strictEqual(lines.length, 6);
-    assert.strictEqual(lines.filter((line) => line.endsWith(' true')).length, 1, `exactly one holder:\n${lines.join('\n')}`);
+    const reports = await contend(6, [
+      'const [claim, dead] = process.argv.slice(1);',
+      "const sawDead = fs.readFileSync(claim, 'utf8') === dead;",
+      'atBarrier();',
+      'report({ sawDead, won: io.tryClaimFile(claim) !== null });',
+      'untilAllReported();',
+    ].join('\n'), [claim, DEAD]);
+
+    assert.deepStrictEqual(reports.map((report) => report.sawDead), reports.map(() => true), 'every contender found the dead owner\'s claim before any took it over');
+    assert.strictEqual(reports.filter((report) => report.won).length, 1, `exactly one holder:\n${JSON.stringify(reports)}`);
+  });
+
+  it('contenders × holds: never two holders at once, and no holder\'s claim removed from under it', async () => {
+    // The race made dense: `ps` is off the contenders' PATH, so an owner is
+    // read bare and an attempt spawns nothing; and each removal of the claim
+    // is slowed, as it would be were its contender preempted between
+    // deciding and removing, so a removal made on what was seen a moment
+    // before meets the claims made since.
+    const reports = await contend(8, [
+      'const [claim, holds] = process.argv.slice(1);',
+      "const inside = claim + '.inside';",
+      'const unlink = fs.unlinkSync;',
+      'fs.unlinkSync = (file) => { if (file === claim) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2); return unlink(file); };',
+      'let twice = 0; let lost = 0; let taken = 0;',
+      'atBarrier();',
+      'for (let i = 0; i < Number(holds); i++) {',
+      '  let release;',
+      '  while ((release = io.tryClaimFile(claim)) === null) taken += 1;',
+      "  let alone = true; try { fs.closeSync(fs.openSync(inside, 'wx')); } catch { alone = false; twice += 1; }",
+      "  let owner = null; try { owner = JSON.parse(fs.readFileSync(claim, 'utf8')).pid; } catch { /* removed */ }",
+      '  if (owner !== process.pid) lost += 1;',
+      '  if (alone) unlink(inside);',
+      '  release();',
+      '}',
+      'report({ twice, lost, taken });',
+    ].join('\n'), [claim, '40'], { ...process.env, PATH: dir });
+
+    const total = (/** @type {string} */ key) => reports.reduce((sum, report) => sum + report[key], 0);
+    assert.ok(total('taken') > 0, 'no contender ever found the claim held');
+    assert.deepStrictEqual({ twice: total('twice'), lost: total('lost') }, { twice: 0, lost: 0 },
+      'holds that found another inside, and holds whose claim was gone or another\'s by their end');
   });
 });
 
@@ -522,36 +599,31 @@ describe('engine writes take the writer lock', () => {
     assert.ok(!fs.existsSync(lock), 'the dead claim taken over and not left behind');
   });
 
-  it('a read answers at once while a live holder has the lock', () => {
+  it('a read never tries the lock: it answers while a live holder has it', (t) => {
     fs.writeFileSync(lock, live());
-    const started = Date.now();
+    const attempts = lockAttempts(t, lock, () => { throw new Error('the read waited on the lock'); });
     assert.strictEqual(harness.output(dir, ['manifest', 'get', 'payments', 'status']).trim(), 'in-progress');
-    assert.ok(Date.now() - started < 1500, `the read waited ${Date.now() - started}ms`);
+    assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('a live holder blocks the engine until released — the write lands only after', async () => {
+  it('a live holder blocks the engine until released — the write lands only after', (t) => {
     fs.writeFileSync(lock, live());
-
-    const child = spawn('node', [ENGINE, 'discovery-map', 'edit', 'payments', 'auth-flow', '--summary', 'After the lock'], {
-      cwd: dir,
+    const summary = () => readManifest(dir, 'payments').phases.discovery.items['auth-flow'].summary;
+    /** @type {string[]} */
+    const whileHeld = [];
+    // The lock is let go at the write's second attempt: it found the lock held, and waited.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      whileHeld.push(summary());
+      if (taken === 2) fs.unlinkSync(lock);
     });
-    let stdout = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
-    const exit = new Promise((resolve) => child.on('close', resolve));
 
-    // Long enough for node to start and reach the lock wait; far inside the
-    // 60s timeout, so a passing run never races it.
-    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'engine must wait on a live lock');
-    assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['auth-flow'].summary, 'Auth',
-      'no write while the lock is held');
+    const res = engine(dir, ['discovery-map', 'edit', 'payments', 'auth-flow', '--summary', 'After the lock']);
 
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
-    assert.strictEqual(readManifest(dir, 'payments').phases.discovery.items['auth-flow'].summary, 'After the lock');
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, ['Auth', 'Auth'], 'no write while the lock is held');
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(summary(), 'After the lock');
     assert.ok(!fs.existsSync(lock));
   });
 
@@ -588,14 +660,23 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('committing transactions hold the lock across their commit, and it never lands in one', () => {
+  it('a committing transaction holds the lock across its writes and its commit: one claim, the state branch moving under it', (t) => {
     commitAll(dir, 'init');
+    // git as the engine runs it, noting who holds the lock as the branch moves.
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const wrapper = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-io-git-'));
+    t.after(() => fs.rmSync(wrapper, { recursive: true, force: true }));
+    const moves = path.join(wrapper, 'moves');
+    fs.writeFileSync(path.join(wrapper, 'git'),
+      `#!/bin/sh\ncase "$*" in *" update-ref "*) { cat "${lock}" 2>/dev/null || printf unheld; echo; } >> "${moves}" ;; esac\nexec "${real}" "$@"\n`,
+      { mode: 0o755 });
+    const attempts = lockAttempts(t, lock);
 
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
-    assert.strictEqual(res.ok, true);
-    assert.ok(res.committed, 'cancel commits');
-    const show = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
-    assert.ok(!show.includes('.lock'), `lock file leaked into the commit:\n${show}`);
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow'], { env: { PATH: `${wrapper}:${process.env.PATH}` } });
+
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(attempts, ['made'], 'the lock let go between the write and the commit');
+    assert.deepStrictEqual(fs.readFileSync(moves, 'utf8').split('\n').slice(0, -1), [live()]);
     assert.ok(!fs.existsSync(lock));
   });
 });
@@ -621,31 +702,28 @@ describe('engine project-manifest writes take the writer lock', () => {
     const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
     assert.deepStrictEqual(project.work_units, { payments: { work_type: 'feature' } });
     assert.ok(!fs.existsSync(lock), 'the dead claim taken over and not left behind');
-    const show = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
-    assert.ok(!show.includes('lock'), `lock file leaked into the commit:\n${show}`);
   });
 
-  it('a live holder blocks create until released', async () => {
+  it('a live holder blocks create until released', (t) => {
     fs.writeFileSync(lock, live());
+    const project = path.join(dir, '.leeway/manifest.json');
+    /** @type {boolean[]} */
+    const registered = [];
+    // The lock is let go at create's second attempt: it found the lock held, and waited.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      registered.push(fs.existsSync(project));
+      if (taken === 2) fs.unlinkSync(lock);
+    });
 
-    const child = spawn('node', [ENGINE,
+    const res = engine(dir, [
       'workunit', 'create', 'payments', 'feature',
       '--description', 'Payments', '--session-log-file', '.leeway/.cache/payments/discovery/session-001.md',
-    ], { cwd: dir });
-    let stdout = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
-    const exit = new Promise((resolve) => child.on('close', resolve));
+    ]);
 
-    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'create must wait on a live writer lock');
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/manifest.json')), 'no registration while the lock is held');
-
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
-    const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
-    assert.deepStrictEqual(project.work_units, { payments: { work_type: 'feature' } });
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(registered, [false, false], 'no registration while the lock is held');
+    assert.strictEqual(res.ok, true);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(project, 'utf8')).work_units, { payments: { work_type: 'feature' } });
   });
 });
 
