@@ -916,7 +916,7 @@ Screen, drawn by Claude: the merge stopped by one field changed on both machines
 
 5.2.2 Entries never take sequential numbers, which collide wherever two writers append. [R23; ruled by the person 2026-10-18]
 
-5.2.3 Each entry is tagged with its work unit, topic, phase and session. [R23, plan 4.1]
+5.2.3 Each entry is tagged with its work unit, topic, phase and session; an entry made at the unit's level, where no topic exists, carries no topic. [R23, plan 4.1; Claude's derivation 2026-10-27: a topic exists only before the spec]
 
 5.2.4 Every event carries the time the engine wrote it. [R23; ruled by the person 2026-10-14]
 
@@ -1078,7 +1078,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.8.11 Every session can read every entry, by unit, topic or area, and current entries only. [R23]
 
-5.8.12 The knowledge base's copy is the one rendering kept: when a topic's entries change, the engine renders its record and the knowledge base indexes it. The copy lives in the gitignored `.leeway/.knowledge/` and is rebuilt from the ledger, so a replaced answer drops out of search the moment it is replaced (§22). [R23; ruled by the person 2026-10-17; R44]
+5.8.12 The knowledge base's copy is the one rendering kept: when a topic's entries change, the engine renders its record and the knowledge base indexes it. The copy lives in the gitignored `.leeway/.knowledge/` and is rebuilt from the ledger, so a replaced answer drops out of search the moment it is replaced (§22). The copy holds the current answers only; the answers they replaced show, folded beneath, where a record is read (5.6.5). [R23; ruled by the person 2026-10-17; R44; Claude's derivation 2026-10-27: a copy holding the chain would return replaced answers to search]
 
 5.8.13 The engine renders the product record to a file in `.knowledge/` whenever a product-wide entry changes, so a CLAUDE.md line can point at it. [R10, Layout on disk, plan 3.3]
 
@@ -1102,7 +1102,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 5.S3 Given `ledger decide` called naming no question, then the engine refuses it. (5.5.1)
 
-5.S4 Given an entry Claude writes that holds two rules, when it is written, then the separate Claude call judges it holds several, and it lands as two entries. (5.5.2, 5.5.3)
+5.S4 Given an entry Claude writes that holds two rules, when it is written, then the separate Claude call judges it holds several, it is sent back to be split, and it lands as two entries, each naming the question the whole answered. (5.5.2, 5.5.3, 16.19.8)
 
 5.S5 Given a line of `.ledger.jsonl` changed by a shell command, when any verb next reads the ledger, then the engine stops and shows the line it found; the same for a line removed or two lines swapped. (5.4.1, 5.4.3, 5.4.4)
 
@@ -1161,6 +1161,8 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 5.S32 Given an epic with a cancelled topic and a postponed topic, when another topic's opening view is drawn, the knowledge base is searched or the read for conflicts runs, then neither topic's entries appear; when the postponed topic is pulled back into its own epic, its entries are current again, and the ledger held them throughout. (5.8.17)
 
 5.S33 Given a project on two machines, when a topic's map shows in a conversation on one, then that machine's `.cache/{unit}/last-looked.json` moves to the newest entry shown and the state branch gains no commit; on the other machine, "since you last looked" still counts from its own last look. (5.8.14, 5.8.15)
+
+5.S34 Given the one-decision check cannot run, when an entry is written, then it lands marked unchecked; when the next start checks it and finds it holds one rule, the entry stands checked; when it finds several, the entry is put to its topic to be split by replacement and nothing already landed is changed. (5.5.2, 16.19.8)
 
 ## 6. The engine's doors
 
@@ -6461,13 +6463,13 @@ Comment → Tell me how to word it
 
 16.19.4 The engine runs the call as `claude -p --system-prompt <fixed> --tools "" --strict-mcp-config --setting-sources "" --settings '{"disableAllHooks":true,"autoMemoryEnabled":false}' --disable-slash-commands --no-session-persistence --json-schema …` with `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`, started from an empty folder, so nothing of the person's reaches it. [R28, plan 4.8; ruled by the person 2026-10-19]
 
-16.19.5 The call never uses `--bare`: it reads only an API key, never a subscription or setup-token login. [R28, plan 4.8]
+16.19.5 The call never uses `--bare`, which reads only an API key, never a subscription or setup-token login. [R28, plan 4.8]
 
 16.19.6 Sonnet runs the labeller, for labelling only; the check that a ledger entry holds one decision and the reading of typed gate answers run on Opus until a measurement says otherwise. [R28, plan 4.8; Claude's call 2026-10-19; Claude's derivation]
 
 16.19.7 A decision model (Jev, Clef) is not in the release. One is offered later, as the person's choice at setup, only once a rerun of the same scripts on a new version shows it labels as well as a Claude call. When it is offered: each label names the labeller that wrote it, and a switch relabels the log from the questions' text, so the counts follow. Kept for that day: neutral wording; a threshold per question from the person's labels by the lower-bound rule, checked on held-out items; a per-question signal refining the per-kind counts last; the loop adjusting only on evidence larger than noise (§27). [R28, plan 4.8; the person 2026-10-18: "we can very much let the user decide"]
 
-16.19.8 When the labelling call fails, or no login serves it, the question asks the person; a typed gate answer the call cannot read stands as typed text; a ledger entry that fails the one-decision check is sent back to be split before it lands (5.5.3). Where the one-decision check cannot run — no login serves it, a rate limit, a timeout — the entry lands marked unchecked and is checked at the next start, so recording never stops for the call. [R24, R28; Claude's derivation, O63; the person 2026-10-14; Claude's derivation 2026-10-25: a check that cannot run never stops an entry being recorded]
+16.19.8 When the labelling call fails, or no login serves it, the question asks the person; a typed gate answer the call cannot read stands as typed text; a ledger entry that fails the one-decision check is sent back to be split before it lands (5.5.3). Where the one-decision check cannot run — no login serves it, a rate limit, a timeout — the entry lands marked unchecked and is checked at the next start, so recording never stops for the call; one the late check finds holding several rules is put to its topic, to be split by replacement. [R24, R28; Claude's derivation, O63; the person 2026-10-14; Claude's derivation 2026-10-25: a check that cannot run never stops an entry being recorded; Claude's derivation 2026-10-27: a landed entry changes only by replacement]
 
 16.19.9 Left to the builder: the labeller's effort, as the measured raw form ran it (`trust/label_raw.py`). [Claude's sort, B1]
 
@@ -11604,11 +11606,11 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.2.8 Relies on: none. [R14; Claude's derivation]
 
-29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S36, 4.S37, 4.S38 (25). [R14; Claude's derivation]
+29.2.9 Proven by: 1.S10, 1.S14, 4.S1, 4.S3, 4.S4, 4.S5, 4.S6, 4.S8, 4.S9, 4.S10, 4.S11, 4.S12, 4.S15, 4.S17, 4.S18, 4.S19, 4.S29, 4.S30, 22.S2, 22.S3, 4.S31, 4.S32, 4.S36, 4.S37, 4.S38, 4.S16 (26). [R14; Claude's derivation]
 
 ### 29.3 The ledger
 
-29.3.1 Step 1's second part builds the ledger: the events and their schemas, ids, the append-only check, the write hook, and the projections — the record, the map, the product record, "since you last looked", the entries a replacement affects, and the verdict queue (§5). [plan 11.2; Claude's proposal]
+29.3.1 Step 1's second part builds the ledger: the events and their schemas, ids, the append-only check, the write hook, and the projections — the record, the map, the product record, "since you last looked", and the entries a replacement affects (§5). [plan 11.2; Claude's proposal; the verdict queue moved to 29.19, Claude's derivation 2026-10-27: verdicts are trust-log events (16.10.9), and nothing writes one before 29.19]
 
 29.3.2 It builds the one-thing-per-entry check, judged by a separate Claude call as an entry is written (5.5, 16.19). [plan 11.2, plan 4.8; Claude's proposal]
 
@@ -11620,7 +11622,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.3.6 Relies on: 29.2. [R14; Claude's derivation]
 
-29.3.7 Proven by: 2.S11, 4.S14, 4.S16, 4.S24, 4.S25, 5.S1, 5.S2, 5.S3, 5.S4, 5.S5, 5.S6, 5.S7, 5.S8, 5.S9, 5.S10, 5.S12, 5.S13, 5.S14, 5.S15, 5.S16, 5.S17, 5.S18, 5.S19, 5.S20, 5.S21, 5.S22, 5.S24, 5.S25, 5.S28, 5.S29, 5.S31, 5.S32, 8.S26, 22.S16, 22.S18, 22.S19, 22.S20, 22.S24, 22.S36, 5.S33 (40). [R14; Claude's derivation]
+29.3.7 Proven by: 2.S11, 4.S14, 4.S24, 4.S25, 5.S1, 5.S2, 5.S3, 5.S4, 5.S5, 5.S6, 5.S7, 5.S8, 5.S9, 5.S10, 5.S12, 5.S13, 5.S14, 5.S15, 5.S16, 5.S17, 5.S18, 5.S19, 5.S20, 5.S21, 5.S22, 5.S24, 5.S25, 5.S28, 5.S29, 5.S31, 5.S32, 8.S26, 22.S16, 22.S18, 22.S19, 22.S20, 22.S24, 22.S36, 5.S33, 5.S34 (40). [R14; Claude's derivation]
 
 ### 29.4 The trust log and logging
 
@@ -11822,7 +11824,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 ### 29.19 The ask rule
 
-29.19.1 Step 3 builds the ask rule: the arithmetic, the labeller as a raw call (16.19), the verdict page, blind questions, convergence, the matrix screen, replay tuning, and the record of the person with its care entries (§16). [plan 11.4; Claude's proposal]
+29.19.1 Step 3 builds the ask rule: the arithmetic, the labeller as a raw call (16.19), the verdict page and the verdict queue (5.8.10), blind questions, convergence, the matrix screen, replay tuning, and the record of the person with its care entries (§16). [plan 11.4; Claude's proposal]
 
 29.19.2 From here the decision point asks by the rule, no longer every call Claude has a lean on (29.5.2). [plan 11.2, plan 11.4; Claude's proposal]
 
@@ -11854,7 +11856,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 851 listed are the 851 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 852 listed are the 852 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
