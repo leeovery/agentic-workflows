@@ -655,6 +655,21 @@ describe('a lost local branch (4.S8)', () => {
     assert.strictEqual(git(root, ['status', '--porcelain']), '');
   });
 
+  it('deleted under its worktree in a repository whose config turns ref logs off, still reads where the folder stands — the engine logs the state\'s refs whatever the config says', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const main = codeProject({ remote: bare });
+    git(main, ['config', 'core.logAllRefUpdates', 'false']);
+    assert.strictEqual(boot(main).state, 'ready');
+    const root = path.join(main, '.leeway');
+    const left = commitOnState(root, { 'mine.md': 'committed\n' }).commit;
+    git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+
+    assert.strictEqual(boot(main).state, 'ready');
+
+    assert.strictEqual(tip(main, STATE_BRANCH), left);
+    assert.strictEqual(git(root, ['status', '--porcelain']), '');
+  });
+
   it('deleted under its worktree whose HEAD log is gone, is refused: boot cannot tell where the folder stands, and writes nothing', () => {
     const bare = bareRemote(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
@@ -1200,6 +1215,11 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
 
     assert.strictEqual(git(main, ['remote', 'get-url', 'origin']).trim(), 'ssh://git@github.com:0/acme/portal.git');
     assert.deepStrictEqual(githubRepository(git(main, ['remote', 'get-url', 'origin'])), { owner: 'acme', repo: 'portal' });
+
+    const { GIT_SSH_COMMAND, GIT_SSH_VARIANT, ...unstubbed } = process.env;
+    const missed = spawnSync('git', ['ls-remote', 'origin'], { cwd: main, encoding: 'utf8', env: unstubbed, timeout: 10000 });
+    assert.notStrictEqual(missed.status, 0);
+    assert.match(missed.stderr, /Bad port '0'/);
   });
 
   it('draws the offer: the rule and what it refuses, set on yes, left unset on no', () => {

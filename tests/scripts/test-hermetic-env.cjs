@@ -116,8 +116,10 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('git runs no ssh command of the developer\'s — it would override a suite\'s stand-in for a remote, with their keys', () => {
-    assert.strictEqual(process.env.GIT_SSH_COMMAND, undefined);
-    assert.strictEqual(process.env.GIT_SSH, undefined);
+    const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(JSON.stringify([process.env.GIT_SSH_COMMAND ?? null, process.env.GIT_SSH ?? null]))`],
+      { encoding: 'utf8', env: { ...process.env, GIT_SSH_COMMAND: 'ssh -i ~/.ssh/mine', GIT_SSH: 'plink' } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), [null, null]);
   });
 
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
