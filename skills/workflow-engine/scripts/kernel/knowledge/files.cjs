@@ -5,7 +5,7 @@
 // directory sits in the state, local to the machine and never committed: the
 // store, its metadata and the knowledge config setup wrote, beside the
 // store's lock and the vector fill's claim; and the copies rendered from the
-// ledger — each record's, which the store indexes, and the product record's,
+// ledger, under a lock of their own — each record's, which the store indexes, and the product record's,
 // which it never does (4.11.10).
 // ---------------------------------------------------------------------------
 
@@ -32,6 +32,7 @@ const NAMES = { store: 'store.bin', metadata: 'metadata.json', config: 'config.j
  * @property {string} config
  * @property {string} lock  held by every store write
  * @property {string} fill  held by the vector fill while it works
+ * @property {string} copies  held by a render of the ledger's copies
  */
 
 /**
@@ -48,6 +49,7 @@ function knowledgeFiles(root) {
     config: path.join(dir, NAMES.config),
     lock: path.join(dir, '.lock'),
     fill: path.join(dir, '.fill'),
+    copies: path.join(dir, '.copies'),
   };
 }
 

@@ -24,8 +24,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
-const { ok, callAsync, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, ok, callAsync, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -183,6 +184,39 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     const relying = /** @type {string} */ (copy(SPACE_COPY));
     assert.match(relying, /^## From fumi \/ note-window: A framed panel\.\n\nA framed panel\.\n\nWhy: Frames read as furniture\.\n\nDecided by Claude, in fumi \/ note-window\. Entry \w+\.$/m);
     assert.doesNotMatch(relying, /floating/);
+  });
+
+  it('renders one at a time, the ledger folded under the copies\' lock: two writers whose renders wait behind one that folded before either leave a copy holding both writes', async () => {
+    const question = ask(NOTE, 'Is a note a window?');
+    const folded = /** @type {string} */ (copy(NOTE_COPY));
+    const lock = knowledgeFiles(statePath(dir)).copies;
+    fs.writeFileSync(lock, String(process.pid));
+    const commits = () => Number(stateGit(dir, ['rev-list', '--count', 'HEAD']));
+    const before = commits();
+
+    const writers = [
+      { args: ['ledger', 'decide', NOTE, '--answers', question], stdin: { ...MADE, text: 'A floating panel.', why: 'It follows the person.' } },
+      { args: ['ledger', 'find', NOTE], stdin: { ...MADE, text: 'Panels float above every Space.', how: 'a spike' } },
+    ].map(({ args, stdin }) => {
+      const child = spawn('node', [ENGINE, ...args], { cwd: dir, env: { ...process.env, ...SESSION } });
+      child.stdin.end(JSON.stringify(stdin));
+      return new Promise((resolve) => child.on('close', resolve));
+    });
+    // The barrier: both writes committed, both renders waiting on the lock.
+    for (let tries = 0; commits() < before + 2 && tries < 600; tries += 1) await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.strictEqual(commits(), before + 2, 'the two writes did not both commit');
+    assert.strictEqual(copy(NOTE_COPY), folded, 'a render ran while another held the copies\' lock');
+
+    // The render holding the lock folded before either write: it lands its text, then lets go.
+    fs.writeFileSync(statePath(dir, NOTE_COPY), folded);
+    fs.unlinkSync(lock);
+    assert.deepStrictEqual(await Promise.all(writers), [0, 0]);
+
+    const text = /** @type {string} */ (copy(NOTE_COPY));
+    assert.match(text, /^A floating panel\.$/m);
+    assert.match(text, /^## Finding: Panels float above every Space\.$/m);
+    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
+    assert.match(await byArea('floating'), /^A floating panel\.$/m);
   });
 
   it('gives a unit\'s own level a record of its own, apart from a topic named as the unit is (5.2.3)', () => {

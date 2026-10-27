@@ -20,11 +20,18 @@
 //   both ends of a move, a unit whose replacement stops counting — so the
 //   render never works out which: a copy is written where its text differs
 //   from what is on disk, and removed where no record holds it.
-// - Indexing follows a render, once a checkout's knowledge base is set up:
-//   each copy written indexed, each removed taken out, the keyword side
-//   landing at once and the vectors left to the background fill
-//   (knowledge/sync.cjs). Boot renders before its own knowledge pass, which
-//   brings the store in line with the copies.
+// - One render at a time, under the copies' own lock, never the writer's:
+//   the ledger is folded inside it, so the render that holds it last reads
+//   every write committed before it, and no render folded earlier lands
+//   over a later one. A replaced answer is out of every copy once the
+//   render after its write is done.
+// - Indexing follows a render, outside its lock, once a checkout's knowledge
+//   base is set up: each copy written and still there indexed, from the file
+//   as it stands then, and each removed and still gone taken out — a later
+//   render may have changed either meanwhile. The keyword side lands at
+//   once, the vectors left to the background fill (knowledge/sync.cjs). Boot
+//   renders before its own knowledge pass, which brings the store in line
+//   with the copies.
 // - A render or an index that fails is a warning, never a refusal: what
 //   called it stands, and the next start renders and indexes it again
 //   (22.6.15).
@@ -33,6 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
+const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile } = require('./ledger.cjs');
@@ -189,13 +197,29 @@ function readOrNull(file) {
 }
 
 /**
- * The copies brought in line with the ledger: each whose text differs from
- * what is on disk written, and each no record holds removed, a unit's
- * folder with it once empty.
+ * The copies brought in line with the ledger, under their lock, the ledger
+ * folded inside it: each whose text differs from what is on disk written,
+ * and each no record holds removed, a unit's folder with it once empty.
  * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
  * @returns {Rendered}
  */
 function renderCopies(root, notes) {
+  const { dir, copies: lock } = knowledgeFiles(root);
+  fs.mkdirSync(dir, { recursive: true });
+  acquireLockFile(lock, 'Timed out waiting for the lock on the ledger\'s copies');
+  try {
+    return renderLocked(root, notes);
+  } finally {
+    releaseLockFile(lock);
+  }
+}
+
+/**
+ * The copies brought in line with the ledger, holding their lock.
+ * @param {string} root @param {string[]} notes
+ * @returns {Rendered}
+ */
+function renderLocked(root, notes) {
   const copies = copiesOf(root, notes);
   /** @type {Rendered} */
   const rendered = { written: [], removed: [] };
@@ -233,16 +257,19 @@ function renderLedgerCopies(cwd, warnings) {
 
 /**
  * The copies rendered against the ledger and, where the checkout's knowledge
- * base is set up, indexed: each written indexed, each removed taken out.
- * A failure is a warning.
+ * base is set up, indexed: each written and still there indexed, each
+ * removed and still gone taken out — a later render may have changed either
+ * meanwhile. A failure is a warning.
  * @param {string} cwd @param {string[]} warnings
  */
 function refreshLedgerCopies(cwd, warnings) {
   const rendered = renderLedgerCopies(cwd, warnings);
-  if (rendered === null || !fs.existsSync(knowledgeFiles(stateRoot(cwd)).config)) return;
+  const root = stateRoot(cwd);
+  if (rendered === null || !fs.existsSync(knowledgeFiles(root).config)) return;
+  const there = (/** @type {string} */ file) => fs.existsSync(path.join(root, file));
   syncKnowledge(cwd, [
-    ...rendered.written.map((file) => ({ index: file, label: `knowledge index (${file})` })),
-    ...rendered.removed.map((file) => ({ remove: recordScope(file), label: `knowledge remove (${file})` })),
+    ...rendered.written.filter(there).map((file) => ({ index: file, label: `knowledge index (${file})` })),
+    ...rendered.removed.filter((file) => !there(file)).map((file) => ({ remove: recordScope(file), label: `knowledge remove (${file})` })),
   ], warnings);
 }
 
