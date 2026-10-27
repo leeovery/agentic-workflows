@@ -4,7 +4,8 @@
 // says, the refusal shape asserts the refusal, the call's environment and
 // stdin reach the engine, the git fixture is a repo with its state worktree
 // that an engine commit lands in, a keyword-only checkout is one a transaction's index builds a real
-// store in, and a call's attempts at a lock are seen as it makes them.
+// store in, a call's attempts at a lock are seen as it makes them, and the
+// `ps` that fails does.
 
 require('./hermetic-env.cjs');
 
@@ -13,6 +14,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
@@ -184,7 +186,7 @@ describe('engine harness — a keyword-only checkout', () => {
   });
 });
 
-describe('engine harness — the attempts at a lock', () => {
+describe('engine harness — locks, and a `ps` that fails', () => {
   let dir;
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-lock-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
@@ -206,5 +208,12 @@ describe('engine harness — the attempts at a lock', () => {
 
     assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'made']);
     assert.deepStrictEqual(heldAt, [true, true]);
+  });
+
+  it('failingPs puts first on the PATH a `ps` that answers nothing and fails, logging what each run asked for', () => {
+    const ps = harness.failingPs(dir);
+    const res = spawnSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { env: { ...process.env, PATH: ps.path }, encoding: 'utf8' });
+    assert.deepStrictEqual([res.status, res.stdout], [1, '']);
+    assert.deepStrictEqual(ps.runs(), [`-p ${process.pid} -o lstart=`]);
   });
 });

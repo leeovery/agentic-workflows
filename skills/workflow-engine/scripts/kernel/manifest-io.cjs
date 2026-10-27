@@ -29,7 +29,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ownerAlive, processStartTime, sleepSync } = require('./process.cjs');
+const { ownerAlive, ownStartTime, sleepSync } = require('./process.cjs');
 
 // Lock discipline: a lock file created with O_EXCL is the mutex; a holder
 // that dies leaves a file whose mtime ages past LOCK_STALE_MS and is broken
@@ -457,7 +457,7 @@ function createClaim(claimFile, record) {
  *   while it is still this process's — or null while another holds it
  */
 function tryClaimFile(claimFile, staleMs = LOCK_STALE_MS) {
-  const own = { pid: process.pid, pid_start: processStartTime(process.pid) };
+  const own = { pid: process.pid, pid_start: ownStartTime() };
   const release = () => {
     const owner = claimOwner(claimFile);
     if (owner && owner.pid === own.pid && owner.pid_start === own.pid_start) releaseLockFile(claimFile);

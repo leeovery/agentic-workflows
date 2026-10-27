@@ -73,6 +73,20 @@ const live = () => JSON.stringify({ pid: process.pid, pid_start: processStartTim
 /** A claim another live process holds: the one running this suite. */
 const peer = () => JSON.stringify({ pid: process.ppid, pid_start: processStartTime(process.ppid) });
 
+/**
+ * `fn` run in this process with `ps` failing, its PATH put back after.
+ * @template T @param {{path: string}} ps @param {() => T} fn @returns {T}
+ */
+function whilePsFails(ps, fn) {
+  const saved = process.env.PATH;
+  process.env.PATH = ps.path;
+  try {
+    return fn();
+  } finally {
+    process.env.PATH = saved;
+  }
+}
+
 const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 
 /**
@@ -392,6 +406,30 @@ describe('the claim — one holder at a time, never waited on', () => {
     fs.writeFileSync(claim, JSON.stringify({ pid: 1, pid_start: 'another' }));
     release();
     assert.ok(fs.existsSync(claim), 'a claim another took is theirs to release');
+  });
+
+  it('while `ps` fails, a live owner\'s claim stands and a gone owner\'s is still taken over', () => {
+    const ps = harness.failingPs(dir);
+    const theirs = peer();
+    fs.writeFileSync(claim, theirs);
+    assert.strictEqual(whilePsFails(ps, () => io.tryClaimFile(claim)), null, 'a start time that cannot be read proves nothing');
+    assert.strictEqual(fs.readFileSync(claim, 'utf8'), theirs);
+
+    fs.writeFileSync(claim, JSON.stringify({ pid: 2147483646, pid_start: 'gone' }));
+    const release = whilePsFails(ps, () => io.tryClaimFile(claim));
+    assert.ok(release, 'a pid that is gone needs no start time');
+    assert.strictEqual(JSON.parse(fs.readFileSync(claim, 'utf8')).pid, process.pid);
+    release();
+  });
+
+  it('reads its own start time once: a later claim asks `ps` nothing, and still names it', () => {
+    /** @type {() => void} */ (io.tryClaimFile(claim))();
+    const own = live();
+    const ps = harness.failingPs(dir);
+    const release = whilePsFails(ps, () => io.tryClaimFile(claim));
+    assert.strictEqual(fs.readFileSync(claim, 'utf8'), own);
+    /** @type {() => void} */ (release)();
+    assert.deepStrictEqual(ps.runs(), []);
   });
 
   it('a claim found gone is made again, never broken: a claim another makes meanwhile is never removed', (t) => {

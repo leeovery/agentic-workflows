@@ -286,6 +286,15 @@ describe('engine presence', () => {
     assert.strictEqual(rows.find((r) => r.topic === 'beta').held, false);
   });
 
+  it('a hold survives a `ps` that fails — a start time that cannot be read proves nothing — while a gone owner stays unheld', () => {
+    engineWith(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha']);
+    craftRecord(dir, 'research', 'beta', { pid: 2147483646, pid_start: EPOCH_START, session_id: 'b' });
+    const ps = harness.failingPs(dir);
+    const rows = engineWith(dir, ['presence', 'scan', 'pay'], { env: { PATH: ps.path } }).sessions;
+    assert.deepStrictEqual(rows.map((r) => [r.topic, r.held]).sort(), [['alpha', true], ['beta', false]]);
+    assert.deepStrictEqual(ps.runs(), [`-p ${process.pid} -o lstart=`], 'the live owner\'s start time asked for, and none read');
+  });
+
   it('a beat with no CLAUDE_PID refuses — a record nothing can hold is never written', () => {
     const err = engineFails(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], { CLAUDE_PID: '', CLAUDE_CODE_SESSION_ID: '' });
     assert.match(err.error, /CLAUDE_PID is not set/);
