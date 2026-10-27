@@ -1,6 +1,6 @@
 # Review record: The workflows, reshaped — the specification
 
-As of 2026-10-27: 665 of 2707 lines approved explicitly, 2042 assessed by Claude and not ticked, 0 with an open conversation, 0 passed without review.
+As of 2026-10-27: 663 of 2708 lines approved explicitly, 2045 assessed by Claude and not ticked, 0 with an open conversation, 0 passed without review.
 
 A line ticked is the person's explicit approval. A line Claude assessed is Claude's approval, from a fresh pass, which the person let stand. A line not reviewed is carried through implicitly: it stands, but nobody has said yes to it.
 
@@ -22,11 +22,14 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.S23 – 4.S24
 - 4.S26
 - 4.S28 – 4.S35
-- 5.1.1 – 5.6.15
+- 5.1.1 – 5.2.2
+- 5.2.4 – 5.6.15
 - 5.7.2 – 5.8.11
 - 5.8.13 – 5.9.1
-- 5.S2 – 5.S6
-- 5.S8 – 6.1.20
+- 5.S2 – 5.S3
+- 5.S5 – 5.S6
+- 5.S8 – 5.S33
+- 6.1.1 – 6.1.20
 - 6.2.2
 - 6.2.4 – 6.6.11
 - 6.6.13 – 6.S2
@@ -145,10 +148,13 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.S36: matches 4.7.8
 - 4.S37: proves 4.1.9 as written; stands or falls with it
 - 4.S38: proves 4.5.2's read of the remote's branches
+- 5.2.3: one answer: an entry made where no topic exists has none to carry
 - 5.7.1: a rename to Leeway's names, by your ruling of 26 Oct
-- 5.8.12: a rename to Leeway's names, by your ruling of 26 Oct
+- 5.8.12: follows from its own rule: a replaced answer leaves search
 - 5.S1: a rename to Leeway's names, by your ruling of 26 Oct
+- 5.S4: follows 16.19.8 and 5.3.13: sent back, lands as two
 - 5.S7: a rename to Leeway's names, by your ruling of 26 Oct
+- 5.S34: proves 16.19.8 as now written; stands or falls with it
 - 6.2.1: a rename to Leeway's names, by your ruling of 26 Oct
 - 6.2.3: a rename to Leeway's names, by your ruling of 26 Oct
 - 6.6.12: a rename to Leeway's names, by your ruling of 26 Oct
@@ -1166,10 +1172,10 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 16.19.2: R28 and R24, as the record puts it.
 - 16.19.3: Restates your ruling of 19 Oct: as raw as possible.
 - 16.19.4: Restates your ruling of 19 Oct: the command as recorded.
-- 16.19.5: R28 and plan 4.8: --bare can't use your login.
+- 16.19.5: wording only: --bare is what can't use your login
 - 16.19.6: The record's split, though plan 4.8 reads all-Sonnet; a model flag, easy to change.
 - 16.19.7: R28, quoting you on 18 Oct; its pointer to §27 finds no entry.
-- 16.19.8: my derivation: a check that can't run never stops recording
+- 16.19.8: the ledger is append-only, so the late check's finding sits beside the entry and the flag stays with it; nobody clears it
 - 16.19.9: Builder's call: the labeller's effort, as measured.
 - 16.19.10: Builder's call: prompt and schema from the measured wording.
 - 16.19.11: Builder's call: each label names the labeller that wrote it.
@@ -2082,11 +2088,11 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 29.2.6: follows from 1.6.4: weigh the spec before building
 - 29.2.7: checked: covers every section its scenarios cite
 - 29.2.8: the first part needs nothing before it
-- 29.2.9: adds 4.S38; the count of 25 checks out
+- 29.2.9: 4.S16 is the merge's, already tested in 29.2; 26 checks out
 - 29.3.4: a rename to Leeway's names, by your ruling of 26 Oct
 - 29.3.5: checked: covers every section its scenarios cite
 - 29.3.6: the ledger lives on the state branch, so needs 29.2
-- 29.3.7: checked: 40 listed, count right, none listed twice
+- 29.3.7: 4.S16 out to 29.2, 5.S34 in; 40 checks out
 - 29.4.3: checked: covers both its scenarios' sections
 - 29.4.4: follows: the trust log records calls the ledger holds
 - 29.4.5: checked: 2 listed, count right
@@ -2153,7 +2159,7 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 29.20.5: checked: 13 listed, count right
 - 29.21.1: restates your ruling of 18 Oct, as 27.2.1 says
 - 29.S1: matches 29.1.7 and 29.1.8
-- 29.S2: 851 checks out: every scenario of §1 to §28 listed once
+- 29.S2: 852 checks out: every scenario of §1 to §28 listed once
 - 29.S3: matches 29.1.10; 29.8.5 and 29.11.7 currently break it
 - 29.S4: matches 29.2.1
 - 29.S5: matches 29.1.8
@@ -2175,9 +2181,11 @@ A line ticked is the person's explicit approval. A line Claude assessed is Claud
 - 4.S22
 - 4.S25
 - 4.S27
+- 5.2.3
 - 5.7.1
 - 5.8.12
 - 5.S1
+- 5.S4
 - 5.S7
 - 6.2.1
 - 6.2.3
