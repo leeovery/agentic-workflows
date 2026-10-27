@@ -306,6 +306,20 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.ok(attempts.length <= timeoutMs / io.LOCK_RETRY_MS + 1, `${attempts.length} attempts in ${timeoutMs}ms — a busy wait`);
   });
 
+  it('a contended wait tries until its deadline and never past it: one attempt a retry interval, the whole timeout through', (t) => {
+    const lock = path.join(dir, '.lock');
+    fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
+    let now = Date.now();
+    t.mock.method(Date, 'now', () => now);
+    const intervals = 5;
+    const attempts = lockAttempts(t, lock, (taken) => {
+      assert.ok(taken <= intervals, 'tried again past the deadline');
+      now += io.LOCK_RETRY_MS;
+    });
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', intervals * io.LOCK_RETRY_MS), /Timed out/);
+    assert.strictEqual(attempts.length, intervals, 'gave up before the deadline');
+  });
+
   it('write sweeps orphaned temp files past TMP_STALE_MS and spares fresh ones', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
     const orphan = path.join(dir, 'unit', '.manifest.json.11111.tmp');
@@ -327,20 +341,26 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-break-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('contenders that each judged a lock stale race to break it: exactly one breaks it, and no guard is left', async () => {
+  it('a lock broken and taken again after a contender judged it stale is never broken by that contender: inside the guard it asks again', (t) => {
     const lock = path.join(dir, '.lock');
     fs.writeFileSync(lock, '99999');
     makeStale(lock);
-    const reports = await contend(6, [
-      'const [lock] = process.argv.slice(1);',
-      'const stale = Date.now() - fs.statSync(lock).mtimeMs > io.LOCK_STALE_MS;',
-      'atBarrier();',
-      'report({ stale, won: io.breakStaleLockFile(lock) });',
-    ].join('\n'), [lock]);
+    const theirs = String(process.ppid);
+    const openSync = /** @type {(...args: any[]) => number} */ (fs.openSync);
+    let guarded = 0;
+    // Between the contender's stale judgment and its guard, a peer breaks the lock and takes it, fresh.
+    t.mock.method(fs, 'openSync', (/** @type {any[]} */ ...args) => {
+      if (args[0] === `${lock}.breaking` && guarded++ === 0) {
+        fs.unlinkSync(lock);
+        fs.writeFileSync(lock, theirs);
+      }
+      return openSync(...args);
+    });
 
-    assert.deepStrictEqual(reports.map((report) => report.stale), reports.map(() => true), 'every contender judged the lock stale before any broke it');
-    assert.strictEqual(reports.filter((report) => report.won).length, 1, `exactly one breaker:\n${JSON.stringify(reports)}`);
-    assert.deepStrictEqual(fs.readdirSync(dir), [], 'the stale lock gone, and no breaker\'s guard left beside it');
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', 4 * io.LOCK_RETRY_MS), /Timed out/);
+    assert.strictEqual(guarded, 1, 'the contender went on to break the lock it judged stale, once');
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), theirs, 'the peer\'s fresh lock broken');
+    assert.deepStrictEqual(fs.readdirSync(dir), ['.lock'], 'a breaker\'s guard left beside the lock');
   });
 
   it('contenders racing a dead holder\'s claim through withProjectLock: each holds it in turn while the rest wait, never two at once', async () => {
