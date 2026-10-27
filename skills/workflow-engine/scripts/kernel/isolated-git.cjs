@@ -51,14 +51,15 @@ const REPOSITORY_ENV = Object.freeze([
 const HOOKS_OFF = Object.freeze(['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=']);
 
 /**
- * A call's stdin, its time limit, and variables layered over the isolated
- * environment.
- * @typedef {{input?: string, timeoutMs?: number, env?: Record<string, string>}} RunOptions
+ * A call's stdin, its time limit, variables layered over the isolated
+ * environment, and a file descriptor its output is written to whole rather
+ * than answered, for output of any size.
+ * @typedef {{input?: string, timeoutMs?: number, env?: Record<string, string>, out?: number}} RunOptions
  */
 
 /**
- * A runner bound to one cwd: `run` answers stdout and throws a GitError on
- * failure, `tryRun` answers null instead.
+ * A runner bound to one cwd: `run` answers stdout, empty where it went to a
+ * file, and throws a GitError on failure; `tryRun` answers null instead.
  * @typedef {{
  *   run: (args: string[], opts?: RunOptions) => string,
  *   tryRun: (args: string[], opts?: RunOptions) => string|null,
@@ -120,10 +121,10 @@ function isolatedGit(cwd) {
   let base = null;
 
   /** @param {string[]} args @param {RunOptions} opts */
-  function spawn(args, { input, timeoutMs, env } = {}) {
+  function spawn(args, { input, timeoutMs, env, out } = {}) {
     base ??= hooksOffEnv(cwd);
     return spawnSync('git', [...HOOKS_OFF, ...args], {
-      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES,
+      cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
   }
 
@@ -139,11 +140,11 @@ function isolatedGit(cwd) {
       if (res.status !== 0) {
         throw new GitError(`git ${args[0]} failed: ${(res.stderr || res.stdout || `exit ${res.status}`).trim()}`);
       }
-      return res.stdout;
+      return res.stdout ?? '';
     },
     tryRun(args, opts = {}) {
       const res = spawn(args, opts);
-      return res.error || res.status !== 0 ? null : res.stdout;
+      return res.error || res.status !== 0 ? null : res.stdout ?? '';
     },
   };
 }

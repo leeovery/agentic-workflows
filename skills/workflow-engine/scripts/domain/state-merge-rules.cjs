@@ -2,14 +2,16 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: how each file on the state branch merges when two clones have
-// both moved (4.7). Pure: each rule takes the remote's text and this clone's,
-// and the manifests take the common ancestor's too, and answers the merged
-// result, or the fields a person has to pick.
+// both moved (4.7). Pure: the line rules take the remote's lines and this
+// clone's, a line at a time, and answer the lines to add; the manifests take
+// the common ancestor's too, and answer the merged result, or the fields a
+// person has to pick.
 //
 // - The ledger (`.ledger.jsonl`): the remote's lines exactly as they are,
 //   then this clone's lines whose ids the remote lacks, in this clone's
 //   order. The result starts byte for byte with the remote's ledger, so the
-//   append-only check holds on both clones afterwards (4.7.2, 5.4.3).
+//   append-only check holds on both clones afterwards (4.7.2, 5.4.3). Read a
+//   line at a time, it merges at any size.
 // - The migrations record (`.state/migrations`): the remote's lines, then
 //   this clone's ids the remote lacks, so a migration applied on both
 //   clones keeps one line (4.7.4).
@@ -22,11 +24,11 @@
 //   element, since a manifest's lists carry no identity to match elements
 //   by; but where the ancestor held the list and both sides only appended
 //   to it, the result is the remote's list, then this clone's appended
-//   elements the remote did not append too, in order — the ledger's rule,
-//   so independent appends never stop the merge. Any other divergence on
-//   one field, two lists both sides created among them, is a conflict
-//   (4.7.6), resolved by a pick. A pick answers one choice: the field, and
-//   the two values it was between.
+//   elements, less one for each the remote appended too, in order — the
+//   ledger's rule, so independent appends never stop the merge. Any other
+//   divergence on one field, two lists both sides created among them, is a
+//   conflict (4.7.6), resolved by a pick. A pick answers one choice: the
+//   field, and the two values it was between.
 // - Any other JSON file is kept whole, never merged line by line: a text
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
@@ -82,37 +84,40 @@ function ruleOf(file) {
   return JSON_FILE.test(file) ? 'whole' : 'file';
 }
 
-/** @param {string} text @returns {string[]} */
-function linesOf(text) {
-  return text.split('\n').filter((line) => line.trim() !== '');
-}
+/**
+ * A line's key. Its side, and its number among that side's lines that are
+ * not blank, name a line that cannot be read.
+ * @typedef {(line: string, side: 'local'|'remote', number: number) => string} KeyOf
+ */
 
 /**
- * The remote's text as it is, then each of this clone's lines whose key the
- * remote's lines lack, once each, in this clone's order.
- * @param {string} remote @param {string} local
- * @param {(line: string, side: string, number: number) => string} keyOf
- * @returns {string}
+ * This clone's lines to add after the remote's: each whose key the remote's
+ * lines lack, once each, in this clone's order. Blank lines are neither
+ * keyed nor added.
+ * @param {Iterable<string>} remote @param {Iterable<string>} local @param {KeyOf} keyOf
+ * @returns {Generator<string>}
  */
-function unionLines(remote, local, keyOf) {
-  const held = new Set(linesOf(remote).map((line, i) => keyOf(line, 'remote', i + 1)));
-  const added = [];
-  for (const [i, line] of linesOf(local).entries()) {
-    const key = keyOf(line, 'local', i + 1);
+function* linesToAdd(remote, local, keyOf) {
+  const held = new Set();
+  let number = 0;
+  for (const line of remote) {
+    if (line.trim() !== '') held.add(keyOf(line, 'remote', ++number));
+  }
+  number = 0;
+  for (const line of local) {
+    if (line.trim() === '') continue;
+    const key = keyOf(line, 'local', ++number);
     if (held.has(key)) continue;
     held.add(key);
-    added.push(`${line}\n`);
+    yield line;
   }
-  if (added.length === 0) return remote;
-  const head = remote === '' || remote.endsWith('\n') ? remote : `${remote}\n`;
-  return head + added.join('');
 }
 
 /**
- * A ledger line's id. Refuses a line that is not a JSON object with a
- * string id: a ledger holding one is not a ledger the merge can union.
- * @param {string} line @param {string} side @param {number} number
- * @returns {string}
+ * A ledger line's key, its id. Refuses a line that is not a JSON object
+ * with a string id: a ledger holding one is not a ledger the merge can
+ * union.
+ * @type {KeyOf}
  */
 function entryId(line, side, number) {
   let entry;
@@ -128,24 +133,9 @@ function entryId(line, side, number) {
   return entry.id;
 }
 
-/**
- * The ledgers merged: the remote's lines first, as they are, then this
- * clone's lines whose ids the remote lacks, in this clone's order.
- * @param {string} remote @param {string} local
- * @returns {string}
- */
-function unionLedger(remote, local) {
-  return unionLines(remote, local, entryId);
-}
-
-/**
- * The migrations records merged: one line per migration id, the remote's
- * first.
- * @param {string} remote @param {string} local
- * @returns {string}
- */
-function unionMigrations(remote, local) {
-  return unionLines(remote, local, (line) => line.trim());
+/** A migrations record line's key, the migration's id. @type {KeyOf} */
+function migrationId(line) {
+  return line.trim();
 }
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -185,9 +175,9 @@ function startsWith(list, prefix) {
 
 /**
  * Two lists that each only appended to the ancestor's, joined: the
- * remote's, then this clone's appended elements the remote's appended ones
- * lack, in order. Undefined where the ancestor held no list, or where either
- * side did anything but append.
+ * remote's, then this clone's appended elements, less one for each element
+ * the remote appended too, in order. Undefined where the ancestor held no
+ * list, or where either side did anything but append.
  * @param {unknown} base @param {unknown} local @param {unknown} remote
  * @returns {unknown[]|undefined}
  */
@@ -195,7 +185,12 @@ function bothAppended(base, local, remote) {
   if (!Array.isArray(base) || !Array.isArray(local) || !Array.isArray(remote)) return undefined;
   if (!startsWith(local, base) || !startsWith(remote, base)) return undefined;
   const theirs = remote.slice(base.length);
-  return [...remote, ...local.slice(base.length).filter((item) => !theirs.some((held) => same(held, item)))];
+  const mine = local.slice(base.length).filter((item) => {
+    const held = theirs.findIndex((other) => same(other, item));
+    if (held !== -1) theirs.splice(held, 1);
+    return held === -1;
+  });
+  return [...remote, ...mine];
 }
 
 /** @param {unknown} value @returns {Side} */
@@ -334,8 +329,9 @@ module.exports = {
   MIGRATIONS,
   MergeError,
   ruleOf,
-  unionLedger,
-  unionMigrations,
+  linesToAdd,
+  entryId,
+  migrationId,
   mergeManifest,
   choiceId,
   askedAt,

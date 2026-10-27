@@ -21,27 +21,24 @@
 //   moved meanwhile is fetched and merged again, a bounded number of times.
 //   No git merge, and no merge driver.
 // - The working tree then moves to the merge's tree, its uncommitted files
-//   merged into and left uncommitted (state-merge-worktree.cjs). The files
-//   land first, then the worktree's index, then the branch. Before the first
-//   file is touched, the landing is recorded in the state worktree's git
-//   directory: the tip it moves from, the commit it moves to, and its steps.
-//   A catch-up killed part-way leaves the record, and the next catch-up
-//   finishes that landing before anything else, so nothing a killed landing
-//   wrote is ever read as this machine's own change. The record goes once
-//   the branch has moved.
+//   merged into and left uncommitted (state-merge-worktree.cjs), and the
+//   branch follows. The landing is recorded first, and a catch-up finishes
+//   one a kill cut short before anything else (state-merge-landing.cjs).
 // - The stop: a manifest field both sides changed to different values stops
 //   the merge (4.7.6), with nothing written. A field the working tree's
 //   uncommitted copy and the merge changed differently stops it the same
-//   way, once every field on the branch is picked. The stop is kept in the
-//   state worktree's git directory, beside the private index: it outlives
-//   the session and is never on the branch. It holds each choice with the
-//   person's pick, and a pick answers its choice, the field and the two
-//   values, wherever the merge meets it again; so the merge is always worked
-//   out afresh from the sides as they stand, and only a choice it has not
-//   met before is asked. Picks are recorded one at a time, each naming the
-//   choice its screen showed; a pick naming any other choice than the one
-//   the merge now asks is not taken. The last pick finishes the merge
-//   (4.7.11).
+//   way, once every field on the branch is picked. Nothing but a manifest
+//   stops the merge, so its questions are worked out from the manifests
+//   alone, and the whole merge only once every question is answered. The
+//   stop is kept in the state worktree's git directory, beside the private
+//   index: it outlives the session and is never on the branch. It holds each
+//   choice with the person's pick, and a pick answers its choice, the field
+//   and the two values, wherever the merge meets it again; so the merge is
+//   always worked out afresh from the sides as they stand, and only a choice
+//   it has not met before is asked. Picks are recorded one at a time, each
+//   naming the choice its screen showed; a pick naming any other choice than
+//   the one the merge now asks is not taken. The last pick finishes the
+//   merge (4.7.11).
 //
 // Every git call goes through kernel/isolated-git, under the state's writer
 // lock.
@@ -53,19 +50,15 @@ const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError } = require('../kernel/git.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState } = require('./state-worktree.cjs');
-const { choiceId } = require('./state-merge-rules.cjs');
+const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
 const { changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
-const { workingEntries, planWorktree, moveWorktree, alignIndex } = require('./state-merge-worktree.cjs');
+const { workingEntries, planWorktree } = require('./state-merge-worktree.cjs');
+const { readRecord, openMerge, startLanding, finishLanding } = require('./state-merge-landing.cjs');
 const { stateMergeGate } = require('./projections/state-merge.cjs');
-const { titlecase } = require('./conventions.cjs');
 
 const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
-// Beside the state commit's own private index, in the worktree's git dir.
-const MERGE_INDEX = 'leeway-merge.index';
+// Beside the merge's other files, in the worktree's git dir.
 const KEPT_STOP = 'leeway-merge.json';
-const LANDING = 'leeway-merge-landing.json';
-const SCRATCH = 'leeway-merge-files';
-const STAGED = 'leeway-merge-staged';
 
 const MERGE_ATTEMPTS = 3;
 const FETCH_TIMEOUT_MS = 15000;
@@ -82,33 +75,29 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
 /** @typedef {import('./projections/state-merge.cjs').Conflict} Conflict */
 /** @typedef {import('./state-merge-paths.cjs').Entries} Entries */
 /** @typedef {import('./state-merge-paths.cjs').PickOf} PickOf */
-/** @typedef {import('./state-merge-worktree.cjs').WorktreeContext} WorktreeContext */
 /** @typedef {import('./state-merge-worktree.cjs').WorktreePlan} WorktreePlan */
-/** @typedef {import('./state-merge-worktree.cjs').Steps} Steps */
+/** @typedef {import('./state-merge-landing.cjs').Landing} Landing */
 
 /**
- * The state worktree opened for a catch-up: the merge's context, the state's
- * remote, a runner bound to the main checkout, and where the stop and a
- * landing under way are kept.
- * @typedef {WorktreeContext & {
+ * The state worktree opened for a catch-up: the merge's context, the
+ * state's remote, a runner bound to the main checkout, and where the stop is
+ * kept.
+ * @typedef {import('./state-merge-landing.cjs').LandingContext & {
  *   remote: string|null,
  *   remotes: string[],
  *   main: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   stopFile: string,
- *   landingFile: string,
  * }} State
- */
-
-/**
- * A landing under way: the tip the branch and the working tree move from,
- * the commit they move to, the working tree's steps, the paths whose index
- * entries follow, and what the merge said on the way.
- * @typedef {{from: string, to: string, steps: Steps, aligned: string[], said: string[]}} Landing
  */
 
 /** @typedef {{local: string, remote: string, base: string|null}} Sides */
 
 /** @typedef {{fetchMs: number, pushMs: number}} Timeouts */
+
+/**
+ * A catch-up's time limits, and the read budget its merge holds blobs to.
+ * @typedef {{fetchTimeoutMs?: number, pushTimeoutMs?: number, readBudgetBytes?: number}} CatchUpOptions
+ */
 
 /**
  * What a catch-up did. `reason` says why there was nothing to do; `commit`
@@ -145,7 +134,6 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
  *   conflicts: Conflict[],
  *   notes: string[],
  *   worktree: WorktreePlan|null,
- *   superseded: boolean,
  * }} Plan
  */
 
@@ -168,33 +156,21 @@ function open(conflict) {
  * Open the state worktree for a catch-up. Refuses where git cannot open it
  * as this repository's, or where it has anything but `leeway-state`
  * checked out: boot's checks put it right first.
- * @param {string} root
+ * @param {string} root @param {CatchUpOptions} opts
  * @returns {State}
  */
-function openState(root) {
+function openState(root, opts) {
   const seen = inspectState(root);
   if (seen.folder !== 'linked' || seen.worktree === null || seen.worktree.branch !== STATE_BRANCH) {
     throw new Error(`the state worktree at ${root} is not checked out on ${STATE_BRANCH} — it cannot catch up until boot's checks put it right`);
   }
-  const git = isolatedGit(root);
-  const [objectFormat, ...files] = git.run([
-    'rev-parse', '--show-object-format',
-    ...[MERGE_INDEX, KEPT_STOP, LANDING, SCRATCH, STAGED].flatMap((file) => ['--git-path', file]),
-  ]).trim().split('\n');
-  const [index, stopFile, landingFile, scratch, staged] = files.map((file) => path.resolve(root, file));
+  const merge = openMerge(root, STATE_BRANCH, opts);
   return {
-    root,
+    ...merge,
     remote: seen.remote,
     remotes: seen.remotes,
-    project: titlecase(path.basename(seen.main)),
-    git,
     main: isolatedGit(seen.main),
-    objectFormat,
-    index,
-    stopFile,
-    landingFile,
-    scratch,
-    staged,
+    stopFile: path.join(merge.gitDir, KEPT_STOP),
   };
 }
 
@@ -218,15 +194,6 @@ function outcome(state, action, details = {}) {
 }
 
 // --- the stop kept between its screen and the picks ------------------------
-
-/** A record the merge keeps in the git dir, or null where none is. @param {string} file @returns {any} */
-function readRecord(file) {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return null;
-  }
-}
 
 /** @param {State} state @returns {KeptStop|null} */
 function readKeptStop(state) {
@@ -255,6 +222,12 @@ function picksOf(stop, uncommitted) {
   };
 }
 
+/** Whether a kept stop holds a choice the merge no longer meets. @param {KeptStop|null} stop @param {Conflict[]} conflicts */
+function superseded(stop, conflicts) {
+  const ids = new Set(conflicts.map(choiceId));
+  return stop !== null && stop.conflicts.some((kept) => !ids.has(choiceId(kept)));
+}
+
 // --- the merge, worked out and landed ---------------------------------------
 
 /** @param {State} state @param {string} remote @returns {Sides} */
@@ -265,57 +238,57 @@ function sidesOf(state, remote) {
   return { local, remote, base: base === null ? null : base.trim() };
 }
 
-/**
- * The merge of the two sides worked out, with the kept stop's picks: the
- * branch's tree from committed state alone, then, once every field on it
- * is picked, the working tree's move to it.
- * @param {State} state @param {Sides} sides
- * @returns {Plan}
- */
-function planMerge(state, sides) {
-  const stop = readKeptStop(state);
-  const base = sides.base === null ? new Map() : entriesOf(state.git, sides.base);
-  const local = entriesOf(state.git, sides.local);
-  const merged = mergeTrees(state, base, local, entriesOf(state.git, sides.remote), picksOf(stop, false));
-  const committed = merged.conflicts.map((c) => ({ ...c, uncommitted: false }));
-  const worktree = committed.some(open)
-    ? null
-    : planWorktree(state, local, merged.entries, workingEntries(state, sides.local), picksOf(stop, true));
-  const conflicts = [...committed, ...(worktree?.conflicts ?? []).map((c) => ({ ...c, uncommitted: true }))];
-  const ids = new Set(conflicts.map(choiceId));
-  return {
-    local,
-    target: merged.entries,
-    conflicts,
-    notes: [...merged.notes, ...(worktree?.notes ?? [])],
-    worktree,
-    superseded: stop !== null && stop.conflicts.some((kept) => !ids.has(choiceId(kept))),
-  };
+/** @param {Entries} entries @param {(file: string) => boolean} scope @returns {Entries} */
+function scoped(entries, scope) {
+  return new Map([...entries].filter(([file]) => scope(file)));
 }
 
 /**
- * Make a recorded landing: the working tree's steps, then the worktree's
- * index, then the branch, only from the tip the landing moves from; then
- * the record goes.
- * @param {State} state @param {Landing} landing
- * @returns {string[]} the notes and warnings on the way
+ * The merge of the two sides worked out over the paths `scope` keeps, with
+ * the kept stop's picks: the branch's tree from committed state alone, then,
+ * once every field on it is picked, the working tree's move to it.
+ * @param {State} state @param {Sides} sides @param {KeptStop|null} stop @param {(file: string) => boolean} [scope]
+ * @returns {Plan}
  */
-function makeLanding(state, landing) {
-  const moved = moveWorktree(state, landing.steps);
-  const aligned = alignIndex(state, landing.to, landing.aligned);
-  state.git.run(['update-ref', '-m', `catch up: ${landing.to}`, BRANCH_REF, landing.to, landing.from]);
-  fs.rmSync(state.landingFile, { force: true });
-  return [...landing.said, ...moved.notes, ...moved.warnings, ...aligned];
+function planMerge(state, sides, stop, scope = () => true) {
+  const entries = (/** @type {string} */ treeish) => scoped(entriesOf(state.git, treeish), scope);
+  const local = entries(sides.local);
+  const merged = mergeTrees(state, sides.base === null ? new Map() : entries(sides.base), local, entries(sides.remote), picksOf(stop, false));
+  const committed = merged.conflicts.map((c) => ({ ...c, uncommitted: false }));
+  const worktree = committed.some(open)
+    ? null
+    : planWorktree(state, local, merged.entries, scoped(workingEntries(state, sides.local), scope), picksOf(stop, true));
+  return {
+    local,
+    target: merged.entries,
+    conflicts: [...committed, ...(worktree?.conflicts ?? []).map((c) => ({ ...c, uncommitted: true }))],
+    notes: [...merged.notes, ...(worktree?.notes ?? [])],
+    worktree,
+  };
+}
+
+/** @param {string} file */
+function isManifest(file) {
+  return ruleOf(file) === 'manifest';
+}
+
+/**
+ * The questions the merge asks, with the kept stop's picks: worked out from
+ * the manifests alone, since nothing else stops it.
+ * @param {State} state @param {Sides} sides @param {KeptStop|null} stop
+ * @returns {Conflict[]}
+ */
+function questionsOf(state, sides, stop) {
+  return planMerge(state, sides, stop, isManifest).conflicts;
 }
 
 /**
  * Land the plan: the remote's tip itself where the merged tree is the
- * remote's, else a new commit whose one parent is the remote's tip. The
- * landing is recorded before the first file is touched.
+ * remote's, else a new commit whose one parent is the remote's tip.
  * @param {State} state @param {Sides} sides @param {Plan} plan
  * @returns {{target: string, said: string[]}} the commit landed on, and the notes and warnings on the way
  */
-function land(state, sides, plan) {
+function landPlan(state, sides, plan) {
   const tree = writeTree(state, plan.target);
   const remoteTree = state.git.run(['rev-parse', `${sides.remote}^{tree}`]).trim();
   const target = tree === remoteTree ? sides.remote : state.git.run(['commit-tree', tree, '-p', sides.remote, '-m', MERGE_MESSAGE]).trim();
@@ -327,24 +300,7 @@ function land(state, sides, plan) {
     aligned: changedPaths(plan.local, plan.target),
     said: plan.notes,
   };
-  writeJsonAtomic(state.landingFile, landing);
-  return { target, said: makeLanding(state, landing) };
-}
-
-/**
- * Finish a landing a killed catch-up left part-way, where the branch still
- * stands at the tip it moved from; drop the record where the branch has
- * moved on.
- * @param {State} state
- * @returns {string[]} the notes and warnings on the way
- */
-function finishLeftLanding(state) {
-  /** @type {Landing|null} */
-  const landing = readRecord(state.landingFile);
-  if (landing === null) return [];
-  if (tipOf(state.git, BRANCH_REF) === landing.from) return makeLanding(state, landing);
-  fs.rmSync(state.landingFile, { force: true });
-  return [];
+  return { target, said: startLanding(state, landing) };
 }
 
 /**
@@ -429,19 +385,21 @@ function pushAhead(state, sides, timeouts) {
 }
 
 /**
- * The remote moved: merge, stop on a conflict not yet picked, or land and
- * push.
+ * The remote moved: stop on a question not yet answered, or work the merge
+ * out, land it and push.
  * @param {State} state @param {Sides} sides @param {Timeouts} timeouts
  * @returns {{outcome: CatchUpOutcome}|{retry: Retry}}
  */
 function mergeSides(state, sides, timeouts) {
-  const plan = planMerge(state, sides);
-  const moved = plan.superseded ? [SIDES_MOVED] : [];
-  if (plan.conflicts.some(open)) {
-    keepStop(state, { conflicts: plan.conflicts });
-    return { outcome: outcome(state, 'stopped', { conflicts: plan.conflicts, warnings: moved }) };
+  const stop = readKeptStop(state);
+  const conflicts = questionsOf(state, sides, stop);
+  const moved = superseded(stop, conflicts) ? [SIDES_MOVED] : [];
+  if (conflicts.some(open)) {
+    keepStop(state, { conflicts });
+    return { outcome: outcome(state, 'stopped', { conflicts, warnings: moved }) };
   }
-  const landed = land(state, sides, plan);
+  const plan = planMerge(state, sides, stop);
+  const landed = landPlan(state, sides, plan);
   dropKeptStop(state);
   const { kept, merged } = /** @type {WorktreePlan} */ (plan.worktree);
   const said = [...moved, ...landed.said];
@@ -473,15 +431,15 @@ function step(state, timeouts, retry) {
 }
 
 /**
- * Catch up: first finish a landing a killed catch-up left, then step,
- * retrying while the remote moves under the push. What earlier steps merged
- * rides on the outcome the last one answers. A kept stop goes once the
- * catch-up settles anywhere but at a stop or an unreachable remote.
+ * Catch up: first finish a landing a kill cut short, then step, retrying
+ * while the remote moves under the push. What earlier steps merged rides on
+ * the outcome the last one answers. A kept stop goes once the catch-up
+ * settles anywhere but at a stop or an unreachable remote.
  * @param {State} state @param {Timeouts} timeouts
  * @returns {CatchUpOutcome}
  */
 function converge(state, timeouts) {
-  const carried = { notes: finishLeftLanding(state), merged: /** @type {string[]} */ ([]) };
+  const carried = { notes: finishLanding(state.root, STATE_BRANCH, state.gitDir), merged: /** @type {string[]} */ ([]) };
   /** @type {Retry|null} */
   let retry = null;
   /** @type {CatchUpOutcome|null} */
@@ -508,7 +466,7 @@ function converge(state, timeouts) {
   };
 }
 
-/** @param {{fetchTimeoutMs?: number, pushTimeoutMs?: number}} opts @returns {Timeouts} */
+/** @param {CatchUpOptions} opts @returns {Timeouts} */
 function timeoutsOf({ fetchTimeoutMs = FETCH_TIMEOUT_MS, pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
   return { fetchMs: fetchTimeoutMs, pushMs: pushTimeoutMs };
 }
@@ -520,20 +478,20 @@ function timeoutsOf({ fetchTimeoutMs = FETCH_TIMEOUT_MS, pushTimeoutMs = PUSH_TI
  * lock: fast-forward, push what a failed push left behind, or merge. Boot
  * runs it before anything writes state.
  * @param {string} root  the state root
- * @param {{fetchTimeoutMs?: number, pushTimeoutMs?: number}} [opts]
+ * @param {CatchUpOptions} [opts]
  * @returns {CatchUpOutcome}
  */
 function catchUpState(root, opts = {}) {
-  return withStateLock(root, () => converge(openState(root), timeoutsOf(opts)));
+  return withStateLock(root, () => converge(openState(root, opts), timeoutsOf(opts)));
 }
 
 /**
- * The merge waiting on the person: the kept stop, and the merge worked out
- * afresh from this clone's tip and the remote's as last fetched. Null where
- * no stop is kept, a landing is under way, which the next catch-up
- * finishes, or the sides no longer differ.
+ * The questions waiting on the person: the merge's, asked afresh from this
+ * clone's tip and the remote's as last fetched, with the kept stop's picks.
+ * Null where no stop is kept, a landing is under way, which the next
+ * catch-up finishes, or the sides no longer differ.
  * @param {State} state
- * @returns {{stop: KeptStop, plan: Plan}|null}
+ * @returns {{conflicts: Conflict[]}|null}
  */
 function waitingMerge(state) {
   const stop = readKeptStop(state);
@@ -541,7 +499,7 @@ function waitingMerge(state) {
   const remote = state.main.tryRun(['rev-parse', '--verify', '--quiet', `${trackingRef(state.remote)}^{commit}`]);
   if (remote === null) return null;
   const sides = sidesOf(state, remote.trim());
-  return sides.local === sides.remote ? null : { stop, plan: planMerge(state, sides) };
+  return sides.local === sides.remote ? null : { conflicts: questionsOf(state, sides, stop) };
 }
 
 /**
@@ -553,8 +511,8 @@ function waitingMerge(state) {
  */
 function pendingStateMerge(root) {
   return withStateLock(root, () => {
-    const waiting = waitingMerge(openState(root));
-    return waiting === null || !waiting.plan.conflicts.some(open) ? null : { conflicts: waiting.plan.conflicts };
+    const waiting = waitingMerge(openState(root, {}));
+    return waiting === null || !waiting.conflicts.some(open) ? null : waiting;
   });
 }
 
@@ -567,17 +525,17 @@ function pendingStateMerge(root) {
  * @param {string} root  the state root
  * @param {string} key
  * @param {string} choice  the identity the screen's DATA carried
- * @param {{fetchTimeoutMs?: number, pushTimeoutMs?: number}} [opts]
+ * @param {CatchUpOptions} [opts]
  * @returns {CatchUpOutcome}
  */
 function pickStateMerge(root, key, choice, opts = {}) {
   const side = Object.hasOwn(PICK_KEYS, key) ? PICK_KEYS[key] : undefined;
   if (side === undefined) throw new Error(`a state merge pick is 1 (this machine's value) or 2 (the remote's), got "${key}"`);
   return withStateLock(root, () => {
-    const state = openState(root);
+    const state = openState(root, opts);
     const waiting = waitingMerge(state);
     if (waiting === null) throw new Error('no state merge is waiting on a pick');
-    const { conflicts } = waiting.plan;
+    const { conflicts } = waiting;
     const asked = conflicts.find(open);
     if (asked === undefined) return converge(state, timeoutsOf(opts));
     if (choiceId(asked) !== choice) return outcome(state, 'stopped', { conflicts, warnings: [NOT_ASKED] });

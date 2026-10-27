@@ -24,17 +24,23 @@
 //   as the changed copy.
 // - Every file lands whole by a rename, and every copy set beside moves
 //   there by a rename, so a process killed at any point leaves each path at
-//   its old bytes or its new ones, and no version only in memory.
+//   its old bytes or its new ones, and no version only in memory. A move
+//   finished after such a kill cannot tell a file a session changed from
+//   its old bytes from one it changed from the merged copy already landed
+//   there, so the warning on a file it leaves as it stands says the merged
+//   copy may already be in it.
+//
+// The branch is the caller's to name, so the state worktree's machinery can
+// finish a move a kill cut short.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
-const { STATE_BRANCH } = require('./state-worktree.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
 const {
-  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, separateClashes, isUnder, besidePath, changedCopyKept,
+  sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
 
 /** @typedef {import('./state-merge-paths.cjs').Entry} Entry */
@@ -43,9 +49,10 @@ const {
 /** @typedef {import('./state-merge-paths.cjs').PickOf} PickOf */
 
 /**
- * A merge's context, with the state worktree's root, the hash its objects
- * are named by, and the folder new files are staged in before they land.
- * @typedef {import('./state-merge-paths.cjs').MergeContext & {root: string, objectFormat: string, staged: string}} WorktreeContext
+ * A merge's context, with the state worktree's root and the branch it has
+ * checked out, the hash its objects are named by, and the folder new files
+ * are staged in before they land.
+ * @typedef {import('./state-merge-paths.cjs').MergeContext & {root: string, branch: string, objectFormat: string, staged: string}} WorktreeContext
  */
 
 /** A file removed where it holds the bytes `from`. @typedef {{file: string, from: Entry}} Remove */
@@ -60,7 +67,11 @@ const {
  * @typedef {{steps: Steps, conflicts: PathConflict[], notes: string[], merged: string[], kept: string[]}} WorktreePlan
  */
 
-/** @typedef {{notes: string[], warnings: string[]}} Report */
+/**
+ * What the move says as it goes, and whether it finishes a move a kill cut
+ * short.
+ * @typedef {{notes: string[], warnings: string[], resumed: boolean}} Report
+ */
 
 /** @param {string[]} files @returns {string} */
 function nulJoined(files) {
@@ -98,8 +109,11 @@ function planWorktree(ctx, local, target, working, pickOf) {
   const notes = [];
   const layout = new Map(working);
   const changed = changedPaths(local, target);
-  for (const file of changed) {
-    const result = mergePath(ctx, file, { base: local.get(file), local: working.get(file), remote: target.get(file) }, pickOf);
+  /** @type {[string, import('./state-merge-paths.cjs').Versions][]} */
+  const paths = changed.map((file) => [file, { base: local.get(file), local: working.get(file), remote: target.get(file) }]);
+  readContested(ctx, paths);
+  for (const [file, versions] of paths) {
+    const result = mergePath(ctx, file, versions, pickOf);
     conflicts.push(...(result.conflicts ?? []));
     if (result.note !== undefined) notes.push(result.note);
     let from = working.get(file);
@@ -180,19 +194,24 @@ function stored(ctx, file) {
 /**
  * Leave a file the merge cannot land on as it stands, its merged copy, the
  * staged one, set beside it: committing the file as it stands leaves the
- * remote's change only in that copy.
+ * remote's change only in that copy, unless, in a move finished after a
+ * kill, the file was changed from that copy landed there.
  * @param {WorktreeContext} ctx @param {Write} write @param {Report} report
  */
 function leaveBeside(ctx, write, report) {
-  const beside = besidePath(write.file, write.to.oid);
+  const { file } = write;
+  const beside = besidePath(file, write.to.oid);
+  const left = report.resumed
+    ? `${file} changed after a catch-up was cut short and was left as it stands`
+    : `${file} changed while the state caught up and was left as it stands`;
+  const unless = report.resumed ? `unless ${file} was changed from the merged copy, ` : '';
   try {
-    if (!exists(path.join(ctx.root, beside))) fs.renameSync(path.join(ctx.staged, write.file), path.join(ctx.root, beside));
-    report.warnings.push(`${write.file} changed while the state caught up and was left as it stands, with the merged copy beside it as ${beside}: `
-      + `committing ${write.file} as it stands leaves the remote's change only in ${beside}`);
+    if (!exists(path.join(ctx.root, beside))) fs.renameSync(path.join(ctx.staged, file), path.join(ctx.root, beside));
+    report.warnings.push(`${left}, with the merged copy beside it as ${beside}: ${unless}committing ${file} as it stands leaves the remote's change only in ${beside}`);
   } catch (err) {
     if (!(err instanceof Error) || !('code' in err)) throw err;
-    report.warnings.push(`${write.file} changed while the state caught up and was left as it stands, and its merged copy could not be set beside it: `
-      + `the remote's change is only in the copy committed on ${STATE_BRANCH}, until ${write.file} is next committed`);
+    report.warnings.push(`${left}, and its merged copy could not be set beside it: `
+      + `${unless}the remote's change is only in the copy committed on ${ctx.branch}, until ${file} is next committed`);
   }
 }
 
@@ -324,12 +343,12 @@ function writeChecked(ctx, writes, report, last) {
 /**
  * Make the working tree's move: the removals, the copies set beside, then
  * the writes, in two rounds.
- * @param {WorktreeContext} ctx @param {Steps} steps
+ * @param {WorktreeContext} ctx @param {Steps} steps @param {boolean} resumed  whether it finishes a move a kill cut short
  * @returns {Report}
  */
-function moveWorktree(ctx, steps) {
+function moveWorktree(ctx, steps, resumed) {
   /** @type {Report} */
-  const report = { notes: [], warnings: [] };
+  const report = { notes: [], warnings: [], resumed };
   for (const remove of steps.removes) removeChecked(ctx, remove, report);
   for (const move of steps.moves) moveBeside(ctx, move);
   writeChecked(ctx, writeChecked(ctx, steps.writes, report, false), report, true);
@@ -351,7 +370,7 @@ function alignIndex(ctx, target, files) {
     return [];
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    return [`the state worktree's index was not brought into line with ${STATE_BRANCH}: ${err.message}`];
+    return [`the state worktree's index was not brought into line with ${ctx.branch}: ${err.message}`];
   }
 }
 
