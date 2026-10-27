@@ -6,11 +6,10 @@
 // (domain/code-trace). A merge reads many blobs, so it reads them together:
 // their sizes in one git call, then the bytes of each within the limit its
 // caller reads it to in one more, written to a file, so no answer is held to
-// a pipe's limit. A blob
-// over its limit is never read. A blob the merge reads a line at a time, as
-// it does the ledger at any size, is written to a file whole by git; that
-// file, and any file in the working tree, is read a chunk at a time, so no
-// file is held in memory whole for its size alone.
+// a pipe's limit. A blob over its limit is never read. A blob the merge reads
+// a line at a time, as it does the ledger at any size, is written to a file
+// whole by git; that file, and any file in the working tree, is read a chunk
+// at a time, so no file is held in memory whole for its size alone.
 //
 // A blob's id names its bytes for good, so each blob read is kept on the
 // merge's context by its id and never read again.
