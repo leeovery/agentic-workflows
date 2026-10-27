@@ -36,14 +36,14 @@ const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
 const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
 
 const BASELINE_PATH = /^\.baseline\/(.+)$/;
+const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
+const PHASE_PATH = /^([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/;
 
 /** The phase a record's chunks carry. */
 const RECORD_PHASE = 'record';
 
 /** The topic of the identity of a unit's own record. */
 const UNIT_RECORD = '.unit';
-const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
-const PHASE_PATH = /^([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/;
 
 /**
  * Phases whose completed artifact is indexed, with the artifact path per
