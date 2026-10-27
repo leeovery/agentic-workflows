@@ -15,7 +15,9 @@
 // merges of it, the questions part of it (5.3.11), the confirmations that it
 // still holds, and on the first entry of a question's chain, the moves of
 // any wording; and where its line sits, so a read shows an entry by reading
-// that one line again.
+// that one line again. It keeps one thing a read shows that the entry's line
+// never holds: what the late one-decision check last found of a decision
+// that landed unchecked (16.19.8).
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -115,6 +117,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   moves: readonly string[],
  *   parts: readonly string[],
  *   holds: readonly string[],
+ *   late_check: 'one'|'several'|null,
  * }} IdFacts
  */
 
@@ -189,6 +192,7 @@ const ID_FACTS = {
       moves: NONE,
       parts: NONE,
       holds: NONE,
+      late_check: null,
     });
     if (kind === 'decision') linkBack(facts, event.answers, 'answered_by', id);
     if (kind === 'question' && event.part_of !== null) linkBack(facts, event.part_of, 'parts', id);
@@ -199,6 +203,7 @@ const ID_FACTS = {
       linkBack(facts, event.question, 'merges', id);
       if (event.duplicate !== null) linkBack(facts, event.duplicate, 'merged_by', id);
     }
+    if (event.event === 'checked') named(facts, event.entry).late_check = /** @type {'one'|'several'} */ (event.rules);
   },
 };
 

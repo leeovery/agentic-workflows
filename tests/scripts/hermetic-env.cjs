@@ -4,10 +4,11 @@
 // every process a test spawns: an empty system-config directory, an empty
 // Claude Code config directory, no provider key, no gate surface or handoff
 // announcement, no Claude Code session, no user or system git config, no ssh
-// command of the developer's, a fixed display width. A test never reads the
-// developer's config or credentials, never writes their Claude Code
-// settings, never reaches an embedding provider — every knowledge store a
-// test builds is keyword-only — never reaches a remote through the
+// command of the developer's, a fixed display width, and a stub for the
+// `claude` binary. A test never reads the developer's config or
+// credentials, never writes their Claude Code settings, never reaches an
+// embedding provider — every knowledge store a test builds is keyword-only
+// — never reaches a real Claude, never reaches a remote through the
 // developer's ssh, never renders a gate or handoff payload it did not
 // announce itself, and never marks a conversation it did not name itself.
 //
@@ -65,6 +66,9 @@ const HERMETIC_ENV = Object.freeze({
   // every test env — without a pin, a suite would render against whatever
   // pane happened to be open.
   WORKFLOWS_DISPLAY_WIDTH: '65',
+  // The separate Claude call runs the binary this names: the stub, which
+  // has no login unless a test arms it with answers.
+  LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.cjs'),
 });
 
 Object.assign(process.env, HERMETIC_ENV);

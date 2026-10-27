@@ -10,7 +10,7 @@
 const http = require('http');
 const engine = require('../../skills/workflow-engine/scripts/engine.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { launcher } = require('../../skills/workflow-engine/scripts/domain/knowledge/vectors.cjs');
+const { launcher } = require('../../skills/workflow-engine/scripts/kernel/call.cjs');
 
 /** How the endpoint answers in each failing mode. */
 const FAILURES = {
@@ -92,14 +92,17 @@ function heldCall(cwd) {
 
 /**
  * The vector fill's launches recorded — the project root of each — rather
- * than a process spawned, for the length of the test.
+ * than a process spawned, for the length of the test; any other detached
+ * job's launch dropped, never spawned either.
  * @param {import('node:test').TestContext} t
  * @returns {string[]}
  */
 function recordLaunches(t) {
   /** @type {string[]} */
   const launched = [];
-  t.mock.method(launcher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+  t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => {
+    if (argv.join(' ') === 'knowledge fill') launched.push(root);
+  });
   return launched;
 }
 

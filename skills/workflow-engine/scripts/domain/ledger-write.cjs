@@ -41,22 +41,26 @@
 //   (5.3.8).
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
-//   content leaves it out, the replaced entry's product-wide mark (5.2.5). A
-//   decision lands unchecked, as nothing has judged whether it holds one
-//   rule (5.5.2).
+//   content leaves it out, the replaced entry's product-wide mark (5.2.5); a
+//   decision's being unchecked, where the one-decision check could not
+//   judge it (ledger-one-decision.cjs).
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
-//   write never waits on a peer. Under the lock the ledger is folded
+//   write never waits on a peer; then a decision's links are resolved and
+//   checked against the ledger as it stands — folded once before the lock, a
+//   replacement's reading reused — so no call is spent on a write they
+//   refuse, and it is judged, one rule or several, by the separate Claude
+//   call, which no peer waits on either. Under the lock the ledger is folded
 //   (ledger-fold.cjs), the place's liveness read again, every link resolved
-//   and its currency and relations checked, the event appended and the
+//   and its currency and relations checked again, the event appended and the
 //   ledger committed, so no peer's write or lifecycle change lands between
-//   the check and the append. The answer is made once the lock
-//   is released: the entry's short id, the commit, and as warnings a push
-//   that failed and what a landing finished on the way said, which a refusal
-//   carries too. Then, the lock released, the knowledge base's copies are
-//   rendered against the ledger and indexed (ledger-copies.cjs), a failure
-//   a warning on an entry that stands (22.6.15).
+//   the check and the append. The answer is made once the lock is released:
+//   the entry's short id, the commit, and as warnings a push that failed and
+//   what a landing finished on the way said, which a refusal carries too.
+//   Then, the lock released, the knowledge base's copies are rendered
+//   against the ledger and indexed (ledger-copies.cjs), a failure a warning
+//   on an entry that stands (22.6.15).
 // ---------------------------------------------------------------------------
 
 const { messageOf } = require('../kernel/call.cjs');
@@ -70,6 +74,7 @@ const { ID_FACTS, foldLedger, standingOf, notCurrent, currentsOf, replacedChain 
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
+const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
@@ -132,9 +137,11 @@ const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 /**
  * A write as asked, read whole and checked before the lock: the verb, where
  * it is made, the session, each flag's values by field, the kind of entry it
- * writes — null for an event that is no entry — and its content, checked in
- * that kind's shape.
- * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>}} Request
+ * writes — null for an event that is no entry — its content, checked in
+ * that kind's shape, and, for a decision, whether it lands unchecked: true
+ * until the one-decision check finds it holds one rule; and the ledger as it
+ * stood before the lock, folded the first time a step reads it.
+ * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, before: () => Folded}} Request
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
@@ -555,13 +562,27 @@ function readNow(at, warnings) {
 }
 
 /**
+ * The ledger as it stands before the lock, folded the first time a step
+ * asks for it and never again.
+ * @param {Address} at @param {string[]} warnings
+ * @returns {() => Folded}
+ */
+function readBefore(at, warnings) {
+  /** @type {Folded|null} */
+  let read = null;
+  return () => {
+    read ??= readNow(at, warnings);
+    return read;
+  };
+}
+
+/**
  * The entry a replacement replaces, read from the ledger before the lock:
  * its facts, its link checked as the lock checks it again.
- * @param {string} verb @param {Address} at @param {Map<string, string[]>} given @param {string[]} warnings
+ * @param {string} verb @param {Address} at @param {Map<string, string[]>} given @param {Folded} read
  * @returns {IdFacts}
  */
-function replacedEntry(verb, at, given, warnings) {
-  const read = readNow(at, warnings);
+function replacedEntry(verb, at, given, read) {
   const flag = /** @type {Flag} */ (WRITES[verb].flags.find((f) => f.field === 'replaces'));
   const id = resolveLink(verb, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], read);
   return /** @type {IdFacts} */ (read.facts.get(id));
@@ -629,11 +650,14 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   checkValues(verb, given);
   write.checkGiven(at, given);
   const content = stdinContent(verb, stdin());
-  const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, warnings) : null;
+  const before = readBefore(at, warnings);
+  const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, before()) : null;
   return {
     verb, write, at, session, given,
     kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
     content: contentFields(verb, write, content, replaced),
+    unchecked: true,
+    before,
   };
 }
 
@@ -645,13 +669,46 @@ function requestOf(cwd, verb, args, stdin, warnings) {
  * @returns {Record<string, unknown>}
  */
 function eventOf(request, read) {
-  const { write, at, session, kind, content } = request;
+  const { write, at, session, kind, content, unchecked } = request;
   const linked = resolvedLinks(request, read);
   write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked: true } : {}),
+    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked } : {}),
   };
+}
+
+/**
+ * A decision's links resolved and checked before the one-decision call,
+ * against the ledger as read before the lock, as the lock checks them again,
+ * so no call is spent on a write its links refuse. Answers the entries they
+ * name, by short id, for the call's refusal.
+ * @param {Request} request
+ * @returns {import('./ledger-one-decision.cjs').Named}
+ */
+function linkedBeforeCall(request) {
+  const read = request.before();
+  const { answers, replaces } = eventOf(request, read);
+  const short = (/** @type {unknown} */ id) => shortId(/** @type {string} */ (id), read.facts.keys());
+  return { answers: short(answers), replaces: replaces === undefined ? null : short(replaces) };
+}
+
+/**
+ * A write as asked, a decision among them judged by the one-decision check.
+ * @param {Request} request
+ * @returns {Request}
+ */
+function oneDecisionChecked(request) {
+  return request.kind === 'decision' ? checkOneDecision(request, linkedBeforeCall(request)) : request;
+}
+
+/**
+ * A ledger commit's message: the unit, the event and its id, and the topic
+ * it stands on.
+ * @param {string} unit @param {string} event @param {string} id @param {string|null} topic
+ */
+function ledgerMessage(unit, event, id, topic) {
+  return `ledger(${unit}): ${event} ${id}${topic === null ? '' : ` in ${topic}`}`;
 }
 
 /**
@@ -669,8 +726,7 @@ function land(cwd, request, warnings) {
   write.checkLive(at, given, read.live);
   const entry = appendEntry(at.root, eventOf(request, read), warnings);
   const id = /** @type {string} */ (entry.id);
-  const message = `ledger(${at.unit}): ${write.event} ${id}${at.topic === null ? '' : ` in ${at.topic}`}`;
-  return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, message, warnings) };
+  return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings) };
 }
 
 /**
@@ -685,7 +741,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const request = requestOf(cwd, verb, args, stdin, warnings);
+    const request = oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings));
     const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
     refreshLedgerCopies(cwd, warnings);
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
@@ -698,4 +754,4 @@ function writeLedger(cwd, verb, args, stdin) {
   }
 }
 
-module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger };
+module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage };

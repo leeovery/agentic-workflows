@@ -109,6 +109,29 @@ describe('hermetic environment — the pins', () => {
     assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, undefined);
   });
 
+  it('the separate Claude call runs the stub, never a real Claude — and the stub has no login until a test arms it', () => {
+    assert.strictEqual(process.env.LEEWAY_CLAUDE, path.join(__dirname, 'claude-stub.cjs'));
+    assert.ok(fs.statSync(process.env.LEEWAY_CLAUDE).mode & 0o111, 'the stub runs as a binary');
+    const res = spawnSync(process.env.LEEWAY_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question' });
+    assert.strictEqual(res.status, 1, res.stderr);
+    assert.strictEqual(JSON.parse(res.stdout).result, 'Not logged in · Please run /login');
+  });
+
+  it('the stub writes down its environment\'s names, and no value a test did not name — a login the environment holds never lands in its log', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-stub-log-'));
+    try {
+      const log = path.join(dir, 'calls.jsonl');
+      const env = { ...process.env, CLAUDE_STUB_LOG: log, CLAUDE_STUB_LOG_VALUES: 'PATH', ANTHROPIC_API_KEY: 'sk-developer', CLAUDE_CODE_OAUTH_TOKEN: 'oauth-developer' };
+      spawnSync(process.env.LEEWAY_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question', env });
+      const text = fs.readFileSync(log, 'utf8');
+      const logged = JSON.parse(text).env;
+      assert.deepStrictEqual([logged.ANTHROPIC_API_KEY, logged.CLAUDE_CODE_OAUTH_TOKEN, logged.PATH], [null, null, process.env.PATH]);
+      assert.ok(!text.includes('sk-developer') && !text.includes('oauth-developer'), 'a login reached the log');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('git reads no user or system config, and the display width is pinned', () => {
     assert.strictEqual(process.env.GIT_CONFIG_GLOBAL, '/dev/null');
     assert.strictEqual(process.env.GIT_CONFIG_SYSTEM, '/dev/null');
@@ -129,11 +152,12 @@ describe('hermetic environment — the pins', () => {
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
       WORKFLOWS_DISPLAY_WIDTH: '65',
+      LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.cjs'),
     });
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, handoff: process.env.WORKFLOWS_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.WORKFLOWS_GATE_SURFACE ?? null, handoff: process.env.WORKFLOWS_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.WORKFLOWS_DISPLAY_WIDTH, binary: process.env.LEEWAY_CLAUDE }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
@@ -144,6 +168,7 @@ describe('hermetic environment — the pins', () => {
       handoff: null,
       session: null,
       width: '65',
+      binary: path.join(__dirname, 'claude-stub.cjs'),
     });
   });
 });
