@@ -53,6 +53,11 @@ function sharedStart(a, b) {
   return n;
 }
 
+/** An id cut one character past the longest start it shares with another, never under `SHORT_MIN`. @param {string} id @param {number} shared */
+function cut(id, shared) {
+  return id.slice(0, Math.max(SHORT_MIN, shared + 1));
+}
+
 /**
  * Every id's short form: one character past the longest start it shares
  * with any other id, and never under `SHORT_MIN`. Ids next to each other in
@@ -66,9 +71,21 @@ function shortIds(ids) {
   const shorts = new Map();
   sorted.forEach((id, i) => {
     const shared = Math.max(i > 0 ? sharedStart(id, sorted[i - 1]) : 0, i + 1 < sorted.length ? sharedStart(id, sorted[i + 1]) : 0);
-    shorts.set(id, id.slice(0, Math.max(SHORT_MIN, shared + 1)));
+    shorts.set(id, cut(id, shared));
   });
   return shorts;
+}
+
+/**
+ * One id's short form among `ids`, as `shortIds` gives it, the ids read once
+ * and none held.
+ * @param {string} id @param {Iterable<string>} ids
+ * @returns {string}
+ */
+function shortId(id, ids) {
+  let shared = 0;
+  for (const other of ids) if (other !== id) shared = Math.max(shared, sharedStart(id, other));
+  return cut(id, shared);
 }
 
 /**
@@ -86,4 +103,4 @@ function resolveId(prefix, ids) {
   return /** @type {string} */ (named.values().next().value);
 }
 
-module.exports = { ID_ALPHABET, ID_LENGTH, SHORT_MIN, PREFIX_MIN, newId, isId, shortIds, resolveId };
+module.exports = { ID_ALPHABET, ID_LENGTH, SHORT_MIN, PREFIX_MIN, newId, isId, shortIds, shortId, resolveId };

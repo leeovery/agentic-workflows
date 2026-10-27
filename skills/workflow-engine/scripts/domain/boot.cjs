@@ -278,7 +278,7 @@ function boot(cwd, { startAgain = false } = {}) {
  * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}}
  */
 function runMigrations(cwd, warnings) {
-  const mig = spawnSync('node', [MIGRATE_CJS, '--ledger', statePath(cwd, MIGRATIONS_RECORD)], { cwd: codeRoot(cwd), encoding: 'utf8' });
+  const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD)], { cwd: codeRoot(cwd), encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message

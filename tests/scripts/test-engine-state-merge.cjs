@@ -46,7 +46,9 @@ const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, askStateRemote, openWorktree,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const { checkLedger } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { checkLedger, readLedger, appendEntry, ledgerChange, ledgerStopSurface } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged, checkLedgerCommit } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
@@ -1869,5 +1871,60 @@ describe('the pick\'s command', () => {
     assert.strictEqual(await exit, 0);
     assert.deepStrictEqual(JSON.parse(answer), { ...JSON.parse(answer), ok: true, action: 'fast-forwarded', commit: remoteTip(bare) });
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));
+  });
+});
+
+describe('the ledger through a catch-up', () => {
+  const ASKED = { event: 'asked', unit: 'fumi', topic: 'a', phase: 'discussion', session: 's1', by: 'claude', who_moved_whom: 'none', part_of: null, relies_on: [] };
+
+  /** A ledger line of a question asked. @param {string} text */
+  function askedLine(text) {
+    return entry(validEvent({ ...ASKED, v: 1, id: newId(), at: '2026-10-27T09:00:00Z', text }));
+  }
+
+  for (const [what, act] of /** @type {[string, (root: string) => unknown][]} */ ([
+    ['a read', (root) => [...readLedger(root)]],
+    ['an append', (root) => appendEntry(root, { ...ASKED, text: 'Asked after the kill?' })],
+  ])) {
+    it(`finishes a landing a kill cut short at ${what}, under the writer lock, so nothing the landing wrote reads as this machine's change`, () => {
+      const [base, a1, b1] = ['Base?', 'Here?', 'There?'].map(askedLine);
+      const { here, there } = twoMachines({ '.ledger.jsonl': base });
+      commitUnpushed(here, { '.ledger.jsonl': `${base}${a1}` });
+      commitOn(there, { '.ledger.jsonl': `${base}${b1}` });
+      killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
+      assert.strictEqual(read(here.root, '.ledger.jsonl'), `${base}${b1}${a1}`, 'the kill left no merged ledger on disk');
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), `${base}${a1}`, 'the kill left the branch moved');
+
+      act(here.root);
+
+      assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), `${base}${b1}${a1}`);
+      assert.ok(read(here.root, '.ledger.jsonl').startsWith(`${base}${b1}${a1}`));
+      assert.deepStrictEqual(mergeLeftovers(here.root), []);
+    });
+  }
+
+  it('checks the merge\'s own commit against the remote\'s ledger: one that fails lands nothing, pushes nothing, and the stop shows the line the check found', () => {
+    const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base') });
+    commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
+    commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') });
+    const before = { tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: read(here.root, '.ledger.jsonl') };
+    const tampered = JSON.stringify({ v: 1, id: 'tampered', event: 'decided' });
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const wrapper = fs.mkdtempSync(path.join(world, 'git-'));
+    fs.writeFileSync(path.join(wrapper, 'git'), [
+      '#!/bin/sh',
+      'case "$*" in',
+      `  *hash-object*union) for a; do f="$a"; done; printf '%s\\n' '${tampered}' > "$f" ;;`,
+      'esac',
+      `exec "${real}" "$@"`,
+      '',
+    ].join('\n'), { mode: 0o755 });
+
+    assert.throws(() => withPath(wrapper, () => catchUpState(here.root)),
+      (err) => err instanceof LedgerChanged && JSON.stringify(err.change) === JSON.stringify({ line: 1, found: tampered }) && /— nothing committed$/.test(err.message));
+
+    assert.deepStrictEqual({ tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: read(here.root, '.ledger.jsonl') }, before);
+    assert.strictEqual(ledgerChange(here.root), null, 'the disk is not as the branch committed it');
+    assert.match(ledgerStopSurface(here.main, {}), /line 1 isn't the line the state branch last committed there\. The line it found:\n>   \{"v":1,"id":"tampered","event":"decided"\}\n/);
   });
 });

@@ -9,16 +9,19 @@
 //   The branch is read before the file, so an append committed meanwhile
 //   never reads as a change. A catch-up's landing rewrites the file before
 //   it moves the branch, so a check that fails is made again under the
-//   writer lock, which the landing holds, before the engine stops.
+//   writer lock, which the landing holds, once a landing a kill cut short is
+//   finished (state-merge-landing.cjs), before the engine stops.
 // - The ledger is read a line at a time, never whole and never through a
-//   pipe (kernel/file-stream), each line validated against its event's
-//   schema, a field a later release added taking its default
-//   (ledger-events).
+//   pipe (kernel/file-stream), each line validated against the shape its
+//   version names, a field a later version added taking its default
+//   (ledger-events). A line a newer release wrote stops the engine.
 // - An entry is appended under the writer lock, its id, version and time
-//   the engine's own: the ledger is checked, then copied beside itself with
-//   the line added and renamed over, so a read meets the ledger before the
+//   the engine's own, the time taken under the lock so the lines' order is
+//   their times': the ledger is checked, then copied beside itself with the
+//   line added and renamed over, so a read meets the ledger before the
 //   append or after it, never half a line (5.4.6). Nothing is ever edited
 //   (5.3.4).
+// - Every stop on the ledger is kept for its screen (`render ledger-stop`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -27,12 +30,13 @@ const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
 const { fileLines, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
-const { LEDGER, LEDGER_VERSION, parseEntry, validEvent } = require('./ledger-events.cjs');
-const { newId } = require('./ledger-ids.cjs');
-const { LedgerChanged, diskChange } = require('./ledger-check.cjs');
-const { BRANCH_REF, withStateLock } = require('./state-worktree.cjs');
+const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
+const { newId, shortId } = require('./ledger-ids.cjs');
+const { idsOf, keepStop, keptStop, ledgerStopped, diskChange } = require('./ledger-check.cjs');
+const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock } = require('./state-worktree.cjs');
+const { finishLanding } = require('./state-merge-landing.cjs');
 const { projectName } = require('./state-checks.cjs');
-const { ledgerStop } = require('./projections/ledger.cjs');
+const { ledgerStop, ledgerNewerStop, idInLine } = require('./projections/ledger.cjs');
 
 /** The fields the engine assigns an entry, never its caller. */
 const ASSIGNED = ['v', 'id', 'at'];
@@ -56,7 +60,7 @@ function checkedTree(root) {
 /**
  * The first line of the ledger on disk not as the state branch last
  * committed it, or null where the ledger is as committed and grew only at
- * its end. Takes no lock: what a stop's screen shows.
+ * its end. Takes no lock.
  * @param {string} root
  * @returns {import('./ledger-check.cjs').LedgerChange|null}
  */
@@ -66,21 +70,40 @@ function ledgerChange(root) {
 
 /**
  * Stop where the ledger changed other than at its end: checked, and where
- * that fails checked again under the writer lock, then refused with the
- * line found.
+ * that fails checked again under the writer lock, a landing a kill cut short
+ * finished first; then refused with the line found, the stop kept.
  * @param {string} root
+ * @returns {string[]} what a landing finished here said
  */
 function checkLedger(root) {
-  if (ledgerChange(root) === null) return;
-  withStateLock(root, () => {
+  if (ledgerChange(root) === null) return [];
+  return withStateLock(root, () => {
+    const worktree = openWorktree(root);
+    const said = worktree.opened ? finishLanding(worktree, STATE_BRANCH) : [];
     const change = ledgerChange(root);
-    if (change !== null) throw new LedgerChanged(change, 'the engine stops here');
+    if (change !== null) throw ledgerStopped(checkedTree(root), change, 'the engine stops here');
+    return said;
   });
 }
 
 /**
+ * Line `number` read as an entry; a newer release's line stops the engine,
+ * the stop kept.
+ * @param {string} root @param {string} line @param {number} number
+ * @returns {Record<string, unknown>}
+ */
+function entryAt(root, line, number) {
+  try {
+    return parseEntry(line, number);
+  } catch (err) {
+    if (err instanceof LedgerNewer) keepStop(checkedTree(root).gitDir, { stop: 'newer', version: err.version, reads: err.reads });
+    throw err;
+  }
+}
+
+/**
  * The ledger's entries in order, checked first, each line read as an event
- * of the current shape. Refuses a line that is not one.
+ * of the shape its version names. Refuses a line that is not one.
  * @param {string} root
  * @returns {Generator<Record<string, unknown>>}
  */
@@ -89,7 +112,7 @@ function* readLedger(root) {
   const file = ledgerFile(root);
   if (!fs.existsSync(file)) return;
   let number = 0;
-  for (const line of fileLines(file)) yield parseEntry(line, ++number);
+  for (const line of fileLines(file)) yield entryAt(root, line, ++number);
 }
 
 /**
@@ -127,26 +150,46 @@ function appendLine(file, line) {
 function appendEntry(root, fields) {
   const assigned = ASSIGNED.find((name) => Object.hasOwn(fields, name));
   if (assigned !== undefined) throw new Error(`a ledger entry's ${assigned} is the engine's to give — nothing appended`);
-  const entry = validEvent({ ...fields, v: LEDGER_VERSION, id: newId(), at: isoNow() });
   return withStateLock(root, () => {
     checkLedger(root);
     const file = ledgerFile(root);
     if (fs.existsSync(file) && !endsWithNewline(file)) throw new Error(`${file} ends in an unfinished line — nothing appended`);
+    const entry = validEvent({ ...fields, v: LEDGER_VERSION, id: newId(), at: isoNow() });
     appendLine(file, `${JSON.stringify(entry)}\n`);
     return entry;
   });
 }
 
+/** The ids of the ledger's entries on disk, a line at a time. @param {string} root @returns {Generator<string>} */
+function* entryIds(root) {
+  const file = ledgerFile(root);
+  if (!fs.existsSync(file)) return;
+  for (const id of idsOf(file)) if (id !== undefined) yield id;
+}
+
 /**
- * `render ledger-stop`: the screen of the engine stopped by a ledger
- * changed other than at its end.
+ * The short form of the id a line found holds, among the ledger's ids on
+ * disk, or null where the line shows none.
+ * @param {string} root @param {string|null} found
+ * @returns {string|null}
+ */
+function shortIdOf(root, found) {
+  const id = found === null ? null : idInLine(found);
+  return id === null ? null : shortId(id, entryIds(root));
+}
+
+/**
+ * `render ledger-stop`: the screen of the engine's last stop on the ledger,
+ * as the stop found it.
  * @param {string} cwd @param {object} _args
  * @returns {string}
  */
 function ledgerStopSurface(cwd, _args) {
-  const change = ledgerChange(stateRoot(cwd));
-  if (change === null) throw new Error('render ledger-stop: the ledger is as the state branch committed it, grown only at its end — nothing stopped the engine');
-  return ledgerStop(projectName(cwd), change);
+  const root = stateRoot(cwd);
+  const stop = keptStop(checkedTree(root).gitDir);
+  if (stop === null) throw new Error('render ledger-stop: no stop on the ledger is kept — nothing stopped the engine');
+  if (stop.stop === 'newer') return ledgerNewerStop(projectName(cwd), stop);
+  return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
 module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, appendEntry, ledgerStopSurface };

@@ -8,15 +8,17 @@
 // own file, a numbered `.cjs` in a `migrations` folder as the runner finds
 // them (workflow-migrate), so no verb reaches it.
 //
-// The migration's converter takes the ledger's events in order, each line
-// read as JSON, and yields the converted copy's. The door's check refuses
-// unless every event comes through, with the same ids in the same order,
-// and then nothing is changed. Else the copy replaces the ledger, and a pass
-// left in the state worktree's git dir lets the commit carrying it through
-// the append-only check, that commit alone (ledger-check.cjs); the parent
-// commit keeps the original byte for byte. The pass is left before the copy
-// is renamed in, so a kill between leaves the original standing, which the
-// check still passes.
+// Lines an earlier write left uncommitted are committed first, so every
+// line the conversion rewrites is in git as it was written. The migration's
+// converter then takes the ledger's events in order, each line read as JSON,
+// and yields the converted copy's. The door's rule refuses unless every
+// event comes through, with the same ids in the same order
+// (ledger-check.cjs), and then nothing is converted. Else the copy replaces
+// the ledger, and a pass left in the state worktree's git dir lets the
+// commit carrying it through the append-only check, that commit alone; the
+// parent commit keeps the original byte for byte. The pass is left before
+// the copy is renamed in, so a kill between leaves the original standing,
+// which the check still passes.
 //
 // The door reads the ledger in whatever shape a migration finds it, never
 // the current schema's: the migrations after it convert it on. It takes no
@@ -26,13 +28,15 @@
 const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
+const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { fileLines } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
-const { LedgerChanged, ledgerBlobs, diskChange, writePass } = require('./ledger-check.cjs');
-const { BRANCH_REF } = require('./state-worktree.cjs');
+const { ledgerBlobs, fileStartsWith, idsDeparture, passFile, ledgerStopped, diskChange } = require('./ledger-check.cjs');
+const { BRANCH_REF, commitState } = require('./state-worktree.cjs');
 
 const MIGRATION_FILE = /(?:^|[\\/])migrations[\\/]\d+-[^\\/]*\.cjs$/;
+const TAIL_MESSAGE = 'state: the ledger as written, before its conversion';
 
 /** @typedef {Record<string, unknown> & {id: string}} SourceEvent */
 
@@ -54,12 +58,12 @@ function callerOf(fn) {
 }
 
 /**
- * The lines of `file` as events, each a JSON object with an id. Refuses a
- * line that is not one, naming `whose` file it is in.
- * @param {string} file @param {string} whose
+ * The ledger's lines as events, each a JSON object with an id. Refuses a
+ * line that is not one.
+ * @param {string} file
  * @returns {Generator<SourceEvent>}
  */
-function* eventsOf(file, whose) {
+function* eventsOf(file) {
   if (!fs.existsSync(file)) return;
   let number = 0;
   for (const line of fileLines(file)) {
@@ -71,39 +75,66 @@ function* eventsOf(file, whose) {
       event = null;
     }
     if (event === null || typeof event !== 'object' || Array.isArray(event) || typeof event.id !== 'string') {
-      throw new Error(`line ${number} of ${whose} is not an entry with an id — nothing converted`);
+      throw new Error(`line ${number} of the ledger is not an entry with an id — nothing converted`);
     }
     yield event;
   }
 }
 
 /**
- * Where the converted copy first fails to carry the ledger's events through
- * with the same ids in the same order — the line, and the id each holds
- * there, null where it holds none — or null where it carries them all.
- * @param {string} ledger @param {string} copy
- * @returns {{line: number, was: string|null, is: string|null}|null}
+ * Commit the lines the ledger holds past the committed one, where an
+ * earlier write left them uncommitted. The writer lock is boot's.
+ * @param {import('./ledger-check.cjs').CheckedTree} tree @param {string} file
+ * @returns {string[]} the commit's warnings
  */
-function departure(ledger, copy) {
-  const was = eventsOf(ledger, 'the ledger');
-  const is = eventsOf(copy, 'the converted copy');
-  for (let line = 1; ; line += 1) {
-    const a = was.next();
-    const b = is.next();
-    if (a.done && b.done) return null;
-    if (a.done || b.done || a.value.id !== b.value.id) return { line, was: a.done ? null : a.value.id, is: b.done ? null : b.value.id };
+function commitTail(tree, file) {
+  const [committed] = ledgerBlobs(tree.git, [BRANCH_REF]);
+  if (!fs.existsSync(file) || fs.statSync(file).size <= (committed?.size ?? 0) || !fileStartsWith(file, committed)) return [];
+  return commitState(tree.root, [LEDGER], TAIL_MESSAGE).warnings;
+}
+
+/**
+ * Write the converted copy: `convert` takes the ledger's events and yields
+ * the copy's. Answers how many it yielded.
+ * @param {string} file @param {string} copy @param {(events: Iterable<SourceEvent>) => Iterable<unknown>} convert
+ * @returns {number}
+ */
+function writeCopy(file, copy, convert) {
+  let events = 0;
+  const fd = fs.openSync(copy, 'w');
+  try {
+    for (const event of convert(eventsOf(file))) {
+      fs.writeSync(fd, `${JSON.stringify(event)}\n`);
+      events += 1;
+    }
+  } finally {
+    fs.closeSync(fd);
   }
+  return events;
+}
+
+/**
+ * Refuse a copy that does not carry the ledger's every event through with
+ * the same ids in the same order.
+ * @param {string} file @param {string} copy
+ */
+function refuseLosses(file, copy) {
+  const lost = idsDeparture(file, copy);
+  if (lost === null) return;
+  if (lost.is === undefined) throw new Error(`line ${lost.line} of the converted copy is not an entry with an id — nothing converted`);
+  throw new Error(`the converted copy does not carry every event through with the same ids in the same order: at line ${lost.line} the ledger holds ${lost.was ?? 'no event'} and the copy ${lost.is ?? 'none'} — nothing converted`);
 }
 
 /**
  * Convert the ledger's shape: `convert` takes the ledger's events in order
  * and yields the converted copy's. Refuses any caller but a migration, a
  * ledger the append-only check stops on, and a copy that does not carry
- * every event through with the same ids in the same order — nothing changed.
- * Answers how many events came through.
+ * every event through with the same ids in the same order — nothing
+ * converted. Answers how many events came through, and the warnings of the
+ * commit of lines left uncommitted.
  * @param {string} projectDir the folder a migration is run in
  * @param {(events: Iterable<SourceEvent>) => Iterable<unknown>} convert
- * @returns {{events: number}}
+ * @returns {{events: number, warnings: string[]}}
  */
 function convertLedger(projectDir, convert) {
   const caller = callerOf(convertLedger);
@@ -115,32 +146,21 @@ function convertLedger(projectDir, convert) {
   if (gitDir === null) throw new Error(`no state worktree at ${root} — nothing converted`);
   const tree = { git: isolatedGit(root), root, gitDir };
   const change = diskChange(tree, BRANCH_REF);
-  if (change !== null) throw new LedgerChanged(change, 'nothing converted');
+  if (change !== null) throw ledgerStopped(tree, change, 'nothing converted');
 
   const file = path.join(root, LEDGER);
+  const warnings = commitTail(tree, file);
   const copy = `${file}.${process.pid}.tmp`;
   try {
-    let events = 0;
-    const fd = fs.openSync(copy, 'w');
-    try {
-      for (const event of convert(eventsOf(file, 'the ledger'))) {
-        fs.writeSync(fd, `${JSON.stringify(event)}\n`);
-        events += 1;
-      }
-    } finally {
-      fs.closeSync(fd);
-    }
-    const lost = departure(file, copy);
-    if (lost !== null) {
-      throw new Error(`the converted copy does not carry every event through with the same ids in the same order: at line ${lost.line} the ledger holds ${lost.was ?? 'no event'} and the copy ${lost.is ?? 'none'} — nothing converted`);
-    }
+    const events = writeCopy(file, copy, convert);
+    refuseLosses(file, copy);
     const [from] = ledgerBlobs(tree.git, [BRANCH_REF]);
     if (from !== null) {
       const to = { oid: tree.git.run(['hash-object', '-w', '--no-filters', '--', copy]).trim(), size: fs.statSync(copy).size };
-      writePass(gitDir, { from, to });
+      writeJsonAtomic(passFile(gitDir), { from, to });
     }
     fs.renameSync(copy, file);
-    return { events };
+    return { events, warnings };
   } finally {
     fs.rmSync(copy, { force: true });
   }

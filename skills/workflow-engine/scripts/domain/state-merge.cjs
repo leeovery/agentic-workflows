@@ -20,11 +20,13 @@
 //   pays nothing for it.
 // - The merge: one new commit whose parent is the remote's tip, its tree
 //   merged path by path (state-merge-paths.cjs) from the common ancestor,
-//   this clone's tip and the remote's: committed state only. This clone's
-//   unpushed commits are replaced by the merge: they were never pushed. It
-//   is pushed with a lease on the tip it was merged onto; a remote that
-//   moved meanwhile is fetched and merged again, a bounded number of times.
-//   No git merge, and no merge driver.
+//   this clone's tip and the remote's: committed state only. Its ledger is
+//   checked against the remote's, as every state commit's is against its
+//   parent's (ledger-check.cjs). This clone's unpushed commits are replaced
+//   by the merge: they were never pushed. It is pushed with a lease on the
+//   tip it was merged onto; a remote that moved meanwhile is fetched and
+//   merged again, a bounded number of times. No git merge, and no merge
+//   driver.
 // - The working tree then moves to the merge's tree, its uncommitted files
 //   merged into and left uncommitted (state-merge-worktree.cjs), and the
 //   branch follows. The landing is recorded first, and a catch-up finishes
@@ -62,9 +64,11 @@ const {
   withStateLock, pushState, pushRefusal, askStateRemote, fetchStateTip, refuseCodeHistory,
 } = require('./state-worktree.cjs');
 const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
-const { changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
+const { sameEntry, changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
 const { workingEntries, planWorktree } = require('./state-merge-worktree.cjs');
 const { readRecord, openMerge, startLanding, finishLanding } = require('./state-merge-landing.cjs');
+const { LEDGER } = require('./ledger-events.cjs');
+const { checkLedgerCommit } = require('./ledger-check.cjs');
 const { stateMergeGate } = require('./projections/state-merge.cjs');
 
 // Beside the merge's other files, in the worktree's git dir.
@@ -305,13 +309,17 @@ function questionsOf(state, sides, stop) {
 
 /**
  * Land the plan: the remote's tip itself where the merged tree is the
- * remote's, else a new commit whose one parent is the remote's tip.
+ * remote's, else a new commit whose one parent is the remote's tip, its
+ * ledger, where it is not the remote's, checked against the remote's
+ * (5.4.5) — a ledger that fails stops the engine before anything lands.
  * @param {State} state @param {Sides} sides @param {Plan} plan
  * @returns {{target: string, said: string[]}} the commit landed on, and the notes and warnings on the way
  */
 function landPlan(state, sides, plan) {
   const tree = writeTree(state, plan.target);
   const remoteTree = state.git.run(['rev-parse', `${sides.remote}^{tree}`]).trim();
+  const remoteLedger = listedOnce(state, sides.remote, () => entriesOf(state.git, sides.remote)).get(LEDGER);
+  if (tree !== remoteTree && !sameEntry(remoteLedger, plan.target.get(LEDGER))) checkLedgerCommit(state, sides.remote, tree);
   const target = tree === remoteTree ? sides.remote : state.git.run(['commit-tree', tree, '-p', sides.remote, '-m', MERGE_MESSAGE]).trim();
   /** @type {Landing} */
   const landing = {

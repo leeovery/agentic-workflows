@@ -56,7 +56,7 @@ const { WRITER_LOCK, withWriterLock, withStateLockFile } = require('../kernel/ma
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
-const { checkLedgerCommit, spendPass } = require('./ledger-check.cjs');
+const { checkLedgerCommit, spendPass, dropStop } = require('./ledger-check.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 
 const STATE_BRANCH = 'leeway-state';
@@ -613,7 +613,8 @@ function onDisk(file) {
  * tree is built in a private index seeded from HEAD — never the worktree's
  * own, whatever it holds staged — and the branch moves only from the HEAD it
  * was built on. A tree whose ledger does not start with HEAD's is refused
- * (ledger-check.cjs), but for a conversion's, whose pass the commit spends.
+ * (ledger-check.cjs), but for a conversion's, whose pass the commit spends;
+ * a commit that lands clears the engine's kept stop on the ledger.
  * A kill at any step leaves the branch where it was or at the whole commit,
  * and the private index is cleared before and after. Null where the tree
  * comes out as HEAD's.
@@ -637,6 +638,7 @@ function commitPaths(worktree, specs, message) {
     const commit = git.run(['commit-tree', tree, '-p', head, '-m', message]).trim();
     git.run(['update-ref', '-m', `commit: ${message.split('\n')[0]}`, BRANCH_REF, commit, head]);
     if (conversion !== null) spendPass(gitDir);
+    dropStop(gitDir);
     return commit;
   });
 }

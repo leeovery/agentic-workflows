@@ -34,26 +34,35 @@
 //   unchecked (16.19.8).
 //
 // The engine assigns every link; it constrains links and identity, never
-// content (5.1.8). A field a later release adds is optional with a stated
-// default, so every line already written stays a valid line of the current
-// shape (5.7.2); a line is read in one shape only (5.7.4). Lines are written
-// with their fields in the schema's order.
+// content (5.1.8). Lines are written with their fields in the schema's
+// order, each carrying the schema version it was written in, `v`:
+//
+// - A release that adds a field or an event bumps the version. The field
+//   names the version that added it and its default, so a line written
+//   before reads with the default (5.7.2); an event names the version that
+//   added it. A line is read in the shape of its own version, and in one
+//   shape only (5.7.4): a field or an event its version does not hold makes
+//   it a broken line.
+// - A line whose version is above the schema's was written by a newer
+//   release. It is never read: the engine stops, to be updated.
 // ---------------------------------------------------------------------------
 
 const { isId } = require('./ledger-ids.cjs');
 
 const LEDGER = '.ledger.jsonl';
-const LEDGER_VERSION = 1;
 
 /** What a field holds, said for a refusal, and the test of it. @typedef {{is: string, test: (value: unknown) => boolean}} Type */
 
 /**
- * A field of an event: its name and type, and its default where a release
- * after the first added it.
- * @typedef {{name: string, type: Type, default?: unknown}} Field
+ * A field of an event: its name and type, and, for a field a release after
+ * the first added, that version and the default a line written before it
+ * takes.
+ * @typedef {{name: string, type: Type, added?: {version: number, default: unknown}}} Field
  */
 
-/** @typedef {Record<string, Field[]>} Schemas */
+/** An event's fields after the header, and the version that added it. @typedef {{since: number, fields: Field[]}} EventSchema */
+
+/** The ledger's shape: the latest version, and every event. @typedef {{version: number, events: Record<string, EventSchema>}} Schema */
 
 /** @param {string} is @param {(value: unknown) => boolean} test @returns {Type} */
 function type(is, test) {
@@ -93,7 +102,7 @@ const REASONS = ['new-fact', 'other-topic', 'changed-mind', 'was-wrong'];
 
 /** @type {Field[]} */
 const HEADER = [
-  field('v', type(`version ${LEDGER_VERSION}`, (v) => v === LEDGER_VERSION)),
+  field('v', type('a schema version', (v) => Number.isInteger(v) && /** @type {number} */ (v) >= 1)),
   field('id', ID),
   field('event', TEXT),
   field('unit', TEXT),
@@ -136,83 +145,115 @@ const CONTENT = {
   ],
 };
 
-/** Each event's own fields, after the header. @type {Schemas} */
-const EVENTS = {
-  asked: [...made([...PEOPLE, 'review']), ...CONTENT.question],
-  found: [...made(PEOPLE), ...CONTENT.finding],
-  decided: [...made(PEOPLE), ...CONTENT.decision],
-  replaced: [
-    ...made(PEOPLE),
-    field('replaces', ID),
-    field('reason', oneOf(...REASONS)),
-    field('cause', nullable(ID)),
-    field('drops', listOf(TEXT)),
-    field('of', oneOf(...Object.keys(CONTENT))),
-  ],
-  'still-holds': [...made(PEOPLE), field('entry', ID), field('after', ID)],
-  moved: [...made(PEOPLE), field('question', ID), field('to', TEXT)],
-  merged: [...made(PEOPLE), field('question', ID), field('into', ID), field('duplicate', nullable(ID))],
-  checked: [field('entry', ID), field('rules', oneOf('one', 'several'))],
+/** An event of the first version. @param {Field[]} fields @returns {EventSchema} */
+function event(fields) {
+  return { since: 1, fields };
+}
+
+/** @type {Schema} */
+const SCHEMA = {
+  version: 1,
+  events: {
+    asked: event([...made([...PEOPLE, 'review']), ...CONTENT.question]),
+    found: event([...made(PEOPLE), ...CONTENT.finding]),
+    decided: event([...made(PEOPLE), ...CONTENT.decision]),
+    replaced: event([
+      ...made(PEOPLE),
+      field('replaces', ID),
+      field('reason', oneOf(...REASONS)),
+      field('cause', nullable(ID)),
+      field('drops', listOf(TEXT)),
+      field('of', oneOf(...Object.keys(CONTENT))),
+    ]),
+    'still-holds': event([...made(PEOPLE), field('entry', ID), field('after', ID)]),
+    moved: event([...made(PEOPLE), field('question', ID), field('to', TEXT)]),
+    merged: event([...made(PEOPLE), field('question', ID), field('into', ID), field('duplicate', nullable(ID))]),
+    checked: event([field('entry', ID), field('rules', oneOf('one', 'several'))]),
+  },
 };
 
-/** A line the ledger cannot hold: not an event of the current shape. */
+const LEDGER_VERSION = SCHEMA.version;
+
+/** A line the ledger cannot hold: not an event of the shape its version names. */
 class LedgerLineError extends Error {}
+
+/** A line a newer release wrote, its version above the schema's: the engine stops, to be updated (`render ledger-stop`). */
+class LedgerNewer extends Error {
+  /** @param {number} version the line's @param {number} reads the schema's */
+  constructor(version, reads) {
+    super(`${LEDGER} holds entries a newer Leeway wrote, at schema version ${version}, and the workflows here read up to version ${reads} — `
+      + 'update the workflows on this machine (pull the project\'s code) and start again');
+    this.version = version;
+    this.reads = reads;
+    this.payload = { stop: 'ledger' };
+  }
+}
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/**
- * The fields an event holds, in the order its line is written: the header,
- * its own, and for a replacement the content of what it replaces.
- * @param {Record<string, unknown>} event @param {Schemas} events
- * @returns {Field[]}
- */
-function fieldsOf(event, events) {
-  const own = events[/** @type {string} */ (event.event)];
-  const content = event.event === 'replaced' && typeof event.of === 'string' && Object.hasOwn(CONTENT, event.of) ? CONTENT[event.of] : [];
-  return [...HEADER, ...own, ...content];
+/** The version that added a field. @param {Field} f */
+function addedIn(f) {
+  return f.added?.version ?? 1;
 }
 
 /**
- * `value` as an event of the current shape: every field its schema names,
- * in order, a field a later release added taking its default where the
- * value lacks it. Refuses anything else, saying why.
- * @param {unknown} value @param {Schemas} [events]
+ * The fields an event holds, in the order its line is written: the header,
+ * its own, and for a replacement the content of what it replaces.
+ * @param {Record<string, unknown>} value @param {EventSchema} schema
+ * @returns {Field[]}
+ */
+function fieldsOf(value, schema) {
+  const content = value.event === 'replaced' && typeof value.of === 'string' && Object.hasOwn(CONTENT, value.of) ? CONTENT[value.of] : [];
+  return [...HEADER, ...schema.fields, ...content];
+}
+
+/**
+ * `value` as an event of the shape its version names: every field that
+ * version holds, in the schema's order, and each field a later version added
+ * at its default. Refuses anything else, saying why; and a version above the
+ * schema's, as a newer release's.
+ * @param {unknown} value @param {Schema} [schema]
  * @returns {Record<string, unknown>}
  */
-function validEvent(value, events = EVENTS) {
+function validEvent(value, schema = SCHEMA) {
   if (!isObject(value)) throw new LedgerLineError('it is not a JSON object');
-  if (value.v !== LEDGER_VERSION) throw new LedgerLineError(`it is schema version ${JSON.stringify(value.v)}, and this engine reads version ${LEDGER_VERSION}`);
-  if (typeof value.event !== 'string' || !Object.hasOwn(events, value.event)) {
-    throw new LedgerLineError(`its event ${JSON.stringify(value.event)} is none of ${Object.keys(events).join(', ')}`);
+  const { v } = value;
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) throw new LedgerLineError(`its v, ${JSON.stringify(v)}, is not a schema version`);
+  if (v > schema.version) throw new LedgerNewer(v, schema.version);
+  const known = Object.keys(schema.events).filter((name) => schema.events[name].since <= v);
+  if (typeof value.event !== 'string' || !known.includes(value.event)) {
+    throw new LedgerLineError(`its event ${JSON.stringify(value.event)} is none of version ${v}'s: ${known.join(', ')}`);
   }
-  const fields = fieldsOf(value, events);
+  const fields = fieldsOf(value, schema.events[value.event]);
   /** @type {Record<string, unknown>} */
   const event = {};
   for (const f of fields) {
-    if (!Object.hasOwn(value, f.name)) {
-      if (!('default' in f)) throw new LedgerLineError(`the ${value.event} event needs ${f.name}`);
-      event[f.name] = structuredClone(f.default);
+    if (addedIn(f) > v) {
+      event[f.name] = structuredClone(f.added?.default);
+    } else if (!Object.hasOwn(value, f.name)) {
+      throw new LedgerLineError(`the ${value.event} event needs ${f.name}`);
     } else if (!f.type.test(value[f.name])) {
       throw new LedgerLineError(`its ${f.name} is not ${f.type.is}`);
     } else {
       event[f.name] = value[f.name];
     }
   }
-  const stray = Object.keys(value).find((key) => !fields.some((f) => f.name === key));
-  if (stray !== undefined) throw new LedgerLineError(`the ${value.event} event has no field ${stray}`);
+  const stray = Object.keys(value).find((key) => !fields.some((f) => f.name === key && addedIn(f) <= v));
+  if (stray !== undefined) throw new LedgerLineError(`the ${value.event} event has no field ${stray} at version ${v}`);
   return event;
 }
 
 /**
- * Line `number` of the ledger read as an event of the current shape.
- * Refuses a line that is not one, naming it.
- * @param {string} line @param {number} number @param {Schemas} [events]
+ * Line `number` of the ledger read as an event of the shape its version
+ * names. Refuses a line that is not one, naming it; a newer release's line
+ * stops the read as it is.
+ * @param {string} line @param {number} number @param {Schema} [schema]
  * @returns {Record<string, unknown>}
  */
-function parseEntry(line, number, events = EVENTS) {
+function parseEntry(line, number, schema = SCHEMA) {
   let value;
   try {
     value = JSON.parse(line);
@@ -220,11 +261,11 @@ function parseEntry(line, number, events = EVENTS) {
     throw new LedgerLineError(`line ${number} of the ledger is not JSON: ${line.slice(0, 80)}`);
   }
   try {
-    return validEvent(value, events);
+    return validEvent(value, schema);
   } catch (err) {
     if (!(err instanceof LedgerLineError)) throw err;
     throw new LedgerLineError(`line ${number} of the ledger is no ledger entry: ${err.message}`);
   }
 }
 
-module.exports = { LEDGER, LEDGER_VERSION, EVENTS, LedgerLineError, validEvent, parseEntry };
+module.exports = { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry };

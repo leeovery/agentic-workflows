@@ -39,7 +39,7 @@ const fs = require('fs');
 const path = require('path');
 const { GitError } = require('../kernel/git.cjs');
 const { MergeError } = require('./state-merge-rules.cjs');
-const { fileChunks } = require('../kernel/file-stream.cjs');
+const { blobIds } = require('../kernel/file-stream.cjs');
 const {
   sameEntry, changedPaths, indexEntries, withPrivateIndex, fillIndex, mergePath, readContested, separateClashes, isUnder, besidePath, changedCopyKept,
 } = require('./state-merge-paths.cjs');
@@ -172,15 +172,12 @@ function holds(ctx, file, entry) {
     return entry === undefined;
   }
   if (entry === undefined || !(stat.isFile() || stat.isSymbolicLink())) return false;
-  const hash = crypto.createHash(ctx.objectFormat);
-  if (stat.isSymbolicLink()) {
-    const target = fs.readlinkSync(at, { encoding: 'buffer' });
-    hash.update(`blob ${target.length}\0`).update(target);
-  } else {
-    hash.update(`blob ${stat.size}\0`);
-    for (const chunk of fileChunks(at)) hash.update(chunk);
+  if (stat.isFile()) {
+    const [whole, longer] = blobIds(at, [stat.size, stat.size + 1], ctx.objectFormat);
+    return whole === entry.oid && longer === null;
   }
-  return hash.digest('hex') === entry.oid;
+  const target = fs.readlinkSync(at, { encoding: 'buffer' });
+  return crypto.createHash(ctx.objectFormat).update(`blob ${target.length}\0`).update(target).digest('hex') === entry.oid;
 }
 
 /**

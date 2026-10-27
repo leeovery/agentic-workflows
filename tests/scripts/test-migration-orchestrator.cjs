@@ -8,7 +8,7 @@
 //     bash-3.2 execution path, idempotency, PROJECT_DIR pinning, and a
 //     project with no state in its code tree left untouched.
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
-//     dir — mixed .sh/.cjs numeric ordering, the ledger the caller names,
+//     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
 //     failure-aborts-without-recording (both extensions), delete-log-reruns,
 //     the code-tree fleet recorded unrun where there is no code-tree state.
 //
@@ -35,11 +35,11 @@ function tmp(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-// Where boot keeps the ledger: the state's own.
-const LEDGER = '.leeway/.state/migrations';
+// Where boot keeps the migrations record: the state's own.
+const RECORD = '.leeway/.state/migrations';
 
-/** Run a migrate.cjs at `migrate` with cwd `project`, recording into the state's ledger. */
-function run(migrate, project, env = {}, args = ['--ledger', path.join(project, LEDGER)]) {
+/** Run a migrate.cjs at `migrate` with cwd `project`, recording into the state's migrations record. */
+function run(migrate, project, env = {}, args = ['--record', path.join(project, RECORD)]) {
   const res = spawnSync('node', [migrate, ...args], {
     cwd: project,
     encoding: 'utf8',
@@ -71,7 +71,7 @@ function freshProject() {
 }
 
 function trackingLog(project) {
-  const p = path.join(project, LEDGER);
+  const p = path.join(project, RECORD);
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
@@ -102,13 +102,13 @@ const cjsMig = (id) =>
   `    reportUpdate();\n  },\n};\n`;
 
 describe('migrate.cjs — real fleet', () => {
-  it('runs the whole fleet under stock /bin/bash 3.2 and writes the ledger', () => {
+  it('runs the whole fleet under stock /bin/bash 3.2 and writes the migrations record', () => {
     const project = freshProject();
     const res = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.ok(!/mapfile|command not found/i.test(res.stdout + res.stderr), 'no bash-3.2 failure');
-    assert.ok(fs.existsSync(path.join(project, LEDGER)), 'ledger written');
+    assert.ok(fs.existsSync(path.join(project, RECORD)), 'record written');
     assert.ok(runReport(res.stdout).ran > 0, 'the fleet ran against the code tree\'s state');
   });
 
@@ -117,7 +117,7 @@ describe('migrate.cjs — real fleet', () => {
     const res = run(REAL_MIGRATE, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
-    assert.deepStrictEqual(fs.readdirSync(project), ['.leeway'], 'nothing written but the ledger');
+    assert.deepStrictEqual(fs.readdirSync(project), ['.leeway'], 'nothing written but the record');
     assert.deepStrictEqual(fs.readdirSync(path.join(project, '.leeway/.state')), ['migrations']);
     const ids = fs.readdirSync(path.join(path.dirname(REAL_MIGRATE), 'migrations'))
       .map((name) => (name.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
@@ -212,26 +212,26 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.deepStrictEqual(runReport(second.stdout), { ran: 0 });
   });
 
-  it('records into the ledger the caller names, its folder made where missing', () => {
+  it('records into the migrations record the caller names, its folder made where missing', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
     const project = freshProject();
-    const ledger = path.join(tmp('mig-orch-ledger-'), 'deep/ledger');
+    const record = path.join(tmp('mig-orch-record-'), 'deep/record');
 
-    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH }, ['--ledger', ledger]);
+    const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH }, ['--record', record]);
 
     assert.strictEqual(res.status, 0, res.stderr);
-    assert.strictEqual(fs.readFileSync(ledger, 'utf8'), '001\n');
-    assert.strictEqual(fs.existsSync(path.join(project, LEDGER)), false);
+    assert.strictEqual(fs.readFileSync(record, 'utf8'), '001\n');
+    assert.strictEqual(fs.existsSync(path.join(project, RECORD)), false);
   });
 
-  it('refuses to run without a ledger, running nothing', () => {
+  it('refuses to run without a migrations record, running nothing', () => {
     const { migrate } = synthFleet({ '001-a.cjs': cjsMig('001') });
     const project = freshProject();
 
     const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH }, []);
 
     assert.notStrictEqual(res.status, 0);
-    assert.match(res.stderr, /usage: migrate\.cjs --ledger <path>/);
+    assert.match(res.stderr, /usage: migrate\.cjs --record <path>/);
     assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false);
   });
 
@@ -388,7 +388,7 @@ describe('migrate.cjs — synthetic fleet', () => {
       ['Something was removed.'], "001's notice survived the abort");
   });
 
-  it('runs only what the ledger does not hold, appending after what it does', () => {
+  it('runs only what the record does not hold, appending after what it does', () => {
     const { migrate } = synthFleet({
       '001-a.sh': shMig('001'),
       '002-b.cjs': cjsMig('002'),
@@ -396,8 +396,8 @@ describe('migrate.cjs — synthetic fleet', () => {
       '004-d.cjs': cjsMig('004'),
     });
     const project = freshProject();
-    fs.mkdirSync(path.dirname(path.join(project, LEDGER)), { recursive: true });
-    fs.writeFileSync(path.join(project, LEDGER), '001\n003\n');
+    fs.mkdirSync(path.dirname(path.join(project, RECORD)), { recursive: true });
+    fs.writeFileSync(path.join(project, RECORD), '001\n003\n');
 
     const res = run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
 
@@ -469,7 +469,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.strictEqual(fs.readFileSync(path.join(project, 'order.log'), 'utf8'), '001\n002\n');
 
     // Delete the log — every migration re-runs.
-    fs.rmSync(path.join(project, LEDGER));
+    fs.rmSync(path.join(project, RECORD));
     run(migrate, project, { WORKFLOWS_MIGRATE_BASH: SYSTEM_BASH });
     assert.strictEqual(
       fs.readFileSync(path.join(project, 'order.log'), 'utf8'),

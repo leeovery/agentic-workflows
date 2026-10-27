@@ -9,25 +9,37 @@
 // - Hashed, never extracted: a file's first n bytes, n the committed blob's
 //   size, hashed as git names a blob in the repository's object format
 //   (kernel/file-stream), against the committed blob's id. A blob is written
-//   out of git only to find the line a failed check shows, or where the
-//   blob a commit holds is not the file on disk; the file is read a chunk
-//   at a time, and nothing comes through a pipe.
+//   out of git only to find the line a failed check shows, to test a
+//   conversion's pass, or where the blob a commit holds is not the file on
+//   disk; the file is read a chunk at a time, and nothing comes through a
+//   pipe. A blob written out goes to the git dir under the reading process's
+//   id; one a killed process left is cleared by the next.
 // - The one change it lets through is a migration's conversion of the
 //   ledger's shape (5.4.8, 5.7.3). The conversion leaves a pass in the
 //   state worktree's git dir, off the branch, naming the committed ledger it
 //   converted and the converted copy (ledger-conversion.cjs). While the
 //   committed ledger is the one converted, the ledger may start with the
-//   converted copy instead, and the commit carrying it spends the pass.
+//   converted copy instead, and the commit carrying it spends the pass. A
+//   pass is honoured only where the copy holds the converted ledger's every
+//   event, with the same ids in the same order — the door's own rule — so a
+//   pass written by hand lifts no other change.
 // - A check that fails names the first line not as committed, and the line
-//   found there, for the engine's stop (5.4.4).
+//   found there. The engine stops on it (5.4.4), and the stop is kept in the
+//   git dir for its screen, as the check found it: a merge's check finds the
+//   line in the tree it was to commit, never on disk.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
+const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { processAlive } = require('../kernel/process.cjs');
+const { blobIds, blobToFile, fileLineBytes, fileLines } = require('../kernel/file-stream.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
-const { blobIds, blobToFile, fileLineBytes } = require('../kernel/file-stream.cjs');
+const { readRecord } = require('./state-merge-landing.cjs');
 
 const PASS = 'leeway-ledger-conversion.json';
+const KEPT_STOP = 'leeway-ledger-stop.json';
+const SCRATCH = /^leeway-ledger\.(\d+)\./;
 
 /** A committed ledger: its blob's id and size. @typedef {{oid: string, size: number}} LedgerBlob */
 
@@ -41,6 +53,13 @@ const PASS = 'leeway-ledger-conversion.json';
  * A conversion's pass: the committed ledger converted, null where there was
  * none, and the converted copy.
  * @typedef {{from: LedgerBlob|null, to: LedgerBlob}} ConversionPass
+ */
+
+/**
+ * What stopped the engine, kept for its screen: a line not as committed, or
+ * a line a newer release wrote, with its version and the one the engine
+ * reads.
+ * @typedef {({stop: 'changed'} & LedgerChange) | {stop: 'newer', version: number, reads: number}} KeptStop
  */
 
 /**
@@ -78,17 +97,27 @@ function isBlob(value) {
 }
 
 /**
- * The ledger each of `revs` holds — a commit's or a tree's — null where one
- * holds none. One git call, whatever the ledger's size.
- * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string[]} revs
+ * The blob each of `objects` names, null where one names none. One git call,
+ * whatever the blobs' size.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string[]} objects
  * @returns {(LedgerBlob|null)[]}
  */
-function ledgerBlobs(git, revs) {
-  const out = git.run(['cat-file', '--batch-check=%(objectname) %(objecttype) %(objectsize)'], { input: revs.map((rev) => `${rev}:${LEDGER}\n`).join('') });
+function blobsOf(git, objects) {
+  const out = git.run(['cat-file', '--batch-check=%(objectname) %(objecttype) %(objectsize)'], { input: objects.map((name) => `${name}\n`).join('') });
   return out.split('\n').filter((line) => line !== '').map((line) => {
     const [oid, kind, size] = line.split(' ');
     return kind === 'blob' ? { oid, size: Number(size) } : null;
   });
+}
+
+/**
+ * The ledger each of `revs` holds — a commit's or a tree's — null where one
+ * holds none.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git @param {string[]} revs
+ * @returns {(LedgerBlob|null)[]}
+ */
+function ledgerBlobs(git, revs) {
+  return blobsOf(git, revs.map((rev) => `${rev}:${LEDGER}`));
 }
 
 /** Whether `file` starts byte for byte with `blob`; nothing starts with no ledger. @param {string} file @param {LedgerBlob|null} blob */
@@ -97,11 +126,20 @@ function fileStartsWith(file, blob) {
   return fs.existsSync(file) && blobIds(file, [blob.size], formatOf(blob.oid))[0] === blob.oid;
 }
 
+/** Clear the blobs processes no longer running wrote out to the git dir. @param {string} gitDir */
+function sweepScratch(gitDir) {
+  for (const name of fs.readdirSync(gitDir)) {
+    const pid = Number(SCRATCH.exec(name)?.[1]);
+    if (pid > 0 && pid !== process.pid && !processAlive(pid)) fs.rmSync(path.join(gitDir, name), { force: true });
+  }
+}
+
 /**
  * Run `fn` on the blob written out to a file in the git dir, removed after.
  * @template T @param {CheckedTree} tree @param {string} oid @param {(file: string) => T} fn @returns {T}
  */
 function withBlobFile({ git, gitDir }, oid, fn) {
+  sweepScratch(gitDir);
   const file = path.join(gitDir, `leeway-ledger.${process.pid}.${oid}`);
   blobToFile(git, oid, file);
   try {
@@ -163,42 +201,107 @@ function firstChange(committed, file) {
   }
 }
 
+/** A line's entry id: undefined where the line is no JSON object with a string id. @param {string} line */
+function idOf(line) {
+  try {
+    const entry = JSON.parse(line);
+    return entry !== null && typeof entry === 'object' && !Array.isArray(entry) && typeof entry.id === 'string' ? entry.id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Each line's entry id, in order. @param {string} file @returns {Generator<string|undefined>} */
+function* idsOf(file) {
+  for (const line of fileLines(file)) yield idOf(line);
+}
+
+/**
+ * Where `copy` first fails to carry every event of `ledger` through with
+ * the same id in the same order: the line, and the id each holds there —
+ * null where it holds no line, undefined where its line is no entry with an
+ * id — or null where it carries them all and nothing more.
+ * @param {string} ledger @param {string} copy
+ * @returns {{line: number, was: string|null|undefined, is: string|null|undefined}|null}
+ */
+function idsDeparture(ledger, copy) {
+  const was = idsOf(ledger);
+  const is = idsOf(copy);
+  try {
+    for (let line = 1; ; line += 1) {
+      const a = was.next();
+      const b = is.next();
+      if (a.done && b.done) return null;
+      const ids = { was: a.done ? null : a.value, is: b.done ? null : b.value };
+      if (ids.was === undefined || ids.is === undefined || ids.was !== ids.is) return { line, ...ids };
+    }
+  } finally {
+    was.return(undefined);
+    is.return(undefined);
+  }
+}
+
 /** Where a conversion keeps its pass. @param {string} gitDir */
 function passFile(gitDir) {
   return path.join(gitDir, PASS);
 }
 
 /**
- * The pass standing for a conversion of the committed ledger `committed`,
- * or null.
- * @param {string} gitDir @param {LedgerBlob|null} committed
- * @returns {ConversionPass|null}
+ * Whether a pass's converted copy is in git and carries the converted
+ * ledger's every event through, with the same ids in the same order.
+ * @param {CheckedTree} tree @param {LedgerBlob} from @param {LedgerBlob} to
  */
-function passFor(gitDir, committed) {
-  let pass;
-  try {
-    pass = JSON.parse(fs.readFileSync(passFile(gitDir), 'utf8'));
-  } catch {
-    return null;
-  }
-  if (pass === null || typeof pass !== 'object' || !isBlob(pass.to) || !(pass.from === null || isBlob(pass.from))) return null;
-  return sameBlob(pass.from, committed) ? pass : null;
+function passKeeps(tree, from, to) {
+  if (!sameBlob(blobsOf(tree.git, [to.oid])[0], to)) return false;
+  return withBlobFile(tree, from.oid, (ledger) => withBlobFile(tree, to.oid, (copy) => idsDeparture(ledger, copy) === null));
 }
 
 /**
- * Leave the pass for a conversion, replacing any standing.
- * @param {string} gitDir @param {ConversionPass} pass
+ * The pass standing for a conversion of the committed ledger `committed`,
+ * or null where none stands, or the one standing does not keep the door's
+ * rule.
+ * @param {CheckedTree} tree @param {LedgerBlob} committed
+ * @returns {ConversionPass|null}
  */
-function writePass(gitDir, pass) {
-  const file = passFile(gitDir);
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(pass)}\n`);
-  fs.renameSync(tmp, file);
+function passFor(tree, committed) {
+  const pass = readRecord(passFile(tree.gitDir));
+  if (pass === null || typeof pass !== 'object' || !isBlob(pass.to) || !isBlob(pass.from) || !sameBlob(pass.from, committed)) return null;
+  return passKeeps(tree, pass.from, pass.to) ? pass : null;
 }
 
 /** The pass is spent, its commit landed. @param {string} gitDir */
 function spendPass(gitDir) {
   fs.rmSync(passFile(gitDir), { force: true });
+}
+
+/** Where the engine's stop on the ledger is kept. @param {string} gitDir */
+function stopFile(gitDir) {
+  return path.join(gitDir, KEPT_STOP);
+}
+
+/** Keep the engine's stop on the ledger for its screen. @param {string} gitDir @param {KeptStop} stop */
+function keepStop(gitDir, stop) {
+  writeJsonAtomic(stopFile(gitDir), stop);
+}
+
+/** The engine's last stop on the ledger, or null. @param {string} gitDir @returns {KeptStop|null} */
+function keptStop(gitDir) {
+  return readRecord(stopFile(gitDir));
+}
+
+/** A state commit landed: no stop stands. @param {string} gitDir */
+function dropStop(gitDir) {
+  fs.rmSync(stopFile(gitDir), { force: true });
+}
+
+/**
+ * The engine's stop on a line not as committed: kept, and answered to throw.
+ * @param {CheckedTree} tree @param {LedgerChange} change @param {string} outcome
+ * @returns {LedgerChanged}
+ */
+function ledgerStopped(tree, change, outcome) {
+  keepStop(tree.gitDir, { stop: 'changed', ...change });
+  return new LedgerChanged(change, outcome);
 }
 
 /**
@@ -224,17 +327,17 @@ function diskChange(tree, rev) {
   const [committed] = ledgerBlobs(tree.git, [rev]);
   const disk = path.join(tree.root, LEDGER);
   if (committed === null || fileStartsWith(disk, committed)) return null;
-  const pass = passFor(tree.gitDir, committed);
+  const pass = passFor(tree, committed);
   if (pass !== null && fileStartsWith(disk, pass.to)) return null;
   return departure(tree, disk, pass === null ? [committed] : [committed, pass.to]);
 }
 
 /**
  * Refuse a state commit whose ledger does not start byte for byte with its
- * parent's: the parent's ledger is the one committed, `treeish` what is
- * committed on it. A conversion's pass standing for the parent's ledger
- * lets the converted copy through instead, and is answered for the commit
- * to spend once it lands; else null.
+ * parent's, keeping the stop: the parent's ledger is the one committed,
+ * `treeish` what is committed on it. A conversion's pass standing for the
+ * parent's ledger lets the converted copy through instead, and is answered
+ * for the commit to spend once it lands; else null.
  * @param {CheckedTree} tree @param {string} parent @param {string} treeish
  * @returns {ConversionPass|null}
  */
@@ -242,11 +345,25 @@ function checkLedgerCommit(tree, parent, treeish) {
   const [before, after] = ledgerBlobs(tree.git, [parent, treeish]);
   if (before === null || sameBlob(before, after)) return null;
   if (after !== null && blobStartsWith(tree, after, before)) return null;
-  const pass = passFor(tree.gitDir, before);
+  const pass = passFor(tree, before);
   if (pass !== null && after !== null && blobStartsWith(tree, after, pass.to)) return pass;
   const starts = pass === null ? [before] : [before, pass.to];
   const change = after === null ? departure(tree, null, starts) : withBlobFile(tree, after.oid, (file) => departure(tree, file, starts));
-  throw new LedgerChanged(change, 'nothing committed');
+  throw ledgerStopped(tree, change, 'nothing committed');
 }
 
-module.exports = { LedgerChanged, ledgerBlobs, diskChange, checkLedgerCommit, writePass, spendPass };
+module.exports = {
+  LedgerChanged,
+  ledgerBlobs,
+  fileStartsWith,
+  idsOf,
+  idsDeparture,
+  passFile,
+  spendPass,
+  keepStop,
+  keptStop,
+  dropStop,
+  ledgerStopped,
+  diskChange,
+  checkLedgerCommit,
+};
