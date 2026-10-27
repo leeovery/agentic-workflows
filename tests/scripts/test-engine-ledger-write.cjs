@@ -34,7 +34,8 @@ const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId, shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { readLedger } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
-const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
+const { ID_FACTS, foldLedger, standingOf } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
+const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
@@ -605,7 +606,8 @@ describe('whose entries a link names, and how they relate', () => {
     write('decide', SPACE, ['--answers', question], DECISION);
     write('move', SPACE, ['--question', question, '--to', 'menu-bar'], MADE);
     refused('move', SPACE, ['--question', question, '--to', 'note-window'], MADE, /a question on menu-bar — /);
-    assert.strictEqual(foldLedger(statePath(dir), ID_FACTS, []).get(full(question)).topic, 'menu-bar');
+    const folded = { facts: foldLedger(statePath(dir), ID_FACTS, []), live: liveness(statePath(dir)) };
+    assert.deepStrictEqual(standingOf(folded, full(question)), { unit: UNIT, topic: 'menu-bar' });
 
     refused('move', NOTE, ['--question', staying, '--to', 'note-window'], MADE, /^ledger move: --to names note-window, the topic it moves from — a question moves to another topic$/);
     refused('move', NOTE, ['--question', staying, '--to', 'notes-spec'], MADE, /^ledger move: fumi has no topic "notes-spec" to move the question to$/);
@@ -655,12 +657,23 @@ describe('whose entries a link names, and how they relate', () => {
     merge(['--into', owned], new RegExp(`^ledger merge --into names ${owned}, which ${current} replaced — the current one is ${current}$`));
     merge(['--into', current, '--duplicate', current], new RegExp(`^ledger merge --duplicate names ${current}, the decision --into names — a duplicate is another entry$`));
     merge(['--into', current, '--duplicate', elsewhere.decision],
-      new RegExp(`^ledger merge --duplicate names ${elsewhere.decision}, which answers ${elsewhere.question} — a duplicate answers the question merged, ${here}$`));
+      new RegExp(`^ledger merge --duplicate names ${elsewhere.decision}, which answers ${elsewhere.question} — a duplicate answers the question merged, ${here}, in any of its wordings$`));
     const reworded = write('replace', SPACE, ['--replaces', duplicate, '--reason', 'changed-mind'], CHANGE).id;
     merge(['--into', current, '--duplicate', duplicate], new RegExp(`^ledger merge --duplicate names ${duplicate}, which ${reworded} replaced — the current one is ${reworded}$`));
 
     write('merge', SPACE, ['--question', here, '--into', current, '--duplicate', reworded], MADE);
     assert.deepStrictEqual([entries().at(-1).into, entries().at(-1).duplicate], [full(current), full(reworded)]);
+  });
+
+  it('takes a duplicate answering an earlier wording of the question merged, as a reworded question keeps its answers (5.3.13, 5.5.5)', () => {
+    const owned = decide(ask().id).id;
+    const asked = write('ask', SPACE, [], { ...MADE, text: 'Is a note a window?' }).id;
+    const duplicate = write('decide', SPACE, ['--answers', asked], DECISION).id;
+    const reworded = write('replace', SPACE, ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['window'], text: 'Is a note a window or a panel?' }).id;
+
+    write('merge', SPACE, ['--question', reworded, '--into', owned, '--duplicate', duplicate], MADE);
+
+    assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(reworded), full(duplicate)]);
   });
 
   it('holds a current entry relying on what the replacement replaced, or on an earlier entry of its chain (5.6.10)', () => {

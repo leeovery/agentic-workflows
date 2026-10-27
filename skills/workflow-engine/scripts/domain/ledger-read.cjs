@@ -12,15 +12,17 @@
 // - Current entries only, by the one rule (5.8.17), so a session in any unit
 //   reads any unit's entries directly (5.1.5, 5.8.11): `ledger record` reads
 //   the entries standing in a unit, or one topic — each where the earliest
-//   entry of its chain in a live place stands, a question where it was last
-//   moved — each current entry with the live entries it replaced folded
-//   beneath it, newest first, and the live confirmations that it still
-//   holds (5.6.5); the questions moved away, and the merges made there, each
-//   with the duplicate it named; and, read from their own current entries,
-//   never copied, the entries standing elsewhere that it relies on, merged
-//   into, or that answer its questions (5.8.4). `ledger map` reads a topic's
-//   questions, each answered as its record shows it. A unit or topic that is
-//   not live has no current entry to show.
+//   entry of its chain in a live place was made, a question's wording on
+//   the topic its unit's last live move took it to — each current entry
+//   with the live entries it replaced folded beneath it, newest first, and
+//   the live confirmations that it still holds (5.6.5); the moves made
+//   there, as history, which the map can differ from; the merges made
+//   there, each with the duplicate it named and whether it holds; and, read
+//   from their own current entries, never copied, the entries standing
+//   elsewhere that it relies on, that its merges that hold went into, or
+//   that answer its questions (5.8.4). `ledger map` reads a topic's
+//   questions as they stand now, each answered as its record shows it. A
+//   unit or topic that is not live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
 //   as written but its schema version.
 // - A read takes no lock. What a landing its check finished said rides the
@@ -31,7 +33,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, isLive, holdsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -99,17 +101,22 @@ function movedRow({ folded, show }, id) {
   return { ...show(id), text: show(question).text };
 }
 
-/** A merge, with the line of the duplicate it named, or null for none or one that is not live. @param {Shower} shower @param {string} id @returns {Shown} */
+/**
+ * A merge, with the line of the duplicate it named, or null for none or one
+ * that is not live, and whether it holds.
+ * @param {Shower} shower @param {string} id @returns {Shown}
+ */
 function mergedRow({ folded, show }, id) {
   const { duplicate } = factsOf(folded, id);
-  return { ...show(id), duplicate_entry: duplicate === null || !isLive(folded, duplicate) ? null : show(duplicate) };
+  return { ...show(id), duplicate_entry: duplicate === null || !isLive(folded, duplicate) ? null : show(duplicate), holds: mergeHolds(folded, id) };
 }
 
 /**
  * `ledger record`: a unit's or a topic's current entries by kind, each with
  * its chain and its confirmations; its moves, and its merges each with its
- * duplicate; and the current entries standing elsewhere it relies on,
- * merged into, or that answer its questions.
+ * duplicate and whether it holds; and the current entries standing
+ * elsewhere it relies on, merged into by a merge that holds, or that answer
+ * its questions.
  * @param {Shower} shower @param {Place} place
  */
 function answerRecord(shower, { unit, topic }) {

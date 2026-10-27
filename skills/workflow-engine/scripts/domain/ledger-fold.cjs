@@ -9,22 +9,23 @@
 // The fold keeps, of each id the ledger holds, what the reads decide by and
 // never what they show: the event that wrote it; the kind of entry it is, a
 // replacement taking the kind it stands for, or none for an event that is no
-// entry; its unit and topic — a question's every wording taking the topic it
-// was last moved to (5.3.3); the first entry of its chain; its links; every
-// entry linking back to it — the replacements naming it, the merges that
-// took it as a duplicate, the entries answering it, the merges of it, the
-// questions part of it (5.3.11), the confirmations that it still holds, and
-// on the first entry of a question's chain, the moves of any wording; and
-// where its line sits, so a read shows an entry by reading that one line
-// again.
+// entry; the unit and topic it was written on; the first entry of its chain;
+// its links; every entry linking back to it — the replacements naming it,
+// the merges that took it as a duplicate, the entries answering it, the
+// merges of it, the questions part of it (5.3.11), the confirmations that it
+// still holds, and on the first entry of a question's chain, the moves of
+// any wording; and where its line sits, so a read shows an entry by reading
+// that one line again.
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
-//   (ledger-units.cjs), a question's wording on the topic it was last moved
-//   to.
-// - Where an entry stands: where the earliest entry of its chain made in a
-//   live place stands. Normally that is the first entry, a question where
-//   it was last moved, however and wherever a later entry of the chain was
+//   (ledger-units.cjs). A move is made on the topic it moved from, and a
+//   question's wording is made on the topic the last live move its unit
+//   made of the question took it to (5.3.3), or where none is, the topic it
+//   was written on.
+// - Where an entry stands: in the unit and on the topic the earliest entry
+//   of its chain made in a live place was made on. Normally that is the
+//   first entry, however and wherever a later entry of the chain was
 //   written; while the first entry's place is set aside, the earliest live
 //   replacement stands where it was made, so a current entry is always one
 //   a live record shows.
@@ -57,11 +58,18 @@
 //   down to the first that is not live, as though it were not there.
 // - A topic's map (5.8.5): its questions, where each stands, and the
 //   answers to each, its current answer and what its merges resolve to —
-//   which the topic's record shows too.
+//   which the topic's record shows too. A map shows where a question stands
+//   now: one moved in, the topic it came from; one moved away, in its
+//   current wording, the topic it stands on now — each only by a live move
+//   the map's unit made, while the question is current and stands in that
+//   unit.
 // - A record: the current entries standing in a unit or a topic, the moves
 //   and merges made there while live, and the current entries standing
-//   elsewhere that its entries rely on, its merges went into, or that answer
-//   its questions (5.8.4); of an entry's confirmations, the live ones.
+//   elsewhere that its entries rely on, its merges that hold went into, or
+//   that answer its questions (5.8.4); of an entry's confirmations, the live
+//   ones. Its moves are history, each as it was made, so they can differ
+//   from what its map shows: the question may stand elsewhere now, or not
+//   be current.
 // - The product record: the current entries marked product-wide (5.8.6).
 // ---------------------------------------------------------------------------
 
@@ -112,7 +120,7 @@ const { entryKind } = require('./ledger-events.cjs');
 
 /** The folded ledger read against liveness. @typedef {{facts: Map<string, IdFacts>, live: Liveness}} Folded */
 
-/** Where an entry stands: a unit, and a topic or none at the unit's level. @typedef {{unit: string, topic: string|null}} Standing */
+/** Where an entry stands, or was made: a unit, and a topic or none at the unit's level. @typedef {{unit: string, topic: string|null}} Standing */
 
 /**
  * Why an entry is not current: a live replacement naming it, a merge that
@@ -145,20 +153,6 @@ function linkBack(facts, to, back, id) {
   const linked = named(facts, to);
   if (linked[back] === NONE) linked[back] = [id];
   else /** @type {string[]} */ (linked[back]).push(id);
-}
-
-/**
- * A move: the moved question's every wording back down its chain, its unit's
- * own, now standing on the topic it moved to; the move kept on the chain's
- * first entry.
- * @param {Map<string, IdFacts>} facts @param {Record<string, unknown>} event
- */
-function moveQuestion(facts, event) {
-  for (let id = idOrNull(event.question); id !== null; id = named(facts, id).replaces) {
-    const wording = named(facts, id);
-    if (wording.unit === event.unit) wording.topic = /** @type {string} */ (event.to);
-  }
-  linkBack(facts, named(facts, event.question).root, 'moves', /** @type {string} */ (event.id));
 }
 
 /** The facts of every id, by id, in the ledger's order. @type {Fold<Map<string, IdFacts>>} */
@@ -196,7 +190,7 @@ const ID_FACTS = {
     if (kind === 'question' && event.part_of !== null) linkBack(facts, event.part_of, 'parts', id);
     if (event.event === 'replaced') linkBack(facts, event.replaces, 'replaced_by', id);
     if (event.event === 'still-holds') linkBack(facts, event.entry, 'holds', id);
-    if (event.event === 'moved') moveQuestion(facts, event);
+    if (event.event === 'moved') linkBack(facts, named(facts, event.question).root, 'moves', id);
     if (event.event === 'merged') {
       linkBack(facts, event.question, 'merges', id);
       if (event.duplicate !== null) linkBack(facts, event.duplicate, 'merged_by', id);
@@ -237,10 +231,33 @@ function factsOf({ facts }, id) {
   return named(facts, id);
 }
 
+/**
+ * The live moves `unit` made of the question whose chain starts at `root`,
+ * in the ledger's order.
+ * @param {Folded} folded @param {string} root @param {string} unit
+ */
+function liveMovesBy(folded, root, unit) {
+  return factsOf(folded, root).moves.filter((move) => factsOf(folded, move).unit === unit && isLive(folded, move));
+}
+
+/**
+ * The unit and topic `id` was made on: the ones it was written on, but a
+ * question's wording, made on the topic the last live move its unit made of
+ * the question took it to, where there is one (5.3.3). A move is made on the
+ * topic it moved from, so no move's place turns on another.
+ * @param {Folded} folded @param {string} id
+ * @returns {Standing}
+ */
+function madeOn(folded, id) {
+  const { unit, topic, root } = factsOf(folded, id);
+  const move = liveMovesBy(folded, root, unit).at(-1);
+  return { unit, topic: move === undefined ? topic : factsOf(folded, move).to };
+}
+
 /** Why `id` is not live — the unit or topic it was made on set aside — or null where it is. @param {Folded} folded @param {string} id */
 function whyDead(folded, id) {
-  const facts = factsOf(folded, id);
-  return folded.live(facts.unit, facts.topic);
+  const { unit, topic } = madeOn(folded, id);
+  return folded.live(unit, topic);
 }
 
 /** Whether `id` is live. @param {Folded} folded @param {string} id */
@@ -250,16 +267,14 @@ function isLive(folded, id) {
 
 /**
  * Where `id` stands: where the earliest entry of its chain, back to the
- * first, made in a live place stands; where none is, where the first
- * stands.
+ * first, made in a live place was made; where none is, where the first was.
  * @param {Folded} folded @param {string} id
  * @returns {Standing}
  */
 function standingOf(folded, id) {
   let earliest = factsOf(folded, id).root;
   for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
-  const { unit, topic } = factsOf(folded, earliest);
-  return { unit, topic };
+  return madeOn(folded, earliest);
 }
 
 /** The live replacements naming `id`. @param {Folded} folded @param {string} id */
@@ -317,10 +332,10 @@ function holdingMerges(folded) {
   const live = [];
   for (const [id, facts] of folded.facts) if (facts.event === 'merged' && isLive(folded, id)) live.push(id);
   live.reverse();
-  const settingAside = live.filter((m) => {
+  const settingAside = new Set(live.filter((m) => {
     const duplicate = factsOf(folded, m).duplicate;
     return duplicate !== null && liveReplacers(folded, duplicate).length === 0;
-  });
+  }));
   /** @type {Set<string>} */
   const holding = new Set();
   const takes = (/** @type {string} */ m) => {
@@ -330,8 +345,8 @@ function holdingMerges(folded) {
     return false;
   };
   let tookOne = true;
-  while (tookOne) tookOne = settingAside.some((m) => !holding.has(m) && takes(m));
-  for (const m of live) if (!settingAside.includes(m) && leadsSomewhere(folded, holding, m)) holding.add(m);
+  while (tookOne) tookOne = [...settingAside].some((m) => !holding.has(m) && takes(m));
+  for (const m of live) if (!settingAside.has(m) && leadsSomewhere(folded, holding, m)) holding.add(m);
   HOLDING.set(folded, holding);
   return holding;
 }
@@ -460,24 +475,20 @@ function movedFrom(folded, move) {
   return /** @type {string} */ (factsOf(folded, move).topic);
 }
 
-/** A question in its current wording: the first current form of it, or itself where it has none. @param {Folded} folded @param {string} question */
-function inCurrentWording(folded, question) {
-  return currentsOf(folded, question)[0] ?? question;
-}
-
-/** The question a part is part of, in its current wording. @param {Folded} folded @param {string|null} whole */
+/** The question a part is part of, in its current wording: the first current form of it, or itself where it has none. @param {Folded} folded @param {string|null} whole */
 function wholeOf(folded, whole) {
-  return whole === null ? null : inCurrentWording(folded, whole);
+  return whole === null ? null : currentsOf(folded, whole)[0] ?? whole;
 }
 
 /**
- * A question standing on the map, as its row.
- * @param {Folded} folded @param {string} id
+ * A current question standing on the map of a topic of `unit`, as its row:
+ * moved in from the topic the last live move `unit` made of it was made on.
+ * @param {Folded} folded @param {string} id @param {string} unit
  * @returns {MapRow}
  */
-function standingRow(folded, id) {
+function standingRow(folded, id, unit) {
   const answers = answersOf(folded, id);
-  const lastMove = factsOf(folded, factsOf(folded, id).root).moves.at(-1);
+  const lastMove = liveMovesBy(folded, factsOf(folded, id).root, unit).at(-1);
   const parts = wordingsOf(folded, id).flatMap((w) => factsOf(folded, w).parts).filter((part) => isCurrent(folded, part));
   return {
     id,
@@ -490,6 +501,17 @@ function standingRow(folded, id) {
   };
 }
 
+/**
+ * A current question standing on another topic of the map's unit, as its
+ * row on the map of a topic that unit moved it away from: on the topic it
+ * stands on now.
+ * @param {Folded} folded @param {string} id @param {string|null} standsOn
+ * @returns {MapRow}
+ */
+function movedAwayRow(folded, id, standsOn) {
+  return { id, stands: 'moved-away', moved_from: null, moved_to: standsOn, answers: [], part_of: wholeOf(folded, factsOf(folded, id).part_of), parts: [] };
+}
+
 /** Whether `id` stands at `unit` and, given one, `topic`. @param {Folded} folded @param {string} id @param {string} unit @param {string|null} topic */
 function standsAt(folded, id, unit, topic) {
   const standing = standingOf(folded, id);
@@ -497,9 +519,10 @@ function standsAt(folded, id, unit, topic) {
 }
 
 /**
- * A topic's map (5.8.5): every current question standing on it, and every
- * question moved away from it, in its current wording and with the topic it
- * stands on now, in the ledger's order. None on a topic that is not live.
+ * A topic's map (5.8.5), in the ledger's order: every current question
+ * standing on it, and every current question standing on another topic of
+ * its unit that the unit moved away from it by a live move. None on a topic
+ * that is not live.
  * @param {Folded} folded @param {string} unit @param {string} topic
  * @returns {MapRow[]}
  */
@@ -508,28 +531,21 @@ function mapOf(folded, unit, topic) {
   /** @type {MapRow[]} */
   const rows = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'question') continue;
-    if (standsAt(folded, id, unit, topic)) {
-      if (isCurrent(folded, id)) rows.push(standingRow(folded, id));
-      continue;
-    }
-    if (facts.root === id && facts.moves.some((m) => factsOf(folded, m).unit === unit && movedFrom(folded, m) === topic)) {
-      const wording = inCurrentWording(folded, /** @type {string} */ (factsOf(folded, /** @type {string} */ (facts.moves.at(-1))).question));
-      rows.push({
-        id: wording, stands: 'moved-away', moved_from: null, moved_to: standingOf(folded, id).topic,
-        answers: [], part_of: wholeOf(folded, factsOf(folded, wording).part_of), parts: [],
-      });
-    }
+    if (facts.kind !== 'question' || !isCurrent(folded, id)) continue;
+    const standing = standingOf(folded, id);
+    if (standing.unit !== unit) continue;
+    if (standing.topic === topic) rows.push(standingRow(folded, id, unit));
+    else if (liveMovesBy(folded, facts.root, unit).some((m) => movedFrom(folded, m) === topic)) rows.push(movedAwayRow(folded, id, standing.topic));
   }
   return rows;
 }
 
 /**
  * What a record shows, by id: its current questions, findings and
- * decisions; the moves and merges made on it; and the current entries
- * standing outside it that its entries rely on, its merges went into, or
- * that answer its questions (5.8.4), each with the ids of the record they
- * are tied to.
+ * decisions; the moves and merges made on it, the moves as history; and the
+ * current entries standing outside it that its entries rely on, its merges
+ * that hold went into, or that answer its questions (5.8.4), each with the
+ * ids of the record they are tied to.
  * @typedef {{
  *   questions: string[], findings: string[], decisions: string[],
  *   moved: string[], merged: string[],
@@ -563,7 +579,7 @@ function recordOf(folded, unit, topic) {
     if (facts.event === 'moved') record.moved.push(id);
     if (facts.event === 'merged') {
       record.merged.push(id);
-      show(currentsOf(folded, intoOf(folded, id)), intoOf(folded, id));
+      if (mergeHolds(folded, id)) show(currentsOf(folded, intoOf(folded, id)), intoOf(folded, id));
     }
     if (facts.kind === null || !isCurrent(folded, id)) continue;
     record[SECTIONS[facts.kind]].push(id);

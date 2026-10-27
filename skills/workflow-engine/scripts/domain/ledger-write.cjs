@@ -26,18 +26,19 @@
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
 //   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
-//   the earliest entry of its chain in a live place stands on — normally the
-//   first, a question where it was last moved — by the rule every read
-//   places it by (ledger-fold.cjs); before the spec, an entry of the unit is
-//   written on only from the topic it stands on: another topic's change goes
-//   to it by message (5.6.9, 10.2.2).
+//   the earliest entry of its chain in a live place was made on — normally
+//   the first, a question's wording on the topic its unit last moved it to
+//   — by the rule every read places it by (ledger-fold.cjs); before the
+//   spec, an entry of the unit is written on only from the topic it stands
+//   on: another topic's change goes to it by message (5.6.9, 10.2.2).
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
-//   other than the one it goes into (5.5.4, 5.5.5); a held entry relies on
-//   what the replacement replaced, or on an earlier entry of its chain
-//   (5.6.10); a replacement's cause is never what it replaces, a new fact's
-//   being a finding and another topic's a decision standing on a topic
-//   other than the one the replaced entry stands on (5.3.8).
+//   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
+//   a held entry relies on what the replacement replaced, or on an earlier
+//   entry of its chain (5.6.10); a replacement's cause is never what it
+//   replaces, a new fact's being a finding and another topic's a decision
+//   standing on a topic other than the one the replaced entry stands on
+//   (5.3.8).
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
 //   content leaves it out, the replaced entry's product-wide mark (5.2.5). A
@@ -508,17 +509,21 @@ function checkHeld(linked, read) {
 
 /**
  * Refuse a merge's duplicate that is the entry it goes into, or that answers
- * another question than the one merged (5.5.4, 5.5.5).
+ * another question than the one merged, in any of its wordings (5.3.13,
+ * 5.5.4, 5.5.5).
  * @param {Linked} linked @param {Folded} read
  */
-function checkDuplicate(linked, { facts }) {
+function checkDuplicate(linked, read) {
   if (linked.duplicate === null) return;
+  const { facts } = read;
   const [question, into, duplicate] = /** @type {string[]} */ ([linked.question, linked.into, linked.duplicate]);
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   const where = `ledger merge --duplicate names ${short(duplicate)}`;
   if (duplicate === into) throw new Error(`${where}, the decision --into names — a duplicate is another entry`);
   const answers = /** @type {string} */ (/** @type {IdFacts} */ (facts.get(duplicate)).answers);
-  if (answers !== question) throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}`);
+  if (![question, ...replacedChain(read, question)].includes(answers)) {
+    throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}, in any of its wordings`);
+  }
 }
 
 /**
