@@ -51,6 +51,8 @@ const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
+const { livenessMark } = require('./domain/ledger-units.cjs');
+const { refreshLedgerCopies } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -2324,7 +2326,44 @@ function runCli(call, argv) {
   } catch (err) {
     failJson(call, err);
   }
-  return withStateLock(root, () => handler(call, rest));
+  return followingLiveness(call, root, (held) => withStateLock(root, () => handler(held, rest)));
+}
+
+/**
+ * A command run under the writer lock, then — the lock released — the
+ * ledger's copies rendered and indexed where it changed what is live
+ * (ledger-copies.cjs). Every change to a unit's or a topic's liveness is
+ * such a command, however it is made, so the copies follow each one from
+ * here. Its response line waits until then, so a failure there rides it as
+ * a warning.
+ * @param {Call} call @param {string} root @param {(held: Call) => void} command
+ */
+function followingLiveness(call, root, command) {
+  /** @type {string[]} */
+  const lines = [];
+  const before = livenessMark(root);
+  try {
+    command({ ...call, out: (text) => lines.push(text) });
+  } finally {
+    /** @type {string[]} */
+    const warnings = [];
+    if (livenessMark(root) !== before) refreshLedgerCopies(call.cwd, warnings);
+    for (const text of withWarnings(lines, warnings)) call.out(text);
+  }
+}
+
+/**
+ * A response's lines with `warnings` added to the ones its first line, the
+ * JSON answer, carries.
+ * @param {string[]} lines @param {string[]} warnings
+ * @returns {string[]}
+ */
+function withWarnings(lines, warnings) {
+  if (warnings.length === 0 || lines.length === 0) return lines;
+  const [first, ...rest] = lines;
+  const nl = first.indexOf('\n');
+  const answer = JSON.parse(first.slice(0, nl));
+  return [`${JSON.stringify({ ...answer, warnings: [...(answer.warnings ?? []), ...warnings] })}${first.slice(nl)}`, ...rest];
 }
 
 // The commands Claude Code's own hooks run as any conversation in the project

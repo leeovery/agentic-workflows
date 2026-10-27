@@ -14,8 +14,9 @@
 //   cancelled topic or unit, or a postponed topic while it waits, has its
 //   copy removed, and gets it back when it is live again (5.8.17).
 // - When: the whole set is rendered against the ledger after a ledger write
-//   commits and its lock is released, and after each lifecycle change that
-//   sets a place aside or brings it back. One entry's change can move
+//   commits and its lock is released, and after any command that changes
+//   what is live — the engine's dispatcher marks liveness around every
+//   command it runs under the writer lock, however the change is made. One entry's change can move
 //   records in other topics and units — one relying on an answer replaced,
 //   both ends of a move, a unit whose replacement stops counting — so the
 //   render never works out which: a copy is written where its text differs
@@ -157,26 +158,45 @@ function copiesOf(root, notes) {
   });
 }
 
-/** The markdown files in a folder of the state, state-relative. @param {string} root @param {string} dir */
-function markdownIn(root, dir) {
+/** A copy's temporary file, as `writeWhole` names it. */
+const TEMPORARY = /^\..+\.md\.\d+\.tmp$/;
+
+/** The files in a folder of the state, state-relative, none where it is missing. @param {string} root @param {string} dir */
+function filesIn(root, dir) {
   try {
-    return fs.readdirSync(path.join(root, dir), { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.md') && !entry.name.startsWith('.'))
-      .map((entry) => `${dir}/${entry.name}`);
+    return fs.readdirSync(path.join(root, dir), { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name);
   } catch {
     return [];
   }
 }
 
-/** The record copies on disk, state-relative. @param {string} root @returns {string[]} */
-function recordCopiesOnDisk(root) {
+/** The folders the copies are written in, state-relative: the knowledge directory's, the records', and each unit's. @param {string} root */
+function copyFolders(root) {
   let units;
   try {
     units = fs.readdirSync(path.join(root, RECORDS_DIR), { withFileTypes: true }).filter((entry) => entry.isDirectory());
   } catch {
-    return [];
+    units = [];
   }
-  return [...markdownIn(root, RECORDS_DIR), ...units.flatMap((unit) => markdownIn(root, `${RECORDS_DIR}/${unit.name}`))];
+  return [path.dirname(PRODUCT_FILE), RECORDS_DIR, ...units.map((unit) => `${RECORDS_DIR}/${unit.name}`)];
+}
+
+/**
+ * The record copies on disk, state-relative, each temporary file a render
+ * killed before its rename left removed: under the copies' lock no other is
+ * being written.
+ * @param {string} root @returns {string[]}
+ */
+function recordCopiesOnDisk(root) {
+  /** @type {string[]} */
+  const copies = [];
+  for (const dir of copyFolders(root)) {
+    for (const name of filesIn(root, dir)) {
+      if (TEMPORARY.test(name)) fs.rmSync(path.join(root, dir, name), { force: true });
+      else if (dir !== path.dirname(PRODUCT_FILE) && name.endsWith('.md') && !name.startsWith('.')) copies.push(`${dir}/${name}`);
+    }
+  }
+  return copies;
 }
 
 /** `text` written to `file`, whole or not at all. @param {string} file @param {string} text */
@@ -199,12 +219,15 @@ function readOrNull(file) {
 /**
  * The copies brought in line with the ledger, under their lock, the ledger
  * folded inside it: each whose text differs from what is on disk written,
- * and each no record holds removed, a unit's folder with it once empty.
+ * and each no record holds removed, a unit's folder with it once empty. A
+ * project with no ledger and no knowledge directory has nothing to render,
+ * and the directory is not made for it.
  * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
  * @returns {Rendered}
  */
 function renderCopies(root, notes) {
   const { dir, copies: lock } = knowledgeFiles(root);
+  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(dir)) return { written: [], removed: [] };
   fs.mkdirSync(dir, { recursive: true });
   acquireLockFile(lock, 'Timed out waiting for the lock on the ledger\'s copies');
   try {

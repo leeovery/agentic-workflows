@@ -219,6 +219,29 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.match(await byArea('floating'), /^A floating panel\.$/m);
   });
 
+  it('keeps each entry inside its own section, whatever its text holds: a line that would open a heading or a fence reads as text', () => {
+    const question = ask(NOTE, 'Is a note a window?');
+    decide(NOTE, question, 'A panel.\n## Not a heading\n```', [], { why: 'It floats.\n# Nor this', rules_out: ['a window\n  ### nor this'] });
+    write('find', NOTE, [], { ...MADE, text: 'Panels float.\n~~~', how: 'a spike\n## still the finding' });
+
+    const text = /** @type {string} */ (copy(NOTE_COPY));
+    assert.deepStrictEqual(text.split('\n').filter((line) => /^\s*(#|```|~~~)/.test(line)), ['# fumi / note-window', '## Is a note a window?', '## Finding: Panels float. ~~~']);
+    assert.match(text, /^\\## Not a heading\n\\```$/m);
+    assert.match(text, /^Why: It floats\.\n\\# Nor this$/m);
+    assert.match(text, /^- a window\n {2}\\### nor this$/m);
+    assert.match(text, /^\\~~~$/m);
+  });
+
+  it('removes a temporary file a render killed before its rename left behind', () => {
+    floatingPanel();
+    const left = [statePath(dir, '.knowledge/records/fumi/.note-window.md.99999.tmp'), statePath(dir, '.knowledge/.product.md.99999.tmp')];
+    for (const file of left) fs.writeFileSync(file, 'half a copy');
+
+    ask(SPACE, 'Does a note open on the active Space?');
+
+    assert.deepStrictEqual(left.filter((file) => fs.existsSync(file)), []);
+  });
+
   it('gives a unit\'s own level a record of its own, apart from a topic named as the unit is (5.2.3)', () => {
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     ask('mint.discussion.mint', 'Does Mint float its notes?');
@@ -267,6 +290,23 @@ describe('a place set aside (5.8.17)', () => {
     assert.match(await byArea('floating'), /\[record \| fumi\/note-window /);
     ok(dir, ['workunit', 'reactivate', 'mint']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
+    assert.match(await byArea('floating'), /\[0 results\]/);
+  });
+
+  it('follows every change to what is live, however it is made: a feature absorbed into an epic, and a topic set aside by a field write', async () => {
+    const { decision } = floatingPanel();
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    change('mint.discussion.mint', decision, { text: 'A framed panel.', why: 'Mint frames its notes.' });
+    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
+    fs.mkdirSync(statePath(dir, 'mint/discussion'));
+    fs.writeFileSync(statePath(dir, 'mint/discussion/mint.md'), '# Mint\n');
+
+    ok(dir, ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes']);
+    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
+    assert.match(await byArea('framed'), /\[0 results\]/);
+
+    ok(dir, ['manifest', 'set', `${UNIT}.discovery.note-window`, 'cancelled', 'true']);
+    assert.strictEqual(copy(NOTE_COPY), null);
     assert.match(await byArea('floating'), /\[0 results\]/);
   });
 
@@ -341,6 +381,9 @@ describe('boot (22.6.14, 22.6.15)', () => {
 
     assert.match(asked.warnings.join('\n'), /^knowledge record render failed: .* — the next start renders it again$/m);
     assert.strictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+    const reactivated = ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+    assert.match(reactivated.warnings.join('\n'), /^knowledge record render failed: /m, 'a lifecycle change does not carry the render\'s failure');
 
     fs.rmSync(statePath(dir, '.knowledge/records'));
     ok(dir, ['boot']);

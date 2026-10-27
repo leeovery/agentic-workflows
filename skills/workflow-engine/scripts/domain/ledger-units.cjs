@@ -16,10 +16,15 @@
 //   made at the unit's level carries no topic, and its unit alone decides.
 // - A unit is finished once its status reads completed; until then it is
 //   still under way.
+// - What is live, marked whole: a value two reads of the manifests answer
+//   alike exactly when they set the same units and topics aside, so a
+//   change to what is live is seen however it was made.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const { isObject, workUnitManifestPath, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const path = require('path');
+const { isObject, workUnitManifestPath, readWorkUnitManifest, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
+const { LEDGER } = require('./ledger-events.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 
 /** The phases a topic exists in: those before the spec (4.11.2). */
@@ -98,4 +103,29 @@ function finishedUnits(root) {
   };
 }
 
-module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits };
+/** The topics a unit's manifest names, once each, sorted. @param {Record<string, any>} manifest @returns {string[]} */
+function topicsOf(manifest) {
+  return [...new Set(TOPIC_PHASES.flatMap((phase) => {
+    const items = manifest.phases?.[phase]?.items;
+    return isObject(items) ? Object.keys(items) : [];
+  }))].sort();
+}
+
+/**
+ * What is live across the project, marked whole: each unit there, and why
+ * it and each topic it names is not live where one is not. Null where the
+ * project has no ledger, whose liveness nothing reads.
+ * @param {string} root the project's state root
+ * @returns {string|null}
+ */
+function livenessMark(root) {
+  if (!fs.existsSync(path.join(root, LEDGER))) return null;
+  const units = listWorkUnitManifests(root).filter((manifest) => typeof manifest.name === 'string').sort((a, b) => a.name.localeCompare(b.name));
+  return JSON.stringify(units.map((manifest) => [
+    manifest.name,
+    deadReason(manifest.name, null, manifest),
+    topicsOf(manifest).map((topic) => [topic, deadReason(manifest.name, topic, manifest)]),
+  ]));
+}
+
+module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits, livenessMark };
