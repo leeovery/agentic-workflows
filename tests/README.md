@@ -8,13 +8,13 @@ The standing rules (the gates, the hermetic environment, the Claude Code floor, 
 
 Run all of them before every commit. Never pipe a gate's output: a pipe swallows the exit code. Redirect to a file and check `$?`.
 
-| Gate | What it runs | Time |
-|---|---|---|
-| `npm test` | every node suite (`tests/scripts/test-*.cjs`), listed one by one in `package.json` | target 1.5 min on an idle machine; 5.6 min today, 14 min at a load average of 100 |
-| `npm run test:cli` | the three shell contract suites | 5 min at a load average of 100 |
-| `npm run test:migrations` | the frozen `test-migration-*.sh` fleet | 2 min at a load average of 100 |
-| `npm run typecheck` | the JSDoc type contracts (`tsc`) | 10 s |
-| `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` | not measured |
+| Gate | What it runs |
+|---|---|
+| `npm test` | every node suite (`tests/scripts/test-*.cjs`), listed one by one in `package.json`; its budget is 1.5 min on an idle machine |
+| `npm run test:cli` | the three shell contract suites |
+| `npm run test:migrations` | the frozen `test-migration-*.sh` fleet |
+| `npm run typecheck` | the JSDoc type contracts (`tsc`) |
+| `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
 
 A new node suite is added to the `test` script in `package.json`, or it never runs.
 
@@ -76,7 +76,7 @@ Not yet in the library: the remote and two-machine worlds (the state and ledger 
 
 ## 5. Assertions
 
-- **Assert the whole answer of a contract.** `deepStrictEqual` the response and the manifest entry it wrote (`test-engine-workunit-create.cjs:101`), not a scatter of `includes`.
+- **Assert the whole answer of a contract.** `deepStrictEqual` the response and the manifest entry it wrote (the first test of `test-engine-workunit-create.cjs`), not a scatter of `includes`.
 - **Every refusal also asserts that nothing was written or committed.**
 - **Every absence check names something the code produces elsewhere,** shown by a positive case in the same file. Checking for a name the code never produces proves nothing.
 - **An absence check tests one guard.** Where two guards keep something out (the state `.gitignore` and a scoped commit), each gets its own test with the other out of the way.

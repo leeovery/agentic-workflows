@@ -156,9 +156,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 `tests/prose/` walks the skill prose end to end (`tests/prose/README.md`).
 
 - Walks cost tokens: run them on command through `/prose-test`, never as part of a routine gate.
-- When an engine change moves a world, regenerate with `node tests/prose/run.cjs snap {case-id}` and land the snapshot diff in the same PR; never hand-edit a snapshot.
-- Every review finding lands twice: the fix, and the case that would have caught it.
-- At the end of a PR that touches skill prose, run `node tests/prose/run.cjs select --diff main` and suggest running the intersecting cases.
+- The corpus is rewritten after the reshape's manual testing, then run as the clean baseline (`tests/README.md` §13). Until then no change adds a case or a snapshot.
 
 ## Skill Authoring
 
