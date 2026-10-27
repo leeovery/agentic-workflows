@@ -80,7 +80,7 @@ function ask(address, text) {
 
 /** A decision answering `question` at `address`: its short id. @param {string} address @param {string} question @param {string} text @param {string[]} [flags] @param {Record<string, unknown>} [content] */
 function decide(address, question, text, flags = [], content = {}) {
-  return write('decide', address, ['--answers', question, ...flags], { ...MADE, text, why: `Why: ${text}`, ...content }).id;
+  return write('decide', address, ['--answers', question, ...flags], { ...MADE, text, why: 'It follows the person.', ...content }).id;
 }
 
 /** `old` replaced at `address`, a changed mind: the response. @param {string} address @param {string} old @param {Record<string, unknown>} content */
@@ -128,7 +128,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       '',
       'A floating panel.',
       '',
-      'Why: Why: A floating panel.',
+      'Why: It follows the person.',
       '',
       'Rules out:',
       '- a document window',
