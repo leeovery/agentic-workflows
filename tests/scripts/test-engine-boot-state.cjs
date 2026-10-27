@@ -26,7 +26,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
@@ -301,6 +301,15 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
   });
 
+  it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
+    const main = datedAt('2025-03-01T12:00:00Z', () => codeProject());
+
+    const { baseline_signal: signal } = boot(main);
+
+    assert.deepStrictEqual([signal.commits_total, signal.commits_before, signal.history_before], [3, 1, ['2025-03-01  code']]);
+    assert.deepStrictEqual([signal.files_at_arrival, signal.tree_at_arrival], [1, ['README.md']]);
+  });
+
   it('keeps the line in the .gitignore at the repository\'s top for a project nested in a larger one', () => {
     const top = initRepo(path.join(world, 'mono'));
     write(top, 'app/README.md', '# app\n');
@@ -318,7 +327,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(read(top, '.gitignore'), '.leeway/\n');
   });
 
-  it('a project on the layout before the state branch owes the migration: boot writes nothing', () => {
+  it('a project on the layout before the state branch stops for the migration: boot writes nothing — and the next boot stops again', () => {
     const main = codeProject();
     write(main, '.workflows/payments/manifest.json', '{}\n');
     write(main, '.claude/settings.json', WORKFLOW_HOOKS);
@@ -326,11 +335,12 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     git(main, ['commit', '-q', '-m', 'the old layout']);
     const before = git(main, ['for-each-ref']);
 
-    assert.match(bootRefused(main), /keeps the workflows' state in \.workflows\/ on its code branch, the layout before leeway-state: moving it there is the migration's, so boot wrote nothing/);
+    assert.deepStrictEqual(boot(main), { ok: true, state: 'migrate', warnings: [] });
 
     assert.strictEqual(git(main, ['for-each-ref']), before);
     assert.ok(!fs.existsSync(path.join(main, '.leeway')));
     assert.strictEqual(git(main, ['status', '--porcelain']), '');
+    assert.deepStrictEqual(boot(main), { ok: true, state: 'migrate', warnings: [] });
   });
 
   it('the old layout beside a remote holding leeway-state is a clone to bring the state into, not refused', () => {
@@ -392,6 +402,66 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
     assert.strictEqual(git(fresh, ['for-each-ref']), before);
     assert.ok(!fs.existsSync(path.join(fresh, '.leeway')));
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
+  });
+});
+
+// --- two boots at once ----------------------------------------------------------
+
+/**
+ * Two boots at once, each a process of its own, as two sessions opened on
+ * one project start: their answers.
+ * @param {string} dir
+ * @returns {Promise<any[]>}
+ */
+function twoBootsAtOnce(dir) {
+  const one = () => new Promise((resolve) => {
+    const child = spawn(process.execPath, [STUB_ENGINE, 'boot'], { cwd: dir, env: process.env });
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (chunk) => { out += chunk; });
+    child.stderr.on('data', (chunk) => { err += chunk; });
+    child.on('close', () => resolve(JSON.parse(out.trim() === '' ? err : out.split('\n')[0])));
+  });
+  return Promise.all([one(), one()]);
+}
+
+/** Everything a boot makes, by count: the state's first commits, its registrations, the ignore line and the commits the code tree gained. @param {string} main */
+function madeOnce(main) {
+  return {
+    roots: git(main, ['rev-list', '--max-parents=0', STATE_BRANCH]).trim().split('\n').length,
+    registrations: fs.readdirSync(path.join(main, '.git/worktrees')),
+    ignore: read(main, '.gitignore'),
+    code: git(main, ['log', '--format=%s']).trim().split('\n'),
+  };
+}
+
+describe('two boots at once (4.S3)', () => {
+  it('on a project being set up, both answer ready, and everything is made once', async () => {
+    const main = codeProject();
+
+    const answers = await twoBootsAtOnce(main);
+
+    assert.deepStrictEqual(answers.map((a) => [a.ok, a.state, a.error]), [[true, 'ready', undefined], [true, 'ready', undefined]]);
+    assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(madeOnce(main), {
+      roots: 1, registrations: ['-leeway'], ignore: '.leeway/\n',
+      code: ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state', 'code'],
+    });
+    bootsWithNothingToDo(main, null);
+  });
+
+  it('on a fresh clone, both answer ready, and the remote\'s branch is checked out once', async () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    setUp({ remote: bare });
+    const fresh = cloneOf(bare, 'fresh');
+
+    const answers = await twoBootsAtOnce(fresh);
+
+    assert.deepStrictEqual(answers.map((a) => [a.ok, a.state, a.error]), [[true, 'ready', undefined], [true, 'ready', undefined]]);
+    assert.strictEqual(tip(fresh, STATE_BRANCH), remoteTip(bare));
+    assert.deepStrictEqual(placed(path.join(fresh, '.leeway')), IN_PLACE);
+    assert.deepStrictEqual(fs.readdirSync(path.join(fresh, '.git/worktrees')), ['-leeway']);
+    bootsWithNothingToDo(fresh, bare);
   });
 });
 
@@ -730,12 +800,23 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.match(engine.refuses(main, ['boot', '--fresh']).error, /^Usage: engine boot \[--start-again\]$/);
   });
 
-  it('a state folder with no branch here or on the remote is refused, nothing written', () => {
-    const { main } = setUp();
+  it('a state folder with no branch here or on the remote is refused, saying what happened and the ways on, nothing written', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main, root } = setUp({ remote: bare });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+    git(bare, ['branch', '-D', STATE_BRANCH]);
 
-    assert.match(bootRefused(main), /\.leeway is there, but leeway-state is in neither this clone nor a remote: boot makes no state branch over a folder it cannot account for, and wrote nothing$/);
+    assert.strictEqual(bootRefused(main), [
+      `the state folder ${root} is still there, but leeway-state is gone — from this clone, and from origin — so boot wrote nothing: `,
+      'it makes no state branch under a folder holding state it cannot account for. Where another clone still holds leeway-state, ',
+      'run Leeway there to push it back, and this clone restores it at its next boot; ',
+      `otherwise move ${root} aside, keeping what it holds, and boot again`,
+    ].join(''));
     assert.strictEqual(git(main, ['for-each-ref', `refs/heads/${STATE_BRANCH}`]), '');
+    assert.strictEqual(remoteTip(bare), '');
+
+    fs.renameSync(root, path.join(world, 'aside'));
+    assert.strictEqual(boot(main).state, 'lost', 'the folder moved aside, boot stops at the lost state, whose yes starts it afresh');
   });
 });
 
@@ -773,6 +854,61 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
 
     assert.match(bootRefused(main), /^leeway-state holds code history/);
     assert.strictEqual(remoteTip(bare), '');
+  });
+
+  /** What a refused catch-up must leave: the branch, the worktree's files and the remote. @param {string} main @param {string} bare */
+  function stateAsIs(main, bare) {
+    return { branch: tip(main, STATE_BRANCH), files: fs.readdirSync(path.join(main, '.leeway')).sort(), remote: remoteTip(bare), log: git(main, ['log', '--format=%H', STATE_BRANCH]) };
+  }
+
+  for (const fetched of [false, true]) {
+    it(`pushed over the remote's, is refused by the catch-up before anything is merged or pushed${fetched ? ' — the person having fetched it already' : ''}`, () => {
+      const bare = bareRemote(path.join(world, 'portal.git'));
+      const { main } = setUp({ remote: bare });
+      commitOnState(path.join(main, '.leeway'), { 'manifest.json': '{"kept":true}\n' });
+      git(main, ['push', '-q', '-f', 'origin', `main:${STATE_BRANCH}`]);
+      if (fetched) git(main, ['fetch', '-q', 'origin']);
+      const before = stateAsIs(main, bare);
+
+      assert.strictEqual(bootRefused(main), [
+        "origin's leeway-state holds code history — it shares commits with main, where the state branch is a line of its own — ",
+        "so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, put the state's own line back on origin — ",
+        "this clone's leeway-state holds it",
+      ].join(''));
+
+      assert.deepStrictEqual(stateAsIs(main, bare), before);
+      assert.ok(!fs.existsSync(path.join(main, '.leeway/README.md')), 'the code came into the state worktree');
+    });
+  }
+
+  it('pointed at code under its worktree, is refused by the catch-up and never pushed', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main } = setUp({ remote: bare });
+    git(main, ['update-ref', `refs/heads/${STATE_BRANCH}`, 'main']);
+    const before = stateAsIs(main, bare);
+
+    assert.strictEqual(bootRefused(main), [
+      "this clone's leeway-state holds code history — it shares commits with main, where the state branch is a line of its own — ",
+      'so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, point leeway-state back at the state\'s own line — ',
+      "origin's leeway-state holds it",
+    ].join(''));
+
+    assert.deepStrictEqual(stateAsIs(main, bare), before);
+  });
+
+  it('is told from a state started again elsewhere, a line of its own too, which the catch-up merges as ever', () => {
+    const bare = bareRemote(path.join(world, 'portal.git'));
+    const { main } = setUp({ remote: bare });
+    commitOnState(path.join(main, '.leeway'), { 'notes.md': 'kept here\n' });
+    const other = initRepo(path.join(world, 'other'));
+    const again = datedAt('2025-01-01T00:00:00Z', () => createState(path.join(other, '.leeway'))).commit;
+    git(other, ['push', '-q', '-f', bare, `${STATE_BRANCH}:${STATE_BRANCH}`]);
+
+    assert.strictEqual(boot(main).state, 'ready');
+
+    assert.strictEqual(git(main, ['log', '-1', '--format=%P', STATE_BRANCH]).trim(), again, 'merged onto the remote\'s line');
+    assert.strictEqual(read(main, '.leeway/notes.md'), 'kept here\n');
+    assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
   });
 });
 
@@ -862,9 +998,10 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
       rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
     });
     assert.deepStrictEqual(gh.input(), RULESET);
-    assert.deepStrictEqual([out.github_rule, out.rule_set, out.warnings], ['accepted', true, undefined]);
+    assert.deepStrictEqual([out.github_rule, out.reason, out.warnings], ['set', undefined, undefined]);
     assert.strictEqual(out.committed, git(main, ['rev-parse', '--short', STATE_BRANCH]).trim());
-    assert.deepStrictEqual(committedManifest(main).github_rule, { status: 'accepted' });
+    assert.strictEqual(git(main, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'chore: the GitHub rule on leeway-state set');
+    assert.deepStrictEqual(committedManifest(main).github_rule, { status: 'set' });
     assert.strictEqual(boot(main, { PATH: gh.PATH }).github_rule_offer, false);
   });
 
@@ -897,19 +1034,19 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
 
     const out = engine.ok(main, ['github-rule', 'no'], { env: { PATH: gh.PATH } });
 
-    assert.deepStrictEqual([out.github_rule, out.rule_set], ['declined', false]);
+    assert.deepStrictEqual([out.github_rule, out.reason], ['declined', undefined]);
     assert.deepStrictEqual(gh.calls(), []);
     assert.deepStrictEqual(committedManifest(main).github_rule, { status: 'declined' });
     const next = boot(main, { PATH: gh.PATH });
     assert.deepStrictEqual([next.state, next.github_rule_offer], ['ready', false]);
   });
 
-  for (const [why, setUpGh, said] of /** @type {const} */ ([
-    ['gh is missing', 'missing', /: gh is not installed — set it by hand under the repository's Settings → Rules$/],
-    ['gh is not signed in', { signedOut: true }, /: gh is not signed in to github\.com — set it by hand/],
-    ['gh is refused', { refuses: true }, /: gh refused it: HTTP 403: Resource not accessible by integration — set it by hand/],
+  for (const [why, setUpGh, reason] of /** @type {const} */ ([
+    ['gh is missing', 'missing', 'gh is not installed'],
+    ['gh is not signed in', { signedOut: true }, 'gh is not signed in to github.com'],
+    ['gh is refused', { refuses: true }, 'gh refused it: HTTP 403: Resource not accessible by integration'],
   ])) {
-    it(`a yes where ${why} says so and carries on, the answer recorded`, () => {
+    it(`a yes where ${why} says so and carries on, recorded as failed with why, never offered again`, () => {
       const main = codeProject({ remote: github.url });
       boot(main);
       let PATH;
@@ -923,11 +1060,9 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
 
       const out = engine.ok(main, ['github-rule', 'yes'], { env: { PATH } });
 
-      assert.deepStrictEqual([out.github_rule, out.rule_set], ['accepted', false]);
-      assert.strictEqual(out.warnings.length, 1);
-      assert.match(out.warnings[0], /^the rule against deleting or force-pushing leeway-state was not set on acme\/portal/);
-      assert.match(out.warnings[0], said);
-      assert.deepStrictEqual(committedManifest(main).github_rule, { status: 'accepted' });
+      assert.deepStrictEqual([out.github_rule, out.reason], ['failed', reason]);
+      assert.deepStrictEqual(out.warnings, [`the rule against deleting or force-pushing leeway-state was not set on acme/portal: ${reason} — set it by hand under the repository's Settings → Rules`]);
+      assert.deepStrictEqual(committedManifest(main).github_rule, { status: 'failed', reason });
       assert.strictEqual(boot(main).github_rule_offer, false);
     });
   }

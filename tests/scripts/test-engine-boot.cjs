@@ -239,11 +239,12 @@ describe('engine boot', () => {
       baseline: 'none',
       walkthrough: 'none',
       github_rule_offer: false,
-      // The state arrived beside the fixture's first code commit, its
-      // `.gitignore`: that commit came before it, and the rest after.
+      // The fixture's first code commit, its `.gitignore` naming the state,
+      // is the setup's own, in the second the state arrived: no history
+      // came before the workflows.
       baseline_signal: {
-        root_date: '2026-01-01', workflows_date: '2026-01-01', commits_total: 2, commits_before: 1,
-        history_before: ['2026-01-01  ignore the state'], files_at_arrival: 1, tree_at_arrival: ['.gitignore'],
+        root_date: '2026-01-01', workflows_date: '2026-01-01', commits_total: 2, commits_before: 0,
+        history_before: [], files_at_arrival: 0, tree_at_arrival: [],
       },
     });
   });
@@ -263,7 +264,7 @@ describe('engine boot', () => {
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
     const weird = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(weird.baseline, 'none');
-    assert.strictEqual(weird.baseline_signal.commits_before, 1);
+    assert.strictEqual(weird.baseline_signal.commits_total, 2);
 
     // An object with nothing recorded → none.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: {} }));
@@ -317,7 +318,7 @@ describe('engine boot', () => {
     writeFile(project, '.gitignore', '.leeway/\n');
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
     writeFile(project, '.worktreeinclude', STORE_FILES.join('\n') + '\n');
-    const at = (date) => `${date}T12:00:00Z`;
+    const at = (date) => (date.includes('T') ? date : `${date}T12:00:00Z`);
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
       execFileSync('git', ['commit', '-q', '--allow-empty', '-m', msg], { cwd: project, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_DATE: at(date), GIT_COMMITTER_DATE: at(date) } });
@@ -364,7 +365,7 @@ describe('engine boot', () => {
     const { project, commit, arrive } = scratchRepo('legacy');
     for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) writeFile(project, f, '# code\n');
     commit('import', '2025-01-01');
-    arrive('2025-01-01');
+    arrive('2025-01-01T12:00:01Z');
     const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 1, history_before: ['2025-01-01  import'],
@@ -427,11 +428,15 @@ describe('engine boot', () => {
   });
 
   it('baseline_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {
-    const fromRoot = runEngine(stubbed, fix.project, ['boot']).baseline_signal;
-    const fromState = runEngine(stubbed, path.join(fix.project, '.leeway'), ['boot']).baseline_signal;
+    const { project, commit, arrive } = scratchRepo('inside');
+    writeFile(project, 'src/a.js', 'a\n');
+    commit('root', '2025-01-01');
+    arrive('2025-02-01');
+    const fromRoot = runEngine(stubbed, project, ['boot']).baseline_signal;
+    const fromState = runEngine(stubbed, path.join(project, '.leeway'), ['boot']).baseline_signal;
 
     assert.deepStrictEqual(fromState, fromRoot);
-    assert.deepStrictEqual(fromState.history_before, ['2026-01-01  ignore the state']);
+    assert.deepStrictEqual(fromState.history_before, ['2025-01-01  root']);
   });
 
   it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
@@ -469,7 +474,7 @@ describe('engine boot', () => {
     const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'none');
-    assert.strictEqual(res.baseline_signal.commits_before, 1, 'the fixture\'s first code commit');
+    assert.strictEqual(res.baseline_signal.commits_total, 2, 'the fixture\'s code commits');
   });
 
   it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {

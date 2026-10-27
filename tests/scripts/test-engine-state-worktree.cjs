@@ -31,7 +31,7 @@ const { processStartTime } = require('../../skills/workflow-engine/scripts/kerne
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
   stateRoot, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
-  askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, commitState, pushState,
+  askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, withBootLock, commitState, pushState,
 } = state;
 
 /** @type {string} */
@@ -849,6 +849,23 @@ describe('the writer lock', () => {
     const { root } = project();
 
     assert.throws(() => withStateLock(root, () => null), /no state worktree at/);
+  });
+});
+
+describe('boot\'s lock', () => {
+  it('is .git/leeway-boot.lock in the main checkout, there before the state worktree is, held while boot\'s checks run and released after, whatever they throw', () => {
+    const { main, root } = project();
+    const lock = path.join(main, '.git/leeway-boot.lock');
+
+    const held = withBootLock(root, () => {
+      createState(root);
+      return JSON.parse(fs.readFileSync(lock, 'utf8'));
+    });
+    assert.deepStrictEqual(held, { pid: process.pid, pid_start: processStartTime(process.pid) });
+    assert.ok(!fs.existsSync(lock));
+
+    assert.throws(() => withBootLock(root, () => { throw new Error('the checks failed'); }), /the checks failed/);
+    assert.ok(!fs.existsSync(lock));
   });
 });
 

@@ -9,6 +9,9 @@
 // it is never made again — and, on the state branch, never made to another
 // clone of the project. A yes sets the rule through `gh`; a `gh` that is
 // missing, signed out or refused is said, and setup carries on without it.
+// What is recorded is what happened: the rule `set`, the offer `declined`,
+// or the yes `failed`, with why — so the manifest never says the rule is
+// there when it is not.
 // ---------------------------------------------------------------------------
 
 const { spawnSync } = require('child_process');
@@ -18,10 +21,11 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { STATE_BRANCH, stateRemoteUrl } = require('./state-worktree.cjs');
 
-/** The person's answer to the offer, and what the project manifest records for it. */
-const ANSWERS = /** @type {const} */ ({ yes: 'accepted', no: 'declined' });
+/** What the project manifest records once the offer is answered. */
+const STATUSES = /** @type {const} */ (['set', 'declined', 'failed']);
 
-/** @typedef {typeof ANSWERS[keyof typeof ANSWERS]} GithubRuleStatus */
+/** @typedef {typeof STATUSES[number]} GithubRuleStatus */
+/** @typedef {{status: GithubRuleStatus, reason?: string}} GithubRuleRecord */
 /** @typedef {{owner: string, repo: string}} GithubRepository */
 
 const GITHUB_HOST = 'github.com';
@@ -72,7 +76,7 @@ function recordedAnswer(cwd) {
   }
   const rule = isObject(manifest) ? manifest.github_rule : undefined;
   const status = isObject(rule) ? rule.status : undefined;
-  return Object.values(ANSWERS).find((answer) => answer === status) ?? null;
+  return STATUSES.find((recorded) => recorded === status) ?? null;
 }
 
 /**
@@ -107,13 +111,29 @@ function setRule({ owner, repo }) {
 }
 
 /**
+ * What a yes did: the rule set, or why it was not — said as a warning too,
+ * with where to set it by hand. Refuses where the state's remote is not on
+ * GitHub.
+ * @param {string} cwd @param {string[]} warnings
+ * @returns {GithubRuleRecord}
+ */
+function setOnYes(cwd, warnings) {
+  const repository = stateRepository(cwd);
+  if (repository === null) throw new Error('github-rule: the state\'s remote is not on GitHub — there is no repository to set the rule on');
+  const unset = setRule(repository);
+  if (unset === null) return { status: 'set' };
+  warnings.push(`the rule against deleting or force-pushing ${STATE_BRANCH} was not set on ${repository.owner}/${repository.repo}: ${unset} — set it by hand under the repository's Settings → Rules`);
+  return { status: 'failed', reason: unset };
+}
+
+/**
  * Answer the offer — `yes` sets the rule through `gh`, `no` sets nothing —
- * and record the answer on the project manifest, committed confined to it.
- * A rule `gh` could not set is a warning naming why: the answer is recorded
- * either way. Refuses another answer, a yes where the state's remote is not
- * on GitHub, and an offer already answered.
+ * and record what happened on the project manifest, committed confined to
+ * it: `set`, `declined`, or `failed` with why. The offer is never made
+ * again, whichever is recorded. Refuses another answer, a yes where the
+ * state's remote is not on GitHub, and an offer already answered.
  * @param {string} cwd @param {string} answer
- * @returns {{github_rule: GithubRuleStatus, rule_set: boolean, committed: string|null, note?: string, warnings?: string[]}}
+ * @returns {{github_rule: GithubRuleStatus, reason?: string, committed: string|null, note?: string, warnings?: string[]}}
  */
 function answerGithubRule(cwd, answer) {
   if (answer !== 'yes' && answer !== 'no') throw new Error(`github-rule: the answer is yes or no — got "${answer}"`);
@@ -121,26 +141,17 @@ function answerGithubRule(cwd, answer) {
   if (recorded !== null) throw new Error(`github-rule: the offer is answered — "${recorded}" is recorded, and an answer is recorded once`);
   /** @type {string[]} */
   const warnings = [];
-  let ruleSet = false;
-  if (answer === 'yes') {
-    const repository = stateRepository(cwd);
-    if (repository === null) throw new Error('github-rule: the state\'s remote is not on GitHub — there is no repository to set the rule on');
-    const unset = setRule(repository);
-    ruleSet = unset === null;
-    if (unset !== null) {
-      warnings.push(`the rule against deleting or force-pushing ${STATE_BRANCH} was not set on ${repository.owner}/${repository.repo}: ${unset} — set it by hand under the repository's Settings → Rules`);
-    }
-  }
-  const status = ANSWERS[answer];
+  /** @type {GithubRuleRecord} */
+  const record = answer === 'yes' ? setOnYes(cwd, warnings) : { status: 'declined' };
   withProjectLock(cwd, () => {
     const manifest = readProjectManifest(cwd);
-    manifest.github_rule = { status };
+    manifest.github_rule = record;
     writeProjectManifestAtomic(cwd, manifest);
   });
-  const committed = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, `chore: the GitHub rule on ${STATE_BRANCH} ${status}`);
+  const committed = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, `chore: the GitHub rule on ${STATE_BRANCH} ${record.status}`);
   warnings.push(...committed.warnings);
   /** @type {ReturnType<typeof answerGithubRule>} */
-  const result = { github_rule: status, rule_set: ruleSet, committed: committed.committed };
+  const result = { github_rule: record.status, ...(record.reason === undefined ? {} : { reason: record.reason }), committed: committed.committed };
   noteIfNothingCommitted(result, committed.committed);
   if (warnings.length > 0) result.warnings = warnings;
   return result;

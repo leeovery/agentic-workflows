@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // Domain ring: boot's checks of the state (4.4.3, 22.1.2), run on every boot
 // before anything writes state — and before the writer lock, a file in the
-// state worktree these checks put in place. The state's remote is asked once
-// where its `leeway-state` stands, and the catch-up starts from that answer,
-// so a boot with nothing to do asks the network once.
+// state worktree these checks put in place, so they hold a lock of their
+// own, and two boots at once check one after the other. The state's remote
+// is asked once where its `leeway-state` stands, and the catch-up starts
+// from that answer, so a boot with nothing to do asks the network once.
 //
 // - The branch: one this clone lacks is made from the remote's — a fresh
 //   clone, or a local branch lost — and one the remote lacks is pushed back
@@ -17,8 +18,8 @@
 // - No branch here or on the remote: a project being set up gets the orphan
 //   branch; one whose code tree holds the workflows' trace lost its state,
 //   and boot stops there, starting again only on the person's yes (4.4.5,
-//   4.5.2); one on the layout before the state branch owes the migration,
-//   and boot writes nothing.
+//   4.5.2); one on the layout before the state branch stops for the
+//   migration, and boot writes nothing.
 // - A remote out of reach is never read as holding nothing, so never as lost
 //   state or a branch to push back: boot works on what this clone holds —
 //   its own branch, or the remote's as last fetched — and, holding neither,
@@ -33,7 +34,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { titlecase } = require('./conventions.cjs');
 const {
   STATE_BRANCH, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote,
-  lockStateWorktree, askStateRemote, fetchStateTip, codeBranchSharing, pushState,
+  lockStateWorktree, askStateRemote, fetchStateTip, codeBranchSharing, pushState, withBootLock,
 } = require('./state-worktree.cjs');
 const { holdsTrace, onLegacyLayout } = require('./code-trace.cjs');
 
@@ -41,12 +42,13 @@ const { holdsTrace, onLegacyLayout } = require('./code-trace.cjs');
 /** @typedef {import('./state-worktree.cjs').StateInspection} StateInspection */
 
 /**
- * What boot's checks left: the state lost, boot stopped with nothing
- * written; or the state in place — made by this boot where `made` says so —
- * with the remote's answer the catch-up starts from, none where a push this
- * boot made left it behind.
- * @typedef {{lost: true}
- *   | {lost: false, made: 'created'|'restarted'|null, listing: RemoteAnswer|undefined, warnings: string[]}} Placed
+ * What boot's checks left: a stop, with nothing written — the state `lost`,
+ * or the project on the layout before the state branch, owing the
+ * `migrate`ion; or the state in place — made by this boot where `made` says
+ * so — with the remote's answer the catch-up starts from, none where a push
+ * this boot made left it behind.
+ * @typedef {{stop: 'lost'|'migrate'}
+ *   | {made: 'created'|'restarted'|null, listing: RemoteAnswer|undefined, warnings: string[]}} Placed
  */
 
 /**
@@ -109,15 +111,18 @@ function restoreBranch(root, seen, answer) {
  */
 function startState(cwd, root, answer, startAgain) {
   if (fs.existsSync(root)) {
-    throw new Error(`${root} is there, but ${STATE_BRANCH} is in neither this clone nor a remote: boot makes no state branch over a folder it cannot account for, and wrote nothing`);
+    throw new Error(
+      `the state folder ${root} is still there, but ${STATE_BRANCH} is gone — from this clone, and from ${answer.remote ?? 'any remote'} — ` +
+      'so boot wrote nothing: it makes no state branch under a folder holding state it cannot account for. ' +
+      `Where another clone still holds ${STATE_BRANCH}, run Leeway there to push it back, and this clone restores it at its next boot; ` +
+      `otherwise move ${root} aside, keeping what it holds, and boot again`,
+    );
   }
-  if (onLegacyLayout(cwd)) {
-    throw new Error(`this project keeps the workflows' state in .workflows/ on its code branch, the layout before ${STATE_BRANCH}: moving it there is the migration's, so boot wrote nothing`);
-  }
+  if (onLegacyLayout(cwd)) return { stop: 'migrate' };
   const lost = holdsTrace(cwd);
-  if (lost && !startAgain) return { lost: true };
+  if (lost && !startAgain) return { stop: 'lost' };
   const created = createState(root);
-  return { lost: false, made: lost ? 'restarted' : 'created', listing: created.pushed ? undefined : answer, warnings: created.warnings };
+  return { made: lost ? 'restarted' : 'created', listing: created.pushed ? undefined : answer, warnings: created.warnings };
 }
 
 /**
@@ -168,22 +173,24 @@ function pushBack(root, answer, warnings) {
 /**
  * Boot's checks: the state branch and its worktree put in place, set up on
  * a project being set up, and started again on a lost one where the person
- * said yes (`startAgain`); or the stop where it is lost. Refuses, with
- * nothing written, where the remote is out of reach and this clone holds no
- * state, where a `leeway-state` holds code history, on the layout before
- * the state branch, and where the state's folder is there in a shape boot
- * cannot account for.
+ * said yes (`startAgain`); or the stop where it is lost, or where the
+ * project is on the layout before the state branch. Held one boot at a
+ * time. Refuses, with nothing written, where the remote is out of reach and
+ * this clone holds no state, where a `leeway-state` holds code history, and
+ * where the state's folder is there in a shape boot cannot account for.
  * @param {string} cwd
  * @param {{startAgain?: boolean}} [opts]
  * @returns {Placed}
  */
 function placeState(cwd, { startAgain = false } = {}) {
   const root = stateRoot(cwd);
-  const answer = askStateRemote(root);
-  const seen = inspectState(root);
-  if (!seen.branch && !restoreBranch(root, seen, answer)) return startState(cwd, root, answer, startAgain);
-  const warnings = placeWorktree(root, seen.branch ? seen : inspectState(root));
-  return { lost: false, made: null, listing: pushBack(root, answer, warnings), warnings };
+  return withBootLock(root, () => {
+    const answer = askStateRemote(root);
+    const seen = inspectState(root);
+    if (!seen.branch && !restoreBranch(root, seen, answer)) return startState(cwd, root, answer, startAgain);
+    const warnings = placeWorktree(root, seen.branch ? seen : inspectState(root));
+    return { made: null, listing: pushBack(root, answer, warnings), warnings };
+  });
 }
 
 module.exports = { placeState, projectName };

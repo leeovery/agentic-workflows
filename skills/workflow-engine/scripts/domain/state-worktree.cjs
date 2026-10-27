@@ -22,7 +22,9 @@
 // - Writing it: a verb holds the writer lock (`.leeway/.lock`, the kernel's)
 //   across its writes and its commit, so concurrent verbs take turns and the branch
 //   stays one line; the lock follows its holder's process, never its age,
-//   and a process may take it again while it holds it. The commit is built
+//   and a process may take it again while it holds it. Boot's checks, which
+//   put the worktree holding that lock in place, take one of their own in
+//   the main checkout's git directory. The commit is built
 //   in a private index from HEAD and the working tree, never through the
 //   worktree's own index, so nothing a killed verb or a person left staged
 //   there can break it. A merge's landing a kill cut short is finished
@@ -40,7 +42,7 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
-const { WRITER_LOCK, withWriterLock } = require('../kernel/manifest-io.cjs');
+const { WRITER_LOCK, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 
@@ -57,6 +59,7 @@ const FIRST_COMMIT_MESSAGE = `chore: begin ${STATE_BRANCH}`;
 
 const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
 const PRIVATE_INDEX = 'leeway-commit.index';
+const BOOT_LOCK = 'leeway-boot.lock';
 
 const PUSH_TIMEOUT_MS = 15000;
 const FETCH_TIMEOUT_MS = 15000;
@@ -467,6 +470,21 @@ function withStateLock(root, fn, opts) {
 }
 
 /**
+ * Run `fn` holding the lock boot's checks of the state take — a file in the
+ * main checkout's git directory, there before the state worktree is — held
+ * as the writer lock is. Two boots putting the state in place at once
+ * would each make the branch and add the worktree, and two `git worktree
+ * add` at one path undo each other: the one that fails deletes the folder
+ * the other made.
+ * @template T
+ * @param {string} root @param {() => T} fn
+ * @returns {T}
+ */
+function withBootLock(root, fn) {
+  return withStateLockFile(path.join(mainOf(root), '.git', BOOT_LOCK), fn);
+}
+
+/**
  * A path given to a state commit, named from the state root. Refuses one
  * outside it.
  * @param {string} root @param {string} given absolute, or from the root
@@ -627,6 +645,7 @@ module.exports = {
   codeBranchSharing,
   stateRemoteUrl,
   withStateLock,
+  withBootLock,
   commitState,
   pushState,
 };

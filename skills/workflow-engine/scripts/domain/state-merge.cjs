@@ -13,7 +13,11 @@
 //   clone moved, it pushes what a failed push left behind; where both moved,
 //   it merges. No remote, or a remote holding no state branch, leaves
 //   nothing to do. A remote that cannot be reached is a warning, and the
-//   session works on the state it has.
+//   session works on the state it has. A side holding code history — code
+//   pushed or pointed at by the state branch's name — is refused before
+//   anything is merged or pushed; it is looked for only where a side's new
+//   commits hold a commit with no parent, so a catch-up with nothing new
+//   pays nothing for it.
 // - The merge: one new commit whose parent is the remote's tip, its tree
 //   merged path by path (state-merge-paths.cjs) from the common ancestor,
 //   this clone's tip and the remote's: committed state only. This clone's
@@ -53,7 +57,7 @@ const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError } = require('../kernel/git.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const {
-  STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState, askStateRemote, fetchStateTip,
+  STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState, askStateRemote, fetchStateTip, codeBranchSharing,
 } = require('./state-worktree.cjs');
 const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
 const { changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
@@ -426,6 +430,58 @@ function mergeSides(state, sides, timeouts) {
 }
 
 /**
+ * Where this clone last knew the remote's state branch: its remote-tracking
+ * branch, read before a fetch moves it. Null where there is none.
+ * @param {State} state
+ * @returns {string|null}
+ */
+function lastKnown(state) {
+  if (state.remote === null) return null;
+  const known = state.main.tryRun(['rev-parse', '--verify', '--quiet', `${trackingRef(state.remote)}^{commit}`]);
+  return known === null ? null : known.trim();
+}
+
+/**
+ * Whether either side gained a commit with no parent since the two were
+ * last in step — the remote's commits since this clone last knew it, this
+ * clone's since it last pushed; with no remote-tracking branch to go by,
+ * each side's commits the other lacks. Only the new commits are walked, so
+ * a step with nothing new costs nothing. A state started again elsewhere
+ * gains one; so does a branch by the state's name holding code.
+ * @param {State} state @param {Sides} sides @param {string|null} known
+ * @returns {boolean}
+ */
+function gainedARoot(state, sides, known) {
+  return [[sides.remote, known ?? sides.local], [sides.local, known ?? sides.remote]]
+    .some(([from, past]) => state.git.run(['rev-list', '--max-parents=0', from, `^${past}`]).trim() !== '');
+}
+
+/**
+ * Refuse a side holding code history, before anything is merged or pushed:
+ * where a side gained a commit with no parent, each side is held against
+ * the code branches, and one sharing commits with them is named, with how
+ * to carry on. Two state lines — one started again — merge as ever.
+ * @param {State} state @param {Sides} sides @param {string|null} known
+ */
+function refuseCodeHistory(state, sides, known) {
+  if (!gainedARoot(state, sides, known)) return;
+  const remote = /** @type {string} */ (state.remote);
+  const looks = [
+    { ref: trackingRef(remote), named: `${remote}'s ${STATE_BRANCH}`, way: `put the state's own line back on ${remote} — this clone's ${STATE_BRANCH} holds it` },
+    { ref: BRANCH_REF, named: `this clone's ${STATE_BRANCH}`, way: `point ${STATE_BRANCH} back at the state's own line — ${remote}'s ${STATE_BRANCH} holds it` },
+  ];
+  for (const { ref, named, way } of looks) {
+    const code = codeBranchSharing(state.root, ref);
+    if (code !== null) {
+      throw new Error(
+        `${named} holds code history — it shares commits with ${code}, where the state branch is a line of its own — ` +
+        `so the catch-up neither merges nor pushes it, and wrote nothing. To carry on, ${way}`,
+      );
+    }
+  }
+}
+
+/**
  * One step: fetch, then act on where the two sides stand. After a push that
  * failed, a remote that has not moved since ends the loop with that failure.
  * @param {State} state @param {Timeouts} timeouts @param {Retry|null} retry
@@ -433,6 +489,7 @@ function mergeSides(state, sides, timeouts) {
  * @returns {{outcome: CatchUpOutcome}|{retry: Retry}}
  */
 function step(state, timeouts, retry, asked) {
+  const known = lastKnown(state);
   const fetched = fetchState(state, timeouts.fetchMs, asked);
   if ('outcome' in fetched) {
     return { outcome: retry === null ? fetched.outcome : { ...retry.outcome, warnings: [...retry.outcome.warnings, ...fetched.outcome.warnings] } };
@@ -440,6 +497,7 @@ function step(state, timeouts, retry, asked) {
   if (retry !== null && fetched.tip === retry.onto) return { outcome: retry.outcome };
   const sides = sidesOf(state, fetched.tip);
   if (sides.local === sides.remote) return { outcome: outcome(state, 'nothing', { reason: 'current' }) };
+  refuseCodeHistory(state, sides, known);
   if (sides.base === sides.remote) return pushAhead(state, sides, timeouts);
   return mergeSides(state, sides, timeouts);
 }

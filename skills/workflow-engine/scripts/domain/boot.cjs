@@ -10,10 +10,13 @@
 //
 // The state comes first, before anything writes it (state-checks.cjs): the
 // branch and its worktree put in place — or set up, or, lost, the stop
-// whose yes is `boot --start-again` — then the catch-up from the remote,
-// whose stop on a field both clones changed ends boot there for the
-// person's pick (state-merge.cjs). Then the main checkout's `.gitignore`
-// keeps the state's ignore line, committed through the code door.
+// whose yes is `boot --start-again`, or, on the layout before the state
+// branch, the stop for the migration — then, under the writer lock, the
+// catch-up from the remote, whose stop on a field both clones changed ends
+// boot there for the person's pick (state-merge.cjs). Then the main
+// checkout's `.gitignore` keeps the state's ignore line, committed through
+// the code door, and the migrations run, all under that one hold, so a
+// second boot meanwhile finds each done.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
 // error — migrations must never half-run silently. The run records into the
@@ -122,11 +125,12 @@ const LEDGER = '.state/migrations';
  * Boot stopped by the state, before anything wrote it: `lost`, the state
  * branch gone here and on the remote in a project holding the workflows'
  * trace — `render state-lost-gate` draws the stop, and its yes is `boot
- * --start-again`; `merge`, the catch-up stopped by a field both clones
- * changed — `render state-merge-gate` draws it, and `state-merge pick`
- * answers it.
+ * --start-again`; `migrate`, the project on the layout before the state
+ * branch, its state in `.workflows/` on its code branch — the migration
+ * moves it; `merge`, the catch-up stopped by a field both clones changed —
+ * `render state-merge-gate` draws it, and `state-merge pick` answers it.
  * @typedef {object} BootStop
- * @property {'lost'|'merge'} state
+ * @property {'lost'|'migrate'|'merge'} state
  * @property {string[]} warnings
  */
 
@@ -230,15 +234,18 @@ function trimReport(stdout) {
 function boot(cwd, { startAgain = false } = {}) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
   const placed = placeState(cwd, { startAgain });
-  if (placed.lost) return { state: 'lost', warnings: [] };
+  if ('stop' in placed) return { state: placed.stop, warnings: [] };
   const root = stateRoot(cwd);
   const warnings = [...placed.warnings];
-  const caught = catchUpState(root, { listing: placed.listing });
-  warnings.push(...caught.warnings);
-  if (caught.action === 'stopped') return { state: 'merge', warnings };
-  keepStateIgnored(cwd, warnings);
-
-  const { migrations, migrationsCommitted } = withStateLock(root, () => runMigrations(cwd, warnings));
+  const migrated = withStateLock(root, () => {
+    const caught = catchUpState(root, { listing: placed.listing });
+    warnings.push(...caught.warnings);
+    if (caught.action === 'stopped') return null;
+    keepStateIgnored(cwd, warnings);
+    return runMigrations(cwd, warnings);
+  });
+  if (migrated === null) return { state: 'merge', warnings };
+  const { migrations, migrationsCommitted } = migrated;
 
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
 
