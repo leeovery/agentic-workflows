@@ -9,15 +9,15 @@
 // project's own account of what came before the workflows, read from every
 // repo in it (kernel/repos) and handed to the one-time judgment as evidence
 // to read rather than a number to threshold — and the verdict write, one
-// confined transaction.
+// state commit.
 // ---------------------------------------------------------------------------
 
 const { git, GitError, hasCommits } = require('../kernel/git.cjs');
 const { projectRepos, projectPath } = require('../kernel/repos.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
-const { commitPathspecScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
-const { stateRel } = require('../kernel/state-root.cjs');
+const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC, WORKTREE_INCLUDE } = require('./commit.cjs');
+const { findStateRoot } = require('../kernel/state-root.cjs');
+const { isolatedGit } = require('../kernel/isolated-git.cjs');
 
 /** The statuses a project manifest records; `none` is their absence. */
 const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
@@ -37,11 +37,11 @@ const VERDICTS = /** @type {const} */ (['native', 'skipped']);
 /**
  * @typedef {object} BaselineSignal
  * @property {string} root_date  author date of the earliest first commit across the project's repos (YYYY-MM-DD)
- * @property {string|null} workflows_date  author date of the root's first commit touching `.workflows/` — null when none is committed yet, so the whole history predates the workflows
+ * @property {string|null} workflows_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates the workflows
  * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
- * @property {number} commits_before  the commits before the arrival, summed: the root's are the ancestors of the commit the workflows arrived in, a nested repo's its last commit made before that one and that commit's ancestors (each whole history when nothing under `.workflows/` is committed)
+ * @property {number} commits_before  the commits before the arrival, summed: each repo's last commit made before the state's first commit and that commit's ancestors (each whole history when the state holds no commit)
  * @property {string[]} history_before  those commits as `date  subject`, oldest first across the repos — the head and tail kept around an elision line when the run is long
- * @property {number} files_at_arrival  project files (outside `.claude/` and `.workflows/`, `.worktreeinclude` aside) in the tree the workflows arrived into — the root's at the arrival commit, a nested repo's at its last commit before it; HEAD's trees when nothing under `.workflows/` is committed
+ * @property {number} files_at_arrival  project files (outside `.claude/`, `.worktreeinclude` aside) in the trees the workflows arrived into — each repo's at its last commit before the arrival; HEAD's trees when the state holds no commit
  * @property {string[]} tree_at_arrival  that tree's top-level shape, named from the project: `dir/ (n)` and root files, largest first, elided past a dozen
  */
 
@@ -152,42 +152,33 @@ function sum(values) {
 }
 
 /**
- * The root's first commit touching `.workflows/` — its sha, author date and
- * committer time — or null when none is committed yet.
+ * The state's first commit — its author date and committer time — or null
+ * when the state holds none yet. Read in the state worktree, isolated.
  * @param {string} cwd
- * @returns {{sha: string, date: string, time: string}|null}
+ * @returns {{date: string, time: string}|null}
  */
 function arrivalIn(cwd) {
-  if (!hasCommits(cwd)) return null;
-  const [first] = gitLines(cwd, ['log', '--no-show-signature', '--reverse', '--format=%H%x09%as%x09%ct', 'HEAD', '--', stateRel()]);
+  const state = findStateRoot(cwd);
+  if (state === null) return null;
+  const out = isolatedGit(state).tryRun(['log', '--no-show-signature', '--max-parents=0', '--format=%as%x09%ct', 'HEAD']);
+  const [first] = (out || '').split('\n').filter(Boolean);
   if (first === undefined) return null;
-  const [sha, date, time] = first.split('\t');
-  return { sha, date, time };
+  const [date, time] = first.split('\t');
+  return { date, time };
 }
 
 /**
- * Where the arrival cuts the root: the arrival commit's tree, and its first
- * parent's history — none when the workflows arrived in the root commit.
- * Nothing committed under `.workflows/` means the workflows are arriving
- * now, into HEAD's tree, and the whole history came before them.
- * @param {string} cwd @param {{sha: string}|null} arrival
- * @returns {Cut}
- */
-function rootCut(cwd, arrival) {
-  if (arrival === null) return { before: 'HEAD', tree: 'HEAD' };
-  const parent = git(cwd, ['rev-list', '--parents', '-n', '1', arrival.sha]).trim().split(/\s+/)[1];
-  return { before: parent || null, tree: arrival.sha };
-}
-
-/**
- * Where the arrival cuts a nested repo, which holds no `.workflows/` of its
- * own: at its last commit made before the root's arrival commit.
+ * Where the arrival cuts a repo: at the commit its branch stood on when the
+ * state took its first commit — the last on its first-parent line made no
+ * later, so a side branch merged afterwards is never history before it. No
+ * state commit means the workflows are arriving now, into HEAD's tree, and
+ * the whole history came before them.
  * @param {string} cwd @param {{time: string}|null} arrival
  * @returns {Cut}
  */
-function nestedCut(cwd, arrival) {
+function cutAt(cwd, arrival) {
   if (arrival === null) return { before: 'HEAD', tree: 'HEAD' };
-  const last = git(cwd, ['rev-list', '-1', `--before=@${arrival.time}`, 'HEAD']).trim() || null;
+  const last = git(cwd, ['rev-list', '-1', '--first-parent', `--before=@${arrival.time}`, 'HEAD']).trim() || null;
   return { before: last, tree: last };
 }
 
@@ -271,14 +262,14 @@ function elided(rows) {
 }
 
 /**
- * The project's files, less the workflows' own footprint (the skills install
- * under `.claude/`, the `.workflows/` tree, the `.worktreeinclude` boot
- * keeps): a file count plus the top-level shape, largest entries first.
+ * The project's files, less the workflows' own footprint in the code tree
+ * (the skills install under `.claude/`, the `.worktreeinclude` earlier boots
+ * kept): a file count plus the top-level shape, largest entries first.
  * @param {string[]} paths project paths
  * @returns {{files_at_arrival: number, tree_at_arrival: string[]}}
  */
 function treeShape(paths) {
-  const project = paths.filter((p) => !p.startsWith('.claude/') && !p.startsWith(`${stateRel()}/`) && p !== WORKTREE_INCLUDE);
+  const project = paths.filter((p) => !p.startsWith('.claude/') && p !== WORKTREE_INCLUDE);
   /** @type {Map<string, number>} */
   const top = new Map();
   for (const p of project) {
@@ -297,8 +288,8 @@ function treeShape(paths) {
 
 /**
  * The project's account of what came before the workflows, across every
- * repo in it: when the history began, when `.workflows/` first landed in
- * the root, the commits before that arrival (as commits, not a count alone)
+ * repo in it: when the history began, when the state took its first
+ * commit, the commits before that arrival (as commits, not a count alone)
  * and the project tree they arrived into. A project inside a larger
  * repository reads the commits that touched its folder. A repo with no
  * commits yet adds nothing, a shallow nested clone its tree alone, and a
@@ -315,8 +306,8 @@ function baselineSignal(cwd) {
     if (isShallow(root.path)) return null;
     const arrival = arrivalIn(cwd);
     const accounts = [
-      ...(hasCommits(root.path) ? [accountOf(root, rootCut(root.path, arrival), scopeOf(root.path))] : []),
-      ...nested.filter((repo) => hasCommits(repo.path)).map((repo) => nestedAccount(repo, nestedCut(repo.path, arrival))),
+      ...(hasCommits(root.path) ? [accountOf(root, cutAt(root.path, arrival), scopeOf(root.path))] : []),
+      ...nested.filter((repo) => hasCommits(repo.path)).map((repo) => nestedAccount(repo, cutAt(repo.path, arrival))),
     ];
     const commitsTotal = sum(accounts.map((a) => a.commits));
     if (commitsTotal === 0) return null;
@@ -349,7 +340,7 @@ const VERDICT_MESSAGES = {
  * confined to the project manifest. Refuses any other value, and refuses
  * once anything is recorded: the judgment happens once.
  * @param {string} cwd @param {string} verdict
- * @returns {{status: BaselineVerdict, committed: string|null, note?: string}}
+ * @returns {{status: BaselineVerdict, committed: string|null, note?: string, warnings?: string[]}}
  */
 function recordBaselineVerdict(cwd, verdict) {
   if (!VERDICTS.includes(/** @type {BaselineVerdict} */ (verdict))) {
@@ -367,10 +358,11 @@ function recordBaselineVerdict(cwd, verdict) {
     manifest.baseline = { ...b, status };
     writeProjectManifestAtomic(cwd, manifest);
   });
-  const committed = commitPathspecScoped(cwd, PROJECT_MANIFEST_SPEC, VERDICT_MESSAGES[status]);
-  /** @type {{status: BaselineVerdict, committed: string|null, note?: string}} */
+  const { committed, warnings } = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, VERDICT_MESSAGES[status]);
+  /** @type {{status: BaselineVerdict, committed: string|null, note?: string, warnings?: string[]}} */
   const result = { status, committed };
   noteIfNothingCommitted(result, committed);
+  if (warnings.length > 0) result.warnings = warnings;
   return result;
 }
 

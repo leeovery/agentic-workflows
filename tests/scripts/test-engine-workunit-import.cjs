@@ -13,7 +13,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles } = require('./engine-harness.cjs');
+const {
+  git, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+} = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -49,26 +51,18 @@ function epicIn(phase, topic = 'onboarding') {
 
 function setupFixture({ feature = featureManifest() } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-import-'));
-  const project = path.join(root, 'project');
-  fs.mkdirSync(project, { recursive: true });
-  git(project, ['init', '-q', '-b', 'main']);
-  git(project, ['config', 'user.email', 'test@example.com']);
-  git(project, ['config', 'user.name', 'Test']);
-  git(project, ['config', 'commit.gpgsign', 'false']);
-  // The cache is session machinery — never staged (migration 049's gitignore);
-  // the knowledge directory is checkout-local (migration 060's).
-  writeFile(project, '.workflows/.gitignore', '.cache/\n.manifest.json.*.tmp\n.knowledge/\n');
+  const project = setupFixtureAt(path.join(root, 'project'));
   keywordOnlyKnowledge(project);
-  writeFile(project, '.workflows/manifest.json', JSON.stringify({
+  writeFile(project, '.leeway/manifest.json', JSON.stringify({
     work_units: { [feature.name]: { work_type: feature.work_type } },
   }, null, 2) + '\n');
-  writeFile(project, `.workflows/${feature.name}/manifest.json`, JSON.stringify(feature, null, 2) + '\n');
-  git(project, ['add', '-A']);
-  git(project, ['commit', '-q', '-m', 'init']);
+  writeFile(project, `.leeway/${feature.name}/manifest.json`, JSON.stringify(feature, null, 2) + '\n');
+  commitAll(project, 'init');
 
   return {
     root,
     project,
+    init: stateGit(project, ['rev-parse', 'HEAD']).trim(),
     env: { CLAUDE_CODE_SESSION_ID: 'import-session', CLAUDE_PID: String(process.pid) },
   };
 }
@@ -85,11 +79,21 @@ const engine = (fix, args, env = {}) => ok(fix.project, args, { env: { ...fix.en
 const engineFails = (fix, args, env = {}) => refuses(fix.project, args, { env: { ...fix.env, ...env } });
 
 function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 function shortHead(fix) {
-  return git(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
+  return stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim();
+}
+
+/** The state commits made since the fixture's own. */
+function commitsSinceInit(fix) {
+  return stateGit(fix.project, ['rev-list', '--count', `${fix.init}..HEAD`]).trim();
+}
+
+/** A landed import's absolute path, as the response names it. @param {string} name */
+function landed(fix, name) {
+  return path.join(fix.project, '.leeway', 'ledger', 'imports', name);
 }
 
 const ISO_SECONDS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
@@ -110,8 +114,8 @@ describe('engine workunit import — happy path', () => {
       ok: true,
       op: 'import',
       imports: [
-        { path: 'imports/dockset-05-material.jpeg', origin: 'research/ledger' },
-        { path: 'imports/onboarding-notes.md', origin: 'research/ledger' },
+        { path: landed(fix, 'dockset-05-material.jpeg'), origin: 'research/ledger' },
+        { path: landed(fix, 'onboarding-notes.md'), origin: 'research/ledger' },
       ],
       skipped_imports: [],
       committed: shortHead(fix),
@@ -123,13 +127,13 @@ describe('engine workunit import — happy path', () => {
     assert.deepStrictEqual(entries.map((e) => e.origin), ['research/ledger', 'research/ledger']);
 
     // Copied, source untouched, mode pinned.
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/ledger/imports/dockset-05-material.jpeg'), 'utf8'), 'jpeg bytes\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/ledger/imports/dockset-05-material.jpeg'), 'utf8'), 'jpeg bytes\n');
     assert.ok(fs.existsSync(path.join(fix.project, 'shots/Dockset 05 Material.JPEG')));
 
     // Only the markdown landing is knowledge-base material.
-    assert.deepStrictEqual(indexedFiles(fix.project), ['.workflows/ledger/imports/onboarding-notes.md']);
+    assert.deepStrictEqual(indexedFiles(fix.project), ['ledger/imports/onboarding-notes.md']);
 
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 2 file(s) for research/ledger');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 2 file(s) for research/ledger');
   });
 
   it('lands an absolute source from outside the project', () => {
@@ -138,8 +142,8 @@ describe('engine workunit import — happy path', () => {
     fs.writeFileSync(outside, 'png bytes\n');
     const res = engine(fix, ['workunit', 'import', 'ledger', outside, ...FROM_RESEARCH]);
 
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/field-notes.png', origin: 'research/ledger' }]);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/ledger/imports/field-notes.png'), 'utf8'), 'png bytes\n');
+    assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'field-notes.png'), origin: 'research/ledger' }]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/ledger/imports/field-notes.png'), 'utf8'), 'png bytes\n');
     assert.ok(fs.existsSync(outside), 'the source outside the project is copied, never moved');
   });
 
@@ -148,7 +152,7 @@ describe('engine workunit import — happy path', () => {
     fs.chmodSync(path.join(fix.project, 'shots/locked.png'), 0o600);
     engine(fix, ['workunit', 'import', 'ledger', 'shots/locked.png', ...FROM_RESEARCH]);
 
-    const mode = fs.statSync(path.join(fix.project, '.workflows/ledger/imports/locked.png')).mode & 0o777;
+    const mode = fs.statSync(path.join(fix.project, '.leeway/ledger/imports/locked.png')).mode & 0o777;
     assert.strictEqual(mode, 0o644, `landed mode ${mode.toString(8)}`);
   });
 
@@ -156,21 +160,20 @@ describe('engine workunit import — happy path', () => {
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
     const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', '--from', 'discovery']);
 
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/brief.md', origin: 'discovery' }]);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 1 file(s) for discovery');
+    assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'brief.md'), origin: 'discovery' }]);
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(ledger): import 1 file(s) for discovery');
   });
 
   it('commits the imports directory and the manifest and nothing else dirty', () => {
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
-    writeFile(fix.project, '.workflows/ledger/research/ledger.md', '# Research — a peer session mid-write\n');
+    writeFile(fix.project, '.leeway/ledger/research/ledger.md', '# Research — a peer session mid-write\n');
     engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH]);
 
-    const staged = git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.deepStrictEqual(staged.sort(), ['.workflows/ledger/imports/brief.md', '.workflows/ledger/manifest.json']);
-    const status = git(fix.project, ['status', '--porcelain']);
-    assert.match(status, /\?\? unrelated\.txt/);
-    assert.match(status, /\?\? \.workflows\/ledger\/research\//);
+    const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
+    assert.deepStrictEqual(staged.sort(), ['ledger/imports/brief.md', 'ledger/manifest.json']);
+    assert.match(git(fix.project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
+    assert.match(stateGit(fix.project, ['status', '--porcelain']), /\?\? ledger\/research\//);
   });
 
   it('appends to an existing imports array across calls', () => {
@@ -186,6 +189,49 @@ describe('engine workunit import — happy path', () => {
   });
 });
 
+describe('engine workunit import — from a code worktree (4.S1)', () => {
+  let fix;
+  beforeEach(() => { fix = setupFixture(); });
+  afterEach(() => { removeFixture(fix); });
+
+  // One worktree sits inside the main checkout, as Claude Code places them,
+  // and one beside it, where no folder above holds `.leeway/`: the state is
+  // found through the common directory from both.
+  it('lands in the main checkout\'s one state, answers its absolute path, pushes the state branch, and leaves every code branch as it was', () => {
+    const remote = path.join(fix.root, 'remote.git');
+    git(fix.root, ['init', '-q', '--bare', remote]);
+    git(fix.project, ['remote', 'add', 'origin', remote]);
+    const worktrees = [
+      { branch: 'inside', wt: path.join(fix.project, '.claude', 'worktrees', 'inside'), name: 'inside' },
+      { branch: 'beside', wt: path.join(fix.root, 'beside'), name: 'beside' },
+    ];
+    for (const { branch, wt } of worktrees) git(fix.project, ['worktree', 'add', '-q', '-b', branch, wt]);
+    const codeHeads = () => ['main', ...worktrees.map((w) => w.branch)].map((branch) => git(fix.project, ['rev-parse', branch]).trim());
+    const before = codeHeads();
+
+    worktrees.forEach(({ wt, name }, i) => {
+      writeFile(wt, `notes/${name} notes.md`, `# ${name}\n`);
+
+      const res = ok(wt, ['workunit', 'import', 'ledger', `notes/${name} notes.md`, ...FROM_RESEARCH], { env: fix.env });
+
+      assert.deepStrictEqual(res, {
+        ok: true,
+        op: 'import',
+        imports: [{ path: landed(fix, `${name}-notes.md`), origin: 'research/ledger' }],
+        skipped_imports: [],
+        committed: shortHead(fix),
+      }, name);
+      assert.strictEqual(fs.readFileSync(landed(fix, `${name}-notes.md`), 'utf8'), `# ${name}\n`, name);
+      assert.ok(!fs.existsSync(path.join(wt, '.leeway')), `the ${name} worktree holds no state of its own`);
+      assert.strictEqual(commitsSinceInit(fix), String(i + 1), name);
+      assert.strictEqual(git(remote, ['rev-parse', 'refs/heads/leeway-state']).trim(), stateGit(fix.project, ['rev-parse', 'HEAD']).trim(),
+        `the state commit from ${name} is on the remote`);
+    });
+    assert.ok(!fs.existsSync(path.join(fix.root, '.leeway')), 'nothing beside the checkout');
+    assert.deepStrictEqual(codeHeads(), before, 'no code branch takes a state commit');
+  });
+});
+
 describe('engine workunit import — names', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
@@ -195,13 +241,13 @@ describe('engine workunit import — names', () => {
     writeFile(fix.project, 'a/shot.png', 'one\n');
     writeFile(fix.project, 'b/SHOT.png', 'two\n');
     const first = engine(fix, ['workunit', 'import', 'ledger', 'a/shot.png', 'b/SHOT.png', ...FROM_RESEARCH]);
-    assert.deepStrictEqual(first.imports.map((i) => i.path), ['imports/shot.png', 'imports/shot-2.png']);
+    assert.deepStrictEqual(first.imports.map((i) => i.path), [landed(fix, 'shot.png'), landed(fix, 'shot-2.png')]);
 
     writeFile(fix.project, 'c/shot.png', 'three\n');
     const second = engine(fix, ['workunit', 'import', 'ledger', 'c/shot.png', ...FROM_RESEARCH]);
-    assert.deepStrictEqual(second.imports.map((i) => i.path), ['imports/shot-3.png']);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/ledger/imports/shot.png'), 'utf8'), 'one\n');
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.workflows/ledger/imports/shot-3.png'), 'utf8'), 'three\n');
+    assert.deepStrictEqual(second.imports.map((i) => i.path), [landed(fix, 'shot-3.png')]);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/ledger/imports/shot.png'), 'utf8'), 'one\n');
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/ledger/imports/shot-3.png'), 'utf8'), 'three\n');
   });
 
   it('skips a dotfile source and reports it; a call whose every source skips refuses', () => {
@@ -209,7 +255,7 @@ describe('engine workunit import — names', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/.env', 'notes/good.md', ...FROM_RESEARCH]);
     assert.deepStrictEqual(res.skipped_imports, ['notes/.env']);
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/good.md', origin: 'research/ledger' }]);
+    assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'good.md'), origin: 'research/ledger' }]);
 
     const err = engineFails(fix, ['workunit', 'import', 'ledger', 'notes/.env', ...FROM_RESEARCH]);
     assert.match(err.error, /nothing to land/);
@@ -224,8 +270,8 @@ describe('engine workunit import — names', () => {
       'notes/.hidden.md', 'notes/.eslintrc.json', 'notes/good.md', ...FROM_RESEARCH]);
 
     assert.deepStrictEqual(res.skipped_imports, ['notes/.hidden.md', 'notes/.eslintrc.json']);
-    assert.deepStrictEqual(res.imports, [{ path: 'imports/good.md', origin: 'research/ledger' }]);
-    assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, '.workflows/ledger/imports')), ['good.md']);
+    assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'good.md'), origin: 'research/ledger' }]);
+    assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, '.leeway/ledger/imports')), ['good.md']);
   });
 });
 
@@ -240,9 +286,9 @@ describe('engine workunit import — refusals leave nothing behind', () => {
 
     assert.match(err.error, /import path\(s\) not found/);
     assert.deepStrictEqual(err.missing_imports, ['notes/ghost.png']);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    assert.strictEqual(commitsSinceInit(fix), '0');
     assert.deepStrictEqual(indexedFiles(fix.project), []);
   });
 
@@ -253,10 +299,10 @@ describe('engine workunit import — refusals leave nothing behind', () => {
 
     assert.match(err.error, /import path\(s\) not found, not a file, or unreadable: shots\/album/);
     assert.deepStrictEqual(err.missing_imports, ['shots/album']);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')),
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')),
       'the file named before the directory never landed');
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
+    assert.strictEqual(commitsSinceInit(fix), '0');
   });
 
   it('refuses an origin naming a phase item the work unit does not have — nothing lands, nothing is held', () => {
@@ -264,10 +310,10 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     const err = engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', 'research/ghost']);
 
     assert.match(err.error, /^no research item "ghost" in "ledger" — check the --from origin$/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
-    assert.strictEqual(git(fix.project, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.cache/ledger')),
+    assert.strictEqual(commitsSinceInit(fix), '0');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.cache/ledger')),
       'a mistyped topic mints no hold');
 
     // A leading dash is a legal topic name (absorb can write one), so the
@@ -288,7 +334,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', ...FROM_RESEARCH]).error,
       /not in-progress \(status: completed\) — imports land in active work/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
   });
 
   it('refuses an origin outside the vocabulary', () => {
@@ -300,14 +346,14 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     // An empty `--from` never reaches the vocabulary: the dispatch has no origin.
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', '']).error,
       /Usage: engine workunit import/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
   });
 
   it("refuses roadmap — the product layer's origin is not a work unit's", () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', '--from', 'roadmap']).error,
       /is not a work-unit import origin .*roadmap is the product layer's own — engine roadmap import/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
   });
 
@@ -325,7 +371,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     writeFile(fix.project, 'notes/good.md', 'fine\n');
     assert.match(engineFails(fix, ['workunit', 'import', 'ledger', 'notes/good.md', ...FROM_RESEARCH]).error,
       /imports is malformed/);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/ledger/imports')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
   });
 });
 
@@ -350,12 +396,12 @@ describe('engine workunit import — the derived tail', () => {
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
     writeFile(fix.project, 'notes/other.md', '# Other\n');
     engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH]);
-    assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.cache/ledger/research/ledger/presence')),
+    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.cache/ledger/research/ledger/presence')),
       "the landing session's own topic is beaten");
 
-    fs.rmSync(path.join(fix.project, '.workflows/.cache/ledger'), { recursive: true, force: true });
+    fs.rmSync(path.join(fix.project, '.leeway/.cache/ledger'), { recursive: true, force: true });
     engine(fix, ['workunit', 'import', 'ledger', 'notes/other.md', '--from', 'discovery']);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.cache/ledger')),
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.cache/ledger')),
       'discovery names no topic — nothing to beat');
   });
 
@@ -366,12 +412,12 @@ describe('engine workunit import — the derived tail', () => {
       writeFile(fix.project, 'notes/brief.md', '# Brief\n');
       const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', '--from', `${phase}/onboarding`]);
 
-      assert.deepStrictEqual(res.imports, [{ path: 'imports/brief.md', origin: `${phase}/onboarding` }]);
-      assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(),
+      assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'brief.md'), origin: `${phase}/onboarding` }]);
+      assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(),
         `workflow(ledger): import 1 file(s) for ${phase}/onboarding`);
-      assert.ok(fs.existsSync(path.join(fix.project, `.workflows/.cache/ledger/${phase}/onboarding/presence`)),
+      assert.ok(fs.existsSync(path.join(fix.project, `.leeway/.cache/ledger/${phase}/onboarding/presence`)),
         `${phase} did not beat the origin's topic`);
-      assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, `.workflows/.cache/ledger/${phase}`)), ['onboarding'],
+      assert.deepStrictEqual(fs.readdirSync(path.join(fix.project, `.leeway/.cache/ledger/${phase}`)), ['onboarding'],
         `${phase} beat a row of the work unit's name`);
     }
   });
@@ -383,21 +429,21 @@ describe('engine workunit import — the derived tail', () => {
       writeFile(fix.project, 'notes/brief.md', '# Brief\n');
       // A row left by the session that closed the topic: the landing neither
       // beats it nor clears it.
-      const row = path.join(fix.project, '.workflows/.cache/ledger/research/ledger/presence');
-      writeFile(fix.project, '.workflows/.cache/ledger/research/ledger/presence', 'stale-row\n');
+      const row = path.join(fix.project, '.leeway/.cache/ledger/research/ledger/presence');
+      writeFile(fix.project, '.leeway/.cache/ledger/research/ledger/presence', 'stale-row\n');
       const before = fs.readFileSync(row, 'utf8');
       const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH]);
 
-      assert.deepStrictEqual(res.imports, [{ path: 'imports/brief.md', origin: 'research/ledger' }]);
+      assert.deepStrictEqual(res.imports, [{ path: landed(fix, 'brief.md'), origin: 'research/ledger' }]);
       assert.strictEqual(fs.readFileSync(row, 'utf8'), before, `a ${status} item's row was rewritten`);
     }
   });
 
   it('a blocked commit saves the state and names the imports scope in its retry', () => {
     writeFile(fix.project, 'notes/brief.md', '# Brief\n');
-    fs.writeFileSync(path.join(fix.project, '.git', 'index.lock'), '');
-    const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH],
-      { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+    // Git cannot take the state branch's ref lock.
+    fs.writeFileSync(path.join(fix.project, '.git', 'refs', 'heads', 'leeway-state.lock'), '');
+    const res = engine(fix, ['workunit', 'import', 'ledger', 'notes/brief.md', ...FROM_RESEARCH]);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.committed, null);

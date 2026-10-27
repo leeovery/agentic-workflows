@@ -154,7 +154,7 @@ describe('gateway: a head-of-skill insert is never a gate', () => {
       createManifest(dir, `live-${type}`, { work_type: type, phases: items(phase, type === 'epic' ? 'auth' : `live-${type}`, 'in-progress') });
       createManifest(dir, `done-${type}`, { work_type: type, status: 'completed', phases: items(phase, type === 'epic' ? 'auth' : `done-${type}`, 'completed') });
     }
-    createFile(dir, '.workflows/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
   });
   afterEach(() => { cleanupFixture(dir); });
 
@@ -198,7 +198,7 @@ describe('a context-refresh recovery fetches no gate and draws nothing', () => {
   let dir;
   beforeEach(() => {
     dir = initRepo(setupFixture());
-    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+    createFile(dir, '.leeway/manifest.json', JSON.stringify({
       baseline: { status: 'in-progress', areas: { overview: 'completed', glossary: 'researched', dispatcher: 'pending' } },
       roadmap: {
         horizons: ['mvp', 'v1'],
@@ -276,7 +276,7 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
 
   /** @param {string} dir */
   function projectManifest(dir) {
-    createFile(dir, '.workflows/manifest.json', JSON.stringify({
+    createFile(dir, '.leeway/manifest.json', JSON.stringify({
       baseline: { status: 'in-progress', areas: {} },
       roadmap: { horizons: ['mvp'], items: {
         loyalty: { horizon: 'mvp', summary: 'repeat-customer rewards', origin: 'harvest' },
@@ -284,7 +284,7 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
       } },
     }));
     createManifest(dir, 'done-feature', { status: 'completed', phases: { discussion: { items: { 'done-feature': { status: 'completed' } } } } });
-    createFile(dir, '.workflows/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-05-01--an-idea.md', '# An idea\n');
   }
 
   /** @param {string} unit @param {string} type @param {string} earlier @param {string} next */
@@ -324,7 +324,7 @@ describe('an ACTIONS table resolves every row its MENU offers', () => {
           planning: { items: { billing: { status: 'completed', external_dependencies: { auth: { description: 'd', state: 'unresolved' } } } } },
         },
       });
-      createFile(dir, '.workflows/live-epic/specification/billing/specification.md', '# Billing\n');
+      createFile(dir, '.leeway/live-epic/specification/billing/specification.md', '# Billing\n');
       linearUnit(dir, 'live-feature', 'feature', 'research', 'discussion');
       linearUnit(dir, 'live-bugfix', 'bugfix', 'investigation', 'specification');
       linearUnit(dir, 'live-quickfix', 'quick-fix', 'scoping', 'implementation');

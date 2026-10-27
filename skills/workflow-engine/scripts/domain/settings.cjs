@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the project's committed Claude Code settings
-// (`.claude/settings.json`), which carry the session hooks
+// (`.claude/settings.json` in the code root), which carry the session hooks
 // (`session-label.cjs`). Reading is tolerant by contract: an absent file is
 // an empty document, and one that cannot be read is reported rather than
 // thrown, because the sync may not fail over plumbing it cannot read. The
@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 /** The project's settings file, as a pathspec — what a confined commit names. */
 const SETTINGS_SPEC = '.claude/settings.json';
@@ -90,12 +91,12 @@ function writeSettings(file, settings) {
 
 /** @param {string} cwd @returns {{settings: Record<string, any>, error?: string}} */
 function readProjectSettings(cwd) {
-  return readSettings(path.join(cwd, SETTINGS_SPEC), SETTINGS_SPEC);
+  return readSettings(path.join(codeRoot(cwd), SETTINGS_SPEC), SETTINGS_SPEC);
 }
 
 /** @param {string} cwd @param {Record<string, any>} settings */
 function writeProjectSettings(cwd, settings) {
-  writeSettings(path.join(cwd, SETTINGS_SPEC), settings);
+  writeSettings(path.join(codeRoot(cwd), SETTINGS_SPEC), settings);
 }
 
 module.exports = { SETTINGS_SPEC, settingsHeld, readProjectSettings, writeProjectSettings };

@@ -43,12 +43,12 @@ function seed(dir, name = 'payments') {
 }
 
 function manifestOf(dir, name = 'payments') {
-  return fs.readFileSync(path.join(dir, '.workflows', name, 'manifest.json'), 'utf8');
+  return fs.readFileSync(path.join(dir, '.leeway', name, 'manifest.json'), 'utf8');
 }
 
 /** The one presence record a beat leaves, or null. */
 function presenceRecord(dir, wu, phase, topic) {
-  const file = path.join(dir, '.workflows', '.cache', wu, phase, topic, 'presence');
+  const file = path.join(dir, '.leeway', '.cache', wu, phase, topic, 'presence');
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
@@ -197,9 +197,9 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   beforeEach(() => {
     dir = setupFixture();
     seed(dir);
-    createFile(dir, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    createFile(dir, '.workflows/payments/research/payments.md', '# Payments\n\nCards settle nightly.\n');
-    engine.run(['knowledge', 'index', '.workflows/payments/research/payments.md'], { cwd: dir });
+    createFile(dir, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    createFile(dir, '.leeway/payments/research/payments.md', '# Payments\n\nCards settle nightly.\n');
+    engine.run(['knowledge', 'index', '.leeway/payments/research/payments.md'], { cwd: dir });
   });
   afterEach(() => cleanupFixture(dir));
 
@@ -241,7 +241,7 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('run refuses a waiting command before it acts — nothing written, the environment untouched', () => {
-    const knowledge = path.join(dir, '.workflows', '.knowledge');
+    const knowledge = path.join(dir, '.leeway', '.knowledge');
     fs.rmSync(path.join(knowledge, 'store.bin'));
     fs.rmSync(path.join(knowledge, 'metadata.json'));
     const conversations = path.join(process.env.WORKFLOWS_CONFIG_DIR, 'conversations');
@@ -256,20 +256,21 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('a single-file index answers at once, so run takes it', () => {
-    const res = engine.run(['knowledge', 'index', '.workflows/payments/research/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '.leeway/payments/research/payments.md'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
   });
 
   it('--dry-run is a switch: it never takes the argument after it as its value', () => {
-    const res = engine.run(['knowledge', 'index', '--dry-run', '.workflows/payments/research/payments.md'], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '--dry-run', '.leeway/payments/research/payments.md'], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
-    assert.match(res.stdout, /^Indexed \d+ chunks from \.workflows\/payments\/research\/payments\.md\n$/);
+    assert.match(res.stdout, /^Indexed \d+ chunks from /);
+    assert.ok(res.stdout.endsWith(` from ${path.join(dir, '.leeway/payments/research/payments.md')}\n`), res.stdout);
   });
 
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
     const { runKnowledge, knowledgeWaits } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [
-      ['index'], ['index', '.workflows/payments/research/payments.md'], ['query', 'cards'], ['check'], ['status'],
+      ['index'], ['index', '.leeway/payments/research/payments.md'], ['query', 'cards'], ['check'], ['status'],
       ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],
       ['--help'], ['bogus'], [], ['setup', '--keyword-only'],
     ];

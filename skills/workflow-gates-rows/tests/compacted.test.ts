@@ -23,7 +23,7 @@ const COMPACTED = `${FOLDER}/compacted.json`
 
 const NOTE = [
   'The conversation was just compacted. This conversation is working in the discussion of "management-window" in the epic "fumi". Follow the workflow-discussion-process skill\'s "Resuming After Context Refresh" steps now, before anything else: re-read /Users/person/fumi/.claude/skills/workflow-discussion-process/SKILL.md and its framework in full, then re-read these in full:',
-  '- /Users/person/fumi/.workflows/fumi/discussion/management-window.md',
+  '- /Users/person/fumi/.leeway/fumi/discussion/management-window.md',
 ].join('\n')
 
 const PLACE = 'fumi › discussion › management-window'

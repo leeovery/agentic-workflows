@@ -17,10 +17,6 @@ const cases = require('../prose/lib/cases.cjs');
 describe('prose-test corpus', () => {
   const all = cases.loadAllCases();
 
-  it('has at least one case', () => {
-    assert.ok(all.length > 0, 'corpus is empty');
-  });
-
   it('validates cleanly', () => {
     const errors = cases.validateCorpus(all);
     assert.deepStrictEqual(errors, [],

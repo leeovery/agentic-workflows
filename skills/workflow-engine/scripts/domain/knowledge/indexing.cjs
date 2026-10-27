@@ -63,7 +63,7 @@ function buildDocuments(root, artifact, workUnits) {
   const chunks = chunker.chunk(content, chunkConfig);
   if (chunks.length === 0) {
     throw new UserError(
-      `No chunks produced from ${artifact.file}. Refusing to index an empty file — ` +
+      `No chunks produced from ${absSource}. Refusing to index an empty file — ` +
         'this would silently wipe any existing indexed chunks for this topic. ' +
         `Use \`${ENGINE_COMMAND} knowledge remove\` explicitly if that is what you want.`
     );

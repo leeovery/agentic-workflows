@@ -12,8 +12,8 @@
 //   worktree is added and locked. Each piece stands alone too, for the
 //   repairs: add the worktree for a local branch, make the local branch from
 //   the remote's, lock the worktree, relink a worktree whose folder moved.
-// - Writing it: a verb holds the writer lock (`.leeway/.lock`) across its
-//   writes and its commit, so concurrent verbs take turns and the branch
+// - Writing it: a verb holds the writer lock (`.leeway/.lock`, the kernel's)
+//   across its writes and its commit, so concurrent verbs take turns and the branch
 //   stays one line; the lock follows its holder's process, never its age,
 //   and a process may take it again while it holds it. The commit is built
 //   in a private index from HEAD and the working tree, never through the
@@ -28,25 +28,25 @@
 
 const fs = require('fs');
 const path = require('path');
-const { isolatedGit, mainCheckout } = require('../kernel/isolated-git.cjs');
+const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
-const { LOCK_RETRY_MS, tryClaimFile } = require('../kernel/manifest-io.cjs');
+const { WRITER_LOCK, withWriterLock } = require('../kernel/manifest-io.cjs');
+const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
 
 const STATE_BRANCH = 'leeway-state';
-const STATE_DIR = '.leeway';
+const STATE_DIR = STATE_DIR_NAME;
 const STATE_LOCK_REASON = 'workflows state, do not remove';
-const WRITER_LOCK = '.lock';
 // The lock's claim is written beside it and linked into place, and a
-// takeover holds a guard beside it: both are the lock's, ignored with it.
-const STATE_GITIGNORE = ['/.knowledge/', '/.cache/', `/${WRITER_LOCK}`, `/${WRITER_LOCK}.*`, ''].join('\n');
+// takeover holds a guard beside it: both are the lock's, ignored with it. A
+// manifest's atomic write is a temp file beside it until it is renamed in.
+const STATE_GITIGNORE = [
+  '/.knowledge/', '/.cache/', `/${WRITER_LOCK}`, `/${WRITER_LOCK}.*`, '.manifest.json.*.tmp', '',
+].join('\n');
 const FIRST_COMMIT_MESSAGE = `chore: begin ${STATE_BRANCH}`;
 
 const BRANCH_REF = `refs/heads/${STATE_BRANCH}`;
 const PRIVATE_INDEX = 'leeway-commit.index';
 
-// A contender waits a minute for a live holder — longer than any push the
-// holder makes under the lock may take.
-const WRITER_LOCK_TIMEOUT_MS = 60000;
 const PUSH_TIMEOUT_MS = 15000;
 
 /**
@@ -93,16 +93,6 @@ const PUSH_TIMEOUT_MS = 15000;
  *   index: string,
  * }} OpenWorktree
  */
-
-/**
- * The state root, `.leeway/` in the main checkout, from any cwd in the
- * repository.
- * @param {string} cwd
- * @returns {string} absolute
- */
-function stateRoot(cwd) {
-  return path.join(mainCheckout(cwd), STATE_DIR);
-}
 
 /** @param {string} root @returns {string} */
 function mainOf(root) {
@@ -325,77 +315,22 @@ function lockStateWorktree(root) {
   lockWorktree(isolatedGit(mainOf(root)), root);
 }
 
-// Block the thread for `ms` without burning CPU (Atomics.wait on a
-// throwaway buffer is never notified, so it sleeps the full timeout).
-/** @param {number} ms */
-function sleepSync(ms) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-}
-
-/** Who holds the lock, as its record names it. @param {string} lockFile @returns {string} */
-function lockHolder(lockFile) {
-  try {
-    const { pid } = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
-    return pid ? `process ${pid}` : 'another process';
-  } catch {
-    return 'another process';
-  }
-}
-
 /**
- * Claim the writer lock for this process, waiting on a live holder up to
- * `timeoutMs`.
- * @param {string} lockFile @param {number} timeoutMs
- * @returns {() => void} the release
- */
-function claimWriterLock(lockFile, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  let release = tryClaimFile(lockFile);
-  while (release === null) {
-    if (Date.now() >= deadline) {
-      throw new Error(`Timed out waiting for the state lock (lock file: ${lockFile}) — ${lockHolder(lockFile)} holds it`);
-    }
-    sleepSync(LOCK_RETRY_MS);
-    release = tryClaimFile(lockFile);
-  }
-  return release;
-}
-
-/**
- * The writer locks this process holds, by lock file, each with how deep its
- * holds run and its release.
- * @type {Map<string, {depth: number, release: () => void}>}
- */
-const heldLocks = new Map();
-
-/**
- * Run `fn` holding the writer lock, `.leeway/.lock` — across a verb's state
- * writes and its commit, so concurrent verbs write one after the other. The
- * lock records its holder: a holder whose process is gone is taken over at
- * once, and a live one is never broken — the contender gives up after
- * `timeoutMs` instead, naming it. A process holding the lock takes it again
- * at once, and it is released when the outermost hold ends. `fn` runs
- * synchronously.
+ * Run `fn` holding the writer lock, `.leeway/.lock` — the kernel's, which
+ * the manifests' writes hold too — across a verb's state writes and its
+ * commit, so concurrent verbs write one after the other. The lock records
+ * its holder: a holder whose process is gone is taken over at once, and a
+ * live one is never broken — the contender gives up after `timeoutMs`
+ * instead, naming it. A process holding the lock takes it again at once,
+ * and it is released when the outermost hold ends. `fn` runs synchronously.
+ * Refuses where there is no state worktree.
  * @template T
  * @param {string} root @param {() => T} fn
  * @param {{timeoutMs?: number}} [opts]
  * @returns {T}
  */
-function withStateLock(root, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS } = {}) {
-  if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
-  const lockFile = path.join(root, WRITER_LOCK);
-  const hold = heldLocks.get(lockFile) ?? { depth: 0, release: claimWriterLock(lockFile, timeoutMs) };
-  hold.depth += 1;
-  heldLocks.set(lockFile, hold);
-  try {
-    return fn();
-  } finally {
-    hold.depth -= 1;
-    if (hold.depth === 0) {
-      heldLocks.delete(lockFile);
-      hold.release();
-    }
-  }
+function withStateLock(root, fn, opts) {
+  return withWriterLock(root, fn, opts);
 }
 
 /**

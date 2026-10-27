@@ -2,36 +2,37 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { git, cleanupFixture, ok: engine, refuses: engineFails } = harness;
+const { stateGit, commitAll, cleanupFixture, ok: engine, refuses: engineFails } = harness;
 const { computeBuildOrderNeedsSequencing, buildOrderLive } = require('../../skills/workflow-engine/scripts/domain/build-order.cjs');
 const { epicDetail } = require('../../skills/workflow-engine/scripts/domain/epic-detail.cjs');
 
 const setupGitFixture = () => harness.setupGitFixture('engine-bo-');
 
+// A world with nothing on disk, for the detail that reads the manifest it is handed.
+let world;
+before(() => { world = setupGitFixture(); });
+after(() => { cleanupFixture(world); });
+
 function writeManifest(dir, wu, manifest) {
-  const full = path.join(dir, '.workflows', wu, 'manifest.json');
+  const full = path.join(dir, '.leeway', wu, 'manifest.json');
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, JSON.stringify(manifest, null, 2) + '\n');
 }
 
-function commitAll(dir, message) {
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', message]);
-}
-
+/** The state branch's last commit message. */
 function lastMessage(dir) {
-  return git(dir, ['log', '-1', '--pretty=%s']).trim();
+  return stateGit(dir, ['log', '-1', '--pretty=%s']).trim();
 }
 
 function readManifest(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 /** An epic with three live spec topics and one terminal of each flavour. */
@@ -94,19 +95,19 @@ describe('engine build-order sequence', () => {
   it('commits the manifest alone, leaving a live peer\'s document behind', () => {
     // The sequencing pass runs from the epic entry, beside sessions holding
     // the unit's topics. It wrote the manifest and nothing else.
-    fs.mkdirSync(path.join(dir, '.workflows/portal/discussion'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows/portal/discussion/auth.md'), '# Discussion — Auth\n');
+    fs.mkdirSync(path.join(dir, '.leeway/portal/discussion'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway/portal/discussion/auth.md'), '# Discussion — Auth\n');
     commitAll(dir, 'a peer topic');
-    fs.writeFileSync(path.join(dir, '.workflows/portal/discussion/auth.md'), '# Discussion — Auth\nhalf a turn\n');
+    fs.writeFileSync(path.join(dir, '.leeway/portal/discussion/auth.md'), '# Discussion — Auth\nhalf a turn\n');
 
     engine(dir, ['build-order', 'sequence', 'portal', 'auth=1', 'reports=2', 'billing=3']);
 
     assert.deepStrictEqual(
-      git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
-      ['.workflows/portal/manifest.json']);
+      stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean),
+      ['portal/manifest.json']);
     assert.deepStrictEqual(
-      git(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
-      [' M .workflows/portal/discussion/auth.md'], 'the peer keeps its dirt');
+      stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean),
+      [' M portal/discussion/auth.md'], 'the peer keeps its dirt');
   });
 
   it('completed topics are live — they keep a number', () => {
@@ -392,7 +393,7 @@ describe('EpicDetail sorts the build phases by order', () => {
         implementation: { items: { zeta: { status: 'in-progress' }, auth: { status: 'in-progress' } } },
       },
     };
-    const d = epicDetail('/nonexistent', m);
+    const d = epicDetail(world, m);
     assert.deepStrictEqual(d.phases.specification.map((e) => e.name), ['auth', 'mid', 'zeta', 'stray']);
     assert.deepStrictEqual(d.phases.planning.map((e) => e.name), ['auth', 'zeta']);
     assert.deepStrictEqual(d.phases.implementation.map((e) => e.name), ['auth', 'zeta']);
@@ -411,7 +412,7 @@ describe('EpicDetail sorts the build phases by order', () => {
         planning: { items: { zeta: { status: 'completed' }, auth: { status: 'completed' } } },
       },
     };
-    const d = epicDetail('/nonexistent', m);
+    const d = epicDetail(world, m);
     const impls = d.next_phase_ready.filter((n) => n.action === 'start_implementation').map((n) => n.name);
     assert.deepStrictEqual(impls, ['auth', 'zeta'], 'the recommendation scan meets the lowest order first');
   });
@@ -430,7 +431,7 @@ describe('the spec tree trails terminal residue too', () => {
         },
       },
     };
-    const d = epicDetail('/nonexistent', m);
+    const d = epicDetail(world, m);
     assert.deepStrictEqual(d.phases.specification.map((e) => e.name), ['live', 'legacy']);
   });
 });
@@ -449,7 +450,7 @@ describe('the sort join ignores terminal residue', () => {
         planning: { items: { legacy: { status: 'completed' }, auth: { status: 'completed' } } },
       },
     };
-    const d = epicDetail('/nonexistent', m);
+    const d = epicDetail(world, m);
     assert.deepStrictEqual(d.phases.planning.map((e) => e.name), ['auth', 'legacy'],
       'the live spec order wins; the terminal twin trails unordered');
   });
@@ -461,11 +462,11 @@ describe('EpicDetail carries the flag', () => {
     m.phases.specification.items.auth.order = 2;
     m.phases.specification.items.billing.order = 1;
     m.phases.specification.items.reports.order = 3;
-    const d = epicDetail('/nonexistent', m);
+    const d = epicDetail(world, m);
     assert.strictEqual(d.build_order_needs_sequencing, false);
 
     delete m.phases.specification.items.billing.order;
-    assert.strictEqual(epicDetail('/nonexistent', m).build_order_needs_sequencing, true);
+    assert.strictEqual(epicDetail(world, m).build_order_needs_sequencing, true);
   });
 });
 

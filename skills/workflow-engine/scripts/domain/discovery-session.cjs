@@ -26,9 +26,9 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, discoveryScope } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 /**
  * The highest-numbered `session-NNN.md` on disk — its number and its file
@@ -68,7 +68,7 @@ function nextSessionNumber(sessionsDir) {
  * @typedef {object} DiscoverySessionOpenResult
  * @property {string} work_unit
  * @property {string} session  the opened session's number string (e.g. `003`)
- * @property {string} path     the installed log's project-relative path
+ * @property {string} path     the installed log's path
  */
 
 /**
@@ -116,7 +116,7 @@ function openDiscoverySession(cwd, workUnit, { sessionLogFile }) {
 
     const sessionsDir = path.join(stateRoot(cwd), workUnit, 'discovery', 'sessions');
     const session = String(nextSessionNumber(sessionsDir)).padStart(3, '0');
-    const rel = stateRel(`${workUnit}/discovery/sessions/session-${session}.md`);
+    const log = path.join(sessionsDir, `session-${session}.md`);
 
     // Log first, marker second: a failure between the two leaves a log
     // without a marker (a closed-looking session — recoverable), never a
@@ -126,11 +126,11 @@ function openDiscoverySession(cwd, workUnit, { sessionLogFile }) {
     // filename. Write-then-unlink preserves the move; a crash between the
     // two leaves only a scratch draft behind.
     fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.writeFileSync(path.join(cwd, rel), draft.split('{NNN}').join(session));
+    fs.writeFileSync(log, draft.split('{NNN}').join(session));
     fs.unlinkSync(draftPath);
     ensureContainer(ensureContainer(manifest, 'phases', 'phases'), 'discovery', 'phases.discovery').active_session = session;
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { work_unit: workUnit, session, path: rel };
+    return { work_unit: workUnit, session, path: log };
   });
 }
 
@@ -138,7 +138,7 @@ function openDiscoverySession(cwd, workUnit, { sessionLogFile }) {
  * @typedef {object} DiscoverySessionCloseResult
  * @property {string} work_unit
  * @property {string} session      the closed session's number string (e.g. `002`)
- * @property {string} session_log  the indexed log's project-relative path
+ * @property {string} session_log  the indexed log's path
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]       set when committed is null
  * @property {string[]} warnings   non-blocking failures (knowledge-base index)
@@ -167,9 +167,9 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
     if (typeof active !== 'string' || active === '') {
       throw new Error(`no active discovery session for "${workUnit}" — phases.discovery.active_session is not set (a browse-only session never sets it; nothing to close)`);
     }
-    const rel = stateRel(`${workUnit}/discovery/sessions/session-${active}.md`);
-    if (!fs.existsSync(path.join(cwd, rel))) {
-      throw new Error(`session log missing on disk: ${rel} — the active-session marker names a session with no log`);
+    const rel = `${workUnit}/discovery/sessions/session-${active}.md`;
+    if (!fs.existsSync(statePath(cwd, rel))) {
+      throw new Error(`session log missing on disk: ${statePath(cwd, rel)} — the active-session marker names a session with no log`);
     }
 
     delete discovery.active_session;
@@ -181,9 +181,9 @@ function closeDiscoverySession(cwd, workUnit, { message }) {
   const warnings = [];
   syncKnowledge(cwd, [{ index: session.rel, label: `knowledge index (discovery/sessions/session-${session.number}.md)` }], warnings);
 
-  const outcome = commitTailPathspec(cwd, discoveryScope(workUnit), message, warnings);
+  const outcome = commitStateTail(cwd, discoveryScope(workUnit), message, warnings);
   /** @type {DiscoverySessionCloseResult} */
-  const result = { work_unit: workUnit, session: session.number, session_log: session.rel, committed: outcome.committed, warnings };
+  const result = { work_unit: workUnit, session: session.number, session_log: statePath(cwd, session.rel), committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome, `${workUnit} --discovery`);
   return result;
 }

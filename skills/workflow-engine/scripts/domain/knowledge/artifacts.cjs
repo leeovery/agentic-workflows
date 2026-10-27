@@ -5,16 +5,19 @@
 // identity (work unit, phase, topic) derived from its path, the artifacts the
 // manifests say belong in the store, and why an indexed identity no longer
 // does.
+//
+// The knowledge base's root is the state root, and an artifact is named by
+// its path from there — state-relative, so an identity never moves when the
+// checkout does, and never carries the state directory's name.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest.cjs');
+const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest-io.cjs');
 const { TERMINAL_STATUSES, PROJECT_IDENTITIES } = require('../../kernel/manifest-schema.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
-const { stateRoot, stateRel } = require('../../kernel/state-root.cjs');
 
 /**
  * The roadmap's directory, from its owner — required where it is read, since
@@ -23,11 +26,9 @@ const { stateRoot, stateRel } = require('../../kernel/state-root.cjs');
  */
 const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
 
-// The state directory's path, escaped for the identity patterns below.
-const STATE_PATTERN = stateRel().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const BASELINE_PATH = new RegExp(`${STATE_PATTERN}/\\.baseline/(.+)$`);
-const ANALYSIS_PATH = new RegExp(`${STATE_PATTERN}/([^/]+)/\\.state/(.+)$`);
-const PHASE_PATH = new RegExp(`${STATE_PATTERN}/([^/]+)/(research|discussion|investigation|specification|imports|seeds|discovery)/(.+)$`);
+const BASELINE_PATH = /^\.baseline\/(.+)$/;
+const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
+const PHASE_PATH = /^([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/;
 
 /**
  * Phases whose completed artifact is indexed, with the artifact path per
@@ -36,10 +37,10 @@ const PHASE_PATH = new RegExp(`${STATE_PATTERN}/([^/]+)/(research|discussion|inv
  * @type {Record<string, (wu: string, topic: string) => string>}
  */
 const INDEXED_ARTIFACTS = {
-  research: (wu, topic) => stateRel(`${wu}/research/${topic}.md`),
-  discussion: (wu, topic) => stateRel(`${wu}/discussion/${topic}.md`),
-  investigation: (wu, topic) => stateRel(`${wu}/investigation/${topic}.md`),
-  specification: (wu, topic) => stateRel(`${wu}/specification/${topic}/specification.md`),
+  research: (wu, topic) => `${wu}/research/${topic}.md`,
+  discussion: (wu, topic) => `${wu}/discussion/${topic}.md`,
+  investigation: (wu, topic) => `${wu}/investigation/${topic}.md`,
+  specification: (wu, topic) => `${wu}/specification/${topic}/specification.md`,
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
@@ -54,7 +55,7 @@ const RESERVED_IDENTITIES = new Set(PROJECT_IDENTITIES);
 // basename.
 const FLAT_PHASES = new Set(['research', 'discussion', 'investigation', 'imports', 'seeds']);
 
-// The indexable files under `.workflows/{wu}/.state/`, each basename mapped
+// The indexable files under `{wu}/.state/`, each basename mapped
 // to its topic — the directory also holds operational state that must never
 // enter the store.
 /** @type {Record<string, string>} */
@@ -70,7 +71,7 @@ const ANALYSIS_CACHE_FILES = {
  */
 
 /**
- * @typedef {Identity & {file: string}} Artifact  `file` relative to the project root
+ * @typedef {Identity & {file: string}} Artifact  `file` state-relative
  */
 
 /** @param {string} workUnit @param {string} phase @param {string} topic */
@@ -118,7 +119,7 @@ function nonMarkdownImportError(filePath) {
 }
 
 /**
- * A baseline doc's identity: `.workflows/.baseline/{topic}.md`, flat — the
+ * A baseline doc's identity: `.baseline/{topic}.md`, flat — the
  * session state nested beneath is refused.
  * @param {string} rest
  * @returns {Identity}
@@ -128,7 +129,7 @@ function baselineIdentity(rest) {
   if (!fileMatch) {
     throw new UserError(
       `Unexpected baseline path structure: ${rest}\n` +
-        `Expected: ${stateRel('.baseline')}/{topic}.md`
+        'Expected: .baseline/{topic}.md'
     );
   }
   assertSegment('topic', fileMatch[1]);
@@ -158,7 +159,7 @@ function roadmapIdentity(rest, filePath) {
 }
 
 /**
- * An analysis cache's identity: `.workflows/{wu}/.state/{filename}.md`, the
+ * An analysis cache's identity: `{wu}/.state/{filename}.md`, the
  * whitelisted filenames alone.
  * @param {string} workUnit @param {string} rest
  * @returns {Identity}
@@ -169,7 +170,7 @@ function analysisIdentity(workUnit, rest) {
   if (!fileMatch) {
     throw new UserError(
       `Unexpected .state path structure: ${rest}\n` +
-        `Expected: ${stateRel('{work_unit}/.state/{filename}.md')}`
+        'Expected: {work_unit}/.state/{filename}.md'
     );
   }
   const basename = fileMatch[1];
@@ -193,7 +194,7 @@ function phaseTopic(phase, rest, filePath) {
     if (!specMatch) {
       throw new UserError(
         `Unexpected specification path structure: ${rest}\n` +
-          `Expected: ${stateRel('{work_unit}/specification/{topic}/specification.md')}`
+          'Expected: {work_unit}/specification/{topic}/specification.md'
       );
     }
     return specMatch[1];
@@ -204,7 +205,7 @@ function phaseTopic(phase, rest, filePath) {
       if (phase === 'imports' && isNonMarkdownImport(rest)) throw nonMarkdownImportError(filePath);
       throw new UserError(
         `Unexpected ${phase} path structure: ${rest}\n` +
-          `Expected: ${stateRel(`{work_unit}/${phase}/{topic}.md`)}`
+          `Expected: {work_unit}/${phase}/{topic}.md`
       );
     }
     return flatMatch[1];
@@ -213,15 +214,15 @@ function phaseTopic(phase, rest, filePath) {
   if (!discMatch) {
     throw new UserError(
       `Unexpected discovery path structure: ${rest}\n` +
-        `Expected: ${stateRel('{work_unit}/discovery/sessions/session-NNN.md')}`
+        'Expected: {work_unit}/discovery/sessions/session-NNN.md'
     );
   }
   return discMatch[1];
 }
 
 /**
- * An artifact's identity from its path, or a UserError naming the shape the
- * path should have.
+ * An artifact's identity from its state-relative path, or a UserError naming
+ * the shape the path should have.
  * @param {string} filePath
  * @returns {Identity}
  */
@@ -232,8 +233,7 @@ function deriveIdentity(filePath) {
   // capture and read as an invalid work unit.
   const baselineMatch = BASELINE_PATH.exec(norm);
   if (baselineMatch) return baselineIdentity(baselineMatch[1]);
-  const roadmapAt = norm.indexOf(`${roadmapDir()}/`);
-  if (roadmapAt !== -1) return roadmapIdentity(norm.slice(roadmapAt + roadmapDir().length + 1), filePath);
+  if (norm.startsWith(`${roadmapDir()}/`)) return roadmapIdentity(norm.slice(roadmapDir().length + 1), filePath);
   const stateMatch = ANALYSIS_PATH.exec(norm);
   if (stateMatch) return analysisIdentity(stateMatch[1], stateMatch[2]);
 
@@ -241,7 +241,7 @@ function deriveIdentity(filePath) {
   if (!match) {
     throw new UserError(
       `Cannot derive identity from path: ${filePath}\n` +
-        `Expected path matching: ${stateRel('{work_unit}/{phase}/...')}`
+        'Expected path matching: {work_unit}/{phase}/...'
     );
   }
   const [, workUnit, phase, rest] = match;
@@ -263,7 +263,7 @@ function workTypeOf(root, { workUnit, phase }, workUnits = []) {
   if (workUnit === ROADMAP_IDENTITY) return ROADMAP_IDENTITY;
   const read = workUnits.find((unit) => unit.name === workUnit);
   if (read && read.work_type) return read.work_type;
-  const manifestFile = path.join(stateRoot(root), workUnit, 'manifest.json');
+  const manifestFile = path.join(root, workUnit, 'manifest.json');
   if (!fs.existsSync(manifestFile)) throw new UserError(`Work unit manifest not found: ${manifestFile}`);
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   if (!manifest.work_type) throw new UserError(`Work unit manifest missing work_type field: ${manifestFile}`);
@@ -365,7 +365,7 @@ function readManifestsOr(root, warn, context) {
  * manifest edit no lander makes, refused so it cannot poison the store — each
  * topic once, and only while its file exists.
  * @param {string} root @param {Record<string, any>} unit @param {string} field
- * @param {(workUnit: string, dest: string) => string} fileOf  the project-relative file an entry's filename lands at
+ * @param {(workUnit: string, dest: string) => string} fileOf  the state-relative file an entry's filename lands at
  * @returns {Artifact[]}
  */
 function flatEntries(root, unit, field, fileOf) {
@@ -390,7 +390,7 @@ function flatEntries(root, unit, field, fileOf) {
 /**
  * The session logs in a sessions directory, bar the live session's — a live
  * log is indexed when its session closes.
- * @param {string} root @param {string} dir  project-relative @param {string|null} liveSession
+ * @param {string} root @param {string} dir  state-relative @param {string|null} liveSession
  * @returns {string[]} the log filenames
  */
 function closedSessionLogs(root, dir, liveSession) {
@@ -423,7 +423,7 @@ function flatMarkdown(root, dir) {
  * @returns {Artifact[]}
  */
 function projectArtifacts(root, roadmapSession) {
-  const baselineDir = stateRel('.baseline');
+  const baselineDir = '.baseline';
   const sessionsDir = `${roadmapDir()}/sessions`;
   const importsDir = `${roadmapDir()}/imports`;
   /** @param {string} dir @param {string} workUnit @param {string} phase @returns {(f: string) => Artifact} */
@@ -457,14 +457,14 @@ function unitArtifacts(root, unit) {
   }
   items.push(
     ...flatEntries(root, unit, 'imports', importArtifact),
-    ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join(stateRel(), wu, 'seeds', dest)),
+    ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join(wu, 'seeds', dest)),
   );
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
-    const file = path.posix.join(stateRel(), workUnit, '.state', `${basename}.md`);
+    const file = path.posix.join(workUnit, '.state', `${basename}.md`);
     if (exists(file)) items.push({ file, workUnit, phase: 'analysis', topic });
   }
   if (unit.work_type === 'epic') {
-    const sessionsDir = path.posix.join(stateRel(), workUnit, 'discovery', 'sessions');
+    const sessionsDir = path.posix.join(workUnit, 'discovery', 'sessions');
     for (const f of closedSessionLogs(root, sessionsDir, activeSession(unit.phases && unit.phases.discovery))) {
       items.push({ file: path.posix.join(sessionsDir, f), workUnit, phase: 'discovery', topic: f.slice(0, -3) });
     }
@@ -490,21 +490,10 @@ function discoverArtifacts(root, manifests) {
 // ---------------------------------------------------------------------------
 
 /**
- * Whether a recorded source path lands outside this project — a chunk indexed
- * by absolute path from another checkout.
- * @param {string} root @param {string} file
- */
-function outsideProject(root, file) {
-  const rel = path.relative(root, path.resolve(root, file));
-  return rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
-}
-
-/**
  * Why an indexed identity no longer belongs in the store, or null while it
  * may. Only positive knowledge retires: the source gone from disk, the work
  * unit unregistered or cancelled, the per-topic item gone or terminal. A
- * source outside the project is no evidence it was deleted, a work unit
- * whose manifest could not be read is evidence of nothing, and the
+ * work unit whose manifest could not be read is evidence of nothing, and the
  * project-level identities answer to their files alone.
  * @param {string} root @param {Identity & {file: string}} entry
  * @param {Map<string, Record<string, any>>} units  work-unit manifests by name
@@ -512,7 +501,7 @@ function outsideProject(root, file) {
  * @returns {string|null}
  */
 function retiredReason(root, entry, units, registry) {
-  if (!outsideProject(root, entry.file) && !fs.existsSync(path.resolve(root, entry.file))) return 'source deleted';
+  if (!fs.existsSync(path.join(root, entry.file))) return 'source deleted';
   if (RESERVED_IDENTITIES.has(entry.workUnit)) return null;
   if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
   const unit = units.get(entry.workUnit);

@@ -41,7 +41,7 @@ describe('projectRepos: the repos a project holds', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-repos-');
-    writeFile(dir, '.gitignore', 'api/\nnode_modules/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\n');
     writeFile(dir, 'src/app.js', '1\n');
     commitAll(dir, 'init');
   });
@@ -97,7 +97,7 @@ describe('projectRepos: the repos a project holds', () => {
   });
 
   it('takes a folder whose .git git cannot read for no repo — never a failure', () => {
-    writeFile(dir, '.gitignore', 'api/\nnode_modules/\nstale/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\nstale/\n');
     commitAll(dir, 'ignore the stale worktree');
     git(dir, ['worktree', 'add', '-q', '-b', 'stale', path.join(dir, 'stale')]);
     fs.rmSync(path.join(dir, '.git/worktrees/stale'), { recursive: true });
@@ -169,14 +169,14 @@ describe('dirt and history across the repos', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-repos-dirt-');
-    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
     commitAll(dir, 'chore: ignore the clone');
     writeFile(dir, 'src/app.js', '1\n');
     commitAll(dir, 'impl(pay): T1 — the app');
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('reads every repo\'s dirt in project paths, each untracked file on its own, the root first — never a parent\'s view of a nested repo, never .workflows/', () => {
+  it('reads every repo\'s dirt in project paths, each untracked file on its own, the root first — never a parent\'s view of a nested repo, never .leeway/', () => {
     const api = nestedRepo(dir, 'api', 'src/handler.js');
     const cli = nestedRepo(dir, 'tools/cli');
     writeFile(dir, 'packages/notes.txt', 'loose\n');
@@ -193,13 +193,15 @@ describe('dirt and history across the repos', () => {
     writeFile(api, 'src/new/api.js', 'new\n');
     writeFile(cli, 'bin/run.js', 'new\n');
     writeFile(kit, 'lib/kit.js', 'new\n');
-    writeFile(dir, '.workflows/pay/notes.md', 'a doc session\'s own\n');
+    writeFile(dir, '.leeway/pay/notes.md', 'a doc session\'s own\n');
+    writeFile(dir, '.gitignore', 'api/\n');
 
     assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean), [
-      ' M src/app.js', ' M vendor/sdk', '?? .workflows/pay/notes.md', '?? packages/kit/', '?? packages/notes.txt',
+      ' M .gitignore', ' M src/app.js', ' M vendor/sdk', '?? .leeway/', '?? packages/kit/', '?? packages/notes.txt',
       '?? src/new/a.js', '?? src/new/b.js', '?? tools/cli/',
-    ], 'the root\'s git names the nested repos by their folders, file by file never');
+    ], 'the root\'s git names the nested repos and the state by their folders, file by file never');
     assert.deepStrictEqual(projectDirtyEntries(projectRepos(dir)), [
+      { path: '.gitignore', status: ' M' },
       { path: 'src/app.js', status: ' M' },
       { path: 'packages/notes.txt', status: '??' },
       { path: 'src/new/a.js', status: '??' },
@@ -222,7 +224,7 @@ describe('dirt and history across the repos', () => {
     commitAll(dir, 'impl(pay): T4 — the sibling alone');
     writeFile(project, 'src/a.js', '2\n');
     writeFile(dir, 'other/o.js', '3\n');
-    writeFile(project, '.workflows/pay/notes.md', 'a doc session\'s own\n');
+    writeFile(dir, '.leeway/pay/notes.md', 'a doc session\'s own\n');
     const repos = projectRepos(project);
 
     assert.deepStrictEqual(projectDirtyEntries(repos), [{ path: 'src/a.js', status: ' M' }]);

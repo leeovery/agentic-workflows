@@ -15,7 +15,7 @@ const { setupFixture, cleanupFixture, createManifest, createFile } = require('./
 const ADAPTER = path.resolve(__dirname, '../../skills/workflow-roadmap/scripts/gateway.cjs');
 
 function writeRoadmap(dir, roadmap) {
-  const p = path.join(dir, '.workflows', 'manifest.json');
+  const p = path.join(dir, '.leeway', 'manifest.json');
   const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
   fs.writeFileSync(p, JSON.stringify({ ...existing, roadmap }, null, 2));
 }
@@ -43,8 +43,8 @@ describe('workflow-roadmap gateway: view', () => {
   it('emits DATA + TITLE + DISPLAY + MENU with the state tables and action keys', () => {
     writeRoadmap(dir, MAP);
     createManifest(dir, 'mvp', { work_type: 'epic', status: 'in-progress' });
-    createFile(dir, '.workflows/.roadmap/sessions/session-001.md', '# Roadmap Session 001\n');
-    createFile(dir, '.workflows/.roadmap/sessions/session-002.md', '# Roadmap Session 002\n');
+    createFile(dir, '.leeway/.roadmap/sessions/session-001.md', '# Roadmap Session 001\n');
+    createFile(dir, '.leeway/.roadmap/sessions/session-002.md', '# Roadmap Session 002\n');
     const res = run(['view']);
     assert.strictEqual(res.status, 0, res.stderr);
     assert.match(res.stdout, /=== DATA /);

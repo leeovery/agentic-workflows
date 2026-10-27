@@ -11,7 +11,7 @@ const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/workflow-engine/scripts/domain/derivations.cjs');
 const { moveFiles } = require('../../skills/workflow-engine/scripts/domain/inbox.cjs');
 
-const { git, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
+const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-tx-');
 
@@ -24,21 +24,18 @@ function writeFile(dir, rel, content) {
   fs.writeFileSync(full, content);
 }
 
-function commitAll(dir, message) {
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', message]);
-}
-
+/** The state branch's last commit message. */
 function lastMessage(dir) {
-  return git(dir, ['log', '-1', '--pretty=%s']).trim();
+  return stateGit(dir, ['log', '-1', '--pretty=%s']).trim();
 }
 
+/** The state branch's head, short. */
 function shortHead(dir) {
-  return git(dir, ['rev-parse', '--short', 'HEAD']).trim();
+  return stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
 function readManifest(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 /** An epic manifest with plural phase items and a discovery-map entry carrying `order`. */
@@ -57,9 +54,9 @@ function epicManifest() {
 
 /** Write a message scratch and return the `topic send` argv delivering it to a payments topic. */
 function sendArgv(dir, phase, topic, slug = 'a-message') {
-  writeFile(dir, '.workflows/.cache/scratch/message.md', `### ${slug}\n*From: x · discussion · d*\n\nBody of ${slug}.\n`);
+  writeFile(dir, '.leeway/.cache/scratch/message.md', `### ${slug}\n*From: x · discussion · d*\n\nBody of ${slug}.\n`);
   return ['topic', 'send', 'payments', phase, topic,
-    '--content', '.workflows/.cache/scratch/message.md', '--slug', slug, '-m', `send ${slug}`];
+    '--content', '.leeway/.cache/scratch/message.md', '--slug', slug, '-m', `send ${slug}`];
 }
 
 /** Send one message to a payments topic. */
@@ -69,7 +66,7 @@ function send(dir, phase, topic, slug) {
 
 function setupEpicFixture() {
   const dir = setupGitFixture();
-  writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n');
+  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n');
   commitAll(dir, 'init');
   return dir;
 }
@@ -120,7 +117,7 @@ function unitManifest() {
 
 function setupUnitFixture() {
   const dir = setupGitFixture();
-  writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
+  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
   commitAll(dir, 'init');
   return dir;
 }
@@ -183,7 +180,7 @@ describe('engine topic cancel — the discovery unit', () => {
     // no code under it, the specification cancels and frees the topic.
     const m = unitManifest();
     delete m.phases.implementation;
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']);
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'fee-model']);
     assert.deepStrictEqual(res.cancelled, [
@@ -207,7 +204,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('two started specifications sourcing the discussion are both named', () => {
     const m = unitManifest();
     m.phases.specification.items.other = { status: 'in-progress', sources: { 'session-model': { status: 'pending' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']).error,
       /refused while the specifications "session-model", "other" source its discussion — cancel them first/);
   });
@@ -215,7 +212,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('a cancel that would take nothing refuses — an off-map topic whose only item is superseded', () => {
     const m = unitManifest();
     m.phases.research.items.legacy = { status: 'superseded', superseded_by: 'auth-flow' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const before = JSON.stringify(readManifest(dir, 'payments'));
     assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'legacy']).error,
       '"legacy" has nothing to cancel — no live item under its name and no map row');
@@ -228,7 +225,7 @@ describe('engine topic cancel — the discovery unit', () => {
     const m = unitManifest();
     m.phases.research.items.legacy = { status: 'superseded', superseded_by: 'auth-flow' };
     m.phases.discussion.items.legacy = { status: 'cancelled', previous_status: 'completed' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'cancelled');
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'legacy']).error, /"legacy" is already cancelled/);
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
@@ -239,7 +236,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('a dead end cancels and comes back a dead end — the marker sits over the close', () => {
     const m = unitManifest();
     m.phases.discovery.items['data-export'].handled = true;
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res.cancelled, []);
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
@@ -256,7 +253,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('a legacy array-form sources list locks and holds the same way', () => {
     const m = unitManifest();
     m.phases.specification.items['session-model'].sources = [{ name: 'session-model', status: 'incorporated' }];
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'session-model']).error,
       /refused while the specification "session-model" sources its discussion — cancel the specification first/);
     engine(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']);
@@ -268,7 +265,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('a legacy topic with no map row cancels through its items and reads cancelled', () => {
     const m = unitManifest();
     m.phases.research.items.legacy = { status: 'completed' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'legacy']);
     assert.deepStrictEqual(res.cancelled, [{ phase: 'research', previous_status: 'completed' }]);
     assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'cancelled');
@@ -342,7 +339,7 @@ describe('engine topic cancel — the specification unit', () => {
   it('a specification that carries no status has nothing to cancel — the analysis\'s augment against a mistyped key creates one', () => {
     const m = unitManifest();
     m.phases.specification.items.blank = { sources: { 'session-model': { status: 'pending' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const before = JSON.stringify(readManifest(dir, 'payments'));
     assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'blank']).error,
       'specification "blank" has nothing to cancel — it carries no status');
@@ -371,7 +368,7 @@ describe('engine topic cancel — the specification unit', () => {
     const m = unitManifest();
     m.phases.review = { items: { 'session-model': { status: 'completed' } } };
     m.phases.implementation.items['fee-model'].status = 'cancelled';
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'session-model']).error, /is locked — implementation has started/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'specification', 'fee-model']).error, /is locked — implementation has started/);
   });
@@ -407,7 +404,7 @@ describe('a specification cancel leaves the discovery order alone', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(collidingManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(collidingManifest(), null, 2) + '\n');
     commitAll(dir, 'init');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -458,7 +455,7 @@ describe('a specification cancel leaves the discovery order alone', () => {
     engine(dir, ['discovery-map', 'handle', 'payments', 'auth-flow']);
     const m = readManifest(dir, 'payments');
     m.phases.discovery.items['auth-flow'].order = 2;
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     commitAll(dir, 'squat');
 
     engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'fee-model']);
@@ -542,7 +539,7 @@ describe('engine topic reactivate', () => {
     const m = readManifest(dir, 'payments');
     m.phases.specification.items.other = { status: 'in-progress', sources: { 'session-model': { status: 'pending' } } };
     m.phases.specification.items.sketch = { status: 'proposed', sources: { 'session-model': { status: 'pending' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'session-model']).error,
       'reactivating "session-model" is refused while the specification "other" sources "session-model" — regroup the discussions from the menu (s/spec)');
     assert.strictEqual(readManifest(dir, 'payments').phases.specification.items.sketch.status, 'proposed', 'a refusal discards nothing');
@@ -563,7 +560,7 @@ describe('engine topic reactivate', () => {
     }
     m.phases.specification.items.pair = { status: 'cancelled', previous_status: 'completed', sources: { alpha: { status: 'incorporated' }, beta: { status: 'incorporated' } } };
     m.phases.specification.items.other = { status: 'completed', sources: { beta: { status: 'incorporated' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'alpha']);
     assert.strictEqual(engineFails(dir, ['topic', 'reactivate', 'payments', 'specification', 'pair']).error,
       'reactivating "pair" is refused while its source "alpha" is cancelled and the specification "other" sources "beta" — reactivate the topic first and regroup the discussions from the menu (s/spec)');
@@ -578,7 +575,7 @@ describe('engine topic reactivate', () => {
     m.phases.research.items.stuck = { status: 'cancelled', reconcile_needed: 'brief' };
     m.phases.discussion.items.stuck = { status: 'cancelled', previous_status: 'in-progress' };
     m.phases.specification.items.blank = { status: 'cancelled', previous_order: 3, sources: {} };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const topic = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'stuck']);
     assert.deepStrictEqual(topic.restored, [{ phase: 'research', status: null }, { phase: 'discussion', status: 'in-progress' }]);
     const after = readManifest(dir, 'payments');
@@ -593,7 +590,7 @@ describe('engine topic reactivate', () => {
     const m = unitManifest();
     m.phases.research.items.legacy = { status: 'cancelled', previous_status: 'completed' };
     m.phases.discussion.items.legacy = { status: 'cancelled', previous_status: 'in-progress' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
     assert.deepStrictEqual(res.restored, [
       { phase: 'research', status: 'completed' },
@@ -637,8 +634,8 @@ describe('engine topic start', () => {
     const m = readManifest(dir, 'payments');
     assert.deepStrictEqual(m.phases.investigation.items, { 'auth-flow': { status: 'in-progress' } });
     // No commit inside — the manifest change is left for the session's cadence.
-    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
+    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
   it('creates alongside existing items in a populated phase — siblings untouched', () => {
@@ -656,7 +653,7 @@ describe('engine topic start', () => {
   it('resumes an existing in-progress item: created false, fields preserved', () => {
     const m0 = epicManifest();
     m0.phases.research.items['auth-flow'].note = 'keep me';
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'start', 'payments', 'research', 'auth-flow']);
 
@@ -709,90 +706,90 @@ describe('engine topic send', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('refuses a send carrying no message — nothing parked, nothing written', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     assert.strictEqual(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases']).error,
       'Usage: engine topic send <work-unit> <phase> <topic> --content <file> --slug <kebab> -m <message>');
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before, 'no stub parked');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox')), 'no mailbox conjured');
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before, 'no stub parked');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/discussion/.mailbox')), 'no mailbox conjured');
   });
 
   it('installs the message in the mailbox, parks the absent item unstarted, self-commits message + manifest only', () => {
-    writeFile(dir, '.workflows/payments/discussion/refund-policy.md', '# Peer topic\ndirty peer content\n');
-    const scratch = path.join(dir, '.workflows/.cache/scratch/message-scratch.md');
-    writeFile(dir, '.workflows/.cache/scratch/message-scratch.md', '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
+    writeFile(dir, '.leeway/payments/discussion/refund-policy.md', '# Peer topic\ndirty peer content\n');
+    const scratch = path.join(dir, '.leeway/.cache/scratch/message-scratch.md');
+    writeFile(dir, '.leeway/.cache/scratch/message-scratch.md', '### Rate limits\n*From: refund-policy · discussion · 2026-07-31*\n\nFull context.\n');
 
     const { res, sections } = okSections(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): send message to edge-cases']);
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'rate-limits', '-m', 'discussion(payments/refund-policy): send message to edge-cases']);
 
     assert.strictEqual(sections, '', 'send appends no sections');
     assert.strictEqual(res.created, true);
     assert.strictEqual(res.status, 'unstarted');
     assert.strictEqual(res.status_before, null);
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], { status: 'unstarted' });
-    assert.strictEqual(res.message_path, '.workflows/payments/discussion/.mailbox/edge-cases/001-rate-limits.md');
+    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/001-rate-limits.md'));
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(res.warnings, []);
-    const installed = fs.readFileSync(path.join(dir, res.message_path), 'utf8');
+    const installed = fs.readFileSync(res.message_path, 'utf8');
     assert.match(installed, /### Rate limits/);
     assert.ok(!fs.existsSync(scratch), 'scratch message file consumed');
-    const show = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    const show = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual(show, [
-      '.workflows/payments/discussion/.mailbox/edge-cases/001-rate-limits.md',
-      '.workflows/payments/manifest.json',
+      'payments/discussion/.mailbox/edge-cases/001-rate-limits.md',
+      'payments/manifest.json',
     ], 'commit confined to message + manifest');
-    assert.match(git(dir, ['status', '--porcelain']), /discussion\/refund-policy\.md/, 'peer dirt untouched');
+    assert.match(stateGit(dir, ['status', '--porcelain']), /discussion\/refund-policy\.md/, 'peer dirt untouched');
   });
 
   it('numbers messages sequentially and never collides', () => {
     for (const slug of ['first', 'second']) {
-      writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
+      writeFile(dir, '.leeway/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
       engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-        '--content', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', `discussion(payments/x): send message to edge-cases`]);
+        '--content', '.leeway/.cache/scratch/c.md', '--slug', slug, '-m', `discussion(payments/x): send message to edge-cases`]);
     }
-    const files = fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.mailbox/edge-cases')).sort();
+    const files = fs.readdirSync(path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases')).sort();
     assert.deepStrictEqual(files, ['001-first.md', '002-second.md']);
   });
 
   it('refuses a missing or empty message file, a bad slug, a missing commit message — nothing written', () => {
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.workflows/.cache/scratch/absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file not found/);
-    writeFile(dir, '.workflows/.cache/scratch/empty.md', '  \n');
+      '--content', '.leeway/.cache/scratch/absent.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file not found/);
+    writeFile(dir, '.leeway/.cache/scratch/empty.md', '  \n');
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.workflows/.cache/scratch/empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file is empty/);
-    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+      '--content', '.leeway/.cache/scratch/empty.md', '--slug', 'ok-slug', '-m', 'msg']).error, /message file is empty/);
+    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'Bad_Slug', '-m', 'msg']).error, /kebab-case/);
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug']).error, /Usage/);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'ok-slug']).error, /Usage/);
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no item conjured');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox')), 'no mailbox conjured');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/discussion/.mailbox')), 'no mailbox conjured');
   });
 
-  it('hardening: refuses a message path outside .workflows/.cache — a live artifact is never consumed', () => {
-    writeFile(dir, '.workflows/payments/research/live.md', '# Live artifact\n');
+  it('hardening: refuses a message path outside .leeway/.cache — a live artifact is never consumed', () => {
+    writeFile(dir, '.leeway/payments/research/live.md', '# Live artifact\n');
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'edge-cases',
-      '--content', '.workflows/payments/research/live.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/live.md')), 'live artifact untouched');
+      '--content', '.leeway/payments/research/live.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \S*\/\.leeway\/\.cache\//);
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/research/live.md')), 'live artifact untouched');
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'research', 'edge-cases',
-      '--content', '../outside.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \.workflows\/\.cache/);
+      '--content', '../outside.md', '--slug', 'oops', '-m', 'msg']).error, /must point inside \S*\/\.leeway\/\.cache\//);
   });
 
   it('hardening: refuses traversal in topic names — send, mailbox, presence', () => {
-    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', '../../../evil',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'x', '-m', 'msg']).error, /invalid topic name/);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'x', '-m', 'msg']).error, /invalid topic name/);
     assert.match(engineFails(dir, ['topic', 'mailbox', 'payments', 'discussion', '../evil']).error, /invalid topic name/);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/evil')), 'nothing escaped');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/evil')), 'nothing escaped');
   });
 
   it('hardening: a research landing never clobbers a pending brief-reconcile flag', () => {
     const m = readManifest(dir, 'payments');
     m.phases.discussion.items['session-model'].reconcile_needed = true;
-    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
-    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
 
     const res = engine(dir, ['topic', 'send', 'payments', 'research', 'session-model',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'msg']);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'q', '-m', 'msg']);
 
     assert.strictEqual(res.reconcile_flagged, undefined);
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['session-model'].reconcile_needed, true, 'brief flag preserved');
@@ -800,16 +797,16 @@ describe('engine topic send', () => {
 
   it('a terminal target refuses before the message is consumed', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'refund-policy']);
-    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
     assert.match(engineFails(dir, ['topic', 'send', 'payments', 'discussion', 'refund-policy',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/scratch/c.md')), 'scratch message preserved on refusal');
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'ok-slug', '-m', 'msg']).error, /cancelled/);
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/scratch/c.md')), 'scratch message preserved on refusal');
   });
 
   it('research-side delivery beneath a completed discussion flags it for reconciliation', () => {
-    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
     const res = engine(dir, ['topic', 'send', 'payments', 'research', 'session-model',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): send message to session-model']);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'open-question', '-m', 'discussion(payments/x): send message to session-model']);
 
     assert.strictEqual(res.reconcile_flagged, true);
     const m = readManifest(dir, 'payments');
@@ -823,11 +820,11 @@ describe('engine topic send', () => {
     m.phases.specification = { items: {
       unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
     } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
 
     const res = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'shifted-ground', '-m', 'm']);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'shifted-ground', '-m', 'm']);
 
     assert.strictEqual(res.reopened, true, 'the landing reopens the discussion');
     assert.strictEqual(res.reconcile_flagged, true);
@@ -838,16 +835,16 @@ describe('engine topic send', () => {
   });
 
   it('no reconcile flag for a discussion-side delivery — its downstream is the spec join', () => {
-    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
     const disc = engine(dir, ['topic', 'send', 'payments', 'discussion', 'session-model',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'a-decision', '-m', 'm']);
     assert.strictEqual(disc.reconcile_flagged, undefined);
   });
 
   it('research-side delivery beneath a live discussion flags it — research feeds discussion', () => {
-    writeFile(dir, '.workflows/.cache/scratch/c.md', 'content\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', 'content\n');
     const live = engine(dir, ['topic', 'send', 'payments', 'research', 'refund-policy',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'open-q', '-m', 'm']);
     assert.strictEqual(live.reconcile_flagged, true);
     const m = readManifest(dir, 'payments');
     assert.strictEqual(m.phases.discussion.items['refund-policy'].reconcile_needed, 'research');
@@ -860,18 +857,18 @@ describe('engine topic send', () => {
     assert.deepStrictEqual(empty, { ok: true, work_unit: 'payments', phase: 'discussion', topic: 'edge-cases', count: 0, files: [] });
 
     for (const slug of ['first', 'second']) {
-      writeFile(dir, '.workflows/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
+      writeFile(dir, '.leeway/.cache/scratch/c.md', `### ${slug}\n*From: x · discussion · d*\n\nBody.\n`);
       engine(dir, ['topic', 'send', 'payments', 'discussion', 'edge-cases',
-        '--content', '.workflows/.cache/scratch/c.md', '--slug', slug, '-m', 'discussion(payments/x): send message to edge-cases']);
+        '--content', '.leeway/.cache/scratch/c.md', '--slug', slug, '-m', 'discussion(payments/x): send message to edge-cases']);
     }
     const two = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
     assert.strictEqual(two.count, 2);
     assert.deepStrictEqual(two.files, [
-      '.workflows/payments/discussion/.mailbox/edge-cases/001-first.md',
-      '.workflows/payments/discussion/.mailbox/edge-cases/002-second.md',
+      path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/001-first.md'),
+      path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/002-second.md'),
     ]);
 
-    fs.mkdirSync(path.join(dir, '.workflows/payments/discussion/.mailbox/edge-cases/dir.md'), { recursive: true });
+    fs.mkdirSync(path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/dir.md'), { recursive: true });
     const withDir = engine(dir, ['topic', 'mailbox', 'payments', 'discussion', 'edge-cases']);
     assert.strictEqual(withDir.count, 2, 'a directory named *.md is not a message');
 
@@ -921,7 +918,7 @@ describe('engine topic send', () => {
     const m = readManifest(dir, 'payments');
     m.phases.discovery.items['dead-lead'] = { routing: 'research', source: 'discovery', handled: true };
     m.phases.research.items['dead-lead'] = { status: 'completed' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(engineFails(dir, sendArgv(dir, 'research', 'dead-lead')).error,
       '"dead-lead" is closed as a dead end — reopen it in discovery first');
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['dead-lead'].status, 'completed', 'the dead end is not reopened underneath');
@@ -937,7 +934,7 @@ describe('engine topic send', () => {
   it('heals a status-less item to unstarted — fields preserved, manifest saved', () => {
     const m0 = epicManifest();
     m0.phases.research.items['half-written'] = { reconcile_needed: true };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
     const res = send(dir, 'research', 'half-written');
 
@@ -963,7 +960,7 @@ describe('engine topic forward', () => {
 
   it('moves the message to the other phase-side: dest item parked, file renumbered, stub removed, action-scoped commit', () => {
     send(dir, 'research', 'edge-cases', 'a-decision-owed');
-    writeFile(dir, '.workflows/payments/research/auth-flow.md', 'dirty peer\n');
+    writeFile(dir, '.leeway/payments/research/auth-flow.md', 'dirty peer\n');
 
     const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
       '--file', '001-a-decision-owed.md', '-m', 'research(payments/edge-cases): forward 001-a-decision-owed to discussion']);
@@ -971,7 +968,7 @@ describe('engine topic forward', () => {
     assert.strictEqual(res.from_phase, 'research');
     assert.strictEqual(res.to_phase, 'discussion');
     assert.strictEqual(res.moved, '001-a-decision-owed.md');
-    assert.strictEqual(res.message_path, '.workflows/payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md');
+    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md'));
     assert.strictEqual(res.remaining, 0);
     assert.strictEqual(res.status, 'unstarted');
     assert.strictEqual(res.created, true);
@@ -981,15 +978,15 @@ describe('engine topic forward', () => {
     const m = readManifest(dir, 'payments');
     assert.strictEqual(m.phases.research.items['edge-cases'], undefined, 'the emptied parked stub is removed');
     assert.deepStrictEqual(m.phases.discussion.items['edge-cases'], { status: 'unstarted' });
-    assert.match(fs.readFileSync(path.join(dir, res.message_path), 'utf8'), /Body of a-decision-owed/);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'source file gone');
-    const show = git(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.match(fs.readFileSync(res.message_path, 'utf8'), /Body of a-decision-owed/);
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'source file gone');
+    const show = stateGit(dir, ['show', '--name-only', '--no-renames', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual(show, [
-      '.workflows/payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md',
-      '.workflows/payments/manifest.json',
-      '.workflows/payments/research/.mailbox/edge-cases/001-a-decision-owed.md',
+      'payments/discussion/.mailbox/edge-cases/001-a-decision-owed.md',
+      'payments/manifest.json',
+      'payments/research/.mailbox/edge-cases/001-a-decision-owed.md',
     ], 'commit confined to the two mailbox paths + manifest');
-    assert.match(git(dir, ['status', '--porcelain', '-uall']), /research\/auth-flow\.md/, 'peer dirt untouched');
+    assert.match(stateGit(dir, ['status', '--porcelain', '-uall']), /research\/auth-flow\.md/, 'peer dirt untouched');
     assert.strictEqual(lastMessage(dir), 'research(payments/edge-cases): forward 001-a-decision-owed to discussion');
   });
 
@@ -1000,8 +997,8 @@ describe('engine topic forward', () => {
     const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
       '--file', '001-a-decision-owed.md', '-m', 'm']);
 
-    assert.strictEqual(res.message_path, '.workflows/payments/discussion/.mailbox/edge-cases/002-a-decision-owed.md');
-    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.workflows/payments/discussion/.mailbox/edge-cases')).sort(),
+    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases/002-a-decision-owed.md'));
+    assert.deepStrictEqual(fs.readdirSync(path.join(dir, '.leeway/payments/discussion/.mailbox/edge-cases')).sort(),
       ['001-already-waiting.md', '002-a-decision-owed.md']);
   });
 
@@ -1026,7 +1023,7 @@ describe('engine topic forward', () => {
     m.phases.specification = { items: {
       unified: { status: 'completed', sources: { 'session-model': { status: 'incorporated' } } },
     } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     send(dir, 'research', 'session-model', 'a-decision-owed');
 
     const res = engine(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'session-model',
@@ -1048,7 +1045,7 @@ describe('engine topic forward', () => {
       '--file', '001-an-open-question.md', '-m', 'm']);
 
     assert.strictEqual(res.to_phase, 'research');
-    assert.strictEqual(res.message_path, '.workflows/payments/research/.mailbox/refund-policy/001-an-open-question.md');
+    assert.strictEqual(res.message_path, path.join(dir, '.leeway/payments/research/.mailbox/refund-policy/001-an-open-question.md'));
     assert.strictEqual(readManifest(dir, 'payments').phases.research.items['refund-policy'].status, 'unstarted');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress', 'source discussion untouched');
   });
@@ -1069,7 +1066,7 @@ describe('engine topic forward', () => {
     assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'edge-cases',
       '--file', '001-a-decision-owed.md']).error, /Usage/);
 
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'mailbox untouched on every refusal');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/research/.mailbox/edge-cases/001-a-decision-owed.md')), 'mailbox untouched on every refusal');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['edge-cases'], undefined, 'no destination item conjured');
   });
 
@@ -1079,7 +1076,7 @@ describe('engine topic forward', () => {
 
     assert.match(engineFails(dir, ['topic', 'forward', 'payments', 'research', 'discussion', 'session-model',
       '--file', '001-a-decision-owed.md', '-m', 'm']).error, /is cancelled — reactivate it instead/);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/research/.mailbox/session-model/001-a-decision-owed.md')), 'message still waiting at the source');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/research/.mailbox/session-model/001-a-decision-owed.md')), 'message still waiting at the source');
   });
 });
 
@@ -1186,25 +1183,25 @@ describe('engine topic complete', () => {
       'fee-model': { status: 'completed' },
     });
     // No commit inside.
-    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
+    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
   it('an index that fails over a store it cannot load lands in the transaction\'s warnings', () => {
-    writeFile(dir, '.workflows/payments/research/auth-flow.md', '# Auth Flow\n\nResearch findings.\n');
+    writeFile(dir, '.leeway/payments/research/auth-flow.md', '# Auth Flow\n\nResearch findings.\n');
     harness.unreadableKnowledge(dir);
 
     const res = engine(dir, ['topic', 'complete', 'payments', 'research', 'auth-flow']);
 
     assert.strictEqual(res.status, 'completed');
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at .*\/\.workflows\/\.knowledge\/store\.bin: /);
+    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at .*\/\.leeway\/\.knowledge\/store\.bin: /);
   });
 
   it('completes a non-indexed phase with no KB attempt — empty warnings', () => {
     const m0 = epicManifest();
     m0.phases.scoping = { items: { 'auth-flow': { status: 'in-progress' }, 'fee-model': { status: 'in-progress' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
     const { res, sections } = okSections(dir, ['topic', 'complete', 'payments', 'scoping', 'fee-model']);
 
@@ -1269,8 +1266,8 @@ describe('engine topic reopen', () => {
       'fee-model': { status: 'in-progress' },
     });
     // No commit inside — the manifest change is left for the session's cadence.
-    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
+    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
   it('round-trips with complete: reopen → complete → reopen again', () => {
@@ -1283,7 +1280,7 @@ describe('engine topic reopen', () => {
   it('flags the same-named completed discussion when research reopens — the downstream hop', () => {
     const m = epicManifest();
     m.phases.discussion.items['fee-model'] = { status: 'completed' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
 
@@ -1296,7 +1293,7 @@ describe('engine topic reopen', () => {
   it('flags an in-progress discussion too when research reopens — the one hop that reaches a live neighbour', () => {
     const m = epicManifest();
     m.phases.discussion.items['fee-model'] = { status: 'in-progress' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
 
@@ -1308,7 +1305,7 @@ describe('engine topic reopen', () => {
     const m = epicManifest();
     m.phases.specification = { items: { 'fee-model': { status: 'completed' } } };
     m.phases.planning = { items: { 'fee-model': { status: 'in-progress' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'fee-model']);
 
@@ -1319,7 +1316,7 @@ describe('engine topic reopen', () => {
   it('never clobbers an existing downstream flag', () => {
     const m = epicManifest();
     m.phases.discussion.items['fee-model'] = { status: 'completed', reconcile_needed: true };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'research', 'fee-model']);
 
@@ -1336,7 +1333,7 @@ describe('engine topic reopen', () => {
       gone: { status: 'superseded', superseded_by: 'unified', sources: { 'session-model': { status: 'incorporated' } } },
       building: { status: 'in-progress', sources: { 'session-model': { status: 'incorporated' } } },
     } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
 
@@ -1366,7 +1363,7 @@ describe('engine topic reopen', () => {
       unified: { status: 'completed', reconcile_needed: 'discussion',
         sources: { 'session-model': { status: 'stale' }, 'refund-policy': { status: 'incorporated' } } },
     } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'discussion', 'refund-policy']);
 
@@ -1381,7 +1378,7 @@ describe('engine topic reopen', () => {
     const m = epicManifest();
     m.phases.specification = { items: { 'auth-flow': { status: 'completed' } } };
     m.phases.planning = { items: { 'auth-flow': { status: 'completed' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['topic', 'reopen', 'payments', 'specification', 'auth-flow']);
 
@@ -1390,7 +1387,7 @@ describe('engine topic reopen', () => {
   });
 
   it('bugfix investigation reopen flags the completed spec — the type pipeline drives the hop', () => {
-    writeFile(dir, '.workflows/crash/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/crash/manifest.json', JSON.stringify({
       name: 'crash', work_type: 'bugfix', status: 'in-progress',
       phases: {
         investigation: { items: { crash: { status: 'completed' } } },
@@ -1405,7 +1402,7 @@ describe('engine topic reopen', () => {
   });
 
   it('quick-fix scoping reopen flags the completed implementation', () => {
-    writeFile(dir, '.workflows/typo/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
       name: 'typo', work_type: 'quick-fix', status: 'in-progress',
       phases: {
         scoping: { items: { typo: { status: 'completed' } } },
@@ -1422,7 +1419,7 @@ describe('engine topic reopen', () => {
   it('a phase outside the work type pipeline never mis-hops — the -1 guard', () => {
     // A bugfix with a (schema-legal, pipeline-foreign) research item: its
     // reopen must not flag investigation via a wrapped index.
-    writeFile(dir, '.workflows/crash/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/crash/manifest.json', JSON.stringify({
       name: 'crash', work_type: 'bugfix', status: 'in-progress',
       phases: {
         research: { items: { crash: { status: 'completed' } } },
@@ -1437,34 +1434,34 @@ describe('engine topic reopen', () => {
   });
 
   it('refuses an in-progress item — nothing touched', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'auth-flow']);
     assert.match(err.error, /is not completed \(status: in-progress\) — only a completed item can be reopened/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
   it('refuses a promoted discussion — it left with its specification, and reopens in its cross-cutting unit', () => {
     const m = epicManifest();
     m.phases.discussion.items['session-model'] = { status: 'promoted', promoted_to: 'sessions' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     const refusal = /discussion item "session-model" is promoted \(to "sessions"\) — promotion is terminal; continue it from the cross-cutting work unit/;
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, refusal);
     assert.match(engineFails(dir, sendArgv(dir, 'discussion', 'session-model')).error, refusal);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
   it('a discussion refuses to reopen while its research is outstanding — research feeds discussion', () => {
     const withResearch = (status) => {
       const m = epicManifest();
       m.phases.research.items['session-model'] = { status };
-      writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+      writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     };
     withResearch('unstarted');
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']);
     assert.match(err.error, /discussion can't reopen on "session-model" — research is parked on it \(mail waiting\); research feeds discussion, so it lands first — the menu names the way in/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
     withResearch('in-progress');
     assert.match(engineFails(dir, ['topic', 'reopen', 'payments', 'discussion', 'session-model']).error, /research is in flight on it/);
     withResearch('completed');
@@ -1473,10 +1470,10 @@ describe('engine topic reopen', () => {
 
   it('refuses a superseded item — supersession stays its own flow', () => {
     engine(dir, ['topic', 'supersede', 'payments', 'research', 'auth-flow', '--by', 'fee-model']);
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     const err = engineFails(dir, ['topic', 'reopen', 'payments', 'research', 'auth-flow']);
     assert.match(err.error, /is not completed \(status: superseded\)/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
   it('refuses a cancelled item — reactivate owns that path', () => {
@@ -1512,7 +1509,7 @@ describe('engine sources stale', () => {
   }
 
   it('runs the reverse join without reopening — rows stale, completed specs flag, the discussion stays completed', () => {
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
 
     const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
 
@@ -1537,7 +1534,7 @@ describe('engine sources stale', () => {
   });
 
   it('--except skips the invoking spec entirely — no flip, no flag', () => {
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
 
     const res = engine(dir, ['sources', 'stale', 'payments', 'session-model', '--except', 'unified']);
 
@@ -1551,7 +1548,7 @@ describe('engine sources stale', () => {
   it('never clobbers an existing reconcile flag', () => {
     const m = specedManifest();
     m.phases.specification.items.unified.reconcile_needed = 'discussion';
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 
     const res = engine(dir, ['sources', 'stale', 'payments', 'session-model']);
 
@@ -1565,7 +1562,7 @@ describe('engine sources stale', () => {
   });
 
   it('refuses an --except that names no specification item — a typo must never self-stale', () => {
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specedManifest(), null, 2) + '\n');
     const res = engineFails(dir, ['sources', 'stale', 'payments', 'session-model', '--except', 'unifed']);
     assert.match(res.error, /--except "unifed" names no specification item/);
     const items = readManifest(dir, 'payments').phases.specification.items;
@@ -1592,7 +1589,7 @@ describe('engine topic complete: specification source gate', () => {
   function withSpec(sources) {
     const m = epicManifest();
     m.phases.specification = { items: { unified: { status: 'in-progress', ...(sources !== undefined ? { sources } : {}) } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
   }
 
   it('refuses while a source row is pending', () => {
@@ -1647,7 +1644,7 @@ describe('engine topic supersede', () => {
 
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(specManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(specManifest(), null, 2) + '\n');
     commitAll(dir, 'init');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -1671,8 +1668,8 @@ describe('engine topic supersede', () => {
       superseded_by: 'unified',
     });
     // Batch-oriented: no commit inside — the calling flow commits the set.
-    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '1');
-    assert.match(git(dir, ['status', '--porcelain']), /^ M \.workflows\/payments\/manifest\.json/m);
+    assert.strictEqual(lastMessage(dir), 'init', 'no commit');
+    assert.match(stateGit(dir, ['status', '--porcelain']), /^ M payments\/manifest\.json/m);
   });
 
   it('supersedes an in-progress source too — prose only excludes proposed', () => {
@@ -1688,14 +1685,14 @@ describe('engine topic supersede', () => {
     assert.strictEqual(res.status, 'superseded');
 
     // discussion does not — refused with the schema's own vocabulary.
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     const err = engineFails(dir, ['topic', 'supersede', 'payments', 'discussion', 'session-model', '--by', 'refund-policy']);
     assert.match(err.error, /Invalid status "superseded" for phase "discussion"/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
   it('refuses a missing item, a missing --by target, and self-supersession — nothing touched', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
     assert.match(
       engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'ghost', '--by', 'unified']).error,
       /no specification item "ghost"/);
@@ -1705,7 +1702,7 @@ describe('engine topic supersede', () => {
     assert.match(
       engineFails(dir, ['topic', 'supersede', 'payments', 'specification', 'auth-flow', '--by', 'auth-flow']).error,
       /cannot supersede itself/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
   });
 
   it('refuses an already-superseded, proposed, or cancelled item', () => {
@@ -1747,19 +1744,19 @@ describe('engine topic incorporations', () => {
 
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(incorporationManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(incorporationManifest(), null, 2) + '\n');
     commitAll(dir, 'init');
   });
   afterEach(() => { cleanupFixture(dir); });
 
-  const RANKING = { topic: 'ranking', path: '.workflows/payments/specification/ranking/specification.md', covers: ['ranking'] };
+  const RANKING = () => ({ topic: 'ranking', path: path.join(dir, '.leeway/payments/specification/ranking/specification.md'), covers: ['ranking'] });
 
   it('reads what a grouping\'s start takes in, and what the start recorded once it has run — the same on every read after', () => {
     assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']),
-      { ok: true, work_unit: 'payments', topic: 'search', incorporations: [RANKING] });
+      { ok: true, work_unit: 'payments', topic: 'search', incorporations: [RANKING()] });
     engine(dir, ['topic', 'start', 'payments', 'specification', 'search']);
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.specification.items.search.incorporates, ['ranking']);
-    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']).incorporations, [RANKING]);
+    assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'search']).incorporations, [RANKING()]);
     assert.deepStrictEqual(engine(dir, ['topic', 'incorporations', 'payments', 'ranking']).incorporations, [],
       'the specification taken in never reads the newer one back');
   });
@@ -1801,21 +1798,21 @@ function featureManifest() {
 
 function setupFeatureFixture() {
   const dir = setupGitFixture();
-  writeFile(dir, '.workflows/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
+  writeFile(dir, '.leeway/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
-  writeFile(dir, '.workflows/auth-flow/research/exploration.md', '# Exploration\n');
-  writeFile(dir, '.workflows/auth-flow/discussion/auth-flow.md', '# Discussion\n');
-  writeFile(dir, '.workflows/auth-flow/imports/notes.md', '# Notes\n');
-  writeFile(dir, '.workflows/auth-flow/seeds/seed.md', '# Seed\n');
-  writeFile(dir, '.workflows/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
+  writeFile(dir, '.leeway/auth-flow/research/exploration.md', '# Exploration\n');
+  writeFile(dir, '.leeway/auth-flow/discussion/auth-flow.md', '# Discussion\n');
+  writeFile(dir, '.leeway/auth-flow/imports/notes.md', '# Notes\n');
+  writeFile(dir, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
+  writeFile(dir, '.leeway/auth-flow/.state/discovery-gap-analysis.md', '# Analysis\n');
   // Present but never indexed for a feature — discovery's session leg is
   // epic-only.
-  writeFile(dir, '.workflows/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');
+  writeFile(dir, '.leeway/auth-flow/discovery/sessions/session-001.md', '# Session 001\n');
   // A store that cannot be loaded, checkout-local and never committed: a
   // removal or re-index fails deterministically, so warn-don't-block is
   // provable as a warning.
-  writeFile(dir, '.workflows/.gitignore', '.knowledge/\n');
+  writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
   harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
   return dir;
@@ -1824,7 +1821,7 @@ function setupFeatureFixture() {
 /** A cross-cutting unit whose pipeline is finished (derived next phase `done`). */
 function setupFinishedCrossCuttingFixture() {
   const dir = setupGitFixture();
-  writeFile(dir, '.workflows/caching/manifest.json', JSON.stringify({
+  writeFile(dir, '.leeway/caching/manifest.json', JSON.stringify({
     name: 'caching',
     work_type: 'cross-cutting',
     status: 'in-progress',
@@ -1835,10 +1832,10 @@ function setupFinishedCrossCuttingFixture() {
   }, null, 2) + '\n');
   // The completed phase artifacts on disk, so the re-index discovers them (it
   // skips artifacts whose files are absent).
-  writeFile(dir, '.workflows/caching/discussion/caching.md', '# Discussion\n');
-  writeFile(dir, '.workflows/caching/specification/caching/specification.md', '# Spec\n');
+  writeFile(dir, '.leeway/caching/discussion/caching.md', '# Discussion\n');
+  writeFile(dir, '.leeway/caching/specification/caching/specification.md', '# Spec\n');
   // Deterministic KB failure: a store that cannot be loaded.
-  writeFile(dir, '.workflows/.gitignore', '.knowledge/\n');
+  writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
   harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
   return dir;
@@ -1875,20 +1872,10 @@ describe('engine workunit complete', () => {
   });
 
   it('purges the work unit\'s scratch cache on complete — untracked scratch leaves no dirt', () => {
-    writeFile(dir, '.workflows/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    writeFile(dir, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
     engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/auth-flow')), false, 'cache dir removed');
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
-  });
-
-  it('stages tracked pre-049 cache residue deletions into the completion commit', () => {
-    writeFile(dir, '.workflows/.cache/auth-flow/planning/auth-flow/stale.json', '{}\n');
-    git(dir, ['add', '.workflows/.cache/auth-flow']);
-    git(dir, ['commit', '-m', 'legacy: tracked cache residue']);
-    engine(dir, ['workunit', 'complete', 'auth-flow', '-m', 'workflow(auth-flow): complete feature pipeline']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/auth-flow')), false);
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'tracked deletion committed, not left as dirt');
-    assert.match(git(dir, ['show', '--name-only', 'HEAD']), /\.workflows\/\.cache\/auth-flow\/planning\/auth-flow\/stale\.json/);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
   it('--pipeline renders the "{Type} Completed" banner instead of the one-liner; --skipped-review varies the body', () => {
@@ -1960,10 +1947,10 @@ describe('engine workunit cancel', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('purges the work unit\'s scratch cache on cancel', () => {
-    writeFile(dir, '.workflows/.cache/auth-flow/research/auth-flow/deep-dive-1.md', 'scratch\n');
+    writeFile(dir, '.leeway/.cache/auth-flow/research/auth-flow/deep-dive-1.md', 'scratch\n');
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.workflows/.cache/auth-flow')), false, 'cache dir removed');
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
   it('sets status cancelled, removes KB chunks (failure is a warning), commits the fixed message', () => {
@@ -2046,19 +2033,19 @@ describe('engine workunit reactivate', () => {
 
   it('epic reactivate re-indexes in one scoped bulk pass (session logs in scope) — failure is a warning', () => {
     const epicDir = setupGitFixture();
-    writeFile(epicDir, '.workflows/payments/manifest.json', JSON.stringify({
+    writeFile(epicDir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: {
         discovery: { items: { 'auth-flow': { routing: 'discussion', source: 'discovery' } } },
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
       },
     }, null, 2) + '\n');
-    writeFile(epicDir, '.workflows/payments/discussion/auth-flow.md', '# Discussion\n');
-    writeFile(epicDir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
-    writeFile(epicDir, '.workflows/payments/discovery/sessions/session-002.md', '# Session 002\n');
-    writeFile(epicDir, '.workflows/payments/discovery/sessions/notes.txt', 'not a session log\n');
+    writeFile(epicDir, '.leeway/payments/discussion/auth-flow.md', '# Discussion\n');
+    writeFile(epicDir, '.leeway/payments/discovery/sessions/session-001.md', '# Session 001\n');
+    writeFile(epicDir, '.leeway/payments/discovery/sessions/session-002.md', '# Session 002\n');
+    writeFile(epicDir, '.leeway/payments/discovery/sessions/notes.txt', 'not a session log\n');
     // Deterministic KB failure: a store that cannot be loaded.
-    writeFile(epicDir, '.workflows/.gitignore', '.knowledge/\n');
+    writeFile(epicDir, '.leeway/.gitignore', '.knowledge/\n');
     harness.unreadableKnowledge(epicDir);
     commitAll(epicDir, 'init');
 
@@ -2116,7 +2103,7 @@ describe('engine workunit reactivate', () => {
 
     const m = featureManifest();
     m.status = 'archived';
-    writeFile(dir, '.workflows/auth-flow/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/auth-flow/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(
       engineFails(dir, ['workunit', 'reactivate', 'auth-flow']).error,
       /not completed or cancelled \(status: archived\)/);
@@ -2127,141 +2114,140 @@ describe('engine inbox archive / restore / delete', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
-    writeFile(dir, '.workflows/.inbox/bugs/2026-06-02--login-loop.md', '# Login Loop\n');
+    writeFile(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
+    writeFile(dir, '.leeway/.inbox/bugs/2026-06-02--login-loop.md', '# Login Loop\n');
     commitAll(dir, 'init');
   });
   afterEach(() => { cleanupFixture(dir); });
 
   it('archives a single item — file moved to its source folder under .archived, slug commit message', () => {
-    const res = engine(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']);
+    const res = engine(dir, ['inbox', 'archive', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md']);
 
-    assert.deepStrictEqual(res.archived, ['.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
+    assert.deepStrictEqual(res.archived, [path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')]);
     assert.strictEqual(res.committed, shortHead(dir));
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): archive smart-retry');
   });
 
   it('archives a multi-item set in one commit with the N-items message form', () => {
     const res = engine(dir, [
       'inbox', 'archive',
-      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
-      '.workflows/.inbox/bugs/2026-06-02--login-loop.md',
+      '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.leeway/.inbox/bugs/2026-06-02--login-loop.md',
     ]);
 
     assert.deepStrictEqual(res.archived, [
-      '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md',
-      '.workflows/.inbox/.archived/bugs/2026-06-02--login-loop.md',
+      path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md'),
+      path.join(dir, '.leeway/.inbox/.archived/bugs/2026-06-02--login-loop.md'),
     ]);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/bugs/2026-06-02--login-loop.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/.archived/bugs/2026-06-02--login-loop.md')));
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): archive 2 items');
     // One commit for the whole set.
-    assert.strictEqual(git(dir, ['rev-list', '--count', 'HEAD']).trim(), '2');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s', 'HEAD~1']).trim(), 'init');
   });
 
   it('a set whose move throws midway puts back what moved — every file where it was, nothing committed', () => {
     // A file where the archive's bugs folder belongs: the idea moves, the bug cannot.
-    writeFile(dir, '.workflows/.inbox/.archived/bugs', 'in the way\n');
-    const head = git(dir, ['rev-parse', 'HEAD']).trim();
+    writeFile(dir, '.leeway/.inbox/.archived/bugs', 'in the way\n');
+    const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     engineFails(dir, [
       'inbox', 'archive',
-      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
-      '.workflows/.inbox/bugs/2026-06-02--login-loop.md',
+      '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.leeway/.inbox/bugs/2026-06-02--login-loop.md',
     ]);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/bugs/2026-06-02--login-loop.md')));
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/bugs/2026-06-02--login-loop.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), head);
   });
 
   it('restores an archived item back to its live folder', () => {
-    engine(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']);
-    const res = engine(dir, ['inbox', 'restore', '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
+    engine(dir, ['inbox', 'archive', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md']);
+    const res = engine(dir, ['inbox', 'restore', '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
 
-    assert.deepStrictEqual(res.restored, ['.workflows/.inbox/ideas/2026-06-01--smart-retry.md']);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.deepStrictEqual(res.restored, [path.join(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')]);
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): restore smart-retry');
   });
 
   it('deletes an archived item via git rm', () => {
-    engine(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']);
-    const res = engine(dir, ['inbox', 'delete', '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
+    engine(dir, ['inbox', 'archive', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md']);
+    const res = engine(dir, ['inbox', 'delete', '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
 
-    assert.deepStrictEqual(res.deleted, ['.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.deepStrictEqual(res.deleted, [path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')]);
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): delete smart-retry');
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
   });
 
   it('deletes the archived item named, never a sibling its name would match as a pattern', () => {
-    const archived = path.join(dir, '.workflows/.inbox/.archived/ideas');
+    const archived = path.join(dir, '.leeway/.inbox/.archived/ideas');
     fs.mkdirSync(archived, { recursive: true });
     fs.writeFileSync(path.join(archived, '2026-06-01--retry[s].md'), '# Retry\n');
     fs.writeFileSync(path.join(archived, '2026-06-01--retrys.md'), '# Retrys\n');
-    git(dir, ['add', '.workflows/.inbox/.archived']);
-    git(dir, ['commit', '-q', '-m', 'archive two']);
+    commitAll(dir, 'archive two');
 
-    const res = engine(dir, ['inbox', 'delete', '.workflows/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+    const res = engine(dir, ['inbox', 'delete', '.leeway/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
 
-    assert.deepStrictEqual(res.deleted, ['.workflows/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+    assert.deepStrictEqual(res.deleted, [path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--retry[s].md')]);
     assert.ok(!fs.existsSync(path.join(archived, '2026-06-01--retry[s].md')));
     assert.ok(fs.existsSync(path.join(archived, '2026-06-01--retrys.md')));
-    assert.deepStrictEqual(git(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n'),
-      ['.workflows/.inbox/.archived/ideas/2026-06-01--retry[s].md']);
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n'),
+      ['.inbox/.archived/ideas/2026-06-01--retry[s].md']);
   });
 
   it('rejects invalid paths strictly, before anything moves', () => {
     // Outside the inbox entirely.
     assert.match(
-      engineFails(dir, ['inbox', 'archive', '.workflows/payments/manifest.json']).error,
+      engineFails(dir, ['inbox', 'archive', '.leeway/payments/manifest.json']).error,
       /not a live inbox path/);
     // Unknown folder.
     assert.match(
-      engineFails(dir, ['inbox', 'archive', '.workflows/.inbox/notes/2026-06-01--x.md']).error,
+      engineFails(dir, ['inbox', 'archive', '.leeway/.inbox/notes/2026-06-01--x.md']).error,
       /not a live inbox path/);
     // Traversal.
     assert.match(
-      engineFails(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/../../../etc/passwd.md']).error,
+      engineFails(dir, ['inbox', 'archive', '.leeway/.inbox/ideas/../../../etc/passwd.md']).error,
       /not a live inbox path|without ".."/);
     // Archived path passed to archive.
     assert.match(
-      engineFails(dir, ['inbox', 'archive', '.workflows/.inbox/.archived/ideas/2026-06-01--x.md']).error,
+      engineFails(dir, ['inbox', 'archive', '.leeway/.inbox/.archived/ideas/2026-06-01--x.md']).error,
       /not a live inbox path/);
     // Live path passed to delete.
     assert.match(
-      engineFails(dir, ['inbox', 'delete', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']).error,
+      engineFails(dir, ['inbox', 'delete', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md']).error,
       /not an archived inbox path/);
     // Live path passed to restore.
     assert.match(
-      engineFails(dir, ['inbox', 'restore', '.workflows/.inbox/ideas/2026-06-01--smart-retry.md']).error,
+      engineFails(dir, ['inbox', 'restore', '.leeway/.inbox/ideas/2026-06-01--smart-retry.md']).error,
       /not an archived inbox path/);
     // Missing file.
     assert.match(
-      engineFails(dir, ['inbox', 'archive', '.workflows/.inbox/ideas/2026-06-01--ghost.md']).error,
+      engineFails(dir, ['inbox', 'archive', '.leeway/.inbox/ideas/2026-06-01--ghost.md']).error,
       /not found/);
     // One bad path poisons the whole set — the good file did not move.
     engineFails(dir, [
       'inbox', 'archive',
-      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
-      '.workflows/.inbox/ideas/2026-06-01--ghost.md',
+      '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.leeway/.inbox/ideas/2026-06-01--ghost.md',
     ]);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.match(engineFails(dir, ['inbox', 'archive']).error, /Usage: engine inbox/);
   });
 
   it('refuses a duplicate path in the set before any move — no half-applied state', () => {
     const err = engineFails(dir, [
       'inbox', 'archive',
-      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
-      '.workflows/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
+      '.leeway/.inbox/ideas/2026-06-01--smart-retry.md',
     ]);
     assert.match(err.error, /duplicate inbox path/);
     // The one real file never moved — the transaction refused up front.
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.inbox/ideas/2026-06-01--smart-retry.md')));
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
   });
 });
 
@@ -2273,7 +2259,7 @@ describe('inbox moveFiles rollback', () => {
   const C = { from: 'in/c.md', to: 'out/c.md' };
   beforeEach(() => {
     dir = setupGitFixture();
-    for (const name of ['a', 'b', 'c']) writeFile(dir, `in/${name}.md`, `# ${name}\n`);
+    for (const name of ['a', 'b', 'c']) writeFile(dir, `.leeway/in/${name}.md`, `# ${name}\n`);
     realRename = fs.renameSync;
   });
   afterEach(() => {
@@ -2286,7 +2272,7 @@ describe('inbox moveFiles rollback', () => {
   function failRenames(failing) {
     const attempted = [];
     fs.renameSync = (from, to) => {
-      const rel = path.relative(dir, String(from));
+      const rel = path.relative(path.join(dir, '.leeway'), String(from));
       attempted.push(rel);
       const hit = failing.find((f) => rel === f);
       if (hit) throw new Error(`cannot rename ${hit}`);
@@ -2295,15 +2281,17 @@ describe('inbox moveFiles rollback', () => {
     return attempted;
   }
 
-  const at = (rel) => fs.existsSync(path.join(dir, rel));
+  const at = (rel) => fs.existsSync(path.join(dir, '.leeway', rel));
+  const absolute = (rel) => path.join(dir, '.leeway', rel);
 
   it('the second of three moves throws and its reversal throws too: the original error surfaces, the stranded file attached', () => {
     const attempted = failRenames(['in/b.md', 'out/a.md']);
     let caught;
     try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
     assert.ok(caught instanceof Error);
-    assert.match(caught.message, /^cannot rename in\/b\.md — and a file could not be put back: "out\/a\.md" \(belongs at "in\/a\.md"\)$/);
-    assert.deepStrictEqual(caught.stranded.map(({ from, to }) => ({ from, to })), [A]);
+    assert.strictEqual(caught.message,
+      `cannot rename in/b.md — and a file could not be put back: "${absolute('out/a.md')}" (belongs at "${absolute('in/a.md')}")`);
+    assert.deepStrictEqual(caught.stranded.map(({ from, to }) => ({ from, to })), [{ from: absolute(A.from), to: absolute(A.to) }]);
     assert.match(caught.stranded[0].error.message, /cannot rename out\/a\.md/);
     assert.deepStrictEqual(attempted, ['in/a.md', 'in/b.md', 'out/a.md'], 'c never moved; a\'s reversal was attempted');
     assert.ok(at('out/a.md') && at('in/b.md') && at('in/c.md'));
@@ -2313,7 +2301,7 @@ describe('inbox moveFiles rollback', () => {
     const attempted = failRenames(['in/c.md', 'out/b.md']);
     let caught;
     try { moveFiles(dir, [A, B, C]); } catch (err) { caught = err; }
-    assert.match(caught.message, /^cannot rename in\/c\.md — and a file could not be put back: "out\/b\.md"/);
+    assert.ok(caught.message.startsWith(`cannot rename in/c.md — and a file could not be put back: "${absolute('out/b.md')}"`), caught.message);
     assert.deepStrictEqual(attempted.slice(3), ['out/b.md', 'out/a.md'], 'both reversals attempted, latest first');
     assert.ok(at('in/a.md'), 'the reversal after the failing one put a back');
     assert.ok(at('out/b.md') && at('in/c.md'));
@@ -2333,14 +2321,14 @@ describe('engine commit', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
-    writeFile(dir, '.workflows/.inbox/ideas/2026-06-01--x.md', '# X\n');
+    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
+    writeFile(dir, '.leeway/.inbox/ideas/2026-06-01--x.md', '# X\n');
     commitAll(dir, 'init');
   });
   afterEach(() => { cleanupFixture(dir); });
 
   it('stages the work-unit scope and commits with the given message', () => {
-    writeFile(dir, '.workflows/payments/discussion/auth.md', '# Auth\n');
+    writeFile(dir, '.leeway/payments/discussion/auth.md', '# Auth\n');
     writeFile(dir, 'unrelated.txt', 'outside the scope\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/auth): document decision']);
@@ -2356,58 +2344,62 @@ describe('engine commit', () => {
   });
 
   it('--inbox commits the inbox scope', () => {
-    writeFile(dir, '.workflows/.inbox/ideas/2026-06-02--y.md', '# Y\n');
+    writeFile(dir, '.leeway/.inbox/ideas/2026-06-02--y.md', '# Y\n');
     const res = engine(dir, ['commit', '--inbox', '-m', 'workflow(inbox): capture y']);
     assert.strictEqual(res.committed, shortHead(dir));
     assert.strictEqual(lastMessage(dir), 'workflow(inbox): capture y');
   });
 
   it('--plan stages the recorded storage paths and the project manifest alongside the work unit', () => {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: ['.tick/'] } } } };
-    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     writeFile(dir, '.tick/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
-    writeFile(dir, '.workflows/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } }, defaults: { plan_format: 'x' } }) + '\n');
+    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } }, defaults: { plan_format: 'x' } }) + '\n');
     writeFile(dir, 'unrelated.txt', 'outside the scope\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): author task auth-1-1', '--plan', 'auth']);
     assert.strictEqual(res.committed, shortHead(dir));
-    const staged = git(dir, ['show', '--name-only', 'HEAD']);
-    assert.match(staged, /\.tick\/tasks-auth\.jsonl/);
-    assert.match(staged, /\.workflows\/manifest\.json/);
+    assert.strictEqual(res.code_committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
+      ['manifest.json', 'payments/manifest.json']);
+    assert.deepStrictEqual(git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.tick/tasks-auth.jsonl']);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'planning(payments): author task auth-1-1');
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/, 'code never rides a --plan commit');
   });
 
   it('--plan with empty storage_paths is the plain scoped commit plus project manifest', () => {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: [] } } } };
-    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): initialize plan', '--plan', 'auth']);
     assert.strictEqual(res.committed, shortHead(dir));
+    assert.strictEqual(res.code_committed, null);
   });
 
   it('--plan stages tracked deletions of a storage path removed from disk (restart cleanup)', () => {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress', storage_paths: ['.tick/'] } } } };
-    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     writeFile(dir, '.tick/tasks-auth.jsonl', '{"id":"auth-1-1"}\n');
     commitAll(dir, 'seed tick storage');
     fs.rmSync(path.join(dir, '.tick'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 
     const res = engine(dir, ['commit', 'payments', '-m', 'planning(payments): restart plan', '--plan', 'auth']);
-    assert.strictEqual(res.committed, shortHead(dir));
-    assert.match(git(dir, ['show', '--name-only', 'HEAD']), /\.tick\/tasks-auth\.jsonl/, 'deletion staged');
-    assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
+    assert.strictEqual(res.committed, null, 'the plan\'s state was already committed');
+    assert.strictEqual(res.code_committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.match(git(dir, ['show', '--name-status', 'HEAD']), /^D\t\.tick\/tasks-auth\.jsonl$/m, 'deletion staged');
+    assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
   it('--plan is loud on a missing planning item, missing storage_paths, and illegal entries', () => {
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'ghost']).error, /no planning item "ghost"/);
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     m.phases = { ...(m.phases || {}), planning: { items: { auth: { status: 'in-progress' } } } };
-    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /has no storage_paths — record the format/);
     m.phases.planning.items.auth.storage_paths = ['../evil'];
-    fs.writeFileSync(path.join(dir, '.workflows/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway/payments/manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['commit', 'payments', '-m', 'x', '--plan', 'auth']).error, /illegal storage_paths entry/);
   });
 
@@ -2426,26 +2418,26 @@ describe('the knowledge store never rides an engine commit', () => {
     dir = setupEpicFixture();
     // Store dirt beside the work — what a transaction's index or remove
     // leaves.
-    writeFile(dir, '.workflows/.knowledge/store.bin', 'v1\n');
+    writeFile(dir, '.leeway/.knowledge/store.bin', 'v1\n');
   });
   afterEach(() => { cleanupFixture(dir); });
 
   function committedFiles() {
-    return git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    return stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
   }
 
   it('engine commit <wu> takes the work unit and nothing of the store', () => {
-    writeFile(dir, '.workflows/payments/discussion/auth.md', '# Auth\n');
+    writeFile(dir, '.leeway/payments/discussion/auth.md', '# Auth\n');
     const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/auth): note']);
     assert.strictEqual(res.committed, shortHead(dir));
-    assert.deepStrictEqual(committedFiles(), ['.workflows/payments/discussion/auth.md']);
+    assert.deepStrictEqual(committedFiles(), ['payments/discussion/auth.md']);
   });
 
   it('a transaction commit takes its own paths and nothing of the store', () => {
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.strictEqual(res.committed, shortHead(dir));
-    assert.deepStrictEqual(committedFiles(), ['.workflows/payments/manifest.json']);
-    assert.match(git(dir, ['status', '--porcelain']), /\?\? \.workflows\/\.knowledge\//);
+    assert.deepStrictEqual(committedFiles(), ['payments/manifest.json']);
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--ignored', '--', '.knowledge']).trim(), '!! .knowledge/', 'the store stays out of the state');
   });
 });
 
@@ -2454,7 +2446,7 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
 
   it('discovery is not a lifecycle phase — start/send/complete/reopen refuse it; cancel addresses the unit', () => {
     const dir = setupGitFixture();
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { routing: 'research' } } } },
     }, null, 2));
@@ -2466,7 +2458,7 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
       );
     }
     // the invalid state the live drive produced must now be impossible
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     assert.strictEqual(m.phases.discovery.items['auth-flow'].status, undefined);
     cleanupFixture(dir);
   });
@@ -2511,9 +2503,9 @@ describe('engine commit --plan — hardening', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   function planWith(storage) {
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth-flow/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth-flow/manifest.json'), 'utf8'));
     m.phases = { ...(m.phases || {}), planning: { items: { 'auth-flow': { status: 'in-progress', ...(storage !== undefined ? { storage_paths: storage } : {}) } } } };
-    fs.writeFileSync(path.join(dir, '.workflows/auth-flow/manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway/auth-flow/manifest.json'), JSON.stringify(m, null, 2) + '\n');
   }
 
   it('a dangling --plan is a usage error, not a ghost lookup', () => {
@@ -2561,7 +2553,7 @@ describe('engine topic start — the discovery map gates the birth of a phase it
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/mapped/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/mapped/manifest.json', JSON.stringify({
       name: 'mapped',
       work_type: 'epic',
       status: 'in-progress',
@@ -2654,7 +2646,7 @@ describe('engine topic start — the discovery map gates the birth of a phase it
 
   for (const workType of ['feature', 'cross-cutting']) {
     it(`every work type holds a discussion's birth for its research — a ${workType} refuses the same way`, () => {
-      writeFile(dir, '.workflows/unit/manifest.json', JSON.stringify({
+      writeFile(dir, '.leeway/unit/manifest.json', JSON.stringify({
         name: 'unit', work_type: workType, status: 'in-progress',
         phases: { research: { items: { unit: { status: 'in-progress' } } } },
       }, null, 2) + '\n');
@@ -2669,7 +2661,7 @@ describe('engine topic start — the discovery map gates the birth of a phase it
 
   it('a topic off the map, and every non-epic work unit, are ungated by the map', () => {
     assert.strictEqual(engine(dir, ['topic', 'start', 'mapped', 'discussion', 'unmapped']).created, true);
-    writeFile(dir, '.workflows/feat/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',
       phases: { discovery: { items: { feat: { routing: 'research', source: 'discovery' } } } },
     }, null, 2) + '\n');
@@ -2693,7 +2685,7 @@ describe('engine topic complete — every wait holds the conclusion shut', () =>
     const m = epicManifest();
     m.phases.research.items['refund-policy'] = { status };
     Object.assign(m.phases.discussion.items['refund-policy'], discussion);
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
   }
 
   it('a discussion refuses over in-progress research, naming the ways out', () => {
@@ -2743,7 +2735,7 @@ describe('a plan is held while its specification is unsettled', () => {
     const m = epicManifest();
     m.phases.specification = { items: { 'refund-policy': spec } };
     if (planning) m.phases.planning = { items: { 'refund-policy': planning } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
   }
 
   it('the birth refuses over a specification still in motion, naming what holds it and the way in', () => {
@@ -2778,7 +2770,7 @@ describe('a plan is held while its specification is unsettled', () => {
 
   it('no specification at all is the entry gate\'s business, not the engine\'s — the birth stands', () => {
     const m = epicManifest();
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(engine(dir, ['topic', 'start', 'payments', 'planning', 'refund-policy']).created, true);
   });
 });
@@ -2792,7 +2784,7 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
   function withItem(phase, topic, fields) {
     const m = epicManifest();
     m.phases[phase].items[topic] = { ...(m.phases[phase].items[topic] || {}), ...fields };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     return m;
   }
 
@@ -2801,7 +2793,7 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
     // discussion: no wait remains, so only the unread flag holds the close.
     const m = withItem('discussion', 'refund-policy', { reconcile_needed: 'research' });
     m.phases.research.items['refund-policy'] = { status: 'completed' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const err = engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']);
     assert.strictEqual(err.error, 'discussion "refund-policy" carries reconcile_needed: research — the topic\'s research landed beneath this conversation; read what landed into the session and clear the flag before concluding');
     assert.strictEqual(readManifest(dir, 'payments').phases.discussion.items['refund-policy'].status, 'in-progress');
@@ -2810,7 +2802,7 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
   it('the wait outranks the flag while the research is still outstanding', () => {
     const m = withItem('discussion', 'refund-policy', { reconcile_needed: 'research' });
     m.phases.research.items['refund-policy'] = { status: 'in-progress' };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(engineFails(dir, ['topic', 'complete', 'payments', 'discussion', 'refund-policy']).error,
       /^discussion "refund-policy" awaits research on the topic/);
   });
@@ -2842,7 +2834,7 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
     const m = epicManifest();
     m.phases.specification = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'discussion', sources: { 'refund-policy': { status: 'incorporated' } } } } };
     m.phases.planning = { items: { 'refund-policy': { status: 'in-progress', reconcile_needed: 'specification' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(engine(dir, ['topic', 'complete', 'payments', 'specification', 'refund-policy']).status, 'completed');
     // The specification's own flag is its entry's business, but it leaves the
     // record unsettled — which is the plan's wait, not the plan's own flag.
@@ -2860,26 +2852,25 @@ describe('engine topic complete — a landed upstream holds a conversation shut 
 // topic's other phase, another work unit — so a change that wiped too much
 // fails as surely as one that took too little.
 describe('the transactions\' knowledge changes — a real store, its other chunks alongside', () => {
-  const RESEARCH = '.workflows/payments/research/auth-flow.md';
-  const DISCUSSION = '.workflows/payments/discussion/auth-flow.md';
-  const SIBLING = '.workflows/payments/discussion/session-model.md';
-  const SPEC = '.workflows/payments/specification/session-model/specification.md';
-  const OTHER_SPEC = '.workflows/payments/specification/fee-model/specification.md';
-  const OTHER_UNIT = '.workflows/billing/discussion/billing.md';
+  const RESEARCH = 'payments/research/auth-flow.md';
+  const DISCUSSION = 'payments/discussion/auth-flow.md';
+  const SIBLING = 'payments/discussion/session-model.md';
+  const SPEC = 'payments/specification/session-model/specification.md';
+  const OTHER_SPEC = 'payments/specification/fee-model/specification.md';
+  const OTHER_UNIT = 'billing/discussion/billing.md';
   let dir;
 
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/.gitignore', '.knowledge/\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
-    writeFile(dir, '.workflows/billing/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(unitManifest(), null, 2) + '\n');
+    writeFile(dir, '.leeway/billing/manifest.json', JSON.stringify({
       name: 'billing', work_type: 'feature', status: 'in-progress',
       phases: { discussion: { items: { billing: { status: 'completed' } } } },
     }, null, 2) + '\n');
-    for (const file of [RESEARCH, DISCUSSION, SIBLING, SPEC, OTHER_SPEC, OTHER_UNIT]) writeFile(dir, file, `# ${path.basename(file, '.md')}\n\nIts decision.\n`);
+    for (const file of [RESEARCH, DISCUSSION, SIBLING, SPEC, OTHER_SPEC, OTHER_UNIT]) writeFile(dir, `.leeway/${file}`, `# ${path.basename(file, '.md')}\n\nIts decision.\n`);
     commitAll(dir, 'init');
     harness.keywordOnlyKnowledge(dir);
-    for (const file of [RESEARCH, DISCUSSION, SIBLING, SPEC, OTHER_SPEC, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', file]);
+    for (const file of [RESEARCH, DISCUSSION, SIBLING, SPEC, OTHER_SPEC, OTHER_UNIT]) harness.output(dir, ['knowledge', 'index', path.join(dir, '.leeway', file)]);
   });
   afterEach(() => { cleanupFixture(dir); });
 
@@ -2914,22 +2905,22 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
   });
 
   it('a work-unit complete leaves the store as it stands', () => {
-    const before = fs.readFileSync(path.join(dir, '.workflows/.knowledge/store.bin'));
+    const before = fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin'));
     assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'payments', '-m', 'workflow(payments): complete']).warnings, []);
-    assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.workflows/.knowledge/store.bin')), before);
+    assert.deepStrictEqual(fs.readFileSync(path.join(dir, '.leeway/.knowledge/store.bin')), before);
   });
 
   it('a work-unit complete over a cancelled, finished unit re-indexes it — another unit\'s untouched', () => {
     const m = readManifest(dir, 'billing');
     m.phases.specification = { items: { billing: { status: 'completed' } } };
-    writeFile(dir, '.workflows/billing/manifest.json', JSON.stringify({ ...m, work_type: 'cross-cutting' }, null, 2) + '\n');
-    writeFile(dir, '.workflows/billing/specification/billing/specification.md', '# Billing spec\n\nIts decision.\n');
+    writeFile(dir, '.leeway/billing/manifest.json', JSON.stringify({ ...m, work_type: 'cross-cutting' }, null, 2) + '\n');
+    writeFile(dir, '.leeway/billing/specification/billing/specification.md', '# Billing spec\n\nIts decision.\n');
     commitAll(dir, 'billing finished');
     engine(dir, ['workunit', 'cancel', 'billing']);
     assert.ok(!indexed().includes(OTHER_UNIT));
     assert.deepStrictEqual(engine(dir, ['workunit', 'complete', 'billing', '-m', 'workflow(billing): complete']).warnings, []);
     assert.deepStrictEqual(indexed(), [
-      OTHER_UNIT, '.workflows/billing/specification/billing/specification.md', DISCUSSION, SIBLING, RESEARCH, OTHER_SPEC, SPEC,
+      OTHER_UNIT, 'billing/specification/billing/specification.md', DISCUSSION, SIBLING, RESEARCH, OTHER_SPEC, SPEC,
     ]);
   });
 });

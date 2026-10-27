@@ -285,7 +285,7 @@ describe('kernel manifest IO', () => {
     const m = loadWorkUnitManifest(dir, 'auth');
     m.phases.discussion.items['auth-flow'].subtopics = { a: { status: 'pending', parent: null } };
     saveWorkUnitManifest(dir, 'auth', m);
-    const raw = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+    const raw = fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8');
     assert.ok(raw.endsWith('}\n'));
     assert.deepStrictEqual(JSON.parse(raw), m);
   });
@@ -295,8 +295,8 @@ describe('kernel manifest IO', () => {
   });
 
   it('throws a clear error on invalid JSON', () => {
-    fs.mkdirSync(path.join(dir, '.workflows', 'broken'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.workflows', 'broken', 'manifest.json'), '{nope');
+    fs.mkdirSync(path.join(dir, '.leeway', 'broken'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.leeway', 'broken', 'manifest.json'), '{nope');
     assert.throws(() => loadWorkUnitManifest(dir, 'broken'), /invalid JSON/);
   });
 });
@@ -324,7 +324,7 @@ describe('engine CLI: discussion-map round-trip', () => {
       ok: true, subtopic: 'token-refresh', status: 'deferred', all_decided: true, unresolved_count: 0,
     });
 
-    const saved = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'));
+    const saved = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'));
     assert.deepStrictEqual(saved.phases.discussion.items['auth-flow'].subtopics, {
       'token-refresh': { status: 'deferred', parent: null },
       'refresh-rotation': { status: 'decided', parent: 'token-refresh' },
@@ -342,7 +342,7 @@ describe('engine CLI: discussion-map round-trip', () => {
       ok: true, set: { a: 'decided', b: 'deferred' }, all_decided: true, unresolved_count: 0,
     });
 
-    const saved = JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'));
+    const saved = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'));
     assert.deepStrictEqual(saved.phases.discussion.items['auth-flow'].subtopics, {
       a: { status: 'decided', parent: null },
       b: { status: 'deferred', parent: null },
@@ -354,14 +354,14 @@ describe('engine CLI: discussion-map round-trip', () => {
     createManifest(dir, 'auth', manifestWith({
       a: { status: 'exploring', parent: null },
     }));
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8');
 
     assert.match(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a=decided', 'ghost=deferred']).error,
       /subtopic "ghost" not found/);
     assert.match(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'a=done']).error,
       /unknown subtopic state "done"/);
 
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'), before);
   });
 
   it('set refuses mixing the positional and batch forms', () => {
@@ -374,14 +374,14 @@ describe('engine CLI: discussion-map round-trip', () => {
 
   it('errors print {ok:false} JSON to stderr and exit 1, manifest untouched', () => {
     createManifest(dir, 'auth', manifestWith());
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8');
 
     assert.deepStrictEqual(harness.refuses(dir, ['discussion-map', 'set', 'auth', 'auth-flow', 'ghost', 'decided']),
       { ok: false, error: 'subtopic "ghost" not found under "auth-flow"' });
     assert.match(harness.refuses(dir, ['discussion-map', 'add', 'ghost-unit', 'auth-flow', 'x']).error, /manifest not found/);
     assert.match(harness.refuses(dir, ['discussion-map', 'add', 'auth']).error, /Usage: engine discussion-map add/);
 
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'auth', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'auth', 'manifest.json'), 'utf8'), before);
   });
 });
 
@@ -395,7 +395,7 @@ describe('discussion adapter: map verb', () => {
       'token-refresh': { status: 'exploring', parent: null },
       'session-storage': { status: 'decided', parent: null },
     }));
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), '');
     fs.writeFileSync(path.join(cacheDir, 'synthesis-001.md'), ''); // not a review cycle
@@ -426,7 +426,7 @@ describe('discussion adapter: map verb', () => {
 
   it('the verdict counts cycles from the agent store — in-flight rows excluded, legacy files counted by existence', () => {
     createManifest(dir, 'auth', manifestWith());
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
     // Store rows: one completed cycle, one still running.
     fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
@@ -445,7 +445,7 @@ describe('discussion adapter: map verb', () => {
 
   it('the verdict counts a finished-but-unscanned review (report landed, no scan yet)', () => {
     createManifest(dir, 'auth', manifestWith());
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
       agents: {
@@ -461,7 +461,7 @@ describe('discussion adapter: map verb', () => {
     createManifest(dir, 'auth', manifestWith({
       'token-refresh': { status: 'exploring', parent: null },
     }));
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'state.json'), JSON.stringify({
       agents: {
@@ -476,7 +476,7 @@ describe('discussion adapter: map verb', () => {
     createManifest(dir, 'auth', manifestWith({
       'token-refresh': { status: 'exploring', parent: null },
     }));
-    const cacheDir = path.join(dir, '.workflows', '.cache', 'auth', 'discussion', 'auth-flow');
+    const cacheDir = path.join(dir, '.leeway', '.cache', 'auth', 'discussion', 'auth-flow');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(path.join(cacheDir, 'state.json'), '{not json');
     fs.writeFileSync(path.join(cacheDir, 'review-001.md'), 'legacy report'); // cycles 1 — the arming path past the free return

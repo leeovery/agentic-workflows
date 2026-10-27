@@ -43,8 +43,8 @@ const PHASE_SKILLS = {
   review: 'workflow-review-process',
 };
 
-const IDEA = '.workflows/.inbox/ideas/2026-01-01--dark-mode.md';
-const BUG = '.workflows/.inbox/bugs/2026-01-02--flaky-login.md';
+const IDEA = '.leeway/.inbox/ideas/2026-01-01--dark-mode.md';
+const BUG = '.leeway/.inbox/bugs/2026-01-02--flaky-login.md';
 
 /** The answer unannounced, as the session carrying the work itself reads it. @param {string} dir @param {string[]} args */
 const inline = (dir, args) => output(dir, ['handoff', ...args]);
@@ -118,7 +118,7 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('a seed path holding a space survives its quotes', () => {
-    const spaced = '.workflows/.inbox/ideas/2026-01-03--night mode.md';
+    const spaced = '.leeway/.inbox/ideas/2026-01-03--night mode.md';
     createFile(dir, spaced, '# Night mode\n');
     assert.strictEqual(payloadOf(carried(dir, ['workflow-discovery', 'feature', 'none', spaced])).args,
       `feature none "${spaced}"`);
@@ -294,20 +294,20 @@ describe('engine handoff — refusals', () => {
     for (const type of VALID_WORK_TYPES.filter((t) => t !== 'epic')) {
       refused(dir, ['workflow-discovery', type, 'fumi'], new RegExp(`^the work type into an existing epic must be one of epic\\|none — got "${type}"$`));
     }
-    refused(dir, ['workflow-discovery', 'epic', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery — got "\.workflows\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
+    refused(dir, ['workflow-discovery', 'epic', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery — got "\.leeway\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
     refused(dir, ['workflow-discovery', 'none', 'fumi', IDEA], /^inbox seeds start new work, never an existing epic's discovery/);
   });
 
   it('discovery refuses seeds that are not live inbox items on disk, named once each', () => {
-    refused(dir, ['workflow-discovery', 'feature', 'none', '.workflows/.inbox/ideas/2026-01-09--ghost.md'], /inbox file not found/);
-    refused(dir, ['workflow-discovery', 'feature', 'none', '.workflows/.inbox/.archived/ideas/x.md'], /not a live inbox path/);
+    refused(dir, ['workflow-discovery', 'feature', 'none', '.leeway/.inbox/ideas/2026-01-09--ghost.md'], /inbox file not found/);
+    refused(dir, ['workflow-discovery', 'feature', 'none', '.leeway/.inbox/.archived/ideas/x.md'], /not a live inbox path/);
     refused(dir, ['workflow-discovery', 'feature', 'none', 'README.md'], /not a live inbox path/);
     refused(dir, ['workflow-discovery', 'feature', 'none', `${IDEA},${IDEA}`], /duplicate inbox path/);
     refused(dir, ['workflow-discovery', 'feature', 'none', `${IDEA},`], /not a live inbox path/);
   });
 
   it('a seed path holding a double quote refuses — it would end the quotes discovery reads it inside', () => {
-    const quoted = '.workflows/.inbox/ideas/2026-01-04--a "b".md';
+    const quoted = '.leeway/.inbox/ideas/2026-01-04--a "b".md';
     createFile(dir, quoted, '# Quoted\n');
     refused(dir, ['workflow-discovery', 'feature', 'none', quoted], /^inbox seeds travel quoted — a path cannot hold a double quote/);
   });
@@ -355,8 +355,8 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a work unit whose manifest does not parse refuses as corrupt, never as a unit not found', () => {
-    createFile(dir, '.workflows/broken/manifest.json', '{not json');
-    refused(dir, ['workflow-planning-process', 'feature', 'broken'], /^invalid JSON in .*\/\.workflows\/broken\/manifest\.json: /);
+    createFile(dir, '.leeway/broken/manifest.json', '{not json');
+    refused(dir, ['workflow-planning-process', 'feature', 'broken'], /^invalid JSON in .*\/\.leeway\/broken\/manifest\.json: /);
     refused(dir, ['workflow-continue-epic', 'broken'], /^invalid JSON in /);
   });
 
@@ -382,7 +382,7 @@ describe('engine handoff — refusals', () => {
 
   it('an argument holding a backtick refuses, the quoted seeds included — it would end the continuation\'s code span', () => {
     refused(dir, ['workflow-discussion-process', 'epic', 'fumi', '`x`'], /^"`x`" cannot travel in the continuation — a backtick ends its code span$/);
-    const ticked = '.workflows/.inbox/ideas/2026-01-05--a`b.md';
+    const ticked = '.leeway/.inbox/ideas/2026-01-05--a`b.md';
     createFile(dir, ticked, '# Ticked\n');
     refused(dir, ['workflow-discovery', 'feature', 'none', ticked], /cannot travel in the continuation — a backtick ends its code span$/);
   });

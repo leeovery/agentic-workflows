@@ -46,11 +46,13 @@ trap 'rm -rf "$FAKE_HOME"' EXIT
 # than a developer/CI-provided one leaking in via the env-wins precedence.
 unset OPENAI_API_KEY 2>/dev/null || true
 
-# Create a temp dir as the project root for each test group.
+# A fresh project for each test group: a git repository with its state
+# worktree, the suites' one fixture.
 TEST_ROOT=""
 setup_project() {
-  TEST_ROOT=$(mktemp -d)
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
+  TEST_ROOT=$(node -e 'process.stdout.write(require(process.argv[1]).setupFixture("knowledge-cli-"))' \
+    "$SCRIPT_DIR/discovery-test-utils.cjs")
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
 }
 
 teardown_project() {
@@ -66,14 +68,14 @@ create_work_unit() {
   node -e '
     const fs = require("fs"), path = require("path");
     const [name, type, desc] = process.argv.slice(1);
-    const dir = path.join(".workflows", name);
+    const dir = path.join(".leeway", name);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify({
       name, work_type: type, status: "in-progress",
       created: new Date().toISOString().slice(0, 10),
       description: desc, phases: {},
     }, null, 2) + "\n");
-    const projPath = path.join(".workflows", "manifest.json");
+    const projPath = path.join(".leeway", "manifest.json");
     const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, "utf8")) : {};
     proj.work_units = proj.work_units || {};
     proj.work_units[name] = { work_type: type };
@@ -84,24 +86,24 @@ create_work_unit() {
 # Write a stub-provider config — a provider that embeds, so a single-file index
 # under it launches the vector fill (see the header).
 write_stub_config() {
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-  cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
+  cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": "stub", "dimensions": 128 } }
 CONF
 }
 
 # Write a keyword-only config — the choice pinned, as `setup --keyword-only` records it.
 write_keyword_config() {
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-  cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
+  cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": null } }
 CONF
 }
 
 # Write a config that names no provider and records no choice.
 write_unchosen_config() {
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-  cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
+  cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": {} }
 CONF
 }
@@ -109,8 +111,8 @@ CONF
 # Create a discussion artifact file with some markdown content.
 create_discussion_file() {
   local wu="$1" topic="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/discussion"
-  cat > "$TEST_ROOT/.workflows/$wu/discussion/$topic.md" <<'MD'
+  mkdir -p "$TEST_ROOT/.leeway/$wu/discussion"
+  cat > "$TEST_ROOT/.leeway/$wu/discussion/$topic.md" <<'MD'
 ---
 status: completed
 ---
@@ -145,8 +147,8 @@ MD
 # Create a specification artifact file.
 create_spec_file() {
   local wu="$1" topic="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/specification/$topic"
-  cat > "$TEST_ROOT/.workflows/$wu/specification/$topic/specification.md" <<'MD'
+  mkdir -p "$TEST_ROOT/.leeway/$wu/specification/$topic"
+  cat > "$TEST_ROOT/.leeway/$wu/specification/$topic/specification.md" <<'MD'
 # Specification
 
 ## Overview
@@ -163,8 +165,8 @@ MD
 # Create a research artifact file.
 create_research_file() {
   local wu="$1" filename="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/research"
-  cat > "$TEST_ROOT/.workflows/$wu/research/$filename.md" <<'MD'
+  mkdir -p "$TEST_ROOT/.leeway/$wu/research"
+  cat > "$TEST_ROOT/.leeway/$wu/research/$filename.md" <<'MD'
 # Research
 
 Some research content.
@@ -174,8 +176,8 @@ MD
 # Create an import artifact file.
 create_import_file() {
   local wu="$1" filename="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/imports"
-  cat > "$TEST_ROOT/.workflows/$wu/imports/$filename.md" <<'MD'
+  mkdir -p "$TEST_ROOT/.leeway/$wu/imports"
+  cat > "$TEST_ROOT/.leeway/$wu/imports/$filename.md" <<'MD'
 # Imported Seed
 
 ## OAuth Notes
@@ -196,15 +198,15 @@ MD
 # never indexed. Takes the full filename, extension and all.
 create_binary_import_file() {
   local wu="$1" filename="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/imports"
-  printf '\211PNG\r\n\032\n' > "$TEST_ROOT/.workflows/$wu/imports/$filename"
+  mkdir -p "$TEST_ROOT/.leeway/$wu/imports"
+  printf '\211PNG\r\n\032\n' > "$TEST_ROOT/.leeway/$wu/imports/$filename"
 }
 
 # Create a seed artifact file (the work unit's origin — a promoted inbox item).
 create_seed_file() {
   local wu="$1" filename="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/seeds"
-  cat > "$TEST_ROOT/.workflows/$wu/seeds/$filename.md" <<'MD'
+  mkdir -p "$TEST_ROOT/.leeway/$wu/seeds"
+  cat > "$TEST_ROOT/.leeway/$wu/seeds/$filename.md" <<'MD'
 # Login times out intermittently
 
 ## Symptom
@@ -219,11 +221,11 @@ session handshake stall. Stack trace points at refreshSession.
 MD
 }
 
-# Create a project baseline doc at .workflows/.baseline/{topic}.md.
+# Create a project baseline doc at .leeway/.baseline/{topic}.md.
 create_baseline_file() {
   local topic="$1"
-  mkdir -p "$TEST_ROOT/.workflows/.baseline"
-  cat > "$TEST_ROOT/.workflows/.baseline/$topic.md" <<'MD'
+  mkdir -p "$TEST_ROOT/.leeway/.baseline"
+  cat > "$TEST_ROOT/.leeway/.baseline/$topic.md" <<'MD'
 # Product Baseline
 
 ## What the product is
@@ -244,8 +246,8 @@ MD
 # written to prove the whitelist refuses them.
 create_analysis_cache() {
   local wu="$1" filename="$2"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/.state"
-  cat > "$TEST_ROOT/.workflows/$wu/.state/$filename.md" <<MD
+  mkdir -p "$TEST_ROOT/.leeway/$wu/.state"
+  cat > "$TEST_ROOT/.leeway/$wu/.state/$filename.md" <<MD
 # ${filename}
 
 ## Topics
@@ -282,7 +284,7 @@ chunk_hashes() {
     const chunks = store.allChunks(store.loadStore(sp));
     const mine = chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic);
     process.stdout.write([...new Set(mine.map((c) => String(c.source_hash)))].join(","));
-  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.bin" "$@"
+  ' "$STORE_JS" "$TEST_ROOT/.leeway/.knowledge/store.bin" "$@"
 }
 
 # The number of chunks an identity holds.
@@ -292,7 +294,7 @@ chunk_count() {
     const [sp, wu, phase, topic] = process.argv.slice(2);
     const chunks = store.allChunks(store.loadStore(sp));
     process.stdout.write(String(chunks.filter((c) => c.work_unit === wu && c.phase === phase && c.topic === topic).length));
-  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.bin" "$@"
+  ' "$STORE_JS" "$TEST_ROOT/.leeway/.knowledge/store.bin" "$@"
 }
 
 file_sha256() {
@@ -308,7 +310,7 @@ strip_source_hashes() {
     const fresh = store.createStore();
     for (const c of store.allChunks(store.loadStore(sp))) store.insertDocument(fresh, { ...c, source_hash: undefined });
     store.saveStore(fresh, sp);
-  ' "$STORE_JS" "$TEST_ROOT/.workflows/.knowledge/store.bin"
+  ' "$STORE_JS" "$TEST_ROOT/.leeway/.knowledge/store.bin"
 }
 
 # Set a manifest item's status by writing the work-unit manifest directly —
@@ -326,7 +328,7 @@ write_item_status() {
     if (status) m.phases[phase].items[topic] = { status };
     else delete m.phases[phase].items[topic];
     fs.writeFileSync(file, JSON.stringify(m, null, 2) + "\n");
-  ' "$TEST_ROOT/.workflows/$wu/manifest.json" "$phase" "$topic" "$status"
+  ' "$TEST_ROOT/.leeway/$wu/manifest.json" "$phase" "$topic" "$status"
 }
 
 # Initialise a phase topic in the manifest, then give it a status.
@@ -399,10 +401,10 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
+output=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1)
 assert_eq "reports indexed chunks" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
-assert_eq "metadata.json created" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/metadata.json" ] && echo true || echo false)"
-assert_eq "store.bin created" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
+assert_eq "metadata.json created" "true" "$([ -f "$TEST_ROOT/.leeway/.knowledge/metadata.json" ] && echo true || echo false)"
+assert_eq "store.bin created" "true" "$([ -f "$TEST_ROOT/.leeway/.knowledge/store.bin" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 6: Index a specification file (nested path) ---
@@ -411,7 +413,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_spec_file "auth-flow" "auth-flow"
-output=$(run_kb index .workflows/auth-flow/specification/auth-flow/specification.md 2>&1)
+output=$(run_kb index .leeway/auth-flow/specification/auth-flow/specification.md 2>&1)
 assert_eq "indexes spec file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
@@ -421,7 +423,7 @@ setup_project
 create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_research_file "payments" "exploration"
-output=$(run_kb index .workflows/payments/research/exploration.md 2>&1)
+output=$(run_kb index .leeway/payments/research/exploration.md 2>&1)
 assert_eq "indexes research file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
@@ -431,9 +433,9 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-output1=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
+output1=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1)
 count1=$(echo "$output1" | grep -oE 'Indexed [0-9]+' | grep -oE '[0-9]+')
-output2=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
+output2=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1)
 count2=$(echo "$output2" | grep -oE 'Indexed [0-9]+' | grep -oE '[0-9]+')
 assert_eq "chunk count stays same on re-index" "$count1" "$count2"
 teardown_project
@@ -445,8 +447,8 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 # Backdate the source file so its mtime is sharply distinct from "today".
-touch -t 202006150000 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+touch -t 202006150000 "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
 assert_eq "header shows the document date (mtime)" "true" \
   "$(echo "$output" | grep -q '2020-06-15' && echo true || echo false)"
@@ -461,13 +463,13 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Configure the stub provider over a store the metadata says openai built.
 # The refusal lands before any write, so no fill is launched.
 write_stub_config
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const mp = '$TEST_ROOT/.leeway/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.provider = 'openai';
   m.model = 'text-embedding-3-small';
@@ -475,8 +477,8 @@ node -e "
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1 || true)
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1 || true)
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "exits non-zero on mismatch" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
@@ -493,8 +495,8 @@ run_kb index >/dev/null 2>&1
 # Switch to keyword-only config.
 write_keyword_config
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1 || true)
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1 || true)
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "exits non-zero on downgrade" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "mentions rebuild" "true" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 teardown_project
@@ -506,9 +508,9 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 # First index in keyword-only mode.
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Verify metadata has null provider.
-meta_provider=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.provider))")
+meta_provider=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.leeway/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.provider))")
 assert_eq "metadata.provider is null" "null" "$meta_provider"
 # Now switch to stub config and run the fill in the foreground — the store takes the provider.
 write_stub_config
@@ -516,7 +518,7 @@ exit_code=0
 output=$(run_kb fill 2>&1) || exit_code=$?
 assert_eq "succeeds" "0" "$exit_code"
 assert_eq "says nothing" "" "$output"
-meta=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write([m.provider, String(m.fill_failure)].join(','))")
+meta=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.leeway/.knowledge/metadata.json','utf8'));process.stdout.write([m.provider, String(m.fill_failure)].join(','))")
 assert_eq "metadata.provider takes the configured provider, no shortfall recorded" "stub,null" "$meta"
 assert_eq "every chunk has its vector" "true" "$(run_kb status 2>&1 | grep -q '^Chunks awaiting vectors: 0$' && echo true || echo false)"
 teardown_project
@@ -528,14 +530,14 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1)
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1)
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "succeeds in keyword-only from scratch" "0" "$exit_code"
 assert_eq "reports chunks" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
-# --- Test 13: Error for file not in .workflows/ ---
-echo "Test 13: Error for file not in .workflows/"
+# --- Test 13: Error for file not in .leeway/ ---
+echo "Test 13: Error for file not in .leeway/"
 setup_project
 echo "hello" > "$TEST_ROOT/random.md"
 exit_code=0
@@ -549,12 +551,12 @@ echo "Test 14: Error for non-indexed phase"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/planning/auth-flow"
-echo "# Plan" > "$TEST_ROOT/.workflows/auth-flow/planning/auth-flow/planning.md"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/planning/auth-flow"
+echo "# Plan" > "$TEST_ROOT/.leeway/auth-flow/planning/auth-flow/planning.md"
 exit_code=0
 cd "$TEST_ROOT"
-output=$(node "$ENGINE_JS" knowledge index .workflows/auth-flow/planning/auth-flow/planning.md 2>&1 || true)
-node "$ENGINE_JS" knowledge index .workflows/auth-flow/planning/auth-flow/planning.md 2>/dev/null || exit_code=$?
+output=$(node "$ENGINE_JS" knowledge index .leeway/auth-flow/planning/auth-flow/planning.md 2>&1 || true)
+node "$ENGINE_JS" knowledge index .leeway/auth-flow/planning/auth-flow/planning.md 2>/dev/null || exit_code=$?
 assert_eq "rejects non-indexed phase" "1" "$exit_code"
 # User-visible validation error should be a clean message — no stack
 # trace noise. UserError class handles this centrally. Note: for
@@ -566,8 +568,8 @@ assert_eq "error message surfaces" "true" \
   "$(echo "$output" | grep -qE 'Cannot derive identity|not indexed' && echo true || echo false)"
 teardown_project
 
-# --- Test 14b: Non-.workflows path also produces clean user-facing error ---
-echo "Test 14b: Non-.workflows path — clean error, no stack"
+# --- Test 14b: A path outside the state also produces clean user-facing error ---
+echo "Test 14b: A path outside the state — clean error, no stack"
 setup_project
 write_keyword_config
 echo "hello" > "$TEST_ROOT/outside.md"
@@ -575,8 +577,7 @@ cd "$TEST_ROOT"
 output=$(node "$ENGINE_JS" knowledge index outside.md 2>&1 || true)
 assert_eq "no stack frames" "false" \
   "$(echo "$output" | grep -qE '^    at [A-Za-z_]+ \(' && echo true || echo false)"
-assert_eq "error message surfaces" "true" \
-  "$(echo "$output" | grep -q 'Cannot derive identity' && echo true || echo false)"
+assert_eq "error message surfaces" "Not in the workflows state: $TEST_ROOT/outside.md" "$output"
 teardown_project
 
 # --- Test 15: first index writes exactly the five metadata fields ---
@@ -585,11 +586,11 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-keys=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(Object.keys(m).join(','))")
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+keys=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.leeway/.knowledge/metadata.json','utf8'));process.stdout.write(Object.keys(m).join(','))")
 assert_eq "metadata keys" "provider,model,dimensions,last_indexed,fill_failure" "$keys"
 assert_eq "every chunk carries its source's sha256" \
-  "$(file_sha256 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md")" \
+  "$(file_sha256 "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md")" \
   "$(chunk_hashes auth-flow discussion auth-flow)"
 teardown_project
 
@@ -599,16 +600,16 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const mp = '$TEST_ROOT/.leeway/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.last_indexed = '2020-01-01T00:00:00.000Z';
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-moved=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.last_indexed > '2020-01-02'))")
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+moved=$(node -e "const m=JSON.parse(require('fs').readFileSync('$TEST_ROOT/.leeway/.knowledge/metadata.json','utf8'));process.stdout.write(String(m.last_indexed > '2020-01-02'))")
 assert_eq "timestamp moved" "true" "$moved"
 teardown_project
 
@@ -625,14 +626,14 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
 assert_eq "has result count" "true" "$(echo "$output" | grep -qE '\[[0-9]+ results\]' && echo true || echo false)"
 assert_eq "has provenance line" "true" "$(echo "$output" | grep -q 'discussion | auth-flow/auth-flow' && echo true || echo false)"
 assert_eq "has headings line" "true" "$(echo "$output" | grep -qxF 'Discussion › Topic One' && echo true || echo false)"
 assert_eq "has excerpt" "true" "$(echo "$output" | grep -qxF 'Some content about topic one that has enough text to exceed the' && echo true || echo false)"
 assert_eq "no heading line in the excerpt" "false" "$(echo "$output" | grep -q '^#' && echo true || echo false)"
-assert_eq "has source line at the chunk's lines" "true" "$(echo "$output" | grep -qxF 'Source: .workflows/auth-flow/discussion/auth-flow.md:L5-28' && echo true || echo false)"
+assert_eq "has source line at the chunk's lines" "true" "$(echo "$output" | grep -qxF "Source: $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md:L5-28" && echo true || echo false)"
 teardown_project
 
 # --- Test 18: Query returns [0 results] for non-matching query ---
@@ -641,7 +642,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "xyznonexistent123" 2>&1)
 assert_eq "shows 0 results" "true" "$(echo "$output" | grep -q '\[0 results\]' && echo true || echo false)"
 teardown_project
@@ -653,8 +654,8 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
 output=$(run_kb query "content" --phase specification 2>&1)
 assert_eq "only spec results" "false" "$(echo "$output" | grep -q 'discussion |' && echo true || echo false)"
 teardown_project
@@ -665,7 +666,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" --limit 1 2>&1)
 assert_eq "limited to 1 result" "true" "$(echo "$output" | grep -q '\[1 results\]' && echo true || echo false)"
 teardown_project
@@ -676,7 +677,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
 assert_eq "shows keyword-only note" "true" "$(echo "$output" | grep -q 'keyword-only mode' && echo true || echo false)"
 teardown_project
@@ -687,13 +688,13 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Configure the stub provider, and modify metadata to simulate a store another
 # provider built.
 write_stub_config
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const mp = '$TEST_ROOT/.leeway/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.provider = 'openai';
   m.model = 'text-embedding-3-small';
@@ -717,13 +718,13 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Configure the stub provider, and simulate a provider/dimension change by
 # editing metadata.
 write_stub_config
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const mp = '$TEST_ROOT/.leeway/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.provider = 'openai';
   m.model = 'text-embedding-3-small';
@@ -747,7 +748,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Now switch config to have a provider.
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
@@ -773,7 +774,7 @@ output=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "exits 0" "0" "$exit_code"
 assert_eq "asks for no rebuild" "false" "$(echo "$output" | grep -q 'rebuild' && echo true || echo false)"
 assert_eq "the store takes the provider" "stub" \
-  "$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('$TEST_ROOT/.workflows/.knowledge/metadata.json','utf8')).provider))")"
+  "$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('$TEST_ROOT/.leeway/.knowledge/metadata.json','utf8')).provider))")"
 assert_eq "every chunk has its vector" "true" "$(run_kb status 2>&1 | grep -q '^Chunks awaiting vectors: 0$' && echo true || echo false)"
 assert_eq "the query runs hybrid, with no note" "true" "$(run_kb query "topic" 2>&1 | head -1 | grep -qE '^\[[0-9]+ results\]$' && echo true || echo false)"
 teardown_project
@@ -787,7 +788,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb query "" 2>&1) || exit_code=$?
 assert_eq "empty query exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
@@ -817,7 +818,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" --limit 1 2>&1)
 # Check the provenance line format: [phase | wu/topic | confidence | date]
 assert_eq "provenance format" "true" "$(echo "$output" | grep -qE '\[discussion \| auth-flow/auth-flow \| .* \| [0-9]{4}-[0-9]{2}-[0-9]{2}\]' && echo true || echo false)"
@@ -828,11 +829,11 @@ echo "Test 26: Nested discussion path rejected"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion/sub"
-echo "# Nested" > "$TEST_ROOT/.workflows/auth-flow/discussion/sub/topic.md"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion/sub"
+echo "# Nested" > "$TEST_ROOT/.leeway/auth-flow/discussion/sub/topic.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$ENGINE_JS" knowledge index .workflows/auth-flow/discussion/sub/topic.md 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index .leeway/auth-flow/discussion/sub/topic.md 2>/dev/null || exit_code=$?
 assert_eq "rejects nested discussion path" "1" "$exit_code"
 teardown_project
 
@@ -843,7 +844,7 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 exit_code=0
 cd "$TEST_ROOT"
-node "$ENGINE_JS" knowledge index .workflows/auth-flow/discussion/auth-flow.md 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index .leeway/auth-flow/discussion/auth-flow.md 2>/dev/null || exit_code=$?
 assert_eq "rejects missing file" "1" "$exit_code"
 teardown_project
 
@@ -877,8 +878,8 @@ create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_research_file "payments" "exploration"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/payments/research/exploration.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/payments/research/exploration.md >/dev/null 2>&1
 output=$(run_kb query "content" --work-type "feature,epic" 2>&1)
 assert_eq "comma work-type returns results" "false" "$(echo "$output" | grep -q '\[0 results\]' && echo true || echo false)"
 # Filter to only feature — should exclude epic research
@@ -893,9 +894,9 @@ create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "data-model" "feature" "Data"
 write_keyword_config
 # Create two discussions with similar content so they both match the same query.
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
-mkdir -p "$TEST_ROOT/.workflows/data-model/discussion"
-cat > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md" <<'MD'
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion"
+mkdir -p "$TEST_ROOT/.leeway/data-model/discussion"
+cat > "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md" <<'MD'
 # Auth Discussion
 
 ## Token Refresh Design
@@ -911,7 +912,7 @@ Line 36. Line 37. Line 38. Line 39. Line 40. Line 41.
 Line 42. Line 43. Line 44. Line 45. Line 46. Line 47.
 Line 48. Line 49. Line 50. Line 51. Line 52. Line 53.
 MD
-cat > "$TEST_ROOT/.workflows/data-model/discussion/data-model.md" <<'MD'
+cat > "$TEST_ROOT/.leeway/data-model/discussion/data-model.md" <<'MD'
 # Data Model Discussion
 
 ## Token Storage Design
@@ -927,8 +928,8 @@ Line 36. Line 37. Line 38. Line 39. Line 40. Line 41.
 Line 42. Line 43. Line 44. Line 45. Line 46. Line 47.
 Line 48. Line 49. Line 50. Line 51. Line 52. Line 53.
 MD
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/data-model/discussion/data-model.md >/dev/null 2>&1
 # Query with --boost:work-unit auth-flow: auth-flow results should appear first.
 output=$(run_kb query "token refresh" --boost:work-unit auth-flow --limit 2 2>&1)
 # Extract the first provenance line's work_unit.
@@ -945,24 +946,24 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 create_work_unit "data-model" "feature" "Data"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
-mkdir -p "$TEST_ROOT/.workflows/data-model/discussion"
-cat > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md" <<'MD'
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion"
+mkdir -p "$TEST_ROOT/.leeway/data-model/discussion"
+cat > "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md" <<'MD'
 # Auth Discussion
 ## Token refresh
 Token refresh design. Rate limiting. Padding line 1. Padding line 2. Padding line 3.
 Padding line 4. Padding line 5. Padding line 6. Padding line 7. Padding line 8.
 Padding line 9. Padding line 10. Padding line 11. Padding line 12. Padding line 13.
 MD
-cat > "$TEST_ROOT/.workflows/data-model/discussion/data-model.md" <<'MD'
+cat > "$TEST_ROOT/.leeway/data-model/discussion/data-model.md" <<'MD'
 # Data Model Discussion
 ## Token storage
 Token refresh storage. Rate limiting. Padding line 1. Padding line 2. Padding line 3.
 Padding line 4. Padding line 5. Padding line 6. Padding line 7. Padding line 8.
 Padding line 9. Padding line 10. Padding line 11. Padding line 12. Padding line 13.
 MD
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/data-model/discussion/data-model.md >/dev/null 2>&1
 output=$(run_kb query "token" --work-unit auth-flow --limit 10 2>&1)
 assert_eq "filter includes auth-flow" "true" "$(echo "$output" | grep -q 'auth-flow/' && echo true || echo false)"
 assert_eq "filter excludes data-model" "false" "$(echo "$output" | grep -q 'data-model/' && echo true || echo false)"
@@ -974,7 +975,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb query "anything" --boost:bogus foo 2>&1) || exit_code=$?
 assert_eq "unknown boost field exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
@@ -988,7 +989,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb query "anything" --boost:work-unit 2>&1) || exit_code=$?
 assert_eq "missing boost value exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
@@ -1002,8 +1003,8 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+rm "$TEST_ROOT/.leeway/.knowledge/metadata.json"
 exit_code=0
 output=$(run_kb query "topic" 2>&1 || true)
 run_kb query "topic" >/dev/null 2>&1 || exit_code=$?
@@ -1024,7 +1025,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb check 2>&1)
 exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
@@ -1035,7 +1036,7 @@ teardown_project
 # --- Test 34: Check outputs not-ready when directory is missing ---
 echo "Test 34: Check not-ready (missing directory)"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 output=$(run_kb check 2>&1)
 exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
@@ -1075,15 +1076,15 @@ assert_eq "no configuration is no keyword-only choice" "not-ready" "$(run_kb che
 create_work_unit "auth-flow" "feature" "Auth"
 create_discussion_file "auth-flow" "auth-flow"
 exit_code=0
-iout=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+iout=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
 assert_eq "single-file index refuses" "1" "$exit_code"
 assert_eq "says no configuration chose" "true" "$(echo "$iout" | grep -q 'keyword-only was never chosen' && echo true || echo false)"
 exit_code=0
 bout=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "bulk index refuses" "1" "$exit_code"
 assert_eq "bulk index says the same" "true" "$(echo "$bout" | grep -q 'keyword-only was never chosen' && echo true || echo false)"
-assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
-assert_eq "no metadata written" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/metadata.json" ] && echo true || echo false)"
+assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.leeway/.knowledge/store.bin" ] && echo true || echo false)"
+assert_eq "no metadata written" "false" "$([ -f "$TEST_ROOT/.leeway/.knowledge/metadata.json" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 36c: A system config that names no provider is a keyword-only choice ---
@@ -1099,7 +1100,7 @@ teardown_project
 # --- Test 36d: A project config that unsets the provider is a keyword-only choice ---
 echo "Test 36d: Check buildable (missing store, project pins keyword-only)"
 setup_project
-echo '{ "knowledge": { "provider": null } }' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+echo '{ "knowledge": { "provider": null } }' > "$TEST_ROOT/.leeway/.knowledge/config.json"
 rm -rf "$HOME/.config/workflows"
 assert_eq "keyword-only chosen at project level" "buildable" "$(run_kb check 2>/dev/null | tr -d '\n')"
 teardown_project
@@ -1115,13 +1116,13 @@ assert_eq "an unresolved key is not keyword-only" "not-ready" "$(run_kb check 2>
 create_work_unit "auth-flow" "feature" "Auth"
 create_discussion_file "auth-flow" "auth-flow"
 exit_code=0
-iout=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+iout=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
 assert_eq "single-file index refuses" "1" "$exit_code"
 assert_eq "names the unresolved key" "true" "$(echo "$iout" | grep -q 'no store is created without it' && echo true || echo false)"
 exit_code=0
 run_kb index >/dev/null 2>&1 || exit_code=$?
 assert_eq "bulk index refuses" "1" "$exit_code"
-assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
+assert_eq "no store created" "false" "$([ -f "$TEST_ROOT/.leeway/.knowledge/store.bin" ] && echo true || echo false)"
 rm -rf "$HOME/.config/workflows"
 teardown_project
 
@@ -1130,21 +1131,21 @@ echo "Test 36f: Bulk index builds the missing store"
 setup_project
 write_stub_config
 run_kb index >/dev/null 2>&1
-assert_eq "store built" "true" "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
+assert_eq "store built" "true" "$([ -f "$TEST_ROOT/.leeway/.knowledge/store.bin" ] && echo true || echo false)"
 assert_eq "metadata names the provider" "stub" \
-  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "check reads ready" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
 teardown_project
 
 # --- Test 36g: Metadata left without its store describes nothing — each write path replaces it ---
 echo "Test 36g: Stale metadata without a store is replaced (single-file and bulk)"
 write_stale_metadata() {
-  cat > "$TEST_ROOT/.workflows/.knowledge/metadata.json" <<'META'
+  cat > "$TEST_ROOT/.leeway/.knowledge/metadata.json" <<'META'
 { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536, "last_indexed": null }
 META
 }
 metadata_provider() {
-  node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+  node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.leeway/.knowledge/metadata.json"
 }
 setup_project
 write_keyword_config
@@ -1152,7 +1153,7 @@ write_stale_metadata
 create_work_unit "auth-flow" "feature" "Auth"
 create_discussion_file "auth-flow" "auth-flow"
 exit_code=0
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "single-file index builds past the stale metadata" "0" "$exit_code"
 assert_eq "single-file index records the new store's mode" "null" "$(metadata_provider)"
 assert_eq "single-file index leaves a ready store" "ready" "$(run_kb check 2>/dev/null | tr -d '\n')"
@@ -1171,7 +1172,7 @@ teardown_project
 echo "Test 37: Check not-ready (corrupted store)"
 setup_project
 write_keyword_config
-echo "this is garbage data, not a store" > "$TEST_ROOT/.workflows/.knowledge/store.bin"
+echo "this is garbage data, not a store" > "$TEST_ROOT/.leeway/.knowledge/store.bin"
 output=$(run_kb check 2>&1)
 exit_code=0
 run_kb check >/dev/null 2>&1 || exit_code=$?
@@ -1185,7 +1186,7 @@ setup_project
 # Write invalid JSON to the config — previously this slipped through and
 # check reported 'ready'; user only discovered the problem on a later
 # index/query with a cryptic JSON parse error.
-echo 'not valid json{{' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+echo 'not valid json{{' > "$TEST_ROOT/.leeway/.knowledge/config.json"
 stdout=$(run_kb check 2>/dev/null)
 stderr=$(run_kb check 2>&1 >/dev/null)
 assert_eq "outputs not-ready on corrupt config" "not-ready" "$(echo "$stdout" | tr -d '\n')"
@@ -1196,7 +1197,7 @@ teardown_project
 # --- Test 37c: Check not-ready when config lacks 'knowledge' key ---
 echo "Test 37c: Check not-ready (config missing knowledge key)"
 setup_project
-echo '{"other":"stuff"}' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+echo '{"other":"stuff"}' > "$TEST_ROOT/.leeway/.knowledge/config.json"
 stdout=$(run_kb check 2>/dev/null)
 stderr=$(run_kb check 2>&1 >/dev/null)
 assert_eq "outputs not-ready on shape mismatch" "not-ready" "$(echo "$stdout" | tr -d '\n')"
@@ -1213,12 +1214,12 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Sanity: with valid config, check reports ready.
 baseline=$(run_kb check 2>/dev/null | tr -d '\n')
 assert_eq "baseline is ready" "ready" "$baseline"
 # Now corrupt the config; store + metadata remain intact.
-echo 'not valid json{{' > "$TEST_ROOT/.workflows/.knowledge/config.json"
+echo 'not valid json{{' > "$TEST_ROOT/.leeway/.knowledge/config.json"
 stdout=$(run_kb check 2>/dev/null)
 stderr=$(run_kb check 2>&1 >/dev/null)
 assert_eq "flips to not-ready on corrupt config" "not-ready" "$(echo "$stdout" | tr -d '\n')"
@@ -1242,9 +1243,9 @@ write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
 create_discussion_file "data-model" "data-model"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
-run_kb index .workflows/data-model/discussion/data-model.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+run_kb index .leeway/data-model/discussion/data-model.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit auth-flow 2>&1)
 assert_eq "reports removed chunks" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for auth-flow' && echo true || echo false)"
 # Verify data-model chunks still exist.
@@ -1259,7 +1260,7 @@ setup_project
 create_work_unit "preview-wu" "feature" "Preview"
 write_keyword_config
 create_discussion_file "preview-wu" "preview-wu"
-run_kb index .workflows/preview-wu/discussion/preview-wu.md >/dev/null 2>&1
+run_kb index .leeway/preview-wu/discussion/preview-wu.md >/dev/null 2>&1
 # Use a term that appears in the fixture ('content') to count chunks —
 # empty-string queries are now a UserError (intentional, to catch
 # unsubstituted template variables).
@@ -1284,15 +1285,15 @@ teardown_project
 echo "Test 38c: remove --work-unit roadmap (reserved identity, no registry row)"
 setup_project
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/.roadmap/sessions"
-cat > "$TEST_ROOT/.workflows/.roadmap/sessions/session-001.md" <<'MD'
+mkdir -p "$TEST_ROOT/.leeway/.roadmap/sessions"
+cat > "$TEST_ROOT/.leeway/.roadmap/sessions/session-001.md" <<'MD'
 # Roadmap Session 001
 
 ## Exploration
 
 Product content about horizons and staged capabilities.
 MD
-run_kb index .workflows/.roadmap/sessions/session-001.md >/dev/null 2>&1
+run_kb index .leeway/.roadmap/sessions/session-001.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit roadmap 2>&1)
 assert_eq "removes the roadmap chunks by identity" "true" \
   "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for roadmap' && echo true || echo false)"
@@ -1307,8 +1308,8 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit auth-flow --phase discussion 2>&1)
 assert_eq "reports removed" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for auth-flow/discussion' && echo true || echo false)"
 # Spec chunks should still exist.
@@ -1323,8 +1324,8 @@ create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_spec_file "payments" "billing"
 create_spec_file "payments" "invoicing"
-run_kb index .workflows/payments/specification/billing/specification.md >/dev/null 2>&1
-run_kb index .workflows/payments/specification/invoicing/specification.md >/dev/null 2>&1
+run_kb index .leeway/payments/specification/billing/specification.md >/dev/null 2>&1
+run_kb index .leeway/payments/specification/invoicing/specification.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit payments --phase specification --topic billing 2>&1)
 assert_eq "reports removed" "true" "$(echo "$output" | grep -qE 'Removed [1-9][0-9]* chunks for payments/specification/billing' && echo true || echo false)"
 # Invoicing chunks should still exist.
@@ -1343,7 +1344,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 exit_code=0
 output=$(run_kb remove --work-unit nonexistent 2>&1) || exit_code=$?
 assert_eq "exits non-zero on unknown wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
@@ -1406,7 +1407,7 @@ write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 output=$(run_kb index 2>&1)
-assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -qE '^Indexed .workflows/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(new\)$' && echo true || echo false)"
+assert_eq "discovers and indexes" "true" "$(echo "$output" | grep -qE "^Indexed $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(new\)$" && echo true || echo false)"
 assert_eq "shows summary" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 teardown_project
 
@@ -1449,7 +1450,7 @@ create_research_file "payments" "exploration"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 init_phase_topic "payments" "research" "exploration" "completed"
 output=$(run_kb index --work-unit auth-flow 2>&1)
-assert_eq "indexes the scoped unit" "true" "$(echo "$output" | grep -q 'Indexed .workflows/auth-flow/discussion/auth-flow.md' && echo true || echo false)"
+assert_eq "indexes the scoped unit" "true" "$(echo "$output" | grep -q "Indexed $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md" && echo true || echo false)"
 assert_eq "leaves the sibling unit untouched" "false" "$(echo "$output" | grep -q 'payments' && echo true || echo false)"
 assert_eq "summary counts only the scoped unit" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
 # The sibling's completed artifact is now discoverable-but-unindexed.
@@ -1474,13 +1475,13 @@ create_spec_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 init_phase_topic "auth-flow" "specification" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
-echo "A line added after indexing." >> "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+echo "A line added after indexing." >> "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 output=$(run_kb index 2>&1)
 assert_eq "names the changed file" "true" \
-  "$(echo "$output" | grep -qE '^Indexed .workflows/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(changed\)$' && echo true || echo false)"
+  "$(echo "$output" | grep -qE "^Indexed $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(changed\)$" && echo true || echo false)"
 assert_eq "summary" "true" "$(echo "$output" | grep -q '^0 new, 1 changed, 0 removed, 1 unchanged.$' && echo true || echo false)"
 assert_eq "chunks carry the new content's hash" \
-  "$(file_sha256 "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md")" \
+  "$(file_sha256 "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md")" \
   "$(chunk_hashes auth-flow discussion auth-flow)"
 teardown_project
 
@@ -1508,10 +1509,10 @@ write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
-rm "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+rm "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 output=$(run_kb index 2>&1)
 assert_eq "names the removed file and why" "true" \
-  "$(echo "$output" | grep -qE '^Removed .workflows/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(source deleted\)$' && echo true || echo false)"
+  "$(echo "$output" | grep -qE "^Removed $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md — [0-9]+ chunks \(source deleted\)$" && echo true || echo false)"
 assert_eq "summary" "true" "$(echo "$output" | grep -q '^0 new, 0 changed, 1 removed, 0 unchanged.$' && echo true || echo false)"
 assert_eq "chunks gone" "0" "$(chunk_count auth-flow discussion auth-flow)"
 teardown_project
@@ -1531,16 +1532,16 @@ run_kb index >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set dropped status cancelled >/dev/null 2>&1
 node -e "
   const fs = require('fs');
-  const pp = '$TEST_ROOT/.workflows/manifest.json';
+  const pp = '$TEST_ROOT/.leeway/manifest.json';
   const p = JSON.parse(fs.readFileSync(pp, 'utf8'));
   delete p.work_units.orphaned;
   fs.writeFileSync(pp, JSON.stringify(p, null, 2) + '\n');
 "
 output=$(run_kb index 2>&1)
 assert_eq "cancelled unit removed" "true" \
-  "$(echo "$output" | grep -q '^Removed .workflows/dropped/discussion/dropped.md — .* (work unit cancelled)$' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^Removed $TEST_ROOT/.leeway/dropped/discussion/dropped.md — .* (work unit cancelled)$" && echo true || echo false)"
 assert_eq "unregistered unit removed" "true" \
-  "$(echo "$output" | grep -q '^Removed .workflows/orphaned/discussion/orphaned.md — .* (work unit not registered)$' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^Removed $TEST_ROOT/.leeway/orphaned/discussion/orphaned.md — .* (work unit not registered)$" && echo true || echo false)"
 assert_eq "live unit kept" "true" "$(echo "$output" | grep -q '^0 new, 0 changed, 2 removed, 1 unchanged.$' && echo true || echo false)"
 teardown_project
 
@@ -1554,10 +1555,10 @@ create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 for topic in superseded-t cancelled-t postponed-t missing-t reopened-t; do
   create_discussion_file "payments" "$topic"
-  run_kb index ".workflows/payments/discussion/$topic.md" >/dev/null 2>&1
+  run_kb index ".leeway/payments/discussion/$topic.md" >/dev/null 2>&1
 done
 create_spec_file "payments" "promoted-t"
-run_kb index .workflows/payments/specification/promoted-t/specification.md >/dev/null 2>&1
+run_kb index .leeway/payments/specification/promoted-t/specification.md >/dev/null 2>&1
 write_item_status payments discussion superseded-t superseded
 write_item_status payments discussion cancelled-t cancelled
 write_item_status payments discussion postponed-t postponed
@@ -1568,7 +1569,7 @@ for pair in "superseded-t:discussion superseded" "cancelled-t:discussion cancell
   topic="${pair%%:*}"
   reason="${pair#*:}"
   assert_eq "$topic removed ($reason)" "true" \
-    "$(echo "$output" | grep -F "Removed .workflows/payments/discussion/$topic.md — " | grep -qF "($reason)" && echo true || echo false)"
+    "$(echo "$output" | grep -F "Removed $TEST_ROOT/.leeway/payments/discussion/$topic.md — " | grep -qF "($reason)" && echo true || echo false)"
 done
 assert_eq "promoted spec removed" "true" \
   "$(echo "$output" | grep -qF '(specification promoted)' && echo true || echo false)"
@@ -1585,35 +1586,31 @@ create_baseline_file "overview"
 run_kb index >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 assert_eq "unregistered baseline identity kept" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
-rm "$TEST_ROOT/.workflows/.baseline/overview.md"
+rm "$TEST_ROOT/.leeway/.baseline/overview.md"
 output=$(run_kb index 2>&1)
 assert_eq "deleted baseline doc removed" "true" \
-  "$(echo "$output" | grep -q '^Removed .workflows/.baseline/overview.md — .* (source deleted)$' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^Removed $TEST_ROOT/.leeway/.baseline/overview.md — .* (source deleted)$" && echo true || echo false)"
 teardown_project
 
 # --- Test RC6b: A source outside the project is no evidence of deletion ---
-# A chunk indexed by absolute path from another checkout records that path;
-# its absence from this project's disk says nothing about this project. The
-# work-unit and item rules still answer for it.
-echo "Test RC6b: Bulk index keeps an outside source's chunks until its unit retires"
+# The state is the one store's whole world: a file shaped like an artifact
+# in another checkout's folder is not in it, and nothing is indexed.
+echo "Test RC6b: A file outside the state is refused"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 init_phase_topic "auth-flow" "discussion" "elsewhere" "completed"
 OTHER_ROOT=$(mktemp -d)
-mkdir -p "$OTHER_ROOT/.workflows/auth-flow/discussion"
-cp "$SCRIPT_DIR/../fixtures/knowledge/investigation-fixture.md" "$OTHER_ROOT/.workflows/auth-flow/discussion/elsewhere.md"
-run_kb index "$OTHER_ROOT/.workflows/auth-flow/discussion/elsewhere.md" >/dev/null 2>&1
-assert_eq "fixture: indexed from outside" "true" "$([ "$(chunk_count auth-flow discussion elsewhere)" -gt 0 ] && echo true || echo false)"
+mkdir -p "$OTHER_ROOT/.leeway/auth-flow/discussion"
+cp "$SCRIPT_DIR/../fixtures/knowledge/investigation-fixture.md" "$OTHER_ROOT/.leeway/auth-flow/discussion/elsewhere.md"
+set +e
+output=$(run_kb index "$OTHER_ROOT/.leeway/auth-flow/discussion/elsewhere.md" 2>&1)
+code=$?
+set -e
+assert_eq "exits 1" "1" "$code"
+assert_eq "names the path it refuses" "Not in the workflows state: $OTHER_ROOT/.leeway/auth-flow/discussion/elsewhere.md" "$output"
+assert_eq "nothing indexed — no store built" "false" "$([ -f "$TEST_ROOT/.leeway/.knowledge/store.bin" ] && echo true || echo false)"
 rm -rf "$OTHER_ROOT"
-output=$(run_kb index 2>&1)
-assert_eq "nothing removed" "0 new, 0 changed, 0 removed, 0 unchanged." "$output"
-assert_eq "the chunks remain" "true" "$([ "$(chunk_count auth-flow discussion elsewhere)" -gt 0 ] && echo true || echo false)"
-cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set auth-flow status cancelled >/dev/null 2>&1
-output=$(run_kb index 2>&1)
-assert_eq "a cancelled unit's outside chunks are removed" "true" \
-  "$(echo "$output" | grep -q 'elsewhere.md — .* (work unit cancelled)$' && echo true || echo false)"
-assert_eq "the chunks are gone" "0" "$(chunk_count auth-flow discussion elsewhere)"
 teardown_project
 
 # --- Test RC7: --work-unit confines the bulk index to one unit ---
@@ -1643,9 +1640,9 @@ write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
-before="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+before="$(file_sha256 "$TEST_ROOT/.leeway/.knowledge/store.bin")-$(file_sha256 "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 run_kb index >/dev/null 2>&1
-after="$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")-$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+after="$(file_sha256 "$TEST_ROOT/.leeway/.knowledge/store.bin")-$(file_sha256 "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "store and metadata byte-identical" "$before" "$after"
 teardown_project
 
@@ -1654,8 +1651,8 @@ echo "Test RC9: Bulk index attempts every file"
 setup_project
 create_work_unit "payments" "epic" "Payments"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/payments/discussion"
-echo "" > "$TEST_ROOT/.workflows/payments/discussion/empty.md"
+mkdir -p "$TEST_ROOT/.leeway/payments/discussion"
+echo "" > "$TEST_ROOT/.leeway/payments/discussion/empty.md"
 create_discussion_file "payments" "good"
 init_phase_topic "payments" "discussion" "empty" "completed"
 init_phase_topic "payments" "discussion" "good" "completed"
@@ -1663,7 +1660,7 @@ exit_code=0
 stdout_out=$(run_kb index 2>/dev/null) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
 assert_eq "the good file indexed" "true" \
-  "$(echo "$stdout_out" | grep -q '^Indexed .workflows/payments/discussion/good.md' && echo true || echo false)"
+  "$(echo "$stdout_out" | grep -q "^Indexed $TEST_ROOT/.leeway/payments/discussion/good.md" && echo true || echo false)"
 assert_eq "summary counts the failure" "true" \
   "$(echo "$stdout_out" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged, 1 failed.$' && echo true || echo false)"
 teardown_project
@@ -1676,7 +1673,7 @@ write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
-printf '{ not json' > "$TEST_ROOT/.workflows/manifest.json"
+printf '{ not json' > "$TEST_ROOT/.leeway/manifest.json"
 exit_code=0
 output=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
@@ -1694,7 +1691,7 @@ write_keyword_config
 create_discussion_file "legacy-wu" "legacy-wu"
 init_phase_topic "legacy-wu" "discussion" "legacy-wu" "completed"
 run_kb index >/dev/null 2>&1
-printf '{}\n' > "$TEST_ROOT/.workflows/manifest.json"
+printf '{}\n' > "$TEST_ROOT/.leeway/manifest.json"
 output=$(run_kb index 2>&1)
 assert_eq "nothing removed" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
 teardown_project
@@ -1704,7 +1701,7 @@ teardown_project
 # (R(2,3)=0.931): its discussion is pruned, its spec never is.
 echo "Test RC12: Bulk index skips a pruned unit's non-spec artifacts"
 setup_project
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": null, "decay_prune_below": 0.95, "decay_base_stability": 3 } }
 CONF
 create_work_unit "buried" "feature" "Buried"
@@ -1724,7 +1721,7 @@ node "$ENGINE_JS" manifest set newer1 completed_at 2024-06-01 >/dev/null 2>&1
 node "$ENGINE_JS" manifest set newer2 completed_at 2024-12-01 >/dev/null 2>&1
 output=$(run_kb index 2>&1)
 assert_eq "the spec indexes" "true" \
-  "$(echo "$output" | grep -q '^Indexed .workflows/buried/specification/buried/specification.md' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^Indexed $TEST_ROOT/.leeway/buried/specification/buried/specification.md" && echo true || echo false)"
 assert_eq "the pruned discussion never embeds" "false" \
   "$(echo "$output" | grep -q 'buried/discussion' && echo true || echo false)"
 assert_eq "summary" "true" "$(echo "$output" | grep -q '^1 new, 0 changed, 0 removed, 0 unchanged.$' && echo true || echo false)"
@@ -1735,8 +1732,8 @@ assert_eq "status never calls it unindexed" "false" \
   "$(echo "$status_out" | grep -q 'Unindexed' && echo true || echo false)"
 # Chunks already in the store for a pruned artifact are compact's to remove,
 # never the bulk index's to refresh or drop.
-run_kb index .workflows/buried/discussion/buried.md >/dev/null 2>&1
-echo "A late edit." >> "$TEST_ROOT/.workflows/buried/discussion/buried.md"
+run_kb index .leeway/buried/discussion/buried.md >/dev/null 2>&1
+echo "A late edit." >> "$TEST_ROOT/.leeway/buried/discussion/buried.md"
 output=$(run_kb index 2>&1)
 assert_eq "the bulk index leaves the pruned chunks to compact" "0 new, 0 changed, 0 removed, 1 unchanged." "$output"
 output=$(run_kb compact 2>&1)
@@ -1751,7 +1748,7 @@ teardown_project
 # it is indexed, and status names the ignored setting.
 echo "Test RC13: Bulk index and compact prune at the default floor past an invalid one"
 setup_project
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": null, "decay_prune_below": "high", "decay_base_stability": 0.05 } }
 CONF
 for wu in buried recent; do
@@ -1769,14 +1766,14 @@ exit_code=0
 output=$(run_kb index 2>&1) || exit_code=$?
 assert_eq "exits zero" "0" "$exit_code"
 assert_eq "indexes the unit above the default floor" "true" \
-  "$(echo "$output" | grep -q '^Indexed .workflows/recent/discussion/recent.md' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^Indexed $TEST_ROOT/.leeway/recent/discussion/recent.md" && echo true || echo false)"
 assert_eq "skips the unit below it" "false" "$(echo "$output" | grep -q 'buried/discussion' && echo true || echo false)"
 status_out=$(run_kb status 2>&1)
 assert_eq "status names the ignored setting" "true" \
-  "$(echo "$status_out" | grep -q '^WARNING: decay_prune_below in .*/.workflows/.knowledge/config.json is ignored: "high" is not false or a number from 0 to 1$' && echo true || echo false)"
+  "$(echo "$status_out" | grep -q '^WARNING: decay_prune_below in .*/.leeway/.knowledge/config.json is ignored: "high" is not false or a number from 0 to 1$' && echo true || echo false)"
 assert_eq "status reports the unit below the default floor pruned" "true" \
   "$(echo "$status_out" | grep -A1 'Pruned below the decay floor: 1' | grep -q 'buried/discussion/buried.md' && echo true || echo false)"
-run_kb index .workflows/buried/discussion/buried.md >/dev/null 2>&1
+run_kb index .leeway/buried/discussion/buried.md >/dev/null 2>&1
 output=$(run_kb compact 2>&1)
 assert_eq "compact prunes below the default floor" "true" \
   "$(echo "$output" | grep -q '^Compacted: removed [0-9]* chunks from 1 work units (retrievability < 0.05)$' && echo true || echo false)"
@@ -1792,7 +1789,7 @@ write_keyword_config
 create_discussion_file "garbled" "garbled"
 init_phase_topic "garbled" "discussion" "garbled" "completed"
 run_kb index >/dev/null 2>&1
-printf '{ not json' > "$TEST_ROOT/.workflows/garbled/manifest.json"
+printf '{ not json' > "$TEST_ROOT/.leeway/garbled/manifest.json"
 output=$(run_kb index 2>&1)
 assert_eq "nothing removed" "0 new, 0 changed, 0 removed, 0 unchanged." "$output"
 assert_eq "the chunks remain" "true" "$([ "$(chunk_count garbled discussion garbled)" -gt 0 ] && echo true || echo false)"
@@ -1818,8 +1815,8 @@ set_completed_with_date() {
 # R = 0.9^(progressElapsed/S0) drops below decay_prune_below.
 write_config_with_prune() {
   local prune="$1" stability="${2:-3}"
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-  cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<CONF
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
+  cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<CONF
 { "knowledge": { "provider": null, "decay_prune_below": $prune, "decay_base_stability": $stability } }
 CONF
 }
@@ -1832,8 +1829,8 @@ write_config_with_prune 0.95 3
 create_work_unit "buried" "feature" "Buried"
 create_discussion_file "buried" "buried"
 create_spec_file "buried" "buried"
-run_kb index .workflows/buried/discussion/buried.md >/dev/null 2>&1
-run_kb index .workflows/buried/specification/buried/specification.md >/dev/null 2>&1
+run_kb index .leeway/buried/discussion/buried.md >/dev/null 2>&1
+run_kb index .leeway/buried/specification/buried/specification.md >/dev/null 2>&1
 set_completed_with_date "buried" "2024-01-01"
 # Two later-completed units advance the progress clock past 'buried' (pe=2).
 create_work_unit "newer1" "feature" "N1"; set_completed_with_date "newer1" "2024-06-01"
@@ -1856,7 +1853,7 @@ setup_project
 write_config_with_prune 0.95 3
 create_work_unit "active" "feature" "Active"
 create_discussion_file "active" "active"
-run_kb index .workflows/active/discussion/active.md >/dev/null 2>&1
+run_kb index .leeway/active/discussion/active.md >/dev/null 2>&1
 # 'active' stays in-progress; later completed units must not affect it.
 create_work_unit "c1" "feature" "C1"; set_completed_with_date "c1" "2024-06-01"
 create_work_unit "c2" "feature" "C2"; set_completed_with_date "c2" "2024-12-01"
@@ -1873,7 +1870,7 @@ setup_project
 write_config_with_prune 0.95 3
 create_work_unit "frontier" "feature" "Frontier"
 create_discussion_file "frontier" "frontier"
-run_kb index .workflows/frontier/discussion/frontier.md >/dev/null 2>&1
+run_kb index .leeway/frontier/discussion/frontier.md >/dev/null 2>&1
 set_completed_with_date "frontier" "2024-12-01"
 # An older completed unit (no chunks) — 'frontier' is still the newest.
 create_work_unit "older1" "feature" "O1"; set_completed_with_date "older1" "2024-01-01"
@@ -1889,7 +1886,7 @@ setup_project
 write_config_with_prune 0.95 3
 create_work_unit "old2" "feature" "Old2"
 create_discussion_file "old2" "old2"
-run_kb index .workflows/old2/discussion/old2.md >/dev/null 2>&1
+run_kb index .leeway/old2/discussion/old2.md >/dev/null 2>&1
 set_completed_with_date "old2" "2024-01-01"
 create_work_unit "n1" "feature" "n1"; set_completed_with_date "n1" "2024-06-01"
 create_work_unit "n2" "feature" "n2"; set_completed_with_date "n2" "2024-12-01"
@@ -1904,12 +1901,12 @@ teardown_project
 echo "Test 53: decay_prune_below false disables compaction"
 setup_project
 create_work_unit "disabled" "feature" "Disabled"
-mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+mkdir -p "$TEST_ROOT/.leeway/.knowledge"
+cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": null, "decay_prune_below": false } }
 CONF
 create_discussion_file "disabled" "disabled"
-run_kb index .workflows/disabled/discussion/disabled.md >/dev/null 2>&1
+run_kb index .leeway/disabled/discussion/disabled.md >/dev/null 2>&1
 set_completed_with_date "disabled" "2020-01-01"
 create_work_unit "z1" "feature" "z1"; set_completed_with_date "z1" "2024-06-01"
 create_work_unit "z2" "feature" "z2"; set_completed_with_date "z2" "2024-12-01"
@@ -1923,7 +1920,7 @@ setup_project
 write_config_with_prune 0 3
 create_work_unit "kept" "feature" "Kept"
 create_discussion_file "kept" "kept"
-run_kb index .workflows/kept/discussion/kept.md >/dev/null 2>&1
+run_kb index .leeway/kept/discussion/kept.md >/dev/null 2>&1
 set_completed_with_date "kept" "2024-01-01"
 create_work_unit "k1" "feature" "k1"; set_completed_with_date "k1" "2024-06-01"
 create_work_unit "k2" "feature" "k2"; set_completed_with_date "k2" "2024-12-01"
@@ -1944,7 +1941,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb status 2>&1)
 assert_eq "shows total chunks" "true" "$(echo "$output" | grep -q 'Total chunks:' && echo true || echo false)"
 assert_eq "shows work unit breakdown" "true" "$(echo "$output" | grep -q 'auth-flow:' && echo true || echo false)"
@@ -1961,10 +1958,10 @@ init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 run_kb index >/dev/null 2>&1
 output=$(run_kb status 2>&1)
 assert_eq "an unchanged artifact is not reported" "false" "$(echo "$output" | grep -q 'Changed since indexing' && echo true || echo false)"
-echo "An edit after completion." >> "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+echo "An edit after completion." >> "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 output=$(run_kb status 2>&1)
 assert_eq "reports the changed count" "true" "$(echo "$output" | grep -q 'Changed since indexing: 1' && echo true || echo false)"
-assert_eq "names the changed file" "true" "$(echo "$output" | grep -q '  .workflows/auth-flow/discussion/auth-flow.md' && echo true || echo false)"
+assert_eq "names the changed file" "true" "$(echo "$output" | grep -q "  $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md" && echo true || echo false)"
 teardown_project
 
 # --- Test 57: Status on empty store ---
@@ -1981,13 +1978,13 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Delete the source file.
-rm "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+rm "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 output=$(run_kb status 2>&1)
 assert_eq "reports the retirement" "true" "$(echo "$output" | grep -q '^Retired since indexing: 1$' && echo true || echo false)"
 assert_eq "names the file and why" "true" \
-  "$(echo "$output" | grep -q '^  .workflows/auth-flow/discussion/auth-flow.md (source deleted)$' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^  $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md (source deleted)$" && echo true || echo false)"
 teardown_project
 
 # --- Test 59: Status detects unindexed artifacts ---
@@ -2000,7 +1997,7 @@ create_spec_file "auth-flow" "auth-flow"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 init_phase_topic "auth-flow" "specification" "auth-flow" "completed"
 # Index only discussion, not spec.
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb status 2>&1)
 assert_eq "detects unindexed" "true" "$(echo "$output" | grep -q 'Unindexed' && echo true || echo false)"
 teardown_project
@@ -2011,11 +2008,11 @@ setup_project
 create_work_unit "cancelled-wu" "feature" "Cancelled"
 write_keyword_config
 create_discussion_file "cancelled-wu" "cancelled-wu"
-run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
+run_kb index .leeway/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu status cancelled >/dev/null 2>&1
 output=$(run_kb status 2>&1)
 assert_eq "names the file and why" "true" \
-  "$(echo "$output" | grep -q '^  .workflows/cancelled-wu/discussion/cancelled-wu.md (work unit cancelled)$' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^  $TEST_ROOT/.leeway/cancelled-wu/discussion/cancelled-wu.md (work unit cancelled)$" && echo true || echo false)"
 teardown_project
 
 # --- Test 61: Status shows keyword-only mode ---
@@ -2024,7 +2021,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb status 2>&1)
 assert_eq "shows keyword-only" "true" "$(echo "$output" | grep -q 'Keyword-only' && echo true || echo false)"
 teardown_project
@@ -2076,14 +2073,14 @@ teardown_project
 # --- Test 63c: Rebuild refuses before anything is touched when the provider's key is unresolved ---
 echo "Test 63c: Rebuild refuses over an unresolved key"
 setup_project
-echo '{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }' > "$TEST_ROOT/.workflows/.knowledge/config.json"
-echo 'store bytes' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
+echo '{ "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }' > "$TEST_ROOT/.leeway/.knowledge/config.json"
+echo 'store bytes' > "$TEST_ROOT/.leeway/.knowledge/store.bin"
 exit_code=0
 output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
 assert_eq "rebuild refuses" "1" "$exit_code"
 assert_eq "names the unresolved key" "true" "$(echo "$output" | grep -q 'could not be resolved' && echo true || echo false)"
 assert_eq "never reaches the prompt" "false" "$(echo "$output" | grep -q "Type 'rebuild' to confirm" && echo true || echo false)"
-assert_eq "store untouched" "store bytes" "$(cat "$TEST_ROOT/.workflows/.knowledge/store.bin")"
+assert_eq "store untouched" "store bytes" "$(cat "$TEST_ROOT/.leeway/.knowledge/store.bin")"
 teardown_project
 
 # ============================================================================
@@ -2100,8 +2097,8 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
 output=$(run_kb query "topic" "specification" --limit 10 2>&1)
 assert_eq "has results" "true" "$(echo "$output" | grep -qE '\[[1-9][0-9]* results\]' && echo true || echo false)"
 teardown_project
@@ -2113,8 +2110,8 @@ create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
 create_spec_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/specification/auth-flow/specification.md >/dev/null 2>&1
 output=$(run_kb query "topic" "content" --limit 1 2>&1)
 assert_eq "limited to 1 result" "true" "$(echo "$output" | grep -q '\[1 results\]' && echo true || echo false)"
 teardown_project
@@ -2125,7 +2122,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" "xyznonexistent123" --limit 10 2>&1)
 # Should still have results from the first term.
 assert_eq "still has results" "true" "$(echo "$output" | grep -qE '\[[1-9][0-9]* results\]' && echo true || echo false)"
@@ -2144,7 +2141,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Switch to stub config.
 write_stub_config
 output=$(run_kb query "topic" 2>&1)
@@ -2170,7 +2167,7 @@ setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
 create_discussion_file "auth-flow" "auth-flow"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 output=$(run_kb query "topic" 2>&1)
 assert_eq "no no-vectors-yet note" "false" "$(echo "$output" | grep -q 'no vectors yet' && echo true || echo false)"
 teardown_project
@@ -2189,8 +2186,8 @@ create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_spec_file "payments" "billing"
 create_spec_file "payments" "invoicing"
-run_kb index .workflows/payments/specification/billing/specification.md >/dev/null 2>&1
-run_kb index .workflows/payments/specification/invoicing/specification.md >/dev/null 2>&1
+run_kb index .leeway/payments/specification/billing/specification.md >/dev/null 2>&1
+run_kb index .leeway/payments/specification/invoicing/specification.md >/dev/null 2>&1
 output=$(run_kb query "specification" --topic billing --limit 10 2>&1)
 assert_eq "only billing in results" "false" "$(echo "$output" | grep -q 'invoicing' && echo true || echo false)"
 assert_eq "billing present" "true" "$(echo "$output" | grep -q 'billing' && echo true || echo false)"
@@ -2201,11 +2198,11 @@ echo "Test 71: Empty file rejected"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
-echo "" > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion"
+echo "" > "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1 || true)
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1 || true)
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "rejects empty file" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "explains refusal" "true" "$(echo "$output" | grep -q 'No chunks produced' && echo true || echo false)"
 teardown_project
@@ -2215,14 +2212,14 @@ echo "Test 72: Bulk index failure exits non-zero and names the file"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
-echo "" > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion"
+echo "" > "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 init_phase_topic "auth-flow" "discussion" "auth-flow" "completed"
 exit_code=0
 stderr_out=$(run_kb index 2>&1 >/dev/null) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
 assert_eq "names the file and the error" "true" \
-  "$(echo "$stderr_out" | grep -q '^Failed to index .workflows/auth-flow/discussion/auth-flow.md: No chunks produced' && echo true || echo false)"
+  "$(echo "$stderr_out" | grep -q "^Failed to index $TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md: No chunks produced" && echo true || echo false)"
 teardown_project
 
 # --- Test 73: An invalid decay_prune_below falls back to the default floor ---
@@ -2235,7 +2232,7 @@ for prune in '-0.5' '"0.5"' '1.5'; do
   for wu in buried newer1; do
     create_work_unit "$wu" "feature" "$wu"
     create_discussion_file "$wu" "$wu"
-    run_kb index ".workflows/$wu/discussion/$wu.md" >/dev/null 2>&1
+    run_kb index ".leeway/$wu/discussion/$wu.md" >/dev/null 2>&1
   done
   set_completed_with_date "buried" "2024-01-01"
   set_completed_with_date "newer1" "2024-06-01"
@@ -2256,12 +2253,12 @@ done
 echo "Test 77: Path-traversal rejected"
 setup_project
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/valid/discussion"
-echo "content" > "$TEST_ROOT/.workflows/valid/discussion/valid.md"
+mkdir -p "$TEST_ROOT/.leeway/valid/discussion"
+echo "content" > "$TEST_ROOT/.leeway/valid/discussion/valid.md"
 # Crafted path with .. — deriveIdentity should reject it.
 exit_code=0
 cd "$TEST_ROOT"
-node "$ENGINE_JS" knowledge index ".workflows/../etc/discussion/foo.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".leeway/../etc/discussion/foo.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects traversal" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2269,11 +2266,11 @@ teardown_project
 echo "Test 78: Hidden work unit rejected"
 setup_project
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/.hidden/discussion"
-echo "content" > "$TEST_ROOT/.workflows/.hidden/discussion/foo.md"
+mkdir -p "$TEST_ROOT/.leeway/.hidden/discussion"
+echo "content" > "$TEST_ROOT/.leeway/.hidden/discussion/foo.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$ENGINE_JS" knowledge index ".workflows/.hidden/discussion/foo.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".leeway/.hidden/discussion/foo.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects hidden wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2300,7 +2297,7 @@ write_keyword_config
 create_discussion_file "cancelled-wu" "cancelled-wu"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu.discussion.cancelled-wu status in-progress >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu.discussion.cancelled-wu status completed >/dev/null 2>&1
-run_kb index .workflows/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
+run_kb index .leeway/cancelled-wu/discussion/cancelled-wu.md >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set cancelled-wu status cancelled >/dev/null 2>&1
 run_kb remove --work-unit cancelled-wu >/dev/null 2>&1
 # After cancel + remove, bulk index must NOT re-add the chunks.
@@ -2329,8 +2326,8 @@ setup_project
 create_work_unit "drop-me" "feature" "Drop"
 write_keyword_config
 create_discussion_file "drop-me" "drop-me"
-run_kb index .workflows/drop-me/discussion/drop-me.md >/dev/null 2>&1
-printf 'corrupt-store-bytes' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
+run_kb index .leeway/drop-me/discussion/drop-me.md >/dev/null 2>&1
+printf 'corrupt-store-bytes' > "$TEST_ROOT/.leeway/.knowledge/store.bin"
 exit_code=0
 output=$(run_kb remove --work-unit drop-me 2>&1) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
@@ -2346,15 +2343,15 @@ write_keyword_config
 create_discussion_file "wu-a" "wu-a"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status in-progress >/dev/null 2>&1
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set wu-a.discussion.wu-a status completed >/dev/null 2>&1
-run_kb index .workflows/wu-a/discussion/wu-a.md >/dev/null 2>&1
+run_kb index .leeway/wu-a/discussion/wu-a.md >/dev/null 2>&1
 # Simulate a leftover .bak from a prior aborted rebuild.
-touch "$TEST_ROOT/.workflows/.knowledge/store.bin.bak"
-touch "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak"
+touch "$TEST_ROOT/.leeway/.knowledge/store.bin.bak"
+touch "$TEST_ROOT/.leeway/.knowledge/metadata.json.bak"
 echo "rebuild" | run_kb rebuild >/dev/null 2>&1
 assert_eq "leftover .bak cleaned after successful rebuild" "true" \
-  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+  "$([ ! -f "$TEST_ROOT/.leeway/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.leeway/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 assert_eq "store still present after rebuild" "true" \
-  "$([ -f "$TEST_ROOT/.workflows/.knowledge/store.bin" ] && echo true || echo false)"
+  "$([ -f "$TEST_ROOT/.leeway/.knowledge/store.bin" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 82b: A file that fails a rebuild fails it, and the rebuilt store stands ---
@@ -2363,18 +2360,18 @@ setup_project
 create_work_unit "wu-a" "epic" "A"
 write_keyword_config
 create_discussion_file "wu-a" "good"
-mkdir -p "$TEST_ROOT/.workflows/wu-a/discussion"
-echo "" > "$TEST_ROOT/.workflows/wu-a/discussion/empty.md"
+mkdir -p "$TEST_ROOT/.leeway/wu-a/discussion"
+echo "" > "$TEST_ROOT/.leeway/wu-a/discussion/empty.md"
 init_phase_topic "wu-a" "discussion" "good" "completed"
 init_phase_topic "wu-a" "discussion" "empty" "completed"
 exit_code=0
 output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
 assert_eq "names the failed file" "true" \
-  "$(echo "$output" | grep -q '^Failed to index .workflows/wu-a/discussion/empty.md: No chunks produced' && echo true || echo false)"
+  "$(echo "$output" | grep -q "^Failed to index $TEST_ROOT/.leeway/wu-a/discussion/empty.md: No chunks produced" && echo true || echo false)"
 assert_eq "the rebuilt store holds the good file" "true" "$([ "$(chunk_count wu-a discussion good)" -gt 0 ] && echo true || echo false)"
 assert_eq "no backup left behind" "true" \
-  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+  "$([ ! -f "$TEST_ROOT/.leeway/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.leeway/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 82c: A manifest read failure mid-rebuild restores the backup ---
@@ -2388,16 +2385,16 @@ create_discussion_file "wu-a" "wu-a"
 create_baseline_file "overview"
 init_phase_topic "wu-a" "discussion" "wu-a" "completed"
 run_kb index >/dev/null 2>&1
-before=$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")
-printf '{ not json' > "$TEST_ROOT/.workflows/manifest.json"
+before=$(file_sha256 "$TEST_ROOT/.leeway/.knowledge/store.bin")
+printf '{ not json' > "$TEST_ROOT/.leeway/manifest.json"
 exit_code=0
 output=$(echo "rebuild" | run_kb rebuild 2>&1) || exit_code=$?
 assert_eq "exits non-zero" "1" "$exit_code"
 assert_eq "says it restored the backup" "true" \
   "$(echo "$output" | grep -q '^Rebuild failed; restored previous index from backup.$' && echo true || echo false)"
-assert_eq "the previous store is back, byte for byte" "$before" "$(file_sha256 "$TEST_ROOT/.workflows/.knowledge/store.bin")"
+assert_eq "the previous store is back, byte for byte" "$before" "$(file_sha256 "$TEST_ROOT/.leeway/.knowledge/store.bin")"
 assert_eq "no backup left behind" "true" \
-  "$([ ! -f "$TEST_ROOT/.workflows/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.workflows/.knowledge/metadata.json.bak" ] && echo true || echo false)"
+  "$([ ! -f "$TEST_ROOT/.leeway/.knowledge/store.bin.bak" ] && [ ! -f "$TEST_ROOT/.leeway/.knowledge/metadata.json.bak" ] && echo true || echo false)"
 teardown_project
 
 # --- Test 84: Stranded-chunks orphan cleanup ---
@@ -2410,9 +2407,9 @@ setup_project
 create_work_unit "absorbed-wu" "feature" "Absorbed"
 write_keyword_config
 create_discussion_file "absorbed-wu" "absorbed-wu"
-run_kb index .workflows/absorbed-wu/discussion/absorbed-wu.md >/dev/null 2>&1
+run_kb index .leeway/absorbed-wu/discussion/absorbed-wu.md >/dev/null 2>&1
 # Simulate post-absorption state: registry entry deleted, chunks linger.
-project_manifest="$TEST_ROOT/.workflows/manifest.json"
+project_manifest="$TEST_ROOT/.leeway/manifest.json"
 node -e "
 const fs=require('fs');
 const m=JSON.parse(fs.readFileSync('$project_manifest','utf8'));
@@ -2446,8 +2443,8 @@ write_keyword_config
 # Seed a store but not metadata.
 create_work_unit "seed-wu" "feature" "Seed"
 create_discussion_file "seed-wu" "seed-wu"
-run_kb index .workflows/seed-wu/discussion/seed-wu.md >/dev/null 2>&1
-rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+run_kb index .leeway/seed-wu/discussion/seed-wu.md >/dev/null 2>&1
+rm "$TEST_ROOT/.leeway/.knowledge/metadata.json"
 mkdir -p "$HOME/.config/workflows"
 echo '{ "knowledge": {} }' > "$HOME/.config/workflows/config.json"
 # The wizard requires a terminal: drive it in process with the terminal's
@@ -2459,11 +2456,11 @@ let said = "";
 const call = { cwd: process.cwd(), out: (t) => { said += t; }, err: (t) => { said += t; }, stdin: () => "" };
 const answers = ["n"];
 const createPrompter = () => ({ question: (_prompt, answer) => answer(answers.shift()), close: () => {} });
-runWizard(call, process.cwd(), { requireTTY: () => {}, createPrompter }).then(
+runWizard(call, process.argv[2], { requireTTY: () => {}, createPrompter }).then(
   () => console.log(said + "UNEXPECTED_SUCCESS"),
   (err) => console.log(said + "EXIT " + err.code),
 );
-' "$WIZARD_JS" 2>&1) || true
+' "$WIZARD_JS" "$TEST_ROOT/.leeway" 2>&1) || true
 assert_eq "setup refuses with exit 1" "true" \
   "$(echo "$output" | grep -qx 'EXIT 1' && echo true || echo false)"
 assert_eq "setup partial-state guard surfaces inconsistent-state error" "true" \
@@ -2483,10 +2480,10 @@ create_work_unit "subdir-wu" "feature" "Subdir"
 write_keyword_config
 create_discussion_file "subdir-wu" "subdir-wu"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set subdir-wu.discussion.subdir-wu status in-progress >/dev/null 2>&1
-run_kb index .workflows/subdir-wu/discussion/subdir-wu.md >/dev/null 2>&1
+run_kb index .leeway/subdir-wu/discussion/subdir-wu.md >/dev/null 2>&1
 # Now invoke status from a deeply nested subdirectory of the project.
-mkdir -p "$TEST_ROOT/.workflows/subdir-wu/discussion"
-cd "$TEST_ROOT/.workflows/subdir-wu/discussion"
+mkdir -p "$TEST_ROOT/.leeway/subdir-wu/discussion"
+cd "$TEST_ROOT/.leeway/subdir-wu/discussion"
 status_from_subdir=$(node "$ENGINE_JS" knowledge status 2>&1)
 cd "$TEST_ROOT"
 assert_eq "status from subdir reports nothing retired" "true" \
@@ -2501,7 +2498,7 @@ setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
-output=$(run_kb index .workflows/seeded-wu/imports/seed-conversation.md 2>&1)
+output=$(run_kb index .leeway/seeded-wu/imports/seed-conversation.md 2>&1)
 assert_eq "indexes imports file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
@@ -2512,9 +2509,9 @@ create_work_unit "seeded-wu" "epic" "Seeded"
 write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
 create_binary_import_file "seeded-wu" "diagram.png"
-run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 exit_code=0
-output=$(run_kb index .workflows/seeded-wu/imports/diagram.png 2>&1) || exit_code=$?
+output=$(run_kb index .leeway/seeded-wu/imports/diagram.png 2>&1) || exit_code=$?
 assert_eq "refuses a non-markdown import" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "names the policy as the reason" "true" \
   "$(echo "$output" | grep -q 'only markdown imports are indexed' && echo true || echo false)"
@@ -2528,7 +2525,7 @@ setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
-run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 output=$(run_kb query "OAuth" 2>&1)
 assert_eq "has imports provenance line" "true" \
   "$(echo "$output" | grep -q 'imports | seeded-wu/seed-conversation' && echo true || echo false)"
@@ -2542,7 +2539,7 @@ setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
-run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit seeded-wu --phase imports --topic seed-conversation 2>&1)
 assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
 query_after=$(run_kb query "OAuth" 2>&1)
@@ -2576,9 +2573,9 @@ write_keyword_config
 # Index a discussion file and an imports file under the same work unit.
 create_discussion_file "mixed-wu" "mixed-wu"
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set mixed-wu.discussion.mixed-wu status in-progress >/dev/null 2>&1
-run_kb index .workflows/mixed-wu/discussion/mixed-wu.md >/dev/null 2>&1
+run_kb index .leeway/mixed-wu/discussion/mixed-wu.md >/dev/null 2>&1
 create_import_file "mixed-wu" "seed-conversation"
-run_kb index .workflows/mixed-wu/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/mixed-wu/imports/seed-conversation.md >/dev/null 2>&1
 # Sanity: both phases queryable before removal.
 before=$(run_kb query "OAuth" 2>&1)
 assert_eq "imports chunk indexed pre-remove" "true" \
@@ -2642,7 +2639,7 @@ create_import_file "dup-wu" "seed-conversation"
 node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
 node "$ENGINE_JS" manifest push dup-wu imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:05:00Z"}' >/dev/null 2>&1
 output=$(run_kb index 2>&1)
-indexing_lines=$(echo "$output" | grep -c 'Indexed .workflows/dup-wu/imports/seed-conversation.md')
+indexing_lines=$(echo "$output" | grep -c "Indexed $TEST_ROOT/.leeway/dup-wu/imports/seed-conversation.md")
 assert_eq "deduped to one index call per identity" "1" "$indexing_lines"
 teardown_project
 
@@ -2652,10 +2649,10 @@ setup_project
 create_work_unit "seeded-wu" "epic" "Seeded"
 write_keyword_config
 create_import_file "seeded-wu" "seed-conversation"
-run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 first_status=$(run_kb status 2>&1)
 first_chunks=$(echo "$first_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
-run_kb index .workflows/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/seeded-wu/imports/seed-conversation.md >/dev/null 2>&1
 second_status=$(run_kb status 2>&1)
 second_chunks=$(echo "$second_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
 assert_eq "chunk count stable across re-index" "$first_chunks" "$second_chunks"
@@ -2674,8 +2671,8 @@ create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
 create_analysis_cache "auth-flow" "research-analysis"
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/.state/research-analysis.md 2>&1 || true)
-run_kb index .workflows/auth-flow/.state/research-analysis.md >/dev/null 2>&1 || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/.state/research-analysis.md 2>&1 || true)
+run_kb index .leeway/auth-flow/.state/research-analysis.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "rejects retired research-analysis cache" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "error names the one indexable cache" "true" "$(echo "$output" | grep -qF 'analysis caches (discovery-gap-analysis)' && echo true || echo false)"
 teardown_project
@@ -2686,9 +2683,9 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
-output=$(run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md 2>&1)
+output=$(run_kb index .leeway/auth-flow/.state/discovery-gap-analysis.md 2>&1)
 exit_code=0
-run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1 || exit_code=$?
+run_kb index .leeway/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "indexes gap-analysis cache" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 assert_eq "exits 0" "0" "$exit_code"
 teardown_project
@@ -2699,7 +2696,7 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
-run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 output=$(run_kb query "caching" 2>&1)
 # Provenance line shape: [analysis | wu/topic | confidence | date]
 assert_eq "query returns analysis-phase hit" "true" "$(echo "$output" | grep -qE '^\[analysis \| auth-flow/gap-analysis \| low \|' && echo true || echo false)"
@@ -2711,7 +2708,7 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
-run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 before_query=$(run_kb query "caching" 2>&1)
 assert_eq "analysis indexed before remove" "true" "$(echo "$before_query" | grep -qE '^\[analysis \|' && echo true || echo false)"
 run_kb remove --work-unit auth-flow >/dev/null 2>&1
@@ -2724,11 +2721,11 @@ echo "Test 92: Unknown .state file rejected"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/.state"
-echo "# secret operational data" > "$TEST_ROOT/.workflows/auth-flow/.state/migrations.md"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/.state"
+echo "# secret operational data" > "$TEST_ROOT/.leeway/auth-flow/.state/migrations.md"
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/.state/migrations.md 2>&1 || true)
-run_kb index .workflows/auth-flow/.state/migrations.md >/dev/null 2>&1 || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/.state/migrations.md 2>&1 || true)
+run_kb index .leeway/auth-flow/.state/migrations.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "rejects unknown .state file" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "mentions analysis caches in error" "true" "$(echo "$output" | grep -q 'analysis caches' && echo true || echo false)"
 teardown_project
@@ -2737,11 +2734,11 @@ teardown_project
 echo "Test 93: Hidden wu rejected for .state path"
 setup_project
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/.hidden/.state"
-echo "content" > "$TEST_ROOT/.workflows/.hidden/.state/discovery-gap-analysis.md"
+mkdir -p "$TEST_ROOT/.leeway/.hidden/.state"
+echo "content" > "$TEST_ROOT/.leeway/.hidden/.state/discovery-gap-analysis.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$ENGINE_JS" knowledge index ".workflows/.hidden/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".leeway/.hidden/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects hidden wu" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2751,10 +2748,10 @@ setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
 create_analysis_cache "auth-flow" "discovery-gap-analysis"
-run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 first_status=$(run_kb status 2>&1)
 first_chunks=$(echo "$first_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
-run_kb index .workflows/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/.state/discovery-gap-analysis.md >/dev/null 2>&1
 second_status=$(run_kb status 2>&1)
 second_chunks=$(echo "$second_status" | grep -oE 'Total chunks: [0-9]+' | head -1)
 assert_eq "analysis chunk count stable across re-index" "$first_chunks" "$second_chunks"
@@ -2789,8 +2786,8 @@ echo "Test 97: Bulk index ignores non-whitelisted .state files"
 setup_project
 create_work_unit "auth-flow" "epic" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/.state"
-echo "# operational" > "$TEST_ROOT/.workflows/auth-flow/.state/migrations.md"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/.state"
+echo "# operational" > "$TEST_ROOT/.leeway/auth-flow/.state/migrations.md"
 output=$(run_kb index 2>&1)
 assert_eq "stray .state file not indexed" "true" "$(echo "$output" | grep -q 'migrations.md' && echo false || echo true)"
 teardown_project
@@ -2813,11 +2810,11 @@ teardown_project
 echo "Test 99: Path-traversal on .state rejected"
 setup_project
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/valid/.state"
-echo "content" > "$TEST_ROOT/.workflows/valid/.state/discovery-gap-analysis.md"
+mkdir -p "$TEST_ROOT/.leeway/valid/.state"
+echo "content" > "$TEST_ROOT/.leeway/valid/.state/discovery-gap-analysis.md"
 exit_code=0
 cd "$TEST_ROOT"
-node "$ENGINE_JS" knowledge index ".workflows/../etc/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
+node "$ENGINE_JS" knowledge index ".leeway/../etc/.state/discovery-gap-analysis.md" 2>/dev/null || exit_code=$?
 assert_eq "rejects traversal on .state" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 teardown_project
 
@@ -2833,20 +2830,20 @@ write_keyword_config
 create_import_file "auth-flow" "seed-conversation"
 create_import_file "auth-flow" "early-thoughts"
 # Index under source identity.
-run_kb index .workflows/auth-flow/imports/seed-conversation.md >/dev/null 2>&1
-run_kb index .workflows/auth-flow/imports/early-thoughts.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/auth-flow/imports/early-thoughts.md >/dev/null 2>&1
 # Confirm source has chunks before move.
 pre_query=$(run_kb query "OAuth" --limit 10 2>&1)
 assert_eq "source has chunks pre-move" "true" "$(echo "$pre_query" | grep -q 'auth-flow' && echo true || echo false)"
 # Move files to target epic's imports/.
-mkdir -p "$TEST_ROOT/.workflows/payments-overhaul/imports"
-mv "$TEST_ROOT/.workflows/auth-flow/imports/seed-conversation.md" \
-   "$TEST_ROOT/.workflows/payments-overhaul/imports/seed-conversation.md"
-mv "$TEST_ROOT/.workflows/auth-flow/imports/early-thoughts.md" \
-   "$TEST_ROOT/.workflows/payments-overhaul/imports/early-thoughts.md"
+mkdir -p "$TEST_ROOT/.leeway/payments-overhaul/imports"
+mv "$TEST_ROOT/.leeway/auth-flow/imports/seed-conversation.md" \
+   "$TEST_ROOT/.leeway/payments-overhaul/imports/seed-conversation.md"
+mv "$TEST_ROOT/.leeway/auth-flow/imports/early-thoughts.md" \
+   "$TEST_ROOT/.leeway/payments-overhaul/imports/early-thoughts.md"
 # Index under target identity.
-run_kb index .workflows/payments-overhaul/imports/seed-conversation.md >/dev/null 2>&1
-run_kb index .workflows/payments-overhaul/imports/early-thoughts.md >/dev/null 2>&1
+run_kb index .leeway/payments-overhaul/imports/seed-conversation.md >/dev/null 2>&1
+run_kb index .leeway/payments-overhaul/imports/early-thoughts.md >/dev/null 2>&1
 # Drop source chunks (mirrors the cleanup step in absorb-into-epic.md).
 run_kb remove --work-unit auth-flow >/dev/null 2>&1
 post_query=$(run_kb query "OAuth" --limit 10 2>&1)
@@ -2860,7 +2857,7 @@ setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
 write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
-output=$(run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md 2>&1)
+output=$(run_kb index .leeway/login-timeout/seeds/2026-05-30-login-timeout.md 2>&1)
 assert_eq "indexes seed file" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
@@ -2870,7 +2867,7 @@ setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
 write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
-run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
+run_kb index .leeway/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
 output=$(run_kb query "auth callback request timeout" 2>&1)
 assert_eq "has seeds provenance line" "true" \
   "$(echo "$output" | grep -q 'seeds | login-timeout/2026-05-30-login-timeout' && echo true || echo false)"
@@ -2900,7 +2897,7 @@ setup_project
 create_work_unit "login-timeout" "bugfix" "Login timeout"
 write_keyword_config
 create_seed_file "login-timeout" "2026-05-30-login-timeout"
-run_kb index .workflows/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
+run_kb index .leeway/login-timeout/seeds/2026-05-30-login-timeout.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit login-timeout --phase seeds --topic 2026-05-30-login-timeout 2>&1)
 assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
 query_after=$(run_kb query "auth callback request timeout" 2>&1)
@@ -2918,8 +2915,8 @@ echo "=== Discovery Log Indexing Tests ==="
 # Write an epic discovery session log with distinctive Exploration content.
 create_discovery_session() {
   local wu="$1" num="$2" body="$3"
-  mkdir -p "$TEST_ROOT/.workflows/$wu/discovery/sessions"
-  cat > "$TEST_ROOT/.workflows/$wu/discovery/sessions/session-$num.md" <<MD
+  mkdir -p "$TEST_ROOT/.leeway/$wu/discovery/sessions"
+  cat > "$TEST_ROOT/.leeway/$wu/discovery/sessions/session-$num.md" <<MD
 # Discovery Session $num
 
 ## Exploration
@@ -2938,7 +2935,7 @@ setup_project
 create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_discovery_session "payments" "001" "Explored the kitchen printer as the source of truth for order state."
-output=$(run_kb index .workflows/payments/discovery/sessions/session-001.md 2>&1)
+output=$(run_kb index .leeway/payments/discovery/sessions/session-001.md 2>&1)
 assert_eq "indexes discovery session" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 q=$(run_kb query "kitchen printer" --phase discovery 2>&1)
 assert_eq "query --phase discovery finds the session (topic=session-001)" "true" \
@@ -2952,8 +2949,8 @@ create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_discovery_session "payments" "001" "Session one explored the offline mode surface for ordering."
 create_discovery_session "payments" "002" "Session two explored the analytics dashboard tempo."
-run_kb index .workflows/payments/discovery/sessions/session-001.md >/dev/null 2>&1
-run_kb index .workflows/payments/discovery/sessions/session-002.md >/dev/null 2>&1
+run_kb index .leeway/payments/discovery/sessions/session-001.md >/dev/null 2>&1
+run_kb index .leeway/payments/discovery/sessions/session-002.md >/dev/null 2>&1
 q1=$(run_kb query "offline mode" --phase discovery 2>&1)
 q2=$(run_kb query "analytics dashboard" --phase discovery 2>&1)
 assert_eq "session-001 still retrievable after session-002 indexed" "true" \
@@ -2968,7 +2965,7 @@ setup_project
 create_work_unit "payments" "epic" "Payments"
 write_keyword_config
 create_discovery_session "payments" "001" "Explored the refund flow boundary and its handoffs."
-run_kb index .workflows/payments/discovery/sessions/session-001.md >/dev/null 2>&1
+run_kb index .leeway/payments/discovery/sessions/session-001.md >/dev/null 2>&1
 before=$(run_kb query "refund flow" --phase discovery 2>&1)
 assert_eq "discovery indexed before remove" "true" \
   "$(echo "$before" | grep -q 'payments/session-001' && echo true || echo false)"
@@ -3037,7 +3034,7 @@ stop_fake_embed_server() {
 # --- Test S1: --key flag is refused on every setup invocation ---
 echo "Test S1: setup --key refusal"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 exit_code=0
 output=$(run_kb setup --key sk-oops 2>&1) || exit_code=$?
 assert_eq "refuses --key (exit 1)" "1" "$exit_code"
@@ -3051,7 +3048,7 @@ exit_code=0
 output=$(run_kb setup --from-system --key=sk-oops 2>&1) || exit_code=$?
 assert_eq "refuses --key=value alongside a form (exit 1)" "1" "$exit_code"
 assert_eq "nothing was initialised" "true" \
-  "$([ ! -d "$TEST_ROOT/.workflows/.knowledge" ] && echo true || echo false)"
+  "$([ ! -d "$TEST_ROOT/.leeway/.knowledge" ] && echo true || echo false)"
 clean_system_config
 teardown_project
 
@@ -3069,7 +3066,7 @@ teardown_project
 # --- Test S3: --keyword-only happy path ---
 echo "Test S3: setup --keyword-only happy path"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 exit_code=0
 output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
 assert_eq "keyword-only init exits 0" "0" "$exit_code"
@@ -3077,17 +3074,17 @@ assert_eq "summary names keyword-only mode" "true" \
   "$(echo "$output" | grep -q 'keyword-only (BM25)' && echo true || echo false)"
 assert_eq "project config pins provider null — the choice travels with the project" \
   '{"knowledge":{"provider":null}}' \
-  "$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))))' "$TEST_ROOT/.workflows/.knowledge/config.json")"
+  "$(node -e 'process.stdout.write(JSON.stringify(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))))' "$TEST_ROOT/.leeway/.knowledge/config.json")"
 assert_eq "metadata provider is null" "null" \
-  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "check reports ready" "ready" "$(run_kb check)"
 # Another checkout of the project: the committed config alone, no store,
 # and still no system config — the pinned choice rebuilds it keyword-only.
-rm -f "$TEST_ROOT/.workflows/.knowledge/store.bin" "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+rm -f "$TEST_ROOT/.leeway/.knowledge/store.bin" "$TEST_ROOT/.leeway/.knowledge/metadata.json"
 assert_eq "a pinned project with no system config is buildable" "buildable" "$(run_kb check)"
 run_kb index >/dev/null 2>&1
 assert_eq "the rebuild is keyword-only" "null" \
-  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "and ready" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project
@@ -3095,15 +3092,15 @@ teardown_project
 # --- Test S4: --keyword-only is idempotent ---
 echo "Test S4: setup --keyword-only idempotent"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 run_kb setup --keyword-only >/dev/null 2>&1
-first_meta=$(cat "$TEST_ROOT/.workflows/.knowledge/metadata.json")
+first_meta=$(cat "$TEST_ROOT/.leeway/.knowledge/metadata.json")
 exit_code=0
 output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
 assert_eq "second run exits 0" "0" "$exit_code"
 assert_eq "second run reaches the summary" "true" \
   "$(echo "$output" | grep -q 'keyword-only (BM25)' && echo true || echo false)"
-assert_eq "metadata unchanged across runs" "$first_meta" "$(cat "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+assert_eq "metadata unchanged across runs" "$first_meta" "$(cat "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "check still ready" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project
@@ -3111,14 +3108,14 @@ teardown_project
 # --- Test S5: --keyword-only fills in a partial state ---
 echo "Test S5: setup --keyword-only partial fill-in"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 run_kb setup --keyword-only >/dev/null 2>&1
-rm "$TEST_ROOT/.workflows/.knowledge/config.json"
+rm "$TEST_ROOT/.leeway/.knowledge/config.json"
 exit_code=0
 run_kb setup --keyword-only >/dev/null 2>&1 || exit_code=$?
 assert_eq "fill-in run exits 0" "0" "$exit_code"
 assert_eq "config.json restored" "true" \
-  "$([ -f "$TEST_ROOT/.workflows/.knowledge/config.json" ] && echo true || echo false)"
+  "$([ -f "$TEST_ROOT/.leeway/.knowledge/config.json" ] && echo true || echo false)"
 assert_eq "check ready after fill-in" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project
@@ -3126,9 +3123,9 @@ teardown_project
 # --- Test S6: --keyword-only refuses store-without-metadata toward rebuild ---
 echo "Test S6: setup --keyword-only store-without-metadata refusal"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 run_kb setup --keyword-only >/dev/null 2>&1
-rm "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+rm "$TEST_ROOT/.leeway/.knowledge/metadata.json"
 exit_code=0
 output=$(run_kb setup --keyword-only 2>&1) || exit_code=$?
 assert_eq "partial state refused (exit 1)" "1" "$exit_code"
@@ -3142,7 +3139,7 @@ teardown_project
 # --- Test S7: --keyword-only never touches the system config; pins provider:null ---
 echo "Test S7: setup --keyword-only with a provider-bearing system config"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 cat > "$HOME/.config/workflows/config.json" <<'CONF'
 { "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
@@ -3153,9 +3150,9 @@ run_kb setup --keyword-only >/dev/null 2>&1 || exit_code=$?
 assert_eq "keyword-only init exits 0" "0" "$exit_code"
 assert_eq "system config untouched" "$sys_before" "$(cat "$HOME/.config/workflows/config.json")"
 assert_eq "project config pins provider null" "true" \
-  "$(node -e 'const k = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).knowledge; process.stdout.write(String("provider" in k && k.provider === null))' "$TEST_ROOT/.workflows/.knowledge/config.json")"
+  "$(node -e 'const k = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).knowledge; process.stdout.write(String("provider" in k && k.provider === null))' "$TEST_ROOT/.leeway/.knowledge/config.json")"
 assert_eq "metadata provider is null" "null" \
-  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "check reports ready" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project
@@ -3163,7 +3160,7 @@ teardown_project
 # --- Test S8: --from-system refuses when no/invalid system config exists ---
 echo "Test S8: setup --from-system refusals"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 exit_code=0
 output=$(run_kb setup --from-system 2>&1) || exit_code=$?
 assert_eq "no system config refused (exit 1)" "1" "$exit_code"
@@ -3177,14 +3174,14 @@ assert_eq "invalid system config refused (exit 1)" "1" "$exit_code"
 assert_eq "refusal says not valid" "true" \
   "$(echo "$output" | grep -q 'is not valid' && echo true || echo false)"
 assert_eq "nothing was initialised" "true" \
-  "$([ ! -d "$TEST_ROOT/.workflows/.knowledge" ] && echo true || echo false)"
+  "$([ ! -d "$TEST_ROOT/.leeway/.knowledge" ] && echo true || echo false)"
 clean_system_config
 teardown_project
 
 # --- Test S9: --from-system with a providerless system config → keyword-only ---
 echo "Test S9: setup --from-system providerless (keyword) system config"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 echo '{ "knowledge": {} }' > "$HOME/.config/workflows/config.json"
 exit_code=0
@@ -3201,7 +3198,7 @@ teardown_project
 # --- Test S10: --from-system refuses an unresolvable openai key ---
 echo "Test S10: setup --from-system unresolvable key refusal"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 cat > "$HOME/.config/workflows/config.json" <<'CONF'
 { "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
@@ -3216,7 +3213,7 @@ assert_eq "refusal names the --key-only remedy" "true" \
 assert_eq "refusal warns against pasting the key into chat" "true" \
   "$(echo "$output" | grep -q 'Never paste the key into a chat' && echo true || echo false)"
 assert_eq "nothing was initialised" "true" \
-  "$([ ! -d "$TEST_ROOT/.workflows/.knowledge" ] && echo true || echo false)"
+  "$([ ! -d "$TEST_ROOT/.leeway/.knowledge" ] && echo true || echo false)"
 clean_system_config
 teardown_project
 
@@ -3225,7 +3222,7 @@ teardown_project
 # validation path (test embed runs locally, no network).
 echo "Test S11: setup --from-system full provider path"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 echo '{ "knowledge": { "provider": "stub", "dimensions": 64 } }' > "$HOME/.config/workflows/config.json"
 create_work_unit "seeded-wu" "epic" "Seeded"
@@ -3241,7 +3238,7 @@ assert_eq "bulk index picked up the existing artifact" "true" \
 assert_eq "summary names the provider" "true" \
   "$(echo "$output" | grep -q 'provider: stub' && echo true || echo false)"
 assert_eq "metadata records the provider" "stub" \
-  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.workflows/.knowledge/metadata.json")"
+  "$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).provider))' "$TEST_ROOT/.leeway/.knowledge/metadata.json")"
 assert_eq "check reports ready" "ready" "$(run_kb check)"
 clean_system_config
 teardown_project
@@ -3249,7 +3246,7 @@ teardown_project
 # --- Test S12: --provider openai refuses without a resolvable key; config not written ---
 echo "Test S12: setup --provider openai unresolvable key refusal"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 exit_code=0
 output=$(run_kb setup --provider openai --model text-embedding-3-small 2>&1) || exit_code=$?
 assert_eq "refused (exit 1)" "1" "$exit_code"
@@ -3265,7 +3262,7 @@ teardown_project
 # --- Test S13: --provider openai-compatible keyless end-to-end; the file's other keys kept ---
 echo "Test S13: setup --provider openai-compatible keyless, keeping every other key"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 cat > "$HOME/.config/workflows/config.json" <<'CONF'
 { "editor": { "theme": "dark" }, "knowledge": { "provider": "openai", "model": "old-model", "dimensions": 1536, "similarity_threshold": 0.4, "strategy": "hybrid" } }
@@ -3312,7 +3309,7 @@ teardown_project
 # --- Test S15: a stored key never leaks into output or the system config ---
 echo "Test S15: stored key never transits stdout or the system config"
 setup_project
-rm -rf "$TEST_ROOT/.workflows/.knowledge"
+rm -rf "$TEST_ROOT/.leeway/.knowledge"
 mkdir -p "$HOME/.config/workflows"
 cat > "$HOME/.config/workflows/credentials.json" <<'CRED'
 { "credentials": { "openai-compatible": { "api_key": "sk-COMPAT-SECRET" } } }
@@ -3329,7 +3326,7 @@ assert_eq "key absent from all output" "true" \
 assert_eq "key absent from the system config" "true" \
   "$(grep -q 'sk-COMPAT-SECRET' "$HOME/.config/workflows/config.json" && echo false || echo true)"
 assert_eq "key absent from project files" "true" \
-  "$(grep -rq 'sk-COMPAT-SECRET' "$TEST_ROOT/.workflows/.knowledge" && echo false || echo true)"
+  "$(grep -rq 'sk-COMPAT-SECRET' "$TEST_ROOT/.leeway/.knowledge" && echo false || echo true)"
 clean_system_config
 teardown_project
 
@@ -3365,15 +3362,15 @@ echo "Test R1: 200k unbroken token indexes cleanly"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion"
 node -e "
   const fs = require('fs');
   const blob = 'x'.repeat(200000);
   fs.writeFileSync(process.argv[1],
     '# Discussion\n\n## Pathological Blob\n\nIntro before the blob.\n\n' + blob + '\n\nOutro after the blob.\n');
-" "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
+" "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
 exit_code=0
-output=$(run_kb index .workflows/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
+output=$(run_kb index .leeway/auth-flow/discussion/auth-flow.md 2>&1) || exit_code=$?
 assert_eq "index exits 0" "0" "$exit_code"
 assert_eq "artifact indexed" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 assert_eq "no RangeError in output" "false" "$(echo "$output" | grep -q 'RangeError' && echo true || echo false)"
@@ -3395,10 +3392,10 @@ echo "Test R2: ANSI escapes and NUL stripped from query output"
 setup_project
 create_work_unit "auth-flow" "feature" "Auth"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/auth-flow/discussion"
+mkdir -p "$TEST_ROOT/.leeway/auth-flow/discussion"
 printf '# Discussion\n\n## Styled Section\n\nBefore \033[31mpainted\033[0m after and a nul\000byte survives storage.\n' \
-  > "$TEST_ROOT/.workflows/auth-flow/discussion/auth-flow.md"
-run_kb index .workflows/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
+  > "$TEST_ROOT/.leeway/auth-flow/discussion/auth-flow.md"
+run_kb index .leeway/auth-flow/discussion/auth-flow.md >/dev/null 2>&1
 # Query a clean token — "painted" itself is fused into "31mpainted" by the
 # adjacent escape sequence at tokenisation time, so it would not match.
 # Inspect the raw bytes on disk — command substitution would drop NULs.
@@ -3433,7 +3430,7 @@ write_keyword_config
 create_discussion_file "sub-sync" "sub-sync"
 init_phase_topic "sub-sync" "discussion" "sub-sync" "completed"
 run_kb index >/dev/null 2>&1
-cd "$TEST_ROOT/.workflows/sub-sync/discussion"
+cd "$TEST_ROOT/.leeway/sub-sync/discussion"
 subout=$(node "$ENGINE_JS" knowledge index 2>&1)
 cd "$TEST_ROOT"
 assert_eq "nothing removed from a subdirectory" "0 new, 0 changed, 0 removed, 1 unchanged." "$subout"
@@ -3448,7 +3445,7 @@ create_work_unit "sub-bulk" "epic" "SubBulk"
 write_keyword_config
 create_import_file "sub-bulk" "seed-conversation"
 node "$ENGINE_JS" manifest push sub-bulk imports '{"path":"imports/seed-conversation.md","imported_at":"2026-05-10T10:00:00Z"}' >/dev/null 2>&1
-cd "$TEST_ROOT/.workflows/sub-bulk/imports"
+cd "$TEST_ROOT/.leeway/sub-bulk/imports"
 subout=$(node "$ENGINE_JS" knowledge index 2>&1)
 cd "$TEST_ROOT"
 assert_eq "bulk from subdir discovers the import" "true" \
@@ -3465,14 +3462,14 @@ setup_project
 create_work_unit "fail-wu" "feature" "Fail"
 write_keyword_config
 create_discussion_file "fail-wu" "fail-wu"
-printf 'garbage-not-a-store' > "$TEST_ROOT/.workflows/.knowledge/store.bin"
+printf 'garbage-not-a-store' > "$TEST_ROOT/.leeway/.knowledge/store.bin"
 set +e
-out=$(run_kb index .workflows/fail-wu/discussion/fail-wu.md 2>&1)
+out=$(run_kb index .leeway/fail-wu/discussion/fail-wu.md 2>&1)
 exit_code=$?
 set -e
 assert_eq "write failure exits non-zero" "1" "$exit_code"
 assert_eq "names the file" "true" \
-  "$(echo "$out" | grep -q 'Failed to index .workflows/fail-wu/discussion/fail-wu.md' && echo true || echo false)"
+  "$(echo "$out" | grep -q "Failed to index $TEST_ROOT/.leeway/fail-wu/discussion/fail-wu.md" && echo true || echo false)"
 assert_eq "says the next start retries it" "true" \
   "$(echo "$out" | grep -q 'The next start will retry it.' && echo true || echo false)"
 teardown_project
@@ -3483,19 +3480,19 @@ setup_project
 create_work_unit "perm-wu" "feature" "Perm"
 write_keyword_config
 create_discussion_file "perm-wu" "perm-wu"
-run_kb index .workflows/perm-wu/discussion/perm-wu.md >/dev/null 2>&1
+run_kb index .leeway/perm-wu/discussion/perm-wu.md >/dev/null 2>&1
 # The stub provider configured over a store the metadata says openai built:
 # refused before any write, so no fill is launched.
 write_stub_config
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const mp = '$TEST_ROOT/.leeway/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.provider = 'openai'; m.model = 'text-embedding-3-small'; m.dimensions = 1536;
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
 set +e
-permout=$(run_kb index .workflows/perm-wu/discussion/perm-wu.md 2>&1)
+permout=$(run_kb index .leeway/perm-wu/discussion/perm-wu.md 2>&1)
 perm_exit=$?
 set -e
 assert_eq "permanent failure exits non-zero" "true" "$([ "$perm_exit" -ne 0 ] && echo true || echo false)"
@@ -3513,17 +3510,17 @@ setup_project
 create_work_unit "keyless-wu" "feature" "Keyless"
 write_keyword_config
 create_discussion_file "keyless-wu" "keyless-wu"
-run_kb index .workflows/keyless-wu/discussion/keyless-wu.md >/dev/null 2>&1
+run_kb index .leeway/keyless-wu/discussion/keyless-wu.md >/dev/null 2>&1
 # Rewrite metadata to claim an openai store, then point config at openai with
 # no resolvable key (HOME is isolated; OPENAI_API_KEY is unset).
 node -e "
   const fs = require('fs');
-  const mp = '$TEST_ROOT/.workflows/.knowledge/metadata.json';
+  const mp = '$TEST_ROOT/.leeway/.knowledge/metadata.json';
   const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
   m.provider = 'openai'; m.model = 'text-embedding-3-small'; m.dimensions = 1536;
   fs.writeFileSync(mp, JSON.stringify(m, null, 2) + '\n');
 "
-cat > "$TEST_ROOT/.workflows/.knowledge/config.json" <<'CONF'
+cat > "$TEST_ROOT/.leeway/.knowledge/config.json" <<'CONF'
 { "knowledge": { "provider": "openai", "model": "text-embedding-3-small", "dimensions": 1536 } }
 CONF
 qexit=0
@@ -3541,12 +3538,12 @@ assert_eq "query does NOT misdiagnose as a provider change" "false" \
 # vectors are the fill's, and a provider without its key launches none.
 KEY_FIX='the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only'
 cd "$TEST_ROOT" && node "$ENGINE_JS" manifest set keyless-wu.discussion.keyless-wu status completed >/dev/null 2>&1
-echo "A late addition to the discussion." >> "$TEST_ROOT/.workflows/keyless-wu/discussion/keyless-wu.md"
+echo "A late addition to the discussion." >> "$TEST_ROOT/.leeway/keyless-wu/discussion/keyless-wu.md"
 iexit=0
-iout=$(run_kb index .workflows/keyless-wu/discussion/keyless-wu.md 2>&1) || iexit=$?
+iout=$(run_kb index .leeway/keyless-wu/discussion/keyless-wu.md 2>&1) || iexit=$?
 assert_eq "single-file index exits 0" "0" "$iexit"
 assert_eq "single-file index says what it wrote, and nothing else" "true" \
-  "$(echo "$iout" | grep -qxE 'Indexed [1-9][0-9]* chunks from .workflows/keyless-wu/discussion/keyless-wu.md' && [ "$(echo "$iout" | wc -l | tr -d ' ')" = "1" ] && echo true || echo false)"
+  "$(echo "$iout" | grep -qxE "Indexed [1-9][0-9]* chunks from $TEST_ROOT/.leeway/keyless-wu/discussion/keyless-wu.md" && [ "$(echo "$iout" | wc -l | tr -d ' ')" = "1" ] && echo true || echo false)"
 assert_eq "index does NOT misdiagnose as a provider change" "false" \
   "$(echo "$iout" | grep -q 'changed since last index' && echo true || echo false)"
 assert_eq "the edit is found by keyword" "true" \
@@ -3555,7 +3552,7 @@ bexit=0
 bout=$(run_kb index 2>&1) || bexit=$?
 assert_eq "bulk index exits non-zero" "1" "$bexit"
 assert_eq "bulk index names the key and its fix" "true" \
-  "$(echo "$bout" | grep -qxF "Failed to embed .workflows/keyless-wu/discussion/keyless-wu.md: $KEY_FIX" && echo true || echo false)"
+  "$(echo "$bout" | grep -qxF "Failed to embed $TEST_ROOT/.leeway/keyless-wu/discussion/keyless-wu.md: $KEY_FIX" && echo true || echo false)"
 assert_eq "bulk index counts what awaits the key" "true" \
   "$(echo "$bout" | grep -qE '^0 new, 0 changed, 0 removed, 1 unchanged, [1-9][0-9]* chunks awaiting vectors\.$' && echo true || echo false)"
 teardown_project
@@ -3569,8 +3566,8 @@ create_work_unit "dot.unit" "feature" "Dotted"
 write_keyword_config
 create_discussion_file "dot.unit" "dot.unit"
 exit_code=0
-dotout=$(run_kb index .workflows/dot.unit/discussion/dot.unit.md 2>&1 || true)
-run_kb index .workflows/dot.unit/discussion/dot.unit.md >/dev/null 2>&1 || exit_code=$?
+dotout=$(run_kb index .leeway/dot.unit/discussion/dot.unit.md 2>&1 || true)
+run_kb index .leeway/dot.unit/discussion/dot.unit.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "dotted work unit exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "explains dots are not allowed" "true" \
   "$(echo "$dotout" | grep -q 'dots are not allowed' && echo true || echo false)"
@@ -3580,11 +3577,11 @@ echo "Test R8b: Dotted topic name rejected"
 setup_project
 create_work_unit "cleanunit" "feature" "Clean"
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/cleanunit/discussion"
-printf '# Heading\n\nSome content that is long enough to chunk.\n' > "$TEST_ROOT/.workflows/cleanunit/discussion/a.b.md"
+mkdir -p "$TEST_ROOT/.leeway/cleanunit/discussion"
+printf '# Heading\n\nSome content that is long enough to chunk.\n' > "$TEST_ROOT/.leeway/cleanunit/discussion/a.b.md"
 exit_code=0
-dotout2=$(run_kb index .workflows/cleanunit/discussion/a.b.md 2>&1 || true)
-run_kb index .workflows/cleanunit/discussion/a.b.md >/dev/null 2>&1 || exit_code=$?
+dotout2=$(run_kb index .leeway/cleanunit/discussion/a.b.md 2>&1 || true)
+run_kb index .leeway/cleanunit/discussion/a.b.md >/dev/null 2>&1 || exit_code=$?
 assert_eq "dotted topic exits non-zero" "true" "$([ "$exit_code" -ne 0 ] && echo true || echo false)"
 assert_eq "dotted topic explains dots are not allowed" "true" \
   "$(echo "$dotout2" | grep -q 'dots are not allowed' && echo true || echo false)"
@@ -3598,10 +3595,10 @@ setup_project
 create_work_unit "meta-wu" "feature" "Meta"
 write_keyword_config
 create_discussion_file "meta-wu" "meta-wu"
-run_kb index .workflows/meta-wu/discussion/meta-wu.md >/dev/null 2>&1
+run_kb index .leeway/meta-wu/discussion/meta-wu.md >/dev/null 2>&1
 baseline=$(run_kb check 2>/dev/null | tr -d '\n')
 assert_eq "baseline is ready" "ready" "$baseline"
-rm -f "$TEST_ROOT/.workflows/.knowledge/metadata.json"
+rm -f "$TEST_ROOT/.leeway/.knowledge/metadata.json"
 after=$(run_kb check 2>/dev/null | tr -d '\n')
 assert_eq "flips to not-ready without metadata" "not-ready" "$after"
 teardown_project
@@ -3618,7 +3615,7 @@ echo "Test B1: Index a baseline doc"
 setup_project
 write_keyword_config
 create_baseline_file "overview"
-output=$(run_kb index .workflows/.baseline/overview.md 2>&1)
+output=$(run_kb index .leeway/.baseline/overview.md 2>&1)
 assert_eq "indexes baseline doc" "true" "$(echo "$output" | grep -q 'Indexed.*chunks from' && echo true || echo false)"
 teardown_project
 
@@ -3627,22 +3624,22 @@ echo "Test B2: Baseline provenance in query output"
 setup_project
 write_keyword_config
 create_baseline_file "overview"
-run_kb index .workflows/.baseline/overview.md >/dev/null 2>&1
+run_kb index .leeway/.baseline/overview.md >/dev/null 2>&1
 output=$(run_kb query "dispatcher circuit breaker" 2>&1)
 assert_eq "has baseline provenance line" "true" \
   "$(echo "$output" | grep -q 'baseline | baseline/overview | low' && echo true || echo false)"
 assert_eq "source points at the baseline doc" "true" \
-  "$(echo "$output" | grep -q 'Source: .workflows/.baseline/overview.md' && echo true || echo false)"
+  "$(echo "$output" | grep -q "Source: $TEST_ROOT/.leeway/.baseline/overview.md" && echo true || echo false)"
 teardown_project
 
 # --- Test B3: Baseline session state under .baseline/.state/ is refused ---
 echo "Test B3: .baseline/.state/ paths are not indexable"
 setup_project
 write_keyword_config
-mkdir -p "$TEST_ROOT/.workflows/.baseline/.state"
-echo "# agenda" > "$TEST_ROOT/.workflows/.baseline/.state/agenda.md"
+mkdir -p "$TEST_ROOT/.leeway/.baseline/.state"
+echo "# agenda" > "$TEST_ROOT/.leeway/.baseline/.state/agenda.md"
 exit_code=0
-output=$(run_kb index .workflows/.baseline/.state/agenda.md 2>&1) || exit_code=$?
+output=$(run_kb index .leeway/.baseline/.state/agenda.md 2>&1) || exit_code=$?
 assert_eq "refuses .state path" "1" "$exit_code"
 assert_eq "explains the expected shape" "true" \
   "$(echo "$output" | grep -q 'Unexpected baseline path structure' && echo true || echo false)"
@@ -3654,7 +3651,7 @@ setup_project
 write_keyword_config
 create_baseline_file "dotted.name"
 exit_code=0
-output=$(run_kb index ".workflows/.baseline/dotted.name.md" 2>&1) || exit_code=$?
+output=$(run_kb index ".leeway/.baseline/dotted.name.md" 2>&1) || exit_code=$?
 assert_eq "refuses dotted topic" "1" "$exit_code"
 assert_eq "names the dot rule" "true" \
   "$(echo "$output" | grep -q 'dots are not allowed' && echo true || echo false)"
@@ -3665,7 +3662,7 @@ echo "Test B5: Remove baseline chunks"
 setup_project
 write_keyword_config
 create_baseline_file "overview"
-run_kb index .workflows/.baseline/overview.md >/dev/null 2>&1
+run_kb index .leeway/.baseline/overview.md >/dev/null 2>&1
 output=$(run_kb remove --work-unit baseline 2>&1)
 assert_eq "remove succeeds" "true" "$(echo "$output" | grep -qE 'Removed [0-9]+ chunks' && echo true || echo false)"
 assert_eq "not treated as orphan cleanup" "true" \
@@ -3681,8 +3678,8 @@ setup_project
 write_keyword_config
 create_baseline_file "overview"
 create_baseline_file "glossary"
-mkdir -p "$TEST_ROOT/.workflows/.baseline/.state"
-echo "# dossier" > "$TEST_ROOT/.workflows/.baseline/.state/dossier-core.md"
+mkdir -p "$TEST_ROOT/.leeway/.baseline/.state"
+echo "# dossier" > "$TEST_ROOT/.leeway/.baseline/.state/dossier-core.md"
 output=$(run_kb index 2>&1)
 assert_eq "bulk index processes overview" "true" \
   "$(echo "$output" | grep -q '.baseline/overview.md' && echo true || echo false)"
@@ -3697,10 +3694,10 @@ echo "Test 91: Invalid similarity_threshold never halts a search"
 for threshold in '"0.5"' '2'; do
   setup_project
   create_work_unit "alpha" "feature" "Alpha"
-  mkdir -p "$TEST_ROOT/.workflows/.knowledge"
-  echo "{ \"knowledge\": { \"provider\": null, \"similarity_threshold\": $threshold } }" > "$TEST_ROOT/.workflows/.knowledge/config.json"
+  mkdir -p "$TEST_ROOT/.leeway/.knowledge"
+  echo "{ \"knowledge\": { \"provider\": null, \"similarity_threshold\": $threshold } }" > "$TEST_ROOT/.leeway/.knowledge/config.json"
   create_discussion_file "alpha" "alpha"
-  run_kb index .workflows/alpha/discussion/alpha.md >/dev/null 2>&1
+  run_kb index .leeway/alpha/discussion/alpha.md >/dev/null 2>&1
   exit_code=0
   output=$(run_kb query "topic" 2>&1) || exit_code=$?
   assert_eq "query exits zero past similarity_threshold $threshold" "0" "$exit_code"

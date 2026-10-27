@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('../../workflow-engine/scripts/lib.cjs');
 const { loadManifest } = engine.reads;
-const { stateRoot, stateRel } = engine.state;
+const { stateRoot } = engine.state;
 const { computeAnalysisCacheStatus, buildDiscoveryMap } = engine.derivations;
 
 function listSessionLogs(cwd, workUnit) {
@@ -29,7 +29,7 @@ function listSessionLogs(cwd, workUnit) {
   }
   return files.map(filename => ({
     number: parseInt(filename.match(/^session-(\d+)\.md$/)[1], 10),
-    path: path.posix.join(stateRel(), workUnit, 'discovery', 'sessions', filename),
+    path: path.join(dir, filename),
   }));
 }
 
@@ -43,11 +43,11 @@ function discover(cwd, workUnit) {
   const activeSession = (typeof discoveryPhase.active_session === 'string' && discoveryPhase.active_session !== '')
     ? discoveryPhase.active_session
     : null;
-  const workflowsDir = stateRoot(cwd);
-  const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest, workflowsDir);
-  const nextSessionNumber = engine.session.nextSessionNumber(path.join(workflowsDir, workUnit, 'discovery', 'sessions'));
+  const stateDir = stateRoot(cwd);
+  const { map, summary, needs_sequencing } = buildDiscoveryMap(manifest, stateDir);
+  const nextSessionNumber = engine.session.nextSessionNumber(path.join(stateDir, workUnit, 'discovery', 'sessions'));
   const analysisCaches = {
-    gap_analysis: computeAnalysisCacheStatus(manifest, workflowsDir, 'gap-analysis'),
+    gap_analysis: computeAnalysisCacheStatus(manifest, stateDir, 'gap-analysis'),
   };
   return {
     work_unit: workUnit,

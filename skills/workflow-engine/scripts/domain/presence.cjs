@@ -9,7 +9,9 @@
 // rows and stamps the entrant's when the slot is free, and the spec-side
 // resolution flow checks the target discussion before editing its document in
 // place. The file records the owning Claude process's identity (pid + start
-// time + session id); `held` — the one verdict — is true while that exact
+// time + session id) and the checkout its session works in — presence lives
+// in the one state every checkout shares, and the code gate is per checkout;
+// `held` — the one verdict — is true while that exact
 // process still runs, however long it sits idle. The mtime is display only:
 // the row's "last active" age, shown wherever a hold is named and never
 // judged. A record without identity cannot be verified and is never held,
@@ -45,7 +47,9 @@ const { processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs
 const { VALID_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
+const { workTree } = require('../kernel/isolated-git.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 // Every phase a session sits in — the schema's list minus discovery.
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
@@ -60,7 +64,7 @@ const DOCUMENT_PHASES = ['research', 'discussion', 'investigation'];
 
 /** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
 function presencePath(cwd, wu, phase, topic) {
-  return path.join(stateRoot(cwd), '.cache', wu, phase, topic, 'presence');
+  return statePath(cwd, '.cache', wu, phase, topic, 'presence');
 }
 
 /** @param {string} cwd @param {string} workUnit @param {string} [phase] @param {string} [topic] */
@@ -71,8 +75,8 @@ function assertArgs(cwd, workUnit, phase, topic) {
   if (topic !== undefined && (!topic || /[\\/]/.test(topic) || topic.includes('..'))) {
     throw new Error(`invalid topic name "${topic}" — no separators or ".."`);
   }
-  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit))) {
-    throw new Error(`no work unit directory: ${stateRel(workUnit)}`);
+  if (!fs.existsSync(statePath(cwd, workUnit))) {
+    throw new Error(`no work unit directory: ${statePath(cwd, workUnit)}`);
   }
 }
 
@@ -81,6 +85,7 @@ function assertArgs(cwd, workUnit, phase, topic) {
  * @property {number|null} pid         the owning Claude process (CLAUDE_PID)
  * @property {string|null} pid_start   its start time at beat — recycled-pid guard
  * @property {string|null} session_id  the owning conversation (CLAUDE_CODE_SESSION_ID)
+ * @property {string} checkout         the work tree its session works in
  */
 
 /** Parse a heartbeat's identity record; null for legacy/unreadable content. @param {string} file @returns {PresenceRecord|null} */
@@ -118,6 +123,7 @@ function beatPresence(cwd, workUnit, phase, topic) {
     pid,
     pid_start: processStartTime(pid),
     session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
+    checkout: workTree(codeRoot(cwd)),
   };
   fs.writeFileSync(p, JSON.stringify(record) + '\n');
   return { work_unit: workUnit, phase, topic, beat: true };
@@ -204,6 +210,7 @@ function clearOwnQuietly(cwd, workUnit, phase, topic) {
  *                           a record carrying none is never held)
  * @property {string|null} session_id
  * @property {number|null} pid  the owning Claude process, when the record carries one
+ * @property {string|null} checkout  the work tree the owning session works in, when the record carries one
  */
 
 /**
@@ -240,7 +247,7 @@ function collectRows(cwd, workUnit, startOf) {
   /** @type {PresenceRow[]} */
   const rows = [];
   for (const phase of PHASES) {
-    const dir = path.join(stateRoot(cwd), '.cache', workUnit, phase);
+    const dir = statePath(cwd, '.cache', workUnit, phase);
     /** @type {string[]} */
     let topics = [];
     try {
@@ -259,6 +266,7 @@ function collectRows(cwd, workUnit, startOf) {
         held: heldBy(record, startOf),
         session_id: record ? record.session_id || null : null,
         pid: record ? record.pid ?? null : null,
+        checkout: record ? record.checkout ?? null : null,
       });
     }
   }
@@ -320,7 +328,7 @@ function scanPresence(cwd, workUnit) {
  * @returns {{scope: string, held: number, sessions: (PresenceRow & {work_unit: string})[]}}
  */
 function scanProject(cwd) {
-  const cacheRoot = path.join(stateRoot(cwd), '.cache');
+  const cacheRoot = statePath(cwd, '.cache');
   /** @type {string[]} */
   let workUnits = [];
   try {
@@ -341,16 +349,18 @@ function scanProject(cwd) {
 }
 
 /**
- * Every held implementation or review heartbeat in the project, minus the
- * calling session's own — the code gate's read. Code is the one resource
- * that does not partition by topic: one tree, one index, one checkout, so
- * one code session at a time whatever work unit or topic it sits in.
+ * Every held implementation or review heartbeat working in the caller's
+ * checkout, minus the calling session's own — the code gate's read. Code is
+ * the one resource that does not partition by topic: one tree, one index,
+ * so one code session per checkout whatever work unit or topic it sits in.
  * @param {string} cwd
  * @returns {(PresenceRow & {work_unit: string})[]}
  */
 function heldCodeSessions(cwd) {
+  const checkout = workTree(codeRoot(cwd));
   return scanProject(cwd).sessions.filter((row) => row.held
     && CODE_PHASES.includes(row.phase)
+    && row.checkout === checkout
     && !ownsRow(row));
 }
 
@@ -366,10 +376,12 @@ function cleanupPresence(cwd, sessionId) {
   /** @type {{work_unit: string, phase: string, topic: string}[]} */
   const cleared = [];
   if (!sessionId) return { session_id: null, cleared };
-  const cacheRoot = path.join(stateRoot(cwd), '.cache');
+  /** @type {string} */
+  let cacheRoot;
   /** @type {string[]} */
   let workUnits = [];
   try {
+    cacheRoot = statePath(cwd, '.cache');
     workUnits = fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
   } catch { return { session_id: sessionId, cleared }; }
   for (const wu of workUnits) {

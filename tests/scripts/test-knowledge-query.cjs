@@ -13,6 +13,7 @@ const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { embeddingEndpoint, engineKnowledge, withoutBackoff } = require('./knowledge-harness.cjs');
+const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
@@ -43,6 +44,9 @@ const NO_FILES = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-no-files-'));
 after(() => fs.rmSync(NO_FILES, { recursive: true, force: true }));
 
 /** A chunk of `unit`'s discussion, `n` its ordinal. */
+/** `text` as a regular expression matches it exactly. @param {string} text */
+const literal = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 function doc(unit, n, content) {
   return {
     id: `${unit}-discussion-${unit}-${String(n).padStart(3, '0')}`,
@@ -53,7 +57,7 @@ function doc(unit, n, content) {
     phase: 'discussion',
     topic: unit,
     confidence: 'medium',
-    source_file: `.workflows/${unit}/discussion/${unit}.md`,
+    source_file: `${unit}/discussion/${unit}.md`,
     timestamp: new Date(2026, 0, 2).getTime(),
   };
 }
@@ -245,8 +249,8 @@ describe('queryStore', () => {
       const discussion = doc('ledger', 1, 'Receipts reconcile nightly.');
       for (const d of [
         discussion,
-        { ...discussion, id: SPECIFICATION, phase: 'specification', source_file: '.workflows/ledger/specification/ledger/specification.md' },
-        { ...discussion, id: IMPORT, phase: 'imports', topic: 'notes', source_file: '.workflows/ledger/imports/notes.md' },
+        { ...discussion, id: SPECIFICATION, phase: 'specification', source_file: 'ledger/specification/ledger/specification.md' },
+        { ...discussion, id: IMPORT, phase: 'imports', topic: 'notes', source_file: 'ledger/imports/notes.md' },
         doc('orphan', 1, 'Receipts reconcile nightly.'),
       ]) {
         store.insertDocument(ledgerDb, d);
@@ -531,7 +535,7 @@ describe('knowledge query — `engine knowledge query`', () => {
 
   /** @param {string} name @param {string} completedAt */
   function completedFeature(name, completedAt) {
-    const unit = path.join(root, '.workflows', name);
+    const unit = path.join(root, '.leeway', name);
     fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name, work_type: 'feature', status: 'completed', created: '2026-01-01', completed_at: completedAt,
@@ -548,18 +552,18 @@ describe('knowledge query — `engine knowledge query`', () => {
   }
 
   before(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-'));
-    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'),
+    root = setupFixture('kb-query-');
+    fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }');
+    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'),
       JSON.stringify({ work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } }));
     completedFeature('alpha', '2026-01-01');
     completedFeature('beta', '2026-06-01');
-    await knowledge('index', '.workflows/alpha/discussion/alpha.md');
-    await knowledge('index', '.workflows/beta/discussion/beta.md');
+    await knowledge('index', '.leeway/alpha/discussion/alpha.md');
+    await knowledge('index', '.leeway/beta/discussion/beta.md');
   });
 
-  after(() => fs.rmSync(root, { recursive: true, force: true }));
+  after(() => cleanupFixture(root));
 
   it('ranks a chunk the progress clock has moved past below its equal', async () => {
     const units = [...(await knowledge('query', 'token refresh')).matchAll(/^\[discussion \| (\w+)\//gm)].map((m) => m[1]);
@@ -571,19 +575,19 @@ describe('knowledge query — `engine knowledge query`', () => {
     assert.deepStrictEqual(beta.split('\n').slice(1), [
       'Discussion',
       'Token refresh follows the rate window.',
-      'Source: .workflows/beta/discussion/beta.md:L1-3',
+      `Source: ${path.join(root, '.leeway/beta/discussion/beta.md')}:L1-3`,
     ]);
   });
 
   it('prints the bare path, and no headings, for a chunk its file no longer holds', async () => {
-    const file = path.join(root, '.workflows', 'beta', 'discussion', 'beta.md');
+    const file = path.join(root, '.leeway', 'beta', 'discussion', 'beta.md');
     const written = fs.readFileSync(file, 'utf8');
     fs.writeFileSync(file, written.replace('rate window', 'burst window'));
     try {
       const [, beta] = (await knowledge('query', 'token refresh')).split('\n\n');
       assert.deepStrictEqual(beta.split('\n').slice(1), [
         'Token refresh follows the rate window.',
-        'Source: .workflows/beta/discussion/beta.md',
+        `Source: ${path.join(root, '.leeway/beta/discussion/beta.md')}`,
       ]);
     } finally {
       fs.writeFileSync(file, written);
@@ -595,7 +599,7 @@ describe('knowledge query — `engine knowledge query`', () => {
     const score = String.raw`\d+\.\d{4}`;
     for (const [unit, decay] of [['beta', '1\\.0000'], ['alpha', '0\\.9791']]) {
       assert.match(explained, new RegExp([
-        `^Source: \\.workflows/${unit}/discussion/${unit}\\.md:L1-3`,
+        `^Source: ${literal(path.join(root, '.leeway', unit, 'discussion', `${unit}.md`))}:L1-3`,
         `Framing 1: keyword ${score}`,
         `Framing 2: keyword ${score}`,
         `Score: kept framing 1's ${score} × ${decay} decay \\+ 0\\.0000 boost \\+ 0\\.0200 tier = ${score}$`,
@@ -605,7 +609,7 @@ describe('knowledge query — `engine knowledge query`', () => {
   });
 
   it("closes a reopened topic's provenance line on reopened, and only that topic's", async () => {
-    const manifest = path.join(root, '.workflows', 'beta', 'manifest.json');
+    const manifest = path.join(root, '.leeway', 'beta', 'manifest.json');
     const written = fs.readFileSync(manifest, 'utf8');
     const reopened = JSON.parse(written);
     reopened.phases.discussion.items.beta.status = 'in-progress';
@@ -634,12 +638,12 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
 
   /** @param {Record<string, any>} knowledge */
   function configure(knowledge) {
-    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
+    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), JSON.stringify({ knowledge }));
   }
 
   /** @param {Record<string, any>} fields */
   function rewriteMetadata(fields) {
-    const file = path.join(root, '.workflows', '.knowledge', 'metadata.json');
+    const file = path.join(root, '.leeway', '.knowledge', 'metadata.json');
     fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(fs.readFileSync(file, 'utf8')), ...fields }));
   }
 
@@ -650,11 +654,11 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   after(() => endpoint.close());
 
   beforeEach(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-cli-'));
-    const unit = path.join(root, '.workflows', 'alpha');
+    root = setupFixture('kb-query-cli-');
+    const unit = path.join(root, '.leeway', 'alpha');
     fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
-    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
       phases: { discussion: { items: { alpha: { status: 'completed' } } } },
@@ -666,7 +670,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
     endpoint.requests.length = 0;
   });
 
-  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterEach(() => cleanupFixture(root));
 
   it('embeds every framing in one request, and prints no note', async () => {
     const { code, stdout } = await engineKnowledge(root, ['query', 'token refresh', 'rate window']);
@@ -740,7 +744,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   });
 
   it('status names a knowledge config it cannot load, where a query fails', async () => {
-    fs.writeFileSync(path.join(root, '.workflows', '.knowledge', 'config.json'), '{ not json');
+    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), '{ not json');
     const status = await engineKnowledge(root, ['status']);
     assert.strictEqual(status.code, 0);
     assert.match(status.stdout, /^Mode: none — a query fails until the knowledge config loads$/m);
@@ -749,7 +753,7 @@ describe('knowledge query — `engine knowledge query`, without a vector', () =>
   });
 
   it('exits non-zero when the store cannot be read, or its metadata is missing', async () => {
-    const knowledgeDir = path.join(root, '.workflows', '.knowledge');
+    const knowledgeDir = path.join(root, '.leeway', '.knowledge');
     fs.rmSync(path.join(knowledgeDir, 'metadata.json'));
     const missing = await engineKnowledge(root, ['query', 'token refresh']);
     assert.strictEqual(missing.code, 1);
@@ -773,22 +777,22 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
   }
 
   beforeEach(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-query-config-'));
-    const unit = path.join(root, '.workflows', 'alpha');
+    root = setupFixture('kb-query-config-');
+    const unit = path.join(root, '.leeway', 'alpha');
     fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
-    fs.mkdirSync(path.join(root, '.workflows', '.knowledge'), { recursive: true });
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
+    fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: { alpha: { work_type: 'feature' } } }));
     fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
       name: 'alpha', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
       phases: { discussion: { items: { alpha: { status: 'completed' } } } },
     }));
     fs.writeFileSync(path.join(unit, 'discussion', 'alpha.md'), '# Discussion\n\nToken refresh follows the rate window.\n');
-    configFile = path.join(root, '.workflows', '.knowledge', 'config.json');
+    configFile = path.join(root, '.leeway', '.knowledge', 'config.json');
     configure({ provider: null });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
   });
 
-  afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+  afterEach(() => cleanupFixture(root));
 
   it('a search runs past it, its note naming each ignored key after the others', async () => {
     configure({ provider: null, similarity_threshold: '0.5', strategy: 'hybrid' });
@@ -833,7 +837,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
     const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
     const units = { alpha: { work_type: 'feature' } };
     for (const [name, completedAt] of completions) {
-      const unit = path.join(root, '.workflows', name);
+      const unit = path.join(root, '.leeway', name);
       fs.mkdirSync(path.join(unit, 'discussion'), { recursive: true });
       fs.writeFileSync(path.join(unit, 'manifest.json'), JSON.stringify({
         name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
@@ -842,7 +846,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
       fs.writeFileSync(path.join(unit, 'discussion', `${name}.md`), `# Discussion\n\n${name} settled its tokens.\n`);
       units[name] = { work_type: 'feature' };
     }
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), JSON.stringify({ work_units: units }));
+    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), JSON.stringify({ work_units: units }));
     configure({ provider: null, decay_prune_below: false, decay_base_stability: 0.05 });
     assert.strictEqual((await engineKnowledge(root, ['index'])).code, 0);
 
@@ -858,6 +862,7 @@ describe('knowledge query and status — a mistake in the knowledge config', () 
 });
 
 describe('renderQuery', () => {
+  const STATE = '/work/project/.leeway';
   const result = {
     ...doc('auth', 1, '## Refresh\n\nTokens refresh hourly.\nSessions end at logout.'),
     excerpt: 'Tokens refresh hourly.',
@@ -868,7 +873,7 @@ describe('renderQuery', () => {
   const awaiting = '[2 chunks await vectors — searched by keyword alone; each start retries them]';
 
   it("opens with the query's notes, then each result's provenance, the headings above its excerpt, the excerpt and its source at the chunk's lines", () => {
-    assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }), [
+    assert.strictEqual(renderQuery({ results: [result], notes: [CHOSEN_NOTE, awaiting] }, { root: STATE }), [
       CHOSEN_NOTE,
       awaiting,
       '[1 results]',
@@ -876,31 +881,32 @@ describe('renderQuery', () => {
       '[discussion | auth/auth | medium | 2026-01-02]',
       'Discussion: Auth › Refresh',
       'Tokens refresh hourly.',
-      'Source: .workflows/auth/discussion/auth.md:L3-6',
+      'Source: /work/project/.leeway/auth/discussion/auth.md:L3-6',
     ].join('\n') + '\n');
   });
 
   it('names a one-line chunk by its line, and leaves out the headings and an excerpt where there are none', () => {
-    const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }).split('\n').slice(3, -1);
+    const lines = (placed) => renderQuery({ results: [{ ...result, ...placed }], notes: [] }, { root: STATE }).split('\n').slice(3, -1);
+    const source = 'Source: /work/project/.leeway/auth/discussion/auth.md';
     assert.deepStrictEqual(lines({ lines: { first: 9, last: 9 } }), [
-      'Discussion: Auth › Refresh', 'Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md:L9',
+      'Discussion: Auth › Refresh', 'Tokens refresh hourly.', `${source}:L9`,
     ]);
-    assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', 'Source: .workflows/auth/discussion/auth.md']);
-    assert.deepStrictEqual(lines({ excerpt: '' }), ['Discussion: Auth › Refresh', 'Source: .workflows/auth/discussion/auth.md:L3-6']);
+    assert.deepStrictEqual(lines({ headings: [], lines: null }), ['Tokens refresh hourly.', source]);
+    assert.deepStrictEqual(lines({ excerpt: '' }), ['Discussion: Auth › Refresh', `${source}:L3-6`]);
   });
 
   it('closes the provenance line on reopened where the topic is in progress again', () => {
-    assert.strictEqual(renderQuery({ results: [{ ...result, reopened: true }], notes: [] }).split('\n')[2],
+    assert.strictEqual(renderQuery({ results: [{ ...result, reopened: true }], notes: [] }, { root: STATE }).split('\n')[2],
       '[discussion | auth/auth | medium | 2026-01-02 | reopened]');
   });
 
   it('prints no note where there is none, and a bare count where there are no results', () => {
-    assert.match(renderQuery({ results: [result], notes: [] }), /^\[1 results\]\n/);
-    assert.strictEqual(renderQuery({ results: [], notes: [] }), '[0 results]\n');
+    assert.match(renderQuery({ results: [result], notes: [] }, { root: STATE }), /^\[1 results\]\n/);
+    assert.strictEqual(renderQuery({ results: [], notes: [] }, { root: STATE }), '[0 results]\n');
   });
 
   it('strips control characters, keeping newlines and tabs', () => {
-    const text = renderQuery({ results: [{ ...result, excerpt: 'a\x1b[31mred\x00\tb\nc' }], notes: [] });
+    const text = renderQuery({ results: [{ ...result, excerpt: 'a\x1b[31mred\x00\tb\nc' }], notes: [] }, { root: STATE });
     assert.ok(text.includes('a[31mred\tb\nc'));
   });
 });

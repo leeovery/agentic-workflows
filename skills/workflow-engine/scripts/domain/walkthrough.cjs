@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
-const { commitPathspecScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 
 /** The two answers a project manifest records; `none` is their absence. */
 const ANSWERS = /** @type {const} */ (['walked', 'skipped']);
@@ -58,7 +58,7 @@ function walkthroughState(cwd) {
  * confined to the project manifest. Refuses any other value, and refuses
  * once anything is recorded: the offer is answered once.
  * @param {string} cwd @param {string} answer
- * @returns {{status: WalkthroughAnswer, committed: string|null, note?: string}}
+ * @returns {{status: WalkthroughAnswer, committed: string|null, note?: string, warnings?: string[]}}
  */
 function recordWalkthrough(cwd, answer) {
   if (!ANSWERS.includes(/** @type {WalkthroughAnswer} */ (answer))) {
@@ -76,10 +76,11 @@ function recordWalkthrough(cwd, answer) {
     manifest.walkthrough = { ...w, status };
     writeProjectManifestAtomic(cwd, manifest);
   });
-  const committed = commitPathspecScoped(cwd, PROJECT_MANIFEST_SPEC, ANSWER_MESSAGES[status]);
-  /** @type {{status: WalkthroughAnswer, committed: string|null, note?: string}} */
+  const { committed, warnings } = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, ANSWER_MESSAGES[status]);
+  /** @type {{status: WalkthroughAnswer, committed: string|null, note?: string, warnings?: string[]}} */
   const result = { status, committed };
   noteIfNothingCommitted(result, committed);
+  if (warnings.length > 0) result.warnings = warnings;
   return result;
 }
 

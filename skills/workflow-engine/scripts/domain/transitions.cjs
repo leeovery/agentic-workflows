@@ -26,7 +26,7 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, ensureContainer } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const {
@@ -42,7 +42,7 @@ const { titlecase } = require('./conventions.cjs');
 const { revertJoins, postponeToRoadmap } = require('./roadmap.cjs');
 const { settleFoldedSubtopic } = require('./agent-state.cjs');
 const { clearOwnQuietly } = require('./presence.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath, stateRelative } = require('../kernel/state-root.cjs');
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
@@ -319,7 +319,7 @@ function assertLegalTopicName(topic) {
  */
 function nextMessageNumber(cwd, workUnit, phase, topic) {
   let max = 0;
-  for (const f of mailboxFiles(cwd, workUnit, phase, topic)) {
+  for (const f of mailboxFiles(stateRoot(cwd), workUnit, phase, topic)) {
     const m = f.match(/^(\d{3})-/);
     if (m) max = Math.max(max, parseInt(m[1], 10));
   }
@@ -541,9 +541,8 @@ function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }
   // The scratch is consumed after delivery — confine it to the cache so a
   // mis-passed path can never read (and delete) a live artifact.
   const scratchAbs = path.resolve(cwd, contentFile);
-  const cacheRoot = path.join(stateRoot(cwd), '.cache') + path.sep;
-  if (!scratchAbs.startsWith(cacheRoot)) {
-    throw new Error(`--content must point inside ${stateRel('.cache')}/ — got "${contentFile}"`);
+  if (!(stateRelative(cwd, scratchAbs) || '').startsWith('.cache/')) {
+    throw new Error(`--content must point inside ${statePath(cwd, '.cache')}/ — got "${contentFile}"`);
   }
   /** @type {string} */
   let content;
@@ -572,13 +571,13 @@ function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }
     // file per message, so concurrent deliveries can never collide or lose
     // an entry.
     const dirRel = mailboxDir(workUnit, phase, topic);
-    fs.mkdirSync(path.join(cwd, dirRel), { recursive: true });
+    fs.mkdirSync(statePath(cwd, dirRel), { recursive: true });
     const n = String(nextMessageNumber(cwd, workUnit, phase, topic)).padStart(3, '0');
     const rel = `${dirRel}/${n}-${slug}.md`;
-    fs.writeFileSync(path.join(cwd, rel), content.endsWith('\n') ? content : content + '\n');
+    fs.writeFileSync(statePath(cwd, rel), content.endsWith('\n') ? content : content + '\n');
 
     /** @type {TopicSendResult} */
-    const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before, message_path: rel };
+    const base = { topic, phase, status: park.status, created: park.created, status_before: park.status_before, message_path: statePath(cwd, rel) };
     if (park.reopened) base.reopened = true;
     if (fd.flagged.length > 0) base.reconcile_flagged = true;
     if (fd.staled.length > 0) base.sources_staled = fd.staled;
@@ -590,9 +589,9 @@ function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }
   try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
-    [stateRel(`${workUnit}/manifest.json`), result.message_path],
+    [`${workUnit}/manifest.json`, result.message_path],
     message,
     warnings,
   );
@@ -614,7 +613,7 @@ function sendMessage(cwd, workUnit, phase, topic, { contentFile, slug, message }
  * @property {string} phase
  * @property {string} topic
  * @property {number} count
- * @property {string[]} files  project-relative message file paths, sorted
+ * @property {string[]} files  the message files, absolute, sorted
  */
 
 /**
@@ -632,11 +631,11 @@ function mailboxStatus(cwd, workUnit, phase, topic) {
     throw new Error(`mailboxes exist for ${MAILBOX_PHASES.join('|')} only — got "${phase}"`);
   }
   assertLegalTopicName(topic);
-  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit))) {
-    throw new Error(`no work unit directory: ${stateRel(workUnit)}`);
+  if (!fs.existsSync(statePath(cwd, workUnit))) {
+    throw new Error(`no work unit directory: ${statePath(cwd, workUnit)}`);
   }
-  const dirRel = mailboxDir(workUnit, phase, topic);
-  const files = mailboxFiles(cwd, workUnit, phase, topic).map((name) => `${dirRel}/${name}`);
+  const dir = statePath(cwd, mailboxDir(workUnit, phase, topic));
+  const files = mailboxFiles(stateRoot(cwd), workUnit, phase, topic).map((name) => path.join(dir, name));
   return { work_unit: workUnit, phase, topic, count: files.length, files };
 }
 
@@ -680,10 +679,10 @@ function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic })
     throw new Error(`topic absorb: --subtopic settles a discussion fold into the review anchor — not legal in ${phase}`);
   }
   const rel = `${mailboxDir(workUnit, phase, topic)}/${file}`;
-  if (!mailbox.files.includes(rel)) {
+  if (!mailbox.files.includes(statePath(cwd, rel))) {
     throw new Error(`topic absorb: "${file}" is not in the ${topic} ${phase} mailbox`);
   }
-  fs.unlinkSync(path.join(cwd, rel));
+  fs.unlinkSync(statePath(cwd, rel));
   /** @type {TopicAbsorbResult} */
   const result = { phase, topic, absorbed: file, remaining: mailbox.count - 1 };
   if (phase === 'discussion' && subtopic) {
@@ -691,15 +690,15 @@ function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic })
     result.arming_settled = settled.settled;
     if (!settled.settled && settled.reason) result.arming_note = settled.reason;
   }
-  const artifactRel = stateRel(`${workUnit}/${phase}/${topic}.md`);
+  const artifactRel = `${workUnit}/${phase}/${topic}.md`;
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
     [
-      stateRel(`${workUnit}/manifest.json`),
+      `${workUnit}/manifest.json`,
       rel,
-      ...(fs.existsSync(path.join(cwd, artifactRel)) ? [artifactRel] : []),
+      ...(fs.existsSync(statePath(cwd, artifactRel)) ? [artifactRel] : []),
     ],
     message,
     warnings,
@@ -719,7 +718,7 @@ function absorbMessage(cwd, workUnit, phase, topic, { file, message, subtopic })
  * @property {string} from_phase
  * @property {string} to_phase
  * @property {string} moved  the message-file basename moved out of the source mailbox
- * @property {string} message_path  the installed destination message file, project-relative
+ * @property {string} message_path  the installed destination message file, absolute
  * @property {number} remaining  source-mailbox files left after the move
  * @property {string|null} status  the destination item's status after the call
  * @property {boolean} created     true when the destination item was created as `unstarted`
@@ -759,7 +758,7 @@ function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
     throw new Error(`topic forward: --file must be a message-file name, not a path (got "${file}")`);
   }
   const sourceRel = `${mailboxDir(workUnit, fromPhase, topic)}/${file}`;
-  if (!mailbox.files.includes(sourceRel)) {
+  if (!mailbox.files.includes(statePath(cwd, sourceRel))) {
     throw new Error(`topic forward: "${file}" is not in the ${topic} ${fromPhase} mailbox`);
   }
   const slug = file.replace(/^\d{3}-/, '').replace(/\.md$/, '');
@@ -811,12 +810,11 @@ function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
     }
 
     const destDirRel = mailboxDir(workUnit, toPhase, topic);
-    const destDirAbs = path.join(cwd, destDirRel);
-    fs.mkdirSync(destDirAbs, { recursive: true });
+    fs.mkdirSync(statePath(cwd, destDirRel), { recursive: true });
     const n = String(nextMessageNumber(cwd, workUnit, toPhase, topic)).padStart(3, '0');
     const destRel = `${destDirRel}/${n}-${slug}.md`;
-    fs.renameSync(path.join(cwd, sourceRel), path.join(cwd, destRel));
-    base.message_path = destRel;
+    fs.renameSync(statePath(cwd, sourceRel), statePath(cwd, destRel));
+    base.message_path = statePath(cwd, destRel);
 
     if (dirty) saveWorkUnitManifest(cwd, workUnit, manifest);
     return base;
@@ -824,9 +822,9 @@ function forwardMessage(cwd, workUnit, fromPhase, toPhase, topic, { file, messag
 
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
-    [stateRel(`${workUnit}/manifest.json`), sourceRel, result.message_path],
+    [`${workUnit}/manifest.json`, sourceRel, result.message_path],
     message,
     warnings,
   );
@@ -1425,9 +1423,9 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   // roadmap join reverted) and nothing else on disk — it runs from the epic
   // menu, beside sessions holding the unit's other topics.
   const cancelSpec = reverted.length > 0
-    ? [stateRel(`${workUnit}/manifest.json`), PROJECT_MANIFEST_SPEC]
-    : stateRel(`${workUnit}/manifest.json`);
-  const outcome = commitTailPathspec(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
+    ? [`${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC]
+    : `${workUnit}/manifest.json`;
+  const outcome = commitStateTail(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (${stage})`, warnings);
   /** @type {TopicCancelResult} */
   const result = { topic, phase: stage, status: 'cancelled', ...taken, committed: outcome.committed, warnings };
   if (stage === 'discovery') result.roadmap_reverted = reverted;
@@ -1533,7 +1531,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   const warnings = [];
   indexRestored(cwd, workUnit, topic, returned.restored, warnings);
 
-  const outcome = commitTailPathspec(cwd, stateRel(`${workUnit}/manifest.json`), `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
+  const outcome = commitStateTail(cwd, `${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
   /** @type {TopicReactivateResult} */
   const result = { topic, phase: stage, status: 'reactivated', ...returned, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -1575,7 +1573,7 @@ function postponedSources(cwd, manifest, workUnit, topic) {
     ...(brief ? [`${workUnit}/${brief}`] : []),
     `${workUnit}/research/${topic}.md`,
     `${workUnit}/discussion/${topic}.md`,
-  ].filter((rel) => fs.existsSync(path.join(stateRoot(cwd), rel)));
+  ].filter((rel) => fs.existsSync(statePath(cwd, rel)));
 }
 
 /**
@@ -1625,9 +1623,9 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
   removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
   for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
 
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
-    [stateRel(`${workUnit}/manifest.json`), PROJECT_MANIFEST_SPEC],
+    [`${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC],
     `workflow(${workUnit}): postpone ${topic} → ${horizon}`,
     warnings,
   );
@@ -1680,7 +1678,7 @@ function restorePostponedUnit(cwd, workUnit, topic) {
  * @returns {CancelledItem[]}
  */
 function cancelPostponedUnit(cwd, workUnit, topic, item) {
-  if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, 'manifest.json'))) {
+  if (!fs.existsSync(statePath(cwd, workUnit, 'manifest.json'))) {
     throw new Error(`"${item}" was postponed from work unit "${workUnit}", which no longer exists — the join is orphaned`);
   }
   return withWorkUnitLock(cwd, workUnit, () => {

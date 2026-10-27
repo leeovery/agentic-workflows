@@ -6,12 +6,11 @@
 // for every manifest writer.
 //
 // Mechanism only: it knows nothing about what the manifest contains. The
-// façade translates the engine's `cwd` convention (project root) to the
-// io module's `workflowsDir` through the state-root resolver, and keeps
-// the engine ring's import surface stable.
+// façade translates the engine's `cwd` convention to the io module's
+// `stateDir` through the state-root resolver, and keeps the engine ring's
+// import surface stable.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const io = require('./manifest-io.cjs');
 const { stateRoot } = require('./state-root.cjs');
 
@@ -36,9 +35,9 @@ function saveWorkUnitManifest(cwd, workUnit, manifest) {
 }
 
 /**
- * Run `fn` holding the work unit's manifest lock — every load→mutate→save
- * belongs inside one of these so engine writes and CLI writes serialise
- * against each other.
+ * Run `fn` holding the writer lock over the work unit's manifest — every
+ * load→mutate→save belongs inside one of these so engine writes and CLI
+ * writes serialise against each other.
  * @template T
  * @param {string} cwd
  * @param {string} workUnit
@@ -59,33 +58,13 @@ function readProjectManifest(cwd) {
 }
 
 /**
- * Every work unit's manifest: the registered names, or — while none are
- * registered — the directories under `.workflows/`. A name whose manifest
- * is missing or unreadable is passed over. Loud on a corrupt project
- * manifest, as its read is.
+ * Every work unit's manifest (see manifest-io's `listWorkUnitManifests`).
  * @param {string} cwd
  * @param {Record<string, any>} [project]  the project manifest, where the caller has read it already
  * @returns {Array<Record<string, any>>}
  */
 function listWorkUnitManifests(cwd, project) {
-  const wfDir = stateRoot(cwd);
-  if (!fs.existsSync(wfDir)) return [];
-  const registered = Object.keys((project || io.readProjectManifest(wfDir)).work_units || {});
-  const names = registered.length > 0
-    ? registered
-    : fs.readdirSync(wfDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-      .map((e) => e.name);
-  /** @type {Array<Record<string, any>>} */
-  const manifests = [];
-  for (const name of names) {
-    try {
-      manifests.push(io.readWorkUnitManifest(wfDir, name));
-    } catch {
-      // missing or unreadable — passed over
-    }
-  }
-  return manifests;
+  return io.listWorkUnitManifests(stateRoot(cwd), project);
 }
 
 /**
@@ -98,7 +77,7 @@ function writeProjectManifestAtomic(cwd, data) {
 }
 
 /**
- * Run `fn` holding the project manifest lock.
+ * Run `fn` holding the writer lock over the project manifest.
  * @template T
  * @param {string} cwd
  * @param {() => T} fn

@@ -11,10 +11,13 @@ const { execFileSync, spawn } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { git } = harness;
+const { git, stateGit, commitAll, setupFixtureAt } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
+const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
+const { datedAt } = require('./discovery-test-utils.cjs');
+const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
 function writeFile(dir, rel, content) {
@@ -44,32 +47,34 @@ const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
 }, null, 2) + '\n';
 
-/** The knowledge directory's files, as boot keeps them listed in `.worktreeinclude`. */
-const KNOWLEDGE_DIR = '.workflows/.knowledge';
+/** The knowledge directory's files, from the project root. */
+const KNOWLEDGE_DIR = '.leeway/.knowledge';
 const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
-const WORKTREE_INCLUDE = STORE_FILES.join('\n') + '\n';
 
 /**
- * A project fixture: a real git repo with a `.workflows/` tree, its
- * settings already carrying the workflows' own hooks, and its `.worktreeinclude`
- * already listing the store — the state every booted project reaches, so
- * boot's own plumbing commits never join the history a test reads. A test
- * about either install takes its file away first. The gate mod is not
- * installed, so boot reports it unavailable; a test about the mod installs
- * it.
+ * A project fixture: a real git repo with its state worktree at `.leeway/`,
+ * its settings already carrying the workflows' own hooks — the state every
+ * booted project reaches, so boot's own plumbing commits never join the
+ * history a test reads. A test about the install takes the hooks away first.
+ * The gate mod is not installed, so boot reports it unavailable; a test
+ * about the mod installs it.
  */
-function setupProject(root) {
-  const project = path.join(root, 'project');
-  fs.mkdirSync(project, { recursive: true });
-  git(project, ['init', '-q', '-b', 'main']);
-  git(project, ['config', 'user.email', 'test@example.com']);
-  git(project, ['config', 'user.name', 'Test']);
-  git(project, ['config', 'commit.gpgsign', 'false']);
+/**
+ * A project still on the layout before the state worktree: its `.workflows/`
+ * in the code tree, committed there, for the legacy fleet to upgrade.
+ * @param {string} project
+ */
+function legacyLayout(project) {
   writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+  git(project, ['add', '--', '.workflows']);
+  git(project, ['commit', '-q', '-m', 'the old layout']);
+}
+
+function setupProject(root) {
+  const project = setupFixtureAt(path.join(root, 'project'));
+  writeFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
   writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-  writeFile(project, '.worktreeinclude', WORKTREE_INCLUDE);
-  git(project, ['add', '-A']);
-  git(project, ['commit', '-q', '-m', 'init']);
+  commitAll(project, 'init');
   return project;
 }
 
@@ -78,13 +83,15 @@ function setupProject(root) {
 const STUB_MIGRATE = `#!/usr/bin/env node
 'use strict';
 const fs = require('fs');
+const path = require('path');
 const mode = process.env.STUB_MIGRATE_MODE || '';
+const ledger = process.argv[process.argv.indexOf('--ledger') + 1];
 let ran = 1;
 if (mode === 'update') {
-  fs.mkdirSync('.workflows/.state', { recursive: true });
-  fs.mkdirSync('.workflows/payments', { recursive: true });
-  fs.appendFileSync('.workflows/.state/migrations', '045\\n');
-  fs.writeFileSync('.workflows/payments/marker.md', 'migrated\\n');
+  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  fs.mkdirSync('.leeway/payments', { recursive: true });
+  fs.appendFileSync(ledger, '045\\n');
+  fs.writeFileSync('.leeway/payments/marker.md', 'migrated\\n');
   process.stdout.write(
     '\\n' +
     '1 migration(s) applied, 2 file(s) updated.\\n' +
@@ -94,9 +101,9 @@ if (mode === 'update') {
     'Follow the explicit instructions in the migration skill before proceeding.\\n'
   );
 } else if (mode === 'update-config') {
-  fs.mkdirSync('.workflows/.state', { recursive: true });
+  fs.mkdirSync(path.dirname(ledger), { recursive: true });
   fs.mkdirSync('.claude', { recursive: true });
-  fs.appendFileSync('.workflows/.state/migrations', '046\\n');
+  fs.appendFileSync(ledger, '046\\n');
   fs.writeFileSync('.claude/settings.json', process.env.STUB_MIGRATE_SETTINGS || '{"permissions":{}}\\n');
   fs.appendFileSync('.gitignore', '.DS_Store\\n');
   process.stdout.write(
@@ -109,8 +116,8 @@ if (mode === 'update') {
 } else if (mode === 'record-only') {
   // A migration that ran and found nothing to do: the ledger gains its line,
   // no document changes, no stop gate.
-  fs.mkdirSync('.workflows/.state', { recursive: true });
-  fs.appendFileSync('.workflows/.state/migrations', '047\\n');
+  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  fs.appendFileSync(ledger, '047\\n');
   process.stdout.write('[SKIP] No changes needed\\n');
 } else if (mode === 'fail') {
   process.stdout.write('partial output before the failure\\n');
@@ -130,7 +137,7 @@ if (process.env.STUB_MIGRATE_NOTICES) {
 if (!process.env.STUB_MIGRATE_NO_REPORT) {
   process.stdout.write('---MIGRATIONS_RUN---\\n');
   process.stdout.write(
-    (process.env.STUB_MIGRATE_REPORT || JSON.stringify({ ran, tracking: '.workflows/.state/migrations' })) + '\\n'
+    (process.env.STUB_MIGRATE_REPORT || JSON.stringify({ ran })) + '\\n'
   );
 }
 `;
@@ -174,9 +181,9 @@ function recordStubbedLaunches(t) {
  * @param {string} project @param {Record<string, unknown>} [settings]  over the keyword-only pin
  */
 function readyKnowledge(project, settings = {}) {
-  writeFile(project, '.workflows/.knowledge/config.json', JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
-  store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
-  store.writeMetadata(path.join(project, '.workflows/.knowledge/metadata.json'), { last_indexed: null });
+  writeFile(project, '.leeway/.knowledge/config.json', JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
+  store.saveStore(store.createStore(), path.join(project, '.leeway/.knowledge/store.bin'));
+  store.writeMetadata(path.join(project, '.leeway/.knowledge/metadata.json'), { last_indexed: null });
 }
 
 /**
@@ -185,17 +192,17 @@ function readyKnowledge(project, settings = {}) {
  * @param {string} project @param {string} body
  */
 function completedDiscussion(project, body) {
-  writeFile(project, '.workflows/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
-  writeFile(project, '.workflows/payments/manifest.json', JSON.stringify({
+  writeFile(project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+  writeFile(project, '.leeway/payments/manifest.json', JSON.stringify({
     name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
     phases: { discussion: { items: { payments: { status: 'completed' } } } },
   }, null, 2) + '\n');
-  writeFile(project, '.workflows/payments/discussion/payments.md', body);
+  writeFile(project, '.leeway/payments/discussion/payments.md', body);
 }
 
 /** A git-repo project carrying the settings every booted project has. */
 function setupFixture() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-'));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-')));
   return { root, project: setupProject(root) };
 }
 
@@ -216,7 +223,6 @@ describe('engine boot', () => {
     // runs the suite; no project manifest makes it `prompt`.
     const res = runEngine(stubbed, fix.project, ['boot'], { TMUX: '/fake/sock,123,7' });
 
-    const today = git(fix.project, ['log', '-1', '--format=%cs']).trim();
     assert.deepStrictEqual(res, {
       ok: true,
       migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] },
@@ -228,18 +234,20 @@ describe('engine boot', () => {
       tmux_labels: 'prompt',
       label_repaired: false,
       session_hooks_installed: false,
-      worktree_include_installed: false,
       gate_surface: 'unavailable',
       baseline: 'none',
       walkthrough: 'none',
-      // The fixture's one commit carries `.workflows/` — nothing came before,
-      // and the tree it arrived into holds no project file.
-      baseline_signal: { root_date: today, workflows_date: today, commits_total: 1, commits_before: 0, history_before: [], files_at_arrival: 0, tree_at_arrival: [] },
+      // The state arrived beside the fixture's first code commit, its
+      // `.gitignore`: that commit came before it, and the rest after.
+      baseline_signal: {
+        root_date: '2026-01-01', workflows_date: '2026-01-01', commits_total: 2, commits_before: 1,
+        history_before: ['2026-01-01  ignore the state'], files_at_arrival: 1, tree_at_arrival: ['.gitignore'],
+      },
     });
   });
 
   it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
-    const projManifest = path.join(fix.project, '.workflows/manifest.json');
+    const projManifest = path.join(fix.project, '.leeway/manifest.json');
 
     for (const status of ['native', 'in-progress', 'completed', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status } }));
@@ -253,7 +261,7 @@ describe('engine boot', () => {
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: { status: 'weird' } }));
     const weird = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(weird.baseline, 'none');
-    assert.strictEqual(weird.baseline_signal.commits_before, 0);
+    assert.strictEqual(weird.baseline_signal.commits_before, 1);
 
     // An object with nothing recorded → none.
     fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, baseline: {} }));
@@ -269,7 +277,7 @@ describe('engine boot', () => {
   });
 
   it('walkthrough: reports the recorded answer; unrecognised or malformed values read none', () => {
-    const projManifest = path.join(fix.project, '.workflows/manifest.json');
+    const projManifest = path.join(fix.project, '.leeway/manifest.json');
 
     for (const status of ['walked', 'skipped']) {
       fs.writeFileSync(projManifest, JSON.stringify({ work_units: {}, walkthrough: { status } }));
@@ -294,54 +302,53 @@ describe('engine boot', () => {
 
   /**
    * A scratch repo beside the fixture, hermetic like it, with dated
-   * commits. Its settings carry the workflows' own hooks and its
-   * `.worktreeinclude` the store from the first commit on, like the
-   * fixture's: the history under test is the project's own.
+   * commits and the state arriving on a date of the test's choosing. From
+   * the first commit on, its settings carry the workflows' own hooks, like
+   * the fixture's, and its `.worktreeinclude` the knowledge files an earlier
+   * boot listed there; it keeps the state out of its code tree by its own
+   * exclude: the history under test is the project's own.
    */
   function scratchRepo(name) {
-    const project = path.join(fix.root, name);
-    fs.mkdirSync(project, { recursive: true });
-    git(project, ['init', '-q', '-b', 'main']);
-    git(project, ['config', 'user.email', 'test@example.com']);
-    git(project, ['config', 'user.name', 'Test']);
-    git(project, ['config', 'commit.gpgsign', 'false']);
+    const project = harness.initRepo(path.join(fix.root, name));
+    fs.appendFileSync(path.join(project, '.git/info/exclude'), '.leeway/\n');
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-    writeFile(project, '.worktreeinclude', WORKTREE_INCLUDE);
-    const dated = (date) => ({ GIT_AUTHOR_DATE: `${date}T12:00:00Z`, GIT_COMMITTER_DATE: `${date}T12:00:00Z` });
+    writeFile(project, '.worktreeinclude', STORE_FILES.join('\n') + '\n');
+    const at = (date) => `${date}T12:00:00Z`;
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
-      execFileSync('git', ['commit', '-q', '--allow-empty', '-m', msg], { cwd: project, encoding: 'utf8', env: { ...process.env, ...dated(date) } });
+      execFileSync('git', ['commit', '-q', '--allow-empty', '-m', msg], { cwd: project, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_DATE: at(date), GIT_COMMITTER_DATE: at(date) } });
     };
-    return { project, commit };
+    const arrive = (date) => datedAt(at(date), () => createState(path.join(project, '.leeway')));
+    return { project, commit, arrive };
   }
 
-  it('baseline_signal: a codebase committed before `.workflows/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
-    // A brownfield repo: two commits of code (the skills install beside it,
-    // which never counts as project code), then the workflows land.
-    const { project, commit } = scratchRepo('brownfield');
+  it('baseline_signal: a codebase committed before `.leeway/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
+    // A brownfield repo: two commits of code (the skills install and an
+    // earlier boot's `.worktreeinclude` beside it, which never count as
+    // project code), then the workflows land.
+    const { project, commit, arrive } = scratchRepo('brownfield');
     writeFile(project, 'src/app.js', 'export default 1;\n');
     writeFile(project, 'README.md', '# App\n');
     commit('initial', '2025-03-01');
     writeFile(project, 'src/lib.js', 'export const x = 2;\n');
     commit('more code', '2025-06-15');
 
-    // Nothing under `.workflows/` committed yet — the install's first boot,
-    // migrations updating files, so the review gate owns the commit and boot
-    // leaves the tree alone: the whole history predates the workflows, and
-    // the tree is HEAD's.
-    writeFile(project, '.workflows/.state/migrations', '');
-    let res = runEngine(stubbed, project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
-    assert.strictEqual(res.baseline, 'none');
-    assert.deepStrictEqual(res.baseline_signal, {
+    // No state yet — the workflows arriving now: the whole history predates
+    // them, and the tree is HEAD's.
+    const { baselineSignal } = require(path.join(REAL_SCRIPTS, 'domain/baseline.cjs'));
+    assert.deepStrictEqual(baselineSignal(project), {
       root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (2)', 'README.md'],
     });
 
-    // The workflows land in a third commit: the two commits before it are
-    // the history, and the tree is the one that commit arrived into.
-    commit('add workflows', '2025-09-01');
-    res = runEngine(stubbed, project, ['boot']);
+    // The state lands, and the code goes on: the two commits before its first
+    // commit are the history, and the tree is the one it arrived into.
+    arrive('2025-09-01');
+    writeFile(project, 'src/later.js', 'export const y = 3;\n');
+    commit('after the workflows', '2025-10-01');
+    const res = runEngine(stubbed, project, ['boot']);
+    assert.strictEqual(res.baseline, 'none');
     assert.deepStrictEqual(res.baseline_signal, {
       root_date: '2025-03-01', workflows_date: '2025-09-01', commits_total: 3, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
@@ -349,23 +356,23 @@ describe('engine boot', () => {
     });
   });
 
-  it('baseline_signal: the workflows arriving in the root commit report the tree they arrived into — a legacy codebase put under git at install is not a fresh start', () => {
-    const { project, commit } = scratchRepo('legacy');
+  it('baseline_signal: the workflows arriving with the codebase\'s first commit report the tree they arrived into — a legacy codebase put under git at install is not a fresh start', () => {
+    const { project, commit, arrive } = scratchRepo('legacy');
     for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) writeFile(project, f, '# code\n');
-    writeFile(project, '.workflows/.state/migrations', '');
     commit('import', '2025-01-01');
+    arrive('2025-01-01');
     const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {
-      root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 0, history_before: [],
+      root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 1, history_before: ['2025-01-01  import'],
       files_at_arrival: 5, tree_at_arrival: ['app/ (3)', 'config/ (1)', 'Gemfile'],
     });
   });
 
-  it('baseline_signal: commits before the arrival are its ancestors, never the log listing\'s neighbours', () => {
-    // main: root(Jan) → c2(Feb) → arrival(Apr, parent c2) → merge(May) of a
-    // side branch cut from root in Mar. Listing order would count the side
-    // commit as "before" and read its tree as the parent's.
-    const { project, commit } = scratchRepo('branched');
+  it('baseline_signal: the code before the arrival is the default branch\'s as it stood, never a side branch merged after', () => {
+    // main: root(Jan) → c2(Feb), the state arriving in Apr, then a merge(May)
+    // of a side branch cut from root in Mar. Its commit is older than the
+    // arrival, but main never held it until the merge.
+    const { project, commit, arrive } = scratchRepo('branched');
     writeFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
     writeFile(project, 'src/b.js', 'b\n');
@@ -375,25 +382,23 @@ describe('engine boot', () => {
     writeFile(project, 'docs/side.md', 'side\n');
     commit('side work', '2025-03-01');
     git(project, ['checkout', '-q', 'main']);
-    writeFile(project, '.workflows/.state/migrations', '');
-    commit('add workflows', '2025-04-01');
+    arrive('2025-04-01');
     execFileSync('git', ['merge', '-q', '--no-edit', 'side'], { cwd: project, env: { ...process.env, GIT_AUTHOR_DATE: '2025-05-01T12:00:00Z', GIT_COMMITTER_DATE: '2025-05-01T12:00:00Z' } });
     const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.baseline_signal, {
-      root_date: '2025-01-01', workflows_date: '2025-04-01', commits_total: 5, commits_before: 2,
+      root_date: '2025-01-01', workflows_date: '2025-04-01', commits_total: 4, commits_before: 2,
       history_before: ['2025-01-01  root', '2025-02-01  main work'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (3)'],
     });
   });
 
   it('baseline_signal: a long run keeps its head and tail around one elision line, and the tree its largest dozen entries', () => {
-    const { project, commit } = scratchRepo('long');
+    const { project, commit, arrive } = scratchRepo('long');
     for (let i = 1; i <= 15; i += 1) {
       writeFile(project, `dir${String(i).padStart(2, '0')}/f.js`, `${i}\n`);
       commit(`commit ${i}`, `2025-01-${String(i).padStart(2, '0')}`);
     }
-    writeFile(project, '.workflows/.state/migrations', '');
-    commit('add workflows', '2025-02-01');
+    arrive('2025-02-01');
     const sig = runEngine(stubbed, project, ['boot']).baseline_signal;
     assert.strictEqual(sig.commits_before, 15);
     assert.strictEqual(sig.history_before.length, 8 + 1 + 4);
@@ -406,11 +411,10 @@ describe('engine boot', () => {
   });
 
   it('baseline_signal: reads the same through a signing user\'s `log.showSignature`', () => {
-    const { project, commit } = scratchRepo('signed');
+    const { project, commit, arrive } = scratchRepo('signed');
     writeFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
-    writeFile(project, '.workflows/.state/migrations', '');
-    commit('add workflows', '2025-02-01');
+    arrive('2025-02-01');
     const plain = runEngine(stubbed, project, ['boot']).baseline_signal;
     git(project, ['config', 'log.showSignature', 'true']);
     const signed = runEngine(stubbed, project, ['boot']).baseline_signal;
@@ -418,16 +422,20 @@ describe('engine boot', () => {
     assert.strictEqual(plain.commits_before, 1);
   });
 
+  it('baseline_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {
+    const fromRoot = runEngine(stubbed, fix.project, ['boot']).baseline_signal;
+    const fromState = runEngine(stubbed, path.join(fix.project, '.leeway'), ['boot']).baseline_signal;
+
+    assert.deepStrictEqual(fromState, fromRoot);
+    assert.deepStrictEqual(fromState.history_before, ['2026-01-01  ignore the state']);
+  });
+
   it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
-    const empty = path.join(fix.root, 'empty');
-    fs.mkdirSync(empty, { recursive: true });
-    git(empty, ['init', '-q', '-b', 'main']);
-    // The hooks and the worktree include already there, uncommitted, and no
-    // tracking ledger on disk: boot's plumbing installs and its ledger sweep
-    // would each otherwise make the root commit — the history this test
-    // needs absent.
+    const empty = harness.initRepo(path.join(fix.root, 'empty'));
+    createState(path.join(empty, '.leeway'));
+    // The hooks already there, uncommitted: boot's plumbing install would
+    // otherwise make the root commit — the history this test needs absent.
     writeFile(empty, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-    writeFile(empty, '.worktreeinclude', WORKTREE_INCLUDE);
     const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal, null);
@@ -439,28 +447,27 @@ describe('engine boot', () => {
 
     // A shallow clone of a brownfield history looks like a root-commit
     // arrival; it is truncated, not fresh, so the signal says so.
-    const { project, commit } = scratchRepo('deep');
+    const { project, commit, arrive } = scratchRepo('deep');
     writeFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
     writeFile(project, 'src/b.js', 'b\n');
     commit('more', '2025-02-01');
-    writeFile(project, '.workflows/.state/migrations', '');
-    commit('add workflows', '2025-03-01');
+    arrive('2025-03-01');
     const shallow = path.join(fix.root, 'shallow');
     execFileSync('git', ['clone', '-q', '--depth', '1', `file://${project}`, shallow]);
     assert.strictEqual(baselineSignal(shallow), null);
   });
 
   it('baseline_signal: rides a not-ready boot too — the brownfield first boot returns from the knowledge gate to the judgment on that same response', () => {
-    fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'), JSON.stringify({ work_units: {}, baseline: {} }));
+    fs.writeFileSync(path.join(fix.project, '.leeway/manifest.json'), JSON.stringify({ work_units: {}, baseline: {} }));
     const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.baseline, 'none');
-    assert.strictEqual(res.baseline_signal.commits_before, 0);
+    assert.strictEqual(res.baseline_signal.commits_before, 1, 'the fixture\'s first code commit');
   });
 
   it('baseline: reported on a not-ready boot too — the brownfield first boot is exactly the knowledge-gate path', () => {
-    fs.writeFileSync(path.join(fix.project, '.workflows/manifest.json'),
+    fs.writeFileSync(path.join(fix.project, '.leeway/manifest.json'),
       JSON.stringify({ work_units: {}, baseline: { status: 'in-progress' } }));
     const res = runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(res.knowledge, 'not-ready');
@@ -473,9 +480,9 @@ describe('engine boot', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.changed, true);
     assert.strictEqual(res.migrations.output, '1 migration(s) applied, 2 file(s) updated.');
-    // The migration landed in the project's .workflows tree.
-    assert.ok(fs.existsSync(path.join(fix.project, '.workflows/payments/marker.md')));
-    assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows']), /marker\.md/);
+    // The migration landed in the project's .leeway tree.
+    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/payments/marker.md')));
+    assert.match(stateGit(fix.project, ['status', '--porcelain']), /marker\.md/);
   });
 
   it('carries the run\'s notices for the person, stripped from the report', () => {
@@ -511,22 +518,26 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
     assert.deepStrictEqual(
       git(fix.project, ['status', '--porcelain', '--', ...OWNED_PATHS]).split('\n').filter(Boolean).sort(),
-      [' M .claude/settings.json', '?? .gitignore', '?? .workflows/.state/']);
+      [' M .claude/settings.json', ' M .gitignore']);
+    assert.deepStrictEqual(stateGit(fix.project, ['status', '--porcelain']).split('\n').filter(Boolean), ['?? .state/']);
 
     runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
 
     assert.deepStrictEqual(
       git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
-      ['.claude/settings.json', '.gitignore', '.workflows/.state/migrations']);
+      ['.claude/settings.json', '.gitignore']);
+    assert.deepStrictEqual(
+      stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
+      ['.state/migrations']);
   });
 
-  it('while a reviewed migration commit follows, boot\'s settings and include writes ride it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'labels on, no include']);
+  it('while a reviewed migration commit follows, boot\'s settings write rides it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    commitAll(fix.project, 'labels on');
+    const codeHead = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update-config',
@@ -536,8 +547,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'labels on, no include', 'no commit of boot\'s');
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), codeHead, 'no commit of boot\'s');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8')),
       { permissions: {}, ...JSON.parse(LABELS_ON) }, 'the migration\'s edit and the hooks, side by side');
 
@@ -545,7 +555,10 @@ describe('engine boot', () => {
 
     assert.deepStrictEqual(
       git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
-      ['.claude/settings.json', '.gitignore', '.workflows/.state/migrations', '.worktreeinclude']);
+      ['.claude/settings.json', '.gitignore']);
+    assert.deepStrictEqual(
+      stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
+      ['.state/migrations']);
     assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', ...OWNED_PATHS]).trim(), '', 'the reviewed commit took it all');
   });
 
@@ -553,8 +566,7 @@ describe('engine boot', () => {
     // Track a config baseline, then dirty both files with no migration running.
     writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
     writeFile(fix.project, '.gitignore', 'node_modules\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'config baseline']);
+    commitAll(fix.project, 'config baseline');
     writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: { allow: ['x'] } }));
     writeFile(fix.project, '.gitignore', 'node_modules\n.DS_Store\n');
 
@@ -575,32 +587,32 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, false);
     assert.strictEqual(res.migrations.ran, 1);
     assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(res.migrations_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
     assert.deepStrictEqual(
-      git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
-      ['.workflows/.state/migrations']
+      stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
+      ['.state/migrations']
     );
-    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']).trim(), '', 'nothing left dirty');
+    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']).trim(), '', 'nothing left dirty');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init', 'and nothing on the code side');
   });
 
   it('a ledger an earlier boot left dirty is committed by the next one, which ran nothing at all', () => {
     // The state this bug leaves behind: a previous boot recorded an ID and
     // never committed it. Those migrations are recorded now, so nothing runs
     // — and the line still has to go.
-    writeFile(fix.project, '.workflows/.state/migrations', '045\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'ledger baseline']);
-    writeFile(fix.project, '.workflows/.state/migrations', '045\n046\n');
+    writeFile(fix.project, '.leeway/.state/migrations', '045\n');
+    commitAll(fix.project, 'ledger baseline');
+    writeFile(fix.project, '.leeway/.state/migrations', '045\n046\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.migrations.ran, 0, 'nothing ran this boot');
     assert.strictEqual(res.migrations.changed, false);
     assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(res.migrations_committed, git(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
-    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.workflows']).trim(), '');
+    assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']).trim(), '');
   });
 
   it('a run that changed documents leaves the ledger to the reviewed commit — boot never commits it twice', () => {
@@ -611,42 +623,25 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations_committed, null);
     // The ledger line waits with the rest of the diff for the skill's
     // `commit --migrations`, which the review gate runs on the user's yes.
-    assert.match(git(fix.project, ['status', '--porcelain', '--', '.workflows/.state/migrations']), /migrations/);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
+    assert.match(stateGit(fix.project, ['status', '--porcelain', '--', '.state/migrations']), /migrations/);
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
-  it('a ledger with nothing to commit — already clean, or ignored by the project — is null and silent', () => {
+  it('a ledger with nothing to commit — already clean — is null and silent', () => {
     // Clean: the run recorded nothing new (a re-append restoring what HEAD
     // already holds), so the tracked ledger matches HEAD.
-    writeFile(fix.project, '.workflows/.state/migrations', '045\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'ledger baseline']);
+    writeFile(fix.project, '.leeway/.state/migrations', '045\n');
+    commitAll(fix.project, 'ledger baseline');
 
-    const clean = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_MIGRATE_REPORT: '{"ran": 2, "tracking": ".workflows/.state/migrations"}',
-    });
+    const clean = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_REPORT: '{"ran": 2}' });
     assert.strictEqual(clean.migrations.ran, 2);
     assert.strictEqual(clean.migrations_committed, null);
     assert.deepStrictEqual(clean.warnings, []);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger baseline');
-
-    // Ignored: `git add` would refuse the path outright, so it is never reached.
-    git(fix.project, ['rm', '-q', '--', '.workflows/.state/migrations']);
-    writeFile(fix.project, '.gitignore', '.workflows/.state/\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'ignore the ledger']);
-
-    const ignored = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
-    assert.strictEqual(ignored.ok, true);
-    assert.strictEqual(ignored.migrations_committed, null);
-    assert.deepStrictEqual(ignored.warnings, []);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ignore the ledger');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger baseline');
   });
 
   it('a failing ledger commit is a warning, never a block — the ledger is already right on disk', () => {
-    const hook = path.join(fix.project, '.git/hooks/pre-commit');
-    fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n');
-    fs.chmodSync(hook, 0o755);
+    stateGit(fix.project, ['checkout', '-q', '--detach']);
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
@@ -655,40 +650,34 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations_committed, null);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /migration ledger commit failed/);
-    assert.ok(fs.existsSync(path.join(fix.project, '.workflows/.state/migrations')), 'the recorded run survives');
+    assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.state/migrations')), 'the recorded run survives');
   });
 
-  it('a run report boot cannot read degrades to a warning — ran 0, no commit, plumbing still stripped', () => {
-    for (const payload of ['not json at all', '{"ran": "two", "tracking": ".workflows/.state/migrations"}', '{"ran": 1, "tracking": "/etc/passwd"}']) {
+  it('a run report boot cannot read degrades to a warning — ran 0, the ledger still committed, plumbing still stripped', () => {
+    for (const payload of ['not json at all', '{"ran": "two"}', '{"ran": -1}']) {
       const res = runEngine(stubbed, fix.project, ['boot'], {
         STUB_MIGRATE_MODE: 'record-only',
         STUB_MIGRATE_REPORT: payload,
       });
 
       assert.strictEqual(res.ok, true, payload);
-      assert.strictEqual(res.migrations_committed, null, payload);
+      assert.strictEqual(res.migrations.ran, 0, payload);
+      assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim(), payload);
       assert.strictEqual(res.warnings.length, 1, `${payload}: ${JSON.stringify(res.warnings)}`);
       assert.match(res.warnings[0], /^migration run report unreadable: /);
       assert.strictEqual(res.migrations.output, '[SKIP] No changes needed', payload);
       assert.ok(!res.migrations.output.includes('MIGRATIONS_RUN'), payload);
     }
-    // A sound `ran` beside an implausible path keeps the count and drops the commit.
-    const res = runEngine(stubbed, fix.project, ['boot'], {
-      STUB_MIGRATE_MODE: 'record-only',
-      STUB_MIGRATE_REPORT: '{"ran": 1, "tracking": "../elsewhere/migrations"}',
-    });
-    assert.strictEqual(res.migrations.ran, 1);
-    assert.strictEqual(res.migrations_committed, null);
   });
 
-  it('a runner that reports nothing reads as no migrations run', () => {
+  it('a runner that reports nothing reads as no migrations run — the ledger it wrote still committed', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'record-only',
       STUB_MIGRATE_NO_REPORT: '1',
     });
 
     assert.strictEqual(res.migrations.ran, 0);
-    assert.strictEqual(res.migrations_committed, null);
+    assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
     assert.deepStrictEqual(res.warnings, []);
   });
 
@@ -699,7 +688,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, false);
     assert.deepStrictEqual(res.warnings, []);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.knowledge')), 'nothing set up');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.knowledge')), 'nothing set up');
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
@@ -711,13 +700,13 @@ describe('engine boot', () => {
 
     assert.strictEqual(res.knowledge, 'ready');
     assert.strictEqual(res.indexed, true);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['payments/discussion/payments.md']);
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
-    assert.strictEqual(git(fix.project, ['ls-files', '--', '.workflows/.knowledge']).trim(), '');
+    assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
   });
 
   it('buildable: a set-up checkout with no store has it built by the keyword side, then compacted', () => {
-    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeFile(fix.project, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
     completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -727,12 +716,12 @@ describe('engine boot', () => {
     assert.strictEqual(res.compacted, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.ok(!('system_config' in res), 'a store that stood needs no setup');
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['payments/discussion/payments.md']);
   });
 
   it('buildable: a build that did not stand is not-ready — no compact, the gate\'s report attached', () => {
-    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    writeFile(fix.project, '.workflows/manifest.json', '{ not json');
+    writeFile(fix.project, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeFile(fix.project, '.leeway/manifest.json', '{ not json');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -742,11 +731,11 @@ describe('engine boot', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^knowledge index failed: manifest read failed: project manifest at .* is not valid JSON/);
     assert.ok('system_config' in res);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.knowledge/store.bin')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.knowledge/store.bin')));
   });
 
   it('buildable: a store that stood with a file failing is ready, the failure a warning the next start retries', () => {
-    writeFile(fix.project, '.workflows/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    writeFile(fix.project, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
     completedDiscussion(fix.project, '');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -755,46 +744,42 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/discussion\/payments\.md: No chunks produced/);
+    const file = path.join(fix.project, '.leeway/payments/discussion/payments.md');
+    assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
   });
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its commits — the migration ledger, the
-    // project settings sync and the worktree include — must take their own
-    // paths and nothing else, staged peer content included.
-    writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'a peer topic']);
-    writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
-    git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
+    // other one on the checkout. Its commits — the migration ledger and the
+    // project settings sync — must take their own paths and nothing else,
+    // staged peer content included.
+    writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    commitAll(fix.project, 'a peer topic');
+    writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
+    stateGit(fix.project, ['add', '--', 'payments/discussion/topic-a.md']);
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.deepStrictEqual(git(fix.project, ['log', '-4', '--pretty=%s']).trim().split('\n'), [
-      'chore: copy the knowledge store into new worktrees',
+    assert.deepStrictEqual(git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
       'chore: install workflow session hooks',
+      'init',
+    ]);
+    assert.deepStrictEqual(stateGit(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
       'chore: record workflow migrations',
       'a peer topic',
     ]);
-    const shas = git(fix.project, ['log', '-3', '--format=%H']).trim().split('\n');
-    for (const sha of shas) {
-      const files = git(fix.project, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
-      assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'),
-        `boot swept a peer session's staged file:\n${files.join('\n')}`);
-    }
-    assert.strictEqual(git(fix.project, ['diff', '--cached', '--name-only']).trim(),
-      '.workflows/payments/discussion/topic-a.md', 'and left it staged exactly as it was');
+    const files = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);
+    assert.deepStrictEqual(files, ['.state/migrations'], 'boot swept nothing of a peer session\'s staged state');
+    assert.strictEqual(stateGit(fix.project, ['diff', '--cached', '--name-only']).trim(),
+      'payments/discussion/topic-a.md', 'and left it staged exactly as it was');
   });
 
   it('a check that cannot read the knowledge config is not-ready — never a crash', () => {
-    fs.mkdirSync(path.join(fix.project, '.workflows/.knowledge/config.json'), { recursive: true });
+    fs.mkdirSync(path.join(fix.project, '.leeway/.knowledge/config.json'), { recursive: true });
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -808,22 +793,22 @@ describe('engine boot', () => {
     // S0 0.05: 'buried', two completions behind, sits at R ≈ 0.015 — below the
     // default floor 0.05 — and 'recent', one behind, at R ≈ 0.12, above it.
     const completions = [['buried', '2024-01-01'], ['recent', '2024-06-01'], ['frontier', '2024-12-01']];
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({
       work_units: Object.fromEntries(completions.map(([name]) => [name, { work_type: 'feature' }])),
     }, null, 2) + '\n');
     for (const [name, completedAt] of completions) {
-      writeFile(fix.project, `.workflows/${name}/manifest.json`, JSON.stringify({
+      writeFile(fix.project, `.leeway/${name}/manifest.json`, JSON.stringify({
         name, work_type: 'feature', status: 'completed', created: '2024-01-01', completed_at: completedAt,
         phases: name === 'frontier' ? {} : { discussion: { items: { [name]: { status: 'completed' } } } },
       }, null, 2) + '\n');
-      if (name !== 'frontier') writeFile(fix.project, `.workflows/${name}/discussion/${name}.md`, `# ${name}\n\nCards ship first.\n`);
+      if (name !== 'frontier') writeFile(fix.project, `.leeway/${name}/discussion/${name}.md`, `# ${name}\n\nCards ship first.\n`);
     }
     readyKnowledge(fix.project, { decay_prune_below: false, decay_base_stability: 0.05 });
     runEngine(stubbed, fix.project, ['boot']);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/buried/discussion/buried.md', '.workflows/recent/discussion/recent.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['buried/discussion/buried.md', 'recent/discussion/recent.md']);
 
-    const configFile = path.join(fix.project, '.workflows/.knowledge/config.json');
-    writeFile(fix.project, '.workflows/.knowledge/config.json', JSON.stringify({
+    const configFile = path.join(fix.project, '.leeway/.knowledge/config.json');
+    writeFile(fix.project, '.leeway/.knowledge/config.json', JSON.stringify({
       knowledge: { provider: null, decay_prune_below: 7, decay_base_stability: 0.05, strategy: 'hybrid' },
     }) + '\n');
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -836,7 +821,7 @@ describe('engine boot', () => {
       `knowledge config: decay_prune_below in ${configFile} is ignored: 7 is not false or a number from 0 to 1`,
       `knowledge config: strategy in ${configFile} is ignored: not a knowledge setting`,
     ]);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/recent/discussion/recent.md']);
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['recent/discussion/recent.md']);
   });
 
   it('a file the index cannot take is its own warning — compact still runs', () => {
@@ -849,12 +834,13 @@ describe('engine boot', () => {
     assert.strictEqual(res.indexed, false);
     assert.strictEqual(res.compacted, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^knowledge index failed: Failed to index \.workflows\/payments\/discussion\/payments\.md: No chunks produced/);
+    const file = path.join(fix.project, '.leeway/payments/discussion/payments.md');
+    assert.ok(res.warnings[0].startsWith(`knowledge index failed: Failed to index ${file}: No chunks produced from ${file}.`), res.warnings[0]);
   });
 
   it('a failing index and a failing compact are two warnings, never a block', () => {
     readyKnowledge(fix.project);
-    writeFile(fix.project, '.workflows/manifest.json', '{ not json');
+    writeFile(fix.project, '.leeway/manifest.json', '{ not json');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -870,7 +856,7 @@ describe('engine boot', () => {
   it('a failing migrate.cjs is a hard error — ok false, stderr detail, exit 1', () => {
     readyKnowledge(fix.project);
     completedDiscussion(fix.project, '# Payments\n\nCards ship first.\n');
-    const knowledge = path.join(fix.project, '.workflows/.knowledge');
+    const knowledge = path.join(fix.project, '.leeway/.knowledge');
     const before = Object.fromEntries(fs.readdirSync(knowledge).map((f) => [f, fs.readFileSync(path.join(knowledge, f), 'utf8')]));
 
     const err = runEngineFails(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'fail' });
@@ -886,92 +872,23 @@ describe('engine boot', () => {
   });
 });
 
-describe('engine boot: the worktree include', () => {
+describe('engine boot: no worktree include', () => {
   let fix;
-  beforeEach(() => {
-    fix = setupFixture();
-    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
-    git(fix.project, ['commit', '-q', '-m', 'no worktree include']);
-  });
+  beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  const include = () => fs.readFileSync(path.join(fix.project, '.worktreeinclude'), 'utf8');
-  const head = () => git(fix.project, ['rev-parse', 'HEAD']).trim();
-
-  it('creates the file listing the knowledge files, committed confined — and a second boot changes nothing', () => {
-    writeFile(fix.project, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
-    git(fix.project, ['add', '--', '.workflows/payments/discussion/topic-a.md']);
-
-    const first = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(first.worktree_include_installed, true);
-    assert.deepStrictEqual(first.warnings, []);
-    assert.strictEqual(include(), WORKTREE_INCLUDE);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: copy the knowledge store into new worktrees');
-    assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.worktreeinclude']);
-    assert.strictEqual(git(fix.project, ['diff', '--cached', '--name-only']).trim(), '.workflows/payments/discussion/topic-a.md', 'a peer\'s staged work stays staged');
-
-    const after = head();
-    const second = runEngine(stubbed, fix.project, ['boot']);
-    assert.strictEqual(second.worktree_include_installed, false);
-    assert.strictEqual(head(), after);
-    assert.strictEqual(include(), WORKTREE_INCLUDE);
-  });
-
-  it('appends to the user\'s own file, every existing line left as it was', () => {
-    writeFile(fix.project, '.worktreeinclude', '# local env\n.env\n\n.env.local');
+  it('writes none — a project without one stays without one, and the user\'s own is left as it was', () => {
+    const include = path.join(fix.project, '.worktreeinclude');
+    const head = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(include(), `# local env\n.env\n\n.env.local\n${WORKTREE_INCLUDE}`);
-  });
-
-  it('appends only what is missing', () => {
-    writeFile(fix.project, '.worktreeinclude', `node_modules/\n${STORE_FILES[1]}\n`);
-
+    assert.strictEqual('worktree_include_installed' in res, false);
+    assert.strictEqual(fs.existsSync(include), false);
+    writeFile(fix.project, '.worktreeinclude', '# local env\n.env\n');
     runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(include(), `node_modules/\n${STORE_FILES[1]}\n${STORE_FILES[0]}\n${STORE_FILES[2]}\n`);
-  });
-
-  it('a file already listing the knowledge files is left alone', () => {
-    const content = `${STORE_FILES[1]}\n  ${STORE_FILES[0]}  \nnode_modules/\n${STORE_FILES[2]}\n`;
-    writeFile(fix.project, '.worktreeinclude', content);
-    git(fix.project, ['add', '--', '.worktreeinclude']);
-    git(fix.project, ['commit', '-q', '-m', 'the user\'s include']);
-    const before = head();
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.worktree_include_installed, false);
-    assert.strictEqual(include(), content);
-    assert.strictEqual(head(), before);
-  });
-
-  it('a commit that fails is a warning — the file is written, the next boot finds it listed', () => {
-    const hook = path.join(fix.project, '.git/hooks/pre-commit');
-    fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n');
-    fs.chmodSync(hook, 0o755);
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^worktree include commit failed: /);
-    assert.strictEqual(include(), WORKTREE_INCLUDE);
-  });
-
-  it('a path that cannot be written is a warning, never a block', () => {
-    fs.mkdirSync(path.join(fix.project, '.worktreeinclude'));
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.worktree_include_installed, false);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^worktree include not written: \.worktreeinclude — /);
+    assert.strictEqual(fs.readFileSync(include, 'utf8'), '# local env\n.env\n');
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'and commits nothing on the code branch');
   });
 });
 
@@ -1052,14 +969,13 @@ describe('engine boot: a set-up checkout with no store', () => {
     sysDir = path.join(fix.root, 'system-config');
     fs.mkdirSync(sysDir, { recursive: true });
     // A feature with one completed discussion — something for a build to index.
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
-    writeFile(fix.project, '.workflows/payments/manifest.json', JSON.stringify({
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+    writeFile(fix.project, '.leeway/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
       phases: { discussion: { items: { payments: { status: 'completed' } } } },
     }, null, 2) + '\n');
-    writeFile(fix.project, '.workflows/payments/discussion/payments.md', '# Payments\n\n## Card first\n\nCards ship first; wallets follow.\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'the project']);
+    writeFile(fix.project, '.leeway/payments/discussion/payments.md', '# Payments\n\n## Card first\n\nCards ship first; wallets follow.\n');
+    commitAll(fix.project, 'the project');
     // This checkout is set up — its local knowledge config — with no store.
     writeFile(fix.project, CONFIG, '{ "knowledge": {} }\n');
   });
@@ -1089,9 +1005,10 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.strictEqual(meta.dimensions, 8);
     assert.ok(meta.last_indexed, 'the discussion was indexed into it');
     assert.strictEqual(store.chunksWithoutVector(store.loadStore(storePath())).length, 1, 'its vector awaits the fill');
-    assert.deepStrictEqual(launched, [fix.project]);
+    assert.deepStrictEqual(launched, [path.join(fix.project, '.leeway')]);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'the build commits nothing');
-    assert.strictEqual(git(fix.project, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'the project', 'on either side');
+    assert.strictEqual(stateGit(fix.project, ['ls-files', '--', '.knowledge']).trim(), '');
   });
 
   it('boot never waits on embedding: an endpoint that never answers is never asked', async (t) => {
@@ -1108,7 +1025,7 @@ describe('engine boot: a set-up checkout with no store', () => {
       assert.deepStrictEqual(res.warnings, []);
       assert.strictEqual(requests, 0);
       assert.strictEqual(metadata().provider, 'openai-compatible', 'the store is built, its vectors awaited');
-      assert.deepStrictEqual(launched, [fix.project]);
+      assert.deepStrictEqual(launched, [path.join(fix.project, '.leeway')]);
     } finally {
       silent.closeAllConnections();
       await new Promise((resolve) => silent.close(() => resolve(undefined)));
@@ -1129,27 +1046,27 @@ describe('engine boot: a set-up checkout with no store', () => {
     assert.deepStrictEqual(res.warnings, [
       'knowledge vectors wait: the openai API key could not be resolved; export OPENAI_API_KEY, or run node .claude/skills/workflow-engine/scripts/engine.cjs knowledge setup --key-only',
     ]);
-    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['.workflows/payments/discussion/payments.md'], 'the keyword side still lands');
+    assert.deepStrictEqual(harness.indexedFiles(fix.project), ['payments/discussion/payments.md'], 'the keyword side still lands');
     assert.deepStrictEqual(launched, []);
   });
 
   it('a vector fill that fell short is the next start\'s warning — and the fill goes again', (t) => {
     const launched = recordStubbedLaunches(t);
     bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
-    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: '.workflows/payments/discussion/payments.md: out of quota' });
+    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: 'payments/discussion/payments.md: out of quota' });
 
     const res = bootWith({ knowledge: { provider: 'stub', dimensions: 8 } });
 
-    assert.deepStrictEqual(res.warnings, ['knowledge vector fill fell short: .workflows/payments/discussion/payments.md: out of quota']);
-    assert.deepStrictEqual(launched, [fix.project, fix.project]);
+    assert.deepStrictEqual(res.warnings, ['knowledge vector fill fell short: payments/discussion/payments.md: out of quota']);
+    assert.deepStrictEqual(launched, [path.join(fix.project, '.leeway'), path.join(fix.project, '.leeway')]);
   });
 
   it('a fill\'s shortfall stays quiet once nothing awaits a vector — its chunks since retired', (t) => {
     recordStubbedLaunches(t);
     writeFile(fix.project, CONFIG, '{ "knowledge": { "provider": null } }\n');
     bootWith(null);
-    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: '.workflows/payments/discussion/payments.md: out of quota' });
-    const unit = path.join(fix.project, '.workflows/payments/manifest.json');
+    store.writeMetadata(path.join(fix.project, STORE_FILES[1]), { ...metadata(), fill_failure: 'payments/discussion/payments.md: out of quota' });
+    const unit = path.join(fix.project, '.leeway/payments/manifest.json');
     fs.writeFileSync(unit, JSON.stringify({ ...JSON.parse(fs.readFileSync(unit, 'utf8')), status: 'cancelled' }));
 
     const res = bootWith(null);
@@ -1234,7 +1151,7 @@ describe('engine boot: a set-up checkout with no store', () => {
 
     assert.strictEqual(res.knowledge, 'not-ready');
     assert.strictEqual(res.system_config.status, 'valid');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/.knowledge')));
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/.knowledge')));
   });
 });
 
@@ -1327,9 +1244,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   /** Stamp the label choice on the project manifest and commit it, so boot's only new dirt is its own. */
   function recordChoice(value) {
-    writeFile(fix.project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
-    git(fix.project, ['add', '--', '.workflows/manifest.json']);
-    git(fix.project, ['commit', '-q', '-m', 'record the defaults']);
+    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
+    commitAll(fix.project, 'record the defaults');
   }
 
   /** Take the fixture's settings away — a project the hooks have never reached. */
@@ -1420,6 +1336,24 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
+  it('a boot from inside the state worktree installs into the main checkout — its settings, committed on its branch — and the state branch gains nothing', () => {
+    dropSettings();
+    const state = path.join(fix.project, '.leeway');
+    const stateHead = stateGit(fix.project, ['rev-parse', 'HEAD']).trim();
+
+    const res = runEngine(stubbed, state, ['boot']);
+
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install workflow session hooks');
+    assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'main']).trim().split('\n'), ['.claude/settings.json']);
+    assert.strictEqual(stateGit(fix.project, ['rev-parse', 'HEAD']).trim(), stateHead, 'no commit on leeway-state');
+    assert.strictEqual(fs.existsSync(path.join(state, '.claude')), false);
+    assert.strictEqual(fs.existsSync(path.join(state, '.worktreeinclude')), false);
+    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
+  });
+
   it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end` — committed confined, and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
@@ -1433,7 +1367,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const second = bootWith();
     assert.strictEqual(second.session_hooks_installed, false);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
-    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.workflows']).trim(), '', 'and no new dirt');
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.leeway']).trim(), '', 'and no new dirt');
   });
 
   it('labels on adds `session cleanup` beside the workflows\' own, in one group, and a SessionStart `session resume` matched to resume — one commit', () => {
@@ -1455,17 +1389,18 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('labels never asked wants the workflows\' own alone too — stale label hooks come back out', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false, 'the fixture already carries it');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.workflows/manifest.json')), 'no choice recorded');
+    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/manifest.json')), 'no choice recorded');
     commitSettings(LABELS_ON);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
   });
 
-  it('the hook sync waits on a live project lock — the opt-in read and the write are one hold', async () => {
+  it('the hook sync waits on a live writer lock — the opt-in read and the write are one hold', async () => {
     dropSettings();
-    const lock = path.join(fix.project, '.workflows', '.project-lock');
-    fs.writeFileSync(lock, '12345'); // fresh — never broken as stale
+    // Held by this test's own process: alive, and never the child's.
+    const lock = path.join(fix.project, '.leeway', '.lock');
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
     const env = { ...process.env };
     delete env.TMUX;
     delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
@@ -1476,7 +1411,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const exit = new Promise((resolve) => child.on('close', resolve));
 
     const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'boot must wait on a live project lock');
+    assert.strictEqual(raced, 'waiting', 'boot must wait on a live writer lock');
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')), 'no settings write while the lock is held');
 
     fs.unlinkSync(lock);
@@ -1502,7 +1437,8 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     recordChoice(true);
     assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'no commit of boot\'s');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'no settings', 'no commit of boot\'s');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'no commit of boot\'s');
   });
 
   it('a settings file that does not parse is a warning, never a block — left as found', () => {
@@ -1532,8 +1468,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   /** Install the mod where an install puts it, committed, so boot's commits are the only new ones. */
   function installMod() {
     writeFile(fix.project, '.claude/skills/workflow-gates/.claude-plugin/plugin.json', '{"name":"workflow-gates"}\n');
-    git(fix.project, ['add', '-A']);
-    git(fix.project, ['commit', '-q', '-m', 'install the mod']);
+    commitAll(fix.project, 'install the mod');
   }
   /** The fixture's Claude Code config directory, and a home holding no `.claude` — neither made unless a test makes it. */
   const claudeDir = () => path.join(fix.root, 'claude-config');
@@ -1728,57 +1663,61 @@ describe('engine boot (real scripts)', () => {
   let root;
   let project;
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-real-'));
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-real-')));
     project = setupProject(root);
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('runs the real migrate.cjs and knowledge base against an isolated project', () => {
+    const settingsBefore = fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8');
+    const codeHead = git(project, ['rev-parse', 'HEAD']).trim();
     const first = runEngine(real, project, ['boot']);
     assert.strictEqual(first.ok, true);
-    assert.strictEqual(typeof first.migrations.changed, 'boolean');
+    assert.strictEqual(first.migrations.changed, false);
     assert.strictEqual(typeof first.migrations.output, 'string');
-    // No work-unit artifacts in the fixture — no migration hands over checks.
     assert.deepStrictEqual(first.migrations.verify, []);
-    // 034 sets the plan-mode key and 067 takes it out in the same run: the
-    // project never had it, so nothing is said.
     assert.deepStrictEqual(first.migrations.notices, []);
-    assert.ok(!('showClearContextOnPlanAccept' in JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'))));
     // The trimmed report never leaks the prose stop-gate lines or the machine blocks.
     assert.ok(!first.migrations.output.includes('STOP_GATE'));
     assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
     assert.ok(!first.migrations.output.includes('MIGRATIONS_RUN'));
-    // The whole fleet ran against the fresh fixture.
-    assert.ok(first.migrations.ran > 0, `migrations ran: ${first.migrations.ran}`);
+    // The code-tree fleet has no `.workflows/` to upgrade: every one is
+    // recorded unrun, none creates the folder, and the settings stay as found.
+    assert.strictEqual(first.migrations.ran, 0);
+    const fleet = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'workflow-migrate/scripts/migrations'))
+      .map((f) => (f.match(/^[0-9]+/) || [''])[0]).filter(Boolean).sort();
+    assert.deepStrictEqual(fs.readFileSync(path.join(project, '.leeway/.state/migrations'), 'utf8').trim().split('\n').sort(), fleet);
+    assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
+    assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);
+    // The ledger, the only dirt, committed on the state branch — the code
+    // branch takes none of it.
+    assert.strictEqual(first.migrations_committed, stateGit(project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(git(project, ['rev-parse', 'HEAD']).trim(), codeHead);
     // No knowledge store in the fixture — the hard stop: nothing is created.
     assert.strictEqual(first.knowledge, 'not-ready');
     assert.strictEqual(first.indexed, false);
     assert.strictEqual(first.compacted, false);
-    assert.ok(!fs.existsSync(path.join(project, '.workflows/.knowledge')));
-    // The tracking file landed in the fixture, not the repo.
-    assert.ok(fs.existsSync(path.join(project, '.workflows/.state/migrations')));
+    assert.ok(!fs.existsSync(path.join(project, '.leeway/.knowledge')));
 
     // The user runs knowledge setup outside the session — simulated here by
     // writing what setup writes: a keyword-only config and a real store file
     // the readiness check loads.
-    writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
-    writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
-    store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
+    writeFile(project, '.leeway/.knowledge/config.json', '{"knowledge":{}}\n');
+    writeFile(project, '.leeway/.knowledge/metadata.json', '{"provider":null}\n');
+    store.saveStore(store.createStore(), path.join(project, '.leeway/.knowledge/store.bin'));
 
     // …and the restart's boot finds the store ready and leaves the whole
-    // directory out of git: the first boot's migrations ignore it.
+    // directory out of git: the state's own ignore rule keeps it out.
     const second = runEngine(real, project, ['boot']);
     assert.strictEqual(second.ok, true);
     assert.strictEqual(second.migrations.changed, false);
-    // Everything is recorded, so nothing ran — and the ledger the first boot
-    // left for a review gate that the user never reached is swept up here.
     assert.strictEqual(second.migrations.ran, 0);
-    assert.strictEqual(second.migrations_committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(second.migrations_committed, null);
     assert.strictEqual(second.knowledge, 'ready');
     assert.strictEqual(second.indexed, true);
     assert.strictEqual(second.compacted, true);
-    assert.strictEqual(git(project, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge']).trim(), '');
+    assert.strictEqual(stateGit(project, ['status', '--porcelain', '--untracked-files=all', '--', '.knowledge']).trim(), '');
 
     // Third boot: nothing new to commit, the ledger included — an index and
     // a compact with nothing to do write nothing.
@@ -1789,10 +1728,10 @@ describe('engine boot (real scripts)', () => {
   });
 
   it('a project carrying the function-hooks flag the workflows wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
-    writeFile(project, '.workflows/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    legacyLayout(project);
+    writeFile(project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     writeFile(project, '.claude/settings.json', JSON.stringify({ hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }] }, env: { [FLAG]: '1' } }, null, 2) + '\n');
-    git(project, ['add', '-A']);
-    git(project, ['commit', '-q', '-m', 'labels on, the flag in the project']);
+    commitAll(project, 'labels on, the flag in the project');
     const before = git(project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(real, project, ['boot']);
@@ -1809,56 +1748,19 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(git(project, ['show', 'HEAD:.claude/settings.json']), migrated);
     assert.strictEqual(git(project, ['status', '--porcelain', '--', '.claude']).trim(), '');
   });
-
-  it('a checkout that committed its knowledge directory has the removal staged by the first boot\'s migrations — boot commits none of it, and the reviewed migration commit records it beside the ignore rule', () => {
-    writeFile(project, '.workflows/.knowledge/config.json', '{"knowledge":{}}\n');
-    writeFile(project, '.workflows/.knowledge/metadata.json', '{"provider":null}\n');
-    store.saveStore(store.createStore(), path.join(project, '.workflows/.knowledge/store.bin'));
-    git(project, ['add', '-A']);
-    git(project, ['commit', '-q', '-m', 'chore(knowledge): initialise store']);
-    const storeBytes = fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin'));
-    const before = git(project, ['rev-parse', 'HEAD']).trim();
-
-    const res = runEngine(real, project, ['boot']);
-
-    assert.strictEqual(res.knowledge, 'ready');
-    assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(res.migrations.changed, true, 'the review gate owns the commit');
-    assert.strictEqual(git(project, ['rev-parse', 'HEAD']).trim(), before, 'boot commits none of it');
-    assert.deepStrictEqual(
-      git(project, ['diff', '--cached', '--name-status']).trim().split('\n').sort(),
-      STORE_FILES.map((f) => `D\t${f}`).sort(), 'the removal alone is staged');
-    assert.strictEqual(git(project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
-    assert.ok(fs.readFileSync(path.join(project, '.workflows/.knowledge/store.bin')).equals(storeBytes), 'the store stays on disk, byte for byte');
-
-    // The skill's reviewed migration commit takes every path the workflows
-    // own — the staged removal with the ignore rule that keeps the files out.
-    const committed = runEngine(real, project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
-    assert.ok(committed.committed);
-    const changes = git(project, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n');
-    assert.ok(changes.includes('A\t.workflows/.gitignore'), `the ignore rule lands:\n${changes.join('\n')}`);
-    for (const f of STORE_FILES) assert.ok(changes.includes(`D\t${f}`), `${f}'s removal lands:\n${changes.join('\n')}`);
-    assert.strictEqual(git(project, ['ls-files', '--', ...STORE_FILES]).trim(), '');
-    assert.strictEqual(git(project, ['status', '--porcelain', '--untracked-files=all', '--', '.workflows/.knowledge']).trim(), '');
-    assert.ok(fs.existsSync(path.join(project, '.workflows/.knowledge/store.bin')));
-
-    const head = git(project, ['rev-parse', 'HEAD']).trim();
-    const again = runEngine(real, project, ['boot']);
-    assert.deepStrictEqual(again.warnings, []);
-    assert.strictEqual(git(project, ['rev-parse', 'HEAD']).trim(), head, 'nothing left to untrack');
-  });
 });
 
 describe('engine boot verification addenda (real scripts)', () => {
   let root;
   let project;
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-verify-'));
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-verify-')));
     project = setupProject(root);
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('carries an executed migration\'s checks in migrations.verify, stripped from the report', () => {
+    legacyLayout(project);
     writeFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
@@ -1876,6 +1778,7 @@ describe('engine boot verification addenda (real scripts)', () => {
   });
 
   it('hands back 054\'s check and then 071\'s, naming the mailbox, where one boot runs both over a straggler 054 cannot convert', () => {
+    legacyLayout(project);
     writeFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage:\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
@@ -1893,12 +1796,13 @@ describe('engine boot migration notices (real scripts)', () => {
   let root;
   let project;
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-notices-'));
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-notices-')));
     project = setupProject(root);
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('tells the person of a plan-mode setting the project had committed, once', () => {
+    legacyLayout(project);
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
     git(project, ['commit', '-q', '-am', 'plan mode on']);
 
@@ -1919,29 +1823,30 @@ describe('engine commit --workflows', () => {
   let root;
   let project;
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-commit-'));
+    root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-commit-')));
     project = setupProject(root);
   });
   afterEach(() => { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('stages the whole .workflows tree — many work units plus .state — and commits', () => {
-    writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
-    writeFile(project, '.workflows/auth-flow/manifest.json', '{"name":"auth-flow"}\n');
-    writeFile(project, '.workflows/.state/migrations', '045\n');
+  it('stages the whole state — many work units plus .state — and commits it on the state branch', () => {
+    writeFile(project, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(project, '.leeway/auth-flow/manifest.json', '{"name":"auth-flow"}\n');
+    writeFile(project, '.leeway/.state/migrations', '045\n');
     writeFile(project, 'unrelated.txt', 'outside the scope\n');
 
     const res = runEngine(real, project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
 
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.committed, git(project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
-    // Everything under .workflows landed in the one commit…
-    const show = git(project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
+    assert.strictEqual(res.committed, stateGit(project, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
+    // Everything in the state landed in the one commit, on the state branch…
+    const show = stateGit(project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual(show, [
-      '.workflows/.state/migrations',
-      '.workflows/auth-flow/manifest.json',
-      '.workflows/payments/manifest.json',
+      '.state/migrations',
+      'auth-flow/manifest.json',
+      'payments/manifest.json',
     ]);
+    assert.strictEqual(git(project, ['log', '-1', '--pretty=%s']).trim(), 'init', 'none on the code side');
     // …and the unrelated file stays uncommitted.
     assert.match(git(project, ['status', '--porcelain']), /\?\? unrelated\.txt/);
   });

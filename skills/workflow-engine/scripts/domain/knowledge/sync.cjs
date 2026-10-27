@@ -5,12 +5,14 @@
 // transaction's changes, and boot's pass. The knowledge base is a derived
 // index: each writes the keyword side and returns at once, the vectors left
 // to the fill it launches, and a failure is a warning on the caller's result,
-// never a throw.
+// never a throw. Its root is the state root, found from the caller's folder.
 // ---------------------------------------------------------------------------
 
+const path = require('path');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
-const { listWorkUnitManifests } = require('../../kernel/manifest.cjs');
+const { listWorkUnitManifests } = require('../../kernel/manifest-io.cjs');
+const { stateRoot } = require('../../kernel/state-root.cjs');
 const { loadSettings, keyCause, storeMetadata } = require('./embedder.cjs');
 const { indexPath, reconcile, readStore } = require('./indexing.cjs');
 const { launchFillIfAwaiting, fillShortfall } = require('./vectors.cjs');
@@ -22,7 +24,7 @@ const { readiness } = require('./status.cjs');
 
 /**
  * @typedef {({index: string} | {remove: Scope} | {reindex: string}) & {label?: string}} Change
- *   one artifact indexed by its project-relative path, a scope's chunks
+ *   one artifact indexed by its state-relative path, a scope's chunks
  *   removed, or a work unit's artifacts brought back in line — `label`
  *   naming it in a warning
  */
@@ -46,9 +48,10 @@ function attempt(warnings, label, fn) {
  * Bring the knowledge base in line with what a transaction changed: each
  * change in turn, a failure a warning, then the vector fill launched once
  * where the writes left chunks awaiting vectors.
- * @param {string} cwd  the project root @param {Change[]} changes @param {string[]} warnings
+ * @param {string} cwd @param {Change[]} changes @param {string[]} warnings
  */
 function syncKnowledge(cwd, changes, warnings) {
+  const root = stateRoot(cwd);
   /** @type {import('./indexing.cjs').Settings|null} */
   let settings = null;
   /** @type {KeywordWrite|null} */
@@ -57,20 +60,20 @@ function syncKnowledge(cwd, changes, warnings) {
     const label = change.label || ('remove' in change ? 'knowledge remove' : 'knowledge index');
     attempt(warnings, label, () => {
       if ('remove' in change) {
-        removeChunks(cwd, change.remove);
+        removeChunks(root, change.remove);
         return;
       }
-      settings = settings || loadSettings(knowledgeFiles(cwd));
+      settings = settings || loadSettings(knowledgeFiles(root));
       if ('index' in change) {
-        written = indexPath(cwd, change.index, settings);
+        written = indexPath(root, change.index, settings);
         return;
       }
-      const reconciled = reconcile(cwd, settings, change.reindex);
-      for (const { artifact, error } of reconciled.failures) warnings.push(`${label} failed: Failed to index ${artifact.file}: ${error.message}`);
+      const reconciled = reconcile(root, settings, change.reindex);
+      for (const { artifact, error } of reconciled.failures) warnings.push(`${label} failed: Failed to index ${path.join(root, artifact.file)}: ${error.message}`);
       written = reconciled;
     });
   }
-  if (written) launchFillIfAwaiting(cwd, written);
+  if (written) launchFillIfAwaiting(root, written);
 }
 
 /**
@@ -87,28 +90,29 @@ function syncKnowledge(cwd, changes, warnings) {
  * provider's key checked, the last fill's shortfall said, and the vector fill
  * launched where chunks await. A checkout not set up is left alone: setting
  * it up is the person's choice.
- * @param {string} cwd  the project root @param {string[]} warnings
+ * @param {string} cwd @param {string[]} warnings
  * @returns {BootKnowledge}
  */
 function bootKnowledge(cwd, warnings) {
-  const state = readiness(cwd, () => {});
+  const root = stateRoot(cwd);
+  const state = readiness(root, () => {});
   if (state === 'not-ready') return { knowledge: 'not-ready', indexed: false, compacted: false };
 
-  const files = knowledgeFiles(cwd);
+  const files = knowledgeFiles(root);
   const settings = attempt(warnings, 'knowledge index', () => loadSettings(files));
   for (const line of settings ? settings.cfg._ignored : []) warnings.push(`knowledge config: ${line}`);
-  const reconciled = settings && attempt(warnings, 'knowledge index', () => reconcile(cwd, settings));
+  const reconciled = settings && attempt(warnings, 'knowledge index', () => reconcile(root, settings));
   for (const { artifact, error } of reconciled ? reconciled.failures : []) {
-    warnings.push(`knowledge index failed: Failed to index ${artifact.file}: ${error.message}`);
+    warnings.push(`knowledge index failed: Failed to index ${path.join(root, artifact.file)}: ${error.message}`);
   }
   const indexed = reconciled !== null && reconciled.failures.length === 0;
 
-  const knowledge = state === 'ready' || readiness(cwd, () => {}) === 'ready' ? 'ready' : 'not-ready';
+  const knowledge = state === 'ready' || readiness(root, () => {}) === 'ready' ? 'ready' : 'not-ready';
   if (knowledge === 'not-ready' || !settings) return { knowledge, indexed, compacted: false };
 
   const compacted = attempt(warnings, 'knowledge compact', () => {
-    const plan = planCompaction(cwd, settings.cfg, listWorkUnitManifests(cwd));
-    if (plan) compact(cwd, plan);
+    const plan = planCompaction(root, settings.cfg, listWorkUnitManifests(root));
+    if (plan) compact(root, plan);
     return true;
   }) === true;
   if (!settings.provider && settings.cfg.provider) warnings.push(`knowledge vectors wait: ${keyCause(settings.cfg)}`);
@@ -117,7 +121,7 @@ function bootKnowledge(cwd, warnings) {
     const metadata = storeMetadata(files);
     const shortfall = metadata && snapshot.db ? fillShortfall(metadata.fill_failure, snapshot.db) : null;
     if (shortfall) warnings.push(`knowledge vector fill fell short: ${shortfall}`);
-    if (reconciled) launchFillIfAwaiting(cwd, { embedder: reconciled.embedder, snapshot });
+    if (reconciled) launchFillIfAwaiting(root, { embedder: reconciled.embedder, snapshot });
   });
   return { knowledge, indexed, compacted };
 }

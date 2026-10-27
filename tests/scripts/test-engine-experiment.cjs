@@ -9,23 +9,18 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 
-const { git, cleanupFixture, ok: engine, refuses: engineFails } = harness;
+const { cleanupFixture, commitAll, ok: engine, refuses: engineFails } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-exp-');
 
 function writeManifest(dir, wu, manifest) {
-  const full = path.join(dir, '.workflows', wu, 'manifest.json');
+  const full = path.join(dir, '.leeway', wu, 'manifest.json');
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, JSON.stringify(manifest, null, 2) + '\n');
 }
 
-function commitAll(dir, message) {
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', message]);
-}
-
 function readManifest(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
 }
 
 /** An epic with timing's research and discussion both open — either can spawn. */
@@ -61,7 +56,7 @@ function setup(dir) {
 
 /** Write a problem scratch into the cache and return its project-relative path. */
 function problemScratch(dir, slug) {
-  const rel = `.workflows/.cache/lab/scratch/${slug}-problem.md`;
+  const rel = `.leeway/.cache/lab/scratch/${slug}-problem.md`;
   fs.mkdirSync(path.join(dir, path.dirname(rel)), { recursive: true });
   fs.writeFileSync(path.join(dir, rel), `# Problem — ${slug}\n`);
   return rel;
@@ -92,7 +87,7 @@ describe('engine experiment create — the spawn', () => {
     assert.strictEqual(res.id, 'E1');
     assert.strictEqual(res.status, 'conceived');
     assert.strictEqual(res.slug, 'window-placement');
-    assert.strictEqual(res.dir, '.workflows/lab/experiment/timing/E1-window-placement');
+    assert.strictEqual(res.dir, path.join(dir, '.leeway/lab/experiment/timing/E1-window-placement'));
     assert.deepStrictEqual(res.awaiting, { phase: 'discussion', ids: ['E1'] });
     const m = readManifest(dir, 'lab');
     assert.strictEqual(m.phases.experiment.items.timing.status, 'in-progress', 'the spawn opens the item');
@@ -101,9 +96,9 @@ describe('engine experiment create — the spawn', () => {
     assert.deepStrictEqual(m.phases.discussion.items.timing.awaiting_experiments, ['E1']);
     assert.strictEqual(m.phases.research.items.timing.awaiting_experiments, undefined,
       'the lock lands on the spawning phase alone');
-    assert.strictEqual(fs.readFileSync(path.join(dir, res.dir, 'problem.md'), 'utf8'),
+    assert.strictEqual(fs.readFileSync(path.join(res.dir, 'problem.md'), 'utf8'),
       '# Problem — window-placement\n', 'the create installs the problem statement in the same transaction');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/lab/scratch/window-placement-problem.md')),
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/lab/scratch/window-placement-problem.md')),
       'the scratch is consumed');
   });
 
@@ -148,7 +143,7 @@ describe('engine experiment create — the spawn', () => {
     writeManifest(dir, 'lab', m);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', scratch()]).error,
       /discussion "timing" is completed — only an in-progress discussion spawns/);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/lab/scratch/x-problem.md')),
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/lab/scratch/x-problem.md')),
       'a refused spawn leaves the problem scratch intact — nothing consumed, nothing conceived');
   });
 
@@ -156,10 +151,10 @@ describe('engine experiment create — the spawn', () => {
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion']).error,
       /--problem <file> is required on a spawn/);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', 'notes/problem.md']).error,
-      /--problem must point inside \.workflows\/\.cache\//);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.workflows/.cache/lab/scratch/ghost.md']).error,
+      /--problem must point inside \S*\/\.leeway\/\.cache\//);
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.leeway/.cache/lab/scratch/ghost.md']).error,
       /problem file not found/);
-    const empty = '.workflows/.cache/lab/scratch/empty.md';
+    const empty = '.leeway/.cache/lab/scratch/empty.md';
     fs.mkdirSync(path.join(dir, path.dirname(empty)), { recursive: true });
     fs.writeFileSync(path.join(dir, empty), '  \n');
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', empty]).error,
@@ -340,7 +335,7 @@ describe('splits — sub-experiments under a running parent', () => {
     const res = engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'single-monitor', '--parent', 'E1']);
     assert.strictEqual(res.id, 'E1.1');
     assert.strictEqual(res.parent, 'E1');
-    assert.strictEqual(res.dir, '.workflows/lab/experiment/timing/E1-window-placement/E1.1-single-monitor');
+    assert.strictEqual(res.dir, path.join(dir, '.leeway/lab/experiment/timing/E1-window-placement/E1.1-single-monitor'));
     const second = engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'multi-monitor', '--parent', 'E1']);
     assert.strictEqual(second.id, 'E1.2');
     assert.deepStrictEqual(readManifest(dir, 'lab').phases.discussion.items.timing.awaiting_experiments, ['E1'],
@@ -632,7 +627,7 @@ describe('the field surface guards the series exactly as the verbs write it', ()
   it('a leaf set on an id the series does not hold refuses — the surface repairs, never creates', () => {
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.experiment.timing', 'experiments.E9.status', 'running']).error,
       /no experiment E9 in "timing"'s series — records are allocated by the spawn/);
-    const ops = '.workflows/.cache/lab/scratch/ops.json';
+    const ops = '.leeway/.cache/lab/scratch/ops.json';
     fs.mkdirSync(path.join(dir, path.dirname(ops)), { recursive: true });
     fs.writeFileSync(path.join(dir, ops), JSON.stringify([
       { op: 'set', path: 'lab.experiment.timing', fields: { 'experiments.E9.status': 'running' } },
@@ -649,7 +644,7 @@ describe('presence rides the experiment verbs mechanically', () => {
   beforeEach(() => { dir = setupGitFixture(); setup(dir); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const presenceFile = (phase) => path.join(dir, '.workflows/.cache/lab', phase, 'timing/presence');
+  const presenceFile = (phase) => path.join(dir, '.leeway/.cache/lab', phase, 'timing/presence');
 
   it('the spawn beats the spawning conversation; the walk beats the laboratory; the close releases it', () => {
     spawn(dir, 'discussion', 'window-placement');

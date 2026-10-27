@@ -66,8 +66,8 @@ function groupingsFixture(dir) {
       },
     },
   });
-  createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# Done');
-  createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
+  createFile(dir, '.leeway/v1/specification/done-spec/specification.md', '# Done');
+  createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
 }
 
 describe('specification detail: scenario derivation', () => {
@@ -121,8 +121,8 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/discussion/a.md', '# A');
-    createFile(dir, '.workflows/v1/discussion/b.md', '# B');
+    createFile(dir, '.leeway/v1/discussion/a.md', '# A');
+    createFile(dir, '.leeway/v1/discussion/b.md', '# B');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.scenario, 'analyze');
     assert.strictEqual(d.cache_status, 'valid');
@@ -157,8 +157,8 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v2/discussion/a.md', '# A');
-    createFile(dir, '.workflows/v2/discussion/b.md', '# B');
+    createFile(dir, '.leeway/v2/discussion/a.md', '# A');
+    createFile(dir, '.leeway/v2/discussion/b.md', '# B');
     assert.strictEqual(detailOf(dir, 'v2').scenario, 'blocked-discussions-open');
 
     createManifest(dir, 'v3', {
@@ -180,7 +180,7 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/solo/specification.md', '# Solo');
+    createFile(dir, '.leeway/v1/specification/solo/specification.md', '# Solo');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.scenario, 'single');
     assert.strictEqual(d.single.variant, 'has-spec');
@@ -200,8 +200,8 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
-    createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
+    createFile(dir, '.leeway/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/b-spec/specification.md', '# B');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.scenario, 'specs-menu');
     const blockedRow = d.actionable.find((r) => r.name === 'a-spec');
@@ -220,7 +220,7 @@ describe('specification detail: scenario derivation', () => {
         specification: { items: { 'a-spec': { status: 'in-progress', sources: { a: { status: 'pending' } } } } },
       },
     });
-    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/a-spec/specification.md', '# A');
     assert.strictEqual(detailOf(dir, 'v1').scenario, 'specs-menu');
   });
 
@@ -238,8 +238,8 @@ describe('specification detail: scenario derivation', () => {
         } },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# Auth');
-    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
+    createFile(dir, '.leeway/v1/specification/auth-flow/specification.md', '# Auth');
+    createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
     const promoted = () => {
       const detail = detailOf(dir, 'v1');
       assert.strictEqual(detail.scenario, 'specs-menu');
@@ -252,7 +252,7 @@ describe('specification detail: scenario derivation', () => {
     };
     promoted();
     // Keyed on its status, never on where its file went.
-    createFile(dir, '.workflows/v1/specification/logging/specification.md', '# Logging');
+    createFile(dir, '.leeway/v1/specification/logging/specification.md', '# Logging');
     promoted();
 
     // A lone discussion a promoted specification covers proceeds as no
@@ -319,7 +319,7 @@ describe('specification detail: scenario derivation', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/s/specification.md', '# S');
+    createFile(dir, '.leeway/v1/specification/s/specification.md', '# S');
     const row = detailOf(dir, 'v1').actionable[0];
     assert.deepStrictEqual(row.sources, [{ name: 'a', tag: 'extracted' }]);
     assert.strictEqual(row.total, 1);
@@ -366,7 +366,7 @@ describe('specification record: one reading for the menu and its confirm', () =>
         },
       },
     });
-    for (const spec of ['open', 'moved', 'done']) createFile(dir, `.workflows/v1/specification/${spec}/specification.md`, '# Spec');
+    for (const spec of ['open', 'moved', 'done']) createFile(dir, `.leeway/v1/specification/${spec}/specification.md`, '# Spec');
     const detail = detailOf(dir, 'v1');
     for (const row of [...detail.actionable, ...detail.concluded]) {
       assert.deepStrictEqual(confirmationOf(m, row.name).sources.map((s) => s.name), row.sources.map((s) => s.name), row.name);
@@ -454,7 +454,7 @@ describe('specification incorporations: decided at the start, read the same afte
       },
     });
   }
-  const manifestOf = () => JSON.parse(fs.readFileSync(path.join(dir, '.workflows/v1/manifest.json'), 'utf8'));
+  const manifestOf = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/v1/manifest.json'), 'utf8'));
 
   it('a fresh grouping over a started specification\'s discussion incorporates it', () => {
     incorporationFixture();
@@ -490,11 +490,11 @@ describe('specification incorporations: decided at the start, read the same afte
 
   it('the session reads each incorporated specification\'s document and the discussions it covers among its own sources', () => {
     incorporationFixture();
-    assert.deepStrictEqual(incorporations(manifestOf(), 'v1', 'search'), [
-      { topic: 'ranking', path: '.workflows/v1/specification/ranking/specification.md', covers: ['ranking'] },
+    assert.deepStrictEqual(incorporations(dir, manifestOf(), 'v1', 'search'), [
+      { topic: 'ranking', path: path.join(dir, '.leeway/v1/specification/ranking/specification.md'), covers: ['ranking'] },
     ]);
-    assert.deepStrictEqual(incorporations(manifestOf(), 'v1', 'ranking'), []);
-    assert.throws(() => incorporations(manifestOf(), 'v1', 'ghost'), /no specification "ghost" in "v1"/);
+    assert.deepStrictEqual(incorporations(dir, manifestOf(), 'v1', 'ranking'), []);
+    assert.throws(() => incorporations(dir, manifestOf(), 'v1', 'ghost'), /no specification "ghost" in "v1"/);
   });
 });
 
@@ -563,9 +563,9 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/discussion/data-model.md', '# Data');
-    createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# Auth');
-    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# Data');
+    createFile(dir, '.leeway/v1/discussion/data-model.md', '# Data');
+    createFile(dir, '.leeway/v1/specification/auth-spec/specification.md', '# Auth');
+    createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# Data');
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
       '3 completed discussions found. 2 specifications exist.',
       '',
@@ -618,8 +618,8 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/s1/specification.md', '# S1');
-    createFile(dir, '.workflows/v1/specification/s2/specification.md', '# S2');
+    createFile(dir, '.leeway/v1/specification/s1/specification.md', '# S1');
+    createFile(dir, '.leeway/v1/specification/s2/specification.md', '# S2');
     assert.strictEqual(specificationDisplay(detailOf(dir, 'v1')), [
       '2 completed discussions found. 2 specifications exist.',
       '',
@@ -642,7 +642,7 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/s1/specification.md', '# S1');
+    createFile(dir, '.leeway/v1/specification/s1/specification.md', '# S1');
     const out = specificationDisplay(detailOf(dir, 'v1'));
     assert.ok(out.startsWith('2 completed discussions found. 1 specification exists.\n'), out);
     assert.ok(!out.includes('1 specifications'), out);
@@ -683,7 +683,7 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/solo/specification.md', '# Solo');
+    createFile(dir, '.leeway/v1/specification/solo/specification.md', '# Solo');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.single.variant, 'has-spec');
     assert.strictEqual(d.single.proceed_name, 'solo');
@@ -725,7 +725,7 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/combined-spec/specification.md', '# C');
+    createFile(dir, '.leeway/v1/specification/combined-spec/specification.md', '# C');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.single.variant, 'grouped');
     assert.strictEqual(d.single.proceed_name, 'combined-spec');
@@ -768,7 +768,7 @@ describe('specification projections: display goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/combined-spec/specification.md', '# C');
+    createFile(dir, '.leeway/v1/specification/combined-spec/specification.md', '# C');
     const d = detailOf(dir, 'v1');
     assert.strictEqual(d.scenario, 'blocked-discussions-open');
     assert.strictEqual(d.single, null);
@@ -946,9 +946,9 @@ describe('specification projections: menu goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth-spec/specification.md', '# A');
-    createFile(dir, '.workflows/v1/specification/data-spec/specification.md', '# D');
-    createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# X');
+    createFile(dir, '.leeway/v1/specification/auth-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/data-spec/specification.md', '# D');
+    createFile(dir, '.leeway/v1/specification/done-spec/specification.md', '# X');
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
@@ -992,7 +992,7 @@ describe('specification projections: menu goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/moved-spec/specification.md', '# M');
+    createFile(dir, '.leeway/v1/specification/moved-spec/specification.md', '# M');
     const detail = detailOf(dir, 'v1');
     const row = detail.actionable.find((r) => r.name === 'moved-spec');
     assert.ok(row, 'the staled spec is actionable, not concluded');
@@ -1025,8 +1025,8 @@ describe('specification projections: menu goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
-    createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
+    createFile(dir, '.leeway/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/b-spec/specification.md', '# B');
     const menu = specificationMenu(detailOf(dir, 'v1'));
     assert.strictEqual(menu.rendered, [
       '· · · · · · · · · · · ·',
@@ -1101,8 +1101,8 @@ describe('specification projections: menu goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# A');
-    createFile(dir, '.workflows/v1/specification/data-model/specification.md', '# D');
+    createFile(dir, '.leeway/v1/specification/auth-flow/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/data-model/specification.md', '# D');
     const sub = specificationCompletedMenu(detailOf(dir, 'v1'));
     assert.strictEqual(sub.title, 'Completed Specifications');
     assert.strictEqual(sub.display, [
@@ -1140,7 +1140,7 @@ describe('specification projections: menu goldens', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/auth-flow/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/auth-flow/specification.md', '# A');
     assert.throws(
       () => specificationCompletedMenu(detailOf(dir, 'v1')),
       /no concluded specifications/
@@ -1196,8 +1196,8 @@ describe('specification menu: the epic gateway\'s spec verbs', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/discussion/a.md', '# A');
-    createFile(dir, '.workflows/v1/discussion/b.md', '# B');
+    createFile(dir, '.leeway/v1/discussion/a.md', '# A');
+    createFile(dir, '.leeway/v1/discussion/b.md', '# B');
     const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('scenario: analyze'));
     assert.ok(out.includes('cache_status: valid'));
@@ -1227,7 +1227,7 @@ describe('specification menu: the epic gateway\'s spec verbs', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/done-spec/specification.md', '# X');
+    createFile(dir, '.leeway/v1/specification/done-spec/specification.md', '# X');
     const out = run(['spec-completed-menu', 'v1']);
     assert.ok(out.includes('  1  —  refine_spec  done-spec\n'));
     assert.ok(out.includes('# **`■ Completed Specifications`**'));
@@ -1260,8 +1260,8 @@ describe('specification menu: the epic gateway\'s spec verbs', () => {
         },
       },
     });
-    createFile(dir, '.workflows/v1/specification/a-spec/specification.md', '# A');
-    createFile(dir, '.workflows/v1/specification/b-spec/specification.md', '# B');
+    createFile(dir, '.leeway/v1/specification/a-spec/specification.md', '# A');
+    createFile(dir, '.leeway/v1/specification/b-spec/specification.md', '# B');
     const out = run(['spec-view', 'v1']);
     assert.ok(out.includes('  1  —  blocked_spec  a-spec\n'));
     assert.ok(out.includes('a-spec: in-progress, has_pending_sources=true, blocked_by=a'));

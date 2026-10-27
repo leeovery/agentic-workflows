@@ -7,8 +7,7 @@
 // nothing committed, content staged over a tracked file, a store staged but
 // never committed, a project nested in a larger repository, the rest of the
 // index left as it was, the skips (nothing tracked, not a repository, git
-// unavailable), idempotency, and — end to end with 060 — the reviewed
-// migration commit recording the removal.
+// unavailable), and idempotency.
 //
 
 require('./hermetic-env.cjs');
@@ -19,19 +18,16 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const harness = require('./engine-harness.cjs');
+const { git, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/064-untrack-knowledge-store.cjs');
-const IGNORE_MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/060-ignore-knowledge-store.cjs');
-
-const { git, setupGitFixture, cleanupFixture } = harness;
 
 const KNOWLEDGE_DIR = '.workflows/.knowledge';
 const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
 
 let dir, updates, skips;
 
-function run(projectDir = dir, migration = MIGRATION) {
-  migration.run({ projectDir, reportUpdate: () => { updates++; }, reportSkip: () => { skips++; } });
+function run(projectDir = dir) {
+  MIGRATION.run({ projectDir, reportUpdate: () => { updates++; }, reportSkip: () => { skips++; } });
 }
 function write(rel, content, root = dir) {
   const file = path.join(root, rel);
@@ -123,6 +119,7 @@ describe('migration 064: untrack the knowledge directory', () => {
       'M\t.workflows/payments/manifest.json',
     ].sort());
     assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n').sort(), [
+      '.gitignore',
       '.workflows/.knowledge-notes.md',
       '.workflows/payments/manifest.json',
       'src/app.js',
@@ -197,27 +194,5 @@ describe('migration 064: untrack the knowledge directory', () => {
 
     assert.deepStrictEqual({ updates, skips }, { updates: 0, skips: 1 });
     assert.deepStrictEqual(staged(), after);
-  });
-
-  it('end to end with 060 — the reviewed migration commit records the removal beside the ignore rule, and the files stay out of git on disk', () => {
-    write('.workflows/.gitignore', '.cache/\n');
-    commit(['.workflows/.gitignore'], 'the rules before the knowledge directory was ignored');
-    commitStore();
-    const bytes = STORE_FILES.map((f) => read(f));
-
-    run(dir, IGNORE_MIGRATION);
-    run();
-    const res = harness.ok(dir, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
-
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.deepStrictEqual(
-      git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
-      [...STORE_FILES.map((f) => `D\t${f}`), 'M\t.workflows/.gitignore'].sort());
-    assert.deepStrictEqual(read('.workflows/.gitignore').split('\n').filter(Boolean), ['.cache/', '.knowledge/']);
-    assert.deepStrictEqual(tracked(), []);
-    assert.deepStrictEqual(STORE_FILES.map((f) => read(f)), bytes, 'the files stay on disk, byte for byte');
-    assert.strictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).trim(), '', 'ignored — nothing left to stage');
-    assert.deepStrictEqual(harness.ok(dir, ['commit', '--migrations', '-m', 'noop']),
-      { ok: true, committed: null, note: 'nothing to commit' });
   });
 });

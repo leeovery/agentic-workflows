@@ -825,10 +825,6 @@ describe('entry points — where a walk may begin', () => {
   it('requires one at all', () => {
     assert.match(cases.entryErrors(null)[0], /has no entry/);
   });
-
-  it('holds for the live corpus', () => {
-    assert.deepEqual(cases.validateCorpus(cases.loadAllCases()), []);
-  });
 });
 
 describe('undeclared prose — the case list against what the walk opened', () => {

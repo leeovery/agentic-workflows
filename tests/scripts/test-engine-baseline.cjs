@@ -10,8 +10,10 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { datedAt } = require('./discovery-test-utils.cjs');
+const { createState } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 
-const { git } = harness;
+const { git, stateGit, commitAll } = harness;
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -25,29 +27,24 @@ function refuses(dir, args, pattern) {
   return parsed;
 }
 function projectManifest(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows/manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
 }
 
 describe('engine baseline record', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-baseline-'));
-    git(dir, ['init', '-q', '-b', 'main']);
-    git(dir, ['config', 'user.email', 'test@example.com']);
-    git(dir, ['config', 'user.name', 'Test']);
-    git(dir, ['config', 'commit.gpgsign', 'false']);
-    writeFile(dir, '.workflows/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
-    writeFile(dir, '.workflows/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
-    writeFile(dir, '.workflows/pay/discussion/pay.md', '# Discussion\n');
-    git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', 'init']);
+    dir = harness.setupGitFixture('engine-baseline-');
+    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
+    writeFile(dir, '.leeway/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
+    writeFile(dir, '.leeway/pay/discussion/pay.md', '# Discussion\n');
+    commitAll(dir, 'init');
   });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  afterEach(() => harness.cleanupFixture(dir));
 
-  it('native: writes the verdict and commits it confined to the project manifest — a peer session\'s dirt never rides', () => {
+  it('native: writes the verdict and commits it on the state branch, confined to the project manifest — a peer session\'s dirt never rides', () => {
     // A peer mid-write: an untracked scratch note and a modified discussion.
-    writeFile(dir, '.workflows/pay/NOTES.md', 'peer scratch\n');
-    writeFile(dir, '.workflows/pay/discussion/pay.md', '# Discussion\n\npeer session dirt\n');
+    writeFile(dir, '.leeway/pay/NOTES.md', 'peer scratch\n');
+    writeFile(dir, '.leeway/pay/discussion/pay.md', '# Discussion\n\npeer session dirt\n');
 
     const res = run(dir, ['baseline', 'record', 'native']);
     assert.strictEqual(res.ok, true);
@@ -56,10 +53,11 @@ describe('engine baseline record', () => {
     assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'native' });
     assert.deepStrictEqual(projectManifest(dir).work_units, { pay: { work_type: 'feature' } }, 'sibling keys survive');
 
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'baseline: the project grew up on the workflows');
-    const landed = git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
-    assert.deepStrictEqual(landed, ['.workflows/manifest.json']);
-    const status = git(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'baseline: the project grew up on the workflows');
+    const landed = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.deepStrictEqual(landed, ['manifest.json']);
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'the default branch takes no state commit');
+    const status = stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
     assert.ok(status.some((l) => l.startsWith('?? ') && l.includes('NOTES.md')), `the peer's untracked note is still untracked:\n${status.join('\n')}`);
     assert.ok(status.some((l) => l.startsWith(' M ') && l.includes('discussion/pay.md')), `the peer's modified discussion is still dirty:\n${status.join('\n')}`);
   });
@@ -68,7 +66,7 @@ describe('engine baseline record', () => {
     const res = run(dir, ['baseline', 'record', 'skipped']);
     assert.strictEqual(res.status, 'skipped');
     assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'skipped' });
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'baseline: decline the assessment offer');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'baseline: decline the assessment offer');
   });
 
   it('refuses any other value, and refuses once anything is recorded — the judgment happens once', () => {
@@ -83,7 +81,7 @@ describe('engine baseline record', () => {
     for (const status of ['in-progress', 'completed', 'skipped']) {
       const m = projectManifest(dir);
       m.baseline = { status, areas: { overview: 'completed' } };
-      writeFile(dir, '.workflows/manifest.json', JSON.stringify(m, null, 2) + '\n');
+      writeFile(dir, '.leeway/manifest.json', JSON.stringify(m, null, 2) + '\n');
       refuses(dir, ['baseline', 'record', 'native'], new RegExp(`the baseline is "${status}"`));
     }
   });
@@ -91,26 +89,40 @@ describe('engine baseline record', () => {
   it('a nothing-recorded object and a missing project manifest both take the verdict', () => {
     const m = projectManifest(dir);
     m.baseline = {};
-    writeFile(dir, '.workflows/manifest.json', JSON.stringify(m, null, 2) + '\n');
-    git(dir, ['commit', '-q', '-am', 'nothing recorded']);
+    writeFile(dir, '.leeway/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    commitAll(dir, 'nothing recorded');
     run(dir, ['baseline', 'record', 'native']);
     assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'native' });
 
-    fs.rmSync(path.join(dir, '.workflows/manifest.json'));
-    git(dir, ['commit', '-q', '-am', 'drop the project manifest']);
+    fs.rmSync(path.join(dir, '.leeway/manifest.json'));
+    commitAll(dir, 'drop the project manifest');
     const res = run(dir, ['baseline', 'record', 'skipped']);
     assert.deepStrictEqual(projectManifest(dir).baseline, { status: 'skipped' });
     assert.match(res.committed, /^[0-9a-f]+$/);
   });
 });
 
+/**
+ * The workflows arriving in the repo at `dir` on `date`: its state begun by
+ * the machinery, the state's first commit carrying that date.
+ * @param {string} dir @param {string} date
+ */
+function beginState(dir, date) {
+  datedAt(`${date}T12:00:00Z`, () => createState(path.join(dir, '.leeway')));
+}
+
+/** A repo with no state yet, its code history the test's to write. @param {string} prefix */
+function bareProject(prefix) {
+  return harness.initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix))));
+}
+
 describe('the baseline signal across the project\'s repos', () => {
   const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
   let dir;
   let api;
   beforeEach(() => {
-    dir = harness.setupGitFixture('engine-baseline-repos-');
-    writeFile(dir, '.gitignore', 'api/\n');
+    dir = bareProject('engine-baseline-repos-');
+    writeFile(dir, '.gitignore', 'api/\n.leeway/\n');
     writeFile(dir, 'README.md', '# Project\n');
     api = harness.initRepo(path.join(dir, 'api'));
   });
@@ -123,17 +135,18 @@ describe('the baseline signal across the project\'s repos', () => {
     execFileSync('git', ['commit', '-q', '-m', message], { cwd: repo, env: { ...process.env, GIT_AUTHOR_DATE: when, GIT_COMMITTER_DATE: when } });
   }
 
-  it('totals history and files across the root and a clone it ignores — the arrival stays the root\'s, and cuts the clone at its last commit before it', () => {
+  it('totals history and files across the root and a clone it ignores — the arrival is the state\'s first commit, and cuts each repo at its last commit before it', () => {
     writeFile(api, 'src/a.js', 'a\n');
     writeFile(api, 'src/b.js', 'b\n');
     commitOn(api, 'api: the first endpoints', '2025-01-15');
     commitOn(dir, 'initial', '2025-03-01');
     writeFile(api, 'src/c.js', 'c\n');
     commitOn(api, 'api: billing', '2025-05-01');
-    writeFile(dir, '.workflows/manifest.json', '{}\n');
-    commitOn(dir, 'add workflows', '2025-09-01');
+    beginState(dir, '2025-09-01');
     writeFile(api, 'src/d.js', 'd\n');
     commitOn(api, 'api: built on the workflows', '2025-10-01');
+    writeFile(dir, 'src/e.js', 'e\n');
+    commitOn(dir, 'built on the workflows', '2025-11-01');
 
     assert.deepStrictEqual(baselineSignal(dir), {
       root_date: '2025-01-15', workflows_date: '2025-09-01', commits_total: 5, commits_before: 3,
@@ -142,7 +155,7 @@ describe('the baseline signal across the project\'s repos', () => {
     });
   });
 
-  it('with nothing under .workflows/ committed, every repo\'s whole history and HEAD tree came before — a submodule\'s pointer is never a file, an empty repo adds nothing', () => {
+  it('with the state begun after every commit, every repo\'s whole history and HEAD tree came before — a submodule\'s pointer is never a file, an empty repo adds nothing', () => {
     writeFile(api, 'src/a.js', 'a\n');
     writeFile(api, 'src/b.js', 'b\n');
     commitOn(api, 'api: the first endpoints', '2025-02-01');
@@ -155,10 +168,11 @@ describe('the baseline signal across the project\'s repos', () => {
       { cwd: dir, env: { ...process.env, GIT_COMMITTER_DATE: '2025-04-01T12:00:00Z' } });
     harness.initRepo(path.join(dir, 'fresh'));
     writeFile(dir, 'fresh/notes.txt', 'nothing committed\n');
+    beginState(dir, '2025-06-01');
 
     try {
       assert.deepStrictEqual(baselineSignal(dir), {
-        root_date: '2025-01-10', workflows_date: null, commits_total: 4, commits_before: 4,
+        root_date: '2025-01-10', workflows_date: '2025-06-01', commits_total: 4, commits_before: 4,
         history_before: ['2025-01-10  sdk: the client', '2025-02-01  api: the first endpoints', '2025-03-01  initial', '2025-04-01  add vendor/sdk'],
         files_at_arrival: 6, tree_at_arrival: ['api/ (2)', '.gitignore', '.gitmodules', 'README.md', 'vendor/ (1)'],
       });
@@ -176,10 +190,11 @@ describe('the baseline signal across the project\'s repos', () => {
     fs.rmSync(api, { recursive: true, force: true });
     execFileSync('git', ['clone', '-q', '--depth', '1', `file://${source}`, api]);
     commitOn(dir, 'initial', '2025-03-01');
+    beginState(dir, '2025-06-01');
 
     try {
       assert.deepStrictEqual(baselineSignal(dir), {
-        root_date: '2025-03-01', workflows_date: null, commits_total: 1, commits_before: 1,
+        root_date: '2025-03-01', workflows_date: '2025-06-01', commits_total: 1, commits_before: 1,
         history_before: ['2025-03-01  initial'],
         files_at_arrival: 4, tree_at_arrival: ['api/ (2)', '.gitignore', 'README.md'],
       });
@@ -214,7 +229,10 @@ describe('the baseline signal\'s failures', () => {
 describe('the baseline signal of a project inside a larger repository', () => {
   const { baselineSignal } = require('../../skills/workflow-engine/scripts/domain/baseline.cjs');
   let dir;
-  beforeEach(() => { dir = harness.setupGitFixture('engine-baseline-nested-'); });
+  beforeEach(() => {
+    dir = bareProject('engine-baseline-nested-');
+    writeFile(dir, '.gitignore', '.leeway/\n');
+  });
   afterEach(() => harness.cleanupFixture(dir));
 
   function commitOn(message, date) {
@@ -231,10 +249,11 @@ describe('the baseline signal of a project inside a larger repository', () => {
     commitOn('web: the app', '2025-02-01');
     writeFile(dir, 'tools/lint.sh', 'lint\n');
     commitOn('tools: the linter', '2025-03-01');
-    writeFile(project, '.workflows/manifest.json', '{}\n');
-    commitOn('web: add workflows', '2025-04-01');
+    beginState(dir, '2025-04-01');
     writeFile(dir, 'tools/deploy.sh', 'deploy\n');
     commitOn('tools: deploy', '2025-05-01');
+    writeFile(project, 'src/app.js', '2\n');
+    commitOn('web: built on the workflows', '2025-06-01');
 
     assert.deepStrictEqual(baselineSignal(project), {
       root_date: '2025-02-01', workflows_date: '2025-04-01', commits_total: 2, commits_before: 1,

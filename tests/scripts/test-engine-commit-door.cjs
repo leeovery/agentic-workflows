@@ -1,8 +1,10 @@
 'use strict';
 
 //
-// Tests for the commit door: `engine commit --topic` pathspec'd commits,
-// the commit lock, the index.lock retry, and the transaction-tail degrade.
+// Tests for the commit door: the state's pathspec'd commits (`engine commit
+// --topic` and its siblings) on the state branch, the code tree's (`--paths`,
+// the owned paths of `--migrations`) with their commit lock and index.lock
+// retry, never on the state branch, and the transaction-tail degrade.
 //
 
 require('./hermetic-env.cjs');
@@ -16,16 +18,11 @@ const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
+const { withCommitLock, commitAcrossRepos } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
 
-const { ENGINE, git, cleanupFixture } = harness;
+const { ENGINE, git, stateGit, commitAll, cleanupFixture } = harness;
 
-function setupGitFixture() {
-  const dir = harness.setupGitFixture('engine-commit-');
-  // The nested gitignore every booted project carries (migration 049) — the
-  // cache is ephemeral session machinery, mechanical heartbeats included.
-  fs.writeFileSync(path.join(dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n');
-  return dir;
-}
+const setupGitFixture = () => harness.setupGitFixture('engine-commit-');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -33,19 +30,33 @@ function writeFile(dir, rel, content) {
   fs.writeFileSync(full, content);
 }
 
-function commitAll(dir, message) {
-  git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', message]);
+/** Files in the state branch's head commit, state-relative. */
+function headFiles(dir) {
+  return stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);
 }
 
-/** Files in the HEAD commit. */
-function headFiles(dir) {
+/** The state worktree's `git status --porcelain` lines. */
+function statusLines(dir) {
+  return stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
+}
+
+/** Files in the code tree's head commit. */
+function codeHeadFiles(dir) {
   return git(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);
 }
 
-/** `git status --porcelain` lines. */
-function statusLines(dir) {
+/** The code tree's `git status --porcelain` lines. */
+function codeStatusLines(dir) {
   return git(dir, ['status', '--porcelain']).split('\n').filter(Boolean);
+}
+
+/**
+ * Hold the state branch's ref as a peer git process would mid-update: every
+ * state commit fails at the ref move until the hold goes.
+ * @param {string} dir
+ */
+function holdStateRef(dir) {
+  fs.writeFileSync(path.join(dir, '.git/refs/heads/leeway-state.lock'), '');
 }
 
 /** Run the engine expecting success; returns the parsed JSON response. */
@@ -70,9 +81,9 @@ function epicManifest() {
 /** Two in-progress discussion topics, both committed clean. */
 function setupTwoTopicFixture() {
   const dir = setupGitFixture();
-  writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n');
-  writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\n');
-  writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\n');
+  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n');
+  writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
+  writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\n');
   commitAll(dir, 'init');
   return dir;
 }
@@ -83,62 +94,62 @@ describe('engine commit --topic: pathspec isolation', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('commits own topic + manifest, leaves the other topic dirty and uncommitted', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
 
     assert.strictEqual(res.ok, true);
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/payments/discussion/topic-a.md'), 'own topic committed');
-    assert.ok(files.includes('.workflows/payments/manifest.json'), 'manifest committed');
-    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic not committed');
-    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'peer dirt untouched');
+    assert.ok(files.includes('payments/discussion/topic-a.md'), 'own topic committed');
+    assert.ok(files.includes('payments/manifest.json'), 'manifest committed');
+    assert.ok(!files.includes('payments/discussion/topic-b.md'), 'peer topic not committed');
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'peer dirt untouched');
   });
 
   it('commits an experiment record tree whole — documents, data, nested sub-records — and leaves the tree clean', () => {
-    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/problem.md', '# Problem\n');
-    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/design.md', '# Design\n');
-    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/data/samples.csv', 'a,b\n');
-    writeFile(dir, '.workflows/payments/experiment/topic-a/E1-x/E1.1-y/report.md', '# Sub report\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/experiment/topic-a/E1-x/problem.md', '# Problem\n');
+    writeFile(dir, '.leeway/payments/experiment/topic-a/E1-x/design.md', '# Design\n');
+    writeFile(dir, '.leeway/payments/experiment/topic-a/E1-x/data/samples.csv', 'a,b\n');
+    writeFile(dir, '.leeway/payments/experiment/topic-a/E1-x/E1.1-y/report.md', '# Sub report\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'experiment(payments/topic-a): E1 designed', '--topic', 'experiment/topic-a']);
     assert.strictEqual(res.ok, true);
     const files = headFiles(dir);
     for (const rel of [
-      '.workflows/payments/experiment/topic-a/E1-x/problem.md',
-      '.workflows/payments/experiment/topic-a/E1-x/design.md',
-      '.workflows/payments/experiment/topic-a/E1-x/data/samples.csv',
-      '.workflows/payments/experiment/topic-a/E1-x/E1.1-y/report.md',
-      '.workflows/payments/manifest.json',
+      'payments/experiment/topic-a/E1-x/problem.md',
+      'payments/experiment/topic-a/E1-x/design.md',
+      'payments/experiment/topic-a/E1-x/data/samples.csv',
+      'payments/experiment/topic-a/E1-x/E1.1-y/report.md',
+      'payments/manifest.json',
     ]) {
       assert.ok(files.includes(rel), `record tree committed whole: ${rel}`);
     }
-    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'],
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'],
       'the record tree is clean; only the peer dirt remains');
   });
 
   it('topic absorb deletes one message file, commits action-scoped, and answers remaining', () => {
-    writeFile(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-first.md', '### First\nbody\n');
-    writeFile(dir, '.workflows/payments/discussion/.mailbox/topic-a/002-second.md', '### Second\nbody\n');
+    writeFile(dir, '.leeway/payments/discussion/.mailbox/topic-a/001-first.md', '### First\nbody\n');
+    writeFile(dir, '.leeway/payments/discussion/.mailbox/topic-a/002-second.md', '### Second\nbody\n');
     commitAll(dir, 'deliveries');
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nfold\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nfold\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
 
     const res = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md', '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from origin)']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.absorbed, '001-first.md');
     assert.strictEqual(res.remaining, 1, 'answers the post-deletion count');
     assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-first.md')), 'message file deleted');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/payments/discussion/.mailbox/topic-a/001-first.md')), 'message file deleted');
     const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/payments/discussion/topic-a.md'), 'fold rides the commit');
-    assert.ok(files.includes('.workflows/payments/discussion/.mailbox/topic-a/001-first.md'), 'the deletion rides the commit');
-    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'peer topic not swept');
+    assert.ok(files.includes('payments/discussion/topic-a.md'), 'fold rides the commit');
+    assert.ok(files.includes('payments/discussion/.mailbox/topic-a/001-first.md'), 'the deletion rides the commit');
+    assert.ok(!files.includes('payments/discussion/topic-b.md'), 'peer topic not swept');
 
     const last = engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '002-second.md', '--subtopic', 'second', '-m', 'discussion(payments/topic-a): absorb 002-second (from origin)']);
     assert.strictEqual(last.remaining, 0, 'the emptied mailbox answers zero');
@@ -155,23 +166,23 @@ describe('engine commit --topic: pathspec isolation', () => {
   });
 
   it('leaves content another process staged out of the commit and still staged', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
-    git(dir, ['add', '--', '.workflows/payments/discussion/topic-b.md']);
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    stateGit(dir, ['add', '--', 'payments/discussion/topic-b.md']);
 
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
 
-    assert.ok(!headFiles(dir).includes('.workflows/payments/discussion/topic-b.md'), 'staged peer file not committed');
-    assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '.workflows/payments/discussion/topic-b.md', 'peer staging preserved');
+    assert.ok(!headFiles(dir).includes('payments/discussion/topic-b.md'), 'staged peer file not committed');
+    assert.strictEqual(stateGit(dir, ['diff', '--cached', '--name-only']).trim(), 'payments/discussion/topic-b.md', 'peer staging preserved');
   });
 
   it('commits an untracked artifact directory (specification phase)', () => {
-    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\n');
+    writeFile(dir, '.leeway/payments/specification/topic-a/specification.md', '# Spec\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'spec(payments): construct topic-a', '--topic', 'specification/topic-a']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.ok(headFiles(dir).includes('.workflows/payments/specification/topic-a/specification.md'));
+    assert.ok(headFiles(dir).includes('payments/specification/topic-a/specification.md'));
   });
 
   it('reports nothing to commit on clean paths, and on paths that do not exist', () => {
@@ -188,17 +199,17 @@ describe('engine commit --topic: pathspec isolation', () => {
     // Deliver a message (creates + commits the sidecar file), drain it (rm +
     // commit stages the deletion), then keep working: the emptied-but-present
     // directory must not poison later --topic commits.
-    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: x · discussion · d*\n\nBody.\n');
     engine(dir, ['topic', 'send', 'payments', 'discussion', 'topic-a',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/x): send message to topic-a']);
-    fs.unlinkSync(path.join(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-q.md'));
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/x): send message to topic-a']);
+    fs.unlinkSync(path.join(dir, '.leeway/payments/discussion/.mailbox/topic-a/001-q.md'));
     const drain = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): drain mailbox', '--topic', 'discussion/topic-a']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
 
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress after the drain\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress after the drain\n');
     const after = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
     assert.match(after.committed, /^[0-9a-f]+$/, 'the emptied mailbox directory no longer breaks the pathspec');
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/payments/discussion/.mailbox/topic-a')), 'the empty dir is still on disk — excluded, not deleted');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/payments/discussion/.mailbox/topic-a')), 'the empty dir is still on disk — excluded, not deleted');
   });
 
   it('an investigation\'s mailbox rides its own topic\'s commit', () => {
@@ -207,26 +218,26 @@ describe('engine commit --topic: pathspec isolation', () => {
     // `--topic investigation/{topic} --sweep` as the retry. Without the
     // sidecar in the scope that retry commits the manifest and walks past the
     // message it was run to land.
-    writeFile(dir, '.workflows/crash-fix/manifest.json', JSON.stringify({
+    writeFile(dir, '.leeway/crash-fix/manifest.json', JSON.stringify({
       name: 'crash-fix',
       work_type: 'bugfix',
       status: 'in-progress',
       phases: { investigation: { items: { 'crash-fix': { status: 'in-progress' } } } },
     }, null, 2) + '\n');
-    writeFile(dir, '.workflows/crash-fix/investigation/crash-fix.md', '# Investigation — Crash Fix\n');
+    writeFile(dir, '.leeway/crash-fix/investigation/crash-fix.md', '# Investigation — Crash Fix\n');
     commitAll(dir, 'a bugfix under investigation');
 
-    writeFile(dir, '.workflows/crash-fix/investigation/.mailbox/crash-fix/001-q.md',
+    writeFile(dir, '.leeway/crash-fix/investigation/.mailbox/crash-fix/001-q.md',
       '### Q\n*From: topic-a · discussion · 2026-01-01*\n\nBody.\n');
     const landed = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): land the message',
       '--topic', 'investigation/crash-fix', '--sweep']);
 
     assert.match(landed.committed, /^[0-9a-f]+$/);
-    assert.ok(headFiles(dir).includes('.workflows/crash-fix/investigation/.mailbox/crash-fix/001-q.md'),
+    assert.ok(headFiles(dir).includes('crash-fix/investigation/.mailbox/crash-fix/001-q.md'),
       'the waiting message rides the investigation topic commit');
 
     // And the drain's deletion commits on the same scope.
-    fs.unlinkSync(path.join(dir, '.workflows/crash-fix/investigation/.mailbox/crash-fix/001-q.md'));
+    fs.unlinkSync(path.join(dir, '.leeway/crash-fix/investigation/.mailbox/crash-fix/001-q.md'));
     const drain = engine(dir, ['commit', 'crash-fix', '-m', 'investigation(crash-fix): drain mailbox',
       '--topic', 'investigation/crash-fix']);
     assert.match(drain.committed, /^[0-9a-f]+$/, 'the drain commit stages the deletion');
@@ -234,13 +245,13 @@ describe('engine commit --topic: pathspec isolation', () => {
   });
 
   it('does not stage the knowledge store — the KB dir never rides a --topic commit', () => {
-    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
+    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
 
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
 
-    assert.ok(!headFiles(dir).some((f) => f.startsWith('.workflows/.knowledge/')), 'KB dir not committed');
-    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'KB dirt left in place');
+    assert.ok(!headFiles(dir).some((f) => f.startsWith('.knowledge/')), 'KB dir not committed');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.knowledge/metadata.json')), 'KB dirt left in place');
   });
 
   it('rejects malformed and illegal --topic specs', () => {
@@ -260,20 +271,20 @@ describe('engine commit --discovery: the discovery session\'s scope', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('commits sessions, briefs and the manifest — never a live peer\'s topic', () => {
-    writeFile(dir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
-    writeFile(dir, '.workflows/payments/discovery/briefs/topic-a.md', '# Brief — topic A\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/discovery/sessions/session-001.md', '# Session 001\n');
+    writeFile(dir, '.leeway/payments/discovery/briefs/topic-a.md', '# Brief — topic A\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
 
     const res = engine(dir, ['commit', 'payments', '--discovery', '-m', 'discovery(payments): shape the map']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/payments/discovery/sessions/session-001.md'), 'session log committed');
-    assert.ok(files.includes('.workflows/payments/discovery/briefs/topic-a.md'), 'brief committed');
-    assert.ok(files.includes('.workflows/payments/manifest.json'), 'manifest committed');
-    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'peer dirt untouched');
+    assert.ok(files.includes('payments/discovery/sessions/session-001.md'), 'session log committed');
+    assert.ok(files.includes('payments/discovery/briefs/topic-a.md'), 'brief committed');
+    assert.ok(files.includes('payments/manifest.json'), 'manifest committed');
+    assert.ok(!files.includes('payments/discussion/topic-b.md'), 'the peer session\'s topic is not swept');
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'peer dirt untouched');
   });
 
   it('reports nothing to commit on a work unit with no discovery content', () => {
@@ -294,18 +305,18 @@ describe('engine commit --imports: the landing\'s retry scope', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('commits the imports home and the manifest — never a live peer\'s topic', () => {
-    writeFile(dir, '.workflows/payments/imports/dockset-05.jpeg', 'jpeg bytes\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    writeFile(dir, '.workflows/payments/research/auth-flow.md', '# Auth Flow\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/imports/dockset-05.jpeg', 'jpeg bytes\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.leeway/payments/research/auth-flow.md', '# Auth Flow\npeer session dirt\n');
 
     const res = engine(dir, ['commit', 'payments', '--imports', '-m', 'workflow(payments): import 1 file(s) for research/auth-flow']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/payments/imports/dockset-05.jpeg'), 'the landed file committed');
-    assert.ok(files.includes('.workflows/payments/manifest.json'), 'the manifest its entry lives on committed');
-    assert.ok(!files.includes('.workflows/payments/research/auth-flow.md'), 'the peer session\'s topic is not swept');
-    assert.deepStrictEqual(statusLines(dir), ['?? .workflows/payments/research/'], 'peer dirt untouched');
+    assert.ok(files.includes('payments/imports/dockset-05.jpeg'), 'the landed file committed');
+    assert.ok(files.includes('payments/manifest.json'), 'the manifest its entry lives on committed');
+    assert.ok(!files.includes('payments/research/auth-flow.md'), 'the peer session\'s topic is not swept');
+    assert.deepStrictEqual(statusLines(dir), ['?? payments/research/'], 'peer dirt untouched');
   });
 
   it('refuses --imports beside another scope flag, and with no work unit', () => {
@@ -321,39 +332,39 @@ describe('engine commit --state: the analysis scopes', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('the work unit form takes its analysis dir and its manifest — never the store', () => {
-    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
-    writeFile(dir, '.workflows/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.leeway/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
     // A live peer mid-write, in the same work unit — the theft this scope closes.
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
-    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\nhalf written\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/specification/topic-a/specification.md', '# Spec\nhalf written\n');
 
     const res = engine(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/payments/.state/discussion-consolidation-analysis.md'), 'the analysis rides');
-    assert.ok(files.includes('.workflows/payments/manifest.json'), 'so does the manifest it wrote');
-    assert.ok(!files.some((f) => f.startsWith('.workflows/.knowledge/')), 'the store is never committed');
+    assert.ok(files.includes('payments/.state/discussion-consolidation-analysis.md'), 'the analysis rides');
+    assert.ok(files.includes('payments/manifest.json'), 'so does the manifest it wrote');
+    assert.ok(!files.some((f) => f.startsWith('.knowledge/')), 'the store is never committed');
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [' M .workflows/payments/discussion/topic-b.md', '?? .workflows/.knowledge/', '?? .workflows/payments/specification/'],
+      [' M payments/discussion/topic-b.md', '?? payments/specification/'],
       'both live peers keep every byte they had not committed',
     );
   });
 
-  it('the global form takes .workflows/.state and nothing else', () => {
-    writeFile(dir, '.workflows/.state/environment-setup.md', '# Environment\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
+  it('the global form takes .leeway/.state and nothing else', () => {
+    writeFile(dir, '.leeway/.state/environment-setup.md', '# Environment\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n\n');
 
     const res = engine(dir, ['commit', '--state', '-m', 'chore: record environment setup']);
 
-    assert.deepStrictEqual(headFiles(dir), ['.workflows/.state/environment-setup.md']);
+    assert.deepStrictEqual(headFiles(dir), ['.state/environment-setup.md']);
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(
       statusLines(dir).sort(),
-      [' M .workflows/payments/discussion/topic-b.md', ' M .workflows/payments/manifest.json'],
+      [' M payments/discussion/topic-b.md', ' M payments/manifest.json'],
       'a work unit is none of the global state dir\'s business',
     );
   });
@@ -372,9 +383,9 @@ describe('engine commit --state: the analysis scopes', () => {
   });
 
   it('never beats — an analysis is not a session sitting in a topic', () => {
-    writeFile(dir, '.workflows/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
+    writeFile(dir, '.leeway/payments/.state/discussion-consolidation-analysis.md', '# Groupings\n');
     engine(dir, ['commit', 'payments', '--state', '-m', 'spec(payments): grouping analysis']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments')), 'no heartbeat anywhere');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/payments')), 'no heartbeat anywhere');
   });
 });
 
@@ -386,31 +397,27 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
   it('commits the planning topic and the declared storage, leaving foreign dirt behind', () => {
     const manifest = epicManifest();
     manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: ['plans/topic-a'] } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     writeFile(dir, 'plans/topic-a/tasks.md', '# Tasks\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     commitAll(dir, 'plan storage');
 
-    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\n');
+    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan\n');
     writeFile(dir, 'plans/topic-a/tasks.md', '# Tasks\n- one\n');
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     // A peer session mid-write, inside the same work unit.
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer session dirt\n');
 
     const res = engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
-    assert.match(res.committed, /^[0-9a-f]+$/);
-    const files = headFiles(dir);
-    assert.ok(files.includes('plans/topic-a/tasks.md'), 'the declared storage rides');
-    assert.ok(files.includes('.workflows/payments/planning/topic-a/planning.md'), 'the planning topic rides');
-    assert.ok(!files.includes('src/app.js'), 'code outside the plan\'s storage never rides a --plan commit');
-    assert.ok(!files.includes('.workflows/payments/discussion/topic-b.md'),
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(res.code_committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(headFiles(dir), ['payments/planning/topic-a/planning.md'], 'the planning topic rides the state');
+    assert.deepStrictEqual(codeHeadFiles(dir), ['plans/topic-a/tasks.md'],
+      'the declared storage rides the code tree — and code outside it never does');
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'],
       'a sibling topic inside the same work unit is not a planning session\'s to commit');
-    assert.deepStrictEqual(
-      statusLines(dir).sort(),
-      [' M .workflows/payments/discussion/topic-b.md', ' M src/app.js'],
-      'everything outside the plan\'s scope is left exactly as it was',
-    );
+    assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'nor is code outside the plan\'s storage');
   });
 
   it('leaves a sibling planning topic alone', () => {
@@ -419,33 +426,33 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
       'topic-a': { status: 'in-progress', storage_paths: [] },
       'topic-b': { status: 'in-progress', storage_paths: [] },
     } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan A\n');
-    writeFile(dir, '.workflows/payments/planning/topic-b/planning.md', '# Plan B\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan A\n');
+    writeFile(dir, '.leeway/payments/planning/topic-b/planning.md', '# Plan B\n');
     commitAll(dir, 'two plans');
 
-    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan A\nphase 1\n');
-    writeFile(dir, '.workflows/payments/planning/topic-b/planning.md', '# Plan B\na peer planner mid-write\n');
+    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan A\nphase 1\n');
+    writeFile(dir, '.leeway/payments/planning/topic-b/planning.md', '# Plan B\na peer planner mid-write\n');
 
     engine(dir, ['commit', 'payments', '-m', 'planning(payments): draft phase structure', '--plan', 'topic-a']);
 
-    assert.ok(headFiles(dir).includes('.workflows/payments/planning/topic-a/planning.md'));
-    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/planning/topic-b/planning.md'],
+    assert.ok(headFiles(dir).includes('payments/planning/topic-a/planning.md'));
+    assert.deepStrictEqual(statusLines(dir), [' M payments/planning/topic-b/planning.md'],
       'the peer planning session keeps its own dirt');
   });
 
   it('leaves the knowledge store alone', () => {
     const manifest = epicManifest();
     manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: [] } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     // A conclusion in a peer session left the store mid-index.
-    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
-    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\n');
+    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan\n');
 
     engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
-    assert.ok(!headFiles(dir).some((f) => f.startsWith('.workflows/.knowledge/')), 'a plan pass never commits the store');
-    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'which stays as it was on disk');
+    assert.ok(!headFiles(dir).some((f) => f.startsWith('.knowledge/')), 'a plan pass never commits the store');
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.knowledge/metadata.json')), 'which stays as it was on disk');
   });
 
   it('refuses a planning topic name that is a path', () => {
@@ -456,18 +463,18 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
   it('never takes another process\'s staged code', () => {
     const manifest = epicManifest();
     manifest.phases.planning = { items: { 'topic-a': { status: 'in-progress', storage_paths: [] } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     commitAll(dir, 'code');
 
-    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\n');
+    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan\n');
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     git(dir, ['add', '--', 'src/app.js']);
 
-    engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
+    const res = engine(dir, ['commit', 'payments', '-m', 'plan(payments): author', '--plan', 'topic-a']);
 
-    assert.ok(headFiles(dir).includes('.workflows/payments/planning/topic-a/planning.md'), 'the plan lands');
-    assert.ok(!headFiles(dir).includes('src/app.js'), 'staged code is not swept into a plan commit');
+    assert.ok(headFiles(dir).includes('payments/planning/topic-a/planning.md'), 'the plan lands');
+    assert.strictEqual(res.code_committed, null, 'staged code is not swept into a plan commit');
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js', 'and stays staged');
   });
 });
@@ -478,7 +485,7 @@ describe('engine commit --paths: the code commit', () => {
     dir = setupTwoTopicFixture();
     const manifest = epicManifest();
     manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     writeFile(dir, 'src/other.js', 'const y = 1;\n');
     writeFile(dir, 'src/gone.js', 'const z = 1;\n');
@@ -488,20 +495,20 @@ describe('engine commit --paths: the code commit', () => {
 
   const forTopic = ['--for', 'payments', 'implementation/topic-a'];
 
-  it('commits the named paths and answers the dirt still outside .workflows', () => {
+  it('commits the named paths and answers the dirt still outside .leeway', () => {
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     writeFile(dir, 'src/new.js', 'const n = 1;\n');
     writeFile(dir, 'src/other.js', 'const y = 2;\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\na doc session\'s dirt\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\na doc session\'s dirt\n');
 
     const res = engine(dir, ['commit', '--paths', 'src/app.js', 'src/new.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim() }],
       'a project of one repo commits once, in the root');
-    const files = headFiles(dir);
+    const files = codeHeadFiles(dir);
     assert.deepStrictEqual(files.sort(), ['src/app.js', 'src/new.js'], 'exactly the named paths — untracked included');
     assert.deepStrictEqual(res.left_dirty, ['src/other.js'],
-      'the forgotten path is named; a doc session\'s .workflows dirt is its own');
+      'the forgotten path is named; a doc session\'s .leeway dirt is its own');
   });
 
   it('records a task\'s deletion and beats the named code topic', () => {
@@ -509,9 +516,9 @@ describe('engine commit --paths: the code commit', () => {
 
     const res = engine(dir, ['commit', '--paths', 'src/gone.js', '-m', 'refactor(topic-a): drop the module', ...forTopic]);
 
-    assert.ok(headFiles(dir).includes('src/gone.js'), 'the deletion rides the commit');
+    assert.ok(codeHeadFiles(dir).includes('src/gone.js'), 'the deletion rides the commit');
     assert.deepStrictEqual(res.left_dirty, []);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/payments/implementation/topic-a/presence')),
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/payments/implementation/topic-a/presence')),
       '--for beats the code topic');
   });
 
@@ -544,7 +551,7 @@ describe('engine commit --paths: the code commit', () => {
 
     const res = engine(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...forTopic]);
 
-    assert.deepStrictEqual(headFiles(dir).sort(), [...named].sort(), 'exactly the named files');
+    assert.deepStrictEqual(codeHeadFiles(dir).sort(), [...named].sort(), 'exactly the named files');
     assert.deepStrictEqual(res.left_dirty, ['app/d/page.tsx', 'app/i/page.tsx', 'src/aXbY.js'],
       'the siblings a glob would have matched stay uncommitted, named as they are');
     assert.deepStrictEqual(engine(dir, ['code', 'status']).files,
@@ -573,7 +580,7 @@ describe('engine commit --paths: the code commit', () => {
   });
 
   it('refuses a literal path git cannot stage or does not hold — a sibling its pattern would match stands in for none', () => {
-    writeFile(dir, '.gitignore', '*.log\n');
+    writeFile(dir, '.gitignore', '.leeway/\n*.log\n');
     writeFile(dir, 'app/[id]/debug.log', 'noise\n');
     writeFile(dir, 'app/x/page.tsx', '// a sibling\n');
     commitAll(dir, 'routes');
@@ -592,15 +599,27 @@ describe('engine commit --paths: the code commit', () => {
   it('refuses escapes, workflow artifacts, and a missing target', () => {
     assert.match(engineFails(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
     assert.match(engineFails(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...forTopic]).error, /resolves outside the project/);
-    assert.match(engineFails(dir, ['commit', '--paths', '.workflows/payments/discussion/topic-a.md', '-m', 'x', ...forTopic]).error,
-      /workflow artifact/);
+    assert.strictEqual(engineFails(dir, ['commit', '--paths', '.leeway/payments/discussion/topic-a.md', '-m', 'x', ...forTopic]).error,
+      'commit --paths: ".leeway/payments/discussion/topic-a.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery/--plan)');
     assert.match(engineFails(dir, ['commit', '--paths', 'src/never-written.js', '-m', 'x', ...forTopic]).error, /neither on disk nor tracked/);
     assert.match(engineFails(dir, ['commit', '--paths', '-m', 'x', ...forTopic]).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '-m', 'x']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '-m', 'x', '--for', 'payments', 'discussion/topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '--for', 'payments', 'review/topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', 'payments', '--paths', 'src/app.js', '-m', 'x', ...forTopic]).error, /Usage/);
-    assert.strictEqual(statusLines(dir).length, 0, 'a refusal touches nothing');
+    assert.strictEqual(codeStatusLines(dir).length, 0, 'a refusal touches nothing');
+  });
+
+  it('names a path in the state as in the state from a code worktree too, never as outside the project', () => {
+    const wt = `${dir}-side`;
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', wt]);
+    try {
+      const inState = path.join(dir, '.leeway/payments/discussion/topic-a.md');
+      assert.strictEqual(harness.refuses(wt, ['commit', '--paths', inState, '-m', 'x', ...forTopic]).error,
+        `commit --paths: "${inState}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
+    } finally {
+      cleanupFixture(wt);
+    }
   });
 
   it('refuses a --for target that does not exist — the phantom-hold repro', () => {
@@ -622,9 +641,9 @@ describe('engine commit --paths: the code commit', () => {
       '--for', '../escapee', 'implementation/topic-a']).error,
     /invalid work unit name/);
 
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments/implementation/topic-typo')),
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/payments/implementation/topic-typo')),
       'no ghost heartbeat is minted');
-    assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
+    assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
   });
 
   it('refuses a path deleted long before — only the HEAD commit\'s own deletion passes', () => {
@@ -643,21 +662,21 @@ describe('engine commit --paths: the code commit', () => {
       const project = path.join(repo, 'apps/web');
       const manifest = epicManifest();
       manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-      writeFile(project, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+      writeFile(repo, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
       writeFile(project, 'src/app.js', 'const x = 1;\n');
       writeFile(repo, 'other/x.js', 'const s = 1;\n');
       commitAll(repo, 'init');
       writeFile(project, 'src/app.js', 'const x = 2;\n');
       writeFile(project, 'src/leftover.js', 'const l = 1;\n');
-      writeFile(project, '.workflows/payments/discussion/topic-b.md', '# a doc session\'s own\n');
+      writeFile(repo, '.leeway/payments/discussion/topic-b.md', '# a doc session\'s own\n');
       writeFile(repo, 'other/x.js', 'const s = 2;\n');
 
       const res = engine(project, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
       assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(repo, ['rev-parse', '--short', 'HEAD']).trim() }]);
-      assert.deepStrictEqual(headFiles(repo), ['apps/web/src/app.js']);
+      assert.deepStrictEqual(codeHeadFiles(repo), ['apps/web/src/app.js']);
       assert.deepStrictEqual(res.left_dirty, ['src/leftover.js'],
-        'named from the project — never a sibling folder\'s dirt, never the project\'s .workflows/');
+        'named from the project — never a sibling folder\'s dirt, never the state\'s');
     } finally {
       cleanupFixture(repo);
     }
@@ -671,8 +690,8 @@ describe('engine commit --paths: code in repos of its own', () => {
     dir = setupTwoTopicFixture();
     const manifest = epicManifest();
     manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, '.gitignore', 'api/\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     commitAll(dir, 'code');
     // An ignored clone: a repo of its own that the root's .gitignore lists.
@@ -706,8 +725,8 @@ describe('engine commit --paths: code in repos of its own', () => {
       '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir), ['src/app.js']);
-    assert.deepStrictEqual(headFiles(api).sort(), ['src/handler.js', 'src/new.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
+    assert.deepStrictEqual(codeHeadFiles(api).sort(), ['src/handler.js', 'src/new.js']);
     assert.deepStrictEqual([subject(dir), subject(api)], ['feat(topic-a): the task', 'feat(topic-a): the task']);
     assert.deepStrictEqual(res.left_dirty, []);
   });
@@ -720,9 +739,9 @@ describe('engine commit --paths: code in repos of its own', () => {
     const res = engine(dir, ['commit', '--paths', ...named, '-m', 'feat(topic-a): the routes', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }, { repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(api).sort(), ['app/(marketing)/page.tsx', 'app/[id]/page.tsx']);
-    assert.deepStrictEqual(headFiles(sdk), ['routes/[slug]/+page.svelte']);
-    assert.deepStrictEqual(headFiles(dir), ['sdk'], 'the submodule\'s new pointer, and nothing else');
+    assert.deepStrictEqual(codeHeadFiles(api).sort(), ['app/(marketing)/page.tsx', 'app/[id]/page.tsx']);
+    assert.deepStrictEqual(codeHeadFiles(sdk), ['routes/[slug]/+page.svelte']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['sdk'], 'the submodule\'s new pointer, and nothing else');
     assert.deepStrictEqual(res.left_dirty, ['api/app/i/page.tsx', 'sdk/routes/s/+page.svelte']);
   });
 
@@ -740,7 +759,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     const res = engine(dir, ['commit', '--paths', 'api/:weird.txt', '-m', 'feat(topic-a): the odd file', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }]);
-    assert.deepStrictEqual(headFiles(api), [':weird.txt']);
+    assert.deepStrictEqual(codeHeadFiles(api), [':weird.txt']);
     assert.deepStrictEqual(res.left_dirty.sort(), ['api/keep.txt', 'api/src/handler.js', 'api/weird.txt']);
   });
 
@@ -752,7 +771,7 @@ describe('engine commit --paths: code in repos of its own', () => {
 
     assert.deepStrictEqual(res.committed, [{ repo: 'api', sha: head(api) }]);
     assert.strictEqual(head(dir), rootBefore);
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.cache/payments/implementation/topic-a/presence')),
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/payments/implementation/topic-a/presence')),
       'the commit beats the code topic once, in the project');
   });
 
@@ -766,7 +785,7 @@ describe('engine commit --paths: code in repos of its own', () => {
 
     const res = engine(dir, ['commit', '--paths', 'api/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
-    assert.ok(statusLines(dir).includes('?? web/'), 'the root\'s git names the untracked repo\'s folder');
+    assert.ok(codeStatusLines(dir).includes('?? web/'), 'the root\'s git names the untracked repo\'s folder');
     assert.deepStrictEqual(res.left_dirty, ['api/src/other.js', 'web/index.js']);
   });
 
@@ -778,7 +797,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     const both = engine(dir, ['commit', '--paths', 'src/app.js', 'sdk/src/handler.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(both.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir).sort(), ['sdk', 'src/app.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
     assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim(), 'the gitlink records the submodule\'s new HEAD');
     assert.deepStrictEqual(both.left_dirty, []);
 
@@ -787,7 +806,7 @@ describe('engine commit --paths: code in repos of its own', () => {
 
     assert.deepStrictEqual(alone.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }],
       'a call naming the submodule alone records its pointer too');
-    assert.deepStrictEqual(headFiles(dir), ['sdk']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['sdk']);
     assert.strictEqual(pointer('sdk'), git(sdk, ['rev-parse', 'HEAD']).trim());
 
     writeFile(sdk, 'scratch.txt', 'stray\n');
@@ -822,7 +841,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     const landed = engine(dir, call);
 
     assert.deepStrictEqual(landed.committed, [{ repo: 'sdk', sha: head(sdk) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir).sort(), ['sdk', 'src/app.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['sdk', 'src/app.js']);
   });
 
   it('refuses a call that would commit in a repo mid-operation — a rebase in a submodule, a merge in the root — before any repo commits', () => {
@@ -863,7 +882,7 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
 
   it('commits beside a folder whose .git is a dangling link — no repo, never a failure', () => {
-    writeFile(dir, '.gitignore', 'api/\nbroken/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\nbroken/\n');
     commitAll(dir, 'the broken folder is ignored');
     fs.mkdirSync(path.join(dir, 'broken'));
     fs.symlinkSync(path.join(dir, 'nowhere'), path.join(dir, 'broken/.git'));
@@ -883,9 +902,9 @@ describe('engine commit --paths: code in repos of its own', () => {
     const res = engine(dir, ['commit', '--paths', 'packages', 'packages/sub/lib.txt', '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: 'packages/sub', sha: head(sub) }, { repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir).sort(), ['packages/readme.txt', 'packages/sub']);
+    assert.deepStrictEqual(codeHeadFiles(dir).sort(), ['packages/readme.txt', 'packages/sub']);
     assert.strictEqual(pointer('packages/sub'), git(sub, ['rev-parse', 'HEAD']).trim());
-    assert.deepStrictEqual(statusLines(dir), []);
+    assert.deepStrictEqual(codeStatusLines(dir), []);
   });
 
   it('never commits a nested repo in its parent the call did not reach into — an untouched submodule, an untracked repo', () => {
@@ -898,9 +917,9 @@ describe('engine commit --paths: code in repos of its own', () => {
     const res = engine(dir, ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(res.committed, [{ repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir), ['src/app.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
     assert.strictEqual(pointer('sdk'), before, 'the untouched gitlink stays where it was');
-    assert.ok(statusLines(dir).includes(' M sdk'), 'the moved pointer is the root\'s git to see');
+    assert.ok(codeStatusLines(dir).includes(' M sdk'), 'the moved pointer is the root\'s git to see');
     assert.deepStrictEqual(res.left_dirty, [], 'and never dirt');
 
     writeFile(dir, 'packages/notes.txt', 'loose\n');
@@ -911,12 +930,12 @@ describe('engine commit --paths: code in repos of its own', () => {
     const folder = engine(dir, ['commit', '--paths', 'packages', '-m', 'chore(topic-a): the notes', ...forTopic]);
 
     assert.deepStrictEqual(folder.committed, [{ repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir), ['packages/notes.txt'], 'the folder\'s files ride, the repo inside it never does');
+    assert.deepStrictEqual(codeHeadFiles(dir), ['packages/notes.txt'], 'the folder\'s files ride, the repo inside it never does');
     assert.strictEqual(git(dir, ['ls-files', '--stage', '--', 'packages/kit']).trim(), '', 'no gitlink staged for the untracked repo');
   });
 
   it('commits beside a submodule its parent ignores, and records that submodule\'s pointer when the call reaches into it', () => {
-    writeFile(dir, '.gitignore', 'api/\nvendor/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\nvendor/\n');
     commitAll(dir, 'the vendor folder is ignored');
     const sdk = harness.addSubmodule(dir, 'vendor/sdk', api, { force: true });
     const before = pointer('vendor/sdk');
@@ -927,7 +946,7 @@ describe('engine commit --paths: code in repos of its own', () => {
     const beside = engine(dir, ['commit', '--paths', 'index.js', '-m', 'feat(topic-a): the task', ...forTopic]);
 
     assert.deepStrictEqual(beside.committed, [{ repo: '.', sha: head(dir) }]);
-    assert.deepStrictEqual(headFiles(dir), ['index.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['index.js']);
     assert.strictEqual(pointer('vendor/sdk'), before);
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'nothing is left staged');
 
@@ -972,7 +991,7 @@ describe('engine commit --paths: code in repos of its own', () => {
 
     assert.deepStrictEqual(retried.committed, [{ repo: '.', sha: head(dir) }], 'the clone has nothing left in the paths');
     assert.strictEqual(head(api), apiSha);
-    assert.deepStrictEqual(headFiles(dir), ['src/app.js']);
+    assert.deepStrictEqual(codeHeadFiles(dir), ['src/app.js']);
     assert.deepStrictEqual(retried.left_dirty, []);
   });
 
@@ -992,7 +1011,7 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
 
   it('checks every path in the repo that owns it before any repo commits', () => {
-    writeFile(dir, '.gitignore', 'api/\n*.log\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n*.log\n');
     commitAll(dir, 'logs are ignored');
     writeFile(api, 'src/handler.js', 'const h = 2;\n');
     writeFile(dir, 'debug.log', 'noise\n');
@@ -1009,9 +1028,9 @@ describe('engine commit --paths: code in repos of its own', () => {
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', 'api/src/never-written.js', '-m', 'x', ...forTopic]).error,
       /"api\/src\/never-written\.js" is neither on disk nor tracked/);
     assert.strictEqual(head(dir), rootBefore);
-    assert.deepStrictEqual(statusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
+    assert.deepStrictEqual(codeStatusLines(dir), [' M src/app.js'], 'a refusal stages nothing');
 
-    writeFile(dir, '.gitignore', 'api/\n*.log\nlib/gen/\n');
+    writeFile(dir, '.gitignore', '.leeway/\napi/\n*.log\nlib/gen/\n');
     commitAll(dir, 'generated code is ignored');
     harness.addSubmodule(dir, 'lib/gen/sdk', api, { force: true });
     writeFile(dir, 'lib/util.js', 'const u = 1;\n');
@@ -1029,14 +1048,14 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
 });
 
-describe('engine commit --migrations: the paths the workflows own', () => {
+describe('engine commit --migrations: the state and the paths the workflows own', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture();
-    writeFile(dir, '.workflows/.gitignore', '.cache/\n.knowledge/\n');
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
     writeFile(dir, '.claude/settings.json', '{}\n');
-    writeFile(dir, '.gitignore', 'node_modules\n');
+    writeFile(dir, '.worktreeinclude', '.leeway/.knowledge/store.bin\n');
+    writeFile(dir, '.gitignore', '.leeway/\nnode_modules\n');
     writeFile(dir, 'src/app.js', 'const x = 1;\n');
     commitAll(dir, 'init');
   });
@@ -1044,87 +1063,103 @@ describe('engine commit --migrations: the paths the workflows own', () => {
 
   const migrate = (message = 'chore: apply workflow migrations') => engine(dir, ['commit', '--migrations', '-m', message]);
 
-  /** `git show --name-status` of HEAD, sorted. */
+  /** `git show --name-status` of the code tree's HEAD, sorted. */
   function headChanges() {
     return git(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort();
   }
 
-  it('commits edits, new files and deletions across every owned path — and nothing else', () => {
+  /** `git show --name-status` of the state branch's HEAD, sorted. */
+  function stateChanges() {
+    return stateGit(dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort();
+  }
+
+  const codeHead = () => git(dir, ['rev-parse', '--short', 'HEAD']).trim();
+  const stateHead = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
+
+  it('commits the whole state on its branch and every owned code path on the code branch — one commit each, nothing else', () => {
     writeFile(dir, '.claude/settings.json', '{"permissions":{}}\n');
-    writeFile(dir, '.worktreeinclude', '.workflows/.knowledge/store.bin\n');
-    fs.unlinkSync(path.join(dir, '.gitignore'));
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
-    writeFile(dir, '.workflows/.state/migrations', '062\n');
-    writeFile(dir, '.workflows/.knowledge/store.bin', 'local store\n');
-    writeFile(dir, '.workflows/.cache/payments/state.json', '{}\n');
+    fs.unlinkSync(path.join(dir, '.worktreeinclude'));
+    writeFile(dir, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
+    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.leeway/.state/migrations', '062\n');
+    writeFile(dir, '.leeway/.knowledge/store.bin', 'local store\n');
+    writeFile(dir, '.leeway/.cache/payments/state.json', '{}\n');
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     writeFile(dir, 'src/new.js', 'const n = 1;\n');
 
     const res = migrate();
 
-    assert.strictEqual(res.committed, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(res, { ok: true, committed: stateHead(), code_committed: codeHead() });
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
-    assert.deepStrictEqual(headChanges(), [
-      'A\t.workflows/.state/migrations',
-      'A\t.worktreeinclude',
-      'D\t.gitignore',
-      'M\t.claude/settings.json',
-      'M\t.workflows/payments/manifest.json',
-    ]);
-    assert.deepStrictEqual(statusLines(dir).sort(), [' M src/app.js', '?? src/new.js'],
-      'code stays as it was, and the ignored store and cache stay out of git');
-    assert.strictEqual(git(dir, ['ls-files', '--', '.workflows/.knowledge', '.workflows/.cache']).trim(), '');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
+    assert.deepStrictEqual(headChanges(), ['D\t.worktreeinclude', 'M\t.claude/settings.json', 'M\t.gitignore']);
+    assert.deepStrictEqual(stateChanges(), ['A\t.state/migrations', 'M\tpayments/manifest.json']);
+    assert.deepStrictEqual(codeStatusLines(dir).sort(), [' M src/app.js', '?? src/new.js'], 'code stays as it was');
+    assert.deepStrictEqual(statusLines(dir), [], 'and the ignored store and cache stay out of the state');
+    assert.strictEqual(stateGit(dir, ['ls-files', '--', '.knowledge', '.cache']).trim(), '');
   });
 
-  it('records a removal a migration staged, the file left on disk', () => {
-    writeFile(dir, '.workflows/.gitignore', '.cache/\n');
-    writeFile(dir, '.workflows/.knowledge/store.bin', 'tracked store\n');
-    commitAll(dir, 'a store committed before the ignore rule');
-    writeFile(dir, '.workflows/.gitignore', '.cache/\n.knowledge/\n');
-    git(dir, ['rm', '-r', '-q', '--cached', '--', '.workflows/.knowledge']);
+  it('commits one side alone where only it changed', () => {
+    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
+    const before = codeHead();
+    assert.deepStrictEqual(migrate(), { ok: true, committed: stateHead(), code_committed: null });
+    assert.strictEqual(codeHead(), before, 'the code branch takes no state commit');
+
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    const state = stateHead();
+    assert.deepStrictEqual(migrate(), { ok: true, committed: null, code_committed: codeHead() });
+    assert.strictEqual(stateHead(), state);
+  });
+
+  it('records a removal a migration staged in the code tree, the file left on disk', () => {
+    writeFile(dir, '.gitignore', '.leeway/\nnode_modules\n.worktreeinclude\n');
+    git(dir, ['add', '--', '.gitignore']);
+    git(dir, ['commit', '-q', '-m', 'the include is local now']);
+    git(dir, ['rm', '-q', '--cached', '--', '.worktreeinclude']);
 
     migrate();
 
-    assert.deepStrictEqual(headChanges(), ['D\t.workflows/.knowledge/store.bin', 'M\t.workflows/.gitignore']);
-    assert.strictEqual(git(dir, ['ls-files', '--', '.workflows/.knowledge']).trim(), '', 'no longer tracked');
-    assert.ok(fs.existsSync(path.join(dir, '.workflows/.knowledge/store.bin')), 'and still on disk');
-    assert.deepStrictEqual(statusLines(dir), []);
+    assert.deepStrictEqual(headChanges(), ['D\t.worktreeinclude']);
+    assert.strictEqual(git(dir, ['ls-files', '--', '.worktreeinclude']).trim(), '', 'no longer tracked');
+    assert.ok(fs.existsSync(path.join(dir, '.worktreeinclude')), 'and still on disk');
+    assert.deepStrictEqual(codeStatusLines(dir), []);
   });
 
   it('leaves another process\'s staged work out of the commit, still staged', () => {
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
     git(dir, ['add', '--', 'src/app.js']);
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
 
     migrate();
 
-    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.deepStrictEqual(headChanges(), ['M\t.claude/settings.json']);
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js');
   });
 
   it('leaves an owned path the project ignores to git — never forced in', () => {
-    writeFile(dir, '.gitignore', 'node_modules\n.claude/\n');
+    writeFile(dir, '.gitignore', '.leeway/\nnode_modules\n.claude/\n');
     git(dir, ['rm', '-q', '--cached', '--', '.claude/settings.json']);
     commitAll(dir, 'the project ignores its Claude Code settings');
     writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
 
-    migrate();
+    const res = migrate();
 
-    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
+    assert.strictEqual(res.code_committed, null);
+    assert.deepStrictEqual(stateChanges(), ['M\tpayments/manifest.json']);
     assert.strictEqual(git(dir, ['ls-files', '--', '.claude']).trim(), '');
   });
 
   it('leaves a tracked file whose directory the project ignores as it is — the rest still commit', () => {
-    writeFile(dir, '.gitignore', 'node_modules\n.claude/\n');
+    writeFile(dir, '.gitignore', '.leeway/\nnode_modules\n.claude/\n');
     commitAll(dir, 'the project ignores .claude/ and still tracks its settings');
     writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.worktreeinclude', '.leeway/.knowledge/metadata.json\n');
 
     migrate();
 
-    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
-    assert.deepStrictEqual(statusLines(dir), [' M .claude/settings.json']);
+    assert.deepStrictEqual(headChanges(), ['M\t.worktreeinclude']);
+    assert.deepStrictEqual(codeStatusLines(dir), [' M .claude/settings.json']);
   });
 
   it('leaves settings beyond a symbolic link as they are — the rest still commit', () => {
@@ -1133,35 +1168,35 @@ describe('engine commit --migrations: the paths the workflows own', () => {
     fs.symlinkSync('config/claude', path.join(dir, '.claude'));
     commitAll(dir, '.claude links to the shared config');
     writeFile(dir, 'config/claude/settings.json', '{"hooks":{}}\n');
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.worktreeinclude', '.leeway/.knowledge/metadata.json\n');
 
     migrate();
 
-    assert.deepStrictEqual(headChanges(), ['M\t.workflows/payments/manifest.json']);
-    assert.deepStrictEqual(statusLines(dir), [' M config/claude/settings.json']);
+    assert.deepStrictEqual(headChanges(), ['M\t.worktreeinclude']);
+    assert.deepStrictEqual(codeStatusLines(dir), [' M config/claude/settings.json']);
   });
 
   it('never reads another process\'s hold on the index as a refusal', () => {
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
-    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+    const before = codeHead();
 
     const res = engineFails(dir, ['commit', '--migrations', '-m', 'x'], { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
 
     assert.match(res.error, /index\.lock/);
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+    assert.strictEqual(codeHead(), before);
   });
 
-  it('commits a project nested in its repository under the project\'s own directory', () => {
+  it('commits a project nested in its repository under the project\'s own directory — the state the repository\'s', () => {
     const repo = harness.setupGitFixture('engine-commit-nested-');
     try {
       const project = path.join(repo, 'apps/web');
       writeFile(repo, 'README.md', '# monorepo\n');
-      writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+      writeFile(repo, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
       writeFile(project, '.claude/settings.json', '{}\n');
       commitAll(repo, 'init');
-      writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
-      writeFile(project, '.workflows/.state/migrations', '062\n');
+      writeFile(repo, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
+      writeFile(repo, '.leeway/.state/migrations', '062\n');
       writeFile(project, '.claude/settings.json', '{"hooks":{}}\n');
       writeFile(project, '.gitignore', '.DS_Store\n');
 
@@ -1169,10 +1204,13 @@ describe('engine commit --migrations: the paths the workflows own', () => {
 
       assert.deepStrictEqual(git(repo, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
         'A\tapps/web/.gitignore',
-        'A\tapps/web/.workflows/.state/migrations',
         'M\tapps/web/.claude/settings.json',
-        'M\tapps/web/.workflows/payments/manifest.json',
       ]);
+      assert.deepStrictEqual(stateGit(repo, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
+        'A\t.state/migrations',
+        'M\tpayments/manifest.json',
+      ]);
+      assert.deepStrictEqual(codeStatusLines(repo), []);
       assert.deepStrictEqual(statusLines(repo), []);
     } finally {
       cleanupFixture(repo);
@@ -1180,8 +1218,9 @@ describe('engine commit --migrations: the paths the workflows own', () => {
   });
 
   it('refuses when HEAD\'s tree cannot be read — never a commit built on an empty tree', () => {
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
-    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments","v":2}\n');
+    const [code, state] = [codeHead(), stateHead()];
     // A git that fails the tree read alone, as a branch with no commits
     // would: exit 1, and every other call goes to the real git.
     const shim = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-git-shim-'));
@@ -1194,53 +1233,40 @@ describe('engine commit --migrations: the paths the workflows own', () => {
       const res = engineFails(dir, ['commit', '--migrations', '-m', 'x'], { PATH: `${shim}:${process.env.PATH}` });
 
       assert.match(res.error, /tree unreadable/);
-      assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+      assert.deepStrictEqual([codeHead(), stateHead()], [code, state]);
     } finally {
       fs.rmSync(shim, { recursive: true, force: true });
     }
   });
 
-  it('answers nothing to commit on clean owned paths, and where none of them exists', () => {
-    assert.deepStrictEqual(migrate('noop'), { ok: true, committed: null, note: 'nothing to commit' });
+  it('answers nothing to commit on clean owned paths and a clean state, and where no owned path exists', () => {
+    assert.deepStrictEqual(migrate('noop'), { ok: true, committed: null, note: 'nothing to commit', code_committed: null });
 
-    const bare = harness.setupGitFixture('engine-commit-bare-');
-    try {
-      fs.rmSync(path.join(bare, '.workflows'), { recursive: true });
-      writeFile(bare, 'src/app.js', 'const x = 1;\n');
-      commitAll(bare, 'code only');
-      const before = git(bare, ['rev-parse', 'HEAD']).trim();
-
-      assert.deepStrictEqual(engine(bare, ['commit', '--migrations', '-m', 'noop']),
-        { ok: true, committed: null, note: 'nothing to commit' });
-      assert.strictEqual(git(bare, ['rev-parse', 'HEAD']).trim(), before);
-    } finally {
-      cleanupFixture(bare);
-    }
+    git(dir, ['rm', '-r', '-q', '--', '.claude', '.worktreeinclude']);
+    git(dir, ['commit', '-q', '-m', 'code only']);
+    const before = codeHead();
+    assert.deepStrictEqual(migrate('noop'), { ok: true, committed: null, note: 'nothing to commit', code_committed: null });
+    assert.strictEqual(codeHead(), before);
   });
 
-  it('makes the first commit on a branch with none yet', () => {
-    const fresh = harness.setupGitFixture('engine-commit-fresh-');
-    try {
-      writeFile(fresh, '.workflows/.state/migrations', '001\n');
-      writeFile(fresh, 'src/app.js', 'const x = 1;\n');
+  it('makes the first commit on a code branch with none yet', () => {
+    git(dir, ['checkout', '-q', '--orphan', 'fresh']);
+    git(dir, ['rm', '-r', '-q', '--cached', '--', '.']);
 
-      const res = engine(fresh, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    const res = migrate();
 
-      assert.strictEqual(res.committed, git(fresh, ['rev-parse', '--short', 'HEAD']).trim());
-      assert.deepStrictEqual(git(fresh, ['ls-files']).trim().split('\n'), ['.workflows/.state/migrations']);
-      assert.deepStrictEqual(statusLines(fresh), ['?? src/'], 'code stays untracked');
-    } finally {
-      cleanupFixture(fresh);
-    }
+    assert.strictEqual(res.code_committed, codeHead());
+    assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n'), ['.claude/settings.json', '.gitignore', '.worktreeinclude']);
+    assert.deepStrictEqual(codeStatusLines(dir), ['?? src/'], 'code stays untracked');
   });
 
   it('refuses while a merge is in progress, staging nothing', () => {
-    writeFile(dir, '.workflows/payments/manifest.json', '{"name":"payments","v":2}\n');
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
     fs.writeFileSync(path.join(dir, '.git', 'MERGE_HEAD'), git(dir, ['rev-parse', 'HEAD']));
-    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+    const before = codeHead();
 
     assert.match(engineFails(dir, ['commit', '--migrations', '-m', 'x']).error, /a merge is in progress \(MERGE_HEAD\)/);
-    assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), before);
+    assert.strictEqual(codeHead(), before);
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '');
   });
 
@@ -1262,9 +1288,9 @@ describe('engine commit --migrations: the paths the workflows own', () => {
 
     const sha = commitStaged(dir, ['app/[id]/page.tsx', 'app/[id]/old.tsx'], 'chore: the bracketed files');
 
-    assert.strictEqual(sha, git(dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(sha, codeHead());
     assert.deepStrictEqual(headChanges(), ['D\tapp/[id]/old.tsx', 'M\tapp/[id]/page.tsx']);
-    assert.deepStrictEqual(statusLines(dir), ['M  app/d/page.tsx', ' M app/i/page.tsx'],
+    assert.deepStrictEqual(codeStatusLines(dir), ['M  app/d/page.tsx', ' M app/i/page.tsx'],
       'the glob siblings stay as they were — one staged, one not');
   });
 });
@@ -1274,24 +1300,24 @@ describe('mechanical heartbeats: the self-referential rule', () => {
   beforeEach(() => { dir = setupTwoTopicFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const beatFile = (phase, topic) => path.join(dir, '.workflows/.cache/payments', phase, topic, 'presence');
+  const beatFile = (phase, topic) => path.join(dir, '.leeway/.cache/payments', phase, topic, 'presence');
   const beaten = (phase, topic) => fs.existsSync(beatFile(phase, topic));
 
   it('the session-cadence commit beats; the conclusion commit clears; --sweep suppresses', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
     assert.ok(beaten('discussion', 'topic-a'), 'the cadence commit is the heartbeat');
 
     // The conclusion: `topic complete` then its commit. The completed item
     // makes that commit a release, so a concluded topic never reads held.
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nconcluded\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nconcluded\n');
     engine(dir, ['topic', 'complete', 'payments', 'discussion', 'topic-a']);
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments): complete topic-a', '--topic', 'discussion/topic-a']);
     assert.ok(!beaten('discussion', 'topic-a'), 'the conclusion commit clears instead of beating');
 
     // The conclude sweep committing a dead session's leavings must not
     // resurrect the hold it just swept.
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\ndead session leavings\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\ndead session leavings\n');
     engine(dir, ['commit', 'payments', '-m', 'chore(payments/topic-b): sweep session leavings', '--topic', 'discussion/topic-b', '--sweep']);
     assert.ok(!beaten('discussion', 'topic-b'), '--sweep never stamps the swept topic');
   });
@@ -1303,7 +1329,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nresolution landed\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\nresolution landed\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
       '--topic', 'discussion/topic-b', '--sweep']);
 
@@ -1323,7 +1349,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     fs.mkdirSync(path.dirname(peer), { recursive: true });
     fs.writeFileSync(peer, JSON.stringify({ pid: 1, pid_start: null, session_id: 'peer' }) + '\n');
 
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\nthe resolution landed\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\nthe resolution landed\n');
     engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-b): supersede the decision',
       '--topic', 'discussion/topic-b', '--sweep']);
 
@@ -1345,7 +1371,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     engine(dir, ['topic', 'start', 'payments', 'planning', 'topic-a'], me);
     assert.ok(beaten('planning', 'topic-a'), 'start opens the session\'s own topic');
 
-    writeFile(dir, '.workflows/payments/discussion/.mailbox/topic-a/001-first.md', '### First\nbody\n');
+    writeFile(dir, '.leeway/payments/discussion/.mailbox/topic-a/001-first.md', '### First\nbody\n');
     commitAll(dir, 'a delivered message');
     engine(dir, ['topic', 'absorb', 'payments', 'discussion', 'topic-a', '--file', '001-first.md',
       '--subtopic', 'first', '-m', 'discussion(payments/topic-a): absorb 001-first (from topic-b)'], me);
@@ -1361,9 +1387,9 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
     // Delivery acts on the TARGET topic from the origin's session — a beat
     // there would manufacture a hold on a topic no session is in.
-    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
     engine(dir, ['topic', 'send', 'payments', 'discussion', 'topic-b',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'], me);
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'], me);
     assert.ok(!beaten('discussion', 'topic-b'), 'send never beats the target');
   });
 
@@ -1378,8 +1404,8 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.ok(!beaten('discussion', 'topic-b'), 'a phase-level write names no topic');
 
     const ops = JSON.stringify([{ op: 'set', path: 'payments.discussion.topic-b', fields: { status: 'in-progress' } }]);
-    writeFile(dir, '.workflows/.cache/scratch/ops.json', ops);
-    engine(dir, ['manifest', 'apply', 'payments', '--file', '.workflows/.cache/scratch/ops.json']);
+    writeFile(dir, '.leeway/.cache/scratch/ops.json', ops);
+    engine(dir, ['manifest', 'apply', 'payments', '--file', '.leeway/.cache/scratch/ops.json']);
     assert.ok(!beaten('discussion', 'topic-b'), 'apply writes across topics — the analysis session holds none of them');
   });
 
@@ -1392,7 +1418,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
     // The conclude-plan commit that follows must not re-take what the close
     // let go — a terminal item is finished, whatever the session does next.
-    writeFile(dir, '.workflows/payments/planning/topic-a/planning.md', '# Plan\nconcluded\n');
+    writeFile(dir, '.leeway/payments/planning/topic-a/planning.md', '# Plan\nconcluded\n');
     engine(dir, ['commit', 'payments', '-m', 'planning(payments): conclude topic-a', '--topic', 'planning/topic-a']);
     assert.ok(!beaten('planning', 'topic-a'), 'a post-completion cadence commit stays released');
   });
@@ -1404,7 +1430,7 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     engine(dir, ['topic', 'start', 'payments', 'review', 'topic-a']);
     assert.ok(beaten('review', 'topic-a'));
 
-    writeFile(dir, '.workflows/payments/review/topic-a/report.md', '# Report\n');
+    writeFile(dir, '.leeway/payments/review/topic-a/report.md', '# Report\n');
     engine(dir, ['topic', 'complete', 'payments', 'review', 'topic-a']);
     engine(dir, ['commit', 'payments', '-m', 'review(payments): complete topic-a', '--topic', 'review/topic-a']);
 
@@ -1413,18 +1439,18 @@ describe('mechanical heartbeats: the self-referential rule', () => {
 
   it('a reopened item beats again', () => {
     engine(dir, ['topic', 'start', 'payments', 'specification', 'topic-a']);
-    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\n');
+    writeFile(dir, '.leeway/payments/specification/topic-a/specification.md', '# Spec\n');
     engine(dir, ['topic', 'complete', 'payments', 'specification', 'topic-a']);
     assert.ok(!beaten('specification', 'topic-a'), 'closed and released');
 
     engine(dir, ['topic', 'reopen', 'payments', 'specification', 'topic-a']);
-    writeFile(dir, '.workflows/payments/specification/topic-a/specification.md', '# Spec\nreopened\n');
+    writeFile(dir, '.leeway/payments/specification/topic-a/specification.md', '# Spec\nreopened\n');
     engine(dir, ['commit', 'payments', '-m', 'spec(payments/topic-a): reconcile', '--topic', 'specification/topic-a']);
     assert.ok(beaten('specification', 'topic-a'), 'a live item\'s cadence commit is its heartbeat again');
   });
 
   it('a --topic commit on a topic with no manifest item neither beats nor clears', () => {
-    writeFile(dir, '.workflows/payments/research/never-registered.md', '# Notes\n');
+    writeFile(dir, '.leeway/payments/research/never-registered.md', '# Notes\n');
     engine(dir, ['commit', 'payments', '-m', 'research(payments/never-registered): notes', '--topic', 'research/never-registered']);
     assert.ok(!beaten('research', 'never-registered'), 'no item, nothing to hold');
   });
@@ -1440,17 +1466,61 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     const res = engine(dir, ['manifest', 'set', 'payments.discovery.topic-a', 'routing', 'discussion']);
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.set, { routing: 'discussion' }, 'the response is the field surface\'s, untouched');
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/.cache/payments/discovery/topic-a/presence')));
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/payments/discovery/topic-a/presence')));
+  });
+});
+
+describe('commit door: never a code commit on the state branch', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('refuses a tree that has leeway-state checked out, running nothing there', () => {
+    const state = path.join(dir, '.leeway');
+    writeFile(state, 'stray.md', '# stray\n');
+    const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    let ran = false;
+
+    assert.throws(() => withCommitLock(state, () => { ran = true; }),
+      new RegExp(`^Error: refusing a code commit in ${state}: it has the state branch leeway-state checked out`));
+    assert.throws(() => commitAcrossRepos([{ repo: { dir: '', path: state, heldOut: [], submodules: [] }, paths: ['stray.md'] }], 'stray'),
+      /leeway-state checked out/);
+
+    assert.strictEqual(ran, false);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), before, 'nothing committed on the state branch');
+    assert.deepStrictEqual(statusLines(dir), ['?? stray.md'], 'nor staged');
+  });
+
+  it('commits the owned paths in the main checkout from inside the state worktree', () => {
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    const stateHead = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+
+    const res = harness.ok(path.join(dir, '.leeway'), ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+    assert.deepStrictEqual(res, { ok: true, committed: null, code_committed: git(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.deepStrictEqual(codeHeadFiles(dir), ['.claude/settings.json']);
+    assert.strictEqual(git(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'main');
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), stateHead);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.claude')), false);
   });
 });
 
 describe('commit door: index.lock retry and the commit lock', () => {
   let dir;
-  beforeEach(() => { dir = setupTwoTopicFixture(); });
+  beforeEach(() => {
+    dir = setupTwoTopicFixture();
+    const manifest = epicManifest();
+    manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, 'src/app.js', 'const x = 1;\n');
+    commitAll(dir, 'code');
+    writeFile(dir, 'src/app.js', 'const x = 2;\n');
+  });
   afterEach(() => { cleanupFixture(dir); });
 
+  const task = ['commit', '--paths', 'src/app.js', '-m', 'feat(topic-a): the task', '--for', 'payments', 'implementation/topic-a'];
+
   it('retries through transient index.lock contention', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     const indexLock = path.join(dir, '.git', 'index.lock');
     fs.writeFileSync(indexLock, '');
     // A detached deleter releases git's own lock mid-retry.
@@ -1458,36 +1528,40 @@ describe('commit door: index.lock retry and the commit lock', () => {
       detached: true, stdio: 'ignore',
     }).unref();
 
-    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
+    const res = engine(dir, task);
 
-    assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.deepStrictEqual(res.committed, [{ repo: '.', sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim() }]);
   });
 
   it('surfaces the git error once the retry budget is exhausted, and releases the commit lock', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
 
-    const res = engineFails(
-      dir,
-      ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a'],
-      { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' },
-    );
+    const res = engineFails(dir, task, { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
 
     assert.match(res.error, /index\.lock/);
     assert.ok(!fs.existsSync(path.join(dir, '.git', 'workflows-commit.lock')), 'commit lock released on failure');
   });
 
   it('breaks a stale commit lock left by a crashed process', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
     const lock = path.join(dir, '.git', 'workflows-commit.lock');
     fs.writeFileSync(lock, '99999');
     const past = new Date(Date.now() - 360000);
     fs.utimesSync(lock, past, past);
 
-    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a']);
+    const res = engine(dir, task);
 
-    assert.match(res.committed, /^[0-9a-f]+$/);
+    assert.strictEqual(res.committed.length, 1);
     assert.ok(!fs.existsSync(lock), 'stale lock cleared');
+  });
+
+  it('a state commit never takes the code tree\'s index — a peer\'s hold there blocks nothing', () => {
+    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nprogress\n');
+
+    const res = engine(dir, ['commit', 'payments', '-m', 'discussion(payments/topic-a): progress', '--topic', 'discussion/topic-a'],
+      { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
   });
 });
 
@@ -1497,56 +1571,56 @@ describe('commit door: transaction tails commit their own scope', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a deletion that empties its scope still commits (inbox delete)', () => {
-    writeFile(dir, '.workflows/.inbox/.archived/ideas/a-thought.md', '# A thought\n');
+    writeFile(dir, '.leeway/.inbox/.archived/ideas/a-thought.md', '# A thought\n');
     commitAll(dir, 'an archived idea');
-    writeFile(dir, '.workflows/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\npeer dirt\n');
 
-    const res = engine(dir, ['inbox', 'delete', '.workflows/.inbox/.archived/ideas/a-thought.md']);
+    const res = engine(dir, ['inbox', 'delete', '.leeway/.inbox/.archived/ideas/a-thought.md']);
 
     assert.match(res.committed, /^[0-9a-f]+$/, 'the staged deletion commits even though nothing is left on disk');
-    assert.ok(headFiles(dir).includes('.workflows/.inbox/.archived/ideas/a-thought.md'), 'the deletion is in the commit');
-    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
+    assert.ok(headFiles(dir).includes('.inbox/.archived/ideas/a-thought.md'), 'the deletion is in the commit');
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-b.md'], 'the live session\'s dirt is untouched');
   });
 
   it('the inbox scope leaves the knowledge store alone', () => {
-    writeFile(dir, '.workflows/.inbox/ideas/a-thought.md', '# A thought\n');
-    writeFile(dir, '.workflows/.knowledge/metadata.json', '{}\n');
+    writeFile(dir, '.leeway/.inbox/ideas/a-thought.md', '# A thought\n');
+    writeFile(dir, '.leeway/.knowledge/metadata.json', '{}\n');
 
     engine(dir, ['commit', '--inbox', '-m', 'chore(inbox): capture an idea']);
 
-    assert.deepStrictEqual(headFiles(dir), ['.workflows/.inbox/ideas/a-thought.md']);
-    assert.ok(statusLines(dir).some((l) => l.includes('.workflows/.knowledge')), 'the store dirt is a peer session\'s');
+    assert.deepStrictEqual(headFiles(dir), ['.inbox/ideas/a-thought.md']);
+    assert.ok(fs.existsSync(path.join(dir, '.leeway/.knowledge/metadata.json')), 'the store dirt is a peer session\'s');
   });
 
   it('a topic cancel commits the manifest write alone', () => {
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\nlive session dirt\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\nlive session dirt\n');
 
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
-    assert.deepStrictEqual(headFiles(dir), ['.workflows/payments/manifest.json'],
+    assert.deepStrictEqual(headFiles(dir), ['payments/manifest.json'],
       'a cancel from the epic menu takes nothing a session is holding');
-    assert.deepStrictEqual(statusLines(dir), [' M .workflows/payments/discussion/topic-a.md']);
+    assert.deepStrictEqual(statusLines(dir), [' M payments/discussion/topic-a.md']);
   });
 
   it('the discovery session close commits the discovery scope, not the work unit', () => {
     const manifest = epicManifest();
     manifest.phases.discovery.active_session = '001';
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/discovery/sessions/session-001.md', '# Session 001\n');
     commitAll(dir, 'an open session');
 
-    writeFile(dir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n\n## Conclusion\n');
-    writeFile(dir, '.workflows/payments/discovery/briefs/topic-a.md', '# Brief\n');
-    writeFile(dir, '.workflows/payments/discussion/topic-a.md', '# Topic A\na peer session mid-turn\n');
+    writeFile(dir, '.leeway/payments/discovery/sessions/session-001.md', '# Session 001\n\n## Conclusion\n');
+    writeFile(dir, '.leeway/payments/discovery/briefs/topic-a.md', '# Brief\n');
+    writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\na peer session mid-turn\n');
 
     const res = engine(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): synthesise 1 topic']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     const files = headFiles(dir);
-    assert.ok(files.includes('.workflows/payments/discovery/sessions/session-001.md'));
-    assert.ok(files.includes('.workflows/payments/discovery/briefs/topic-a.md'));
-    assert.ok(!files.includes('.workflows/payments/discussion/topic-a.md'), 'the peer\'s half-written document stays uncommitted');
+    assert.ok(files.includes('payments/discovery/sessions/session-001.md'));
+    assert.ok(files.includes('payments/discovery/briefs/topic-a.md'));
+    assert.ok(!files.includes('payments/discussion/topic-a.md'), 'the peer\'s half-written document stays uncommitted');
   });
 });
 
@@ -1561,7 +1635,7 @@ describe('commit door: two live sessions on one checkout', () => {
     "const fs = require('fs');",
     "const { execFileSync } = require('child_process');",
     'const [engine, dir, topic, turns] = process.argv.slice(1);',
-    'const file = dir + "/.workflows/payments/discussion/" + topic + ".md";',
+    'const file = dir + "/.leeway/payments/discussion/" + topic + ".md";',
     'for (let i = 1; i <= Number(turns); i++) {',
     '  fs.writeFileSync(file, "# " + topic + "\\n" + Array.from({length: i}, (_, n) => "line " + (n + 1)).join("\\n") + "\\n");',
     '  execFileSync("node", [engine, "commit", "payments", "-m",',
@@ -1584,26 +1658,26 @@ describe('commit door: two live sessions on one checkout', () => {
     for (const r of results) assert.strictEqual(r.code, 0, `a session crashed: ${r.stderr}`);
 
     // Every commit either session made, message and file list together.
-    const log = git(dir, ['log', '--format=%H%x00%s', '--name-only', '-z', 'HEAD']);
-    const commits = git(dir, ['log', '--format=%H', 'HEAD']).trim().split('\n');
+    const log = stateGit(dir, ['log', '--format=%H%x00%s', '--name-only', '-z', 'HEAD']);
+    const commits = stateGit(dir, ['log', '--format=%H', 'HEAD']).trim().split('\n');
     assert.ok(commits.length >= 2 * turns, `expected a commit per turn, got ${commits.length - 1}`);
 
     for (const sha of commits) {
-      const subject = git(dir, ['log', '--format=%s', '-1', sha]).trim();
+      const subject = stateGit(dir, ['log', '--format=%s', '-1', sha]).trim();
       if (!subject.startsWith('discussion(payments/')) continue;
       const mine = subject.slice('discussion(payments/'.length).split(')')[0];
       const foreign = mine === 'topic-a' ? 'topic-b' : 'topic-a';
-      const files = git(dir, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
-      assert.ok(!files.includes(`.workflows/payments/discussion/${foreign}.md`),
+      const files = stateGit(dir, ['show', '--name-only', '--pretty=format:', sha]).trim().split('\n').filter(Boolean);
+      assert.ok(!files.includes(`payments/discussion/${foreign}.md`),
         `${subject} (${sha}) swept a foreign session's file:\n${files.join('\n')}\n${log}`);
-      assert.deepStrictEqual(files, [`.workflows/payments/discussion/${mine}.md`],
+      assert.deepStrictEqual(files, [`payments/discussion/${mine}.md`],
         `${subject} committed more than its own action`);
     }
 
     // Both sessions' last turn is in HEAD, and the tree is clean.
     for (const topic of ['topic-a', 'topic-b']) {
-      const committed = git(dir, ['show', `HEAD:.workflows/payments/discussion/${topic}.md`]);
-      assert.strictEqual(committed, fs.readFileSync(path.join(dir, `.workflows/payments/discussion/${topic}.md`), 'utf8'),
+      const committed = stateGit(dir, ['show', `HEAD:payments/discussion/${topic}.md`]);
+      assert.strictEqual(committed, fs.readFileSync(path.join(dir, `.leeway/payments/discussion/${topic}.md`), 'utf8'),
         `${topic}'s last turn never reached a commit`);
       assert.ok(committed.trim().endsWith(`line ${turns}`), `${topic} lost a turn`);
     }
@@ -1617,13 +1691,9 @@ describe('commit door: transaction-tail degrade', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a tail-committing verb saves state and degrades to a pending note when git is blocked', () => {
-    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+    holdStateRef(dir);
 
-    const res = engine(
-      dir,
-      ['topic', 'cancel', 'payments', 'discovery', 'auth-flow'],
-      { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' },
-    );
+    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'cancelled');
@@ -1632,24 +1702,24 @@ describe('commit door: transaction-tail degrade', () => {
       'commit pending — state saved; retry with engine commit',
       'the cancel wrote the manifest alone — narrower than the work unit\'s state scope, so the retry stays generic');
     assert.ok(res.warnings.some((w) => w.includes('commit failed')), `warnings carry the git error: ${JSON.stringify(res.warnings)}`);
-    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/payments/manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
     assert.strictEqual(manifest.phases.research.items['auth-flow'].status, 'cancelled', 'state landed despite the failed commit');
   });
 
   it('a foreign-topic tail prescribes a retry that beats no more than the verb did', () => {
     // The notes are contract surface: a session follows the command verbatim,
     // so a delivery's retry must carry the same suppression the delivery has.
-    writeFile(dir, '.workflows/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
-    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+    writeFile(dir, '.leeway/.cache/scratch/c.md', '### Q\n*From: topic-a · discussion · d*\n\nBody.\n');
+    holdStateRef(dir);
     const delivered = engine(dir, ['topic', 'send', 'payments', 'discussion', 'topic-b',
-      '--content', '.workflows/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'],
-    { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+      '--content', '.leeway/.cache/scratch/c.md', '--slug', 'q', '-m', 'discussion(payments/topic-a): send message to topic-b'],
+    );
     assert.strictEqual(delivered.committed, null);
     assert.match(delivered.note, /--topic discussion\/topic-b --sweep -m/, 'the delivery\'s retry never beats the target');
 
     const moved = engine(dir, ['topic', 'forward', 'payments', 'discussion', 'research', 'topic-b',
       '--file', '001-q.md', '-m', 'research(payments/topic-b): move 001-q to the research side'],
-    { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+    );
     assert.strictEqual(moved.committed, null);
     assert.match(moved.note, /--topic research\/topic-b --sweep -m/, 'the move\'s retry never beats the destination');
 
@@ -1657,7 +1727,7 @@ describe('commit door: transaction-tail degrade', () => {
     // retry beats, exactly as the verb does.
     const absorbed = engine(dir, ['topic', 'absorb', 'payments', 'research', 'topic-b',
       '--file', '001-q.md', '-m', 'research(payments/topic-b): absorb 001-q (from topic-a)'],
-    { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' });
+    );
     assert.strictEqual(absorbed.committed, null);
     assert.match(absorbed.note, /--topic research\/topic-b -m/, 'the owning session\'s retry carries no suppression');
     assert.ok(!absorbed.note.includes('--sweep'));
@@ -1670,25 +1740,24 @@ describe('commit door: transaction-tail degrade', () => {
       'topic-a': { status: 'in-progress', sources: [] },
       'topic-b': { status: 'in-progress', sources: [] },
     } };
-    writeFile(dir, '.workflows/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, '.workflows/payments/discovery/sessions/session-001.md', '# Session 001\n');
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.leeway/payments/discovery/sessions/session-001.md', '# Session 001\n');
     commitAll(dir, 'a discovery session and two specs');
-    const blocked = { WORKFLOWS_GIT_LOCK_BUDGET_MS: '200' };
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
-    fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
+    holdStateRef(dir);
 
-    const reactivated = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'topic-b'], blocked);
+    const reactivated = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'topic-b']);
     assert.strictEqual(reactivated.note, 'commit pending — state saved; retry with engine commit',
       'reactivate wrote the manifest alone, like the cancel it undoes — narrower than the state scope, so its retry stays generic');
 
-    const sequenced = engine(dir, ['build-order', 'sequence', 'payments', 'topic-a=1', 'topic-b=2'], blocked);
+    const sequenced = engine(dir, ['build-order', 'sequence', 'payments', 'topic-a=1', 'topic-b=2']);
     assert.match(sequenced.note, /engine commit payments --state -m/,
       'build-order writes the manifest alone — the work unit\'s state scope covers it');
 
-    const mapped = engine(dir, ['discovery-map', 'sequence', 'payments', 'topic-a=1'], blocked);
+    const mapped = engine(dir, ['discovery-map', 'sequence', 'payments', 'topic-a=1']);
     assert.match(mapped.note, /engine commit payments --discovery -m/, 'the map lives in the discovery scope');
 
-    const closed = engine(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): close'], blocked);
+    const closed = engine(dir, ['discovery-session', 'close', 'payments', '-m', 'discovery(payments): close']);
     assert.match(closed.note, /engine commit payments --discovery -m/, 'so does the session log it just finalised');
   });
 });

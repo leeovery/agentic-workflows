@@ -408,7 +408,7 @@ describe('engine CLI: research-threads round-trip', () => {
   const threads = (/** @type {string[]} */ args) => harness.ok(dir, ['research-threads', ...args]);
   const refuses = (/** @type {string[]} */ args) => harness.refuses(dir, ['research-threads', ...args]);
   function saved() {
-    return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'fumi', 'manifest.json'), 'utf8')).phases.research.items['space-homing'].threads;
+    return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'fumi', 'manifest.json'), 'utf8')).phases.research.items['space-homing'].threads;
   }
 
   it('add → set → reframe → remove, decision-ready JSON each step, manifest persisted', () => {
@@ -492,10 +492,10 @@ describe('engine CLI: research-threads round-trip', () => {
 
   it('set batch is atomic — a failing entry means nothing was written', () => {
     createManifest(dir, 'fumi', manifestWith({ a: row('Q?', 'open', 'seed') }));
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'fumi', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'fumi', 'manifest.json'), 'utf8');
     assert.match(refuses(['set', 'fumi', 'space-homing', 'a=learned', 'ghost=parked']).error, /thread "ghost" not found/);
     assert.match(refuses(['set', 'fumi', 'space-homing', 'a=done']).error, /unknown thread state "done"/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'fumi', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'fumi', 'manifest.json'), 'utf8'), before);
   });
 
   it('set refuses mixing the positional and batch forms, and a note on the batch', () => {
@@ -508,7 +508,7 @@ describe('engine CLI: research-threads round-trip', () => {
 
   it('errors print {ok:false} JSON to stderr and exit 1, manifest untouched', () => {
     createManifest(dir, 'fumi', manifestWith());
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'fumi', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'fumi', 'manifest.json'), 'utf8');
 
     assert.deepStrictEqual(refuses(['set', 'fumi', 'space-homing', 'ghost', 'learned']),
       { ok: false, error: 'thread "ghost" not found under "space-homing"' });
@@ -523,6 +523,6 @@ describe('engine CLI: research-threads round-trip', () => {
     assert.match(refuses(['remove', 'fumi']).error, /Usage: engine research-threads remove/);
     assert.match(refuses(['rename', 'fumi', 'space-homing', 'x']).error, /Usage: engine research-threads <add\|set\|reframe\|remove>/);
 
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'fumi', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'fumi', 'manifest.json'), 'utf8'), before);
   });
 });

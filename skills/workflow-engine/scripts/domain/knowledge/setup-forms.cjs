@@ -27,7 +27,6 @@ const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../../kernel/call.cjs');
 const { metadataMissing } = require('./embedder.cjs');
 const setup = require('./setup.cjs');
-const { stateRoot, stateRel } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -71,9 +70,7 @@ function parseSetupForm(flags) {
 
 /** @param {string} root */
 function requireWorkflowsDir(root) {
-  if (!fs.existsSync(stateRoot(root))) {
-    refuse(`no ${stateRel()}/ directory found. Initialise a workflow project first.`);
-  }
+  if (!fs.existsSync(root)) refuse(`no workflows state found at ${root}. Initialise a workflow project first.`);
 }
 
 function missingOpenAiKeyMessage() {

@@ -171,4 +171,16 @@ function mainCheckout(cwd) {
   return path.dirname(common);
 }
 
-module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout };
+/**
+ * The top of the work tree `cwd` sits in: the main checkout, or the linked
+ * worktree it is.
+ * @param {string} cwd
+ * @returns {string} absolute, every symbolic link resolved
+ */
+function workTree(cwd) {
+  const out = isolatedGit(cwd).tryRun(['rev-parse', '--show-toplevel']);
+  if (out === null) throw new Error(`${cwd} is not inside a git work tree`);
+  return fs.realpathSync(out.trim());
+}
+
+module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree };

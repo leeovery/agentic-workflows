@@ -44,7 +44,8 @@ const { phaseSkill } = require('./handoff.cjs');
 const { stepOfInternalId } = require('./tasks.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 const FILE = 'position.json';
 
@@ -140,7 +141,7 @@ function placeError(cwd, name, phase, topic) {
   if (phase !== undefined && !VALID_PHASES.includes(phase)) return `unknown phase "${phase}" — one of ${VALID_PHASES.join('|')}`;
   const illegal = (phase === undefined ? null : illegalNameReason('topic', topic)) ?? illegalNameReason('work unit', name);
   if (illegal !== null) return illegal;
-  return fs.existsSync(path.join(stateRoot(cwd), name)) ? null : `no work unit directory: ${stateRel(name)}`;
+  return fs.existsSync(statePath(cwd, name)) ? null : `no work unit directory: ${statePath(cwd, name)}`;
 }
 
 /**
@@ -257,40 +258,40 @@ const skillFile = (skill) => `.claude/skills/${skill}/SKILL.md`;
 /**
  * The session log a place's session writes: the open one the marker names,
  * else the latest on disk.
- * @param {string} cwd @param {string} dir project-relative @param {unknown} active
+ * @param {string} dir absolute @param {unknown} active
  * @returns {string[]}
  */
-function sessionLog(cwd, dir, active) {
-  if (typeof active === 'string' && /^\d+$/.test(active)) return [`${dir}/session-${active}.md`];
-  const latest = latestSessionLog(path.join(cwd, dir));
-  return latest === null ? [] : [`${dir}/${latest.file}`];
+function sessionLog(dir, active) {
+  if (typeof active === 'string' && /^\d+$/.test(active)) return [path.join(dir, `session-${active}.md`)];
+  const latest = latestSessionLog(dir);
+  return latest === null ? [] : [path.join(dir, latest.file)];
 }
 
-/** The plan's phase task files, in phase order. @param {string} cwd @param {string} dir project-relative @returns {string[]} */
-function phaseTaskFiles(cwd, dir) {
+/** The plan's phase task files, in phase order. @param {string} dir absolute @returns {string[]} */
+function phaseTaskFiles(dir) {
   /** @type {string[]} */
   let names = [];
-  try { names = fs.readdirSync(path.join(cwd, dir)).filter((f) => /^phase-\d+-tasks\.md$/.test(f)); } catch { return []; }
-  return names.sort((a, b) => parseInt(a.slice(6), 10) - parseInt(b.slice(6), 10)).map((f) => `${dir}/${f}`);
+  try { names = fs.readdirSync(dir).filter((f) => /^phase-\d+-tasks\.md$/.test(f)); } catch { return []; }
+  return names.sort((a, b) => parseInt(a.slice(6), 10) - parseInt(b.slice(6), 10)).map((f) => path.join(dir, f));
 }
 
 /**
  * The file named for the task in the plan's directory or a folder in it —
  * where a plan format that keeps its tasks as files keeps them.
- * @param {string} cwd @param {string} dir project-relative @param {string} internalId
+ * @param {string} dir absolute @param {string} internalId
  * @returns {string[]}
  */
-function taskFile(cwd, dir, internalId) {
+function taskFile(dir, internalId) {
   const name = `${internalId}.md`;
   /** @type {string[]} */
   const found = [];
-  /** @param {string} rel @param {boolean} descend */
-  const walk = (rel, descend) => {
+  /** @param {string} at @param {boolean} descend */
+  const walk = (at, descend) => {
     let entries;
-    try { entries = fs.readdirSync(path.join(cwd, rel), { withFileTypes: true }); } catch { return; }
+    try { entries = fs.readdirSync(at, { withFileTypes: true }); } catch { return; }
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.isFile() && entry.name === name) found.push(`${rel}/${name}`);
-      else if (entry.isDirectory() && descend) walk(`${rel}/${entry.name}`, false);
+      if (entry.isFile() && entry.name === name) found.push(path.join(at, name));
+      else if (entry.isDirectory() && descend) walk(path.join(at, entry.name), false);
     }
   };
   walk(dir, true);
@@ -305,15 +306,15 @@ function internalIdOf(position) {
 /**
  * Each live experiment record's files, in register order; none from a
  * series whose records do not resolve to their directories.
- * @param {string} workUnit @param {string} topic @param {Record<string, unknown>} manifest
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {Record<string, unknown>} manifest
  * @returns {string[]}
  */
-function experimentFiles(workUnit, topic, manifest) {
+function experimentFiles(cwd, workUnit, topic, manifest) {
   const experiments = itemOf(manifest, 'experiment', topic)?.experiments;
   try {
     return openRecords(manifest, topic).flatMap((id) => {
-      const dir = recordDir(workUnit, topic, id, experiments);
-      return ['problem.md', 'design.md', 'report.md'].map((f) => `${dir}/${f}`);
+      const dir = statePath(cwd, recordDir(workUnit, topic, id, experiments));
+      return ['problem.md', 'design.md', 'report.md'].map((f) => path.join(dir, f));
     });
   } catch {
     return [];
@@ -328,7 +329,7 @@ function experimentFiles(workUnit, topic, manifest) {
 function roadmapSessionLog(cwd) {
   const roadmap = loadProjectManifest(cwd)?.[ROADMAP_IDENTITY];
   const active = isObject(roadmap) ? roadmap.active_session : undefined;
-  return typeof active === 'string' ? sessionLog(cwd, `${ROADMAP_DIR}/sessions`, active) : [];
+  return typeof active === 'string' ? sessionLog(statePath(cwd, ROADMAP_DIR, 'sessions'), active) : [];
 }
 
 /**
@@ -343,22 +344,23 @@ function workAt(cwd, position, manifest) {
   if (skill === null) return { skill: null, documents: [] };
   if (phase === undefined) return { skill, documents: name === ROADMAP_IDENTITY ? roadmapSessionLog(cwd) : [] };
   if (manifest === null) return { skill: null, documents: [] };
-  const wu = stateRel(name);
+  const wu = statePath(cwd, name);
   const topic = /** @type {string} */ (position.topic);
+  const plan = path.join(wu, 'planning', topic);
   switch (phase) {
     case 'discovery':
-      return { skill, documents: sessionLog(cwd, `${wu}/discovery/sessions`, phaseData(manifest, 'discovery').active_session) };
+      return { skill, documents: sessionLog(path.join(wu, 'discovery', 'sessions'), phaseData(manifest, 'discovery').active_session) };
     case 'research':
     case 'discussion':
     case 'investigation':
     case 'specification':
-      return { skill, documents: [INDEXED_ARTIFACTS[phase](name, topic)] };
+      return { skill, documents: [statePath(cwd, INDEXED_ARTIFACTS[phase](name, topic))] };
     case 'experiment':
-      return { skill, documents: experimentFiles(name, topic, manifest) };
+      return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
     case 'scoping':
-      return { skill, documents: [INDEXED_ARTIFACTS.specification(name, topic), `${wu}/planning/${topic}/planning.md`] };
+      return { skill, documents: [statePath(cwd, INDEXED_ARTIFACTS.specification(name, topic)), path.join(plan, 'planning.md')] };
     case 'planning':
-      return { skill, documents: [`${wu}/planning/${topic}/planning.md`, ...phaseTaskFiles(cwd, `${wu}/planning/${topic}`)] };
+      return { skill, documents: [path.join(plan, 'planning.md'), ...phaseTaskFiles(plan)] };
     case 'implementation': {
       const internalId = internalIdOf(position);
       if (internalId === null) return { skill, documents: [] };
@@ -366,10 +368,10 @@ function workAt(cwd, position, manifest) {
       const reading = typeof format === 'string' && illegalNameReason('format', format) === null
         ? [`.claude/skills/workflow-planning-process/references/output-formats/${format}/reading.md`]
         : [];
-      return { skill, documents: [...reading, ...taskFile(cwd, `${wu}/planning/${topic}`, internalId)] };
+      return { skill, documents: [...reading, ...taskFile(plan, internalId)] };
     }
     case 'review':
-      return { skill, documents: [`${wu}/review/${topic}/report.md`] };
+      return { skill, documents: [path.join(wu, 'review', topic, 'report.md')] };
     default:
       return { skill: null, documents: [] };
   }
@@ -467,7 +469,8 @@ function positionReads(cwd, sessionId) {
   if (closed !== null) return nothing(`This conversation was working in ${where}, but ${closed}, so there is nothing to carry on from.`);
   const work = workAt(cwd, position, manifest);
   if (work.skill === null) return nothing(`This conversation is at ${where}, outside any phase, so there is nothing to carry on from.`);
-  const absolute = (/** @type {string} */ f) => path.resolve(cwd, f);
+  const root = codeRoot(cwd);
+  const absolute = (/** @type {string} */ f) => path.resolve(root, f);
   const skill = absolute(skillFile(work.skill));
   if (!fs.existsSync(skill)) return nothing(`This conversation was working in ${where}, but this project has no ${work.skill} skill, so there is nothing to carry on from.`);
   const files = [...new Set(work.documents)].map(absolute).filter((f) => fs.existsSync(f));

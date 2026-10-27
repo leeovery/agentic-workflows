@@ -36,18 +36,18 @@ function seedEpic(dir) {
       },
     },
   });
-  createFile(dir, '.workflows/payments/research/kitchen-hardware.md', '# Kitchen Hardware\n');
-  createFile(dir, '.workflows/payments/research/menu-admin.md', '# Menu Admin\n');
-  createFile(dir, '.workflows/payments/research/in-flight.md', '# In Flight\n');
-  createFile(dir, '.workflows/payments/discussion/auth-flow.md', '# Auth Flow\n');
+  createFile(dir, '.leeway/payments/research/kitchen-hardware.md', '# Kitchen Hardware\n');
+  createFile(dir, '.leeway/payments/research/menu-admin.md', '# Menu Admin\n');
+  createFile(dir, '.leeway/payments/research/in-flight.md', '# In Flight\n');
+  createFile(dir, '.leeway/payments/discussion/auth-flow.md', '# Auth Flow\n');
 }
 
 function readManifest(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'));
 }
 
 function readStatus(dir, kind) {
-  return computeAnalysisCacheStatus(readManifest(dir), path.join(dir, '.workflows'), kind);
+  return computeAnalysisCacheStatus(readManifest(dir), path.join(dir, '.leeway'), kind);
 }
 
 describe('engine cache stamp: gap-analysis', () => {
@@ -77,7 +77,7 @@ describe('engine cache stamp: gap-analysis', () => {
 
   it('a changed input makes the stamp stale; restamping makes it valid again', () => {
     engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
-    createFile(dir, '.workflows/payments/research/menu-admin.md', '# Menu Admin — revised\n');
+    createFile(dir, '.leeway/payments/research/menu-admin.md', '# Menu Admin — revised\n');
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
 
     engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
@@ -85,7 +85,7 @@ describe('engine cache stamp: gap-analysis', () => {
   });
 
   it('a completed item whose file is missing on disk is excluded, matching the read side', () => {
-    fs.rmSync(path.join(dir, '.workflows/payments/research/menu-admin.md'));
+    fs.rmSync(path.join(dir, '.leeway/payments/research/menu-admin.md'));
     const res = engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
     assert.strictEqual(res.files, 2);
     assert.deepStrictEqual(readManifest(dir).phases.discovery.gap_analysis_cache.input_files,
@@ -97,26 +97,26 @@ describe('engine cache stamp: gap-analysis', () => {
     engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']);
     const m = readManifest(dir);
     m.phases.discussion.items['zebra-topic'].status = 'completed';
-    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2));
-    createFile(dir, '.workflows/payments/discussion/zebra-topic.md', '# Zebra\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2));
+    createFile(dir, '.leeway/payments/discussion/zebra-topic.md', '# Zebra\n');
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'stale');
   });
 
   it('stamps via the library entry too, sharing the read side collection', () => {
     const res = stampAnalysisCache(dir, 'payments', 'gap-analysis');
-    const inputs = collectAnalysisInputs(readManifest(dir), path.join(dir, '.workflows'), 'gap-analysis');
+    const inputs = collectAnalysisInputs(readManifest(dir), path.join(dir, '.leeway'), 'gap-analysis');
     assert.strictEqual(res.files, inputs.length);
     assert.strictEqual(readStatus(dir, 'gap-analysis').status, 'valid');
   });
 
   it('indexes discovery-gap-analysis.md into the store beside what it already holds', () => {
     keywordOnlyKnowledge(dir);
-    output(dir, ['knowledge', 'index', '.workflows/payments/discussion/auth-flow.md']);
-    createFile(dir, '.workflows/payments/.state/discovery-gap-analysis.md', '# Gap analysis\n\nThe gaps found.\n');
+    output(dir, ['knowledge', 'index', '.leeway/payments/discussion/auth-flow.md']);
+    createFile(dir, '.leeway/payments/.state/discovery-gap-analysis.md', '# Gap analysis\n\nThe gaps found.\n');
     assert.deepStrictEqual(engine(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).warnings, []);
     assert.deepStrictEqual(indexedFiles(dir), [
-      '.workflows/payments/.state/discovery-gap-analysis.md',
-      '.workflows/payments/discussion/auth-flow.md',
+      'payments/.state/discovery-gap-analysis.md',
+      'payments/discussion/auth-flow.md',
     ]);
   });
 
@@ -154,10 +154,10 @@ describe('engine cache stamp: validation', () => {
       work_type: 'epic',
       phases: { research: { items: { topic: { status: 'in-progress' } } } },
     });
-    const before = fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8');
     assert.match(
       engineFails(dir, ['cache', 'stamp', 'payments', 'gap-analysis']).error,
       /nothing to stamp: no completed research or discussion files/);
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), 'utf8'), before);
   });
 });

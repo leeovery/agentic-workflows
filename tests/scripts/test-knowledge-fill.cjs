@@ -26,6 +26,7 @@ const { indexPath } = require('../../skills/workflow-engine/scripts/domain/knowl
 const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
 const { syncKnowledge } = require('../../skills/workflow-engine/scripts/domain/knowledge/sync.cjs');
 const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
+const { setupFixture, cleanupFixture, statePath } = require('./discovery-test-utils.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
 const ENGINE_CJS = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
@@ -41,42 +42,51 @@ function writeJson(p, obj) {
  * @param {Record<string, any>} knowledge @param {string[]} [topics]
  */
 function buildProject(knowledge, topics = ['alpha']) {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'kb-fill-')));
-  writeJson(path.join(root, '.workflows', 'manifest.json'), { work_units: { pay: { work_type: 'feature' } } });
-  writeJson(path.join(root, '.workflows', 'pay', 'manifest.json'), {
+  const root = setupFixture('kb-fill-');
+  writeJson(path.join(root, '.leeway', 'manifest.json'), { work_units: { pay: { work_type: 'feature' } } });
+  writeJson(path.join(root, '.leeway', 'pay', 'manifest.json'), {
     name: 'pay', work_type: 'feature', status: 'in-progress',
     phases: { discussion: { items: Object.fromEntries(topics.map((t) => [t, { status: 'completed' }])) } },
   });
   for (const topic of topics) writeDiscussion(root, topic, `The ${topic} decision.`);
-  writeJson(knowledgeFiles(root).config, { knowledge });
+  writeJson(files(root).config, { knowledge });
   return root;
 }
 
 /** @param {string} root @param {string} topic @param {string} body */
 function writeDiscussion(root, topic, body) {
-  const file = path.join(root, '.workflows', 'pay', 'discussion', `${topic}.md`);
+  const file = path.join(root, '.leeway', 'pay', 'discussion', `${topic}.md`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `# ${topic}\n\n${body}\n`);
 }
 
-/** @param {string} topic */
-const discussion = (topic) => `.workflows/pay/discussion/${topic}.md`;
+/** A discussion as the project names it. @param {string} topic */
+const discussion = (topic) => `.leeway/pay/discussion/${topic}.md`;
+
+/** A discussion's absolute path, as a regular expression matches it. @param {string} root @param {string} topic */
+const named = (root, topic) => path.join(root, discussion(topic)).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+/** A discussion as the store knows it, state-relative. @param {string} topic */
+const identity = (topic) => `pay/discussion/${topic}.md`;
+
+/** The project's knowledge files, in its state. @param {string} root */
+const files = (root) => knowledgeFiles(statePath(root));
 
 /** One discussion's keyword side written as its project's config says. @param {string} root @param {string} topic */
-const indexOne = (root, topic) => indexPath(root, discussion(topic), loadSettings(knowledgeFiles(root)));
+const indexOne = (root, topic) => indexPath(statePath(root), identity(topic), loadSettings(files(root)));
 
 /** @param {string} root */
-const loaded = (root) => store.loadStore(knowledgeFiles(root).store);
+const loaded = (root) => store.loadStore(files(root).store);
 
 /** @param {string} root */
-const metadata = (root) => store.readMetadata(knowledgeFiles(root).metadata);
+const metadata = (root) => store.readMetadata(files(root).metadata);
 
 /** @param {string} root */
 const awaiting = (root) => store.chunksWithoutVector(loaded(root)).map((chunk) => chunk.topic);
 
 /** @param {string} root */
 function cleanup(root) {
-  fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  cleanupFixture(root);
 }
 
 describe('the launch — only a provider that can embed, only while chunks await', () => {
@@ -88,7 +98,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     root = buildProject(STUB);
     const res = await engineKnowledge(root, ['index', discussion('alpha')]);
     assert.strictEqual(res.code, 0, res.stderr);
-    assert.deepStrictEqual(launched, [root]);
+    assert.deepStrictEqual(launched, [statePath(root)]);
     assert.deepStrictEqual(awaiting(root), ['alpha'], 'the keyword side alone was written');
   });
 
@@ -103,8 +113,8 @@ describe('the launch — only a provider that can embed, only while chunks await
     const launched = recordLaunches(t);
     const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
     root = buildProject(openai);
-    store.saveStore(store.createStore(), knowledgeFiles(root).store);
-    store.writeMetadata(knowledgeFiles(root).metadata, { ...openai, last_indexed: null });
+    store.saveStore(store.createStore(), files(root).store);
+    store.writeMetadata(files(root).metadata, { ...openai, last_indexed: null });
     assert.strictEqual((await engineKnowledge(root, ['index', discussion('alpha')])).code, 0);
     assert.deepStrictEqual(awaiting(root), ['alpha']);
     assert.deepStrictEqual(launched, []);
@@ -125,10 +135,10 @@ describe('the launch — only a provider that can embed, only while chunks await
     root = buildProject(STUB, ['alpha', 'beta']);
     /** @type {string[]} */
     const warnings = [];
-    syncKnowledge(root, [{ index: discussion('alpha') }, { index: discussion('beta') }], warnings);
+    syncKnowledge(root, [{ index: identity('alpha') }, { index: identity('beta') }], warnings);
     assert.deepStrictEqual(warnings, []);
     assert.deepStrictEqual(awaiting(root).sort(), ['alpha', 'beta']);
-    assert.deepStrictEqual(launched, [root]);
+    assert.deepStrictEqual(launched, [statePath(root)]);
   });
 
   it('a transaction that brings a work unit back in line launches the fill for what it left awaiting', (t) => {
@@ -139,13 +149,13 @@ describe('the launch — only a provider that can embed, only while chunks await
     syncKnowledge(root, [{ reindex: 'pay' }], warnings);
     assert.deepStrictEqual(warnings, []);
     assert.deepStrictEqual(awaiting(root).sort(), ['alpha', 'beta']);
-    assert.deepStrictEqual(launched, [root]);
+    assert.deepStrictEqual(launched, [statePath(root)]);
   });
 
   it('a transaction that only removes launches none', (t) => {
     const launched = recordLaunches(t);
     root = buildProject(STUB, ['alpha', 'beta']);
-    syncKnowledge(root, [{ index: discussion('alpha') }, { index: discussion('beta') }], []);
+    syncKnowledge(root, [{ index: identity('alpha') }, { index: identity('beta') }], []);
     launched.length = 0;
     syncKnowledge(root, [{ remove: { workUnit: 'pay', phase: 'discussion', topic: 'alpha' } }], []);
     assert.deepStrictEqual(awaiting(root), ['beta'], 'a chunk still awaits, but no write of this transaction left it');
@@ -201,7 +211,7 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
 
   it('embeds every chunk awaiting a vector, and records that the fill fell short of nothing', async () => {
     const provider = spy();
-    const vectoring = await fillVectors(knowledgeFiles(root), STUB, provider, () => true);
+    const vectoring = await fillVectors(files(root), STUB, provider, () => true);
     assert.deepStrictEqual(vectoring, { unembedded: [], awaiting: 0 });
     assert.deepStrictEqual(awaiting(root), []);
     assert.strictEqual(metadata(root).fill_failure, null);
@@ -212,7 +222,7 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
       writeDiscussion(root, 'alpha', 'The alpha decision, revised.');
       indexOne(root, 'alpha');
     });
-    const vectoring = await fillVectors(knowledgeFiles(root), STUB, provider, () => true);
+    const vectoring = await fillVectors(files(root), STUB, provider, () => true);
     assert.deepStrictEqual(vectoring, { unembedded: [], awaiting: 0 });
     assert.strictEqual(provider.batches.length, 2, 'the first round, then the text that came to await one meanwhile');
     const [alpha] = store.allChunks(loaded(root)).filter((chunk) => chunk.topic === 'alpha');
@@ -224,9 +234,9 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
 
   it('stops when the store is rebuilt with another model of the same width while it embeds — no vector of the old model lands', async () => {
     const provider = spy(() => {
-      store.writeMetadata(knowledgeFiles(root).metadata, { ...metadata(root), model: 'another' });
+      store.writeMetadata(files(root).metadata, { ...metadata(root), model: 'another' });
     });
-    await assert.rejects(fillVectors(knowledgeFiles(root), STUB, provider, () => true), /The store's embedder changed during index/);
+    await assert.rejects(fillVectors(files(root), STUB, provider, () => true), /The store's embedder changed during index/);
     assert.deepStrictEqual(awaiting(root).sort(), ['alpha', 'beta']);
   });
 
@@ -245,8 +255,8 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
         return stub.embedBatch(texts);
       },
     };
-    const vectoring = await fillVectors(knowledgeFiles(root), STUB, refusing, () => true);
-    assert.deepStrictEqual(vectoring.unembedded.map(({ file }) => file), [discussion('beta')]);
+    const vectoring = await fillVectors(files(root), STUB, refusing, () => true);
+    assert.deepStrictEqual(vectoring.unembedded.map(({ file }) => file), [identity('beta')]);
     assert.strictEqual(vectoring.awaiting, 1);
     assert.strictEqual(calls, 3, 'the batch, then file by file — and no second round for the refused text');
   });
@@ -270,54 +280,54 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
   afterEach(() => cleanup(root));
 
   it('a second fill finds a live fill\'s claim and ends at once, embedding nothing', async () => {
-    fs.writeFileSync(knowledgeFiles(root).fill, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-    assert.strictEqual(await fill(root), null);
+    fs.writeFileSync(files(root).fill, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    assert.strictEqual(await fill(statePath(root)), null);
     assert.deepStrictEqual(endpoint.requests, []);
     assert.deepStrictEqual(awaiting(root), ['alpha']);
-    assert.ok(fs.existsSync(knowledgeFiles(root).fill), 'the live claim is left alone');
+    assert.ok(fs.existsSync(files(root).fill), 'the live claim is left alone');
   });
 
   it('takes over the claim of a fill no longer running, and releases its own', async () => {
-    fs.writeFileSync(knowledgeFiles(root).fill, JSON.stringify({ pid: 2147483646, pid_start: null }));
-    assert.deepStrictEqual(await fill(root), { unembedded: [], awaiting: 0 });
+    fs.writeFileSync(files(root).fill, JSON.stringify({ pid: 2147483646, pid_start: null }));
+    assert.deepStrictEqual(await fill(statePath(root)), { unembedded: [], awaiting: 0 });
     assert.deepStrictEqual(awaiting(root), []);
-    assert.ok(!fs.existsSync(knowledgeFiles(root).fill));
+    assert.ok(!fs.existsSync(files(root).fill));
   });
 
   it('releases its claim when it throws', async () => {
-    fs.writeFileSync(knowledgeFiles(root).config, '{ not json');
-    await assert.rejects(fill(root));
-    assert.ok(!fs.existsSync(knowledgeFiles(root).fill));
+    fs.writeFileSync(files(root).config, '{ not json');
+    await assert.rejects(fill(statePath(root)));
+    assert.ok(!fs.existsSync(files(root).fill));
   });
 
   it('a manifest it cannot read is recorded as a shortfall — nothing is pruned on a guess', async () => {
-    fs.writeFileSync(path.join(root, '.workflows', 'manifest.json'), '{ not json');
-    assert.deepStrictEqual(await fill(root), { unembedded: [], awaiting: 0 });
+    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), '{ not json');
+    assert.deepStrictEqual(await fill(statePath(root)), { unembedded: [], awaiting: 0 });
     assert.deepStrictEqual(awaiting(root), []);
     assert.match(String(metadata(root).fill_failure), /manifest/i);
   });
 
   it('records why it fell short, the next search says so, and a fill that lands everything clears it', async () => {
     endpoint.mode = 'quota';
-    const short = await fill(root);
+    const short = await fill(statePath(root));
     assert.strictEqual(short && short.awaiting, 1);
     assert.match(String(metadata(root).fill_failure),
-      /^\.workflows\/pay\/discussion\/alpha\.md: Embeddings endpoint request refused: the account is out of quota \(HTTP 429\)\./);
-    assert.ok(!fs.existsSync(knowledgeFiles(root).fill), 'the claim is released whatever the outcome');
+      new RegExp(`^${named(root, 'alpha')}: Embeddings endpoint request refused: the account is out of quota \\(HTTP 429\\)\\.`));
+    assert.ok(!fs.existsSync(files(root).fill), 'the claim is released whatever the outcome');
 
     endpoint.mode = 'ok';
     const searched = await engineKnowledge(root, ['query', 'the alpha decision']);
-    assert.match(searched.stdout, /^\[1 chunks await vectors — searched by keyword alone; each start retries them\]\n\[the last vector fill fell short — \.workflows\/pay\/discussion\/alpha\.md: /);
-    assert.match((await engineKnowledge(root, ['status'])).stdout, /^Last vector fill fell short: \.workflows\/pay\/discussion\/alpha\.md: /m);
+    assert.match(searched.stdout, new RegExp(`^\\[1 chunks await vectors — searched by keyword alone; each start retries them\\]\\n\\[the last vector fill fell short — ${named(root, 'alpha')}: `));
+    assert.match((await engineKnowledge(root, ['status'])).stdout, new RegExp(`^Last vector fill fell short: ${named(root, 'alpha')}: `, 'm'));
 
-    assert.deepStrictEqual(await fill(root), { unembedded: [], awaiting: 0 });
+    assert.deepStrictEqual(await fill(statePath(root)), { unembedded: [], awaiting: 0 });
     assert.strictEqual(metadata(root).fill_failure, null);
     assert.doesNotMatch((await engineKnowledge(root, ['query', 'the alpha decision'])).stdout, /fell short/);
   });
 
   it('a shortfall survives the keyword writes after it — only a fill clears it', async () => {
     endpoint.mode = 'quota';
-    await fill(root);
+    await fill(statePath(root));
     const recorded = metadata(root).fill_failure;
     assert.ok(recorded);
     writeDiscussion(root, 'alpha', 'The alpha decision, revised.');
@@ -326,11 +336,11 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
   });
 
   it('a keyword-only store is never filled', async () => {
-    writeJson(knowledgeFiles(root).config, { knowledge: { provider: null } });
-    fs.rmSync(knowledgeFiles(root).store);
-    fs.rmSync(knowledgeFiles(root).metadata);
+    writeJson(files(root).config, { knowledge: { provider: null } });
+    fs.rmSync(files(root).store);
+    fs.rmSync(files(root).metadata);
     indexOne(root, 'alpha');
-    assert.strictEqual(await fill(root), null);
+    assert.strictEqual(await fill(statePath(root)), null);
     assert.deepStrictEqual(endpoint.requests, []);
   });
 
@@ -341,6 +351,6 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
     endpoint.mode = 'quota';
     const short = await engineKnowledge(root, ['fill']);
     assert.strictEqual(short.code, 1);
-    assert.match(short.stderr, /^Failed to embed \.workflows\/pay\/discussion\/alpha\.md: .*out of quota.*\nEach is searchable by keyword; its vectors come at the next start\.\n$/);
+    assert.match(short.stderr, new RegExp(`^Failed to embed ${named(root, 'alpha')}: .*out of quota.*\\nEach is searchable by keyword; its vectors come at the next start\\.\\n$`));
   });
 });

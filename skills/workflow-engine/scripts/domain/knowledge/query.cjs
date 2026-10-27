@@ -10,6 +10,7 @@
 // query never writes.
 // ---------------------------------------------------------------------------
 
+const path = require('path');
 const config = require('../../kernel/knowledge/config.cjs');
 const store = require('../../kernel/knowledge/store.cjs');
 const { searchFramings, mergeFramings, rerank, orderTopics, explanation } = require('../../kernel/knowledge/ranking.cjs');
@@ -355,29 +356,30 @@ function provenanceLine({ phase, work_unit, topic, confidence, timestamp, reopen
 
 /**
  * A result's source, at its chunk's lines where the file still holds it.
- * @param {Placed} result
+ * @param {Placed} result @param {string} root
  */
-function sourceLine({ source_file, lines }) {
-  if (!lines) return `Source: ${source_file}`;
-  return `Source: ${source_file}:L${lines.first}${lines.last === lines.first ? '' : `-${lines.last}`}`;
+function sourceLine({ source_file, lines }, root) {
+  const file = path.join(root, source_file);
+  if (!lines) return `Source: ${file}`;
+  return `Source: ${file}:L${lines.first}${lines.last === lines.first ? '' : `-${lines.last}`}`;
 }
 
 /**
  * The text `query` prints: its notes, the count, then each result's
  * provenance, the headings above its excerpt, the excerpt and its source —
  * and, explained, how it ranked. Control characters are stripped from the
- * whole, never from the store.
- * @param {QueryOutcome} outcome @param {{explain?: boolean}} [rendering]
+ * whole, never from the store. Each source is named by its absolute path.
+ * @param {QueryOutcome} outcome @param {{root: string, explain?: boolean}} rendering  `root` the state the results' sources are in
  * @returns {string}
  */
-function renderQuery({ results, notes }, { explain = false } = {}) {
+function renderQuery({ results, notes }, { root, explain = false }) {
   const out = [...notes, `[${results.length} results]`];
   for (const r of results) {
     out.push(
       '',
       provenanceLine(r),
       ...[headingPath(r.headings), r.excerpt].filter(Boolean),
-      sourceLine(r),
+      sourceLine(r, root),
     );
     if (explain) out.push(...explanation(r));
   }

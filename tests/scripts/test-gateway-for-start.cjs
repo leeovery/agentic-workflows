@@ -231,7 +231,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers inbox quickfixes', () => {
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--replace-interface.md', '# Replace Interface\n\nContent.');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--replace-interface.md', '# Replace Interface\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.quickfix_count, 1);
     assert.strictEqual(r.inbox.quickfixes[0].slug, 'replace-interface');
@@ -240,8 +240,8 @@ describe('workflow-start discovery', () => {
   });
 
   it('includes quickfixes in inbox total_count', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--qf.md', '# QF\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--idea.md', '# Idea\n\nContent.');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--qf.md', '# QF\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.total_count, 2);
     assert.strictEqual(r.state.inbox_count, 2);
@@ -337,7 +337,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers inbox ideas', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry Logic\n\nSome idea content.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry Logic\n\nSome idea content.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.idea_count, 1);
     assert.strictEqual(r.inbox.ideas[0].slug, 'smart-retry');
@@ -348,7 +348,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers inbox bugs', () => {
-    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nBug details.');
+    createFile(dir, '.leeway/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nBug details.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.bug_count, 1);
     assert.strictEqual(r.inbox.bugs[0].slug, 'login-timeout');
@@ -358,9 +358,9 @@ describe('workflow-start discovery', () => {
   });
 
   it('discovers mixed inbox ideas and bugs', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--idea-one.md', '# Idea One\n\nContent.');
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-20--idea-two.md', '# Idea Two\n\nContent.');
-    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--bug-one.md', '# Bug One\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--idea-one.md', '# Idea One\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-20--idea-two.md', '# Idea Two\n\nContent.');
+    createFile(dir, '.leeway/.inbox/bugs/2026-03-18--bug-one.md', '# Bug One\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.idea_count, 2);
     assert.strictEqual(r.inbox.bug_count, 1);
@@ -378,22 +378,22 @@ describe('workflow-start discovery', () => {
   });
 
   it('skips inbox files that do not match expected filename format', () => {
-    createFile(dir, '.workflows/.inbox/ideas/random-notes.md', '# Random\n\nContent.');
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--valid-idea.md', '# Valid Idea\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/random-notes.md', '# Random\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--valid-idea.md', '# Valid Idea\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.idea_count, 1);
     assert.strictEqual(r.inbox.ideas[0].slug, 'valid-idea');
   });
 
   it('falls back to slug when file has no H1 title', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.ideas[0].title, 'no-title');
   });
 
   it('discovers archived items nested under inbox.archived', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-19--old-idea.md', '# Old Idea\n\nContent.');
-    createFile(dir, '.workflows/.inbox/.archived/bugs/2026-03-18--old-bug.md', '# Old Bug\n\nContent.');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-03-19--old-idea.md', '# Old Idea\n\nContent.');
+    createFile(dir, '.leeway/.inbox/.archived/bugs/2026-03-18--old-bug.md', '# Old Bug\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.archived.idea_count, 1);
     assert.strictEqual(r.inbox.archived.bug_count, 1);
@@ -403,8 +403,8 @@ describe('workflow-start discovery', () => {
   });
 
   it('archived items do not count toward live inbox totals', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-20--live.md', '# Live\n\nContent.');
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-19--archived.md', '# Archived\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-20--live.md', '# Live\n\nContent.');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-03-19--archived.md', '# Archived\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.inbox.total_count, 1);
     assert.strictEqual(r.inbox.idea_count, 1);
@@ -412,7 +412,7 @@ describe('workflow-start discovery', () => {
   });
 
   it('exposes has_archived and archived_count in state', () => {
-    createFile(dir, '.workflows/.inbox/.archived/quickfixes/2026-03-28--gone.md', '# Gone\n\nContent.');
+    createFile(dir, '.leeway/.inbox/.archived/quickfixes/2026-03-28--gone.md', '# Gone\n\nContent.');
     const r = discover(dir);
     assert.strictEqual(r.state.has_archived, true);
     assert.strictEqual(r.state.archived_count, 1);
@@ -466,10 +466,10 @@ describe('workflow-start format', () => {
     createManifest(dir, 'caching', { work_type: 'cross-cutting', phases: { discussion: { items: { caching: { status: 'in-progress' } } } } });
     createManifest(dir, 'done-feat', { work_type: 'feature', status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
     createManifest(dir, 'dropped', { work_type: 'bugfix', status: 'cancelled', phases: { investigation: { items: { dropped: { status: 'completed' } } } } });
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
-    createFile(dir, '.workflows/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
-    createFile(dir, '.workflows/.inbox/quickfixes/2026-03-28--bump-dep.md', '# Bump Dep\n\nContent.');
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-03-01--old-idea.md', '# Old Idea\n\nContent.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--smart-retry.md', '# Smart Retry\n\nContent.');
+    createFile(dir, '.leeway/.inbox/bugs/2026-03-18--login-timeout.md', '# Login Timeout\n\nContent.');
+    createFile(dir, '.leeway/.inbox/quickfixes/2026-03-28--bump-dep.md', '# Bump Dep\n\nContent.');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-03-01--old-idea.md', '# Old Idea\n\nContent.');
     const out = format(discover(dir));
     assert.strictEqual(out, [
       '=== EPICS ===',
@@ -512,7 +512,7 @@ describe('workflow-start format', () => {
   });
 
   it('inbox item with no H1 falls back to the slug as its title', () => {
-    createFile(dir, '.workflows/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
+    createFile(dir, '.leeway/.inbox/ideas/2026-03-19--no-title.md', 'Just some content without a heading.');
     const out = format(discover(dir));
     assert.ok(out.includes('  no-title (idea, 2026-03-19) — no-title'));
   });
@@ -548,11 +548,11 @@ describe('workflow-start sub-view sections', () => {
   }
 
   it('every list sub-view carries its heading as TITLE, above a display that opens on the list', () => {
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
+    createFile(dir, '.leeway/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
 
     for (const [args, title, firstDisplayLine] of /** @type {[string[], string, string][]} */ ([
       [['inbox'], 'Inbox', 'Bugs'],
-      [['working-set', '.workflows/.inbox/bugs/2026-06-01--login-timeout.md'], 'Working Set (1 item)', '  └─ Login Timeout [bug]'],
+      [['working-set', '.leeway/.inbox/bugs/2026-06-01--login-timeout.md'], 'Working Set (1 item)', '  └─ Login Timeout [bug]'],
     ])) {
       const out = run(args);
       assert.ok(out.includes(`# **\`■ ${title}\`**`), `${args[0]}: ${out}`);
@@ -564,7 +564,7 @@ describe('workflow-start sub-view sections', () => {
   });
 
   it('a pick sub-view lists its rows in the menu alone — TITLE then MENU, the display only when there is nothing to pick', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     createManifest(dir, 'auth-flow', { phases: { discussion: { items: { 'auth-flow': { status: 'in-progress' } } } } });
     createManifest(dir, 'done-feat', { status: 'completed', phases: { review: { items: { 'done-feat': { status: 'completed' } } } } });
 
@@ -579,14 +579,14 @@ describe('workflow-start sub-view sections', () => {
       assert.ok(out.includes(`\n${firstRow}\n`), `${args[0]}: ${out}`);
     }
 
-    fs.rmSync(path.join(dir, '.workflows', 'done-feat'), { recursive: true });
+    fs.rmSync(path.join(dir, '.leeway', 'done-feat'), { recursive: true });
     const empty = run(['completed']);
     assert.ok(empty.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo completed or cancelled work units found.\n'), empty);
     assert.ok(!empty.includes('=== MENU'), empty);
   });
 
   it('an empty inbox answers its display and no gate — the flow returns without a pick', () => {
-    createFile(dir, '.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    createFile(dir, '.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     const out = run(['inbox']);
     assert.ok(out.includes('inbox_count: 0\n'), out);
     assert.ok(out.includes('=== DISPLAY (emit verbatim as a text code block (```text fence)) ===\nNo inbox items.\n'), out);
@@ -602,7 +602,7 @@ describe('workflow-start sub-view sections', () => {
 
     const fs = require('fs');
     const path = require('path');
-    const p = path.join(dir, '.workflows', 'manifest.json');
+    const p = path.join(dir, '.leeway', 'manifest.json');
     const existing = fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {};
     fs.writeFileSync(p, JSON.stringify({
       ...existing,
@@ -618,7 +618,7 @@ describe('workflow-start sub-view sections', () => {
   it('a native verdict hides the baseline row everywhere but manage; a declined offer keeps its empty-state row', () => {
     const fs = require('fs');
     const path = require('path');
-    const p = path.join(dir, '.workflows', 'manifest.json');
+    const p = path.join(dir, '.leeway', 'manifest.json');
     const writeProject = (baseline) => {
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, JSON.stringify({ work_units: {}, baseline }, null, 2));
@@ -644,9 +644,9 @@ describe('workflow-start sub-view sections', () => {
   });
 
   it('a set of any mix offers work and the roadmap row, its pre-seed the largest shape in it — never a blocker', () => {
-    const IDEA = '.workflows/.inbox/ideas/2026-06-02--smart-retry.md';
-    const BUG = '.workflows/.inbox/bugs/2026-06-01--login-timeout.md';
-    const QUICKFIX = '.workflows/.inbox/quickfixes/2026-06-03--tidy-logs.md';
+    const IDEA = '.leeway/.inbox/ideas/2026-06-02--smart-retry.md';
+    const BUG = '.leeway/.inbox/bugs/2026-06-01--login-timeout.md';
+    const QUICKFIX = '.leeway/.inbox/quickfixes/2026-06-03--tidy-logs.md';
     createFile(dir, IDEA, '# Smart Retry\n');
     createFile(dir, BUG, '# Login Timeout\n');
     createFile(dir, QUICKFIX, '# Tidy Logs\n');
@@ -667,9 +667,9 @@ describe('workflow-start sub-view sections', () => {
   });
 
   it('the add and drop gates render on demand over the caller-held set — never on the snapshot', () => {
-    createFile(dir, '.workflows/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
-    createFile(dir, '.workflows/.inbox/ideas/2026-06-02--smart-retry.md', '# Smart Retry\n');
-    const set = ['.workflows/.inbox/bugs/2026-06-01--login-timeout.md'];
+    createFile(dir, '.leeway/.inbox/bugs/2026-06-01--login-timeout.md', '# Login Timeout\n');
+    createFile(dir, '.leeway/.inbox/ideas/2026-06-02--smart-retry.md', '# Smart Retry\n');
+    const set = ['.leeway/.inbox/bugs/2026-06-01--login-timeout.md'];
 
     const snapshot = run(['working-set', ...set]);
     assert.ok(!snapshot.includes('add gate') && !snapshot.includes('drop gate'),

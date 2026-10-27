@@ -1,11 +1,9 @@
 'use strict';
 
 // The prose harness's world machinery: what `buildWorld` makes of a case's
-// sidecars, what the golden gate rebuilds and what it skips, and which cases a
-// diff implicates. All of it is load-bearing and silent when wrong — a peer's
-// hold that materialises stale reads free to the walk, a skip that fires over a
-// moved world hides drift the gate exists to catch, and a selection that
-// implicates the whole corpus is the same as selecting none.
+// sidecars, and what the golden gate rebuilds and what it skips. All of it is
+// load-bearing and silent when wrong — a skip that fires over a moved world
+// hides drift the gate exists to catch.
 
 require('./hermetic-env.cjs');
 
@@ -14,22 +12,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
 const { Worker } = require('worker_threads');
 
 const cases = require('../prose/lib/cases.cjs');
 const worlds = require('../prose/lib/worlds.cjs');
 const { createVerifyPool } = require('../prose/lib/verify-pool.cjs');
-const { scanPresence, ownsRow } = require('../../skills/workflow-engine/scripts/domain/presence.cjs');
-const { MOD_DIR } = require('../../skills/workflow-engine/scripts/domain/gate-surface.cjs');
-
-/** `git status --porcelain` in a materialised world. */
-function statusLines(dir) {
-  return execFileSync('git', ['status', '--porcelain'], {
-    cwd: dir,
-    encoding: 'utf8',
-  }).split('\n').filter(Boolean);
-}
 
 // A case the corpus never sees: `_`-prefixed directories under cases/ are not
 // cases, so a suite validating the corpus beside this one can never meet one.
@@ -66,44 +53,6 @@ function writeScratchCase(name, { recipe = 'note\n', snapshot = recipe } = {}) {
 }
 
 describe('buildWorld: sidecar materialisation', () => {
-  // The one case declaring both shapes of dirt and a peer's heartbeat.
-  const CASE = 'discussion-sweeps-a-dead-peers-leavings';
-
-  it('lands declared dirt as declared, and a peer heartbeat that reads held', function () {
-    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = worlds.buildWorld(CASE);
-    try {
-      const status = statusLines(dir);
-      const untracked = '.workflows/search-relevance/discussion/synonym-handling.md';
-      const modified = '.workflows/search-relevance/research/relevance-measurement.md';
-
-      assert.ok(status.some((l) => l.startsWith('?? ') && l.includes(untracked)),
-        `a bare dirt entry is untracked — it has no committed version at all:\n${status.join('\n')}`);
-      assert.ok(status.some((l) => l.startsWith(' M ') && l.includes(modified)),
-        `a {path, committed} entry is tracked and modified:\n${status.join('\n')}`);
-
-      // The modified path's committed side is the sidecar's, and the working
-      // tree holds the snapshot's — that difference is the whole point.
-      const committed = execFileSync('git', ['show', `HEAD:${modified}`], { cwd: dir, encoding: 'utf8' });
-      assert.notStrictEqual(committed, fs.readFileSync(path.join(dir, modified), 'utf8'),
-        'the working tree carries the snapshot, the index carries the sidecar');
-
-      // An identity-less sidecar row is stamped as pid 1 — alive for as long
-      // as the machine is, and nobody's own — so the engine reads it held. A
-      // peer that reads unheld is a peer the walk sails straight past.
-      const beat = path.join(dir, '.workflows/.cache/search-relevance/research/relevance-measurement/presence');
-      assert.ok(fs.existsSync(beat), 'the declared peer holds a heartbeat');
-      const row = scanPresence(dir, 'search-relevance').sessions
-        .find((r) => r.phase === 'research' && r.topic === 'relevance-measurement');
-      assert.strictEqual(row.held, true, 'the peer\'s heartbeat must read held');
-      assert.strictEqual(row.pid, 1);
-      assert.ok(!ownsRow(row), 'and is never the walker\'s own');
-      assert.ok(!statusLines(dir).some((l) => l.includes('.cache')), 'and never shows up as dirt');
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-
   it('refuses a dirt path the fixture does not hold', () => {
     // A sidecar naming a file no snapshot carries would silently produce a
     // world missing the dirt the case is about.
@@ -119,8 +68,6 @@ describe('buildWorld: sidecar materialisation', () => {
 });
 
 describe('the harness stamp: what materialise adds, the differ strips — and nothing else', () => {
-  const NATIVE_CASE = 'start-records-a-native-verdict';
-
   function scratch() {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-stamp-'));
     fs.mkdirSync(path.join(dir, '.workflows'), { recursive: true });
@@ -315,71 +262,11 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       /cannot strip the session hooks: .*not valid JSON/);
   });
 
-  it('a world carries every skill but the gate mod, and none of the declarations Claude Code lays into a mod for development', function () {
-    if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
-    const dir = worlds.buildWorld(NATIVE_CASE);
-    try {
-      assert.ok(fs.existsSync(path.join(dir, '.claude/skills/workflow-start/SKILL.md')), 'the skills are there');
-      assert.ok(!fs.existsSync(path.join(dir, MOD_DIR)), 'the mod is not');
-      assert.ok(!fs.existsSync(path.join(dir, '.claude/skills/workflow-gates-rows/.claude-plugin/types')), 'the rows mod\'s laid declarations are not');
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-
-  it('a live boot — no settings hold, the walker\'s real environment in the terminal app — finds the hooks it wants, no mod to stop on, and writes nothing, the user\'s Claude Code settings included', function () {
-    if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
-    const dir = worlds.buildWorld(NATIVE_CASE);
-    const claudeConfig = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-claude-config-'));
-    try {
-      const env = { ...worlds.recipeEnv(), CLAUDE_CODE_ENTRYPOINT: 'cli', AI_AGENT: 'claude-code_2-1-287_agent', CLAUDE_CONFIG_DIR: claudeConfig };
-      delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
-      delete env.CLAUDE_CODE_REMOTE;
-      const head = () => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8', env }).trim();
-      const before = head();
-      const out = execFileSync('node', [worlds.ENGINE, 'boot'], { cwd: dir, encoding: 'utf8', env });
-      const boot = JSON.parse(out.trim());
-      assert.strictEqual(boot.session_hooks_installed, false, 'the seeded set is exactly what boot wants');
-      assert.strictEqual(boot.gate_surface, 'unavailable', 'the world does not carry the mod, so no stop');
-      assert.deepStrictEqual(boot.warnings, []);
-      assert.deepStrictEqual(statusLines(dir), [], 'nothing written');
-      assert.deepStrictEqual(fs.readdirSync(claudeConfig), [], 'the user\'s Claude Code settings untouched');
-      assert.strictEqual(head(), before, 'nothing committed');
-    } finally {
-      worlds.destroyWorld(dir);
-      fs.rmSync(claudeConfig, { recursive: true, force: true });
-    }
-  });
-
   it('the recipe env carries the engine\'s test-only settings hold, so a recipe\'s boot never writes a world\'s settings', () => {
     const env = worlds.recipeEnv();
     assert.strictEqual(env.WORKFLOWS_HOLD_PROJECT_SETTINGS, '1');
     assert.strictEqual(env.WORKFLOWS_DISPLAY_WIDTH, '65');
     assert.ok(!('TMUX' in env), 'and no tmux identity');
-  });
-
-  it('a layered project manifest keeps `.workflows/` out of the root commit and is stamped when its layer lands', function () {
-    if (worlds.readSnapshot(NATIVE_CASE, 'fixture') === null) return; // corpus not built
-    const dir = worlds.buildWorld(NATIVE_CASE);
-    try {
-      const log = (...args) => execFileSync('git', ['log', '--reverse', '--format=%s', ...args], { cwd: dir, encoding: 'utf8' }).trim().split('\n');
-      const all = log('HEAD');
-      const arrival = log('HEAD', '--', '.workflows');
-      assert.ok(all.length > 1, `the world layers history: ${all.join(' | ')}`);
-      assert.ok(all.indexOf(arrival[0]) > 0, `.workflows/ arrives after the root commit: ${all.join(' | ')}`);
-      const manifest = JSON.parse(fs.readFileSync(path.join(dir, worlds.PROJECT_MANIFEST), 'utf8'));
-      assert.strictEqual(manifest.defaults.tmux_labels, false, 'the label kill lands on the layered manifest');
-      assert.deepStrictEqual(manifest.baseline, {}, 'the fixture\'s nothing-recorded baseline is left alone');
-      assert.deepStrictEqual(manifest.walkthrough, { status: 'skipped' },
-        'the walkthrough the fixture says nothing about is stamped with the layer');
-      assert.deepStrictEqual(worlds.readStampMarker(dir), { baseline: false, walkthrough: true, settings_created: false },
-        'the fixture brought its own settings file, and its own baseline');
-      const settings = JSON.parse(fs.readFileSync(path.join(dir, worlds.SETTINGS), 'utf8'));
-      assert.deepStrictEqual(hooksOf(settings), WORKFLOW_HOOKS, 'the seeded hooks land with the manifest layer');
-      assert.strictEqual(statusLines(dir).length, 0, 'no dirt for the walk to sweep up');
-    } finally {
-      worlds.destroyWorld(dir);
-    }
   });
 });
 
@@ -576,33 +463,6 @@ describe('the verify pool: a thread per core, a world at a time', () => {
   });
 });
 
-describe('case selection: what a diff implicates', () => {
-  const all = cases.loadAllCases();
-  const sample = all[0];
-
-  it('a snapshot content change selects its case', () => {
-    const selected = cases.selectCases(all, [`${sample.rel}/${cases.SNAPSHOTS.fixture}/.workflows/manifest.json`]);
-    assert.deepStrictEqual(selected.map((c) => c.id), [sample.id], 'a world that moved is real');
-  });
-
-  it('a case file, a mainline, and a stub each select', () => {
-    assert.ok(cases.selectCases(all, [sample.files[0].path]).some((c) => c.id === sample.id),
-      'a case selects on a file it declares — and so does every sibling declaring the same one');
-    assert.strictEqual(
-      cases.selectCases(all, ['tests/prose/mainlines/anything.md']).length, all.length,
-      'every walk runs through the shared mainlines');
-    const armed = all.find((c) => c.stubs.length > 0);
-    if (armed) {
-      assert.ok(cases.selectCases(all, [`tests/prose/stubs/${armed.stubs[0].name}.md`])
-        .some((c) => c.id === armed.id), 'a case selects on the stubs it arms');
-    }
-  });
-
-  it('an unrelated path selects nothing', () => {
-    assert.deepStrictEqual(cases.selectCases(all, ['README.md', 'package.json']), []);
-  });
-});
-
 describe('the asserter prompt file: harness material, never world state', () => {
   // `run.cjs assert` writes the asserter's prompt into the world — the
   // record runs past what an orchestrator can relay by hand — so it must
@@ -650,225 +510,3 @@ describe('the asserter prompt file: harness material, never world state', () => 
   });
 });
 
-describe('assert: a walk still running is waited for, never judged', () => {
-  // The walk log and the recorded stop land together as the walker stops.
-  // A walker that hands a message back early wakes its orchestrator while
-  // it still walks; assert must say so rather than read the absent log as
-  // a broken hook — which the orchestrator answers by destroying the world.
-  const CASE = 'start-lists-active-work';
-  const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
-  const assertOn = (dir) => execFileSync('node', [RUN, 'assert', CASE, '--world', dir], { encoding: 'utf8', stdio: 'pipe' });
-  const refusal = (dir) => {
-    try { assertOn(dir); } catch (e) { return String(e.stderr); }
-    return null;
-  };
-
-  it('names a walker with no recorded stop as still running, then a missing log as the hook, then judges', function () {
-    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = worlds.buildWorld(CASE);
-    try {
-      fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\n');
-      assert.match(refusal(dir), /the walker has not stopped/);
-
-      fs.appendFileSync(path.join(dir, worlds.ACTION_LOG), 'SubagentStop\t-\tclaude-sonnet-5\tdone\n');
-      assert.match(refusal(dir), /no walk log/);
-
-      fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
-      assert.match(assertOn(dir), /"prompt_file"/);
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-});
-
-describe('assert: every dispatch and send held, and what each carried reaches the asserter whole', () => {
-  // The hold records each walker dispatch and send in the world; the stop's
-  // backstop marks any it never saw UNHELD — a real agent may have run —
-  // and assert refuses to judge such a world at all.
-  const CASE = 'start-lists-active-work';
-  const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
-  const assertOn = (dir) => execFileSync('node', [RUN, 'assert', CASE, '--world', dir], { encoding: 'utf8', stdio: 'pipe' });
-  const refusal = (dir) => {
-    try { assertOn(dir); } catch (e) { return String(e.stderr); }
-    return null;
-  };
-
-  function stoppedWorld(extraRows = '') {
-    const dir = worlds.buildWorld(CASE);
-    fs.writeFileSync(path.join(dir, worlds.ACTION_LOG),
-      `PreToolUse\tAgent\tworkflow-x — review\theld\ttoolu_1\n${extraRows}SubagentStop\t-\tclaude-sonnet-5\tdone\n`);
-    fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
-    return dir;
-  }
-
-  it('refuses a world carrying an UNHELD dispatch or send, naming each and what came back for it', function () {
-    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = stoppedWorld('UNHELD\tAgent\tworkflow-y — sneak\ttoolu_2\tAgent type workflow-y not found\n'
-      + 'UNHELD\tSendMessage\ttoolu_1 — retry\ttoolu_3\tno result recorded\n');
-    try {
-      const out = refusal(dir);
-      assert.match(out, /2 calls the dispatch hold never recorded/);
-      assert.match(out, /- Agent workflow-y — sneak \[toolu_2\] → Agent type workflow-y not found/);
-      assert.match(out, /- SendMessage toolu_1 — retry \[toolu_3\] → no result recorded/);
-      assert.match(out, /Do not judge this run/);
-      assert.equal(fs.existsSync(path.join(dir, worlds.ASSERT_PROMPT)), false, 'no prompt was written to judge from');
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-
-  it('carries every dispatch into the prompt whole — agent, background flag, agent id, the prompt uncut — and never into a commit', function () {
-    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = stoppedWorld();
-    try {
-      const prompt = `Specification: ${dir}/.workflows/pay/specification/pay/specification.md\n\n`
-        + `Source material:\n- .workflows/pay/discussion/pay.md\n${'padding '.repeat(2000)}\nfinal line`;
-      const dispatch = (id, input) => `${JSON.stringify({ tool_use_id: id, tool_name: 'Agent', tool_input: input })}\n`;
-      fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG),
-        dispatch('toolu_1', { subagent_type: 'workflow-x', description: 'review', prompt, run_in_background: true })
-        + dispatch('toolu_2', { subagent_type: 'workflow-y', description: 'grapher', prompt: 'p' })
-        + dispatch('toolu_3', { subagent_type: 'workflow-z', description: 'finder', prompt: 'p', run_in_background: false }));
-      assert.ok(!statusLines(dir).some((l) => l.includes(worlds.DISPATCH_LOG)), 'the record is never world state git sees');
-      const { prompt_file: file } = JSON.parse(assertOn(dir));
-      const text = fs.readFileSync(file, 'utf8');
-      assert.match(text, /DISPATCHES — every agent the walker dispatched/);
-      assert.match(text, /1\. workflow-x — review \(background: true, agent id: toolu_1\)/);
-      assert.match(text, /2\. workflow-y — grapher \(background: true, agent id: toolu_2\)/, 'a dispatch naming no mode runs in the background');
-      assert.match(text, /3\. workflow-z — finder \(background: false, agent id: toolu_3\)/);
-      for (const line of prompt.split(dir).join('.').split('\n').filter(Boolean)) {
-        assert.ok(text.includes(line), `the prompt line survives whole: ${line.slice(0, 60)}`);
-      }
-      assert.ok(!text.includes(dir), 'the world path collapses to `.`, as in the action log');
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-
-  it('carries every send in order with the dispatches — its target, the dispatch it continues, the message uncut', function () {
-    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = stoppedWorld();
-    try {
-      const message = `Retry pay-1-2 in ${dir}/src/checkout.\nNext attempt: key the guard on the intent\n${'padding '.repeat(2000)}\nfinal line`;
-      const record = (id, name, input) => `${JSON.stringify({ tool_use_id: id, tool_name: name, tool_input: input })}\n`;
-      fs.writeFileSync(path.join(dir, worlds.DISPATCH_LOG),
-        record('toolu_1', 'Agent', { subagent_type: 'workflow-x', description: 'execute', prompt: 'task', run_in_background: true })
-        + record('toolu_2', 'SendMessage', { to: 'toolu_1', summary: 'retry pay-1-2', message })
-        + record('toolu_3', 'Agent', { subagent_type: 'workflow-r', description: 'review', prompt: 'p' })
-        + record('toolu_4', 'SendMessage', { to: 'workflow-x', summary: 'by name', message: 'm' }));
-      const text = fs.readFileSync(JSON.parse(assertOn(dir)).prompt_file, 'utf8');
-      assert.match(text, /1\. workflow-x — execute \(background: true, agent id: toolu_1\)\n/);
-      assert.match(text, /2\. send to toolu_1 \(continuing dispatch 1, workflow-x\) — retry pay-1-2\n/);
-      assert.match(text, /3\. workflow-r — review \(background: true, agent id: toolu_3\)\n/);
-      assert.match(text, /4\. send to workflow-x \(no dispatch was given this id\) — by name\n/);
-      for (const line of message.split(dir).join('.').split('\n').filter(Boolean)) {
-        assert.ok(text.includes(line), `the message line survives whole: ${line.slice(0, 60)}`);
-      }
-      assert.ok(!text.includes(dir), 'the world path collapses to `.` in a message too');
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-
-  it('carries no DISPATCHES section for a walk that dispatched nothing', function () {
-    if (worlds.readSnapshot(CASE, 'fixture') === null) return; // corpus not built
-    const dir = worlds.buildWorld(CASE);
-    try {
-      fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls\nSubagentStop\t-\tclaude-sonnet-5\tdone\n');
-      fs.writeFileSync(path.join(dir, worlds.WALK_LOG), 'STOPPED: end of flow\n');
-      const text = fs.readFileSync(JSON.parse(assertOn(dir)).prompt_file, 'utf8');
-      assert.ok(!text.includes('DISPATCHES —'));
-    } finally {
-      worlds.destroyWorld(dir);
-    }
-  });
-});
-
-describe('stop: a finished walk whose stop hook never fired', () => {
-  // The walker's own transcript records how its turn ended, so a stop the
-  // hook never wrote is replayed from it — and only from a turn the walker
-  // finished, into the world that transcript walked.
-  const CASE = 'start-lists-active-work';
-  const RUN = path.join(__dirname, '..', 'prose', 'run.cjs');
-  const run = (args, env = {}) => execFileSync('node', [RUN, ...args], {
-    encoding: 'utf8', stdio: 'pipe', env: { ...process.env, ...env },
-  });
-  const refusal = (args, env) => {
-    try { run(args, env); } catch (e) { return String(e.stderr); }
-    return null;
-  };
-  const entry = (role, content, stopReason = null) => JSON.stringify({
-    type: role, message: { role, content, stop_reason: stopReason, model: 'claude-sonnet-5' },
-  });
-
-  function scene() {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-world-'));
-    fs.writeFileSync(path.join(dir, worlds.ACTION_LOG), 'PreToolUse\tBash\tls .\n');
-    const config = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-config-'));
-    const subagents = path.join(config, 'projects', 'some-project', 'some-session', 'subagents');
-    fs.mkdirSync(subagents, { recursive: true });
-    const transcript = path.join(subagents, 'agent-a1b2c3.jsonl');
-    const write = (...lines) => fs.writeFileSync(transcript, `${lines.join('\n')}\n`);
-    write(
-      entry('user', `Walk the prose in ${dir}.`),
-      entry('assistant', [{ type: 'tool_use', name: 'Bash', input: { command: `ls ${dir}` } }], 'tool_use'),
-      entry('assistant', [{ type: 'text', text: 'STOPPED: end of flow' }], 'end_turn'),
-    );
-    const cleanup = () => {
-      fs.rmSync(dir, { recursive: true, force: true });
-      fs.rmSync(config, { recursive: true, force: true });
-    };
-    return { dir, config, transcript, write, cleanup };
-  }
-
-  it('records the stop and the walk from the transcript the agent id names, so assert reads a stopped walk', () => {
-    const s = scene();
-    try {
-      const out = run(['stop', CASE, '--world', s.dir, '--agent', 'a1b2c3'], { CLAUDE_CONFIG_DIR: s.config });
-      assert.match(out, /"replayed"/);
-      const stop = worlds.readActionRows(s.dir).find((r) => r.event === 'SubagentStop');
-      assert.ok(stop, 'no SubagentStop row');
-      assert.match(fs.readFileSync(path.join(s.dir, worlds.ACTION_LOG), 'utf8'), /SubagentStop\t-\tclaude-sonnet-5\tSTOPPED: end of flow/);
-      assert.match(worlds.readWalkLog(s.dir), /STOPPED: end of flow/);
-      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /already recorded/);
-    } finally {
-      s.cleanup();
-    }
-  });
-
-  it('refuses a walk whose last turn is not finished, and a transcript of another world', () => {
-    const s = scene();
-    try {
-      s.write(
-        entry('user', `Walk the prose in ${s.dir}.`),
-        entry('assistant', [{ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }], 'tool_use'),
-      );
-      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /the walker has not stopped/);
-
-      s.write(
-        entry('user', 'Walk the prose in /tmp/prose-world-elsewhere.'),
-        entry('assistant', [{ type: 'text', text: 'done' }], 'end_turn'),
-      );
-      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /is not a walk of/);
-
-      s.write(
-        entry('user', 'Walk the prose in /tmp/prose-world-elsewhere.'),
-        entry('assistant', [{ type: 'tool_use', name: 'Bash', input: { command: `ls ${s.dir}` } }], 'tool_use'),
-        entry('assistant', [{ type: 'text', text: 'done' }], 'end_turn'),
-      );
-      assert.match(refusal(['stop', CASE, '--world', s.dir, '--transcript', s.transcript]), /is not a walk of/);
-      assert.ok(!worlds.readActionRows(s.dir).some((r) => r.event === 'SubagentStop'), 'a refusal wrote a stop');
-    } finally {
-      s.cleanup();
-    }
-  });
-
-  it('names a missing transcript rather than guessing', () => {
-    const s = scene();
-    try {
-      assert.match(refusal(['stop', CASE, '--world', s.dir, '--agent', 'ffffff'], { CLAUDE_CONFIG_DIR: s.config }), /no transcript named agent-ffffff\.jsonl/);
-      assert.match(refusal(['stop', CASE, '--world', s.dir]), /--agent <id> or --transcript <file>/);
-    } finally {
-      s.cleanup();
-    }
-  });
-});

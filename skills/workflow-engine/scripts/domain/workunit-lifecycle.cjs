@@ -12,9 +12,8 @@
 // The manifest write is the source of truth and lands first; the knowledge
 // base is a derived index, so its failures are recorded as warnings, never
 // blocks. Validation throws loud and specific before anything is touched.
-// Every load→mutate→save runs under the owning manifest's lock (work-unit or
-// project — the manifest locks every writer honours), taken one at a time and
-// never nested, so multi-manifest transactions cannot deadlock.
+// Every load→mutate→save runs under the writer lock, which the verb holds
+// across its commit too.
 // ---------------------------------------------------------------------------
 
 const {
@@ -26,14 +25,13 @@ const {
   withProjectLock,
   ensureContainer,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { computeNextPhase } = require('./derivations.cjs');
-const { stateRel } = require('../kernel/state-root.cjs');
 
 const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
 
@@ -99,8 +97,8 @@ function completeWorkUnit(cwd, workUnit, { message }) {
     reindexWorkUnit(cwd, workUnit, warnings);
   }
 
-  const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
-  const outcome = commitTailPathspec(cwd, cacheSpec ? [stateRel(workUnit), cacheSpec] : stateRel(workUnit), message, warnings);
+  purgeWorkUnitCache(cwd, workUnit);
+  const outcome = commitStateTail(cwd, workUnit, message, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, work_type: workType, status: 'completed', completed_at: completedAt, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -140,11 +138,10 @@ function cancelWorkUnit(cwd, workUnit) {
   // stays). The project manifest rides this commit when a revert landed.
   const reverted = revertJoins(cwd, workUnit);
 
-  const cacheSpec = purgeWorkUnitCache(cwd, workUnit);
-  const specs = [stateRel(workUnit)];
-  if (cacheSpec) specs.push(cacheSpec);
-  if (reverted.length > 0) specs.push(stateRel('manifest.json'));
-  const outcome = commitTailPathspec(cwd, specs.length === 1 ? specs[0] : specs, `workflow(${workUnit}): mark as cancelled`, warnings);
+  purgeWorkUnitCache(cwd, workUnit);
+  const specs = [workUnit];
+  if (reverted.length > 0) specs.push('manifest.json');
+  const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', committed: outcome.committed, warnings };
   if (reverted.length > 0) result.roadmap_reverted = reverted;
@@ -208,7 +205,7 @@ function reactivateWorkUnit(cwd, workUnit) {
     reindexWorkUnit(cwd, workUnit, warnings);
   }
 
-  const outcome = commitTailPathspec(cwd, stateRel(workUnit), `workflow(${workUnit}): reactivate work unit`, warnings);
+  const outcome = commitStateTail(cwd, workUnit, `workflow(${workUnit}): reactivate work unit`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
@@ -285,7 +282,7 @@ function pivotWorkUnit(cwd, workUnit) {
   const warnings = [];
   reindexWorkUnit(cwd, workUnit, warnings, { clearFirst: true });
 
-  const outcome = commitTailPathspec(cwd, [stateRel(workUnit), stateRel('manifest.json')], `workflow(${workUnit}): pivot to epic`, warnings);
+  const outcome = commitStateTail(cwd, [workUnit, 'manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', routing, committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);

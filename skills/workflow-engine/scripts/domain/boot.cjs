@@ -8,22 +8,27 @@
 // waits on embedding.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
-// error — migrations must never half-run silently. A run that recorded
-// migrations without changing a document leaves the tracking ledger as the
-// only dirt, and no reviewed commit follows a report of no changes, so boot
-// commits that line itself — this run's, or one an earlier boot stranded.
+// error — migrations must never half-run silently. The run records into the
+// state's ledger, which boot names, under the writer lock: the runner takes
+// no lock of its own, so the parent's hold covers it. A run that recorded
+// migrations without changing a document leaves the ledger as the only dirt,
+// and no reviewed commit follows a report of no changes, so boot commits
+// that line itself — this run's, or one an earlier boot stranded.
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
-// beside them the store's lock and the fill's claim — is local to each
-// checkout and git-ignored: boot keeps the first three listed in
-// `.worktreeinclude` so a worktree Claude Code creates starts with a copy.
-// A checkout set up (its local config) with no store gets one built when this
-// machine's config says how — it reads `buildable`. Anything else not-ready
-// is the caller's gate: boot never sets a checkout up itself, and a not-ready
-// response carries the system-config report so the gate can offer setup
-// without extra probes. A knowledge config setting the load ignores, a
-// failing index or compact, a provider key that does not resolve, and a
-// vector fill that fell short are warnings, never blocks.
+// beside them the store's lock and the fill's claim — sits in the one state
+// every worktree shares, git-ignored there, so there is nothing to copy into
+// a worktree. A checkout set up (its local config) with no store gets one
+// built when this machine's config says how — it reads `buildable`.
+// Anything else not-ready is the caller's gate: boot never sets a checkout
+// up itself, and a not-ready response carries the system-config report so
+// the gate can offer setup without extra probes. A knowledge config setting
+// the load ignores, a failing index or compact, a provider key that does not
+// resolve, and a vector fill that fell short are warnings, never blocks.
+//
+// The migrations run from the code root (kernel/code-root): the fleet
+// released while the state lived in the code tree upgrades the `.workflows/`
+// there, whichever folder boot was called from.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone. The start
@@ -33,10 +38,12 @@
 
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git } = require('../kernel/git.cjs');
 const { withProjectLock } = require('../kernel/manifest.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
-const { commitPathspecScoped } = require('./commit.cjs');
+const { commitPathspecScoped, commitStateScoped } = require('./commit.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
@@ -44,7 +51,6 @@ const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { dropPosition } = require('./position.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
-const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 
@@ -69,15 +75,14 @@ const VERIFY_MARKER = '---VERIFY_ADDENDA---';
 // flow's migration summary and stripped from the report text.
 const NOTICES_MARKER = '---MIGRATION_NOTICES---';
 
-// Marker preceding migrate.cjs's one-line JSON report of the run —
-// `{ran, tracking}`: the migrations executed, and the tracking ledger they
-// recorded into. Counting runs is not counting files — a migration that ran
-// and found nothing to do still recorded its ID — so the stop gate cannot
-// speak for the ledger. The path is what the commit needs, and it rides every
-// completed run, a run that recorded nothing included: the runner resolves it
-// itself (migration 011 moves it), and dirt from an earlier boot must be
-// committable by a boot that ran no migrations at all.
+// Marker preceding migrate.cjs's one-line JSON report of the run — `{ran}`:
+// the migrations executed. Counting runs is not counting files — a migration
+// that ran and found nothing to do still recorded its ID — so the stop gate
+// cannot speak for the ledger.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
+
+// The ledger the runner records into, state-relative.
+const LEDGER = '.state/migrations';
 
 /**
  * @typedef {object} SystemConfigReport
@@ -108,11 +113,10 @@ const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, the worktree include, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
- * @property {boolean} worktree_include_installed this boot changed `.worktreeinclude` — a knowledge file appended; false when it left the file as it was
  * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod, which boot writes nothing for — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.287; where it can: `on` where it is running, its announcement in boot's own environment, and `not-running` where it is not — workflow-start shows a notice on `not-running` and carries on with typed menus, and stops on `outdated`
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
@@ -165,39 +169,17 @@ function liftMarker(lines, marker, label, warnings) {
 }
 
 /**
- * Whether a path is one this project may commit: relative, inside the tree,
- * no traversal.
- * @param {string} p
- * @returns {boolean}
- */
-function isProjectRelative(p) {
-  return p !== '' && p !== '.' && !path.isAbsolute(p) && !p.split('/').includes('..');
-}
-
-/**
- * The run report's two fields, read defensively: how many migrations ran, and
- * the ledger they recorded into. An absent block reads zero with no ledger —
- * a runner that predates the marker says nothing about what it recorded, and
- * silence is the safe reading. A malformed one degrades to a warning: `ran`
- * survives when it alone is sound, and an implausible path — one git must
- * never be handed as a pathspec — is dropped, which costs the commit, not the
- * boot.
+ * The run report's count, read defensively: an absent block reads zero, and
+ * a malformed one reads zero with a warning.
  * @param {unknown} payload @param {string[]} warnings
- * @returns {{ran: number, tracking: string|null}}
+ * @returns {number}
  */
 function readRunReport(payload, warnings) {
-  if (payload === undefined) return { ran: 0, tracking: null };
-  const report = payload && typeof payload === 'object'
-    ? /** @type {{ran?: unknown, tracking?: unknown}} */ (payload)
-    : {};
-  const rawRan = report.ran;
-  const ran = typeof rawRan === 'number' && Number.isInteger(rawRan) && rawRan >= 0 ? rawRan : null;
-  const tracking = typeof report.tracking === 'string' && isProjectRelative(report.tracking) ? report.tracking : null;
-  if (ran === null || tracking === null) {
-    warnings.push(`migration run report unreadable: ${JSON.stringify(payload)}`);
-    return { ran: ran === null ? 0 : ran, tracking: null };
-  }
-  return { ran, tracking };
+  if (payload === undefined) return 0;
+  const ran = payload && typeof payload === 'object' ? /** @type {{ran?: unknown}} */ (payload).ran : undefined;
+  if (typeof ran === 'number' && Number.isInteger(ran) && ran >= 0) return ran;
+  warnings.push(`migration run report unreadable: ${JSON.stringify(payload)}`);
+  return 0;
 }
 
 /**
@@ -219,22 +201,55 @@ function trimReport(stdout) {
  */
 function boot(cwd) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
-  const mig = spawnSync('node', [MIGRATE_CJS], { cwd, encoding: 'utf8' });
+  /** @type {string[]} */
+  const warnings = [];
+  const { migrations, migrationsCommitted } = withStateLock(stateRoot(cwd), () => runMigrations(cwd, warnings));
+
+  const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
+
+
+  // While a reviewed migration commit follows, it takes every path the
+  // workflows own, so boot's own writes there ride it as the ledger does —
+  // a confined commit of a file a migration also edited would carry that
+  // edit past the review under boot's message.
+  const commitOwn = !migrations.changed;
+  const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
+  tidyConversations();
+
+  const baseline = baselineState(cwd).status;
+  /** @type {BootResult} */
+  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status };
+  // The signal travels only while nothing is recorded: the calling skill
+  // judges once, then the verdict is on the manifest.
+  if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
+  // Not-ready responses carry the system-config report so the calling
+  // skill's knowledge gate can branch (reuse the system config, offer a
+  // mode choice, or fall back to the terminal wizard) without extra probes.
+  if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
+  return result;
+}
+
+/**
+ * Run the migrations into the state's ledger and, where no reviewed commit
+ * will carry it, commit the ledger.
+ * @param {string} cwd @param {string[]} warnings
+ * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}}
+ */
+function runMigrations(cwd, warnings) {
+  const mig = spawnSync('node', [MIGRATE_CJS, '--ledger', statePath(cwd, LEDGER)], { cwd: codeRoot(cwd), encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message
       : `exit ${mig.status}: ${(mig.stderr || mig.stdout || '').trim()}`;
     throw new Error(`migrate.cjs failed — migrations must never half-run silently (${detail})`);
   }
-  /** @type {string[]} */
-  const warnings = [];
 
   const outLines = (mig.stdout || '').split('\n');
   const addenda = liftMarker(outLines, VERIFY_MARKER, 'verification addenda', warnings);
   if (addenda !== undefined && !Array.isArray(addenda)) warnings.push('verification addenda unreadable: not an array');
   const notices = liftMarker(outLines, NOTICES_MARKER, 'migration notices', warnings);
   if (notices !== undefined && !Array.isArray(notices)) warnings.push('migration notices unreadable: not an array');
-  const { ran, tracking } = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
+  const ran = readRunReport(liftMarker(outLines, MIGRATIONS_RUN_MARKER, 'migration run report', warnings), warnings);
   const stdout = outLines.join('\n');
 
   const migrations = {
@@ -250,44 +265,21 @@ function boot(cwd) {
   // calling skill says "up to date" and never reaches its `commit
   // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
   // will carry it — dirt this run recorded, and dirt an earlier boot left
-  // behind the same way, which is the state every install that met this bug
-  // is sitting in. When the review gate does fire, its own commit takes the
-  // ledger in with the diff the user approved and boot stays out of the way.
-  // The migrations are already applied, so a commit failure is a warning.
+  // behind the same way. When the review gate does fire, its own commit takes
+  // the ledger in with the diff the user approved and boot stays out of the
+  // way. The migrations are already applied, so a commit failure is a warning.
   /** @type {string|null} */
   let migrationsCommitted = null;
-  if (!migrations.changed && tracking) {
+  if (!migrations.changed) {
     try {
-      if (git(cwd, ['status', '--porcelain', '--', tracking]).trim() !== '') {
-        migrationsCommitted = commitPathspecScoped(cwd, [tracking], 'chore: record workflow migrations');
-      }
+      const committed = commitStateScoped(cwd, LEDGER, 'chore: record workflow migrations');
+      migrationsCommitted = committed.committed;
+      warnings.push(...committed.warnings);
     } catch (err) {
       warnings.push(`migration ledger commit failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-
-  const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
-
-  // While a reviewed migration commit follows, it takes every path the
-  // workflows own, so boot's own writes there ride it as the ledger does —
-  // a confined commit of a file a migration also edited would carry that
-  // edit past the review under boot's message.
-  const commitOwn = !migrations.changed;
-  const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
-  const worktreeIncludeInstalled = installWorktreeInclude(cwd, commitOwn, warnings);
-  tidyConversations();
-
-  const baseline = baselineState(cwd).status;
-  /** @type {BootResult} */
-  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status };
-  // The signal travels only while nothing is recorded: the calling skill
-  // judges once, then the verdict is on the manifest.
-  if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
-  // Not-ready responses carry the system-config report so the calling
-  // skill's knowledge gate can branch (reuse the system config, offer a
-  // mode choice, or fall back to the terminal wizard) without extra probes.
-  if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
-  return result;
+  return { migrations, migrationsCommitted };
 }
 
 /**
@@ -323,23 +315,6 @@ function installSessionHooks(cwd, commit, warnings) {
     commitPlumbing(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
   }
   return sync.changed;
-}
-
-/**
- * Keep the knowledge files listed in `.worktreeinclude` so a worktree Claude
- * Code creates starts with a copy; committed where `commit` says so. The
- * read and the append share the project lock, so concurrent boots never
- * append twice. A file that cannot be written is a warning, never a block.
- * @param {string} cwd @param {boolean} commit @param {string[]} warnings
- * @returns {boolean} this boot wrote the file
- */
-function installWorktreeInclude(cwd, commit, warnings) {
-  const include = withProjectLock(cwd, () => syncWorktreeInclude(cwd));
-  if (include.error) warnings.push(`worktree include not written: ${include.error}`);
-  if (include.changed && commit) {
-    commitPlumbing(cwd, WORKTREE_INCLUDE, 'chore: copy the knowledge store into new worktrees', 'worktree include commit failed', warnings);
-  }
-  return include.changed;
 }
 
 module.exports = { boot, detectSystemConfig };

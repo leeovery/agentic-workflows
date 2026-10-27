@@ -43,7 +43,7 @@ const VECTOR_BATCH_TEXTS = 100;
 
 /**
  * @typedef {object} Unembedded  a file whose vectors failed
- * @property {string} file
+ * @property {string} file  state-relative, as its chunks record it
  * @property {Error} error
  */
 
@@ -234,15 +234,15 @@ async function embedPending(files, cfg, embedder, snapshot, pending) {
 }
 
 /**
- * What a fill's failures say, one line — the first file's, and how many
- * more fell short with it — or null when none did.
- * @param {Unembedded[]} unembedded @returns {string|null}
+ * What a fill's failures say, one line — the first file's, named absolute,
+ * and how many more fell short with it — or null when none did.
+ * @param {string} root @param {Unembedded[]} unembedded @returns {string|null}
  */
-function failureOf(unembedded) {
+function failureOf(root, unembedded) {
   if (unembedded.length === 0) return null;
   const [{ file, error }] = unembedded;
   const more = unembedded.length > 1 ? ` (and ${unembedded.length - 1} more)` : '';
-  return `${file}: ${error.message.replace(/\s+/g, ' ').trim()}${more}`;
+  return `${path.join(root, file)}: ${error.message.replace(/\s+/g, ' ').trim()}${more}`;
 }
 
 /**
@@ -298,7 +298,7 @@ async function fillVectors(files, cfg, embedder, owed, { snapshot = readStore(fi
     current = embedded.snapshot;
     if (stoppingError(embedded.unembedded)) break;
   }
-  recordFillFailure(files, [failureOf(unembedded), shortfall].filter(Boolean).join('; ') || null);
+  recordFillFailure(files, [failureOf(files.root, unembedded), shortfall].filter(Boolean).join('; ') || null);
   return { unembedded, awaiting: current.db ? store.chunksWithoutVector(current.db).filter(owed).length : 0 };
 }
 

@@ -7,6 +7,7 @@
 // account of both.
 // ---------------------------------------------------------------------------
 
+const path = require('path');
 const { knowledgeFiles } = require('../../kernel/knowledge/files.cjs');
 const { InvalidRequestError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
 const { identityKey } = require('./artifacts.cjs');
@@ -38,30 +39,30 @@ function indexFailed(summary) {
 }
 
 /**
- * Name each file on stderr, then what its failure leaves.
- * @param {Call} call @param {Unembedded[]} unembedded @param {string} consequence
+ * Name each file on stderr, absolute, then what its failure leaves.
+ * @param {Call} call @param {string} root @param {Unembedded[]} unembedded @param {string} consequence
  */
-function reportFailures(call, unembedded, consequence) {
-  for (const { file, error } of unembedded) call.err(`Failed to embed ${file}: ${error.message}\n`);
+function reportFailures(call, root, unembedded, consequence) {
+  for (const { file, error } of unembedded) call.err(`Failed to embed ${path.join(root, file)}: ${error.message}\n`);
   if (unembedded.length > 0) call.err(`${consequence}\n`);
 }
 
 /**
  * The files whose vectors failed, then what that leaves — the files the
  * endpoint refused a chunk of apart from the rest.
- * @param {Call} call @param {Unembedded[]} unembedded
+ * @param {Call} call @param {string} root @param {Unembedded[]} unembedded
  */
-function reportUnembedded(call, unembedded) {
+function reportUnembedded(call, root, unembedded) {
   const refused = (/** @type {Unembedded} */ { error }) => error instanceof InvalidRequestError;
-  reportFailures(call, unembedded.filter((u) => !refused(u)), 'Each is searchable by keyword; its vectors come at the next start.');
-  reportFailures(call, unembedded.filter(refused), 'Each is searchable by keyword; a chunk the endpoint refused goes without a vector.');
+  reportFailures(call, root, unembedded.filter((u) => !refused(u)), 'Each is searchable by keyword; its vectors come at the next start.');
+  reportFailures(call, root, unembedded.filter(refused), 'Each is searchable by keyword; a chunk the endpoint refused goes without a vector.');
 }
 
 /**
  * Bring the store in line with the files, fill the vectors it is owed, and
  * print what it did — each failure, the missing key, each removal, each file
- * indexed, then the summary. An identity retired after it was built reads as
- * removed alone.
+ * indexed, then the summary, every file named absolute. An identity retired
+ * after it was built reads as removed alone.
  * @param {Call} call @param {string} root @param {Settings} settings @param {string|null} [scope]
  * @returns {Promise<IndexSummary>}
  */
@@ -77,11 +78,12 @@ async function indexBulk(call, root, settings, scope = null) {
   const stays = (/** @type {{workUnit: string, phase: string, topic: string}} */ a) => !gone.has(identityKey(a.workUnit, a.phase, a.topic));
   const indexed = reconciled.built.filter((b) => stays(b.artifact));
 
-  for (const { artifact, error } of reconciled.failures) call.err(`Failed to index ${artifact.file}: ${error.message}\n`);
-  reportUnembedded(call, vectoring.unembedded);
+  const at = (/** @type {string} */ file) => path.join(root, file);
+  for (const { artifact, error } of reconciled.failures) call.err(`Failed to index ${at(artifact.file)}: ${error.message}\n`);
+  reportUnembedded(call, root, vectoring.unembedded);
   if (missingKey) call.err(`Cannot embed: ${missingKey.message}\n`);
-  for (const entry of reconciled.retired) call.out(`Removed ${entry.file} — ${entry.chunks} chunks (${entry.reason})\n`);
-  for (const { artifact, docs, state } of indexed) call.out(`Indexed ${artifact.file} — ${docs.length} chunks (${state})\n`);
+  for (const entry of reconciled.retired) call.out(`Removed ${at(entry.file)} — ${entry.chunks} chunks (${entry.reason})\n`);
+  for (const { artifact, docs, state } of indexed) call.out(`Indexed ${at(artifact.file)} — ${docs.length} chunks (${state})\n`);
 
   /** @type {IndexSummary} */
   const summary = {

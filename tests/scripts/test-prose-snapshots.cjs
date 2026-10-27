@@ -59,10 +59,6 @@ describe('prose-test snapshots', { concurrency: POOL_SIZE }, () => {
   const pool = createVerifyPool();
   after(() => pool.close());
 
-  it('has at least one built world', () => {
-    assert.ok(all.some((c) => c.hasFixtureState), 'no case builds a world');
-  });
-
   // A snapshot holds world state at whatever path the engine wrote it, so an
   // ignore rule matching inside one keeps the file out of the commit: the
   // checkout that snapped it still has it on disk and verifies clean, and

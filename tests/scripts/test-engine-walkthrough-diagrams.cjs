@@ -408,11 +408,11 @@ describe('walkthrough sample surfaces', () => {
     );
   });
 
-  it('every fixture is a schema-valid .workflows tree', () => {
+  it('every fixture is a schema-valid .leeway tree', () => {
     assert.deepStrictEqual(fs.readdirSync(FIXTURES_DIR).sort(), [...SAMPLE_SURFACES].sort());
     for (const surface of SAMPLE_SURFACES) {
       const dir = path.join(FIXTURES_DIR, surface);
-      const wf = path.join(dir, '.workflows');
+      const wf = path.join(dir, '.leeway');
       JSON.parse(fs.readFileSync(path.join(wf, 'manifest.json'), 'utf8'));
       // The roadmap derives from the project manifest alone; every item's
       // state has to land in vocabulary (lifecycle by join, never stored).

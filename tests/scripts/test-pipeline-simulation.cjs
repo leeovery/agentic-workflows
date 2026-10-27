@@ -61,11 +61,12 @@ const { specificationDiscovery, specificationDetail } = require(path.join(ROOT, 
 const { epicMenu, epicDashboard, epicCancelMenu, epicPostponeMenu, epicPullForwardMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/epic.cjs'));
 const { startMenu } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/start.cjs'));
 const { workUnitStatus } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/workunit.cjs'));
-const { openGate, drawLabel } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
+const { openGate, drawLabel, bulletRow } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/projections/surfaces.cjs'));
 const { resolveHandoff, HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { skillAt } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/position.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { initRepo } = require('./engine-harness.cjs');
+const { initRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
 // The epic specification menu's detail — the spec boundary's derived view.
 function specDetail(dir, workUnit) {
@@ -76,12 +77,22 @@ function git(dir, args) {
   return execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
 }
 
+/** Git in the world's state worktree. @param {string} dir @param {string[]} args */
+function stateGit(dir, args) {
+  return git(statePath(dir), args);
+}
+
+/** A string as the regular expression that matches it literally. @param {string} text */
+function literal(text) {
+  return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+}
+
 // ---------------------------------------------------------------------------
 // State audit — the invariants run after every mutation
 // ---------------------------------------------------------------------------
 
 function listWorkUnits(dir) {
-  const wf = path.join(dir, '.workflows');
+  const wf = path.join(dir, '.leeway');
   if (!fs.existsSync(wf)) return [];
   return fs.readdirSync(wf, { withFileTypes: true })
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
@@ -93,7 +104,7 @@ function auditState(dir, label) {
   const ctx = (msg) => `[${label}] ${msg}`;
 
   // Project manifest parses.
-  const projPath = path.join(dir, '.workflows', 'manifest.json');
+  const projPath = path.join(dir, '.leeway', 'manifest.json');
   const project = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : null;
 
   // The roadmap always derives — every item's state lands in vocabulary
@@ -107,7 +118,7 @@ function auditState(dir, label) {
     // A source is recorded only once it is on disk, and whatever moves the
     // file carries the pointer with it.
     for (const source of row.sources) {
-      assert.ok(fs.existsSync(path.join(dir, '.workflows', source)),
+      assert.ok(fs.existsSync(path.join(dir, '.leeway', source)),
         ctx(`roadmap item ${row.name}: source ${source} is not on disk`));
     }
   }
@@ -129,7 +140,7 @@ function auditState(dir, label) {
   if (project) auditImports(project.roadmap && project.roadmap.imports, 'roadmap');
 
   for (const wu of listWorkUnits(dir)) {
-    const raw = fs.readFileSync(path.join(dir, '.workflows', wu, 'manifest.json'), 'utf8');
+    const raw = fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8');
     let manifest;
     try {
       manifest = JSON.parse(raw);
@@ -194,7 +205,7 @@ function auditState(dir, label) {
     derivations.computeUnitPhaseState(manifest, pipelineOf(manifest.work_type));
 
     // Every agent-state store (one per topic, colocated) is schema-valid.
-    const cacheRoot = path.join(dir, '.workflows', '.cache', wu);
+    const cacheRoot = path.join(dir, '.leeway', '.cache', wu);
     if (fs.existsSync(cacheRoot)) {
       for (const ph of fs.readdirSync(cacheRoot, { withFileTypes: true }).filter((e) => e.isDirectory())) {
         const phDir = path.join(cacheRoot, ph.name);
@@ -334,20 +345,16 @@ function auditGatePayload(sim, args, identity) {
 
 class Sim {
   constructor() {
-    this.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-'));
+    // A project with its state worktree at `.leeway/`, which ignores the
+    // cache and the checkout's own knowledge directory.
+    this.dir = setupGitFixture('pipeline-sim-');
     // The system config directory sits beside the project, as a real one
     // does: the conversation folders the sim's calls mark live there.
     this.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pipeline-sim-config-'));
-    initRepo(this.dir);
-    fs.mkdirSync(path.join(this.dir, '.workflows'), { recursive: true });
-    // The nested gitignore every booted project carries (migrations 049,
-    // 060): the cache is ephemeral session machinery, mechanical heartbeats
-    // included, and the knowledge directory is the checkout's own.
-    fs.writeFileSync(path.join(this.dir, '.workflows', '.gitignore'), '.cache/\n.manifest.json.*.tmp\n.knowledge/\n');
     // This checkout's knowledge setup: keyword-only, pinned as setup records
     // it, so the transactions' indexing builds a store as a set-up project's does.
-    fs.mkdirSync(path.join(this.dir, KNOWLEDGE_DIR), { recursive: true });
-    fs.writeFileSync(path.join(this.dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
+    fs.mkdirSync(statePath(this.dir, KNOWLEDGE_DIR), { recursive: true });
+    fs.writeFileSync(statePath(this.dir, KNOWLEDGE_DIR, 'config.json'), '{ "knowledge": { "provider": null } }\n');
     // The skills a conversation carries on in after a compaction, installed
     // as a project installs them — kept out of git's sight, so no commit or
     // dirt check ever meets them.
@@ -356,6 +363,7 @@ class Sim {
       fs.mkdirSync(path.join(this.dir, '.claude/skills', skill), { recursive: true });
       fs.copyFileSync(path.join(ROOT, 'skills', skill, 'SKILL.md'), path.join(this.dir, '.claude/skills', skill, 'SKILL.md'));
     }
+    fs.mkdirSync(path.join(this.dir, '.git/info'), { recursive: true });
     fs.appendFileSync(path.join(this.dir, '.git/info/exclude'), '.claude/skills/\n');
     // Part of the project's code lives in an ignored clone: a repo of its own
     // that the project's git ignores. A code commit naming a path in it lands
@@ -387,11 +395,12 @@ class Sim {
   }
 
   destroy() {
-    for (const d of [this.dir, this.configDir]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    cleanupFixture(this.dir);
+    fs.rmSync(this.configDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 
   write(rel, content) {
-    const full = path.join(this.dir, rel);
+    const full = path.resolve(this.dir, rel);
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, typeof content === 'string' ? content : JSON.stringify(content, null, 2));
     return rel;
@@ -479,8 +488,10 @@ class Sim {
     }
     auditState(this.dir, label);
     if (typeof parsed.committed === 'string' || (Array.isArray(parsed.committed) && parsed.committed.length > 0)) {
-      assert.strictEqual(git(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
+      assert.strictEqual(stateGit(this.dir, ['ls-files', '--', KNOWLEDGE_DIR]).trim(), '',
         `[${label}] the commit carried the knowledge directory — it is the checkout's own, never committed`);
+      assert.strictEqual(git(this.dir, ['ls-files', '--', STATE_DIR_NAME]).trim(), '',
+        `[${label}] the code tree carries the state — it lives on its own branch`);
     }
     return parsed;
   }
@@ -540,19 +551,19 @@ class Sim {
   }
 
   manifest(wu) {
-    return JSON.parse(fs.readFileSync(path.join(this.dir, '.workflows', wu, 'manifest.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(this.dir, '.leeway', wu, 'manifest.json'), 'utf8'));
   }
 }
 
 /** Session-log helper — workunit create and discovery-session open need one. */
 function sessionLog(sim, wu, n = 1) {
-  return sim.write(`.workflows/${wu}/discovery/sessions/session-00${n}.md`,
+  return sim.write(`.leeway/${wu}/discovery/sessions/session-00${n}.md`,
     `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
 }
 
 /** Write a message scratch and return the `topic send` argv delivering it. */
 function sendArgv(sim, wu, phase, topic, slug = 'a-message') {
-  const scratch = sim.write(`.workflows/.cache/scratch/${slug}.md`, `### ${slug}\n\nBody of ${slug}.\n`);
+  const scratch = sim.write(`.leeway/.cache/scratch/${slug}.md`, `### ${slug}\n\nBody of ${slug}.\n`);
   return ['topic', 'send', wu, phase, topic, '--content', scratch, '--slug', slug, '-m', `send ${slug} to ${topic}`];
 }
 
@@ -564,7 +575,7 @@ function send(sim, wu, phase, topic, slug) {
 /** An epic whose map carries the named topics, each routed to discussion. */
 function mappedEpic(sim, wu, names) {
   sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
-  sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+  sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
     names.map((name) => ({ name, routing: 'discussion', summary: name })))]);
   sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
 }
@@ -843,7 +854,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   for (const s of sources) {
     sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${s}.status`, 'incorporated']);
   }
-  sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
+  sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
   sim.run(['commit', wu, '-m', `spec(${wu}): construct`, '--topic', `specification/${topic}`]);
   assert.match(sim.render(['step-opening', `${wu}.specification.${topic}`, '--step', 'conclude'], { expect: 'content' }),
     /□ Conclude[\s\S]*> Wrapping up\. Final assessment, sign-off, and handover to the planning phase\./);
@@ -860,7 +871,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   sim.run(['topic', 'start', wu, 'planning', topic]);
   sim.refuses(['render', 'plan-context-gate', `${wu}.planning.${topic}`],
     /planning item "[^"]+" is in-progress — the context offer opens a fresh plan/);
-  sim.write(`.workflows/${wu}/planning/${topic}/planning.md`, `# Plan — ${topic}\n`);
+  sim.write(`.leeway/${wu}/planning/${topic}/planning.md`, `# Plan — ${topic}\n`);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`,
     'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
     'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
@@ -872,7 +883,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // Declining that offer opens the catalogue (output-formats.md): which
   // formats a project ships is the planning skill's to name, so the rows ride
   // a payload and the surface numbers them in order.
-  const formats = sim.write(`.workflows/.cache/${wu}/planning/${topic}/format-offer.json`, {
+  const formats = sim.write(`.leeway/.cache/${wu}/planning/${topic}/format-offer.json`, {
     formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
   });
   assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
@@ -881,7 +892,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The phase structure gate (define-phases B) sits under its tree; a
   // `v/view full` shows the full structure in the tree's place and puts the
   // gate back alone beneath it.
-  const phaseTree = sim.write(`.workflows/.cache/${wu}/planning/${topic}/phase-tree.json`,
+  const phaseTree = sim.write(`.leeway/.cache/${wu}/planning/${topic}/phase-tree.json`,
     { phases: [{ name: 'Foundation', detail: [['Goal', 'the core lands']] }] });
   assert.match(sim.render(['phase-tree', `${wu}.planning.${topic}`, '--file', phaseTree, '--approve'], { expect: 'content' }),
     /=== DISPLAY: phase tree[\s\S]*=== MENU: phase structure gate/);
@@ -896,14 +907,14 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The gate-mode check over the phase answers empty while gated; each task
   // then shows its detail above its gate.
   sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--phase', '1'], { expect: 'empty' });
-  const authorTask = sim.write(`.workflows/.cache/${wu}/planning/${topic}/author-task.json`, { content: '### Task 1: Land the core' });
+  const authorTask = sim.write(`.leeway/.cache/${wu}/planning/${topic}/author-task.json`, { content: '### Task 1: Land the core' });
   assert.match(sim.render(['author-task-gate', `${wu}.planning.${topic}`, '--m', '1', '--total', '1', '--title', 'Land the core', '--file', authorTask], { expect: 'content' }),
     /=== DISPLAY: authored task[\s\S]*=== MENU: author task gate/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'rejected']);
   // The amendment resets a rejected row to pending only after the rewrite
   // validates (author-tasks C) — the mismatch that never settles stops at its
   // own gate first, beneath the two lists that disagree.
-  const counts = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-count.json`, { table: [`${topic}-1-1`], detail: [] });
+  const counts = sim.write(`.leeway/.cache/${wu}/planning/${topic}/task-count.json`, { table: [`${topic}-1-1`], detail: [] });
   assert.match(sim.render(['task-count-gate', `${wu}.planning.${topic}`, '--file', counts], { expect: 'content' }),
     /Task detail file: {9}0 tasks — none[\s\S]*=== MENU: task count gate/);
   sim.run(['manifest', 'set', `${wu}.planning.${topic}`, `staging.author-p1.tasks.${topic}-1-1`, 'pending']);
@@ -928,7 +939,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The graph approval with the grapher's report beneath it, then the review
   // loop's two gates and the conclusion's consent, each fetched where the
   // flow displays it.
-  const graph = sim.write(`.workflows/.cache/${wu}/planning/${topic}/task-graph.json`, {
+  const graph = sim.write(`.leeway/.cache/${wu}/planning/${topic}/task-graph.json`, {
     notes: 'One task — nothing to order.', dependencies: [], priorities: [],
   });
   assert.match(sim.render(['dependency-approval-gate', `${wu}.planning.${topic}`, '--variant', 'graph', '--file', graph], { expect: 'content' }),
@@ -942,27 +953,27 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
     'the plan baseline survives as a number the growth diagnostic can read');
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'continue'], { expect: 'content' });
   sim.render(['plan-review-gate', `${wu}.planning.${topic}`, '--variant', 'reloop'], { expect: 'content' });
-  sim.write('.workflows/.cache/scratch/plan-findings-summary.json', JSON.stringify({
+  sim.write('.leeway/.cache/scratch/plan-findings-summary.json', JSON.stringify({
     review_label: 'Traceability Review',
     items: [{ title: 'Missing retry bound', tag: 'missing', summary: 'No task bounds the retries.', status: 'approved' }],
   }));
-  sim.render(['findings-summary', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-findings-summary.json'], { expect: 'content' });
-  sim.write('.workflows/.cache/scratch/plan-finding.json', JSON.stringify({
+  sim.render(['findings-summary', `${wu}.planning.${topic}`, '--file', '.leeway/.cache/scratch/plan-findings-summary.json'], { expect: 'content' });
+  sim.write('.leeway/.cache/scratch/plan-finding.json', JSON.stringify({
     n: 1, total: 1, title: 'Missing Retry Bound', meta: [['Type', 'Missing from plan']], move: 'settled',
     problem: 'Retries run unbounded.', proposal: 'The specification bounds them at four.',
     diff: { current: [], proposed: ['Retries stop after four attempts.'] },
   }));
-  sim.render(['finding', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-finding.json'], { expect: 'content' });
+  sim.render(['finding', `${wu}.planning.${topic}`, '--file', '.leeway/.cache/scratch/plan-finding.json'], { expect: 'content' });
   // The escalation diagnostic reads the plan's growth the way the spec loop
   // reads the construction's — same surface, the plan named as the document.
-  sim.write('.workflows/.cache/scratch/plan-convergence.json', JSON.stringify({
+  sim.write('.leeway/.cache/scratch/plan-convergence.json', JSON.stringify({
     loop_type: 'planning-review', latest_cycle: 2, trend: 'churning',
     resolved: [{ title: 'Probe reads the wrong descriptor', last_seen_cycle: 1 }],
     recurring: [], new: [{ title: 'Escape byte dispatched as a keystroke' }],
     stream_counts: [{ label: 'traceability', count: 1 }, { label: 'integrity', count: 1 }],
     review_baseline_words: 63929, live_words: 90000,
   }));
-  const planDiagnostic = sim.render(['convergence-diagnostic', `${wu}.planning.${topic}`, '--file', '.workflows/.cache/scratch/plan-convergence.json'], { expect: 'content' });
+  const planDiagnostic = sim.render(['convergence-diagnostic', `${wu}.planning.${topic}`, '--file', '.leeway/.cache/scratch/plan-convergence.json'], { expect: 'content' });
   assert.match(planDiagnostic, /\(\+26071 net across review\)/);
   assert.match(planDiagnostic.replace(/\n\s+/g, ' '), /the review is writing mechanism the specification never decided/,
     'the churn-growth warning reads for the plan');
@@ -1006,7 +1017,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The loop's two stops: an executor that comes back blocked or failed
   // (task-loop C), and the analysis loop's checkpoint over files
   // implementation never wrote.
-  const sides = sim.write(`.workflows/.cache/${wu}/implementation/${topic}/block-sides.json`, {
+  const sides = sim.write(`.leeway/.cache/${wu}/implementation/${topic}/block-sides.json`, {
     options: ['Restore the order as paid, refund behind it', { summary: 'Keep the cancellation, return the payment', recommended: true }],
   });
   const blockGate = sim.render(['executor-block-gate', `${wu}.implementation.${topic}`, '--result', 'blocked', '--file', sides], { expect: 'content' });
@@ -1034,7 +1045,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // the clone's new folder.
   assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files,
     [{ path: `api/${routeFile}`, status: '??' }, { path: `api/src/${topic}.js`, status: '??' }],
-    'the clone\'s dirt is read from the project, file by file, .workflows/ held out');
+    'the clone\'s dirt is read from the project, file by file, .leeway/ held out');
   // Where code is dirty the checkpoint gate sorts it: nothing an `impl(…):`
   // commit touched yet, so both files are unexpected and the gate stands.
   assert.match(sim.render(['checkpoint-files-gate', `${wu}.implementation.${topic}`], { expect: 'content' }),
@@ -1128,18 +1139,18 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The verifiers write one file per section per cycle beside the per-task
   // reports; prep's checkpoint commit carries both classes under the review
   // topic's scope.
-  sim.write(`.workflows/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
-  sim.write(`.workflows/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
+  sim.write(`.leeway/${wu}/review/${topic}/report-1-1.md`, 'TASK: 1-1\n\nFINDINGS:\n- None\n');
+  sim.write(`.leeway/${wu}/review/${topic}/change-set-c1-specification.md`, 'SECTION: specification\n\nFINDINGS:\n- None\n');
   // The verifiers leave the tree as they found it: the check reads every
   // repo — a leftover in the clone stops the review until it is gone — and
-  // answers empty, the review's own artifacts sitting under .workflows/.
+  // answers empty, the review's own artifacts sitting under .leeway/.
   sim.write(`api/src/${topic}.probe.js`, '// a verifier\'s leftover\n');
   assert.match(sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'content' }),
     new RegExp(`modified or untracked: \`api/src/${topic}\\.probe\\.js\`\\.`));
   fs.rmSync(path.join(sim.api, `src/${topic}.probe.js`));
   sim.render(['change-set-tree', `${wu}.review.${topic}`], { expect: 'empty' });
   // Prep's synthesis writes the action list the rest of the review reads.
-  sim.write(`.workflows/.cache/${wu}/review/${topic}/actions.json`, {
+  sim.write(`.leeway/.cache/${wu}/review/${topic}/actions.json`, {
     verdict: 'pass',
     actions: [
       { id: 'A1', route: 'do-now', ids: ['1-1-1'], files: [`api/src/${topic}.js`] },
@@ -1153,7 +1164,7 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   assert.match(sim.render(['step-opening', `${wu}.review.${topic}`, '--step', 'do-now'], { expect: 'content' }),
     /□ Apply Do-Now[\s\S]*> Applying 2 contained corrections — /);
   // The apply starts from a clean tree (apply-do-now.md B), read from every
-  // repo — the review's own artifacts sit under .workflows/, held out.
+  // repo — the review's own artifacts sit under .leeway/, held out.
   assert.deepStrictEqual(JSON.parse(sim.read(['code', 'status'])).files, [], 'nothing uncommitted before the first batch');
   // The apply lane writes code: in-scope, contained findings land in-session
   // as one commit, through the same declared-paths door the task loop uses —
@@ -1171,9 +1182,9 @@ function walkDeliveryPhases(sim, wu, topic, { sources }) {
   // The report reads the apply commit back by its subject.
   assert.match(sim.read(['code', 'diff', '--subject', `review(${wu}): ${topic} cycle 1 — apply do-now findings`]),
     new RegExp(`^\\+module\\.exports = "${topic}"; // guarded$`, 'm'));
-  sim.write(`.workflows/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
+  sim.write(`.leeway/${wu}/review/${topic}/report.md`, `# Review — ${topic}\n`);
   sim.run(['commit', wu, '-m', `review(${wu}): complete review`, '--topic', `review/${topic}`]);
-  const presentation = sim.write(`.workflows/.cache/${wu}/review/${topic}/presentation.json`, {
+  const presentation = sim.write(`.leeway/.cache/${wu}/review/${topic}/presentation.json`, {
     topic,
     verdict: 'pass',
     corrected: { applied: 2, reverted: 0, suite: 'green' },
@@ -1213,7 +1224,7 @@ describe('pipeline simulation', () => {
     // Discovery's single-phase endpoint (first-phase-routing A): which of
     // research and discussion leans is the session's read, so it rides a
     // payload; having the choice at all is the work type's.
-    const read = sim.write(`.workflows/.cache/${wu}/discovery/first-phase.json`,
+    const read = sim.write(`.leeway/.cache/${wu}/discovery/first-phase.json`,
       { read: "The shape's clear and the open questions are trade-offs — I'd start with discussion." });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
@@ -1228,7 +1239,7 @@ describe('pipeline simulation', () => {
     handoffEntry(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     assert.match(sim.render(['step-opening', `${wu}.discussion.${wu}`, '--step', 'session'], { expect: 'content' }),
       /□ Discussion Session[\s\S]*> Discussion starting\./);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
@@ -1245,7 +1256,7 @@ describe('pipeline simulation', () => {
     sim.run(['commit', wu, '-m', `discussion(${wu}): complete ${wu} discussion`, '--topic', `discussion/${wu}`]);
     // The completion indexed into a store, which every commit's audit in
     // `run` holds untracked from here on.
-    assert.ok(fs.existsSync(path.join(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
+    assert.ok(fs.existsSync(statePath(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
     assert.match(sim.render(['knowledge-ready'], { expect: 'content' }), /^Knowledge base ready — keyword-only\.$/m);
     // The engine's own door reads back what the completion indexed in process.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });
@@ -1272,23 +1283,23 @@ describe('pipeline simulation', () => {
     // A completed unit is the one state the corrigendum protocol edits — the
     // gate derives the spec path from the address it is given.
     const correctionScreen = sim.render(['correction-gate', `${wu}.specification.${wu}`], { expect: 'content' });
-    assert.match(correctionScreen, new RegExp(`Correcting \\.workflows/${wu}/specification/${wu}/specification\\.md\\.`));
+    assert.match(correctionScreen, new RegExp(`Correcting ${literal(path.join(sim.dir, `.leeway/${wu}/specification/${wu}/specification.md`))}\\.`));
     assert.match(correctionScreen, /`◆ Apply the correction protocol\?`/);
   });
 
   it('start: a working set of inbox ideas hands discovery its seeds, which the work-type commit lands', () => {
     const ideas = [
-      sim.write('.workflows/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
-      sim.write('.workflows/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
+      sim.write('.leeway/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
+      sim.write('.leeway/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
     ];
     assert.ok(startKeys(sim).some((k) => k.action === 'view_inbox'), 'the start menu offers the inbox');
     // Ideas carry no work type, so discovery decides it.
-    const route = `/workflow-discovery none none "${ideas.join(',')}"`;
+    const route = `/workflow-discovery none none "${ideas.map((rel) => path.join(sim.dir, rel)).join(',')}"`;
     assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);
     // Discovery opens on the seeds before any work unit exists, naming them
     // from the inbox paths the route carries.
-    sim.write('.workflows/.cache/discovery-opener.json', JSON.stringify({ sketch: 'Filters that persist.', question: 'Who saves one first?' }));
-    assert.match(sim.render(['opener', '--variant', 'inbox', '--path', ideas.join(','), '--file', '.workflows/.cache/discovery-opener.json'], { expect: 'content' }),
+    sim.write('.leeway/.cache/discovery-opener.json', JSON.stringify({ sketch: 'Filters that persist.', question: 'Who saves one first?' }));
+    assert.match(sim.render(['opener', '--variant', 'inbox', '--path', ideas.join(','), '--file', '.leeway/.cache/discovery-opener.json'], { expect: 'content' }),
       /I've read your 2 ideas\. Here's the shape I'm picking up:/);
     const wu = 'saved-filters';
     const created = sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved search filters',
@@ -1304,7 +1315,7 @@ describe('pipeline simulation', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Ledger feature', '--session-log-file', log]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     // The discussion's own forward parks a message research-side: the stub is
     // pre-live to the phase walk, yet research feeds discussion — the linear
@@ -1338,7 +1349,7 @@ describe('pipeline simulation', () => {
     // The single-topic register keys on the work unit's own name; an open
     // thread is a fine way to conclude — the gate shows it and asks the same.
     sim.run(['research-threads', 'add', wu, wu, 'balance-rounding', '--question', 'Where does the ledger round a balance?', '--origin', 'seed']);
-    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
+    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): open the question`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'absorb', wu, 'research', wu, '--file', '001-balance-question.md', '-m', `research(${wu}): absorb 001-balance-question`]);
     assert.match(sim.render(['research-conclude-gate', `${wu}.research.${wu}`], { expect: 'content' }),
@@ -1366,7 +1377,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'reopen', wu, 'discussion', wu],
       /discussion can't reopen on "ledger" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
     assert.strictEqual(BRIDGE.discover(sim.dir, wu).next_phase, 'research');
-    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nThe second question.\n`);
+    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nThe second question.\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): the second question`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'absorb', wu, 'research', wu, '--file', path.basename(second.message_path), '-m', `research(${wu}): absorb second-question`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
@@ -1379,17 +1390,17 @@ describe('pipeline simulation', () => {
     const wu = 'tally';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Tally feature', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'research', wu]);
-    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
+    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): capture`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     // A peer's delivery lands research-side beneath the discussion in
     // session: the completed research reopens and the discussion is flagged.
     // While the research is outstanding the wait — not the flag — holds the
     // close, and the session's own check stays silent.
-    const scratch = sim.write('.workflows/.cache/scratch/late-question.md',
+    const scratch = sim.write('.leeway/.cache/scratch/late-question.md',
       '### Late question\n*From: tally · discussion · 2026-07-23*\n\nWhat does the tally round to?\n');
     const landed = sim.run(['topic', 'send', wu, 'research', wu,
       '--content', scratch, '--slug', 'late-question', '-m', `discussion(${wu}): forward a research question`]);
@@ -1402,7 +1413,7 @@ describe('pipeline simulation', () => {
     // releases, and the unread flag is now what holds the close.
     sim.run(['topic', 'absorb', wu, 'research', wu,
       '--file', path.basename(landed.message_path), '-m', `research(${wu}): absorb late-question`]);
-    sim.write(`.workflows/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
+    sim.write(`.leeway/${wu}/research/${wu}.md`, `# Research — ${wu}\n\nRounds to the nearest unit.\n`);
     sim.run(['commit', wu, '-m', `research(${wu}): the rounding answer`, '--topic', `research/${wu}`]);
     sim.run(['topic', 'complete', wu, 'research', wu]);
     sim.render(['wait-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
@@ -1423,7 +1434,7 @@ describe('pipeline simulation', () => {
     const wu = 'orbit';
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Orbit', '--session-log-file', log]);
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'alpha', routing: 'discussion', summary: 'Alpha summary' },
       { name: 'beta', routing: 'research', summary: 'Beta summary' },
     ]);
@@ -1449,7 +1460,7 @@ describe('pipeline simulation', () => {
     // the discussion is born; each row the menu offers hands off to its phase.
     epicPick(sim, wu, 'start_research', 'alpha');
     sim.run(['topic', 'start', wu, 'research', 'alpha']);
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
+    sim.write(`.leeway/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'absorb', wu, 'research', 'alpha', '--file', '001-first-question.md', '-m', `research(${wu}): absorb 001-first-question`]);
     sim.run(['research-threads', 'add', wu, 'alpha', 'kept', '--question', 'Does the register survive the lifecycle?', '--origin', 'user']);
@@ -1524,7 +1535,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['topic', 'reopen', wu, 'discussion', 'alpha'],
       /discussion can't reopen on "alpha" — research is in flight on it; research feeds discussion, so it lands first — the menu names the way in/);
     assert.deepStrictEqual(rows('alpha').map((r) => r[0]), ['continue_research']);
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n\nThe landed message.\n');
+    sim.write(`.leeway/${wu}/research/alpha.md`, '# Research — Alpha\n\nThe landed message.\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha lands the message`, '--topic', 'research/alpha']);
     sim.run(['topic', 'absorb', wu, 'research', 'alpha', '--file', path.basename(second.message_path), '-m', `research(${wu}): absorb second-question`]);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
@@ -1620,7 +1631,7 @@ describe('pipeline simulation', () => {
       sim.run(['topic', 'start', wu, 'specification', spec]);
       sim.run(['manifest', 'set', `${wu}.specification.${spec}`,
         ...[source, ...rest].map((name) => `sources.${name}.status=incorporated`)]);
-      const message = sim.write('.workflows/.cache/scratch/spec-gap.md', '### Gap — retry window\n\nWhat the spec needs decided.\n');
+      const message = sim.write('.leeway/.cache/scratch/spec-gap.md', '### Gap — retry window\n\nWhat the spec needs decided.\n');
       const landed = sim.run(['topic', 'send', wu, sourcePhase, source,
         '--content', message, '--slug', 'retry-window', '-m', `spec(${wu}): gap routed to ${source}`]);
       assert.strictEqual(landed.reopened, true);
@@ -1633,7 +1644,7 @@ describe('pipeline simulation', () => {
     const feature = 'retry';
     sim.run(['workunit', 'create', feature, 'feature', '--description', 'Retries', '--session-log-file', sessionLog(sim, feature)]);
     sim.run(['topic', 'start', feature, 'discussion', feature]);
-    sim.write(`.workflows/${feature}/discussion/${feature}.md`, `# Discussion — ${feature}\n`);
+    sim.write(`.leeway/${feature}/discussion/${feature}.md`, `# Discussion — ${feature}\n`);
     sim.run(['topic', 'complete', feature, 'discussion', feature]);
     pauseOnGap(feature, 'discussion', feature, [feature]);
     bridgeTo(sim, feature, 'discussion');
@@ -1641,7 +1652,7 @@ describe('pipeline simulation', () => {
     const bugfix = 'stall';
     sim.run(['workunit', 'create', bugfix, 'bugfix', '--description', 'Stalls', '--session-log-file', sessionLog(sim, bugfix)]);
     sim.run(['topic', 'start', bugfix, 'investigation', bugfix]);
-    sim.write(`.workflows/${bugfix}/investigation/${bugfix}.md`, `# Investigation — ${bugfix}\n`);
+    sim.write(`.leeway/${bugfix}/investigation/${bugfix}.md`, `# Investigation — ${bugfix}\n`);
     sim.run(['topic', 'complete', bugfix, 'investigation', bugfix]);
     pauseOnGap(bugfix, 'investigation', bugfix, [bugfix]);
     bridgeTo(sim, bugfix, 'investigation');
@@ -1652,7 +1663,7 @@ describe('pipeline simulation', () => {
     mappedEpic(sim, epic, ['note-window', 'layout']);
     for (const topic of ['note-window', 'layout']) {
       sim.run(['topic', 'start', epic, 'discussion', topic]);
-      sim.write(`.workflows/${epic}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
+      sim.write(`.leeway/${epic}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
       sim.run(['topic', 'complete', epic, 'discussion', topic]);
     }
     pauseOnGap(epic, 'discussion', 'windows', ['note-window', 'layout']);
@@ -1672,7 +1683,7 @@ describe('pipeline simulation', () => {
     // with the banner.
     const wu = 'sends';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Sends', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
       [{ name: 'alpha', routing: 'discussion', summary: 'Alpha', description: 'What alpha settles.' }])]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
     const toRecover = () => EPIC_GATEWAY.formatScoped(wu, EPIC_GATEWAY.discover(sim.dir, wu))
@@ -1681,9 +1692,9 @@ describe('pipeline simulation', () => {
     menuEntry(sim, wu);
     handoffEntry(sim, wu, 'discussion', 'alpha');
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
-    sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
+    sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['discovery-map', 'add', wu, 'beta', 'discussion', '--source', 'message:alpha', '--backfill', '--force-dismissed']);
-    const message = sim.write('.workflows/.cache/scratch/message.md', '### Off-topic\n*From: alpha · discussion · 2026-01-01*\n\nDetails.\n');
+    const message = sim.write('.leeway/.cache/scratch/message.md', '### Off-topic\n*From: alpha · discussion · 2026-01-01*\n\nDetails.\n');
     sim.run(['topic', 'send', wu, 'discussion', 'beta', '--content', message, '--slug', 'off-topic',
       '-m', `discussion(${wu}/alpha): send message to beta`]);
     sim.run(['commit', wu, '-m', `discussion(${wu}/alpha): capture`, '--topic', 'discussion/alpha']);
@@ -1695,11 +1706,11 @@ describe('pipeline simulation', () => {
     // The stub has no file to draft from: the batch, then the unsourced gate,
     // whose provide row lands the person's summary.
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file',
-      sim.write(`.workflows/.cache/${wu}/discovery/summaries.json`, { summaries: { beta: null } })], { expect: 'content' }),
+      sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: { beta: null } })], { expect: 'content' }),
     /1\. Beta {2}\(discussion\)\n {7}\(source file missing — please provide\)[\s\S]*Accept these summaries\?/);
     sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file',
-      sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
-    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/backfill-ops.json`,
+      sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: ['beta'] })], { expect: 'content' });
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/backfill-ops.json`,
       [{ op: 'set', path: `${wu}.discovery.beta`, fields: { summary: 'Beta', description: 'What beta settles.' } }])]);
     sim.run(['commit', wu, '-m', `discovery(${wu}): backfill 2 discovery summary field(s)`, '--discovery']);
 
@@ -1716,7 +1727,7 @@ describe('pipeline simulation', () => {
     handoff(sim, `/workflow-investigation-process bugfix ${wu}`);
     handoffEntry(sim, wu, 'investigation', wu);
     sim.run(['topic', 'start', wu, 'investigation', wu]);
-    sim.write(`.workflows/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
+    sim.write(`.leeway/${wu}/investigation/${wu}.md`, `# Investigation — ${wu}\n`);
 
     // A synchronous validation: dispatch, the foreground agent lands its
     // verdict, scan promotes, the row closes consumed — never surfaced.
@@ -1777,9 +1788,9 @@ describe('pipeline simulation', () => {
     // A spec-routed gap lands in the investigation's own mailbox: the
     // delivery reopens the item and stales the spec row; the mailbox answers;
     // absorb drains it and the pipeline re-concludes.
-    sim.write('.workflows/.cache/scratch/gap-message.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    sim.write('.leeway/.cache/scratch/gap-message.md', '### Gap — retry semantics\n\nWhat the spec needs decided.\n');
     const gapLand = sim.run(['topic', 'send', wu, 'investigation', wu,
-      '--content', '.workflows/.cache/scratch/gap-message.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
+      '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics', '-m', `spec(${wu}): gap routed to ${wu}`]);
     assert.strictEqual(gapLand.reopened, true);
     assert.deepStrictEqual(gapLand.sources_staled, [wu]);
     assert.match(await provenance(), reopenedLine, 'a landing that reopens marks it as a reopen does');
@@ -1818,10 +1829,10 @@ describe('pipeline simulation', () => {
     handoffEntry(sim, wu, 'scoping', wu);
     assert.match(sim.render(['scoping-questions', wu, '--open', 'where,exclusions'], { expect: 'content' }),
       /Scoping: Typo\n\nA few questions to scope this change:\n\n- Where in the codebase\?/);
-    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec\n');
+    sim.write(`.leeway/${wu}/specification/${wu}/specification.md`, '# Spec\n');
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
-    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, '# Plan\n');
+    sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, '# Plan\n');
     const baseline = sim.run(['commit', wu, '-m', `scoping(${wu}): specification baseline`]);
     assert.ok(baseline.committed, 'the baseline commit lands the spec');
     sim.run(['topic', 'start', wu, 'planning', wu]);
@@ -1829,7 +1840,7 @@ describe('pipeline simulation', () => {
     // Scoping's format step fetches the same offer planning does.
     assert.match(sim.render(['plan-format-gate'], { expect: 'content' }), /Use the same format\?/);
     // Declining it opens the same catalogue, its offer written under scoping's own cache.
-    const formats = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/format-offer.json`, {
+    const formats = sim.write(`.leeway/.cache/${wu}/scoping/${wu}/format-offer.json`, {
       formats: [{ name: 'sample-format', label: 'Sample Format — the row the payload named' }],
     });
     assert.match(sim.render(['plan-format-gate', '--variant', 'select', '--file', formats], { expect: 'content' }),
@@ -1880,7 +1891,7 @@ describe('pipeline simulation', () => {
     // Complexity check (complexity-check B): which criteria the change fails
     // is the session's read, so the messages ride a payload; the type is the
     // surface's to check. Both manifests flip, then commit.
-    const concerns = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/complexity.json`,
+    const concerns = sim.write(`.leeway/.cache/${wu}/scoping/${wu}/complexity.json`,
       { concerns: ['Requires design decisions about the new API surface'] });
     assert.match(sim.render(['complexity-gate', wu, '--file', concerns], { expect: 'content' }),
       /• Requires design decisions about the new API surface/);
@@ -1893,7 +1904,7 @@ describe('pipeline simulation', () => {
 
     // The promotion opens the first-phase choice (complexity-check C), which
     // the flipped type is what makes reachable.
-    const read = sim.write(`.workflows/.cache/${wu}/scoping/${wu}/first-phase.json`,
+    const read = sim.write(`.leeway/.cache/${wu}/scoping/${wu}/first-phase.json`,
       { read: 'The shape is clear and the questions are trade-offs — I\'d start with discussion.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`d\/discussion`\*\* → Ready to discuss and make decisions/);
@@ -1901,7 +1912,7 @@ describe('pipeline simulation', () => {
 
     // The promoted feature runs its first phase normally.
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion\n');
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
@@ -1911,7 +1922,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, wu)]);
     // Cross-cutting takes the same first-phase choice as a feature; the
     // fixed-first-phase types never reach the gate at all.
-    const read = sim.write(`.workflows/.cache/${wu}/discovery/first-phase.json`,
+    const read = sim.write(`.leeway/.cache/${wu}/discovery/first-phase.json`,
       { read: 'Discussion is the usual spine here — research is optional.' });
     assert.match(sim.render(['first-phase-gate', wu, '--file', read], { expect: 'content' }),
       /\*\*`r\/research`\*\* +→ Explore feasibility and options first, no/);
@@ -1919,7 +1930,7 @@ describe('pipeline simulation', () => {
     handoffEntry(sim, wu, 'discussion', wu);
     sim.render(['entry-gate', `${wu}.discussion.${wu}`], { expect: 'empty' });
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     // The pipeline ends at specification, so review is never this type's
@@ -1939,7 +1950,7 @@ describe('pipeline simulation', () => {
     const cc = 'error-envelope';
     sim.run(['workunit', 'create', cc, 'cross-cutting', '--description', 'One error envelope', '--session-log-file', sessionLog(sim, cc)]);
     sim.run(['topic', 'start', cc, 'discussion', cc]);
-    sim.write(`.workflows/${cc}/discussion/${cc}.md`, `# Discussion — ${cc}\n`);
+    sim.write(`.leeway/${cc}/discussion/${cc}.md`, `# Discussion — ${cc}\n`);
     sim.run(['topic', 'complete', cc, 'discussion', cc]);
     sim.run(['topic', 'start', cc, 'specification', cc]);
 
@@ -1948,10 +1959,10 @@ describe('pipeline simulation', () => {
     // payload, and the surface checks each against the record.
     const peer = 'checkout-flow';
     sim.run(['workunit', 'create', peer, 'feature', '--description', 'Checkout flow', '--session-log-file', sessionLog(sim, peer)]);
-    const units = sim.write(`.workflows/.cache/${peer}/planning/${peer}/cross-cutting.json`, { units: [cc] });
+    const units = sim.write(`.leeway/.cache/${peer}/planning/${peer}/cross-cutting.json`, { units: [cc] });
     assert.match(sim.render(['cross-cutting-gate', '--file', units], { expect: 'content' }), /• error-envelope/);
     // An unfinished spec is never offered as a reference (cross-cutting-context D).
-    const refs = sim.write(`.workflows/.cache/${peer}/planning/${peer}/cross-cutting-references.json`, {
+    const refs = sim.write(`.leeway/.cache/${peer}/planning/${peer}/cross-cutting-references.json`, {
       units: [{ name: cc, summary: 'Every error leaves in one envelope.' }],
     });
     sim.refuses(['render', 'cross-cutting-references', '--file', refs],
@@ -1959,7 +1970,7 @@ describe('pipeline simulation', () => {
 
     // Once the spec lands there is nothing left to warn a plan about — the
     // knowledge query surfaces it, and the plan references it instead.
-    sim.write(`.workflows/${cc}/specification/${cc}/specification.md`,
+    sim.write(`.leeway/${cc}/specification/${cc}/specification.md`,
       `# Spec — ${cc}\n\n## Envelope\n\nEvery error leaves in one envelope: a code, a message, and a trace id.\n`);
     assert.match(sim.render(['step-opening', `${cc}.specification.${cc}`, '--step', 'conclude'], { expect: 'content' }),
       /> Wrapping up\. Final assessment, sign-off, and closure — the pipeline completes here\./, 'a cross-cutting specification is terminal');
@@ -1988,17 +1999,17 @@ describe('pipeline simulation', () => {
     const shaping = carryOn(sim);
     assert.deepStrictEqual(shaping.position, { name: wu, phase: 'discovery', topic: wu });
     assert.strictEqual(shaping.skill, path.join(sim.dir, '.claude/skills/workflow-discovery/SKILL.md'));
-    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.workflows/${wu}/discovery/sessions/session-001.md`)]);
+    assert.deepStrictEqual(shaping.files, [path.join(sim.dir, `.leeway/${wu}/discovery/sessions/session-001.md`)]);
     assert.match(shaping.text, /^The conversation was just compacted\. This conversation is working in the discovery of the epic "overhaul"\. /);
 
     // Harvest: three topics in one batch, briefs pointed.
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'alpha', routing: 'research', summary: 'Alpha summary', brief_path: 'discovery/briefs/alpha.md' },
       { name: 'beta', routing: 'discussion', summary: 'Beta summary', brief_path: 'discovery/briefs/beta.md' },
       { name: 'gamma', routing: 'discussion', summary: 'Gamma summary' },
     ]);
-    sim.write(`.workflows/${wu}/discovery/briefs/alpha.md`, '# Brief — Alpha\n');
-    sim.write(`.workflows/${wu}/discovery/briefs/beta.md`, '# Brief — Beta\n');
+    sim.write(`.leeway/${wu}/discovery/briefs/alpha.md`, '# Brief — Alpha\n');
+    sim.write(`.leeway/${wu}/discovery/briefs/beta.md`, '# Brief — Beta\n');
     const batch = sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     assert.strictEqual(batch.map_total, 3);
     sim.run(['discovery-map', 'sequence', wu, 'alpha=1', 'beta=2', 'gamma=3']);
@@ -2079,14 +2090,14 @@ describe('pipeline simulation', () => {
     // Research in flight is no message of a discussion entry — the soft gate
     // is empty for a discussion start while alpha's research runs.
     sim.render(['epic-soft-gate', wu, '--action', 'start_discussion', '--topic', 'beta'], { expect: 'empty' });
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
+    sim.write(`.leeway/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['commit', wu, '-m', `research(${wu}): alpha`, '--topic', 'research/alpha']);
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
     assert.match(arriveAtEpicMenu(sim, wu, 'research'), /Research completed for "Overhaul"\./);
     // The menu's way back: the start menu, the epic still its row.
     assert.ok(backToStart(sim, epicMenu(wu, EPIC_GATEWAY.discover(sim.dir, wu)).keys)
       .some((k) => k.action === 'continue_work_unit' && k.route === `/workflow-continue-epic ${wu}`));
-    const ops = sim.write(`.workflows/.cache/${wu}/discovery/reconcile-ops.json`,
+    const ops = sim.write(`.leeway/.cache/${wu}/discovery/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.research.alpha`, fields: { reconcile_needed: true } }]);
     sim.run(['manifest', 'apply', wu, '--file', ops]);
     assert.strictEqual(sim.read(['manifest', 'get', `${wu}.research.alpha`, 'reconcile_needed']), 'true');
@@ -2105,7 +2116,7 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'pull', `${wu}.discussion.alpha`, 'dismissed_grounds',
       'Vendor pricing tiers beyond the shortlist']);
     assert.deepStrictEqual(sim.manifest(wu).phases.discussion.items.alpha.dismissed_grounds, []);
-    sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
+    sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
     arriveAtEpicMenu(sim, wu, 'discussion');
 
@@ -2143,9 +2154,9 @@ describe('pipeline simulation', () => {
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', rev1.id, '--findings', 'F1']);
     // The surfacing protocol's opt-in gate: the kind and the count off the
     // acknowledged row, the lane split from the judgment payload.
-    sim.write('.workflows/.cache/scratch/announce.json', JSON.stringify({ shape: '1 needs a call' }));
+    sim.write('.leeway/.cache/scratch/announce.json', JSON.stringify({ shape: '1 needs a call' }));
     assert.match(
-      sim.render(['finding-announce', `${wu}.discussion.beta`, '--id', rev1.id, '--file', '.workflows/.cache/scratch/announce.json'], { expect: 'content' }),
+      sim.render(['finding-announce', `${wu}.discussion.beta`, '--id', rev1.id, '--file', '.leeway/.cache/scratch/announce.json'], { expect: 'content' }),
       /Background review returned — 1 finding\(s\): 1 needs a call\./, 'the announce gate reads the row and the payload');
     assert.match(sim.render(['review-findings-gate', `${wu}.discussion.beta`], { expect: 'content' }),
       /The review left 1 finding still to walk\./, 'the drain offer counts the row\'s unsurfaced findings');
@@ -2168,17 +2179,17 @@ describe('pipeline simulation', () => {
     sim.write(revFinal.file, '# Findings\n');
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', revFinal.id, '--clean']);
-    sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
+    sim.write(`.leeway/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // The message-fold settle: a send reopens the concluded discussion, the
     // raise arms new ground, and the absorb settles that ground into the
     // review anchor — a sitting that only drained the mailbox arms no review;
     // its review duty belongs to the closing gates' final pass.
-    sim.write('.workflows/.cache/scratch/message-scratch.md',
+    sim.write('.leeway/.cache/scratch/message-scratch.md',
       '### Escalation path\n*From: alpha · discussion · 2026-07-23*\n\nWho gets paged?\n');
     const sent = sim.run(['topic', 'send', wu, 'discussion', 'beta',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'escalation-path',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'escalation-path',
       '-m', `discussion(${wu}/alpha): send message to beta`]);
     assert.strictEqual(sent.reopened, true, 'a delivery beneath a concluded discussion reopens it');
     // The cue follows the mailbox, not the status: the reopened item is
@@ -2229,23 +2240,23 @@ describe('pipeline simulation', () => {
     // self-committing transaction (engine-numbered message file, scratch
     // consumed, commit confined to message + manifest).
     sim.run(['discovery-map', 'add', wu, 'delta', 'research', '--summary', 'Delta summary', '--source', 'message:alpha']);
-    sim.write('.workflows/.cache/scratch/message-scratch.md',
+    sim.write('.leeway/.cache/scratch/message-scratch.md',
       '### Parked message\n*From: alpha · discussion · 2026-07-23*\n\nDetails.\n');
     const parked = sim.run(['topic', 'send', wu, 'research', 'delta',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'parked-message',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'parked-message',
       '-m', `discussion(${wu}/alpha): send message to delta`]);
     assert.strictEqual(parked.status, 'unstarted');
     assert.strictEqual(parked.created, true);
-    assert.strictEqual(parked.message_path, `.workflows/${wu}/research/.mailbox/delta/001-parked-message.md`);
+    assert.strictEqual(parked.message_path, path.join(sim.dir, `.leeway/${wu}/research/.mailbox/delta/001-parked-message.md`));
     assert.ok(parked.committed, 'the send self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows/.cache/scratch/message-scratch.md')), 'scratch consumed');
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway/.cache/scratch/message-scratch.md')), 'scratch consumed');
     const mailbox = sim.run(['topic', 'mailbox', wu, 'research', 'delta']);
     assert.strictEqual(mailbox.count, 1);
     assert.deepStrictEqual(mailbox.files, [parked.message_path], 'the read verb lists the delivered message');
     // The mailbox read is reachable for any topic — a session checking a
     // foreign mailbox must not manufacture a hold there. No verb has yet
     // acted on delta from this session, so the read stamps nothing.
-    assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.leeway/.cache/${wu}/research/delta/presence`)),
       'a mailbox read never creates a heartbeat');
     // Research carries no review — the refusal is on kind, before any mailbox
     // read — and the deep dive, the phase's one instrument, is never gated
@@ -2253,14 +2264,14 @@ describe('pipeline simulation', () => {
     sim.refuses(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'review'],
       /research carries no review — the deep dive is the phase's instrument/);
     sim.run(['agent', 'dispatch', wu, 'research', 'delta', '--kind', 'deep-dive', '--label', 'scope']);
-    assert.ok(fs.existsSync(path.join(sim.dir, `.workflows/.cache/${wu}/research/delta/presence`)),
+    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/.cache/${wu}/research/delta/presence`)),
       'the write-shaped verb is what claims the slot');
     // topic absorb — the send's mirror: send a second message, absorb it,
     // and the self-committing response answers what remains.
-    sim.write('.workflows/.cache/scratch/message-scratch.md',
+    sim.write('.leeway/.cache/scratch/message-scratch.md',
       '### Second parked\n*From: alpha · discussion · 2026-07-23*\n\nMore.\n');
     sim.run(['topic', 'send', wu, 'research', 'delta',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'second-parked',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'second-parked',
       '-m', `discussion(${wu}/alpha): send message to delta`]);
     // The fold enters the message on the register with the sending topic as its origin.
     const entered = sim.run(['research-threads', 'add', wu, 'delta', 'second-parked', '--question', 'More?', '--origin', 'alpha']);
@@ -2271,21 +2282,21 @@ describe('pipeline simulation', () => {
     assert.strictEqual(absorbed.absorbed, '002-second-parked.md');
     assert.strictEqual(absorbed.remaining, 1, 'the absorb answers the post-deletion count');
     assert.ok(absorbed.committed, 'absorb self-commits');
-    assert.ok(!fs.existsSync(path.join(sim.dir, `.workflows/${wu}/research/.mailbox/delta/002-second-parked.md`)), 'message file deleted');
+    assert.ok(!fs.existsSync(path.join(sim.dir, `.leeway/${wu}/research/.mailbox/delta/002-second-parked.md`)), 'message file deleted');
     // topic forward — the wrong-side repair: the raise judges the remaining
     // message owed the pair's other phase-side, the offer gate renders over
     // the live mailbox, and one transaction moves it — destination parked as a
     // fresh unstarted stub, the emptied source stub removed.
-    sim.write('.workflows/.cache/scratch/forward-offer.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/forward-offer.json', JSON.stringify({
       file: '001-parked-message.md', title: 'Parked message', reason: 'it asks delta to decide, not to explore.',
     }));
-    sim.render(['forward-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/forward-offer.json'], { expect: 'content' });
+    sim.render(['forward-offer', `${wu}.research.delta`, '--file', '.leeway/.cache/scratch/forward-offer.json'], { expect: 'content' });
     const moved = sim.run(['topic', 'forward', wu, 'research', 'discussion', 'delta',
       '--file', '001-parked-message.md', '-m', `research(${wu}/delta): forward 001-parked-message to discussion`]);
     assert.strictEqual(moved.remaining, 0);
     assert.strictEqual(moved.created, true);
     assert.strictEqual(moved.source_item_removed, true, 'the emptied research stub is removed');
-    assert.strictEqual(moved.message_path, `.workflows/${wu}/discussion/.mailbox/delta/001-parked-message.md`);
+    assert.strictEqual(moved.message_path, path.join(sim.dir, `.leeway/${wu}/discussion/.mailbox/delta/001-parked-message.md`));
     assert.ok(moved.committed, 'forward self-commits');
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta, undefined);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta.status, 'unstarted');
@@ -2296,22 +2307,22 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.delta, undefined);
     assert.strictEqual(sim.manifest(wu).phases.research.items.delta.status, 'unstarted');
     assert.deepStrictEqual(sim.run(['topic', 'mailbox', wu, 'research', 'delta']).files,
-      [`.workflows/${wu}/research/.mailbox/delta/001-parked-message.md`]);
+      [path.join(sim.dir, `.leeway/${wu}/research/.mailbox/delta/001-parked-message.md`)]);
     // The raise's display surfaces: the fresh-sitting notice, the offer gate
     // (agenda payload validated against the live mailbox), and the conclusion
     // blocker — the entry itself is read by the session, never rendered.
-    sim.write('.workflows/.cache/scratch/mail-offer.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/mail-offer.json', JSON.stringify({
       items: [{ file: '001-parked-message.md', title: 'Parked message', origin: 'alpha', from_phase: 'discussion', from_date: '2026-07-23' }],
     }));
     sim.render(['mail-announce', `${wu}.research.delta`], { expect: 'content' });
-    sim.render(['mail-offer', `${wu}.research.delta`, '--file', '.workflows/.cache/scratch/mail-offer.json'], { expect: 'content' });
+    sim.render(['mail-offer', `${wu}.research.delta`, '--file', '.leeway/.cache/scratch/mail-offer.json'], { expect: 'content' });
     sim.render(['mail-block', `${wu}.research.delta`], { expect: 'content' });
     // Judgment landing: a research-side delivery beneath beta's completed
     // discussion parks the message AND flags the discussion for
     // reconciliation — the discussion itself stays completed.
-    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Feasibility question\n*From: alpha · discussion · 2026-07-23*\n\nIs this even possible?\n');
+    sim.write('.leeway/.cache/scratch/message-scratch.md', '### Feasibility question\n*From: alpha · discussion · 2026-07-23*\n\nIs this even possible?\n');
     const flagged = sim.run(['topic', 'send', wu, 'research', 'beta',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'feasibility-question',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'feasibility-question',
       '-m', `discussion(${wu}/alpha): send message to beta`]);
     assert.strictEqual(flagged.reconcile_flagged, true);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
@@ -2343,9 +2354,9 @@ describe('pipeline simulation', () => {
     assert.ok(project.sessions.every((r) => typeof r.work_unit === 'string'), 'every row names its work unit');
     // The SessionEnd cleanup sweeps by owning session id — a peer session's
     // heartbeat survives.
-    sim.write(`.workflows/.cache/${wu}/discussion/beta/presence`,
+    sim.write(`.leeway/.cache/${wu}/discussion/beta/presence`,
       JSON.stringify({ pid: null, pid_start: null, session_id: 'sim-sess' }) + '\n');
-    sim.write(`.workflows/.cache/${wu}/discussion/gamma/presence`,
+    sim.write(`.leeway/.cache/${wu}/discussion/gamma/presence`,
       JSON.stringify({ pid: null, pid_start: null, session_id: 'peer-sess' }) + '\n');
     const swept = sim.run(['presence', 'cleanup', 'sim-sess']);
     assert.deepStrictEqual(swept.cleared, [{ work_unit: wu, phase: 'discussion', topic: 'beta' }]);
@@ -2384,7 +2395,10 @@ describe('pipeline simulation', () => {
       SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       SessionStart: ['engine.cjs" session resume'],
     }, 'the opt-in installs the session hooks on both events');
-    assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice');
+    assert.strictEqual(stateGit(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
+      'the choice is state');
+    assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
+      'and the hooks it synced are the code tree\'s');
     const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
     assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
@@ -2411,11 +2425,11 @@ describe('pipeline simulation', () => {
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research: Alpha\n\nown progress\n');
-    sim.write(`.workflows/${wu}/research/delta.md`,
+    sim.write(`.leeway/${wu}/research/alpha.md`, '# Research: Alpha\n\nown progress\n');
+    sim.write(`.leeway/${wu}/research/delta.md`,
       '# Research: Delta\n\nThe parked message, worked here. Peer dirt.\n');
     sim.run(['commit', wu, '-m', `research(${wu}/alpha): progress`, '--topic', 'research/alpha']);
-    const porcelain = git(sim.dir, ['status', '--porcelain']);
+    const porcelain = stateGit(sim.dir, ['status', '--porcelain']);
     assert.match(porcelain, /research\/delta\.md/, 'peer topic dirt survives a --topic commit');
     const headPaths = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']);
     assert.ok(!headPaths.includes('research/delta.md'), 'peer topic path absent from the --topic commit');
@@ -2447,9 +2461,9 @@ describe('pipeline simulation', () => {
     // again: the hop out of research reaches a live discussion, not only a
     // decided one.
     sim.run(['manifest', 'delete', `${wu}.discussion.beta`, 'reconcile_needed']);
-    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Cost model\n*From: alpha · discussion · 2026-07-23*\n\nWhat does it cost?\n');
+    sim.write('.leeway/.cache/scratch/message-scratch.md', '### Cost model\n*From: alpha · discussion · 2026-07-23*\n\nWhat does it cost?\n');
     const landedLive = sim.run(['topic', 'send', wu, 'research', 'beta',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'cost-model',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'cost-model',
       '-m', `discussion(${wu}/alpha): send message to beta`]);
     assert.strictEqual(landedLive.reconcile_flagged, true, 'the hop out of research flags the discussion in flight');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.beta.reconcile_needed, 'research');
@@ -2484,7 +2498,7 @@ describe('pipeline simulation', () => {
     const landedFile = path.basename(landedLive.message_path);
     sim.run(['topic', 'absorb', wu, 'research', 'beta',
       '--file', landedFile, '-m', `research(${wu}/beta): absorb ${landedFile} (from alpha)`]);
-    sim.write(`.workflows/${wu}/research/beta.md`, '# Research — Beta\n\nThe cost model.\n');
+    sim.write(`.leeway/${wu}/research/beta.md`, '# Research — Beta\n\nThe cost model.\n');
     sim.run(['commit', wu, '-m', `research(${wu}): beta`, '--topic', 'research/beta']);
     sim.run(['topic', 'complete', wu, 'research', 'beta']);
     sim.render(['wait-gate', `${wu}.discussion.beta`], { expect: 'empty' });
@@ -2509,7 +2523,7 @@ describe('pipeline simulation', () => {
     const drained = sim.run(['topic', 'start', wu, 'research', 'delta']);
     assert.strictEqual(drained.status, 'in-progress');
     assert.strictEqual(drained.created, false);
-    sim.write(`.workflows/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked message.\n');
+    sim.write(`.leeway/${wu}/research/delta.md`, '# Research — Delta\n\nDrained the parked message.\n');
     sim.run(['commit', wu, '-m', `research(${wu}): delta`, '--topic', 'research/delta']);
     // The session drains the mailbox before it concludes — a dead end never
     // buries a message.
@@ -2557,15 +2571,15 @@ describe('pipeline simulation', () => {
       /^=== DISPLAY: analysis prompt [^\n]*\n> Your discussions will be analyzed for natural groupings[\s\S]*Proceed with analysis\?/);
     // Every row landed with its summary and no description: the batch shows
     // each summary it keeps, and no line of it is edited here.
-    const summaries = sim.write(`.workflows/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
+    const summaries = sim.write(`.leeway/.cache/${wu}/discovery/summaries.json`, { summaries: {} });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'batch', '--file', summaries], { expect: 'content' }),
       /Proposed summaries for 4 topic\(s\):[\s\S]*3\. Delta {2}\(research\)\n {7}Delta summary {2}\(already populated\)/);
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'proposed', '--file', summaries], { expect: 'content' }), /Delta summary/);
-    const unsourced = sim.write(`.workflows/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
+    const unsourced = sim.write(`.leeway/.cache/${wu}/discovery/unsourced.json`, { names: ['delta'] });
     assert.match(sim.render(['summary-backfill-gate', wu, '--variant', 'unsourced', '--file', unsourced],
       { expect: 'content' }), /1 topic\(s\) have no source file to draft from:/);
     // The analysis reconciles its grouping into a proposed item.
-    const grouping = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+    const grouping = sim.write(`.leeway/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { status: 'proposed', 'sources.alpha.status': 'pending' } }]);
     sim.run(['manifest', 'apply', wu, '--file', grouping]);
     // The reconcile moved the scenario, so the analysis exit routes on a
@@ -2577,7 +2591,7 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'alpha']).incorporations, []);
     sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
-    sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
+    sim.write(`.leeway/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
     sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'alpha']).incorporations, []);
     arriveAtEpicMenu(sim, wu, 'specification');
@@ -2589,7 +2603,7 @@ describe('pipeline simulation', () => {
     // completed above, so `manifest exists` answers true and the flag clears
     // alongside the birth orders.
     assert.strictEqual(sim.read(['manifest', 'exists', `${wu}.specification`, 'build_order_stale']), 'true');
-    const birthOps = sim.write(`.workflows/.cache/${wu}/specification/unify-ops.json`,
+    const birthOps = sim.write(`.leeway/.cache/${wu}/specification/unify-ops.json`,
       [{ op: 'set', path: `${wu}.specification.unified`,
         fields: { status: 'proposed', 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending', order: 1 } },
        { op: 'set', path: `${wu}.specification.alpha`, fields: { order: 2 } },
@@ -2598,16 +2612,17 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.specification.items.unified.order, 1);
     assert.strictEqual(sim.manifest(wu).phases.specification.build_order_stale, undefined,
       'the reconcile is the sequencing — its apply clears the flag');
-    assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--unify'], { expect: 'content' }),
-      /Existing specifications to incorporate:\n {2}• \.workflows\/[^/]+\/specification\/alpha\/specification\.md →\n {4}will be superseded\n/);
+    const superseded = bulletRow(`${path.join(sim.dir, `.leeway/${wu}/specification/alpha/specification.md`)} → will be superseded`).join('\n');
+    assert.ok(sim.render(['spec-confirm-gate', `${wu}.specification.unified`, '--unify'], { expect: 'content' })
+      .includes(`Existing specifications to incorporate:\n${superseded}\n`), 'the incorporated specification is named whole');
     handoff(sim, `/workflow-specification-process epic ${wu} unified`);
     // The start records what it incorporates, and the session reads it back
     // at its setup — the same answer the confirm drew.
     sim.run(['topic', 'start', wu, 'specification', 'unified']);
     assert.deepStrictEqual(sim.manifest(wu).phases.specification.items.unified.incorporates, ['alpha']);
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'unified']).incorporations,
-      [{ topic: 'alpha', path: `.workflows/${wu}/specification/alpha/specification.md`, covers: ['alpha'] }]);
-    const regroupOps = sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+      [{ topic: 'alpha', path: path.join(sim.dir, `.leeway/${wu}/specification/alpha/specification.md`), covers: ['alpha'] }]);
+    const regroupOps = sim.write(`.leeway/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.alpha`, fields: { order: 1 } },
        { op: 'set', path: `${wu}.specification.unified`, fields: { order: 2 } }]);
     sim.run(['manifest', 'apply', wu, '--file', regroupOps]);
@@ -2617,7 +2632,7 @@ describe('pipeline simulation', () => {
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^scenario: specs-menu$/m);
     sim.run(['manifest', 'set', `${wu}.specification.unified`,
       'sources.alpha.status=incorporated', 'sources.beta.status=incorporated']);
-    sim.write(`.workflows/${wu}/specification/unified/specification.md`, '# Spec — Unified\n');
+    sim.write(`.leeway/${wu}/specification/unified/specification.md`, '# Spec — Unified\n');
     sim.run(['commit', wu, '-m', `spec(${wu}): unified`, '--topic', 'specification/unified']);
     sim.run(['topic', 'complete', wu, 'specification', 'unified']);
     // Completion supersedes each specification the start incorporated, read
@@ -2782,7 +2797,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['spec-review-gate', `${wu}.specification.unified`, '--variant', 'reloop'], { expect: 'content' }),
       /Run another review cycle\?/);
     // The epic's cross-cutting assessment above its confirm, from a judgment payload.
-    const assessment = sim.write(`.workflows/.cache/${wu}/specification/unified/assessment.json`,
+    const assessment = sim.write(`.leeway/.cache/${wu}/specification/unified/assessment.json`,
       { cross_cutting: false, rationale: 'It builds the unified pipeline.' });
     assert.match(sim.render(['spec-completion-gate', `${wu}.specification.unified`, '--variant', 'assessment', '--file', assessment], { expect: 'content' }),
       /This specification is directly plannable[\s\S]*Confirm this assessment\?/);
@@ -2794,13 +2809,13 @@ describe('pipeline simulation', () => {
       /address must be <work_unit>\.specification\.<topic>/);
     // The escalation diagnostic renders from a judgment payload; the counts,
     // growth arithmetic, and advisory flags are the surface's own.
-    sim.write('.workflows/.cache/scratch/convergence.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/convergence.json', JSON.stringify({
       loop_type: 'spec-review', latest_cycle: 5, trend: 'converging',
       resolved: [], recurring: [], new: [{ title: 'Sweep table omits a file' }],
       stream_counts: [{ label: 'claims', count: 0 }, { label: 'input review', count: 1 }, { label: 'gap analysis', count: 0 }],
       review_baseline_words: 6835, live_words: 13637,
     }));
-    const diagnostic = sim.render(['convergence-diagnostic', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/convergence.json'], { expect: 'content' });
+    const diagnostic = sim.render(['convergence-diagnostic', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/convergence.json'], { expect: 'content' });
     assert.match(diagnostic, /\(\+6802 net across review\)/);
     assert.match(diagnostic.replace(/\n\s+/g, ' '), /growth from review-authored rules is the review deciding for the user/,
       'the growth flag names review-authored growth');
@@ -2812,20 +2827,20 @@ describe('pipeline simulation', () => {
     // with them, render the worklist. A staging value the renderer rejects
     // would break here, not on the user's screen.
     const cycle = JSON.parse(sim.read(['manifest', 'get', `${wu}.review.unified`, 'staging.c1']));
-    sim.write('.workflows/.cache/scratch/tasks-overview.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/tasks-overview.json', JSON.stringify({
       label: 'Review synthesis cycle 1',
       tasks: Object.keys(cycle.tasks).map((n) => ({ title: `Task ${n}`, severity: 'Important', status: cycle.tasks[n] })),
     }));
-    const overview = sim.render(['tasks-overview', `${wu}.review.unified`, '--file', '.workflows/.cache/scratch/tasks-overview.json'], { expect: 'content' });
+    const overview = sim.render(['tasks-overview', `${wu}.review.unified`, '--file', '.leeway/.cache/scratch/tasks-overview.json'], { expect: 'content' });
     assert.match(overview, /1 remaining/, 'the approved row moves the remaining count');
-    sim.write('.workflows/.cache/scratch/findings-summary.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/findings-summary.json', JSON.stringify({
       review_label: 'Integrity Review',
       items: [
         { title: 'Missing Outcome field', tag: 'Minor', summary: 'Task 1-1 lacks the Outcome field.', status: 'approved' },
         { title: 'Orphaned dependency', tag: 'Minor', summary: 'Task 2-3 depends on a removed task.' },
       ],
     }));
-    const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/findings-summary.json'], { expect: 'content' });
+    const summary = sim.render(['findings-summary', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/findings-summary.json'], { expect: 'content' });
     assert.match(summary, /~~Missing Outcome field~~/, 'the resolved finding renders struck');
     assert.match(summary, /1 remaining/, 'the pending finding moves the remaining count');
     // A choice walks alone, its sides recommended-first.
@@ -2834,12 +2849,12 @@ describe('pipeline simulation', () => {
       problem: 'A declined shopper sees nothing.',
       options: [{ summary: 'Show the bank\'s reason' }, { summary: 'Show a generic message', recommended: true }],
     };
-    sim.write('.workflows/.cache/scratch/spec-choice.json', JSON.stringify(choice));
-    sim.render(['finding', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/spec-choice.json'], { expect: 'content' });
+    sim.write('.leeway/.cache/scratch/spec-choice.json', JSON.stringify(choice));
+    sim.render(['finding', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/spec-choice.json'], { expect: 'content' });
     // The specification's calls batch on the settled lane — gated it asks
     // once for the screen and offers the flip; under auto the same screen
     // lands as a display, the one gate that never stops.
-    sim.write('.workflows/.cache/scratch/finding-batch.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/finding-batch.json', JSON.stringify({
       lane: 'settled',
       remaining: 0,
       items: [
@@ -2847,17 +2862,17 @@ describe('pipeline simulation', () => {
         { title: 'An empty bare value writes a newline', detail: 'The output contract leans this way; zero bytes also fits the record.' },
       ],
     }));
-    const settledBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
+    const settledBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/finding-batch.json'], { expect: 'content' });
     assert.match(settledBatch, /DISPLAY: finding batch/, 'the settled lane renders its screen at a specification address');
     assert.match(settledBatch, /`◆ Document them\?`/, 'the batch asks the call lane\'s question');
     assert.match(settledBatch, /`a\/auto`/, 'the screen offers the flip that retires the rest');
-    sim.write('.workflows/.cache/scratch/finding-batch-decide.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/finding-batch-decide.json', JSON.stringify({
       lane: 'decide', items: [{ title: 'A', detail: 'a.' }],
     }));
-    sim.refuses(['render', 'finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch-decide.json'],
+    sim.refuses(['render', 'finding-batch', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/finding-batch-decide.json'],
       /lane "decide" is not served at the specification phase/);
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'finding_gate_mode', 'auto']);
-    const autoBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.workflows/.cache/scratch/finding-batch.json'], { expect: 'content' });
+    const autoBatch = sim.render(['finding-batch', `${wu}.specification.unified`, '--file', '.leeway/.cache/scratch/finding-batch.json'], { expect: 'content' });
     assert.match(autoBatch, /DISPLAY: finding batch auto-approved/, 'auto lands the screen as a display');
     assert.match(autoBatch, /Documenting all 2 \[auto\]\./);
     assert.ok(!autoBatch.includes('MENU'), 'auto means auto — the batch never stops');
@@ -2932,11 +2947,11 @@ describe('pipeline simulation', () => {
     // The gate itself renders from the staged subtree — gated mode answers
     // with the menu, and a candidate the manifest no longer marks pending
     // never renders at all.
-    sim.write('.workflows/.cache/scratch/candidate.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/candidate.json', JSON.stringify({
       name: 'epsilon', routing: 'discussion', summary: 'Epsilon summary',
     }));
     assert.match(
-      sim.render(['candidate-gate', wu, '--file', '.workflows/.cache/scratch/candidate.json'], { expect: 'content' }),
+      sim.render(['candidate-gate', wu, '--file', '.leeway/.cache/scratch/candidate.json'], { expect: 'content' }),
       /Add this topic to the map\?/, 'the gated candidate stops for a decision');
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.epsilon.status', 'approved']);
     sim.run(['manifest', 'set', `${wu}.discovery`, 'analysis_staging.discovery-gap-analysis.candidates.zeta.status', 'skipped']);
@@ -2949,7 +2964,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(epsilon.source, 'gap-analysis');
     assert.strictEqual(epsilon.brief_path, 'discovery/briefs/epsilon.md',
       'an approved gap candidate carries its brief pointer, as a harvested topic does');
-    sim.write(`.workflows/${wu}/discovery/briefs/epsilon.md`, [
+    sim.write(`.leeway/${wu}/discovery/briefs/epsilon.md`, [
       '# Discovery Brief — Epsilon',
       '',
       'Drawn from the discovery-gap analysis, read out of alpha.md, beta.md.',
@@ -2985,22 +3000,22 @@ describe('pipeline simulation', () => {
     // offered three homes on an epic, and the `t/topic` pick opens one on
     // the map, parks the gap on it, and joins it to this specification's
     // sources — which then waits for it exactly as for a reopened source.
-    sim.write('.workflows/.cache/scratch/gap-route.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/gap-route.json', JSON.stringify({
       lane: 'review', doc: 'refund-window', title: 'The refund window is undecided',
       context: 'No source bounds how long a refund can be claimed.',
     }));
     const gapGate = sim.render(['incoherence-gate', `${wu}.specification.unified`,
-      '--file', '.workflows/.cache/scratch/gap-route.json', '--variant', 'gap-route'], { expect: 'content' });
+      '--file', '.leeway/.cache/scratch/gap-route.json', '--variant', 'gap-route'], { expect: 'content' });
     assert.match(gapGate, /`◆ Reopen it\?`/, 'an epic gap is a fork between three homes, not an acknowledgement');
     assert.match(gapGate, /`y\/yes`.+→ Reopen "refund-window" with the gap and pause here/);
     assert.match(gapGate, /`t\/topic`/);
     assert.match(gapGate, /`r\/roadmap`/);
-    sim.write('.workflows/.cache/scratch/message-scratch.md',
+    sim.write('.leeway/.cache/scratch/message-scratch.md',
       '### Refund window\n*From: unified · specification · 2026-07-23*\n\nHow long can a refund be claimed?\n');
     sim.run(['discovery-map', 'add', wu, 'refund-window', 'discussion',
       '--summary', 'How long a refund can be claimed', '--source', 'message:unified']);
     const gapParked = sim.run(['topic', 'send', wu, 'discussion', 'refund-window',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'refund-window',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'refund-window',
       '-m', `spec(${wu}/unified): send the refund-window gap to its own topic`]);
     assert.strictEqual(gapParked.status, 'unstarted');
     sim.run(['manifest', 'set', `${wu}.specification.unified`, 'sources.refund-window.status', 'pending']);
@@ -3023,11 +3038,11 @@ describe('pipeline simulation', () => {
     const wu = 'wrapup';
     mappedEpic(sim, wu, ['alpha']);
     sim.run(['topic', 'start', wu, 'discussion', 'alpha']);
-    sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
+    sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
     sim.run(['topic', 'start', wu, 'specification', 'alpha']);
     sim.run(['manifest', 'set', `${wu}.specification.alpha`, 'sources.alpha.status', 'incorporated']);
-    sim.write(`.workflows/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
+    sim.write(`.leeway/${wu}/specification/alpha/specification.md`, '# Spec — Alpha\n');
     sim.run(['topic', 'complete', wu, 'specification', 'alpha']);
     sim.run(['build-order', 'sequence', wu, 'alpha=1']);
     sim.run(['topic', 'start', wu, 'planning', 'alpha']);
@@ -3057,7 +3072,7 @@ describe('pipeline simulation', () => {
   it('epic topic cancel: one unit per stage, a later stage locking the earlier, waits released before the holders close', () => {
     const wu = 'cuts';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Cancel units', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'export', routing: 'discussion', summary: 'Data export' },
       { name: 'auth', routing: 'discussion', summary: 'Auth flow' },
       { name: 'billing', routing: 'discussion', summary: 'Billing' },
@@ -3099,19 +3114,19 @@ describe('pipeline simulation', () => {
     // wait released first, so the flag lands on the holder while it is
     // still live.
     sim.run(['topic', 'start', wu, 'discussion', 'auth']);
-    sim.write(`.workflows/${wu}/discussion/auth.md`, '# Discussion — Auth\n');
+    sim.write(`.leeway/${wu}/discussion/auth.md`, '# Discussion — Auth\n');
     const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion',
-      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
+      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
-    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Token lifetime\n*From: billing · discussion · d*\n\nHow long?\n');
-    sim.run(['topic', 'send', wu, 'research', 'auth', '--content', '.workflows/.cache/scratch/message-scratch.md',
+    sim.write('.leeway/.cache/scratch/message-scratch.md', '### Token lifetime\n*From: billing · discussion · d*\n\nHow long?\n');
+    sim.run(['topic', 'send', wu, 'research', 'auth', '--content', '.leeway/.cache/scratch/message-scratch.md',
       '--slug', 'token-lifetime', '-m', `discussion(${wu}/billing): send message to auth`]);
     // The landing's hop flagged the discussion; the session's re-entry
     // cleared it (prose-owned) — so the cancel's own release is the flag
     // that lands next.
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.auth.reconcile_needed, 'research');
     sim.run(['manifest', 'delete', `${wu}.discussion.auth`, 'reconcile_needed']);
-    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/specification/grouping-ops.json`,
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/grouping-ops.json`,
       [{ op: 'set', path: `${wu}.specification.grouping`, fields: { status: 'proposed', sources: { auth: { status: 'pending' } } } }])]);
     assert.deepStrictEqual(locked(), [], 'a proposed grouping never locks');
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.auth`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
@@ -3153,7 +3168,7 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['wait-gate', `${wu}.discussion.auth`], { expect: 'content' }), /Work the research first — concluding it releases its wait/);
     sim.run(['topic', 'start', wu, 'research', 'auth']);
     sim.run(['topic', 'absorb', wu, 'research', 'auth', '--file', '001-token-lifetime.md', '-m', `research(${wu}/auth): absorb 001-token-lifetime (from billing)`]);
-    sim.write(`.workflows/${wu}/research/auth.md`, '# Research — Auth\n');
+    sim.write(`.leeway/${wu}/research/auth.md`, '# Research — Auth\n');
     sim.run(['topic', 'complete', wu, 'research', 'auth']);
     sim.run(['topic', 'complete', wu, 'discussion', 'auth']);
 
@@ -3161,11 +3176,11 @@ describe('pipeline simulation', () => {
     // planned, and under implementation.
     for (const topic of ['billing', 'roles']) {
       sim.run(['topic', 'start', wu, 'discussion', topic]);
-      sim.write(`.workflows/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
+      sim.write(`.leeway/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
       sim.run(['topic', 'complete', wu, 'discussion', topic]);
       sim.run(['topic', 'start', wu, 'specification', topic]);
       sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
-      sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
+      sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
       sim.run(['topic', 'complete', wu, 'specification', topic]);
       sim.run(['topic', 'start', wu, 'planning', topic]);
       sim.run(['topic', 'complete', wu, 'planning', topic]);
@@ -3210,15 +3225,15 @@ describe('pipeline simulation', () => {
     // The cancelled key stays reserved: a grouping lands under a new name
     // and takes the freed source; under the cancelled name it is refused
     // with nothing written, and so is a delete of the cancelled item.
-    const manifestBytes = () => fs.readFileSync(path.join(sim.dir, '.workflows', wu, 'manifest.json'), 'utf8');
-    const groupingOps = (name, status) => sim.write(`.workflows/.cache/${wu}/specification/${name}-${status}-ops.json`,
+    const manifestBytes = () => fs.readFileSync(path.join(sim.dir, '.leeway', wu, 'manifest.json'), 'utf8');
+    const groupingOps = (name, status) => sim.write(`.leeway/.cache/${wu}/specification/${name}-${status}-ops.json`,
       [{ op: 'set', path: `${wu}.specification.${name}`, fields: { status, sources: { roles: { status: 'pending' } } } }]);
     sim.run(['manifest', 'apply', wu, '--file', groupingOps('roles-v2', 'proposed')]);
     assert.ok(!detail().unaccounted_discussions.includes('roles'), 'the new grouping accounts for the freed source');
     const reserved = manifestBytes();
     sim.refuses(['manifest', 'apply', wu, '--file', groupingOps('roles', 'proposed')],
       /^specification item "roles" is cancelled — reactivate it instead \(engine topic reactivate cuts specification roles\)$/);
-    sim.refuses(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/specification/drop-ops.json`,
+    sim.refuses(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/drop-ops.json`,
       [{ op: 'delete', path: `${wu}.specification`, field: 'items.roles' }])], /specification item "roles" is cancelled — reactivate it instead/);
     sim.refuses(['manifest', 'delete', `${wu}.specification.roles`, 'previous_order'], /specification item "roles" is cancelled — reactivate it instead/);
     assert.strictEqual(manifestBytes(), reserved, 'the refusals wrote nothing');
@@ -3299,12 +3314,12 @@ describe('pipeline simulation', () => {
     mappedEpic(sim, wu, ['alpha', 'beta', 'gamma']);
     for (const name of ['alpha', 'beta', 'gamma']) {
       sim.run(['topic', 'start', wu, 'discussion', name]);
-      sim.write(`.workflows/${wu}/discussion/${name}.md`, `# Discussion — ${name}\n`);
+      sim.write(`.leeway/${wu}/discussion/${name}.md`, `# Discussion — ${name}\n`);
       sim.run(['topic', 'complete', wu, 'discussion', name]);
     }
     // The analysis reconciles one grouping over all three, then stamps the
     // cache over the discussion files.
-    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.whole`, fields: {
         status: 'proposed', 'sources.alpha.status': 'pending', 'sources.beta.status': 'pending', 'sources.gamma.status': 'pending',
       } }])]);
@@ -3328,7 +3343,7 @@ describe('pipeline simulation', () => {
     mappedEpic(sim, wu, ['ranking', 'synonyms', 'stray']);
     for (const name of ['ranking', 'synonyms', 'stray']) {
       sim.run(['topic', 'start', wu, 'discussion', name]);
-      sim.write(`.workflows/${wu}/discussion/${name}.md`, `# Discussion — ${name}\n`);
+      sim.write(`.leeway/${wu}/discussion/${name}.md`, `# Discussion — ${name}\n`);
       sim.run(['topic', 'complete', wu, 'discussion', name]);
     }
     // The `ranking` specification started from its own grouping and
@@ -3338,9 +3353,9 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', `${wu}.specification.ranking`, 'status=proposed', 'sources.ranking.status=pending', 'sources.stray.status=pending']);
     sim.run(['topic', 'start', wu, 'specification', 'ranking']);
     sim.run(['manifest', 'set', `${wu}.specification.ranking`, 'sources.ranking.status=incorporated', 'sources.stray.status=incorporated']);
-    sim.write(`.workflows/${wu}/specification/ranking/specification.md`, '# Spec — Ranking\n');
+    sim.write(`.leeway/${wu}/specification/ranking/specification.md`, '# Spec — Ranking\n');
     sim.run(['topic', 'complete', wu, 'specification', 'ranking']);
-    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.workflows/.cache/${wu}/specification/reconcile-ops.json`,
+    sim.run(['manifest', 'apply', wu, '--file', sim.write(`.leeway/.cache/${wu}/specification/reconcile-ops.json`,
       [{ op: 'set', path: `${wu}.specification.search`, fields: {
         status: 'proposed', 'sources.ranking.status': 'pending', 'sources.synonyms.status': 'pending',
       } }])]);
@@ -3349,13 +3364,13 @@ describe('pipeline simulation', () => {
     // The epic menu's own start row reaches the same confirm the grouping
     // menu's pick does: the start incorporates ranking, so it renders.
     assert.match(sim.render(['spec-confirm-gate', `${wu}.specification.search`], { expect: 'content' }),
-      /Sources:\n {2}• ranking \(has individual spec — will be incorporated\)\n {2}• synonyms\n[\s\S]*After completion:\n {2}\.workflows\/merge\/specification\/ranking\/specification\.md → marked as superseded/);
+      new RegExp(`Sources:\\n {2}• ranking \\(has individual spec — will be incorporated\\)\\n {2}• synonyms\\n[\\s\\S]*After completion:\\n {2}${literal(path.join(sim.dir, '.leeway/merge/specification/ranking/specification.md'))} → marked as superseded`));
     epicPick(sim, wu, 'start_specification', 'search');
 
     // The start records what it takes in; the session reads it at setup, and
     // a resume reads it the same — ranking, never the other way round.
     sim.run(['topic', 'start', wu, 'specification', 'search']);
-    const RANKING = { topic: 'ranking', path: `.workflows/${wu}/specification/ranking/specification.md`, covers: ['ranking'] };
+    const RANKING = { topic: 'ranking', path: path.join(sim.dir, `.leeway/${wu}/specification/ranking/specification.md`), covers: ['ranking'] };
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'search']).incorporations, [RANKING]);
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'ranking']).incorporations, []);
     // Mid-window both read started and share a discussion; a continue of
@@ -3365,7 +3380,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['topic', 'incorporations', wu, 'search']).incorporations, [RANKING]);
 
     sim.run(['manifest', 'set', `${wu}.specification.search`, 'sources.ranking.status=incorporated', 'sources.synonyms.status=incorporated']);
-    sim.write(`.workflows/${wu}/specification/search/specification.md`, '# Spec — Search\n');
+    sim.write(`.leeway/${wu}/specification/search/specification.md`, '# Spec — Search\n');
     sim.run(['commit', wu, '-m', `spec(${wu}): search`, '--topic', 'specification/search']);
     sim.run(['topic', 'complete', wu, 'specification', 'search']);
     for (const { topic } of sim.run(['topic', 'incorporations', wu, 'search']).incorporations) {
@@ -3385,7 +3400,7 @@ describe('pipeline simulation', () => {
     const wu = 'solo';
     mappedEpic(sim, wu, ['checkout']);
     sim.run(['topic', 'start', wu, 'discussion', 'checkout']);
-    sim.write(`.workflows/${wu}/discussion/checkout.md`, '# Discussion — checkout\n');
+    sim.write(`.leeway/${wu}/discussion/checkout.md`, '# Discussion — checkout\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
     assert.strictEqual(epicKey(sim, wu, 'analyze_discussions').route, null);
     const single = (expect) => sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`, '--single'], { expect });
@@ -3398,7 +3413,7 @@ describe('pipeline simulation', () => {
     assert.match(scenario, /^single_variant: no-spec$/m);
     assert.match(scenario, /^single_discussion: checkout$/m);
     assert.match(scenario, new RegExp(`^proceed_name: ${wu}$`, 'm'));
-    assert.match(single('content'), /Creating specification: Solo\n\nSources:\n {2}• checkout\n\nOutput: \.workflows\/solo\/specification\/solo\/specification\.md\n[\s\S]*MENU: spec confirm gate/);
+    assert.match(single('content'), new RegExp(`Creating specification: Solo\\n\\nSources:\\n {2}• checkout\\n\\nOutput: ${literal(path.join(sim.dir, '.leeway/solo/specification/solo/specification.md'))}\\n[\\s\\S]*MENU: spec confirm gate`));
     assert.strictEqual(sim.manifest(wu).phases.specification, undefined, 'the confirm writes nothing — a decline leaves no grouping');
     sim.refuses(['render', 'spec-confirm-gate', `${wu}.specification.${wu}`], /no specification "solo" — the confirm reads the item the pick names/);
 
@@ -3410,21 +3425,22 @@ describe('pipeline simulation', () => {
     handoff(sim, `/workflow-specification-process epic ${wu} ${wu}`);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['manifest', 'set', `${wu}.specification.${wu}`, 'sources.checkout.status', 'incorporated']);
-    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, '# Spec — Solo\n');
+    sim.write(`.leeway/${wu}/specification/${wu}/specification.md`, '# Spec — Solo\n');
     sim.run(['topic', 'complete', wu, 'specification', wu]);
 
     // The covering specification concluded: the path proceeds with it as a
     // refine, which still confirms — the menu opening on where a change of
     // decision belongs.
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^single_variant: has-spec$/m);
-    assert.match(single('content'), /Refining specification: Solo\n\nExisting: \.workflows\/solo\/specification\/solo\/specification\.md \[completed\]\n\nAll sources extracted:\n {2}• checkout\n[\s\S]*A refinement is for factual corrections and sharpening\./);
+    const soloSpec = literal(path.join(sim.dir, '.leeway/solo/specification/solo/specification.md'));
+    assert.match(single('content'), new RegExp(`Refining specification: Solo\\n\\nExisting: ${soloSpec} \\[completed\\]\\n\\nAll sources extracted:\\n {2}• checkout\\n[\\s\\S]*A refinement is for factual corrections and sharpening\\.`));
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
 
     // A re-decided discussion stales its row: the path proceeds as a
     // continue, confirming the reconcile it carries.
     sim.run(['topic', 'reopen', wu, 'discussion', 'checkout']);
     sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
-    assert.match(single('content'), /Continuing specification: Solo\n\nExisting: \.workflows\/solo\/specification\/solo\/specification\.md \[completed\]\n\nSources re-decided since extraction \(reconcile\):\n {2}• checkout \[stale\]\n/);
+    assert.match(single('content'), new RegExp(`Continuing specification: Solo\\n\\nExisting: ${soloSpec} \\[completed\\]\\n\\nSources re-decided since extraction \\(reconcile\\):\\n {2}• checkout \\[stale\\]\\n`));
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`], { expect: 'empty' });
     handoff(sim, `/workflow-specification-process epic ${wu} ${wu}`);
   });
@@ -3433,7 +3449,7 @@ describe('pipeline simulation', () => {
     const wu = 'unified';
     mappedEpic(sim, wu, ['checkout']);
     sim.run(['topic', 'start', wu, 'discussion', 'checkout']);
-    sim.write(`.workflows/${wu}/discussion/checkout.md`, '# Discussion — checkout\n');
+    sim.write(`.leeway/${wu}/discussion/checkout.md`, '# Discussion — checkout\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'checkout']);
     assert.match(EPIC_GATEWAY.specScenario(sim.dir, wu), /^proceed_name: unified$/m);
     sim.render(['spec-confirm-gate', `${wu}.specification.${wu}`, '--single'], { expect: 'content' });
@@ -3450,7 +3466,7 @@ describe('pipeline simulation', () => {
   it('epic topic postpone: the topic leaves for the roadmap, the roadmap owns it, and the pull brings it back', () => {
     const wu = 'later';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Postpone units', '--session-log-file', sessionLog(sim, wu)]);
-    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    sim.run(['discovery-map', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'fresh-one', routing: 'discussion', summary: 'Nothing started' },
       { name: 'researched', routing: 'research', summary: 'Research landed' },
       { name: 'decided', routing: 'discussion', summary: 'Discussion concluded' },
@@ -3464,11 +3480,11 @@ describe('pipeline simulation', () => {
     const menuActions = () => epicMenu(wu, detail()).keys.map((k) => k.action);
 
     sim.run(['topic', 'start', wu, 'research', 'researched']);
-    sim.write(`.workflows/${wu}/research/researched.md`, '# Research — researched\n');
+    sim.write(`.leeway/${wu}/research/researched.md`, '# Research — researched\n');
     sim.run(['topic', 'complete', wu, 'research', 'researched']);
     for (const topic of ['decided', 'specd']) {
       sim.run(['topic', 'start', wu, 'discussion', topic]);
-      sim.write(`.workflows/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
+      sim.write(`.leeway/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
       sim.run(['topic', 'complete', wu, 'discussion', topic]);
     }
     sim.run(['topic', 'start', wu, 'specification', 'specd']);
@@ -3513,15 +3529,15 @@ describe('pipeline simulation', () => {
     assert.ok(!d.cancellable.some((u) => u.name === 'fresh-one'), 'a postponed unit leaves the cancel list too');
     // The gap analysis reads completed artifacts: the postponed research and
     // the postponed discussion both drop out of its input set.
-    assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.workflows'), 'gap-analysis')
+    assert.deepStrictEqual(derivations.collectAnalysisInputs(sim.manifest(wu), path.join(sim.dir, '.leeway'), 'gap-analysis')
       .map((f) => path.basename(f)), ['specd.md']);
 
     // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);
     sim.refuses(['topic', 'reactivate', wu, 'discovery', 'decided'], /"decided" is postponed, not cancelled — pull it forward from the roadmap instead/);
-    sim.write('.workflows/.cache/scratch/message-scratch.md', '### Mail that waits\n*From: specd · discussion · d*\n\nStill?\n');
+    sim.write('.leeway/.cache/scratch/message-scratch.md', '### Mail that waits\n*From: specd · discussion · d*\n\nStill?\n');
     const mail = sim.run(['topic', 'send', wu, 'discussion', 'decided',
-      '--content', '.workflows/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits',
+      '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits',
       '-m', `discussion(${wu}/specd): send message to decided`]);
     assert.strictEqual(mail.status, 'postponed', 'a message for a topic that waits is mail that waits with it');
 
@@ -3629,7 +3645,7 @@ describe('pipeline simulation', () => {
     const wu = 'cutsplan';
     mappedEpic(sim, wu, ['gamma']);
     sim.run(['topic', 'start', wu, 'specification', 'gamma']);
-    sim.write(`.workflows/${wu}/specification/gamma/specification.md`, '# Spec — gamma\n');
+    sim.write(`.leeway/${wu}/specification/gamma/specification.md`, '# Spec — gamma\n');
     // A plan is born on a settled record alone, so the specification
     // concludes before the plan opens beneath it.
     sim.run(['topic', 'complete', wu, 'specification', 'gamma']);
@@ -3651,11 +3667,11 @@ describe('pipeline simulation', () => {
     /** Walk a topic Discovery → a concluded specification extracting its discussion. */
     const settle = (topic) => {
       sim.run(['topic', 'start', wu, 'discussion', topic]);
-      sim.write(`.workflows/${wu}/discussion/${topic}.md`, `# ${topic}\n`);
+      sim.write(`.leeway/${wu}/discussion/${topic}.md`, `# ${topic}\n`);
       sim.run(['topic', 'complete', wu, 'discussion', topic]);
       sim.run(['topic', 'start', wu, 'specification', topic]);
       sim.run(['manifest', 'set', `${wu}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
-      sim.write(`.workflows/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
+      sim.write(`.leeway/${wu}/specification/${topic}/specification.md`, `# Spec — ${topic}\n`);
       sim.run(['topic', 'complete', wu, 'specification', topic]);
     };
     settle('billing');
@@ -3700,7 +3716,7 @@ describe('pipeline simulation', () => {
     }
     sim.render(['entry-gate', `${wu}.planning.billing`], { expect: 'empty' });
     assert.deepStrictEqual(planRows(), ['billing', 'fees'], 'the settled record returns both rows');
-    sim.write(`.workflows/${wu}/planning/billing/planning.md`, '# Plan\n');
+    sim.write(`.leeway/${wu}/planning/billing/planning.md`, '# Plan\n');
     assert.strictEqual(sim.run(['topic', 'complete', wu, 'planning', 'billing']).status, 'completed');
     sim.run(['topic', 'start', wu, 'planning', 'fees']);
   });
@@ -3710,12 +3726,12 @@ describe('pipeline simulation', () => {
     mappedEpic(sim, wu, ['shared']);
     // One discussion, two specifications extracting it, a plan on one.
     sim.run(['topic', 'start', wu, 'discussion', 'shared']);
-    sim.write(`.workflows/${wu}/discussion/shared.md`, '# Shared\n');
+    sim.write(`.leeway/${wu}/discussion/shared.md`, '# Shared\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'shared']);
     for (const spec of ['alpha-spec', 'beta-spec']) {
       sim.run(['topic', 'start', wu, 'specification', spec]);
       sim.run(['manifest', 'set', `${wu}.specification.${spec}`, 'sources.shared.status', 'incorporated']);
-      sim.write(`.workflows/${wu}/specification/${spec}/specification.md`, `# Spec — ${spec}\n`);
+      sim.write(`.leeway/${wu}/specification/${spec}/specification.md`, `# Spec — ${spec}\n`);
       sim.run(['topic', 'complete', wu, 'specification', spec]);
     }
     sim.run(['topic', 'start', wu, 'planning', 'alpha-spec']);
@@ -3743,18 +3759,18 @@ describe('pipeline simulation', () => {
     // stale, the plan's own specification is spared because the planner
     // re-aligned it — so the plan is never held — and the landing commits
     // over the discussion's topic.
-    const amended = `.workflows/${wu}/discussion/shared.md`;
+    const amended = `.leeway/${wu}/discussion/shared.md`;
     sim.write(amended, '# Shared\n\n## Retention\n\nRecords are kept for a year.\n');
     const reindexed = sim.engine(['knowledge', 'index', amended]);
     assert.strictEqual(reindexed.code, 0, reindexed.stderr);
-    assert.match(reindexed.stdout, new RegExp(`^Indexed \\d+ chunks from ${amended.replace(/\./g, '\\.')}\\n$`));
+    assert.match(reindexed.stdout, new RegExp(`^Indexed \\d+ chunks from ${literal(path.join(sim.dir, amended))}\\n$`));
     const staled = sim.run(['sources', 'stale', wu, 'shared', '--except', 'alpha-spec']);
     assert.deepStrictEqual(staled.staled, ['beta-spec']);
     sim.run(['commit', wu, '-m', `discussion(${wu}/shared): records are kept for a year`, '--topic', 'discussion/shared', '--sweep']);
     assert.strictEqual(sim.manifest(wu).phases.specification.items['alpha-spec'].sources.shared.status, 'incorporated');
     sim.render(['entry-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
     sim.render(['wait-gate', `${wu}.planning.alpha-spec`], { expect: 'empty' });
-    sim.write(`.workflows/${wu}/planning/alpha-spec/planning.md`, '# Plan\n');
+    sim.write(`.leeway/${wu}/planning/alpha-spec/planning.md`, '# Plan\n');
     assert.strictEqual(sim.run(['topic', 'complete', wu, 'planning', 'alpha-spec']).status, 'completed');
   });
 
@@ -3787,7 +3803,7 @@ describe('pipeline simulation', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Revisit flow', '--session-log-file', log]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion\n');
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
 
     // Going backwards from the bridge's revisit arm: the gate offers the
@@ -3908,10 +3924,10 @@ describe('pipeline simulation', () => {
 
   it('inbox onto the roadmap: the notes travel with their items, a bug pulled alone is a bugfix, an idea and a bug a feature, a removed item\'s note is declined', () => {
     const inbox = {
-      idea: sim.write('.workflows/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
-      timeout: sim.write('.workflows/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
-      chart: sim.write('.workflows/.inbox/bugs/2026-02-03--blank-chart.md', '# Blank Chart\n'),
-      typo: sim.write('.workflows/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n'),
+      idea: sim.write('.leeway/.inbox/ideas/2026-02-01--saved-views.md', '# Saved Views\n'),
+      timeout: sim.write('.leeway/.inbox/bugs/2026-02-02--export-timeout.md', '# Export Timeout\n'),
+      chart: sim.write('.leeway/.inbox/bugs/2026-02-03--blank-chart.md', '# Blank Chart\n'),
+      typo: sim.write('.leeway/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n'),
     };
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
 
@@ -3930,7 +3946,7 @@ describe('pipeline simulation', () => {
       { name: 'blank-chart', horizon: 'next', summary: 'the chart renders blank on an empty range', note: inbox.chart },
       { name: 'footer-typo', horizon: 'next', summary: 'the footer misspells the product', note: inbox.typo },
     ];
-    const batch = sim.write('.workflows/.cache/inbox-roadmap.json', entries);
+    const batch = sim.write('.leeway/.cache/inbox-roadmap.json', entries);
     const gate = sim.render(['inbox-roadmap-gate', '--file', batch], { expect: 'content' });
     assert.match(gate, /MENU: inbox roadmap gate[\s\S]*\*\*Export Timeout\*\* \[bug\][\s\S]*The roadmap is created with them\./);
     const added = sim.run(['roadmap', 'add-batch', '--file', batch]);
@@ -3957,7 +3973,7 @@ describe('pipeline simulation', () => {
     const bugPull = sim.run(['roadmap', 'pull', 'export-timeout', '--into', 'export-timeout']);
     assert.deepStrictEqual(bugPull.remainder, { next: 3 });
     assert.strictEqual(sim.manifest('export-timeout').work_type, 'bugfix');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows/.roadmap/notes/bugs/2026-02-02--export-timeout.md')));
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/.roadmap/notes/bugs/2026-02-02--export-timeout.md')));
 
     // An idea and a bug pulled together are a feature — the bug rides along.
     sim.run(['workunit', 'create', 'saved-views', 'feature', '--description', 'Saved views, and the blank chart they expose',
@@ -3971,8 +3987,8 @@ describe('pipeline simulation', () => {
     // Removing a waiting item declines it: its note goes to the inbox archive,
     // restorable from there.
     const removed = sim.run(['roadmap', 'remove', 'footer-typo']);
-    const archived = '.workflows/.inbox/.archived/quickfixes/2026-02-04--footer-typo.md';
-    assert.deepStrictEqual(removed.notes_moved, [{ from: '.workflows/.roadmap/notes/quickfixes/2026-02-04--footer-typo.md', to: archived }]);
+    const archived = path.join(sim.dir, '.leeway/.inbox/.archived/quickfixes/2026-02-04--footer-typo.md');
+    assert.deepStrictEqual(removed.notes_moved, [{ from: path.join(sim.dir, '.leeway/.roadmap/notes/quickfixes/2026-02-04--footer-typo.md'), to: archived }]);
     const restored = sim.run(['inbox', 'restore', archived]);
     assert.ok(fs.existsSync(path.join(sim.dir, inbox.typo)), 'the declined note is back in the inbox');
     assert.match(sim.render(['inbox-restore-receipt', '--path', restored.restored[0]], { expect: 'content' }), /^Restored ".+" to the inbox\.$/m);
@@ -3986,11 +4002,11 @@ describe('pipeline simulation', () => {
     // labels the terminal `roadmap` before its mode dispatch, every mode.
     sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
-    const roadmapDraft = sim.write('.workflows/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
+    const roadmapDraft = sim.write('.leeway/.cache/roadmap-draft.md', '# Roadmap Session 001\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', roadmapDraft]);
     const session = carryOn(sim);
     assert.strictEqual(session.skill, path.join(sim.dir, '.claude/skills/workflow-roadmap/SKILL.md'));
-    assert.deepStrictEqual(session.files, [path.join(sim.dir, '.workflows/.roadmap/sessions/session-001.md')],
+    assert.deepStrictEqual(session.files, [path.join(sim.dir, '.leeway/.roadmap/sessions/session-001.md')],
       'the roadmap carries on from its open session\'s log');
     const bridgeDoc = sim.write('app-idea.md', '# The idea, shaped outside\n');
     sim.run(['roadmap', 'import', bridgeDoc]);
@@ -4003,7 +4019,7 @@ describe('pipeline simulation', () => {
       '--source', '.roadmap/sessions/session-001.md']);
 
     // The harvest's batch form: one transaction, horizons JIT in entry order.
-    const items = sim.write('.workflows/.cache/roadmap-items.json', [
+    const items = sim.write('.leeway/.cache/roadmap-items.json', [
       { name: 'ordering', horizon: 'mvp', summary: 'customers order from a menu' },
       { name: 'menu-management', horizon: 'mvp', summary: 'operators maintain the menu' },
       { name: 'white-label', horizon: 'someday', summary: 'resell the platform' },
@@ -4034,7 +4050,7 @@ describe('pipeline simulation', () => {
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.active_session, null);
     assert.strictEqual(state.next_session_number, 2);
-    assert.deepStrictEqual(state.imports, [{ path: 'imports/app-idea.md', origin: 'roadmap' }]);
+    assert.deepStrictEqual(state.imports, [{ path: path.join(sim.dir, '.leeway/.roadmap/imports/app-idea.md'), origin: 'roadmap' }]);
 
     // The pull is the commitment point: the join flips the derived state,
     // and the remainder is named at the moment of choice.
@@ -4128,8 +4144,8 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['synthesis-gate'], { expect: 'content' }), /MENU: synthesis gate/);
     // A failed query's error output rides the failure gate's payload,
     // verbatim, written to the roadmap session's own cache.
-    const queryFailure = sim.write('.workflows/.cache/roadmap/query-failure.json',
-      { error: 'Error: loadStore: corrupted store file at .workflows/.knowledge/store.bin\n' });
+    const queryFailure = sim.write('.leeway/.cache/roadmap/query-failure.json',
+      { error: 'Error: loadStore: corrupted store file at .leeway/.knowledge/store.bin\n' });
     const failureGate = sim.render(['query-failure-gate', '--file', queryFailure], { expect: 'content' });
     assert.match(failureGate, /⚑ Knowledge query failed\n {2}Error: loadStore: corrupted store file/);
     assert.match(failureGate, /MENU: query failure gate/);
@@ -4150,14 +4166,14 @@ describe('pipeline simulation', () => {
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /✓ Guest Ordering/);
 
     // The reserved identity holds: no work unit may take the layer's name.
-    const draft = sim.write('.workflows/.cache/roadmap-probe/discovery/session-001.md', '# Discovery Session 001\n');
+    const draft = sim.write('.leeway/.cache/roadmap-probe/discovery/session-001.md', '# Discovery Session 001\n');
     sim.refuses(['workunit', 'create', 'roadmap', 'epic', '--description', 'x', '--session-log-file', draft], /is reserved/);
   });
 
   it('roadmap: an open session\'s first Edits op conjures the log before it runs — the source names the allocated log', () => {
     sim.run(['session', 'repair']);
     arrive(sim, 'roadmap');
-    const genesis = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
+    const genesis = sim.write('.leeway/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\nExploration.\n');
     sim.run(['roadmap', 'session', 'open', '--session-log-file', genesis]);
     sim.run(['commit', '--roadmap', '-m', 'roadmap: exploration notes — session-001']);
     sim.run(['roadmap', 'session', 'close', '-m', 'roadmap: close session 001']);
@@ -4171,23 +4187,23 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).active_session, null);
     // The wrong order is impossible: an add naming the log before its open refuses.
     sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
-      '--source', '.roadmap/sessions/session-002.md'], /source "\.roadmap\/sessions\/session-002\.md" does not exist under \.workflows\/ — a source must exist before an item records it/);
-    const draft = sim.write('.workflows/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\n## Edits\n\n(none)\n');
+      '--source', '.roadmap/sessions/session-002.md'], new RegExp(`source "\\.roadmap\\/sessions\\/session-002\\.md" does not exist under ${literal(path.join(sim.dir, '.leeway'))}\\/ — a source must exist before an item records it`));
+    const draft = sim.write('.leeway/.cache/roadmap/session-draft.md', '# Roadmap Session {NNN}\n\n## Edits\n\n(none)\n');
     const opened = sim.run(['roadmap', 'session', 'open', '--session-log-file', draft]);
     assert.strictEqual(opened.session, '002');
     const source = `.roadmap/sessions/session-${opened.session}.md`;
     sim.refuses(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards',
-      '--source', `.workflows/${source}`], /drop the leading "\.workflows\/"/);
+      '--source', `.leeway/${source}`], /drop the leading "\.leeway\/"/);
     sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'mvp', '--summary', 'restaurants sell gift cards', '--source', source]);
     const item = sim.run(['roadmap', 'state']).items.find((i) => i.name === 'gift-cards');
     assert.strictEqual(item.origin, 'harvest', 'a direct add takes the engine\'s default origin');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', item.sources[0])), 'the source resolves under .workflows/ to the open log');
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', item.sources[0])), 'the source resolves under .leeway/ to the open log');
 
     // The Edits entry lands in the installed log; the cadence commit takes
     // the log the self-committing add left behind.
-    fs.appendFileSync(path.join(sim.dir, '.workflows', source), '- Added: gift-cards → mvp — placed by the user\n');
+    fs.appendFileSync(path.join(sim.dir, '.leeway', source), '- Added: gift-cards → mvp — placed by the user\n');
     sim.run(['commit', '--roadmap', '-m', `roadmap: add gift-cards — session-${opened.session}`]);
-    assert.strictEqual(git(sim.dir, ['status', '--porcelain', '--', '.workflows/.roadmap', '.workflows/manifest.json']), '',
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.roadmap', 'manifest.json']), '',
       'the log and the marker are committed');
   });
 
@@ -4198,14 +4214,14 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     walkToLiveImplementation(sim, wu, wu);
     // The park's source is the record the session is writing, relative to
-    // `.workflows/` — backlogging's table — and on disk, as the specification
+    // `.leeway/` — backlogging's table — and on disk, as the specification
     // phase left it.
     const spec = `${wu}/specification/${wu}/specification.md`;
-    sim.write(`.workflows/${spec}`, '# Specification: Orders\n');
+    sim.write(`.leeway/${spec}`, '# Specification: Orders\n');
 
     // The words left the home open, so the door stops at the gate rather
     // than deciding for the person.
-    const payload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/backlog.json`,
+    const payload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/backlog.json`,
       { title: "a CSV export of the day's orders" });
     assert.match(sim.render(['backlog-gate', `${wu}.implementation.${wu}`, '--file', payload], { expect: 'content' }),
       /Setting \*\*a CSV export of the day's orders\*\* aside\.[\s\S]*`r\/roadmap`[\s\S]*`i\/inbox`/);
@@ -4274,7 +4290,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', 'loyalty-feat', 'feature', '--description', 'Loyalty, and the points a refund loses', '--session-log-file', flog]);
     sim.run(['roadmap', 'pull', 'loyalty', 'points-lost', '--into', 'loyalty-feat']);
     sim.run(['topic', 'start', 'loyalty-feat', 'discussion', 'loyalty-feat']);
-    sim.write('.workflows/loyalty-feat/discussion/loyalty-feat.md', '# Loyalty discussion\n');
+    sim.write('.leeway/loyalty-feat/discussion/loyalty-feat.md', '# Loyalty discussion\n');
     // The feature discussion parks a tangent off its own record — the
     // off-topic valve's call, its source the discussion file.
     sim.run(['roadmap', 'add', 'gift-cards', '--horizon', 'v2', '--summary', 'shoppers gift store credit',
@@ -4319,7 +4335,7 @@ describe('pipeline simulation', () => {
     // The pull: the shape confirmed, the unit created over its backfilled
     // first session, the items joined, the roadmap shown with the joins.
     sim.render(['roadmap-shape-gate'], { expect: 'content' });
-    const backfill = sim.write('.workflows/.cache/launch/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
+    const backfill = sim.write('.leeway/.cache/launch/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
     sim.run(['workunit', 'create', 'launch', 'epic', '--description', 'Guest checkout, and the cart bug it exposes', '--session-log-file', backfill]);
     assert.deepStrictEqual(sim.run(['roadmap', 'pull', 'guest-checkout', 'cart-drops-items', '--into', 'launch']).remainder, { launch: 0 });
     assert.match(sim.render(['roadmap-view'], { expect: 'content' }), /Cart Drops Items\n.*↳ Bug · in flight: launch/);
@@ -4327,7 +4343,7 @@ describe('pipeline simulation', () => {
     // The epic's discovery carries the conversation on, and its harvest
     // lands the idea as a topic — the bug is material for it, never a topic.
     assert.strictEqual(sim.run(['session', 'label', 'launch', 'discovery', 'launch']).labelled, false);
-    sim.run(['discovery-map', 'add-batch', 'launch', '--file', sim.write('.workflows/.cache/launch/discovery/topics.json', [
+    sim.run(['discovery-map', 'add-batch', 'launch', '--file', sim.write('.leeway/.cache/launch/discovery/topics.json', [
       { name: 'guest-checkout', routing: 'discussion', summary: 'Guests buy without an account' },
     ])]);
     // The binds: every idea joined to the unit with no topic. The bug, joined
@@ -4363,7 +4379,7 @@ describe('pipeline simulation', () => {
     sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
 
     sim.render(['roadmap-shape-gate'], { expect: 'content' });
-    const backfill = sim.write('.workflows/.cache/footer-fixes/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
+    const backfill = sim.write('.leeway/.cache/footer-fixes/discovery/session-001.md', '# Discovery Session 001\n\n## Conclusion\n\n(none)\n');
     sim.run(['workunit', 'create', 'footer-fixes', 'quick-fix', '--description', 'The footer\'s copy fixes', '--session-log-file', backfill]);
     assert.deepStrictEqual(sim.run(['roadmap', 'pull', 'footer-typo', 'stale-copyright', '--into', 'footer-fixes']).remainder,
       { polish: 1 }, 'the idea stays waiting');
@@ -4386,7 +4402,7 @@ describe('pipeline simulation', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', log]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion\n');
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
 
     sim.run(['workunit', 'pivot', wu]);
@@ -4405,13 +4421,13 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature', '--session-log-file', sessionLog(sim, feat)]);
     // Research ran first and left a register — the absorb carries it whole.
     sim.run(['topic', 'start', feat, 'research', feat]);
-    sim.write(`.workflows/${feat}/research/${feat}.md`, '# Research — Stray\n');
+    sim.write(`.leeway/${feat}/research/${feat}.md`, '# Research — Stray\n');
     sim.run(['research-threads', 'add', feat, feat, 'reach', '--question', 'How far does stray reach?', '--origin', 'seed']);
     sim.run(['research-threads', 'set', feat, feat, 'reach', 'parked', '--note', 'not this year']);
     sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
     sim.run(['topic', 'complete', feat, 'research', feat]);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
-    sim.write(`.workflows/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
+    sim.write(`.leeway/${feat}/discussion/${feat}.md`, '# Discussion — Stray\n');
     // The Discussion Map the feature built travels with it.
     sim.run(['discussion-map', 'add', feat, feat, 'cutover']);
     sim.run(['discussion-map', 'add', feat, feat, 'rollback', '--parent', 'cutover']);
@@ -4423,16 +4439,16 @@ describe('pipeline simulation', () => {
     // The discussion spawned an experiment still awaiting its evidence — the
     // series travels with the topic, wait and all.
     const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion',
-      '--problem', sim.write(`.workflows/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
-    assert.ok(fs.existsSync(path.join(sim.dir, spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
+      '--problem', sim.write(`.leeway/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
+    assert.ok(fs.existsSync(path.join(spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', feat, '-m', `experiment(${feat}/${feat}): E1 problem statement`, '--topic', `experiment/${feat}`, '--sweep']);
     // A peer sends a message to the discussion — it waits in the
     // document's mailbox, and the mailbox follows the document.
-    const scratch = sim.write(`.workflows/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
+    const scratch = sim.write(`.leeway/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
       '### Rollback owner\n*From: billing · discussion · 2026-07-23*\n\nWho owns a rollback once the cutover starts?\n');
     const landed = sim.run(['topic', 'send', feat, 'discussion', feat, '--content', scratch, '--slug', 'rollback-owner',
       '-m', `discussion(${feat}): send message to ${feat}`]);
-    assert.strictEqual(landed.message_path, `.workflows/${feat}/discussion/.mailbox/${feat}/001-rollback-owner.md`);
+    assert.strictEqual(landed.message_path, path.join(sim.dir, `.leeway/${feat}/discussion/.mailbox/${feat}/001-rollback-owner.md`));
 
     // The manage flow's absorb gates render from the pre-absorb state.
     assert.match(sim.render(['absorb-confirm-gate', feat], { expect: 'content' }),
@@ -4441,10 +4457,10 @@ describe('pipeline simulation', () => {
       /Experiments: {2}1 experiment\(s\)/, 'the pre-confirm summary derives from the feature manifest — top-level records only');
 
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', 'stray-topic']);
-    assert.ok(!fs.existsSync(path.join(sim.dir, '.workflows', feat)), 'feature directory removed');
-    assert.deepStrictEqual(absorbed.mail_moved, [{ phase: 'discussion', path: 'discussion/.mailbox/stray-topic', count: 1 }]);
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', feat)), 'feature directory removed');
+    assert.deepStrictEqual(absorbed.mail_moved, [{ phase: 'discussion', path: path.join(sim.dir, `.leeway/${epic}/discussion/.mailbox/stray-topic`), count: 1 }]);
     assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, 'discussion', 'stray-topic']).files,
-      [`.workflows/${epic}/discussion/.mailbox/stray-topic/001-rollback-owner.md`],
+      [path.join(sim.dir, `.leeway/${epic}/discussion/.mailbox/stray-topic/001-rollback-owner.md`)],
       'the waiting message waits on the epic topic — its session raises it');
     assert.match(epicDashboard(epic, EPIC_GATEWAY.discover(sim.dir, epic)).replace(/\n[ │]+/g, ' '),
       /Stray Topic[^\n]*mail waiting/, 'the epic tree cues the waiting message');
@@ -4460,7 +4476,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].subtopics,
       { cutover: { status: 'exploring', parent: null }, rollback: { status: 'decided', parent: 'cutover' } },
       'the Discussion Map follows the material to its new name');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'discussion', 'stray-topic.md')),
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'discussion', 'stray-topic.md')),
       'discussion file moved into the epic');
 
     // The series sub-tree audits whole at its epic identity: item, record,
@@ -4470,7 +4486,7 @@ describe('pipeline simulation', () => {
       'the series travels whole — records and derived status intact');
     assert.deepStrictEqual(m.phases.discussion.items['stray-topic'].awaiting_experiments, ['E1'],
       'the evidence wait rides the moved discussion item');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', epic, 'experiment', 'stray-topic', 'E1-cutover-cost', 'problem.md')),
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'experiment', 'stray-topic', 'E1-cutover-cost', 'problem.md')),
       'the record directory moved under the topic name');
     sim.refuses(['topic', 'complete', epic, 'discussion', 'stray-topic'], /awaits experiment evidence \(E1\)/);
     assert.match(sim.render(['experiment-register', `${epic}.experiment.stray-topic`], { expect: 'content' }),
@@ -4498,7 +4514,7 @@ describe('pipeline simulation', () => {
   it('spec promotion: a cross-cutting concern leaves the epic with its discussions, roadmap sources follow the files, and the unit routes to each moved discussion by name', () => {
     const wu = 'host';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Hosts a cc message', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'logging', routing: 'discussion', summary: 'Logging everywhere' },
       { name: 'tracing', routing: 'discussion', summary: 'Tracing everywhere' },
       { name: 'billing', routing: 'discussion', summary: 'Billing' },
@@ -4507,7 +4523,7 @@ describe('pipeline simulation', () => {
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): three topics`]);
     for (const topic of ['logging', 'tracing', 'billing']) {
       sim.run(['topic', 'start', wu, 'discussion', topic]);
-      sim.write(`.workflows/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
+      sim.write(`.leeway/${wu}/discussion/${topic}.md`, `# Discussion — ${topic}\n`);
     }
     // The discussion parks a tangent off its own record — the off-topic
     // valve's call, its source the discussion file.
@@ -4518,7 +4534,7 @@ describe('pipeline simulation', () => {
     for (const topic of ['logging', 'tracing', 'billing']) sim.run(['topic', 'complete', wu, 'discussion', topic]);
     sim.run(['topic', 'start', wu, 'specification', 'logging']);
     sim.run(['manifest', 'set', `${wu}.specification.logging`, 'sources.logging.status=incorporated', 'sources.tracing.status=incorporated']);
-    sim.write(`.workflows/${wu}/specification/logging/specification.md`, '# Spec — Logging\n');
+    sim.write(`.leeway/${wu}/specification/logging/specification.md`, '# Spec — Logging\n');
     sim.run(['commit', wu, '-m', `spec(${wu}): logging`, '--topic', 'specification/logging']);
     // A gap beyond this specification's scope parks off the spec — the gap
     // exit's roadmap home.
@@ -4642,10 +4658,10 @@ describe('pipeline simulation', () => {
     sim.write('shared/Onboarding.txt', 'the walkthrough\n');
     const landed = sim.run(['workunit', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt', '--from', `research/${feat}`]);
     assert.deepStrictEqual(landed.imports, [
-      { path: 'imports/dockset-05.png', origin: `research/${feat}` },
-      { path: 'imports/onboarding.md', origin: `research/${feat}` },
+      { path: path.join(sim.dir, `.leeway/${feat}/imports/dockset-05.png`), origin: `research/${feat}` },
+      { path: path.join(sim.dir, `.leeway/${feat}/imports/onboarding.md`), origin: `research/${feat}` },
     ]);
-    sim.write(`.workflows/${feat}/research/${feat}.md`,
+    sim.write(`.leeway/${feat}/research/${feat}.md`,
       `# Research — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
     sim.run(['commit', feat, '-m', `research(${feat}): capture`, '--topic', `research/${feat}`]);
     sim.run(['topic', 'complete', feat, 'research', feat]);
@@ -4653,7 +4669,7 @@ describe('pipeline simulation', () => {
 
     handoffEntry(sim, feat, 'discussion', feat);
     sim.run(['topic', 'start', feat, 'discussion', feat]);
-    sim.write(`.workflows/${feat}/discussion/${feat}.md`,
+    sim.write(`.leeway/${feat}/discussion/${feat}.md`,
       `# Discussion — ${feat}\n\n![the fifth onboarding screen](../imports/dockset-05.png)\n`);
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
     sim.run(['topic', 'complete', feat, 'discussion', feat]);
@@ -4665,8 +4681,8 @@ describe('pipeline simulation', () => {
     sim.write('shared/dockset-05.png', "the epic's own shot\n");
     sim.run(['workunit', 'import', epic, 'shared/dockset-05.png', '--from', 'discovery']);
     // The next session over the still-empty map opens on that material.
-    sim.write(`.workflows/.cache/${epic}/discovery/opener.json`, JSON.stringify({ sketch: 'An onboarding screen.', questions: 'who lands on it first?' }));
-    assert.match(sim.render(['opener', epic, '--variant', 'seeded', '--file', `.workflows/.cache/${epic}/discovery/opener.json`], { expect: 'content' }),
+    sim.write(`.leeway/.cache/${epic}/discovery/opener.json`, JSON.stringify({ sketch: 'An onboarding screen.', questions: 'who lands on it first?' }));
+    assert.match(sim.render(['opener', epic, '--variant', 'seeded', '--file', `.leeway/.cache/${epic}/discovery/opener.json`], { expect: 'content' }),
       /Read your import\. Here's the shape I'm picking up:/);
 
     // Absorb re-homes the material: the collision suffixes, the links the
@@ -4676,8 +4692,8 @@ describe('pipeline simulation', () => {
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic]);
     assert.deepStrictEqual(absorbed.renamed_imports, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
     const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
-    assert.match(read(`.workflows/${epic}/discussion/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
-    assert.match(read(`.workflows/${epic}/research/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
+    assert.match(read(`.leeway/${epic}/discussion/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
+    assert.match(read(`.leeway/${epic}/research/${topic}.md`), /\.\.\/imports\/dockset-05-2\.png/);
     assert.deepStrictEqual(sim.manifest(epic).imports.map((e) => [e.path, e.origin]), [
       ['imports/dockset-05.png', 'discovery'],
       ['imports/dockset-05-2.png', `research/${topic}`],
@@ -4694,20 +4710,20 @@ describe('pipeline simulation', () => {
     handoffEntry(sim, epic, 'specification', topic);
     sim.run(['topic', 'start', epic, 'specification', topic]);
     sim.run(['manifest', 'set', `${epic}.specification.${topic}`, `sources.${topic}.status`, 'incorporated']);
-    sim.write(`.workflows/${epic}/specification/${topic}/specification.md`,
+    sim.write(`.leeway/${epic}/specification/${topic}/specification.md`,
       `# Spec — ${topic}\n\n![the fifth onboarding screen](../../imports/dockset-05-2.png)\n`);
     sim.run(['commit', epic, '-m', `spec(${epic}): construct`, '--topic', `specification/${topic}`]);
     sim.run(['topic', 'complete', epic, 'specification', topic]);
 
     const promoted = sim.run(['workunit', 'promote', epic, topic, '--to', 'onboarding-cc', '--description', 'Onboarding, project-wide']);
     assert.deepStrictEqual(promoted.imports, [
-      { path: 'imports/dockset-05-2.png', origin: `research/${topic}` },
+      { path: path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png'), origin: `research/${topic}` },
     ]);
     assert.deepStrictEqual(sim.manifest('onboarding-cc').imports.map((e) => e.path), ['imports/dockset-05-2.png']);
-    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows/onboarding-cc/imports/dockset-05-2.png')));
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway/onboarding-cc/imports/dockset-05-2.png')));
     // A copy, not a move — the epic keeps every file and entry it had.
     assert.strictEqual(sim.manifest(epic).imports.length, 3);
-    assert.ok(fs.existsSync(path.join(sim.dir, `.workflows/${epic}/imports/dockset-05-2.png`)));
+    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${epic}/imports/dockset-05-2.png`)));
   });
 
   it('implementation loop: fix cycles, analysis cycles, and gate-mode bookkeeping survive resume', () => {
@@ -4743,7 +4759,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(firstStart.mode, 'started', 'a task taken up fresh dispatches the executor');
     assert.strictEqual(firstStart.do_banking, true, 'a plan task before any boundary banks — its phase is still taking deposits');
     // The brief announces the dispatch — the shared task header plus summary and watch.
-    const briefPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
+    const briefPayload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/task-brief.json`,
       { id: `${wu}-1-1`, title: 'Wire the auth entry point', current: 1, total: 2, phase: '1 — Core', position: '1 of 2 in phase', summary: 'Wire the auth entry point.', watch: ['the login redirect'] });
     const brief = sim.render(['task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload], { expect: 'content' });
     assert.match(brief, /DISPLAY: task brief/, 'pre-dispatch brief renders its section');
@@ -4753,14 +4769,14 @@ describe('pipeline simulation', () => {
     // Gates are fetched at their own stage — the task verbs answer with pure JSON.
     assert.match(sim.render(['task-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: task gate/, 'gated task gate renders its menu');
-    const blockedPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/blocked-tasks.json`,
+    const blockedPayload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/blocked-tasks.json`,
       { tasks: [{ id: `${wu}-1-2`, name: 'Expire idle sessions', blockers: [{ id: `${wu}-1-1`, status: 'in-progress' }] }] });
     assert.match(sim.render(['blocked-tasks', `${wu}.implementation.${wu}`, '--file', blockedPayload], { expect: 'content' }),
       /1 task is still open[\s\S]*MENU: blocked tasks/, 'blocked-tasks stop renders the open tasks above its menu');
-    const findings = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/findings.json`,
+    const findings = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/findings.json`,
       { findings: [{ title: 'Loose end', severity: 'minor' }] });
     sim.run(['task', 'fix-attempt', wu, wu, `${wu}-1-1`, '--findings-file', findings]);
-    assert.ok(fs.existsSync(path.join(sim.dir, '.workflows', wu, 'implementation', wu, `fix-tracking-${wu}-1-1.md`)),
+    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', wu, 'implementation', wu, `fix-tracking-${wu}-1-1.md`)),
       'fix history is committed history, not purgeable cache');
     assert.match(sim.render(['fix-gate', `${wu}.implementation.${wu}`], { expect: 'content' }),
       /MENU: fix gate/, 'gated fix gate renders its menu');
@@ -4780,7 +4796,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.implementation.items[wu].fix_attempts, 1,
       'the resume leaves the attempt count untouched');
     // The result header is one surface for every presentation moment.
-    const resultPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
+    const resultPayload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/task-result.json`,
       { id: `${wu}-1-1`, title: 'Wire the auth entry point', current: 1, total: 2, phase: '1 — Core', position: '1 of 2 in phase' });
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload, '--result', 'blocked'], { expect: 'content' }),
       /\*\*`▪ Wire the auth entry point \(1 of 2\)`\*\*\n\n\*\*⚑ Blocked\*\* — \*the executor stopped before completing this task\*/,
@@ -4810,12 +4826,12 @@ describe('pipeline simulation', () => {
     const staleBrief = sim.engine(['render', 'task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload]);
     assert.strictEqual(staleBrief.code, 1, 'a stale brief payload refuses rather than rendering the previous task');
     assert.match(staleBrief.stderr, /stale task-brief\.json/, "the refusal names the previous task's payload as stale");
-    const briefPayload2 = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-brief.json`,
+    const briefPayload2 = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/task-brief.json`,
       { id: `${wu}-1-2`, title: 'Close out the auth flow', current: 2, total: 2, phase: '1 — Core', position: '2 of 2 in phase', external: { label: 'tick', id: 'TCK-2' }, summary: 'Close out the auth flow.' });
     assert.match(sim.render(['task-brief', `${wu}.implementation.${wu}`, '--file', briefPayload2], { expect: 'content' }),
       new RegExp(`\\*\\*Id\\*\\*: \`${wu}-1-2\` · tick \`TCK-2\``), 'the brief carries the format display identifier');
     // The result payload is rewritten per task — the header refuses the previous task's id.
-    const resultPayload2 = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/task-result.json`,
+    const resultPayload2 = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/task-result.json`,
       { id: `${wu}-1-2`, title: 'Close out the auth flow', current: 2, total: 2, phase: '1 — Core', position: '2 of 2 in phase' });
     assert.match(sim.render(['task-result', `${wu}.implementation.${wu}`, '--file', resultPayload2, '--result', 'approved'], { expect: 'content' }),
       /\*\*✓ Approved\*\*\n/, 'a clean task renders the bare approved verdict');
@@ -4844,18 +4860,18 @@ describe('pipeline simulation', () => {
     // same-unit route's scoped commit (--sweep leaves the spec topic's
     // presence untouched), with the work unit still in-progress and
     // implementation live.
-    const correctedSpec = `.workflows/${wu}/specification/${wu}/specification.md`;
+    const correctedSpec = `.leeway/${wu}/specification/${wu}/specification.md`;
     sim.write(correctedSpec,
       `# Spec — ${wu}\n\n## Corrigenda\n\n> **Corrigendum 2026-01-01** (from \`implementation/${wu}\`): "intent.js" — corrected: payment-intent.js.\n`);
     const reindex = sim.engine(['knowledge', 'index', correctedSpec]);
     assert.strictEqual(reindex.code, 0, reindex.stderr);
-    assert.match(reindex.stdout, new RegExp(`^Indexed \\d+ chunks from ${correctedSpec.replace(/\./g, '\\.')}\\n$`));
+    assert.match(reindex.stdout, new RegExp(`^Indexed \\d+ chunks from ${literal(path.join(sim.dir, correctedSpec))}\\n$`));
     sim.run(['commit', wu, '-m', `specification(${wu}): corrigendum from implementation/${wu}`,
       '--topic', `specification/${wu}`, '--sweep']);
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
       'staging.p1.tasks.1=pending', 'staging.p1.tasks.2=pending', 'staging.p1.tasks.3=pending']);
     sim.refuses(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'perhaps'], /Invalid staging task status/);
-    const overviewPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
+    const overviewPayload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
       { label: 'Phase 1 consolidation', tasks: [
         { title: 'Merge the near-miss helpers', severity: 'near-miss', status: 'pending' },
         { title: 'Drop the dead formatter', severity: 'dead-code', status: 'pending' },
@@ -4866,7 +4882,7 @@ describe('pipeline simulation', () => {
     // One payload file, rewritten per item — the walk's three shapes over it:
     // a proposal carrying its outcome, a bare proposal (no outcome), and a
     // proposal carrying an open decision.
-    const consolidationPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+    const consolidationPayload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 1, total: 3, title: 'Merge the near-miss helpers', severity: 'near-miss',
       placement: 'phase 1', problem: 'p', solution: 's', outcome: 'o',
     });
@@ -4877,7 +4893,7 @@ describe('pipeline simulation', () => {
     assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:/.test(outcomeGate),
       'the boundary walk never renders authored blocks');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.1', 'approved']);
-    sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+    sim.write(`.leeway/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 2, total: 3, title: 'Drop the dead formatter', severity: 'dead-code',
       placement: 'phase 1', problem: 'p', solution: 's',
     });
@@ -4887,7 +4903,7 @@ describe('pipeline simulation', () => {
     assert.ok(!/\*\*Do\*\*:|\*\*Acceptance Criteria\*\*:|\*\*Outcome\*\*|t\/technical/.test(proposalGate),
       'proposal altitude renders only what the payload carries');
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`, 'staging.p1.tasks.2', 'skipped']);
-    sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+    sim.write(`.leeway/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 3, total: 3, title: 'Settle the page size', severity: 'behaviour',
       placement: 'phase 1', problem: 'p', solution: 's',
       decision: { question: 'Which page size stands?', options: ['A4 on the renderer', 'preferCssPageSize'] },
@@ -4897,7 +4913,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'proposed-task', `${wu}.implementation.${wu}`,
       '--file', consolidationPayload, '--gate', 'auto'],
       /"stakes" must be a non-empty string when "decision" is present/);
-    sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+    sim.write(`.leeway/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 3, total: 3, title: 'Settle the page size', severity: 'behaviour',
       placement: 'phase 1', problem: 'p', solution: 's',
       stakes: 'Each side changes the shipped output; no measurement picks between them.',
@@ -4974,11 +4990,11 @@ describe('pipeline simulation', () => {
     // The cycle's one-edit fixes fold into a single corrections proposal
     // (analysis-loop.md E, consolidation-pass.md B); its `corrections`
     // severity rides both shared surfaces like any class tag.
-    const correctionsOverview = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
+    const correctionsOverview = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/tasks-overview.json`,
       { label: 'Analysis cycle 2', tasks: [{ title: 'Corrections', severity: 'corrections', status: 'approved' }] });
     assert.match(sim.render(['tasks-overview', `${wu}.implementation.${wu}`, '--file', correctionsOverview], { expect: 'content' }),
       /\[corrections\]/, 'the corrections bundle carries its severity as the worklist tag');
-    const correctionsPayload = sim.write(`.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
+    const correctionsPayload = sim.write(`.leeway/.cache/${wu}/implementation/${wu}/proposed-task.json`, {
       current: 1, total: 1, title: 'Corrections', severity: 'corrections', sources: 'standards',
       problem: 'p', solution: 's',
     });
@@ -5025,7 +5041,7 @@ describe('pipeline simulation', () => {
     // and renders the shared proposed-task surface without the synthesis-only fields.
     sim.run(['manifest', 'set', `${wu}.implementation.${wu}`,
       'staging.ad-hoc-1.gate_mode=gated', 'staging.ad-hoc-1.tasks.1=pending']);
-    const adhocPayload = `.workflows/.cache/${wu}/implementation/${wu}/proposed-task.json`;
+    const adhocPayload = `.leeway/.cache/${wu}/implementation/${wu}/proposed-task.json`;
     fs.mkdirSync(path.dirname(path.join(sim.dir, adhocPayload)), { recursive: true });
     fs.writeFileSync(path.join(sim.dir, adhocPayload), JSON.stringify({
       current: 1, total: 1, title: 'Fix redirect', placement: 'phase 1', priority: '1',
@@ -5058,7 +5074,7 @@ describe('pipeline simulation', () => {
   it('background agents: dispatch → completion scan → ack → surface → incorporate', () => {
     const wu = 'agents';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Agent lifecycle', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`,
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
       [{ name: 'alpha', routing: 'research', summary: 'Alpha' }, { name: 'beta', routing: 'discussion', summary: 'Beta' }]);
     sim.run(['discovery-map', 'add-batch', wu, '--file', topics]);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): two topics`]);
@@ -5089,7 +5105,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(clean.status, 'incorporated');
     const opened = sim.run(['research-threads', 'add', wu, 'alpha', 'auth-refresh', '--question', 'How does a refresh land?', '--origin', 'deep-dive-001', '--parent', 'auth']);
     assert.strictEqual(opened.parent, 'auth');
-    sim.write(`.workflows/${wu}/research/alpha.md`, '# Research — Alpha\n');
+    sim.write(`.leeway/${wu}/research/alpha.md`, '# Research — Alpha\n');
     sim.run(['topic', 'complete', wu, 'research', 'alpha']);
 
     // The review's surfacing lifecycle, in the phase that carries it: no file
@@ -5127,7 +5143,7 @@ describe('pipeline simulation', () => {
     sim.run(['agent', 'scan', wu, 'discussion', 'beta']);
     sim.run(['agent', 'ack', wu, 'discussion', 'beta', laned.id, '--findings', 'F1,F2,F3']);
     sim.run(['agent', 'announce', wu, 'discussion', 'beta', laned.id]);
-    const payload = `.workflows/.cache/${wu}/discussion/beta/batch-apply.json`;
+    const payload = `.leeway/.cache/${wu}/discussion/beta/batch-apply.json`;
     sim.write(payload, JSON.stringify({
       lane: 'apply',
       items: [{ title: 'a', detail: 'follows from the tier decision' }, { title: 'b', detail: 'retracted rationale, unstruck' }],
@@ -5138,7 +5154,7 @@ describe('pipeline simulation', () => {
       /^\*\*`▪ No Decision Needed`\*\*$/m, 'the apply lane opens on its marker');
     // The decide lane carries the veto menu; a screen past the five-item cap
     // is refused whole — pagination is the prose's job, screens the engine's.
-    const decidePayload = `.workflows/.cache/${wu}/discussion/beta/batch-decide.json`;
+    const decidePayload = `.leeway/.cache/${wu}/discussion/beta/batch-decide.json`;
     sim.write(decidePayload, JSON.stringify({
       lane: 'decide',
       items: [{ title: 'd', detail: 'determined by the tier decision' }],
@@ -5153,7 +5169,7 @@ describe('pipeline simulation', () => {
     sim.refuses(['render', 'finding-batch', `${wu}.discussion.beta`, '--file', decidePayload], /at most 5 items/);
     // The route lane requires each item's title alongside its target — a
     // producer still writing the bare {target, detail} pair fails here.
-    const routePayload = `.workflows/.cache/${wu}/discussion/beta/batch-route.json`;
+    const routePayload = `.leeway/.cache/${wu}/discussion/beta/batch-route.json`;
     sim.write(routePayload, JSON.stringify({
       lane: 'route',
       items: [{ title: 'c', target: 'alpha', detail: 'their subtopic owns the claim' }],
@@ -5204,7 +5220,7 @@ describe('pipeline simulation', () => {
 
     // Guards hold mid-lifecycle; the drained topic concludes.
     sim.refuses(['agent', 'surface', wu, 'discussion', 'beta', 'review-001', 'F1'], /incorporated/);
-    sim.write(`.workflows/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
+    sim.write(`.leeway/${wu}/discussion/beta.md`, '# Discussion — Beta\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'beta']);
 
     // A perspective council in discussion: the pair is one set, synthesis
@@ -5274,7 +5290,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(deferredBatch.all_decided, true, 'the batch response carries convergence — no follow-up read');
     sim.refuses(['render', 'defer-gate', `${wu}.discussion.alpha`], /nothing on "alpha"'s map is undecided/);
 
-    sim.write(`.workflows/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
+    sim.write(`.leeway/${wu}/discussion/alpha.md`, '# Discussion — Alpha\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'alpha']);
   });
 
@@ -5292,13 +5308,13 @@ describe('pipeline simulation', () => {
     // A taken name refuses whatever type the second call names, over an
     // untouched world.
     const takenManifest = JSON.stringify(sim.manifest(wu));
-    const head = git(sim.dir, ['rev-parse', 'HEAD']).trim();
+    const head = stateGit(sim.dir, ['rev-parse', 'HEAD']).trim();
     const taken = /work unit "guarded" already exists — pick a different name/;
-    const draft = sim.write('.workflows/.cache/guarded/discovery/session-001.md', '# Discovery Session 001\n');
+    const draft = sim.write('.leeway/.cache/guarded/discovery/session-001.md', '# Discovery Session 001\n');
     sim.refuses(['workunit', 'create', wu, 'feature', '--description', 'Again', '--session-log-file', draft], taken);
     sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--session-log-file', draft], taken);
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), takenManifest, 'a refused create rewrote the manifest');
-    assert.strictEqual(git(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
+    assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']).trim(), head, 'a refused create landed a commit');
 
     // Reserved names never mint a work unit — `project` routes dot-paths to
     // the project manifest, `baseline` is the KB's project-baseline identity.
@@ -5337,13 +5353,14 @@ describe('pipeline simulation', () => {
     // the sanity gate, the drafted plan with its cache paths, the validator's
     // refusals — each variant's fields validated, the file itself required.
     const splitDisplay = (variant, payload) => sim.render(
-      ['legacy-split-display', '--variant', variant, '--file', sim.write(`.workflows/.cache/scratch/legacy-split-${variant}.json`, payload)],
+      ['legacy-split-display', '--variant', variant, '--file', sim.write(`.leeway/.cache/scratch/legacy-split-${variant}.json`, payload)],
       { expect: 'content' },
     );
     assert.match(splitDisplay('candidates', { source: 'auth', themes: [{ kebab_name: 'auth', summary: 'Login and sessions' }] }),
       /Candidate themes for auth\.md:[\s\S]*1\\\. auth[\s\S]*↳ Login and sessions/);
-    assert.match(splitDisplay('plan', { source: 'auth', work_unit: wu, themes: [{ kebab_name: 'auth', summary: 'Login and sessions', paragraph_count: 3, content_preview: 'The auth flow' }] }),
-      new RegExp(`Plan for auth\\.md:[\\s\\S]*└─ Cache: \\.workflows/\\.cache/${wu}/legacy-split/auth/auth\\.md[\\s\\S]*renamed to auth-superseded-<datetime>\\.md`));
+    // The cache path wraps at the display's width: joined, it reads whole.
+    assert.match(splitDisplay('plan', { source: 'auth', work_unit: wu, themes: [{ kebab_name: 'auth', summary: 'Login and sessions', paragraph_count: 3, content_preview: 'The auth flow' }] }).replace(/\n {6}/g, ''),
+      new RegExp(`Plan for auth\\.md:[\\s\\S]*└─ Cache:${literal(path.join(sim.dir, `.leeway/.cache/${wu}/legacy-split/auth/auth.md`))}[\\s\\S]*renamed to auth-superseded-<datetime>\\.md`));
     assert.match(splitDisplay('errors', { source: 'auth', errors: ["theme 'auth' has empty summary"] }),
       /Validation failed for auth:[\s\S]*• theme 'auth' has empty summary/);
     assert.match(splitDisplay('apply', { source: 'auth', result: { ok: true, applied: { themes: 2 }, kb_warnings: ['knowledge remove failed'] } }),
@@ -5351,8 +5368,8 @@ describe('pipeline simulation', () => {
     assert.match(splitDisplay('apply', { source: 'auth', result: { ok: false, stage: 'git_commit', error: 'hook failed', recovery_hint: 'commit by hand' } }),
       /Apply failed for auth at stage "git_commit":\n {2}hook failed\n\nRecovery: commit by hand/);
     sim.refuses(['render', 'legacy-split-display', '--variant', 'plan'], /--file <payload\.json> is required/);
-    sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.workflows/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
-    sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.workflows/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'themes', '--file', '.leeway/.cache/scratch/legacy-split-plan.json'], /got "themes"/);
+    sim.refuses(['render', 'legacy-split-display', '--variant', 'candidates', '--file', '.leeway/.cache/scratch/legacy-split-errors.json'], /"themes" must be a non-empty array/);
     // The split's conclusion is the session's tallies, rendered under its
     // step marker — the aborted apply leading whatever else happened.
     assert.match(sim.render(['legacy-split-display', '--variant', 'complete', '--applied', '1', '--abandoned', '0', '--errored', '1'], { expect: 'content' }),
@@ -5363,12 +5380,12 @@ describe('pipeline simulation', () => {
     // The archived sub-view's gates resolve the selected item by its store
     // path — the title on the label is the file's own; a missing path, a live
     // path, and a path the store does not hold each refuse.
-    const archived = sim.write('.workflows/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
+    const archived = sim.write('.leeway/.inbox/.archived/ideas/2026-05-01--old-idea.md', '# Old Idea\n');
     assert.match(sim.render(['archived-actions', '--path', archived], { expect: 'content' }), /Selected: \*\*Old Idea\*\* \(idea, archived\)[\s\S]*What would you like to do with it\?/);
     assert.match(sim.render(['archived-delete-gate', '--path', archived], { expect: 'content' }), /Permanently deleting "Old Idea" removes the file from the repo and cannot be undone\.[\s\S]*Delete it\?/);
     sim.refuses(['render', 'archived-actions'], /--path is required/);
-    sim.refuses(['render', 'archived-delete-gate', '--path', '.workflows/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
-    sim.refuses(['render', 'archived-actions', '--path', '.workflows/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
+    sim.refuses(['render', 'archived-delete-gate', '--path', '.leeway/.inbox/ideas/2026-05-01--old-idea.md'], /not an archived inbox path/);
+    sim.refuses(['render', 'archived-actions', '--path', '.leeway/.inbox/.archived/ideas/2026-05-02--ghost.md'], /not in the archived store/);
     assert.match(sim.render(['baseline-offer-gate'], { expect: 'content' }), /Run a baseline assessment\?/);
     // The offer's yes hands off to the assessment. Carried by the gate mod,
     // the handoff clears into a fresh conversation, whose first engine call
@@ -5393,33 +5410,33 @@ describe('pipeline simulation', () => {
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'pending']);
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'researched']);
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'researched']);
-    sim.write('.workflows/.cache/scratch/baseline-scope.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/baseline-scope.json', JSON.stringify({
       mode: 'fresh',
       areas: [{ name: 'overview', detail: 'What the product is' }, { name: 'dispatcher', detail: 'The downstream push' }],
     }));
-    assert.match(sim.render(['baseline-scope-gate', '--file', '.workflows/.cache/scratch/baseline-scope.json'], { expect: 'content' }), /Assess these areas\?/);
+    assert.match(sim.render(['baseline-scope-gate', '--file', '.leeway/.cache/scratch/baseline-scope.json'], { expect: 'content' }), /Assess these areas\?/);
     // Each area's interview opens on its marker, counted across the areas.
-    const areaOpening = sim.write('.workflows/.cache/baseline/area.json', { area: 'overview', summary: 'What the product is and who it serves.' });
+    const areaOpening = sim.write('.leeway/.cache/baseline/area.json', { area: 'overview', summary: 'What the product is and who it serves.' });
     assert.match(sim.render(['baseline-area', '--file', areaOpening], { expect: 'content' }),
       /□ Interviewing Overview \(1 of 2\)[\s\S]*> What the product is and who it serves\. Answer in your own words/);
-    sim.write('.workflows/.cache/scratch/baseline-round.json', JSON.stringify({
+    sim.write('.leeway/.cache/scratch/baseline-round.json', JSON.stringify({
       area: 'dispatcher',
       questions: [{ text: 'Why polling over webhooks?', candidates: ['Decoupling from a flaky downstream'] }],
     }));
-    assert.match(sim.render(['baseline-round', '--file', '.workflows/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
+    assert.match(sim.render(['baseline-round', '--file', '.leeway/.cache/scratch/baseline-round.json'], { expect: 'content' }), /1\. Why polling over webhooks\?/);
     assert.match(sim.render(['baseline-doc-gate'], { expect: 'content' }), /Land it\?/);
     // The landing (author-doc.md C): index the doc, mark the area, commit.
-    sim.write('.workflows/.baseline/overview.md', '# Overview\n\n## What it is\n\nA dispatcher that pushes orders downstream.\n');
-    const baselineIndexed = sim.engine(['knowledge', 'index', '.workflows/.baseline/overview.md']);
+    sim.write('.leeway/.baseline/overview.md', '# Overview\n\n## What it is\n\nA dispatcher that pushes orders downstream.\n');
+    const baselineIndexed = sim.engine(['knowledge', 'index', '.leeway/.baseline/overview.md']);
     assert.strictEqual(baselineIndexed.code, 0, baselineIndexed.stderr);
-    assert.match(baselineIndexed.stdout, /^Indexed \d+ chunks from \.workflows\/\.baseline\/overview\.md\n$/);
+    assert.match(baselineIndexed.stdout, new RegExp(`^Indexed \\d+ chunks from ${literal(path.join(sim.dir, '.leeway/.baseline/overview.md'))}\\n$`));
     sim.run(['manifest', 'set', 'project.baseline.areas.overview', 'completed']);
     sim.run(['commit', '--workflows', '-m', 'baseline(overview): document the overview baseline']);
     assert.match(sim.render(['baseline-progress'], { expect: 'content' }), /1 area\(s\) remain/);
-    sim.write('.workflows/.cache/baseline/area.json', { area: 'dispatcher', summary: 'The downstream push.' });
-    assert.match(sim.render(['baseline-area', '--file', '.workflows/.cache/baseline/area.json'], { expect: 'content' }), /□ Interviewing Dispatcher \(2 of 2\)/);
-    sim.write('.workflows/.cache/baseline/area.json', { area: 'overview', summary: 'Again.' });
-    sim.refuses(['render', 'baseline-area', '--file', '.workflows/.cache/baseline/area.json'], /area "overview" is "completed", not researched/);
+    sim.write('.leeway/.cache/baseline/area.json', { area: 'dispatcher', summary: 'The downstream push.' });
+    assert.match(sim.render(['baseline-area', '--file', '.leeway/.cache/baseline/area.json'], { expect: 'content' }), /□ Interviewing Dispatcher \(2 of 2\)/);
+    sim.write('.leeway/.cache/baseline/area.json', { area: 'overview', summary: 'Again.' });
+    sim.refuses(['render', 'baseline-area', '--file', '.leeway/.cache/baseline/area.json'], /area "overview" is "completed", not researched/);
     assert.match(sim.render(['baseline-area-gate', '--area', 'overview'], { expect: 'content' }), /Keep going\?/);
     assert.match(sim.render(['baseline-paused'], { expect: 'content' }), /Paused — 1 of 2/);
     sim.run(['manifest', 'set', 'project.baseline.areas.dispatcher', 'completed']);
@@ -5462,14 +5479,14 @@ describe('pipeline simulation', () => {
     const wu = 'redo';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Redo it', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n');
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.run(['topic', 'start', wu, 'planning', wu]);
-    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
-    sim.write(`.workflows/${wu}/planning/${wu}/tasks/${wu}-1-1.md`, '---\nid: redo-1-1\n---\n\n# A task\n');
+    sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
+    sim.write(`.leeway/${wu}/planning/${wu}/tasks/${wu}-1-1.md`, '---\nid: redo-1-1\n---\n\n# A task\n');
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
       'format=local-markdown', 'task_list_gate_mode=gated', 'author_gate_mode=gated',
       'finding_gate_mode=gated', 'review_cycle=0', 'phase=1', 'task=~',
@@ -5478,25 +5495,25 @@ describe('pipeline simulation', () => {
 
     // A peer session is mid-write on the discussion beside it — the restart's
     // two commits must not touch that.
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n\npeer session dirt\n');
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion — Redo\n\npeer session dirt\n');
 
     // The restart, in prose order: files first, committed through `--plan`
     // while the planning item still resolves it.
-    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    fs.rmSync(path.join(sim.dir, `.leeway/${wu}/planning/${wu}`), { recursive: true, force: true });
     const cleanup = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning — clear the authored plan`, '--plan', wu]);
     assert.match(cleanup.committed, /^[0-9a-f]+$/, 'the cleanup commits while the item lives');
-    const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
-    assert.ok(cleaned.includes(`.workflows/${wu}/planning/${wu}/planning.md`), 'the deleted plan files ride the cleanup');
-    assert.ok(!cleaned.includes(`.workflows/${wu}/discussion/${wu}.md`), 'the peer session\'s dirt does not');
+    const cleaned = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean).map((rel) => `.leeway/${rel}`);
+    assert.ok(cleaned.includes(`.leeway/${wu}/planning/${wu}/planning.md`), 'the deleted plan files ride the cleanup');
+    assert.ok(!cleaned.includes(`.leeway/${wu}/discussion/${wu}.md`), 'the peer session\'s dirt does not');
 
     // The entry goes last, committed on the topic's own scope.
     sim.run(['manifest', 'delete', `${wu}.planning`, `items.${wu}`]);
     assert.strictEqual(sim.manifest(wu).phases.planning.items[wu], undefined);
     const closed = sim.run(['commit', wu, '-m', `planning(${wu}): restart planning`, '--topic', `planning/${wu}`]);
     assert.match(closed.committed, /^[0-9a-f]+$/);
-    assert.deepStrictEqual(git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean),
-      [`.workflows/${wu}/manifest.json`], 'only the entry\'s removal — the plan files are already in');
-    assert.match(git(sim.dir, ['status', '--porcelain']), /discussion\/redo\.md/, 'the peer\'s dirt survives both commits');
+    assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean),
+      [`${wu}/manifest.json`], 'only the entry\'s removal — the plan files are already in');
+    assert.match(stateGit(sim.dir, ['status', '--porcelain']), /discussion\/redo\.md/, 'the peer\'s dirt survives both commits');
 
     // And the reason the order is what it is: `--plan` cannot resolve a
     // deleted item, so a cleanup committed after the delete has no scope.
@@ -5507,12 +5524,12 @@ describe('pipeline simulation', () => {
     const wu = 'typo';
     sim.run(['workunit', 'create', wu, 'quick-fix', '--description', 'Fix the typo', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'scoping', wu]);
-    sim.write(`.workflows/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n\n## Change\n\nThe footer's typo is corrected.\n`);
+    sim.write(`.leeway/${wu}/specification/${wu}/specification.md`, `# Spec — ${wu}\n\n## Change\n\nThe footer's typo is corrected.\n`);
     sim.run(['topic', 'start', wu, 'specification', wu]);
     sim.run(['topic', 'complete', wu, 'specification', wu]);
     sim.run(['commit', wu, '-m', `spec(${wu}): quick-fix specification`, '--topic', `specification/${wu}`]);
     sim.run(['topic', 'start', wu, 'planning', wu]);
-    sim.write(`.workflows/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
+    sim.write(`.leeway/${wu}/planning/${wu}/planning.md`, `# Plan — ${wu}\n`);
     sim.run(['manifest', 'set', `${wu}.planning.${wu}`,
       'format=local-markdown', 'task_list_gate_mode=auto', 'author_gate_mode=auto',
       'finding_gate_mode=auto', 'review_cycle=0', 'phase=1', 'task=~',
@@ -5520,8 +5537,8 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'planning', wu]);
     sim.run(['commit', wu, '-m', `scoping(${wu}): register plan`, '--plan', wu]);
 
-    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/specification/${wu}`), { recursive: true, force: true });
-    fs.rmSync(path.join(sim.dir, `.workflows/${wu}/planning/${wu}`), { recursive: true, force: true });
+    fs.rmSync(path.join(sim.dir, `.leeway/${wu}/specification/${wu}`), { recursive: true, force: true });
+    fs.rmSync(path.join(sim.dir, `.leeway/${wu}/planning/${wu}`), { recursive: true, force: true });
     // The spec's knowledge-base entry goes with its file, through the door.
     const removal = ['knowledge', 'remove', '--work-unit', wu, '--phase', 'specification', '--topic', wu];
     const removed = sim.engine(removal);
@@ -5530,10 +5547,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.engine([...removal, '--dry-run']).stdout, `Would remove 0 chunks for ${wu}/specification/${wu}\n`,
       'none of the spec\'s chunks is left');
     const cleanup = sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping — clear the authored plan`, '--plan', wu]);
-    const cleaned = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    const cleaned = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean).map((rel) => `.leeway/${rel}`);
     assert.match(cleanup.committed, /^[0-9a-f]+$/);
-    assert.ok(cleaned.includes(`.workflows/${wu}/planning/${wu}/planning.md`), 'the plan half rides --plan');
-    assert.ok(!cleaned.includes(`.workflows/${wu}/specification/${wu}/specification.md`),
+    assert.ok(cleaned.includes(`.leeway/${wu}/planning/${wu}/planning.md`), 'the plan half rides --plan');
+    assert.ok(!cleaned.includes(`.leeway/${wu}/specification/${wu}/specification.md`),
       'the spec is outside the plan scope and waits for the closing commit');
 
     sim.run(['manifest', 'delete', `${wu}.specification`, `items.${wu}`]);
@@ -5541,10 +5558,10 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.manifest(wu).phases.scoping.items[wu].status, 'in-progress',
       'the scoping item stays in progress — the fresh run re-completes it');
     sim.run(['commit', wu, '-m', `scoping(${wu}): restart scoping`]);
-    const closed = git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
-    assert.ok(closed.includes(`.workflows/${wu}/specification/${wu}/specification.md`), 'the deleted spec lands here');
-    assert.ok(closed.includes(`.workflows/${wu}/manifest.json`), 'and both entry removals with it');
-    assert.deepStrictEqual(git(sim.dir, ['status', '--porcelain', '--', `.workflows/${wu}`]).split('\n').filter(Boolean), [],
+    const closed = stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').map((l) => l.trim()).filter(Boolean);
+    assert.ok(closed.includes(`${wu}/specification/${wu}/specification.md`), 'the deleted spec lands here');
+    assert.ok(closed.includes(`${wu}/manifest.json`), 'and both entry removals with it');
+    assert.deepStrictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).split('\n').filter(Boolean), [],
       'the restart leaves nothing of the work unit behind');
   });
 
@@ -5553,7 +5570,7 @@ describe('pipeline simulation', () => {
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Carried through an upgrade', '--session-log-file', sessionLog(sim, wu)]);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
     sim.write('.claude/settings.json', '{}\n');
-    sim.write('.gitignore', 'node_modules\n');
+    sim.write('.gitignore', '.leeway/\nnode_modules\n');
     sim.write('src/app.js', 'const x = 1;\n');
     git(sim.dir, ['add', '-A']);
     git(sim.dir, ['commit', '-q', '-m', 'a project mid-flight']);
@@ -5561,15 +5578,15 @@ describe('pipeline simulation', () => {
     // What a boot's migrations leave for the review gate, beside a code
     // session's staged work.
     sim.write('.claude/settings.json', '{"permissions":{}}\n');
-    sim.write('.worktreeinclude', `${KNOWLEDGE_DIR}/store.bin\n`);
-    fs.rmSync(path.join(sim.dir, '.gitignore'));
-    sim.write('.workflows/.state/migrations', '062\n');
+    sim.write('.worktreeinclude', `${STATE_DIR_NAME}/${KNOWLEDGE_DIR}/store.bin\n`);
+    sim.write('.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
+    sim.write('.leeway/.state/migrations', '062\n');
     sim.write('src/app.js', 'const x = 2;\n');
     git(sim.dir, ['add', '--', 'src/app.js']);
 
     // The summary rides a payload in the cache, which the commit below never
     // carries, with every notice boot's migrations handed back for the person.
-    const applied = sim.write('.workflows/.cache/migrations-applied.json', {
+    const applied = sim.write('.leeway/.cache/migrations-applied.json', {
       summary: 'Restored the settings and the worktree include.',
       notices: ['A setting you may want back was removed.'],
       migrations: 1,
@@ -5579,17 +5596,21 @@ describe('pipeline simulation', () => {
       /\*\*Migrations Applied\*\*\n\nRestored the settings and the worktree include\.\n\nA setting you may want back was removed\.\n\n1 migration\(s\), 3 file\(s\) updated\./);
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     const landed = sim.run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
-    assert.match(landed.committed, /^[0-9a-f]+$/);
+    assert.strictEqual(landed.committed, stateGit(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(landed.code_committed, git(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
+    assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [
+      'A\t.state/migrations',
+      `M\t${wu}/manifest.json`,
+    ], 'the whole state rides the reviewed commit — the topic start the session had not yet committed among it');
     assert.deepStrictEqual(git(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [
-      'A\t.workflows/.state/migrations',
       'A\t.worktreeinclude',
-      'D\t.gitignore',
       'M\t.claude/settings.json',
+      'M\t.gitignore',
     ]);
     assert.strictEqual(git(sim.dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js', 'the code session\'s staging stays staged');
 
     // The unit carries on from the upgraded tree.
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, '# Discussion — Upgraded\n');
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, '# Discussion — Upgraded\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
@@ -5612,7 +5633,7 @@ describe('pipeline simulation', () => {
     // --- the map both sessions inherit -------------------------------------
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Event relay overhaul', '--session-log-file', log]);
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'ingest', routing: 'discussion', summary: 'How events arrive' },
       { name: 'ranking', routing: 'discussion', summary: 'How events are ordered' },
       { name: 'metrics', routing: 'research', summary: 'What good looks like' },
@@ -5624,7 +5645,7 @@ describe('pipeline simulation', () => {
     // ingest is discussed and ready to specify; dispatch is built out to the
     // edge of implementation. Both were finished before this scenario opens.
     sim.run(['topic', 'start', wu, 'discussion', 'ingest']);
-    sim.write(`.workflows/${wu}/discussion/ingest.md`, '# Discussion — Ingest\n\nDecided: batch intake.\n');
+    sim.write(`.leeway/${wu}/discussion/ingest.md`, '# Discussion — Ingest\n\nDecided: batch intake.\n');
     sim.run(['topic', 'complete', wu, 'discussion', 'ingest']);
     sim.run(['topic', 'start', wu, 'discussion', 'dispatch']);
     sim.run(['topic', 'complete', wu, 'discussion', 'dispatch']);
@@ -5655,16 +5676,22 @@ describe('pipeline simulation', () => {
     const codeSession = sim.session('code-session');
     const secondCoder = sim.session('review-session', reapedPid());
 
-    const SPEC_FILE = `.workflows/${wu}/specification/ingest/specification.md`;
-    const TALK_FILE = `.workflows/${wu}/discussion/ranking.md`;
+    const SPEC_FILE = `.leeway/${wu}/specification/ingest/specification.md`;
+    const TALK_FILE = `.leeway/${wu}/discussion/ranking.md`;
     const CODE_FILE = 'src/relay/dispatch.js';
-    const committedPaths = () => git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD'])
-      .split('\n').map((l) => l.trim()).filter(Boolean);
-    const dirty = () => git(sim.dir, ['status', '--porcelain'])
-      .split('\n').map((l) => l.slice(3).trim()).filter(Boolean);
+    const lines = (out) => out.split('\n').filter(Boolean);
+    /** The paths the head commit on a branch carries, named from the project. */
+    const committedPaths = (state) => (state
+      ? lines(stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD'])).map((l) => `${STATE_DIR_NAME}/${l.trim()}`)
+      : lines(git(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD'])).map((l) => l.trim()));
+    /** Both trees' dirt, named from the project. */
+    const dirty = () => [
+      ...lines(git(sim.dir, ['status', '--porcelain'])).map((l) => l.slice(3).trim()),
+      ...lines(stateGit(sim.dir, ['status', '--porcelain'])).map((l) => `${STATE_DIR_NAME}/${l.slice(3).trim()}`),
+    ];
     /** No commit ever contains a foreign session's path. */
     const confined = (label, own, foreign) => {
-      const paths = committedPaths();
+      const paths = committedPaths(own[0].startsWith(`${STATE_DIR_NAME}/`));
       assert.ok(paths.length > 0, `[${label}] committed nothing`);
       for (const p of paths) {
         assert.ok(own.some((o) => p === o || p.startsWith(`${o}/`)),
@@ -5674,8 +5701,8 @@ describe('pipeline simulation', () => {
         assert.ok(!paths.includes(f), `[${label}] swept a peer's path: ${f}`);
       }
     };
-    const specScope = [`.workflows/${wu}/specification/ingest`, `.workflows/${wu}/manifest.json`];
-    const talkScope = [`.workflows/${wu}/discussion/ranking.md`, `.workflows/${wu}/discussion/.mailbox/ranking`, `.workflows/${wu}/manifest.json`];
+    const specScope = [`.leeway/${wu}/specification/ingest`, `.leeway/${wu}/manifest.json`];
+    const talkScope = [`.leeway/${wu}/discussion/ranking.md`, `.leeway/${wu}/discussion/.mailbox/ranking`, `.leeway/${wu}/manifest.json`];
 
     // --- A1 · B1 · A2 · B2: two document sessions, alternating -------------
     // A: a specification session on ingest. B: a discussion session on
@@ -5733,7 +5760,7 @@ describe('pipeline simulation', () => {
     // The slot is taken at the entry chokepoint, not at the first commit:
     // reading a free slot is how a code session claims it, so the window
     // between entering the phase and writing anything is not a window.
-    const codeSlot = path.join(sim.dir, '.workflows/.cache', wu, 'implementation/dispatch/presence');
+    const codeSlot = path.join(sim.dir, '.leeway/.cache', wu, 'implementation/dispatch/presence');
     assert.ok(!fs.existsSync(codeSlot), 'nobody holds the code slot before anyone enters');
     codeSession.render(['code-gate', `${wu}.implementation.dispatch`], { expect: 'empty' });
     assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
@@ -5778,7 +5805,7 @@ describe('pipeline simulation', () => {
       '--for', wu, 'implementation/dispatch']);
     confined('C2', [CODE_FILE], [SPEC_FILE, TALK_FILE]);
     assert.deepStrictEqual(secondCode.left_dirty, ['src/relay/sink.js'],
-      'the forgotten code path comes back, and nothing under .workflows ever does');
+      'the forgotten code path comes back, and nothing under .leeway ever does');
     assert.ok(dirty().includes(SPEC_FILE), "the doc session's dirt is not the code session's to commit");
     specSession.run(['commit', wu, '-m', `spec(${wu}/ingest): tie-break`, '--topic', 'specification/ingest']);
     codeSession.run(['commit', '--paths', 'src/relay/sink.js', '-m', 'chore(relay): the rest',
@@ -5795,17 +5822,17 @@ describe('pipeline simulation', () => {
     // heartbeat names a process that is gone. A concluding session sweeps it.
     const ghostPid = reapedPid();
     sim.run(['topic', 'start', wu, 'research', 'metrics']);
-    sim.write(`.workflows/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n');
-    sim.write(`.workflows/.cache/${wu}/research/metrics/presence`,
+    sim.write(`.leeway/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n');
+    sim.write(`.leeway/.cache/${wu}/research/metrics/presence`,
       JSON.stringify({ pid: ghostPid, pid_start: null, session_id: 'ghost-session' }) + '\n');
     const beforeSweep = rowOf(sim.run(['presence', 'scan', wu]), 'research', 'metrics');
     assert.strictEqual(beforeSweep.held, false, 'a heartbeat whose process is gone reads unheld');
 
     talkSession.run(['commit', wu, '--topic', 'research/metrics', '--sweep',
       '-m', `chore(${wu}/metrics): sweep session leavings`]);
-    confined('sweep', [`.workflows/${wu}/research/metrics.md`, `.workflows/${wu}/research/.mailbox/metrics`, `.workflows/${wu}/manifest.json`],
+    confined('sweep', [`.leeway/${wu}/research/metrics.md`, `.leeway/${wu}/research/.mailbox/metrics`, `.leeway/${wu}/manifest.json`],
       [SPEC_FILE, TALK_FILE, CODE_FILE]);
-    assert.ok(!dirty().includes(`.workflows/${wu}/research/metrics.md`), "the dead session's document is committed");
+    assert.ok(!dirty().includes(`.leeway/${wu}/research/metrics.md`), "the dead session's document is committed");
 
     // The sweeper never stamps its identity on the topic it just cleaned —
     // a beat there would resurrect a hold nobody holds.
@@ -5814,7 +5841,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(afterSweep.held, false, 'the swept topic is not resurrected');
 
     // The suppression is what did it: the same commit without `--sweep` beats.
-    sim.write(`.workflows/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n\nPicked back up.\n');
+    sim.write(`.leeway/${wu}/research/metrics.md`, '# Research — Metrics\n\nHalf a paragraph.\n\nPicked back up.\n');
     talkSession.run(['commit', wu, '--topic', 'research/metrics',
       '-m', `research(${wu}/metrics): pick the thread back up`]);
     const adopted = rowOf(sim.run(['presence', 'scan', wu]), 'research', 'metrics');
@@ -5837,7 +5864,7 @@ describe('pipeline simulation', () => {
     // slot must be free the moment the topic is finished, not when the
     // process eventually dies.
     codeSession.run(['topic', 'complete', wu, 'implementation', 'dispatch']);
-    codeSession.write(`.workflows/${wu}/implementation/dispatch/report.md`, '# Implementation — Dispatch\n\nDone.\n');
+    codeSession.write(`.leeway/${wu}/implementation/dispatch/report.md`, '# Implementation — Dispatch\n\nDone.\n');
     codeSession.run(['commit', wu, '--topic', 'implementation/dispatch',
       '-m', `impl(${wu}): conclude dispatch`]);
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'implementation', 'dispatch'), undefined,
@@ -5849,7 +5876,7 @@ describe('pipeline simulation', () => {
   it('epic experiments: spawn, the walk to verdict, splits, releases, series continuation', () => {
     const wu = 'lab';
     sim.run(['workunit', 'create', wu, 'epic', '--description', 'Measured decisions', '--session-log-file', sessionLog(sim, wu)]);
-    const topics = sim.write(`.workflows/.cache/${wu}/discovery/topics.json`, [
+    const topics = sim.write(`.leeway/.cache/${wu}/discovery/topics.json`, [
       { name: 'timing', routing: 'discussion', summary: 'Timing behaviour' },
       { name: 'layout', routing: 'research', summary: 'Layout rules' },
     ]);
@@ -5858,24 +5885,24 @@ describe('pipeline simulation', () => {
     menuEntry(sim, wu);
     handoffEntry(sim, wu, 'discussion', 'timing');
     sim.run(['topic', 'start', wu, 'discussion', 'timing']);
-    sim.write(`.workflows/${wu}/discussion/timing.md`, '# Discussion — Timing\n');
+    sim.write(`.leeway/${wu}/discussion/timing.md`, '# Discussion — Timing\n');
     menuEntry(sim, wu);
     handoffEntry(sim, wu, 'research', 'layout');
     sim.run(['topic', 'start', wu, 'research', 'layout']);
-    sim.write(`.workflows/${wu}/research/layout.md`, '# Research — Layout\n');
+    sim.write(`.leeway/${wu}/research/layout.md`, '# Research — Layout\n');
 
     // The spawn, mid-discussion: id + item + the problem statement + the
     // spawning item's lock, one transaction — the session writes the problem
     // to a cache scratch and the create installs it, so no conceived record
     // ever exists without its problem file. The cadence commit picks the
     // record up.
-    const e1Problem = sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`,
+    const e1Problem = sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`,
       '# Problem — window placement\n\n*From: timing · discussion*\n');
     const e1 = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', e1Problem]);
     assert.strictEqual(e1.id, 'E1');
-    assert.strictEqual(e1.dir, `.workflows/${wu}/experiment/timing/E1-window-placement`);
+    assert.strictEqual(e1.dir, path.join(sim.dir, `.leeway/${wu}/experiment/timing/E1-window-placement`));
     assert.deepStrictEqual(e1.awaiting, { phase: 'discussion', ids: ['E1'] });
-    assert.ok(fs.existsSync(path.join(sim.dir, e1.dir, 'problem.md')), 'the create installs the problem statement');
+    assert.ok(fs.existsSync(path.join(e1.dir, 'problem.md')), 'the create installs the problem statement');
     assert.ok(!fs.existsSync(path.join(sim.dir, e1Problem)), 'the scratch is consumed');
     sim.run(['commit', wu, '-m', `discussion(${wu}/timing): spawn E1 window-placement`, '--topic', 'discussion/timing']);
     // The spawning session commits the record --sweep — the experiment topic
@@ -5892,7 +5919,7 @@ describe('pipeline simulation', () => {
     // A research spawn locks identically — the phases are symmetric — and
     // numbers the series onward.
     const e2 = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'grid-density', '--from', 'research',
-      '--problem', sim.write(`.workflows/.cache/${wu}/research/layout/problem.md`, '# Problem — grid density\n')]);
+      '--problem', sim.write(`.leeway/.cache/${wu}/research/layout/problem.md`, '# Problem — grid density\n')]);
     assert.strictEqual(e2.id, 'E1');
     assert.deepStrictEqual(e2.awaiting, { phase: 'research', ids: ['E1'] });
 
@@ -5953,7 +5980,7 @@ describe('pipeline simulation', () => {
     // miniature; the lock stays on E1 and the parent's verdict waits for them.
     const sub = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'single-monitor', '--parent', 'E1']);
     assert.strictEqual(sub.id, 'E1.1');
-    assert.strictEqual(sub.dir, `.workflows/${wu}/experiment/timing/E1-window-placement/E1.1-single-monitor`);
+    assert.strictEqual(sub.dir, path.join(sim.dir, `.leeway/${wu}/experiment/timing/E1-window-placement/E1.1-single-monitor`));
     sim.refuses(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'held'], /live sub-experiments/);
     sim.write(`${sub.dir}/design.md`, '# Design — E1.1\n');
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
@@ -5987,10 +6014,10 @@ describe('pipeline simulation', () => {
     // waiting point reverts to open, no downstream hop.
     sim.run(['topic', 'reopen', wu, 'discussion', 'timing']);
     const next = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'multi-monitor', '--from', 'discussion',
-      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
+      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
     assert.strictEqual(next.id, 'E2');
     const third = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'stacking-order', '--from', 'discussion',
-      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
+      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
     assert.strictEqual(third.id, 'E3');
     // Entered over two live records, the laboratory puts the pick to the
     // user, and a back out of it hands the work to the epic menu with no
@@ -6060,7 +6087,7 @@ describe('pipeline simulation', () => {
       'the series item never takes a reconcile flag');
 
     const revived = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'follow-up', '--from', 'research',
-      '--problem', sim.write(`.workflows/.cache/${wu}/research/layout/problem.md`, '# Problem — follow-up\n')]);
+      '--problem', sim.write(`.leeway/.cache/${wu}/research/layout/problem.md`, '# Problem — follow-up\n')]);
     assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'in-progress');
     const settled = sim.run(['experiment', 'abandon', wu, 'layout', 'E2', '--reason', 'settled without the follow-up']);
@@ -6075,10 +6102,10 @@ describe('pipeline simulation', () => {
     menuEntry(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
     for (const slug of ['vsync-cost', 'jank-budget']) {
       sim.run(['experiment', 'create', wu, wu, '--slug', slug, '--from', 'discussion',
-        '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, `# Problem — ${slug}\n`)]);
+        '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, `# Problem — ${slug}\n`)]);
     }
     sim.run(['commit', wu, '-m', `discussion(${wu}): spawn E1 and E2`, '--topic', `discussion/${wu}`]);
     assert.deepStrictEqual(pauseCheck(sim, wu, 'discussion', wu), []);
@@ -6112,14 +6139,14 @@ describe('pipeline simulation', () => {
     menuEntry(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     sim.run(['topic', 'start', wu, 'discussion', wu]);
-    sim.write(`.workflows/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.leeway/${wu}/discussion/${wu}.md`, `# Discussion — ${wu}\n`);
 
     // The spawn holds the conversation behind its evidence: the bridge routes
     // to the experiment until the wait releases — the now-and-later exits
     // land on the same state.
     const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'frame-budget', '--from', 'discussion',
-      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — frame budget\n')]);
-    assert.ok(fs.existsSync(path.join(sim.dir, e1.dir, 'problem.md')), 'the spawn installs the problem statement');
+      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — frame budget\n')]);
+    assert.ok(fs.existsSync(path.join(e1.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.run(['commit', wu, '-m', `discussion(${wu}): spawn E1 frame-budget`, '--topic', `discussion/${wu}`]);
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits experiment evidence/);
 
@@ -6147,7 +6174,7 @@ describe('pipeline simulation', () => {
     // feature's topic is its work unit, so the topic-level cancel is the
     // epic's; the work-unit cancel abandons a feature whole.
     sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion',
-      '--problem', sim.write(`.workflows/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
+      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['topic', 'complete', wu, 'discussion', wu], /awaits experiment evidence \(E2\)/);
     const dropped = sim.run(['experiment', 'abandon', wu, wu, 'E2', '--reason', 'settled by E1']);
     assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);

@@ -21,7 +21,9 @@ const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 
+const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 const harness = require('./engine-harness.cjs');
+const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const { ENGINE } = harness;
 
@@ -39,7 +41,7 @@ const runFails = (dir, args) => harness.refuses(dir, ['manifest', ...args]);
 
 /** @param {string} dir @param {string} name @param {string} workType */
 function writeWorkUnit(dir, name, workType, extra = {}) {
-  const wuDir = path.join(dir, '.workflows', name);
+  const wuDir = path.join(dir, '.leeway', name);
   fs.mkdirSync(wuDir, { recursive: true });
   fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify({
     name,
@@ -50,7 +52,7 @@ function writeWorkUnit(dir, name, workType, extra = {}) {
     phases: {},
     ...extra,
   }, null, 2) + '\n');
-  const projPath = path.join(dir, '.workflows', 'manifest.json');
+  const projPath = path.join(dir, '.leeway', 'manifest.json');
   const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : {};
   proj.work_units = proj.work_units || {};
   proj.work_units[name] = { work_type: workType };
@@ -58,13 +60,13 @@ function writeWorkUnit(dir, name, workType, extra = {}) {
 }
 
 function readWorkUnit(dir, name) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', name, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', name, 'manifest.json'), 'utf8'));
 }
 
 describe('engine manifest — reads keep the CLI stdout contract', () => {
   let dir;
-  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  beforeEach(() => { dir = setupFixture('engine-fields-'); });
+  afterEach(() => { cleanupFixture(dir); });
 
   it('get: scalar raw, subtree pretty JSON, missing path empty exit 0', () => {
     writeWorkUnit(dir, 'auth', 'feature');
@@ -95,7 +97,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     }
   });
 
-  it('list: [] without .workflows, full manifests with filters', () => {
+  it('list: [] without .leeway, full manifests with filters', () => {
     assert.strictEqual(runOk(dir, ['list']), '[]\n');
     writeWorkUnit(dir, 'auth', 'feature');
     writeWorkUnit(dir, 'payments', 'epic');
@@ -119,7 +121,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     assert.strictEqual(
       runOk(dir, ['resolve', 'auth.discussion.auth']),
-      path.join(dir, '.workflows/auth/discussion/auth.md') + '\n'
+      path.join(dir, '.leeway/auth/discussion/auth.md') + '\n'
     );
     const miss = run(dir, ['resolve', 'ghost.discussion.foo']);
     assert.strictEqual(miss.code, 2);
@@ -139,7 +141,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     // A large multi-line read so `head -1` closes stdout mid-write.
     const big = { name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} };
     for (let i = 0; i < 5000; i++) big['field' + i] = 'value ' + i;
-    const wuDir = path.join(dir, '.workflows', 'auth');
+    const wuDir = path.join(dir, '.leeway', 'auth');
     fs.mkdirSync(wuDir, { recursive: true });
     fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(big, null, 2) + '\n');
 
@@ -151,8 +153,8 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
 
 describe('engine manifest — mutations answer with the engine JSON contract', () => {
   let dir;
-  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  beforeEach(() => { dir = setupFixture('engine-fields-'); });
+  afterEach(() => { cleanupFixture(dir); });
 
   it('set: one-line JSON listing what was written', () => {
     writeWorkUnit(dir, 'auth', 'feature');
@@ -276,7 +278,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
   it('push failure releases the lock (the old CLI leaked it)', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     runFails(dir, ['push', 'auth', 'status', 'x']);
-    assert.ok(!fs.existsSync(path.join(dir, '.workflows/auth/.lock')), 'no lock left behind on a failed mutation');
+    assert.ok(!fs.existsSync(path.join(dir, '.leeway/auth/.lock')), 'no lock left behind on a failed mutation');
   });
 
   it('pull: removed true with new length, removed false on any no-op', () => {
@@ -346,15 +348,16 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
 
 describe('engine manifest — the batched set holds the work-unit lock', () => {
   let dir;
-  beforeEach(() => { dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-fields-'))); });
-  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
+  beforeEach(() => { dir = setupFixture('engine-fields-'); });
+  afterEach(() => { cleanupFixture(dir); });
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  it('a fresh .lock blocks a batched set until released — nothing lands early, everything lands together', async () => {
+  it('a held writer lock blocks a batched set until released — nothing lands early, everything lands together', async () => {
     writeWorkUnit(dir, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const lock = path.join(dir, '.workflows/auth/.lock');
-    fs.writeFileSync(lock, '12345');
+    // Held by this test's own process: alive, and never the child's.
+    const lock = path.join(dir, '.leeway/.lock');
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
 
     const child = spawn('node', [ENGINE, 'manifest', 'set', 'auth.discussion.auth', 'review_cycle=2', 'date=2026-07-18'], { cwd: dir });
     let stdout = '';
@@ -364,13 +367,13 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
 
     const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
     assert.strictEqual(raced, 'waiting', 'batched set must wait on a live lock');
-    const before = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth/manifest.json'), 'utf8'));
+    const before = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth/manifest.json'), 'utf8'));
     assert.strictEqual(before.phases.discussion.items.auth.review_cycle, undefined, 'no field lands while the lock is held');
 
     fs.unlinkSync(lock);
     assert.strictEqual(await exit, 0);
     assert.strictEqual(JSON.parse(stdout.trim()).ok, true);
-    const after = JSON.parse(fs.readFileSync(path.join(dir, '.workflows/auth/manifest.json'), 'utf8'));
+    const after = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth/manifest.json'), 'utf8'));
     assert.strictEqual(after.phases.discussion.items.auth.review_cycle, 2);
     assert.strictEqual(after.phases.discussion.items.auth.date, '2026-07-18');
     assert.ok(!fs.existsSync(lock), 'lock released after the batch');
@@ -380,7 +383,7 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
 describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-apply-'));
+    dir = setupFixture('manifest-apply-');
     writeWorkUnit(dir, 'payments', 'epic', {
       phases: {
         specification: { items: {
@@ -391,7 +394,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
       },
     });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   function payload(ops) {
     const p = path.join(dir, 'ops.json');
@@ -439,7 +442,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a cancelled item takes no status write — set, batch, and apply refuse it, nothing written', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
-    fs.writeFileSync(path.join(dir, '.workflows', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'proposed']).error, refusal);
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=proposed', 'sources.gamma.status=pending']).error, refusal);
@@ -460,7 +463,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
     m.phases.research = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
-    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
     const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate payments specification dropped\)/;
@@ -484,7 +487,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a postponed item takes no status write and no delete either — the refusal names the roadmap', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.discussion = { items: { shelved: { status: 'postponed', previous_status: 'in-progress' } } };
-    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
     const refusal = /discussion item "shelved" is postponed — pull it forward from the roadmap instead/;
@@ -498,7 +501,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.discussion = { items: { fees: { status: 'promoted', promoted_to: 'billing-cc' } } };
     m.phases.specification.items.billing = { status: 'promoted', promoted_to: 'billing-cc', sources: { fees: { status: 'incorporated' } } };
-    const manifestPath = path.join(dir, '.workflows', 'payments', 'manifest.json');
+    const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
     const discussion = /discussion item "fees" is promoted \(to "billing-cc"\) — promotion is terminal; continue it from the cross-cutting work unit/;
@@ -560,10 +563,10 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
 describe('engine manifest set — two grammars, never mixed', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-grammar-'));
+    dir = setupFixture('manifest-grammar-');
     writeWorkUnit(dir, 'auth', 'feature');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('uniform batch: every pair assigned, first pair included', () => {
     const res = runJson(dir, ['set', 'auth', 'status=completed', 'note=hello']);
@@ -593,7 +596,7 @@ describe('engine manifest set — two grammars, never mixed', () => {
 describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'staging-guard-'));
+    dir = setupFixture('staging-guard-');
     writeWorkUnit(dir, 'pay', 'epic', { phases: {
       review: { items: { pay: { status: 'in-progress' } } },
       implementation: { items: { pay: { status: 'in-progress' } } },
@@ -601,7 +604,7 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
       discovery: { items: {} },
     } });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('staging task decisions take only the gate vocabulary', () => {
     runJson(dir, ['set', 'pay.review.pay', 'staging.c1.gate_mode=gated', 'staging.c1.tasks.1=pending', 'staging.c1.tasks.2=pending']);
@@ -650,10 +653,10 @@ describe('staging, candidate, and tracking state is vocabulary-guarded', () => {
 describe('work-unit-level fields never shadow the phases tree', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shadow-guard-'));
+    dir = setupFixture('shadow-guard-');
     writeWorkUnit(dir, 'pay', 'feature');
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('set refuses a phase-name-headed field in both grammars', () => {
     const err = runFails(dir, ['set', 'pay', 'specification.foo', 'bar']);
@@ -678,7 +681,7 @@ describe('work-unit-level fields never shadow the phases tree', () => {
   it('reads and delete stay free so a stray tree can be inspected and repaired', () => {
     const m = readWorkUnit(dir, 'pay');
     m.specification = { foo: 'bar' };
-    fs.writeFileSync(path.join(dir, '.workflows', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(runOk(dir, ['get', 'pay', 'specification.foo']).trim(), 'bar');
     runJson(dir, ['delete', 'pay', 'specification']);
     assert.strictEqual(readWorkUnit(dir, 'pay').specification, undefined);
@@ -696,10 +699,10 @@ describe('work-unit-level fields never shadow the phases tree', () => {
 describe('storage_paths is guarded at write time — set and apply', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'storage-paths-'));
+    dir = setupFixture('storage-paths-');
     writeWorkUnit(dir, 'pay', 'feature', { phases: { planning: { items: { pay: { status: 'in-progress' } } } } });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   it('set refuses traversal, absolute, dot, and non-array values; a legal array lands', () => {
     for (const bad of ['\'["../evil"]\'', '\'["/abs"]\'', '\'["."]\'', '\'[""]\'', '"nope"']) {
@@ -747,12 +750,12 @@ describe('storage_paths is guarded at write time — set and apply', () => {
 describe('dismissed_grounds — the per-topic do-not-report list', () => {
   let dir;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dismissed-grounds-'));
+    dir = setupFixture('dismissed-grounds-');
     writeWorkUnit(dir, 'overhaul', 'epic', {
       phases: { research: { items: { alpha: { status: 'in-progress' } } } },
     });
   });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  afterEach(() => cleanupFixture(dir));
 
   const cost = 'Cost modelling for the vendor tier';
   const region = 'Multi-region failover';

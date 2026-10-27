@@ -29,7 +29,7 @@ const {
   ensureContainer,
   copyWhole,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { assertLegalWorkUnitName } = require('./workunit-create.cjs');
@@ -37,7 +37,7 @@ const { copyImports, isIndexableImport, importArtifact, importLinkPattern } = re
 const { todayStamp } = require('./dates.cjs');
 const { roadmapItems, sourceRows } = require('./derivations.cjs');
 const { carrySources } = require('./roadmap.cjs');
-const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 
 /**
  * @typedef {object} WorkUnitPromoteResult
@@ -45,9 +45,9 @@ const { stateRoot, stateRel } = require('../kernel/state-root.cjs');
  * @property {string} topic       the promoted specification topic
  * @property {string} cc_work_unit  the new cross-cutting work unit
  * @property {string} cc_status   always `completed` — the cc pipeline is terminal after spec
- * @property {{name: string, path: string}[]} discussions  moved source discussions (cc-relative paths)
- * @property {{path: string}} specification  the moved spec (cc-relative path)
- * @property {{path: string, origin?: string}[]} imports  imports copied into the cc unit (entries unchanged)
+ * @property {{name: string, path: string}[]} discussions  moved source discussions (absolute paths)
+ * @property {{path: string}} specification  the moved spec (absolute path)
+ * @property {{path: string, origin?: string}[]} imports  imports copied into the cc unit (absolute paths, origins unchanged)
  * @property {string} status      the epic spec item's status after the transition — always `promoted`
  * @property {string} promoted_to the cc work unit recorded on the epic spec item
  * @property {{item: string, from: string, to: string}[]} [roadmap_sources_rewritten]  roadmap sources that followed a moved file
@@ -75,15 +75,15 @@ function listFilesRecursive(dir) {
  * Copies, never moves — another topic of the epic may link the same file — so
  * an entry whose file is gone is reported, never fatal. Planned before
  * anything moves, off the documents at their epic paths.
- * @param {string} cwd @param {string} workUnit @param {string} specDir  project-relative
+ * @param {string} cwd @param {string} workUnit @param {string} specDir  absolute
  * @param {string[]} sources  the moved source discussions
  * @param {unknown[]} entries  the epic's `imports[]`
  * @returns {{carried: {entry: import('./import-landing.cjs').ImportEntry, basename: string}[], missing: string[]}}
  */
 function planImportCarry(cwd, workUnit, specDir, sources, entries) {
   const documents = [
-    ...listFilesRecursive(path.join(cwd, specDir)),
-    ...sources.map((name) => path.join(stateRoot(cwd), workUnit, 'discussion', `${name}.md`)),
+    ...listFilesRecursive(specDir),
+    ...sources.map((name) => statePath(cwd, workUnit, 'discussion', `${name}.md`)),
   ];
   /** @type {Set<string>} */
   const linked = new Set();
@@ -110,7 +110,7 @@ function planImportCarry(cwd, workUnit, specDir, sources, entries) {
     const basename = entry.path.slice('imports/'.length);
     if (basename === '' || basename.includes('/')) continue;
     if (!linked.has(basename) && !(entry.origin !== undefined && attached.has(entry.origin))) continue;
-    if (!fs.existsSync(path.join(stateRoot(cwd), workUnit, entry.path))) {
+    if (!fs.existsSync(statePath(cwd, workUnit, entry.path))) {
       missing.push(entry.path);
       continue;
     }
@@ -171,8 +171,8 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     if (item.status !== 'completed') {
       throw new Error(`specification "${topic}" is not completed (status: ${item.status}) — only a completed specification promotes`);
     }
-    const specSrc = stateRel(`${workUnit}/specification/${topic}`);
-    if (!fs.existsSync(path.join(cwd, specSrc, 'specification.md'))) {
+    const specSrc = statePath(cwd, workUnit, 'specification', topic);
+    if (!fs.existsSync(path.join(specSrc, 'specification.md'))) {
       throw new Error(`specification file missing on disk: ${specSrc}/specification.md`);
     }
 
@@ -180,8 +180,8 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     // registration. Read (and refuse corrupt JSON) before anything mutates;
     // the registration itself re-reads under the project lock after the cc
     // unit lands.
-    if (fs.existsSync(path.join(stateRoot(cwd), to))) {
-      throw new Error(`work unit "${to}" already exists (${stateRel(to)}) — pick a different name`);
+    if (fs.existsSync(statePath(cwd, to))) {
+      throw new Error(`work unit "${to}" already exists (${statePath(cwd, to)}) — pick a different name`);
     }
     const projectManifest = readProjectManifest(cwd);
     if (projectManifest.work_units && typeof projectManifest.work_units === 'object' && projectManifest.work_units[to]) {
@@ -202,7 +202,7 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       if (/[./]/.test(name)) {
         throw new Error(`specification "${topic}" has a malformed source name (${JSON.stringify(name)}) — fix the manifest before promoting`);
       }
-      if (fs.existsSync(path.join(stateRoot(cwd), workUnit, 'discussion', `${name}.md`))) {
+      if (fs.existsSync(statePath(cwd, workUnit, 'discussion', `${name}.md`))) {
         plan.push(name);
       }
     }
@@ -213,19 +213,19 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
       Array.isArray(manifest.imports) ? manifest.imports : []);
 
     // -- mutate: files out of the epic, then the epic manifest -----------------
-    fs.mkdirSync(path.join(stateRoot(cwd), to, 'specification'), { recursive: true });
-    fs.renameSync(path.join(cwd, specSrc), path.join(stateRoot(cwd), to, 'specification', to));
-    if (plan.length > 0) fs.mkdirSync(path.join(stateRoot(cwd), to, 'discussion'), { recursive: true });
+    fs.mkdirSync(statePath(cwd, to, 'specification'), { recursive: true });
+    fs.renameSync(specSrc, statePath(cwd, to, 'specification', to));
+    if (plan.length > 0) fs.mkdirSync(statePath(cwd, to, 'discussion'), { recursive: true });
     for (const name of plan) {
       fs.renameSync(
-        path.join(stateRoot(cwd), workUnit, 'discussion', `${name}.md`),
-        path.join(stateRoot(cwd), to, 'discussion', `${name}.md`));
+        statePath(cwd, workUnit, 'discussion', `${name}.md`),
+        statePath(cwd, to, 'discussion', `${name}.md`));
     }
 
     // Copied, not moved: the epic keeps the file and its entry, since
     // another topic may link the same material.
-    copyImports(cwd, path.join(stateRoot(cwd), to, 'imports'),
-      carried.map((c) => ({ src: stateRel(`${workUnit}/${c.entry.path}`), dest: c.basename })));
+    copyImports(cwd, statePath(cwd, to, 'imports'),
+      carried.map((c) => ({ src: statePath(cwd, workUnit, c.entry.path), dest: c.basename })));
 
     // Each moved discussion's item travels whole into the unit, under the
     // unit's own status — but for a reconcile flag, whose upstream stays in
@@ -308,9 +308,9 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     { remove: { workUnit, phase: 'specification', topic }, label: `knowledge remove (specification/${topic})` },
   ], warnings);
 
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
-    [stateRel(workUnit), stateRel(to), stateRel('manifest.json')],
+    [workUnit, to, 'manifest.json'],
     `spec(${workUnit}): promote ${topic} to cross-cutting work unit`, warnings);
 
   /** @type {WorkUnitPromoteResult} */
@@ -319,9 +319,9 @@ function promoteWorkUnit(cwd, workUnit, topic, { to, description }) {
     topic,
     cc_work_unit: to,
     cc_status: 'completed',
-    discussions: discussionMoves.map((name) => ({ name, path: `discussion/${name}.md` })),
-    specification: { path: `specification/${to}/specification.md` },
-    imports: importCarry.map((c) => ({ path: c.entry.path, origin: c.entry.origin })),
+    discussions: discussionMoves.map((name) => ({ name, path: statePath(cwd, to, 'discussion', `${name}.md`) })),
+    specification: { path: statePath(cwd, to, 'specification', to, 'specification.md') },
+    imports: importCarry.map((c) => ({ path: statePath(cwd, to, 'imports', c.basename), origin: c.entry.origin })),
     status: 'promoted',
     promoted_to: to,
     committed: outcome.committed,

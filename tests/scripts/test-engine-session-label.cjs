@@ -46,24 +46,30 @@ const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }]
 // The SessionStart hook's stdin, as Claude Code writes it on `claude --resume`.
 const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: id, hook_event_name: 'SessionStart', source: 'resume' });
 
-let dir; // temp project root — a git repo, since recording the opt-in commits
+let dir; // temp project root — a world with its state, since recording the opt-in commits
 let stubDir; // holds the tmux stub + state/log files
 let configDir; // this test's system config directory, where the conversations' folders sit
 let pinnedConfigDir; // the suite's own, put back after
 
-/** @param {string[]} args */
+/** Git in the code tree. @param {string[]} args */
 function git(args) {
   return harness.git(dir, args);
 }
 
+/** Git in the state worktree. @param {string[]} args */
+function stateGit(args) {
+  return harness.stateGit(dir, args);
+}
+
+/** A workflows project with the named work units — this checkout, or another. @param {string} prefix @param {string[]} units */
+function world(prefix, units) {
+  const root = harness.setupGitFixture(prefix);
+  for (const unit of units) fs.mkdirSync(path.join(root, '.leeway', unit), { recursive: true });
+  return root;
+}
+
 function setup() {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-'));
-  fs.mkdirSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
-  git(['init', '-q', '-b', 'main']);
-  git(['config', 'user.email', 'test@example.com']);
-  git(['config', 'user.name', 'Test']);
-  git(['config', 'commit.gpgsign', 'false']);
-  git(['commit', '-q', '--allow-empty', '-m', 'init']);
+  dir = world('engine-label-', ['pay']);
   stubDir = installTmuxStub();
   configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-config-'));
   pinnedConfigDir = process.env.WORKFLOWS_CONFIG_DIR;
@@ -72,9 +78,7 @@ function setup() {
 
 function teardown() {
   process.env.WORKFLOWS_CONFIG_DIR = pinnedConfigDir;
-  for (const d of [dir, stubDir, configDir]) {
-    fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  }
+  for (const d of [dir, stubDir, configDir]) harness.cleanupFixture(d);
 }
 
 /**
@@ -134,7 +138,7 @@ function setTmuxId(id) {
 }
 
 function stashStore() {
-  return path.join(dir, '.workflows', '.cache', '.session-labels');
+  return path.join(dir, '.leeway', '.cache', '.session-labels');
 }
 
 /** The single stash file, or null when the store is empty/absent. */
@@ -195,7 +199,7 @@ function optIn() {
 }
 
 function projectManifest() {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
 }
 
 function settingsPath() {
@@ -212,12 +216,19 @@ function writeSettings(content) {
 }
 
 /** HEAD's subject and the sorted paths it touched. */
-function head() {
+/** The last commit on a side, by `run` — the code tree's `git` or the state's `stateGit`. @param {(args: string[]) => string} run */
+function head(run) {
   return {
-    subject: git(['log', '-1', '--pretty=%s']).trim(),
-    files: git(['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
+    subject: run(['log', '-1', '--pretty=%s']).trim(),
+    files: run(['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean).sort(),
   };
 }
+
+/** The choice's two commits: the project manifest on the state branch, the settings in the code tree. */
+const CHOICE = {
+  state: { subject: 'chore: record session-label choice', files: ['manifest.json'] },
+  code: { subject: 'chore: record session-label choice', files: ['.claude/settings.json'] },
+};
 
 describe('engine session label', () => {
   beforeEach(setup);
@@ -254,8 +265,8 @@ describe('engine session label', () => {
     assert.strictEqual(res.name, 'proj-abc · pay · discussion · alpha');
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     const file = stashFile();
-    assert.ok(file, 'stash written under .workflows/.cache/.session-labels');
-    assert.strictEqual(git(['status', '--porcelain', '--', '.workflows/manifest.json', '.claude']).trim(), '',
+    assert.ok(file, 'stash written under .leeway/.cache/.session-labels');
+    assert.strictEqual(stateGit(['status', '--porcelain', '--', 'manifest.json']) + git(['status', '--porcelain', '--', '.claude']), '',
       'the label writes the cache alone — the opt-in and its hook were committed at the choice');
     const stash = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.strictEqual(stash.original, 'proj-abc');
@@ -303,7 +314,7 @@ describe('engine session label', () => {
   it('labels the roadmap and the baseline by identity — project-level places with no directory', () => {
     optIn();
     for (const place of ['roadmap', 'baseline']) {
-      assert.ok(!fs.existsSync(path.join(dir, '.workflows', place)), `${place} has no work-unit directory`);
+      assert.ok(!fs.existsSync(path.join(dir, '.leeway', place)), `${place} has no work-unit directory`);
       const res = engine(['session', 'label', place]);
       assert.strictEqual(res.name, `proj-abc · ${place}`);
       assert.strictEqual(tmuxName(), `proj-abc · ${place}`);
@@ -325,8 +336,7 @@ describe('engine session label', () => {
 
   it('a peer checkout\'s cleanup and repair never touch this checkout\'s records', () => {
     optIn();
-    const dirB = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-b-'));
-    fs.mkdirSync(path.join(dirB, '.workflows', 'shop'), { recursive: true });
+    const dirB = world('engine-label-b-', ['shop']);
     try {
       engine(['session', 'label', 'pay', 'discussion', 'alpha']);
       const file = /** @type {string} */ (stashFile());
@@ -345,12 +355,12 @@ describe('engine session label', () => {
       assert.deepStrictEqual(repair, { ok: true, repaired: false });
       assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
       assert.strictEqual(fs.readFileSync(file, 'utf8'), dead, 'this checkout\'s record is intact');
-      assert.ok(!fs.existsSync(path.join(dirB, '.workflows', '.cache', '.session-labels')), 'the peer gains no records');
+      assert.ok(!fs.existsSync(path.join(dirB, '.leeway', '.cache', '.session-labels')), 'the peer gains no records');
       const home = engine(['session', 'cleanup', 'sess-other']);
       assert.strictEqual(home.restored, true, 'the record still does its job at home');
       assert.strictEqual(tmuxName(), 'proj-abc');
     } finally {
-      fs.rmSync(dirB, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      harness.cleanupFixture(dirB);
     }
   });
 
@@ -402,7 +412,7 @@ describe('engine session label', () => {
 
   it('reports stash-error and leaves the name alone when the stash cannot be written', () => {
     optIn();
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache'), ''); // a file where the cache dir must go
+    fs.writeFileSync(path.join(dir, '.leeway', '.cache'), ''); // a file where the cache dir must go
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'stash-error' });
     assert.strictEqual(tmuxName(), 'proj-abc');
@@ -484,7 +494,7 @@ describe('engine session label — the position record', () => {
 
   it('a failed stash records the position all the same', () => {
     optIn();
-    fs.writeFileSync(path.join(dir, '.workflows', '.cache'), '');
+    fs.writeFileSync(path.join(dir, '.leeway', '.cache'), '');
     assert.deepStrictEqual(engine(['session', 'label', 'pay', 'discussion', 'alpha']), { ok: true, labelled: false, reason: 'stash-error' });
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
   });
@@ -519,7 +529,7 @@ describe('engine session label — the manifest stamp', () => {
   afterEach(teardown);
 
   function writeProjectManifest(defaults) {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), JSON.stringify({ defaults }, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ defaults }, null, 2) + '\n');
   }
 
   it('a manifest stamped false — the prose-test world — is disabled, whatever was recorded before', () => {
@@ -544,7 +554,7 @@ describe('engine session label — the manifest stamp', () => {
 
   it('a manifest that does not parse, or whose root or defaults is no object, reads as never asked — never a throw', () => {
     for (const content of ['{not json', '[]', 'null', JSON.stringify({ defaults: [true] })]) {
-      fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'), content);
+      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), content);
       const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
       assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' }, content);
     }
@@ -563,28 +573,27 @@ describe('engine session label-config', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  it('records the opt-in on the project manifest, installs the session hooks, and commits both files confined', () => {
+  it('records the opt-in on the project manifest, installs the session hooks, and commits each where it lives, confined', () => {
     fs.writeFileSync(path.join(dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
+    fs.writeFileSync(path.join(dir, '.leeway', 'peer-dirt.txt'), 'a peer session\'s state\n');
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } }, 'a missing manifest is created around the choice');
     assert.deepStrictEqual(settings(), LABELS_ON);
-    assert.deepStrictEqual(head(), {
-      subject: 'chore: record session-label choice',
-      files: ['.claude/settings.json', '.workflows/manifest.json'],
-    });
-    assert.match(git(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the commit takes its own two paths and nothing else');
+    assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
+    assert.match(git(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the code commit takes its own path and nothing else');
+    assert.match(stateGit(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the state commit takes its own path and nothing else');
   });
 
   it('preserves every other manifest key and every other default', () => {
-    fs.writeFileSync(path.join(dir, '.workflows', 'manifest.json'),
+    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'),
       JSON.stringify({ work_units: { pay: { work_type: 'feature' } }, defaults: { plan_format: 'tick' } }, null, 2) + '\n');
     engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(projectManifest(), {
       work_units: { pay: { work_type: 'feature' } },
       defaults: { plan_format: 'tick', tmux_labels: true },
     });
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.workflows', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
   });
 
   it('opting out records false, takes `session cleanup` out, leaves the workflows\' own hooks standing, and commits both', () => {
@@ -593,29 +602,26 @@ describe('engine session label-config', () => {
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
     assert.strictEqual(projectManifest().defaults.tmux_labels, false);
     assert.deepStrictEqual(settings(), LABELS_OFF, 'the workflows\' own hooks are no label preference');
-    assert.deepStrictEqual(head(), {
-      subject: 'chore: record session-label choice',
-      files: ['.claude/settings.json', '.workflows/manifest.json'],
-    });
+    assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
   });
 
   it('declining on a project the hooks never reached still installs the workflows\' own hooks', () => {
     const res = engine(['session', 'label-config', 'false']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
     assert.deepStrictEqual(settings(), LABELS_OFF);
-    assert.deepStrictEqual(head().files, ['.claude/settings.json', '.workflows/manifest.json']);
+    assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
   });
 
   it('re-recording the same choice is idempotent — no twin hook, nothing to commit', () => {
     engine(['session', 'label-config', 'true']);
-    const before = git(['rev-parse', 'HEAD']);
+    const before = [git(['rev-parse', 'HEAD']), stateGit(['rev-parse', 'HEAD'])];
     engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(settings(), LABELS_ON);
-    assert.strictEqual(git(['rev-parse', 'HEAD']), before);
+    assert.deepStrictEqual([git(['rev-parse', 'HEAD']), stateGit(['rev-parse', 'HEAD'])], before);
   });
 
   it('refuses to replace a project manifest that no longer parses', () => {
-    const p = path.join(dir, '.workflows', 'manifest.json');
+    const p = path.join(dir, '.leeway', 'manifest.json');
     fs.writeFileSync(p, '{not json', 'utf8');
     const err = engine(['session', 'label-config', 'true'], { expectFail: true });
     assert.match(err.error, /not valid JSON/);
@@ -630,10 +636,11 @@ describe('engine session label-config', () => {
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /session hooks not synced: \.claude\/settings\.json is not valid JSON/);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
-    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
+    assert.deepStrictEqual(head(stateGit), CHOICE.state);
+    assert.deepStrictEqual(head(git), { subject: 'ignore the state', files: ['.gitignore'] }, 'no settings commit');
   });
 
-  it('a commit git refuses is a warning, never a failure — the choice and the hooks are on disk', () => {
+  it('a code commit git refuses is a warning, never a failure — the hooks wait on disk, and the state commits beside it', () => {
     const hooksDir = path.join(dir, '.git', 'hooks');
     fs.mkdirSync(hooksDir, { recursive: true });
     fs.writeFileSync(path.join(hooksDir, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
@@ -644,8 +651,9 @@ describe('engine session label-config', () => {
     assert.match(res.warnings[0], /^commit failed: /);
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
     assert.deepStrictEqual(settings(), LABELS_ON);
-    assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'init', 'nothing landed');
-    assert.match(git(['status', '--porcelain']), /\.workflows\/manifest\.json/, 'the state waits, uncommitted');
+    assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'nothing landed in the code tree');
+    assert.match(git(['status', '--porcelain']), /\.claude\//, 'the settings wait, uncommitted');
+    assert.deepStrictEqual(head(stateGit), CHOICE.state, 'the state\'s git runs no hook of the code tree\'s');
   });
 
   it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
@@ -653,7 +661,8 @@ describe('engine session label-config', () => {
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
-    assert.deepStrictEqual(head(), { subject: 'chore: record session-label choice', files: ['.workflows/manifest.json'] });
+    assert.deepStrictEqual(head(stateGit), CHOICE.state);
+    assert.deepStrictEqual(head(git), { subject: 'ignore the state', files: ['.gitignore'] }, 'no settings commit');
   });
 });
 
@@ -1210,7 +1219,7 @@ describe('engine session resume', () => {
 
   it('never throws on a work unit the project no longer has — it labels nothing and keeps the position, which goes with its folder', () => {
     ended();
-    fs.rmSync(path.join(dir, '.workflows', 'pay'), { recursive: true });
+    fs.rmSync(path.join(dir, '.leeway', 'pay'), { recursive: true });
     assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: false });
     assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
     assert.strictEqual(tmuxName(), 'proj-abc');
@@ -1226,10 +1235,8 @@ describe('engine session resume', () => {
 
   /** A second workflows project, opted in, with the work units named — another checkout. */
   function otherProject(/** @type {string[]} */ units) {
-    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-other-'));
-    for (const unit of units) fs.mkdirSync(path.join(other, '.workflows', unit), { recursive: true });
-    fs.mkdirSync(path.join(other, '.workflows'), { recursive: true });
-    fs.writeFileSync(path.join(other, '.workflows', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');
+    const other = world('engine-label-other-', units);
+    fs.writeFileSync(path.join(other, '.leeway', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');
     return other;
   }
 
@@ -1240,7 +1247,7 @@ describe('engine session resume', () => {
       assert.deepStrictEqual(resume(['sess-1'], { cwd: other }), { ok: true, resumed: true });
       assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
     } finally {
-      fs.rmSync(other, { recursive: true, force: true });
+      harness.cleanupFixture(other);
     }
   });
 
@@ -1252,7 +1259,7 @@ describe('engine session resume', () => {
       assert.strictEqual(tmuxName(), 'proj-abc');
       assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
     } finally {
-      fs.rmSync(other, { recursive: true, force: true });
+      harness.cleanupFixture(other);
     }
     assert.deepStrictEqual(resume(['sess-1']), { ok: true, resumed: true });
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
@@ -1262,6 +1269,13 @@ describe('engine session resume', () => {
     ended();
     assert.deepStrictEqual(resume(['sess-1'], { cwd: stubDir, projectDir: dir }), { ok: true, resumed: true });
     assert.strictEqual(tmuxName(), 'proj-abc · pay · discussion · alpha');
+  });
+
+  it('a hook fired outside the project root with no CLAUDE_PROJECT_DIR labels nothing and keeps the position', () => {
+    ended();
+    assert.deepStrictEqual(resume(['sess-1'], { cwd: stubDir }), { ok: true, resumed: false });
+    assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.deepStrictEqual(position('sess-1'), { name: 'pay', phase: 'discussion', topic: 'alpha' });
   });
 
   it('refuses a second argument loudly — an authoring bug, never a silent no-op', () => {

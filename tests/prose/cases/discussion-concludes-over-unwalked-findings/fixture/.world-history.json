@@ -1,8 +1,0 @@
-[
-  {
-    "message": "discussion(pay/pay): decided failed payment retries",
-    "files": [
-      ".workflows/pay/discussion/pay.md"
-    ]
-  }
-]

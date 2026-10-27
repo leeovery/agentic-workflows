@@ -19,10 +19,11 @@ const assert = require('node:assert');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
+const { setupFixtureAt, statePath } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
-const SOURCE = '.workflows/fumi/discussion/search-and-retrieval.md';
+const SOURCE = 'fumi/discussion/search-and-retrieval.md';
 const ANCHOR = 'A switch on the main search area';
 
 /** A sound fumi case, with `overrides` laid over it. */
@@ -81,7 +82,7 @@ describe('knowledge eval — keyword mode', () => {
       fumiCase({
         id: 'bad-judgments',
         relevant: [
-          { source: '.workflows/fumi/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
+          { source: 'fumi/nowhere.md', anchor: 'x', grade: 'primary', framing: 0 },
           { source: SOURCE, anchor: 'not a phrase in the file', grade: 'supporting', framing: 3 },
           { source: SOURCE, anchor: ANCHOR, grade: 'key', framing: 0 },
           { source: SOURCE, anchor: 'FTS5', grade: 'supporting', framing: 0 },
@@ -95,7 +96,7 @@ describe('knowledge eval — keyword mode', () => {
         relevant: [
           { source: SOURCE, anchor: ANCHOR, grade: 'primary', framing: 0 },
           { source: SOURCE, anchor: 'Spotlight', grade: 'supporting', framing: 0 },
-          { source: '.workflows/fumi/discussion/engine-architecture.md', anchor: '## Process Model', grade: 'primary', framing: 0 },
+          { source: 'fumi/discussion/engine-architecture.md', anchor: '## Process Model', grade: 'primary', framing: 0 },
         ],
       }),
     ]);
@@ -120,7 +121,7 @@ describe('knowledge eval — keyword mode', () => {
       'negative-judged: a negative case judges nothing relevant',
       'near-miss-judged: a negative case judges nothing relevant',
       'relevant-not-a-list: relevant must be a list',
-      'bad-judgments: relevant[0]: .workflows/fumi/nowhere.md is not in the fumi fixture',
+      'bad-judgments: relevant[0]: fumi/nowhere.md is not in the fumi fixture',
       'bad-judgments: relevant[1]: framing must index a term',
       `bad-judgments: relevant[1]: the anchor is not in ${SOURCE}`,
       'bad-judgments: relevant[2]: grade must be one of primary, supporting',
@@ -134,14 +135,14 @@ describe('knowledge eval — keyword mode', () => {
   it('a judgment no chunk of the built store carries is named', () => {
     const chunks = [
       { source_file: SOURCE, content: `Before. ${ANCHOR} — include history. After.` },
-      { source_file: '.workflows/fumi/discussion/note-model.md', content: 'A switch on the main search area, restated.' },
+      { source_file: 'fumi/discussion/note-model.md', content: 'A switch on the main search area, restated.' },
     ];
     const split = { source: SOURCE, anchor: 'include history — widens the query', grade: 'primary', framing: 0 };
-    const elsewhere = { source: '.workflows/fumi/discussion/note-window.md', anchor: ANCHOR, grade: 'supporting', framing: 0 };
+    const elsewhere = { source: 'fumi/discussion/note-window.md', anchor: ANCHOR, grade: 'supporting', framing: 0 };
     const cases = [fumiCase(), fumiCase({ id: 'unmatched', relevant: [...fumiCase().relevant, split, elsewhere] }), negativeCase()];
     assert.deepStrictEqual(knowledgeEval.unmatchedJudgments(cases, chunks), [
       `unmatched: relevant[1]: no indexed chunk of ${SOURCE} carries the anchor`,
-      'unmatched: relevant[2]: no indexed chunk of .workflows/fumi/discussion/note-window.md carries the anchor',
+      'unmatched: relevant[2]: no indexed chunk of fumi/discussion/note-window.md carries the anchor',
     ]);
   });
 
@@ -259,17 +260,17 @@ async function fakeEndpoint(dimensions) {
  * @param {string} parent @param {Record<string, any>} identity
  */
 function discussedProject(parent, identity) {
-  const root = fs.mkdtempSync(path.join(parent, 'project-'));
+  const root = setupFixtureAt(fs.mkdtempSync(path.join(parent, 'project-')));
   const topics = ['refresh', 'revocation'];
-  writeJson(path.join(root, '.workflows', 'manifest.json'), { work_units: { auth: { work_type: 'feature' } } });
-  writeJson(path.join(root, '.workflows', 'auth', 'manifest.json'), {
+  writeJson(statePath(root, 'manifest.json'), { work_units: { auth: { work_type: 'feature' } } });
+  writeJson(statePath(root, 'auth', 'manifest.json'), {
     name: 'auth', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
     phases: { discussion: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) } },
   });
   for (const topic of topics) {
-    writeFile(path.join(root, '.workflows', 'auth', 'discussion', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
+    writeFile(statePath(root, 'auth', 'discussion', `${topic}.md`), `# ${topic}\n\nThe ${topic} decision.\n`);
   }
-  writeJson(knowledgeFiles(root).config, { knowledge: identity });
+  writeJson(knowledgeFiles(statePath(root)).config, { knowledge: identity });
   return root;
 }
 
@@ -333,7 +334,7 @@ describe('knowledge eval — the embedding cache', () => {
       const rebuilt = discussedProject(scratch, endpoint.identity);
       await knowledgeEval.runKnowledge(rebuilt, ['index'], cacheDir);
       assert.strictEqual(endpoint.texts.length, 2, 'the rebuild sent the endpoint nothing');
-      assert.strictEqual(store.readMetadata(knowledgeFiles(rebuilt).metadata).provider, 'openai-compatible');
+      assert.strictEqual(store.readMetadata(knowledgeFiles(statePath(rebuilt)).metadata).provider, 'openai-compatible');
       assert.strictEqual(cache.size(), 2);
     } finally {
       await endpoint.close();

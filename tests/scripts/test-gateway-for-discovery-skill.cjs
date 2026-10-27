@@ -34,7 +34,7 @@ Work unit: ${workUnit}
 ## Conclusion
 
 ${conclusionBody}${trailing}`;
-  createFile(dir, `.workflows/${workUnit}/discovery/sessions/${filename}`, content);
+  createFile(dir, `.leeway/${workUnit}/discovery/sessions/${filename}`, content);
 }
 
 describe('workflow-discovery discovery', () => {
@@ -438,8 +438,8 @@ describe('workflow-discovery discovery', () => {
   it('next_session_number ignores non-matching filenames in the sessions directory', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
-    createFile(dir, '.workflows/payments/discovery/sessions/session-abc.md', 'should be ignored');
-    createFile(dir, '.workflows/payments/discovery/sessions/notes.md', 'should be ignored');
+    createFile(dir, '.leeway/payments/discovery/sessions/session-abc.md', 'should be ignored');
+    createFile(dir, '.leeway/payments/discovery/sessions/notes.md', 'should be ignored');
     const r = discover(dir, 'payments');
     assert.strictEqual(r.next_session_number, 2);
   });
@@ -454,9 +454,9 @@ describe('workflow-discovery discovery', () => {
     });
 
     it('returns valid for gap-analysis when checksum matches', () => {
-      createFile(dir, '.workflows/payments/discussion/topic-a.md', 'content-x');
+      createFile(dir, '.leeway/payments/discussion/topic-a.md', 'content-x');
       const crypto = require('crypto');
-      const buf = fs.readFileSync(path.join(dir, '.workflows/payments/discussion/topic-a.md'));
+      const buf = fs.readFileSync(path.join(dir, '.leeway/payments/discussion/topic-a.md'));
       const checksum = crypto.createHash('md5').update(buf).digest('hex');
       createManifest(dir, 'payments', {
         work_type: 'epic',
@@ -475,7 +475,7 @@ describe('workflow-discovery discovery', () => {
         work_type: 'epic',
         phases: { discussion: { items: { auth: { status: 'completed' } } } },
       });
-      createFile(dir, '.workflows/payments/discussion/auth.md', 'content');
+      createFile(dir, '.leeway/payments/discussion/auth.md', 'content');
       const r = discover(dir, 'payments');
       assert.strictEqual(r.analysis_caches.gap_analysis.status, 'stale');
     });
@@ -523,25 +523,25 @@ describe('workflow-discovery listSessionLogs', () => {
     assert.deepStrictEqual(listSessionLogs(dir, 'payments'), []);
   });
 
-  it('returns all session numbers and cwd-relative paths in ascending order', () => {
+  it('returns all session numbers and absolute paths in ascending order', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
     writeSessionLog(dir, 'payments', 2, 'concluded');
     writeSessionLog(dir, 'payments', 3, '(none)');
     assert.deepStrictEqual(listSessionLogs(dir, 'payments'), [
-      { number: 1, path: '.workflows/payments/discovery/sessions/session-001.md' },
-      { number: 2, path: '.workflows/payments/discovery/sessions/session-002.md' },
-      { number: 3, path: '.workflows/payments/discovery/sessions/session-003.md' },
+      { number: 1, path: path.join(dir, '.leeway/payments/discovery/sessions/session-001.md') },
+      { number: 2, path: path.join(dir, '.leeway/payments/discovery/sessions/session-002.md') },
+      { number: 3, path: path.join(dir, '.leeway/payments/discovery/sessions/session-003.md') },
     ]);
   });
 
   it('ignores filenames that are not session-NNN.md', () => {
     createManifest(dir, 'payments', { work_type: 'epic' });
     writeSessionLog(dir, 'payments', 1, 'concluded');
-    createFile(dir, '.workflows/payments/discovery/sessions/session-abc.md', 'ignore');
-    createFile(dir, '.workflows/payments/discovery/sessions/notes.md', 'ignore');
+    createFile(dir, '.leeway/payments/discovery/sessions/session-abc.md', 'ignore');
+    createFile(dir, '.leeway/payments/discovery/sessions/notes.md', 'ignore');
     assert.deepStrictEqual(listSessionLogs(dir, 'payments'), [
-      { number: 1, path: '.workflows/payments/discovery/sessions/session-001.md' },
+      { number: 1, path: path.join(dir, '.leeway/payments/discovery/sessions/session-001.md') },
     ]);
   });
 
@@ -681,7 +681,7 @@ describe('workflow-discovery format', () => {
         research: { items: { parked: { status: 'unstarted' } } },
       },
     });
-    createFile(dir, '.workflows/payments/research/.mailbox/parked/001-question.md', '### question\n');
+    createFile(dir, '.leeway/payments/research/.mailbox/parked/001-question.md', '### question\n');
     const out = format(discover(dir, 'payments'));
     assert.match(out, /- ○ parked \[fresh\] routing=research source=message:origin mail=waiting — target/);
   });
@@ -796,8 +796,8 @@ describe('workflow-discovery format', () => {
     writeSessionLog(dir, 'payments', 2, 'concluded');
     const out = format(discover(dir, 'payments'));
     assert.ok(out.includes('session_logs (2):'));
-    assert.ok(out.includes('- 001 .workflows/payments/discovery/sessions/session-001.md'));
-    assert.ok(out.includes('- 002 .workflows/payments/discovery/sessions/session-002.md'));
+    assert.ok(out.includes(`- 001 ${dir}/.leeway/payments/discovery/sessions/session-001.md`));
+    assert.ok(out.includes(`- 002 ${dir}/.leeway/payments/discovery/sessions/session-002.md`));
   });
 
   // --- next_session_number line ---
@@ -878,8 +878,8 @@ describe('workflow-discovery format', () => {
       'imports (0):',
       '  (none)',
       'session_logs (2):',
-      '  - 001 .workflows/payments/discovery/sessions/session-001.md',
-      '  - 002 .workflows/payments/discovery/sessions/session-002.md',
+      `  - 001 ${dir}/.leeway/payments/discovery/sessions/session-001.md`,
+      `  - 002 ${dir}/.leeway/payments/discovery/sessions/session-002.md`,
       'analysis_caches: gap_analysis=absent',
       'next_session_number: 003',
       '',

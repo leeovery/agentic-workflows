@@ -31,11 +31,12 @@ const {
   writeProjectManifestAtomic,
   withProjectLock,
 } = require('../kernel/manifest.cjs');
-const { commitTailPathspec, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { nextSessionNumber } = require('./discovery-session.cjs');
 const { planImports, copyImports, importEntry, isIndexableImport, assertLandableSources } = require('./import-landing.cjs');
 const { ensureRoadmap, ROADMAP_DIR } = require('./roadmap.cjs');
+const { statePath } = require('../kernel/state-root.cjs');
 
 /** A roadmap transaction's commit scope: the roadmap dir and the project manifest. */
 const ROADMAP_SCOPE = [ROADMAP_DIR, PROJECT_MANIFEST_SPEC];
@@ -70,9 +71,9 @@ function openRoadmapSession(cwd, { sessionLogFile }) {
       throw new Error(`session log draft is empty: ${sessionLogFile} — draft the log before opening the session`);
     }
 
-    const sessionsDir = path.join(cwd, ROADMAP_DIR, 'sessions');
+    const sessionsDir = statePath(cwd, ROADMAP_DIR, 'sessions');
     const session = String(nextSessionNumber(sessionsDir)).padStart(3, '0');
-    const rel = `${ROADMAP_DIR}/sessions/session-${session}.md`;
+    const log = path.join(sessionsDir, `session-${session}.md`);
     // Shape-validate the node before any mutation — a malformed-manifest
     // refusal must leave the draft in place.
     const roadmap = ensureRoadmap(manifest);
@@ -85,11 +86,11 @@ function openRoadmapSession(cwd, { sessionLogFile }) {
     // filename. Write-then-unlink preserves the move; a crash between the
     // two leaves only a scratch draft behind.
     fs.mkdirSync(sessionsDir, { recursive: true });
-    fs.writeFileSync(path.join(cwd, rel), draft.split('{NNN}').join(session));
+    fs.writeFileSync(log, draft.split('{NNN}').join(session));
     fs.unlinkSync(draftPath);
     roadmap.active_session = session;
     writeProjectManifestAtomic(cwd, manifest);
-    return { session, path: rel };
+    return { session, path: log };
   });
 }
 
@@ -110,8 +111,8 @@ function closeRoadmapSession(cwd, { message }) {
       throw new Error('no active roadmap session — roadmap.active_session is not set (a browse-only session never sets it; nothing to close)');
     }
     const rel = `${ROADMAP_DIR}/sessions/session-${active}.md`;
-    if (!fs.existsSync(path.join(cwd, rel))) {
-      throw new Error(`session log missing on disk: ${rel} — the active-session marker names a session with no log`);
+    if (!fs.existsSync(statePath(cwd, rel))) {
+      throw new Error(`session log missing on disk: ${statePath(cwd, rel)} — the active-session marker names a session with no log`);
     }
     delete rm.active_session;
     writeProjectManifestAtomic(cwd, manifest);
@@ -122,9 +123,9 @@ function closeRoadmapSession(cwd, { message }) {
   const warnings = [];
   syncKnowledge(cwd, [{ index: session.rel, label: `knowledge index (roadmap/sessions/session-${session.number}.md)` }], warnings);
 
-  const outcome = commitTailPathspec(cwd, ROADMAP_SCOPE, message, warnings);
+  const outcome = commitStateTail(cwd, ROADMAP_SCOPE, message, warnings);
   /** @type {Record<string, any>} */
-  const result = { session: session.number, session_log: session.rel, committed: outcome.committed, warnings };
+  const result = { session: session.number, session_log: statePath(cwd, session.rel), committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);
   return result;
 }
@@ -154,7 +155,7 @@ function importRoadmapFiles(cwd, paths) {
   // sessions importing the same basename cannot dedupe against one snapshot
   // (create's discipline: the copies land beside the write that records
   // them).
-  const destDir = path.join(cwd, ROADMAP_DIR, 'imports');
+  const destDir = statePath(cwd, ROADMAP_DIR, 'imports');
   const { moves, skipped } = withProjectLock(cwd, () => {
     const manifest = readProjectManifest(cwd);
     const roadmap = ensureRoadmap(manifest);
@@ -182,10 +183,10 @@ function importRoadmapFiles(cwd, paths) {
   /** @type {Record<string, any>} */
   const result = {
     op: 'import',
-    imports: moves.map((m) => ({ path: `imports/${m.dest}`, origin: 'roadmap' })),
+    imports: moves.map((m) => ({ path: path.join(destDir, m.dest), origin: 'roadmap' })),
     skipped_imports: skipped,
   };
-  const outcome = commitTailPathspec(
+  const outcome = commitStateTail(
     cwd,
     ROADMAP_SCOPE,
     `roadmap: import ${moves.length} file${moves.length === 1 ? '' : 's'}`,
