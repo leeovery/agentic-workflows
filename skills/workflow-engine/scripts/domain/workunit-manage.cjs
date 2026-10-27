@@ -6,7 +6,7 @@
 // offers is manifest state (work type, phase presence, implementation
 // completion, in-progress epics for absorption), so it is derived here, in one
 // place, never re-derived by the session. Pure over the project's
-// `.workflows/` tree: same files, same answer.
+// state: same files, same answer.
 // ---------------------------------------------------------------------------
 
 const { loadManifest, loadActiveManifests } = require('./reads.cjs');

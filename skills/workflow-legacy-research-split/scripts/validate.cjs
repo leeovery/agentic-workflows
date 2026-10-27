@@ -7,7 +7,7 @@ const { stateRoot } = require('../../workflow-engine/scripts/kernel/state-root.c
 
 // Cache-shape contract validated here:
 //
-// .workflows/.cache/{work_unit}/legacy-split/{current_source}/
+// .cache/{work_unit}/legacy-split/{current_source}/   (in the state)
 //   ├── plan.json
 //   └── {kebab_name}.md   (one per theme, non-empty)
 //

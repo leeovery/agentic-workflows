@@ -8,7 +8,7 @@
 // varies between them — pipeline phases, the seeds and imports they surface —
 // is data in WORK_UNIT_TYPES, never a copied code path.
 //
-// Pure over the project's `.workflows/` tree: same files, same answer. Shared
+// Pure over the project's state: same files, same answer. Shared
 // manifest semantics come from domain/reads and domain/derivations — never
 // duplicated here.
 // ---------------------------------------------------------------------------
@@ -158,7 +158,7 @@ function phaseTargets(manifest, nextPhase) {
  * One single-topic unit in progress, by name: its type, read from its
  * manifest, and its entry with next-phase state — null where no feature,
  * bugfix, quick-fix or cross-cutting concern by that name is in progress.
- * @param {string} cwd  project root (the directory containing `.workflows/`)
+ * @param {string} cwd  project root
  * @param {string} name
  * @returns {{type: string, unit: WorkUnitEntry}|null}
  */

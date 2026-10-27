@@ -229,9 +229,9 @@ const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
 
 // The project-level places with no work unit, named by identity alone:
 // `baseline` is the knowledge base's pseudo-identity for the project-level
-// baseline docs (.workflows/.baseline/); `roadmap` is the product-roadmap
+// baseline docs (`.baseline/` in the state); `roadmap` is the product-roadmap
 // layer's identity (the project manifest's `roadmap` node and the
-// project-level sessions under .workflows/.roadmap/).
+// project-level sessions under `.roadmap/`).
 const PROJECT_IDENTITIES = ['baseline', 'roadmap'];
 
 // The literal a skill takes in an argument's place where it has nothing to

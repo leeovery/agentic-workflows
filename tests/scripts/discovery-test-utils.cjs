@@ -14,9 +14,8 @@ const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
 
-const {
-  STATE_DIR, createState, repairStateWorktree,
-} = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { createState, repairStateWorktree } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { STATE_DIR_NAME } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 
 /** @param {string} dir @param {string[]} args */
 function git(dir, args) {
@@ -64,11 +63,11 @@ function fixtureTemplate() {
   process.on('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
   git(dir, ['init', '-q', '--template=', '-b', 'main']);
   testIdentity(dir);
-  fs.writeFileSync(path.join(dir, '.gitignore'), `${STATE_DIR}/\n`);
+  fs.writeFileSync(path.join(dir, '.gitignore'), `${STATE_DIR_NAME}/\n`);
   datedAt(TEMPLATE_DATE, () => {
     git(dir, ['add', '.gitignore']);
     git(dir, ['commit', '-q', '-m', 'ignore the state']);
-    createState(path.join(dir, STATE_DIR));
+    createState(path.join(dir, STATE_DIR_NAME));
   });
   template = dir;
   return dir;
@@ -83,7 +82,7 @@ function setupFixtureAt(dir) {
   fs.mkdirSync(dir, { recursive: true });
   const at = fs.realpathSync(dir);
   fs.cpSync(fixtureTemplate(), at, { recursive: true });
-  repairStateWorktree(path.join(at, STATE_DIR));
+  repairStateWorktree(path.join(at, STATE_DIR_NAME));
   return at;
 }
 
@@ -108,7 +107,7 @@ function cleanupFixture(dir) {
  * @returns {string}
  */
 function statePath(dir, ...segments) {
-  return path.join(dir, STATE_DIR, ...segments);
+  return path.join(dir, STATE_DIR_NAME, ...segments);
 }
 
 function createManifest(dir, name, data) {
@@ -134,6 +133,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR, TEMPLATE_DATE, datedAt, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
   createManifest, createFile,
 };

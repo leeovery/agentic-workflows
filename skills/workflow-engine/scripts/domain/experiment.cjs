@@ -4,7 +4,7 @@
 // Domain ring: the experiment series — the ordered run of experiments a
 // topic's conversations ever spawned (`phases.experiment.items.{topic}
 // .experiments.{id}`), each a frozen design plus a report on disk under
-// `.workflows/{wu}/experiment/{topic}/{id}-{slug}/`. The engine records the
+// `{wu}/experiment/{topic}/{id}-{slug}/` in the state. The engine records the
 // lifecycle; every document is model-authored — the engine never writes
 // prose.
 //

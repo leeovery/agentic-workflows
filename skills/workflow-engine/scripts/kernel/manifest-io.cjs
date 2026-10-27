@@ -154,11 +154,15 @@ function sweepOrphanedTmpFiles(file) {
   }
 }
 
+/** The one serialisation every JSON writer uses. @param {object} data @returns {string} */
+function jsonText(data) {
+  return JSON.stringify(data, null, 2) + '\n';
+}
+
 /**
- * Atomic JSON write: serialise, write a hidden pid-suffixed temp file in the
- * same directory, rename over the target — a crash mid-write can never leave
- * a truncated manifest behind. One serialisation for every writer:
- * `JSON.stringify(data, null, 2) + '\n'`. A `mode` is the file's exactly,
+ * Atomic JSON write: serialise (`jsonText`), write a hidden pid-suffixed temp
+ * file in the same directory, rename over the target — a crash mid-write can
+ * never leave a truncated manifest behind. A `mode` is the file's exactly,
  * set before the rename, so the content is never readable under another.
  * @param {string} file @param {object} data @param {{mode?: number}} [options]
  */
@@ -166,7 +170,7 @@ function writeJsonAtomic(file, data, { mode } = {}) {
   assertObjectRoot(data, file);
   sweepOrphanedTmpFiles(file);
   const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', { encoding: 'utf8', mode });
+  fs.writeFileSync(tmp, jsonText(data), { encoding: 'utf8', mode });
   if (mode !== undefined) fs.chmodSync(tmp, mode);
   fs.renameSync(tmp, file);
 }
@@ -558,6 +562,7 @@ module.exports = {
   ensureContainer,
   isObject,
   readWorkUnitManifest,
+  jsonText,
   writeJsonAtomic,
   writeWorkUnitManifestAtomic,
   readProjectManifest,

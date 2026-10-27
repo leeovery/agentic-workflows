@@ -86,7 +86,7 @@ function nulJoined(files) {
  * @param {WorktreeContext} ctx @param {string} local @returns {Entries}
  */
 function workingEntries(ctx, local) {
-  return withPrivateIndex(ctx, (env) => {
+  return withPrivateIndex(ctx.index, (env) => {
     ctx.git.run(['read-tree', local], { env });
     ctx.git.run(['add', '--all'], { env });
     return indexEntries(ctx.git, env);
@@ -291,7 +291,7 @@ function withStaged(ctx, writes, fn) {
   fs.rmSync(ctx.staged, { recursive: true, force: true });
   try {
     if (writes.length > 0) {
-      withPrivateIndex(ctx, (env) => {
+      withPrivateIndex(ctx.index, (env) => {
         fillIndex(ctx, new Map(writes.map((write) => [write.file, /** @type {Entry} */ (write.to)])), env);
         ctx.git.run(['checkout-index', '-f', '-z', '--stdin', `--prefix=${ctx.staged}/`], { env, input: nulJoined(writes.map((write) => write.file)) });
       });
@@ -366,20 +366,24 @@ function moveWorktree(ctx, steps, resumed) {
 
 /**
  * Bring the worktree's own index into line with `target` under the paths
- * the move changed, so `git status` reads them against it. Nothing reads
- * that index, so a failure here is a warning.
- * @param {WorktreeContext} ctx @param {string} target @param {string[]} files @returns {string[]} warnings
+ * — those a move changed, or a commit took — so `git status` reads them
+ * against it; entries under other paths stay as they are. Nothing reads
+ * that index, so a failure here — another process holding it — is a
+ * warning.
+ * @param {import('../kernel/isolated-git.cjs').IsolatedGit} git bound to the state worktree
+ * @param {string} branch the branch it has checked out
+ * @param {string} target @param {string[]} files @returns {string[]} warnings
  */
-function alignIndex(ctx, target, files) {
+function alignIndex(git, branch, target, files) {
   if (files.length === 0) return [];
   try {
-    ctx.git.run(['reset', '--quiet', '--pathspec-from-file=-', '--pathspec-file-nul', target], {
+    git.run(['reset', '--quiet', '--pathspec-from-file=-', '--pathspec-file-nul', target], {
       input: nulJoined(files), env: { GIT_LITERAL_PATHSPECS: '1' },
     });
     return [];
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
-    return [`the state worktree's index was not brought into line with ${ctx.branch}: ${err.message}`];
+    return [`the state worktree's index was not brought into line with ${branch}: ${err.message}`];
   }
 }
 

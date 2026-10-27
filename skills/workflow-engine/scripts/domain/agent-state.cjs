@@ -6,7 +6,7 @@
 // The one owner of the surfacing state machine that used to live as
 // hand-edited cache-file frontmatter (design/analysis-state.md, S1/S2).
 // State lives in an engine-owned store colocated with the topic's content
-// files — `.workflows/.cache/{wu}/{phase}/{topic}/state.json` — validated
+// files — `.cache/{wu}/{phase}/{topic}/state.json` in the state — validated
 // vocabularies, locked atomic writes, gitignored. Deleting a topic's cache
 // directory (restart) or the work unit's cache (close) removes state and
 // content together: a cleanse is structural, never a second call. Content stays markdown:

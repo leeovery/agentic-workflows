@@ -13,14 +13,14 @@
 // machine's own change. The record goes once the branch has moved, and one
 // whose branch moved on regardless is dropped.
 //
-// The merge's context is opened here too. The branch is the caller's to
-// name, so the state worktree's machinery, which finishes a landing before
-// it commits, can require this module.
+// The merge's context is made here too, over the state worktree its caller
+// opened (state-worktree.cjs). The branch is the caller's to name, so the
+// state worktree's machinery, which finishes a landing before it commits,
+// can require this module.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { READ_BUDGET_BYTES } = require('../kernel/git.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -34,6 +34,17 @@ const SCRATCH = 'leeway-merge-files';
 const STAGED = 'leeway-merge-staged';
 
 /** @typedef {import('./state-merge-worktree.cjs').WorktreeContext} WorktreeContext */
+
+/**
+ * The state worktree as its caller opened it: its root, a runner bound to
+ * it, its own git dir, and the hash its objects are named by.
+ * @typedef {{
+ *   root: string,
+ *   git: import('../kernel/isolated-git.cjs').IsolatedGit,
+ *   gitDir: string,
+ *   objectFormat: string,
+ * }} OpenedWorktree
+ */
 
 /**
  * The state worktree opened for a merge: the merge's context, the
@@ -64,13 +75,12 @@ function readRecord(file) {
 }
 
 /**
- * Open the state worktree at `root`, with `branch` checked out, for a merge.
- * @param {string} root @param {string} branch @param {{readBudgetBytes?: number}} [opts]
+ * The merge's context over the state worktree, opened, with `branch`
+ * checked out.
+ * @param {OpenedWorktree} worktree @param {string} branch @param {{readBudgetBytes?: number}} [opts]
  * @returns {LandingContext}
  */
-function openMerge(root, branch, { readBudgetBytes = READ_BUDGET_BYTES } = {}) {
-  const git = isolatedGit(root);
-  const [objectFormat, gitDir] = git.run(['rev-parse', '--show-object-format', '--absolute-git-dir']).trim().split('\n');
+function openMerge({ root, git, gitDir, objectFormat }, branch, { readBudgetBytes = READ_BUDGET_BYTES } = {}) {
   const inGitDir = (/** @type {string} */ name) => path.join(gitDir, name);
   return {
     root,
@@ -102,7 +112,7 @@ function branchRef(ctx) {
  */
 function makeLanding(ctx, landing, resumed) {
   const moved = moveWorktree(ctx, landing.steps, resumed);
-  const aligned = alignIndex(ctx, landing.to, landing.aligned);
+  const aligned = alignIndex(ctx.git, ctx.branch, landing.to, landing.aligned);
   ctx.git.run(['update-ref', '-m', `catch up: ${landing.to}`, branchRef(ctx), landing.to, landing.from]);
   fs.rmSync(ctx.landingFile, { force: true });
   return [...landing.said, ...moved.notes, ...moved.warnings, ...aligned];
@@ -120,18 +130,17 @@ function startLanding(ctx, landing) {
 }
 
 /**
- * Finish the landing a kill cut short in the state worktree at `root`,
- * where one is recorded and the branch still stands at the tip it moves
- * from; drop the record where the branch has moved on. The caller holds the
- * writer lock.
- * @param {string} root @param {string} branch @param {string} gitDir  the state worktree's own
+ * Finish the landing a kill cut short in the state worktree, where one is
+ * recorded and the branch still stands at the tip it moves from; drop the
+ * record where the branch has moved on. The caller holds the writer lock.
+ * @param {OpenedWorktree} worktree @param {string} branch
  * @returns {string[]} the notes and warnings on the way
  */
-function finishLanding(root, branch, gitDir) {
+function finishLanding(worktree, branch) {
   /** @type {Landing|null} */
-  const landing = readRecord(path.join(gitDir, LANDING));
+  const landing = readRecord(path.join(worktree.gitDir, LANDING));
   if (landing === null) return [];
-  const ctx = openMerge(root, branch);
+  const ctx = openMerge(worktree, branch);
   if (ctx.git.run(['rev-parse', '--verify', '--quiet', `${branchRef(ctx)}^{commit}`]).trim() === landing.from) {
     return makeLanding(ctx, landing, true);
   }

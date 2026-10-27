@@ -3331,11 +3331,11 @@ function externalDependencyGate(cwd, { dotpath, variant, blocking }) {
 }
 
 // checkpoint-files-gate — the analysis loop's pre-analysis checkpoint over the
-// dirty code outside `.workflows/`, read from every repo in the project:
-// implementation files are those an `impl({work_unit}):` commit touched, the
-// rest are unexpected. DATA names both sets for the commit; the unexpected
-// files and the ask render only where there are any — with none, the
-// implementation files commit without a stop.
+// dirty code, read from every repo in the project: implementation files are
+// those an `impl({work_unit}):` commit touched, the rest are unexpected. DATA
+// names both sets for the commit; the unexpected files and the ask render
+// only where there are any — with none, the implementation files commit
+// without a stop.
 
 /**
  * @param {string} cwd @param {string} workUnit
@@ -3388,10 +3388,10 @@ function checkpointFilesGate(cwd, { dotpath }) {
 
 // change-set-tree — the check after the review's change-set verifiers
 // return: they measure inside the working tree and must leave it as they
-// found it. The review's own artifacts sit uncommitted under `.workflows/`
-// until prep commits them, so the check reads everything else from every
-// repo in the project. Empty when that is clean; otherwise the terminal
-// blocker naming each modified or untracked path, never reverted blind.
+// found it. The review's own artifacts sit in the state, in no code repo, so
+// the check reads every repo in the project whole. Empty when that is clean;
+// otherwise the terminal blocker naming each modified or untracked path,
+// never reverted blind.
 
 /**
  * @param {string} cwd

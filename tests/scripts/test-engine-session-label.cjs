@@ -648,12 +648,22 @@ describe('engine session label-config', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.tmux_labels, true);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^commit failed: /);
+    assert.match(res.warnings[0], /^commit failed, and the next boot tries again: /);
     assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'nothing landed in the code tree');
     assert.match(git(['status', '--porcelain']), /\.claude\//, 'the settings wait, uncommitted');
     assert.deepStrictEqual(head(stateGit), CHOICE.state, 'the state\'s git runs no hook of the code tree\'s');
+  });
+
+  it('while git holds an operation open in the code tree, records the choice and says the hooks wait for the next boot — the settings file left alone', () => {
+    fs.mkdirSync(path.join(dir, '.git', 'rebase-merge'));
+    const res = engine(['session', 'label-config', 'true']);
+    assert.strictEqual(res.tmux_labels, true);
+    assert.deepStrictEqual(res.warnings, ['session hooks not written: a rebase is in progress in the code tree — the next boot writes them']);
+    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.ok(!fs.existsSync(settingsPath()), 'no settings write inside the rebase');
+    assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });
 
   it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {

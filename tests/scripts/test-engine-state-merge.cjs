@@ -44,8 +44,9 @@ const { openGate } = require('../../skills/workflow-engine/scripts/domain/projec
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const {
-  STATE_BRANCH, stateRoot, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, askStateRemote,
+  STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState, askStateRemote,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface, stateMergeCommand } = require(MERGE);
 const {
   linesToAdd, entryId, migrationId, mergeManifest, choiceId, conflictLabel, ruleOf,
@@ -334,7 +335,7 @@ describe('catching up when one side moved (4.S36)', () => {
 
     assert.deepStrictEqual([out.action, out.pushed, out.commit], ['pushed', false, left]);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /not pushed to origin: .*no pushes today/s);
+    assert.match(out.warnings[0], /not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
     assert.strictEqual(commands.filter((c) => c.startsWith('push ')).length, 1, 'a remote that did not move is not pushed to again');
     assert.strictEqual(remoteTip(bare), before);
   });
@@ -1450,7 +1451,7 @@ describe('a catch-up killed between its steps', () => {
     const beside = `unit/assets/chart.${blobId('png\0here').slice(0, 8)}.png`;
     assert.strictEqual(live.warnings.length, 2, live.warnings.join('\n'));
     assert.strictEqual(live.warnings[0], `${CHART} was changed on both machines and is not merged line by line: the remote's copy stays at ${CHART}, and this machine's is kept beside it as ${beside}`);
-    assert.match(live.warnings[1], /^leeway-state is committed here but was not pushed to origin: /);
+    assert.match(live.warnings[1], /^leeway-state is committed here but was not pushed to origin — the commit stands, and the next boot pushes it: /);
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:manifest.json`]), projectManifest('later'));
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'), 'a field the killed landing wrote came back');

@@ -115,6 +115,13 @@ describe('hermetic environment — the pins', () => {
     assert.strictEqual(process.env.WORKFLOWS_DISPLAY_WIDTH, '65');
   });
 
+  it('git runs no ssh command of the developer\'s — it would override a suite\'s stand-in for a remote, with their keys', () => {
+    const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(JSON.stringify([process.env.GIT_SSH_COMMAND ?? null, process.env.GIT_SSH ?? null]))`],
+      { encoding: 'utf8', env: { ...process.env, GIT_SSH_COMMAND: 'ssh -i ~/.ssh/mine', GIT_SSH: 'plink' } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), [null, null]);
+  });
+
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
       WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
@@ -193,6 +200,35 @@ describe('hermetic environment — Claude Code\'s config directory', () => {
       cleanup(own);
     }
   });
+});
+
+describe('hermetic environment — the shell tiers', () => {
+  const scripts = JSON.parse(fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf8')).scripts;
+
+  /**
+   * The environment a shell tier's npm script hands its suites, run from a
+   * developer's own: the script's setup, everything before its loop over the
+   * suites.
+   */
+  function tierEnv(script) {
+    const setup = scripts[script].split('; for ')[0];
+    const res = spawnSync('bash', ['-c', `${setup}; node -e 'console.log(JSON.stringify(process.env))'`], {
+      encoding: 'utf8',
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/home/dev/.gitconfig', GIT_CONFIG_SYSTEM: '/etc/gitconfig', GIT_SSH_COMMAND: 'ssh -i ~/.ssh/mine', GIT_SSH: 'plink' },
+    });
+    assert.strictEqual(res.status, 0, res.stderr);
+    return JSON.parse(res.stdout);
+  }
+
+  for (const script of ['test:cli', 'test:migrations']) {
+    it(`${script} runs git with no user or system config and no ssh command of the developer's`, () => {
+      const env = tierEnv(script);
+      assert.deepStrictEqual(
+        [env.GIT_CONFIG_GLOBAL, env.GIT_CONFIG_SYSTEM, env.GIT_SSH_COMMAND, env.GIT_SSH],
+        ['/dev/null', '/dev/null', undefined, undefined],
+      );
+    });
+  }
 });
 
 describe('hermetic environment — adoption', () => {

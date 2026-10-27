@@ -9,13 +9,14 @@
 // embedding.
 //
 // The state comes first, before anything writes it (state-checks.cjs): the
-// branch and its worktree put in place — or set up, or, lost, the stop
-// whose yes is `boot --start-again`, or, on the layout before the state
-// branch, the stop for the migration — then, under the writer lock, the
-// catch-up from the remote, whose stop on a field both clones changed ends
-// boot there for the person's pick (state-merge.cjs). Then the main
-// checkout's `.gitignore` keeps the state's ignore line, committed through
-// the code door, and the migrations run, all under that one hold, so a
+// state folder kept out of every branch, the branch and its worktree put in
+// place — or set up, or, lost, the stop whose yes is `boot --start-again`,
+// or, on the layout before the state branch, the stop for the migration —
+// then, under the writer lock, the catch-up from the remote, whose stop on a
+// field both clones changed ends boot there for the person's pick
+// (state-merge.cjs). Then the session's own `.gitignore` keeps the state's
+// ignore line, the workflows' trace, committed through the code door
+// (code-trace.cjs), and the migrations run, all under that one hold, so a
 // second boot meanwhile finds each done.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
@@ -37,9 +38,8 @@
 // the load ignores, a failing index or compact, a provider key that does not
 // resolve, and a vector fill that fell short are warnings, never blocks.
 //
-// The migrations run from the code root (kernel/code-root): the fleet
-// released while the state lived in the code tree upgrades the `.workflows/`
-// there, whichever folder boot was called from.
+// The migrations run from the code root (kernel/code-root), whichever folder
+// boot was called from, recording into the state's ledger.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone. The start
@@ -53,7 +53,7 @@ const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
-const { commitPathspecScoped, commitStateScoped } = require('./commit.cjs');
+const { commitStateScoped } = require('./commit.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { placeState } = require('./state-checks.cjs');
 const { catchUpState } = require('./state-merge.cjs');
@@ -61,11 +61,10 @@ const { keepStateIgnored } = require('./code-trace.cjs');
 const { githubRuleOffered } = require('./github-rule.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
-const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
+const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, commitSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { dropPosition } = require('./position.cjs');
-const { SETTINGS_SPEC } = require('./settings.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 
@@ -74,7 +73,7 @@ const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workfl
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
 // authoritative "changed" signal. (git status is no substitute: unrelated
-// session work may already be dirty under .workflows.) The marker's follow-on
+// session work may already be dirty in the state.) The marker's follow-on
 // instruction lines address a prose flow, not this caller, so the trimmed
 // report drops everything from the marker down.
 const STOP_GATE_MARKER = '---STOP_GATE: FILES_UPDATED---';
@@ -234,7 +233,7 @@ function trimReport(stdout) {
 function boot(cwd, { startAgain = false } = {}) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
   const placed = placeState(cwd, { startAgain });
-  if ('stop' in placed) return { state: placed.stop, warnings: [] };
+  if ('stop' in placed) return { state: placed.stop, warnings: placed.warnings };
   const root = stateRoot(cwd);
   const warnings = [...placed.warnings];
   const migrated = withStateLock(root, () => {
@@ -324,37 +323,24 @@ function runMigrations(cwd, warnings) {
 }
 
 /**
- * Commit a file boot wrote, confined to it. The write is already on disk, so
- * a commit git refuses is a warning, never a block.
- * @param {string} cwd @param {string} spec @param {string} message
- * @param {string} failure the warning's lead @param {string[]} warnings
- */
-function commitPlumbing(cwd, spec, message, failure, warnings) {
-  try {
-    commitPathspecScoped(cwd, spec, message);
-  } catch (err) {
-    warnings.push(`${failure}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
-
-/**
  * Keep the session hooks in the project's settings — SessionEnd's `presence
  * cleanup` and `conversation end` for every project, `session cleanup` and
  * SessionStart's `session resume` while labels are on — so a checkout that
  * predates them, or lost them to a hand edit, gets them back; committed
- * where `commit` says so. The opt-in read and the write share the project
- * lock: a `label-config` landing between them would have this boot strip
- * the hook it just installed. A file that cannot be read is a warning,
- * never a block.
+ * where `commit` says so, this boot's write or one an earlier boot could not
+ * commit. The opt-in read and the write share the project lock: a
+ * `label-config` landing between them would have this boot strip the hook
+ * it just installed. A file that cannot be read is a warning, never a block.
  * @param {string} cwd @param {boolean} commit @param {string[]} warnings
  * @returns {boolean} this boot wrote the hooks
  */
 function installSessionHooks(cwd, commit, warnings) {
-  const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, { session: resolveEnabled(cwd) === true, workflows: true }));
+  const { want, sync } = withProjectLock(cwd, () => {
+    const wanted = { session: resolveEnabled(cwd) === true, workflows: true };
+    return { want: wanted, sync: syncSessionHooks(cwd, wanted) };
+  });
   if (sync.error) warnings.push(`session hooks not installed: ${sync.error}`);
-  if (sync.changed && commit) {
-    commitPlumbing(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
-  }
+  if (commit && !sync.error) commitSessionHooks(cwd, want, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
   return sync.changed;
 }
 

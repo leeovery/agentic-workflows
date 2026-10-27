@@ -33,7 +33,8 @@ const config = require('../../skills/workflow-engine/scripts/kernel/knowledge/co
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { deriveIdentity } = require('../../skills/workflow-engine/scripts/domain/knowledge/artifacts.cjs');
-const { STATE_DIR, createState } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { createState } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+const { STATE_DIR_NAME } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 const { keyUnresolvedError } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
 const { boostProblem, querySettings, queryStore, renderQuery } = require('../../skills/workflow-engine/scripts/domain/knowledge/query.cjs');
 const { buildOptions } = require('../../skills/workflow-engine/scripts/domain/knowledge/commands.cjs');
@@ -61,7 +62,7 @@ const PINNED_CASE_FIELDS = ['first', 'first_primary', 'first_excerpt', 'primary_
 // A query prints each source by its absolute path; the output a run measures
 // names them under this one root, so its bytes never depend on where the
 // run's scratch directory sits.
-const RENDERED_STATE = path.join(path.sep, 'project', STATE_DIR);
+const RENDERED_STATE = path.join(path.sep, 'project', STATE_DIR_NAME);
 
 const TUNING_UNSET = Object.fromEntries(Object.keys(config.DEFAULTS).map((key) => [key, null]));
 const KEYWORD_SETTINGS = { provider: null, ...TUNING_UNSET };
@@ -145,7 +146,7 @@ function writeJson(file, value) {
 
 /** The project's frozen state. @param {string} project */
 function fixtureRoot(project) {
-  return path.join(EVAL_DIR, project, STATE_DIR);
+  return path.join(EVAL_DIR, project, STATE_DIR_NAME);
 }
 
 /** @param {string} dir @param {(file: string) => boolean} keep */
@@ -408,7 +409,7 @@ function stageFixture(project, parent, settings) {
   git(['config', 'user.email', 'eval@example.com']);
   git(['config', 'user.name', 'Eval']);
   git(['config', 'commit.gpgsign', 'false']);
-  const state = path.join(root, STATE_DIR);
+  const state = path.join(root, STATE_DIR_NAME);
   createState(state);
   fs.cpSync(fixtureRoot(project), state, { recursive: true });
   writeJson(knowledgeFiles(state).config, { knowledge: settings });

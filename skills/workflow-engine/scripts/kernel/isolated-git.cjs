@@ -17,9 +17,13 @@
 // Files go into git and come out of it as the bytes they are, whatever the
 // person's config says: line endings are never converted (`core.autocrlf`),
 // and the person's own attributes file (`core.attributesFile`), which can
-// name a conversion for every path, is never read.
+// name a conversion for every path, is never read. Every ref a call moves is
+// logged whatever the config says (`core.logAllRefUpdates`), so a worktree's
+// HEAD log always says which commit its files were last put at.
 //
-// Mechanism only: it knows nothing about the workflows' state.
+// It also finds a repository's main checkout, the folder the workflows keep
+// their state in, refusing the repositories and folders that have none; its
+// refusals say so. It knows nothing else of the state.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -55,6 +59,7 @@ const REPOSITORY_ENV = Object.freeze([
 
 const HOOKS_OFF = Object.freeze(['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=']);
 const CONVERSION_OFF = Object.freeze(['-c', 'core.autocrlf=false', '-c', 'core.attributesFile=/dev/null']);
+const REFS_LOGGED = Object.freeze(['-c', 'core.logAllRefUpdates=true']);
 
 /**
  * A call's stdin, its time limit, variables layered over the isolated
@@ -117,8 +122,9 @@ function hooksOffEnv(cwd) {
 }
 
 /**
- * A git runner bound to `cwd`, isolated, with hooks and conversions off. The
- * config's hooks are read once, at the runner's first call.
+ * A git runner bound to `cwd`, isolated, with hooks and conversions off and
+ * every ref update logged. The config's hooks are read once, at the runner's
+ * first call.
  * @param {string} cwd
  * @returns {IsolatedGit}
  */
@@ -129,7 +135,7 @@ function isolatedGit(cwd) {
   /** @param {string[]} args @param {RunOptions} opts */
   function spawn(args, { input, timeoutMs, env, out } = {}) {
     base ??= hooksOffEnv(cwd);
-    return spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...args], {
+    return spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...REFS_LOGGED, ...args], {
       cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
   }

@@ -35,7 +35,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  STATE_DIR, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
 } = require('./discovery-test-utils.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
@@ -197,6 +197,23 @@ function initRepo(dir) {
 }
 
 /**
+ * The environment that keeps a remote on GitHub off the network: a git
+ * config file, written in `dir` and read in place of the empty global one,
+ * that rewrites `git@github.com:` to GitHub on port 0. To whatever reads the
+ * remote's URL it is still GitHub's, but ssh refuses port 0 before it looks
+ * the host up — so a suite standing in for GitHub serves it through a
+ * stand-in ssh, and a call the stand-in misses fails, never reaching
+ * github.com.
+ * @param {string} dir
+ * @returns {{GIT_CONFIG_GLOBAL: string}}
+ */
+function githubOffline(dir) {
+  const file = path.join(dir, 'github-offline.gitconfig');
+  fs.writeFileSync(file, '[url "ssh://git@github.com:0/"]\n\tinsteadOf = git@github.com:\n');
+  return { GIT_CONFIG_GLOBAL: file };
+}
+
+/**
  * A temp world — the git repo, its state worktree, a test identity and no
  * signing — that an engine commit lands in. Content is the suite's own;
  * `cleanupFixture` removes it.
@@ -228,6 +245,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  STATE_DIR, statePath, git, stateGit, commitAll, testIdentity, initRepo,
+  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, initRepo, githubOffline,
   setupGitFixture, setupFixtureAt, addSubmodule, cleanupFixture,
 };

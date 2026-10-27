@@ -7,11 +7,10 @@
 //   worktree on `leeway-state` (domain/state-worktree), under the writer
 //   lock, then pushed; a push that fails is a warning, never a stop. Paths
 //   are state-relative.
-// - The code tree: the files the workflows own outside the state — the
-//   project's Claude Code settings, the worktree include and the `.gitignore`
-//   — and declared code paths are committed in the code root's own tree
-//   (kernel/code-root), on the branch checked out, and never on the state
-//   branch. A process-wide lock (`.git/workflows-commit.lock`, on a long
+// - The code tree: the files the workflows own outside the state
+//   (`OWNED_PATHS`) and declared code paths are committed in the code root's
+//   own tree (kernel/code-root), on the branch checked out, and never on the
+//   state branch. A process-wide lock (`.git/workflows-commit.lock`, on a long
 //   clock) holds each add+commit sequence alone, so concurrent sessions never
 //   interleave on git's shared index. The code commit lands in each repo that
 //   owns one of its paths (kernel/repos), deepest first, under that repo's
@@ -25,7 +24,9 @@
 // side that changed.
 // ---------------------------------------------------------------------------
 
-const { gitPath, tryGit, commitPathspec, commitStaged } = require('../kernel/git.cjs');
+const fs = require('fs');
+const path = require('path');
+const { git, gitPath, tryGit, commitPathspec, commitStaged, operationInProgress } = require('../kernel/git.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
@@ -41,10 +42,10 @@ const PROJECT_MANIFEST_SPEC = 'manifest.json';
 const WORKTREE_INCLUDE = '.worktreeinclude';
 
 /**
- * The files the workflows own in the code tree — everything a migration or
- * boot writes outside the state: the project's Claude Code settings, the
- * worktree include, and the project-root `.gitignore`. The code side of the
- * migration commit; its state side is the whole state worktree.
+ * The files the workflows own in the code tree (6.3.15), named from the code
+ * root: the project's Claude Code settings and its `.gitignore`, which boot
+ * keeps, and the worktree include, which only a migration writes. The code
+ * side of the migration commit; its state side is the whole state worktree.
  * @type {readonly string[]}
  */
 const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
@@ -152,16 +153,11 @@ function withCommitLock(cwd, fn) {
  * lock, committing exactly the named paths and leaving every other process's
  * dirty or staged files untouched.
  * @param {string} cwd @param {string|string[]} pathspec as the code root names them @param {string} message
- * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
- *   must run inside the same commit-lock hold as the commit that lands it
  * @returns {string|null}
  */
-function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
+function commitPathspecScoped(cwd, pathspec, message) {
   const root = codeRoot(cwd);
-  return withCommitLock(root, () => {
-    if (beforeInLock) beforeInLock();
-    return commitPathspec(root, pathspec, message);
-  });
+  return withCommitLock(root, () => commitPathspec(root, pathspec, message));
 }
 
 /**
@@ -234,17 +230,52 @@ function noteIfNothingCommitted(result, committed) {
  * degrades to a warning and a pending note — it never fails the verb.
  * @param {string} cwd @param {string|string[]} pathspec @param {string} message
  * @param {string[]} warnings
- * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
- *   must run inside the same commit-lock hold as the commit that lands it
  * @returns {{committed: string|null, failed: boolean}}
  */
-function commitTailPathspec(cwd, pathspec, message, warnings, beforeInLock) {
+function commitTailPathspec(cwd, pathspec, message, warnings) {
   try {
-    return { committed: commitPathspecScoped(cwd, pathspec, message, beforeInLock), failed: false };
+    return { committed: commitPathspecScoped(cwd, pathspec, message), failed: false };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     warnings.push(`commit failed: ${detail}`);
     return { committed: null, failed: true };
+  }
+}
+
+/**
+ * Commit the workflows' own change to a file they own in the code tree,
+ * confined to it — the write this call made, or one an earlier call could not
+ * commit, which this one retries — where the file's whole difference from
+ * the branch checked out is that change. `ours` makes the file's committed
+ * content, null where the branch lacks it, into what the workflows want it
+ * to read; null where it already does. The file is compared as git would
+ * stage it, through the checkout's own conversions. A file that also holds
+ * the person's own changes is theirs to commit, and a warning says so; a
+ * commit git refuses is a warning led by `failure`. Nothing is committed
+ * while git is in the middle of an operation there — the next boot commits
+ * it — nor where git ignores the file there: the person keeps it out of git.
+ * @param {string} cwd @param {string} spec as the code root names it
+ * @param {(committed: string|null) => string|null} ours
+ * @param {string} message @param {string} failure @param {string[]} warnings
+ */
+function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
+  const root = codeRoot(cwd);
+  if (operationInProgress(root) !== null || tryGit(root, ['check-ignore', '-q', '--', spec]) !== null) return;
+  const committedId = tryGit(root, ['rev-parse', '--verify', '-q', `HEAD:./${spec}`])?.trim() ?? null;
+  const wanted = ours(committedId === null ? null : git(root, ['cat-file', 'blob', committedId]));
+  if (wanted === null) return;
+  const onDisk = fs.existsSync(path.join(root, spec)) ? git(root, ['hash-object', '--', spec]).trim() : null;
+  if (onDisk === git(root, ['hash-object', '--no-filters', '--stdin'], undefined, wanted).trim()) {
+    try {
+      commitPathspecScoped(root, spec, message);
+    } catch (err) {
+      warnings.push(`${failure}, and the next boot tries again: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else if (onDisk !== committedId) {
+    warnings.push(
+      `${spec} holds changes of yours not yet committed, so the workflows' own change to it was not committed either — ` +
+      'commit yours, and the next boot commits theirs',
+    );
   }
 }
 
@@ -279,11 +310,11 @@ module.exports = {
   commitAcrossRepos,
   commitStagedScoped,
   commitTailPathspec,
+  commitOwnChange,
   noteCommitOutcome,
   noteIfNothingCommitted,
   withCommitLock,
   discoveryScope,
   OWNED_PATHS,
   PROJECT_MANIFEST_SPEC,
-  WORKTREE_INCLUDE,
 };

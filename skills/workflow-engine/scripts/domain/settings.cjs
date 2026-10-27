@@ -17,7 +17,11 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 /** The project's settings file, as a pathspec — what a confined commit names. */
 const SETTINGS_SPEC = '.claude/settings.json';
 
-/** @typedef {{changed: boolean, error?: string}} SettingsSync */
+/**
+ * A sync's outcome: whether it wrote, why it could not read the file, and
+ * the operation git holds open that it waits on.
+ * @typedef {{changed: boolean, error?: string, waiting?: string}} SettingsSync
+ */
 
 /**
  * Whether the test harness holds the settings file still — its hermeticity
@@ -51,6 +55,15 @@ function readSettings(file, label = file) {
   } catch (err) {
     return { settings: {}, error: `${label} could not be read — ${reason(err)}` };
   }
+  return parseSettings(text, label);
+}
+
+/**
+ * A settings document from its text, read as `readSettings` reads a file.
+ * @param {string} text @param {string} [label]
+ * @returns {{settings: Record<string, any>, error?: string}}
+ */
+function parseSettings(text, label = SETTINGS_SPEC) {
   try {
     const parsed = JSON.parse(text);
     if (!isObject(parsed)) throw new Error('root is not an object');
@@ -99,4 +112,4 @@ function writeProjectSettings(cwd, settings) {
   writeSettings(path.join(codeRoot(cwd), SETTINGS_SPEC), settings);
 }
 
-module.exports = { SETTINGS_SPEC, settingsHeld, readProjectSettings, writeProjectSettings };
+module.exports = { SETTINGS_SPEC, settingsHeld, parseSettings, readProjectSettings, writeProjectSettings };
