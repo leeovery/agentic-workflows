@@ -25,9 +25,9 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync, spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 
-const { ENGINE, git, ok, output, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, git, lockAttempts, ok, output, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -46,7 +46,6 @@ const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const NOTE = `${UNIT}.discussion.note-window`;
 const SPACE = `${UNIT}.discussion.space-homing`;
 const ID = /^[0-9A-Za-z]{21}$/;
-const ANSWERS_AT_ONCE_MS = 10000;
 
 const PHASES = Object.freeze({
   discovery: { items: { 'note-window': {}, 'space-homing': {}, 'menu-bar': {} } },
@@ -856,67 +855,67 @@ describe('the writer lock and the commit', () => {
     assert.deepStrictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]).split('\n').slice(0, -1).map((line) => JSON.parse(line).text), ['Committed later?', 'Committed with it?']);
   });
 
-  it('takes the writer lock itself: a write waits on a live peer holding it and lands once it is released, while what it refuses without the lock — its argv, its place, its content in the shape of the kind it writes — answers at once', async () => {
+  it('takes the writer lock itself: a write waits on a live peer holding it and lands once it is released, while what it refuses without the lock — its argv, its place, its content in the shape of the kind it writes — answers at once', (t) => {
     const question = ask().id;
     const lock = statePath(dir, '.lock');
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
     const stdin = JSON.stringify({ ...MADE, text: 'Waited its turn?' });
-    const env = { ...process.env, ...SESSION };
+    let refusing = true;
+    /** @type {number[]} */
+    const whileHeld = [];
+    // The lock is let go at the write's second attempt: it found the lock held, and waited.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      assert.ok(!refusing, 'a refusal waited on the lock');
+      whileHeld.push(entries().length);
+      if (taken === 2) fs.unlinkSync(lock);
+    });
 
-    for (const [args, childEnv, refusal] of /** @type {[string[], NodeJS.ProcessEnv, RegExp][]} */ ([
-      [['ledger', 'ask', NOTE], { ...process.env, CLAUDE_CODE_SESSION_ID: '' }, /no session to tag the entry with/],
-      [['ledger', 'ask', 'mint.discussion.note-window'], env, /there is no work unit "mint"/],
-      [['ledger', 'decide', NOTE], env, /needs --answers/],
-      [['ledger', 'decide', NOTE, '--answers', question], env, /the content needs why/],
-      [['ledger', 'replace', NOTE, '--replaces', question, '--reason', 'new-fact'], env, /--reason new-fact needs --cause/],
-      [['ledger', 'replace', NOTE, '--replaces', question, '--reason', 'changed-mind'], env, /the content needs drops/],
+    for (const [args, env, refusal] of /** @type {[string[], Record<string, string>, RegExp][]} */ ([
+      [['ledger', 'ask', NOTE], { CLAUDE_CODE_SESSION_ID: '' }, /no session to tag the entry with/],
+      [['ledger', 'ask', 'mint.discussion.note-window'], SESSION, /there is no work unit "mint"/],
+      [['ledger', 'decide', NOTE], SESSION, /needs --answers/],
+      [['ledger', 'decide', NOTE, '--answers', question], SESSION, /the content needs why/],
+      [['ledger', 'replace', NOTE, '--replaces', question, '--reason', 'new-fact'], SESSION, /--reason new-fact needs --cause/],
+      [['ledger', 'replace', NOTE, '--replaces', question, '--reason', 'changed-mind'], SESSION, /the content needs drops/],
     ])) {
-      const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, env: childEnv, input: stdin, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
-      assert.strictEqual(res.status, 1, `engine ${args.join(' ')}: ${res.signal ? 'waited on the lock' : res.stderr}`);
-      assert.match(JSON.parse(res.stderr).error, refusal);
+      assert.match(refuses(dir, args, { env, stdin }).error, refusal);
     }
+    refusing = false;
 
-    const child = spawn('node', [ENGINE, 'ledger', 'ask', NOTE], { cwd: dir, env });
-    child.stdin.end(stdin);
-    let stdout = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    const exit = new Promise((resolve) => child.on('close', resolve));
-    const raced = await Promise.race([exit.then(() => 'exited'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 1500))]);
-    assert.strictEqual(raced, 'waiting', 'the write did not wait on the lock');
-    assert.strictEqual(entries().length, 1, 'appended while a peer held the lock');
+    const res = ok(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin });
 
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    assert.strictEqual(JSON.parse(stdout).ok, true);
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [1, 1], 'appended while a peer held the lock');
+    assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(entries().map((e) => e.text), ['What is a note, at its most basic?', 'Waited its turn?']);
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('reads the place a write is made, and a move\'s destination, live again under the lock: a topic cancelled while the write waited takes nothing', async () => {
+  it('reads the place a write is made, and a move\'s destination, live again under the lock: a topic cancelled while the write waited takes nothing', (t) => {
     const question = ask().id;
     const lock = statePath(dir, '.lock');
-    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-    const env = { ...process.env, ...SESSION };
-    const waiting = [
-      { args: ['ledger', 'ask', SPACE], stdin: { ...MADE, text: 'Asked on a topic cancelled meanwhile?' } },
-      { args: ['ledger', 'move', NOTE, '--question', question, '--to', 'space-homing'], stdin: MADE },
-    ].map(({ args, stdin }) => {
-      const child = spawn('node', [ENGINE, ...args], { cwd: dir, env });
-      child.stdin.end(JSON.stringify(stdin));
-      let stderr = '';
-      child.stderr.on('data', (chunk) => { stderr += chunk; });
-      return new Promise((resolve) => child.on('close', (code) => resolve({ code, stderr })));
+    const peer = JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
+    let taken = 0;
+    // The peer cancels space-homing and lets go once the write has found the lock held and tried again.
+    const attempts = lockAttempts(t, lock, () => {
+      taken += 1;
+      if (taken < 2) return;
+      createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { ...PHASES.discovery.items, 'space-homing': { cancelled: true } } } } });
+      fs.unlinkSync(lock);
     });
-    const raced = await Promise.race([Promise.all(waiting).then(() => 'exited'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 1500))]);
-    assert.strictEqual(raced, 'waiting', 'the writes did not wait on the lock');
 
-    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { ...PHASES.discovery.items, 'space-homing': { cancelled: true } } } } });
-    fs.unlinkSync(lock);
+    for (const [args, stdin, refusal] of /** @type {[string[], Record<string, unknown>, string][]} */ ([
+      [['ledger', 'ask', SPACE], { ...MADE, text: 'Asked on a topic cancelled meanwhile?' }, 'ledger ask: fumi.discussion.space-homing takes no writes — its topic, space-homing, is cancelled'],
+      [['ledger', 'move', NOTE, '--question', question, '--to', 'space-homing'], MADE, 'ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled'],
+    ])) {
+      createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+      fs.writeFileSync(lock, peer);
+      taken = 0;
+      assert.strictEqual(refuses(dir, args, { env: SESSION, stdin: JSON.stringify(stdin) }).error, refusal);
+    }
 
-    const [asked, moved] = /** @type {{code: number, stderr: string}[]} */ (await Promise.all(waiting));
-    assert.deepStrictEqual([asked.code, JSON.parse(asked.stderr).error], [1, 'ledger ask: fumi.discussion.space-homing takes no writes — its topic, space-homing, is cancelled']);
-    assert.deepStrictEqual([moved.code, JSON.parse(moved.stderr).error], [1, 'ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled']);
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'taken', 'taken', 'made']);
     assert.deepStrictEqual(entries().map((e) => e.event), ['asked'], 'a write landed in a topic cancelled while it waited');
   });
 

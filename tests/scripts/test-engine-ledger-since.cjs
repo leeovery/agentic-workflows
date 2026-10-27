@@ -23,9 +23,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
 
-const { ENGINE, ok, refuses, git, stateGit, statePath, testIdentity, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -95,14 +94,6 @@ function marksFile(at = dir) {
 /** The machine's last-looked mark, or null where it keeps none. @param {string} [at] */
 function marks(at = dir) {
   return fs.existsSync(marksFile(at)) ? JSON.parse(fs.readFileSync(marksFile(at), 'utf8')) : null;
-}
-
-/** The engine run as a process of its own: how it exits, and what it said. @param {string[]} args @returns {Promise<{code: number, stderr: string}>} */
-function engine(args) {
-  const child = spawn('node', [ENGINE, ...args], { cwd: dir, stdio: ['ignore', 'ignore', 'pipe'] });
-  let stderr = '';
-  child.stderr.on('data', (chunk) => { stderr += chunk; });
-  return new Promise((resolve) => child.on('close', (code) => resolve({ code: /** @type {number} */ (code), stderr })));
 }
 
 /** Every file under `root`, git's own aside, by its path from it. @param {string} root @returns {string[]} */
@@ -207,20 +198,31 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     assert.deepStrictEqual([marks(), calls('since')], [{ shown: [full(first)] }, []]);
   });
 
-  it('adds to the mark under the mark\'s own lock: looks made at once leave it untouched while a peer holds the lock, then each lands, none lost', async () => {
-    const made = TOPICS.map((topic) => call(`${UNIT}.discussion.${topic}`, `A call on ${topic}.`));
+  it('adds to the mark under the mark\'s own lock: a look waits on a peer holding it and reads the mark only once it holds it, so the peer\'s look is never lost; a plain read never tries the lock', (t) => {
+    const [noted, homed, barred] = TOPICS.map((topic) => call(`${UNIT}.discussion.${topic}`, `A call on ${topic}.`));
     const lock = `${marksFile()}.lock`;
     fs.mkdirSync(path.dirname(lock), { recursive: true });
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-    const looks = TOPICS.map((topic) => engine(['ledger', 'shown', UNIT, topic]));
+    let looking = false;
+    /** @type {unknown[]} */
+    const whileHeld = [];
+    // Once the look has found the lock held and tried again, the peer shows
+    // space-homing's call, as its own look would, and lets go.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      assert.ok(looking, 'a plain read waited on the lock');
+      whileHeld.push(marks());
+      if (taken < 2) return;
+      fs.writeFileSync(marksFile(), JSON.stringify({ shown: [full(homed)] }));
+      fs.unlinkSync(lock);
+    });
 
-    const read = await engine(['ledger', 'since', UNIT]);
-    assert.strictEqual(read.code, 0, read.stderr);
-    assert.strictEqual(marks(), null, 'a look moved the mark while a peer held its lock');
+    assert.deepStrictEqual(calls('since'), [noted, homed, barred]);
+    looking = true;
+    assert.deepStrictEqual(calls('shown', 'note-window'), [noted]);
 
-    fs.unlinkSync(lock);
-    for (const look of await Promise.all(looks)) assert.strictEqual(look.code, 0, look.stderr);
-    assert.deepStrictEqual([...marks().shown].sort(), made.map((id) => full(id)).sort());
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [null, null], 'a look moved the mark while a peer held its lock');
+    assert.deepStrictEqual(marks(), { shown: [full(homed), full(noted)] }, 'the peer\'s look was lost');
   });
 
   it('refuses a read naming no unit, a topic the unit does not have, or a mark it cannot read, naming the mark', () => {
