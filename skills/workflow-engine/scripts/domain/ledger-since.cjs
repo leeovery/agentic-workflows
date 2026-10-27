@@ -8,20 +8,20 @@
 //
 // - Claude's calls: the current decisions Claude made, `by` claude, the
 //   build's included (5.1.6), standing in a unit or on one of its topics.
-// - The mark is the machine's own, in the unit's cache,
-//   `.cache/{unit}/last-looked.json`: for each topic, and for the spec — the
-//   unit's level, where everything from the spec on stands (4.11.2) — the id
-//   of the newest call its screen has shown. A call is new while it comes
-//   later in the ledger than the mark of the screen showing it, its topic's
-//   or the spec's; with no mark, or one naming no entry of the ledger, every
-//   call is.
+// - The mark is the machine's own: the ids of the calls a screen has shown
+//   on this machine, each topic's map and the spec's list alike, kept in the
+//   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
+//   cache, which a cancel or a completion clears, so a unit reactivated or
+//   reopened keeps what was shown; it goes when the unit is absorbed. A call
+//   is new until a look here has covered it, wherever it sits in the ledger:
+//   a catch-up merge lays the other machine's entries before this one's
+//   unpushed ones, and a call made there was never shown here.
 // - Only `ledger shown` moves the mark: opening the board is not looking. It
-//   answers as `ledger since` does, and moves the mark of each screen it
-//   covers — the topic named, or every topic of the unit and the spec — to
-//   the newest call it showed there. Under a lock of the mark's own, its
-//   fold of the ledger too, so a peer's look never moves a mark back and no
-//   topic's mark is lost to another's. The cache is off the state branch:
-//   looking never commits, and each machine counts from its own look (4.1.7).
+//   answers as `ledger since` does, and adds each call it showed to the mark
+//   — on the topic named, or across the unit. Under a lock of the mark's
+//   own, so no look's calls are lost to another's. The cache is off the
+//   state branch: looking never commits, and each machine counts from its
+//   own looks (4.1.7).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -34,82 +34,61 @@ const { standingOf, isCurrent } = require('./ledger-fold.cjs');
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./ledger-read.cjs').Place} Place */
 
-/**
- * The last-looked mark: the id of the newest call each topic's screen has
- * shown, and the spec's.
- * @typedef {{topics: Record<string, string>, spec: string|null}} Marks
- */
+/** The last-looked mark: the full ids of the calls shown on this machine. @typedef {{shown: string[]}} Marks */
 
-/** A new call, and the topic of the screen showing it — null for the spec's. @typedef {{id: string, topic: string|null}} Call */
+/** A new call, and the topic it stands on — null at the unit's level, the spec's. @typedef {{id: string, topic: string|null}} Call */
 
-const MARKS = 'last-looked.json';
+/** The marks' folder in the cache. @param {string} root */
+function marksDir(root) {
+  return path.join(root, '.cache', '.marks');
+}
 
-/** The unit's folder in the cache. @param {string} root @param {string} unit */
-function unitCache(root, unit) {
-  return path.join(root, '.cache', unit);
+/** The unit's mark. @param {string} root @param {string} unit */
+function marksFile(root, unit) {
+  return path.join(marksDir(root), `${unit}.json`);
+}
+
+/** Whether a mark read is in its shape: the ids shown, and nothing else. @param {unknown} marks @returns {marks is Marks} */
+function isMarks(marks) {
+  return isObject(marks) && Object.keys(marks).length === 1 && Array.isArray(marks.shown) && marks.shown.every((id) => typeof id === 'string');
 }
 
 /**
- * The unit's mark on this machine; no mark where none is kept.
+ * The unit's mark on this machine; nothing shown where none is kept.
  * @param {string} root @param {string} unit
  * @returns {Marks}
  */
 function marksOf(root, unit) {
-  const file = path.join(unitCache(root, unit), MARKS);
-  if (!fs.existsSync(file)) return { topics: {}, spec: null };
+  const file = marksFile(root, unit);
+  if (!fs.existsSync(file)) return { shown: [] };
   let marks;
   try {
     marks = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
     throw new Error(`the last-looked mark at ${file} is no JSON — ${messageOf(err)}`);
   }
-  if (!isObject(marks) || !isObject(marks.topics)) throw new Error(`the last-looked mark at ${file} holds no topics`);
-  return /** @type {Marks} */ (marks);
+  if (!isMarks(marks)) throw new Error(`the last-looked mark at ${file} is not {"shown": [<id>, …]}, the ids of the calls shown`);
+  return marks;
 }
 
 /**
- * The line of the call a screen's mark names; none for no mark, or one
- * naming no entry of the ledger.
- * @param {Folded} folded @param {Marks} marks @param {string|null} topic the screen's, null for the spec's
- */
-function markedLine(folded, marks, topic) {
-  const mark = topic === null ? marks.spec : Object.hasOwn(marks.topics, topic) ? marks.topics[topic] : null;
-  return (mark === null ? undefined : folded.facts.get(mark))?.place.number ?? 0;
-}
-
-/**
- * Claude's current calls standing in `unit` and, given one, on `topic`, each
- * later in the ledger than the mark of the screen showing it, in the
- * ledger's order. None on a unit or topic that is not live.
+ * Claude's current calls standing in `unit` and, given one, on `topic`,
+ * that no look on this machine has shown, in the ledger's order. None on a
+ * unit or topic that is not live.
  * @param {Folded} folded @param {Marks} marks @param {string} unit @param {string|null} topic
  * @returns {Call[]}
  */
 function callsSince(folded, marks, unit, topic) {
   if (folded.live(unit, topic) !== null) return [];
+  const shown = new Set(marks.shown);
   /** @type {Call[]} */
   const calls = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'decision' || facts.by !== 'claude' || !isCurrent(folded, id)) continue;
+    if (shown.has(id) || facts.kind !== 'decision' || facts.by !== 'claude' || !isCurrent(folded, id)) continue;
     const standing = standingOf(folded, id);
-    if (standing.unit !== unit || (topic !== null && standing.topic !== topic)) continue;
-    if (facts.place.number > markedLine(folded, marks, standing.topic)) calls.push({ id, topic: standing.topic });
+    if (standing.unit === unit && (topic === null || standing.topic === topic)) calls.push({ id, topic: standing.topic });
   }
   return calls;
-}
-
-/**
- * The mark moved, for each screen showing a new call, to the newest of
- * them; the calls come in the ledger's order.
- * @param {Marks} marks @param {Call[]} calls
- * @returns {Marks}
- */
-function movedOn(marks, calls) {
-  const moved = { topics: { ...marks.topics }, spec: marks.spec };
-  for (const { id, topic } of calls) {
-    if (topic === null) moved.spec = id;
-    else moved.topics[topic] = id;
-  }
-  return moved;
 }
 
 /**
@@ -126,8 +105,8 @@ function answerOf({ folded, show }, { unit, topic }, calls) {
 }
 
 /**
- * `ledger since`: Claude's calls in a unit or on a topic since the person
- * last looked on this machine. Moves no mark.
+ * `ledger since`: Claude's calls in a unit or on a topic that no look on
+ * this machine has shown. Moves no mark.
  * @param {Shower} shower @param {Place} place @param {string} root
  */
 function answerSince(shower, place, root) {
@@ -136,16 +115,15 @@ function answerSince(shower, place, root) {
 }
 
 /**
- * `ledger shown`: what `ledger since` answers, the mark of each screen it
- * covers moved to the newest call it showed there. Runs under the mark's
- * lock (`withMarkLock`).
+ * `ledger shown`: what `ledger since` answers, each call it shows added to
+ * the mark. Runs under the mark's lock (`withMarkLock`).
  * @param {Shower} shower @param {Place} place @param {string} root
  */
 function answerShown(shower, place, root) {
   const unit = /** @type {string} */ (place.unit);
   const marks = marksOf(root, unit);
   const calls = callsSince(shower.folded, marks, unit, place.topic);
-  if (calls.length > 0) writeJsonAtomic(path.join(unitCache(root, unit), MARKS), movedOn(marks, calls));
+  if (calls.length > 0) writeJsonAtomic(marksFile(root, unit), { shown: [...marks.shown, ...calls.map((call) => call.id)] });
   return answerOf(shower, place, calls);
 }
 
@@ -156,9 +134,13 @@ function answerShown(shower, place, root) {
  * @returns {T}
  */
 function withMarkLock(root, { unit }, read) {
-  const dir = unitCache(root, /** @type {string} */ (unit));
-  fs.mkdirSync(dir, { recursive: true });
-  return withStateLockFile(path.join(dir, `${MARKS}.lock`), read);
+  fs.mkdirSync(marksDir(root), { recursive: true });
+  return withStateLockFile(`${marksFile(root, /** @type {string} */ (unit))}.lock`, read);
 }
 
-module.exports = { MARKS, marksOf, callsSince, answerSince, answerShown, withMarkLock };
+/** Remove a unit's mark, under its lock, as the unit goes. @param {string} root @param {string} unit */
+function dropMarks(root, unit) {
+  withMarkLock(root, { unit, topic: null }, () => fs.rmSync(marksFile(root, unit), { force: true }));
+}
+
+module.exports = { answerSince, answerShown, withMarkLock, dropMarks };
