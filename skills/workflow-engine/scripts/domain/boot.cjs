@@ -46,6 +46,11 @@
 // the conversations ran in: one goes once its transcript is gone. The start
 // menu is no position, so the calling conversation's own goes first, before
 // the migrations — a boot that fails leaves none.
+//
+// Where a decision landed unchecked and no late check has judged it, boot
+// launches the late one-decision check, detached, as it hands vectors to the
+// fill: a start never waits on a Claude call (ledger-late-check.cjs). What
+// keeps it from launching is a warning.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -68,6 +73,7 @@ const { tidyConversations } = require('./conversation.cjs');
 const { dropPosition } = require('./position.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
+const { launchLateCheck } = require('./ledger-late-check.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -144,7 +150,7 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the migrations record's commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the record dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`) for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
@@ -257,6 +263,7 @@ function boot(cwd, { startAgain = false } = {}) {
   const commitOwn = !migrations.changed;
   const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
   tidyConversations();
+  launchLateCheck(root, warnings);
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */

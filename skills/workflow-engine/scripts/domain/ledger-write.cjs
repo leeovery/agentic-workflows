@@ -36,13 +36,15 @@
 //   the replaced entry's (5.3.8).
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
-//   content leaves it out, the replaced entry's product-wide mark (5.2.5). A
-//   decision lands unchecked, as nothing has judged whether it holds one
-//   rule (5.5.2).
+//   content leaves it out, the replaced entry's product-wide mark (5.2.5); a
+//   decision's being unchecked, where the one-decision check could not
+//   judge it (ledger-one-decision.cjs).
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
-//   write never waits on a peer. Under the lock the ledger is folded
+//   write never waits on a peer; then a decision is judged, one rule or
+//   several, by the separate Claude call, which no peer waits on either.
+//   Under the lock the ledger is folded
 //   (ledger-fold.cjs), every link resolved and its currency and relations
 //   checked, the event appended and the ledger committed, so no peer's write
 //   lands between the fold and the append. The answer is made once the lock
@@ -62,6 +64,7 @@ const { ID_FACTS, foldLedger, notCurrent, currentsOf, replacedChain } = require(
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
+const { checkOneDecision } = require('./ledger-one-decision.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -117,9 +120,10 @@ const { commitStateTail } = require('./commit.cjs');
 /**
  * A write as asked, read whole and checked before the lock: the verb, where
  * it is made, the session, each flag's values by field, the kind of entry it
- * writes — null for an event that is no entry — and its content, checked in
- * that kind's shape.
- * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>}} Request
+ * writes — null for an event that is no entry — its content, checked in
+ * that kind's shape, and, for a decision, whether it lands unchecked: true
+ * until the one-decision check finds it holds one rule.
+ * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean}} Request
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
@@ -587,6 +591,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
     verb, write, at, session, given,
     kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
     content: contentFields(verb, write, content, replaced),
+    unchecked: true,
   };
 }
 
@@ -598,13 +603,22 @@ function requestOf(cwd, verb, args, stdin, warnings) {
  * @returns {Record<string, unknown>}
  */
 function eventOf(request, read) {
-  const { write, at, session, kind, content } = request;
+  const { write, at, session, kind, content, unchecked } = request;
   const linked = linkFields(request, read);
   write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked: true } : {}),
+    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked } : {}),
   };
+}
+
+/**
+ * A ledger commit's message: the unit, the event and its id, and the topic
+ * it stands on.
+ * @param {string} unit @param {string} event @param {string} id @param {string|null} topic
+ */
+function ledgerMessage(unit, event, id, topic) {
+  return `ledger(${unit}): ${event} ${id}${topic === null ? '' : ` in ${topic}`}`;
 }
 
 /**
@@ -619,8 +633,7 @@ function land(cwd, request, warnings) {
   const read = readNow(at, warnings);
   const entry = appendEntry(at.root, eventOf(request, read), warnings);
   const id = /** @type {string} */ (entry.id);
-  const message = `ledger(${at.unit}): ${write.event} ${id}${at.topic === null ? '' : ` in ${at.topic}`}`;
-  return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, message, warnings) };
+  return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings) };
 }
 
 /**
@@ -634,7 +647,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const request = requestOf(cwd, verb, args, stdin, warnings);
+    const request = checkOneDecision(requestOf(cwd, verb, args, stdin, warnings));
     const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
     const result = { id, committed: outcome.committed };
@@ -646,4 +659,4 @@ function writeLedger(cwd, verb, args, stdin) {
   }
 }
 
-module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger };
+module.exports = { LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), writeLedger, ledgerMessage };

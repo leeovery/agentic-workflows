@@ -49,6 +49,7 @@ const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domai
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 const { shortIds } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-ids.cjs'));
 const { liveness } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-units.cjs'));
+const { launcher: lateCheckLauncher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-late-check.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -272,7 +273,8 @@ function auditState(dir, label) {
 // (5.8.17). Every unit's record shows its current entries once each and no
 // other, as does every topic's of its own; every topic's map holds a row for
 // each current question standing on it; the product record holds the
-// current entries marked product-wide.
+// current entries marked product-wide; and a decision the late one-decision
+// check judged shows what it last found, wherever its record shows it.
 /** @param {string} dir @param {(msg: string) => string} ctx */
 function auditLedger(dir, ctx) {
   const root = statePath(dir);
@@ -295,8 +297,13 @@ function auditLedger(dir, ctx) {
   };
   /** @param {{questions: {id: string}[], findings: {id: string}[], decisions: {id: string}[]}} record */
   const shown = (record) => [...record.questions, ...record.findings, ...record.decisions].map((e) => e.id).sort();
+  const lateChecks = new Map(events.filter((e) => e.event === 'checked').map((e) => [shorts.get(e.entry), e.rules]));
   for (const unit of new Set(current.map((e) => e.unit))) {
-    assert.deepStrictEqual(shown(ledger(['record', unit])), ids((e) => e.unit === unit), ctx(`${unit}'s record does not show its current entries once each`));
+    const record = ledger(['record', unit]);
+    assert.deepStrictEqual(shown(record), ids((e) => e.unit === unit), ctx(`${unit}'s record does not show its current entries once each`));
+    for (const decision of record.decisions.flatMap((/** @type {{replaced: object[]}} */ d) => [d, ...d.replaced])) {
+      assert.strictEqual(decision.late_check, lateChecks.get(decision.id), ctx(`${unit}'s record does not show what the late check last found of ${decision.id}`));
+    }
     for (const topic of new Set(current.filter((e) => e.unit === unit && e.topic !== null).map((e) => /** @type {string} */ (e.topic)))) {
       assert.deepStrictEqual(shown(ledger(['record', unit, topic])), ids((e) => e.unit === unit && e.topic === topic),
         ctx(`${unit}.${topic}'s record does not show its current entries once each`));
@@ -3653,7 +3660,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record', () => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -3709,6 +3716,26 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
     assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
+
+    // The world has no login for the separate call, so both decisions landed
+    // unchecked. The next start launches the late check; the check, given a
+    // login, records what it finds beside each — the replacement holding
+    // several rules, flagged where its record is read — and a start after
+    // it launches none.
+    assert.deepStrictEqual(events.filter((e) => e.event === 'decided' || e.of === 'decision').map((e) => e.unchecked), [true, true]);
+    /** @type {string[]} */
+    const launched = [];
+    t.mock.method(lateCheckLauncher, 'launch', (/** @type {string} */ root) => { launched.push(root); });
+    sim.run(['boot']);
+    assert.deepStrictEqual(launched, [fs.realpathSync(statePath(sim.dir))]);
+    const withoutLogin = sim.env;
+    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ 'A floating panel.': { rules: ['A floating panel.'] }, '': { rules: ['A frameless panel.', 'It takes no focus.'] } }) };
+    assert.deepStrictEqual(sim.run(['ledger', 'late-check']), { ok: true, ran: true, checked: 2, several: 1, owed: 0 });
+    sim.env = withoutLogin;
+    const checked = sim.run(['ledger', 'record', wu, 'note-window']).decisions[0];
+    assert.deepStrictEqual([checked.id, checked.late_check, checked.replaced.map((/** @type {{late_check: string}} */ d) => d.late_check)], [replacement, 'several', ['one']]);
+    sim.run(['boot']);
+    assert.strictEqual(launched.length, 1, 'a start launched the late check with no decision owed one');
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {

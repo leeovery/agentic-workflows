@@ -13,8 +13,10 @@
 // moved to (5.3.3); its links; every entry linking back to it — the
 // replacements naming it, the merge that took it as a duplicate, the entries
 // answering it, the merges and moves of it, the questions part of it
-// (5.3.11), the confirmations that it still holds; and where its line sits,
-// so a read shows an entry by reading that one line again.
+// (5.3.11), the confirmations that it still holds; what the late
+// one-decision check last found of a decision that landed unchecked
+// (16.19.8); and where its line sits, so a read shows an entry by reading
+// that one line again.
 //
 // Read against liveness, the state answers:
 // - Whether an entry is current, by one rule (5.8.17, 5.3.13): nothing has
@@ -71,6 +73,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   moves: readonly string[],
  *   parts: readonly string[],
  *   holds: readonly string[],
+ *   late_check: 'one'|'several'|null,
  * }} IdFacts
  */
 
@@ -136,6 +139,7 @@ const ID_FACTS = {
       moves: NONE,
       parts: NONE,
       holds: NONE,
+      late_check: null,
     });
     if (kind === 'decision') linkBack(facts, event, 'answers', 'answered_by', id);
     if (kind === 'question' && event.part_of !== null) linkBack(facts, event, 'part_of', 'parts', id);
@@ -148,6 +152,9 @@ const ID_FACTS = {
     if (event.event === 'merged') {
       linkBack(facts, event, 'question', 'merges', id);
       if (event.duplicate !== null) /** @type {IdFacts} */ (facts.get(/** @type {string} */ (event.duplicate))).merged_by ??= id;
+    }
+    if (event.event === 'checked') {
+      /** @type {IdFacts} */ (facts.get(/** @type {string} */ (event.entry))).late_check = /** @type {'one'|'several'} */ (event.rules);
     }
   },
 };
