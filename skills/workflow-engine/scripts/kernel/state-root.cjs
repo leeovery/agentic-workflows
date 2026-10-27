@@ -100,23 +100,51 @@ function stateSpec(...segments) {
   return segments.length === 0 ? '.' : segments.join('/');
 }
 
+/** The links one walk follows before it stops, as the system's own limit does. */
+const MAX_LINKS = 40;
+
 /**
- * An absolute path with the symbolic links in the part of it that exists
- * resolved, as the state root's are.
- * @param {string} abs
+ * Where a path lands as the filesystem walks it: one name at a time from the
+ * top, each symbolic link followed where it stands — a dangling one to where
+ * it points, which a write through it creates — so a `..` after a link climbs
+ * from the link's target, never back over the link. The names past what
+ * exists are taken as given.
+ * @param {string} abs @param {{followed: number}} links
  * @returns {string}
  */
-function resolvedPath(abs) {
-  /** @type {string[]} */
-  const missing = [];
-  let at = abs;
-  while (!fs.existsSync(at)) {
-    const parent = path.dirname(at);
-    if (parent === at) return abs;
-    missing.unshift(path.basename(at));
-    at = parent;
+function walkedPath(abs, links) {
+  let at = path.parse(abs).root;
+  for (const name of abs.slice(at.length).split(path.sep)) {
+    if (name === '' || name === '.') continue;
+    at = name === '..' ? path.dirname(at) : followedLink(path.join(at, name), links);
   }
-  return path.join(fs.realpathSync(at), ...missing);
+  return at;
+}
+
+/**
+ * A name in a walked folder, its link followed where it is one.
+ * @param {string} file @param {{followed: number}} links
+ * @returns {string}
+ */
+function followedLink(file, links) {
+  let target;
+  try {
+    target = fs.readlinkSync(file);
+  } catch {
+    return file;
+  }
+  if (++links.followed > MAX_LINKS) return file;
+  return walkedPath(path.isAbsolute(target) ? target : `${path.dirname(file)}${path.sep}${target}`, links);
+}
+
+/**
+ * A path given to the engine — absolute, or read from `cwd` — where the
+ * filesystem takes it (`walkedPath`).
+ * @param {string} cwd @param {string} given
+ * @returns {string}
+ */
+function resolvedPath(cwd, given) {
+  return walkedPath(path.isAbsolute(given) ? given : `${path.resolve(cwd)}${path.sep}${given}`, { followed: 0 });
 }
 
 /**
@@ -128,7 +156,7 @@ function resolvedPath(abs) {
  * @returns {string|null}
  */
 function stateRelative(cwd, given) {
-  const rel = path.relative(stateRoot(cwd), resolvedPath(path.resolve(cwd, given)));
+  const rel = path.relative(stateRoot(cwd), resolvedPath(cwd, given));
   if (rel === '') return '.';
   if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return null;
   return rel.split(path.sep).join('/');

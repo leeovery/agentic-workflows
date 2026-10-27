@@ -162,9 +162,9 @@ describe('the mark', () => {
     assert.strictEqual(fs.statSync(marker('sess-1')).mtimeMs, past.getTime());
   });
 
-  it('the commands Claude Code\'s own hooks run never mark — any conversation in the project ends and resumes through them', () => {
+  it('the commands Claude Code\'s own hooks run never mark — any conversation in the project ends, resumes and writes a file through them', () => {
     const input = endInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' });
-    for (const args of [['presence', 'cleanup'], ['session', 'cleanup'], ['session', 'resume'], ['conversation', 'end']]) {
+    for (const args of [['presence', 'cleanup'], ['session', 'cleanup'], ['session', 'resume'], ['conversation', 'end'], ['layout', 'guard']]) {
       const res = harness.call(dir, args, { env: session('sess-1'), stdin: input });
       assert.strictEqual(res.code, 0, `${args.join(' ')}: ${res.stderr}`);
     }

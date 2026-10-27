@@ -52,6 +52,7 @@ const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
+const { layoutRefusal } = require('./domain/layout-hook.cjs');
 const { assertPlace, recordPosition, recordTask, recordExecutor, clearTask, isAgentId, positionReads, positionSections } = require('./domain/position.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { importWorkUnitFiles } = require('./domain/workunit-import.cjs');
@@ -211,6 +212,7 @@ Commands:
   conversation end
   conversation position [session-id]
   conversation executor <session-id> <agent-id>
+  layout guard                       (hook before Write, Edit and NotebookEdit; its JSON on stdin)
   topic complete <work-unit> <phase> <topic>
   topic reopen <work-unit> <phase> <topic>
   topic supersede <work-unit> <phase> <topic> --by <topic>
@@ -1014,6 +1016,21 @@ function runSession(call, argv) {
   } catch (err) {
     failJson(call, err);
   }
+}
+
+/**
+ * The layout hook's target, before Write, Edit and NotebookEdit: silent where
+ * the write is allowed; a refusal says why on stderr and exits 2, the code
+ * Claude Code blocks the tool call on — its other failures pass the call.
+ * @param {Call} call @param {string[]} argv
+ */
+function runLayout(call, argv) {
+  if (argv.length !== 1 || argv[0] !== 'guard') die(call, 'Usage: engine layout guard');
+  const input = hookInput(call);
+  const reason = layoutRefusal(hookProjectDir(typeof input.cwd === 'string' ? input.cwd : call.cwd), input);
+  if (reason === null) return;
+  call.err(`${reason}\n`);
+  throw new ExitSignal(2);
 }
 
 /** @param {Call} call @param {string[]} argv */
@@ -2202,6 +2219,7 @@ const COMMANDS = Object.freeze({
   presence: runPresence,
   session: runSession,
   conversation: runConversation,
+  layout: runLayout,
   task: runTask,
   inbox: runInbox,
   roadmap: runRoadmap,
@@ -2225,13 +2243,15 @@ const COMMANDS = Object.freeze({
 // peer up; `presence`, `session label`, `repair`, `cleanup` and `resume`,
 // and the hold `topic mailbox` refreshes write only the session files the
 // state ignores; a conversation's folder is outside the project; and the
-// rest read. `manifest` takes it to write alone, and `commit` but for a code
+// rest read, `layout guard` among them, run before every file Claude
+// writes. `manifest` takes it to write alone, and `commit` but for a code
 // commit (`--paths`).
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
   presence: '*',
   conversation: '*',
+  layout: '*',
   code: '*',
   render: '*',
   handoff: '*',
@@ -2270,8 +2290,9 @@ function runCli(call, argv) {
 }
 
 // The commands Claude Code's own hooks run as any conversation in the project
-// ends or resumes, whether it ran the workflows or not.
-const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end'];
+// ends or resumes, or before it writes a file, whether it ran the workflows
+// or not.
+const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', 'layout guard'];
 
 /**
  * The exit code a stop answers with. A stop that is no ExitSignal is a

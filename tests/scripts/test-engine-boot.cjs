@@ -38,13 +38,17 @@ const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence clean
 const END_HOOK = { type: 'command', command: `${HOOK_ENGINE} conversation end` };
 /** The workflows' own SessionEnd hooks, in every project whatever the label choice. */
 const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK];
-/** Settings as boot leaves a project the mod cannot run in: `rest`, then `hooks` in boot's one SessionEnd group. */
+/** The layout hook's group, before every write, in every project whatever the label choice. */
+const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: `${HOOK_ENGINE} layout guard` }] };
+/** The workflows' own hooks by event, as boot installs them. */
+const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [LAYOUT_GROUP] };
+/** Settings as boot leaves a project the mod cannot run in: `rest`, then `hooks` in boot's one SessionEnd group, and the layout hook. */
 function hooked(hooks, rest = {}) {
-  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }] } }, null, 2) + '\n';
+  return JSON.stringify({ ...rest, hooks: { SessionEnd: [{ hooks }], PreToolUse: [LAYOUT_GROUP] } }, null, 2) + '\n';
 }
-/** The settings such a project reaches with labels on: every SessionEnd hook and the SessionStart resume hook. */
+/** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the layout hook. */
 const LABELS_ON = JSON.stringify({
-  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
+  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: [LAYOUT_GROUP] },
 }, null, 2) + '\n';
 
 /** The knowledge directory's files, from the project root. */
@@ -1374,7 +1378,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
   });
 
-  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end` — committed confined, and a second boot changes nothing', () => {
+  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end`, and the layout hook before Write, Edit and NotebookEdit — committed confined, and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
@@ -1394,7 +1398,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     recordChoice(true);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), LABELS_ON);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8')), JSON.parse(LABELS_ON));
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     assert.strictEqual(bootWith().session_hooks_installed, false);
   });
@@ -1446,7 +1450,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(bootWith().session_hooks_installed, true);
     assert.deepStrictEqual(settings(), {
       permissions: { allow: ['Bash(ls)'] },
-      hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }] },
+      hooks: OWN_HOOKS,
     });
   });
 
@@ -1473,7 +1477,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   });
 
   /** The fixture's own settings, as boot leaves every project. */
-  const HOOKS_ONLY = { hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }] } };
+  const HOOKS_ONLY = { hooks: OWN_HOOKS };
   /** @param {object} value */
   const json = (value) => JSON.stringify(value, null, 2) + '\n';
   /** Claude Code's terminal app, at the oldest version the mod runs on. */
@@ -1750,7 +1754,7 @@ describe('engine boot (real scripts)', () => {
   it('a project carrying the function-hooks flag the workflows wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
     legacyLayout(project);
     writeFile(project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    writeFile(project, '.claude/settings.json', JSON.stringify({ hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }] }, env: { [FLAG]: '1' } }, null, 2) + '\n');
+    writeFile(project, '.claude/settings.json', JSON.stringify({ hooks: OWN_HOOKS, env: { [FLAG]: '1' } }, null, 2) + '\n');
     commitAll(project, 'labels on, the flag in the project');
     const before = git(project, ['rev-parse', 'HEAD']).trim();
 

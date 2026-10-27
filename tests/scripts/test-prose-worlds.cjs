@@ -92,7 +92,8 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
   }
   const PRESENCE_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" presence cleanup';
   const END_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" conversation end';
-  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK];
+  const LAYOUT_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" layout guard';
+  const WORKFLOW_HOOKS = [PRESENCE_HOOK, END_HOOK, LAYOUT_HOOK];
   const SESSION_HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" session cleanup';
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };
