@@ -38,6 +38,10 @@
 // the gate can offer setup without extra probes. A knowledge config setting
 // the load ignores, a failing index or compact, a provider key that does not
 // resolve, and a vector fill that fell short are warnings, never blocks.
+// Before that pass the ledger's copies in the knowledge directory are
+// rendered again, any missing or stale against the ledger written and any no
+// record holds removed (ledger-copies.cjs), so the pass indexes what the
+// ledger says now; a render that fails is a warning too.
 //
 // The migrations run from the code root (kernel/code-root), whichever folder
 // boot was called from, recording into the state's migrations record.
@@ -61,6 +65,7 @@ const { catchUpState } = require('./state-merge.cjs');
 const { keepStateIgnored } = require('./code-trace.cjs');
 const { githubRuleOffered } = require('./github-rule.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
+const { renderLedgerCopies } = require('./ledger-copies.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, commitSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
@@ -248,6 +253,7 @@ function boot(cwd, { startAgain = false } = {}) {
   if (migrated === null) return { state: 'merge', warnings };
   const { migrations, migrationsCommitted } = migrated;
 
+  renderLedgerCopies(cwd, warnings);
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
 
   // While a reviewed migration commit follows, it takes every path the

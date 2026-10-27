@@ -46,6 +46,13 @@ const { stateRoot, statePath, stateRelative } = require('../kernel/state-root.cj
 
 const { VALID_PHASES, VALID_PHASE_STATUSES, WORK_TYPE_PIPELINES, DERIVED_PHASES, TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES } = require('../kernel/manifest-schema.cjs');
 
+/**
+ * The ledger's copies rendered and indexed (ledger-copies.cjs) — required
+ * where called, since the ledger's own requires reach back here.
+ * @param {string} cwd @param {string[]} warnings
+ */
+const refreshLedgerCopies = (cwd, warnings) => require('./ledger-copies.cjs').refreshLedgerCopies(cwd, warnings);
+
 // Phase-item lifecycle operates on WORK phases only. Discovery items are map
 // items (no lifecycle status — computed at render time); they are created and
 // edited by the discovery tooling, never by topic commands.
@@ -1407,6 +1414,7 @@ function cancelTopic(cwd, workUnit, phase, topic) {
   /** @type {string[]} */
   const warnings = [];
   removeHeldChunks(cwd, workUnit, topic, taken.cancelled, warnings);
+  refreshLedgerCopies(cwd, warnings);
 
   for (const { phase: p } of taken.cancelled) clearOwnQuietly(cwd, workUnit, p, topic);
 
@@ -1530,6 +1538,7 @@ function reactivateTopic(cwd, workUnit, phase, topic) {
   /** @type {string[]} */
   const warnings = [];
   indexRestored(cwd, workUnit, topic, returned.restored, warnings);
+  refreshLedgerCopies(cwd, warnings);
 
   const outcome = commitStateTail(cwd, `${workUnit}/manifest.json`, `workflow(${workUnit}): reactivate ${topic} (${stage})`, warnings);
   /** @type {TopicReactivateResult} */
@@ -1621,6 +1630,7 @@ function postponeTopic(cwd, workUnit, topic, { horizon } = {}) {
   /** @type {string[]} */
   const warnings = [];
   removeHeldChunks(cwd, workUnit, topic, taken.postponed, warnings);
+  refreshLedgerCopies(cwd, warnings);
   for (const { phase } of taken.postponed) clearOwnQuietly(cwd, workUnit, phase, topic);
 
   const outcome = commitStateTail(
@@ -1662,6 +1672,7 @@ function restorePostponedUnit(cwd, workUnit, topic) {
   /** @type {string[]} */
   const warnings = [];
   indexRestored(cwd, workUnit, topic, restored, warnings);
+  refreshLedgerCopies(cwd, warnings);
   return { restored, warnings };
 }
 

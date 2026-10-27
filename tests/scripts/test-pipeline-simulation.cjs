@@ -44,7 +44,8 @@ const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
 const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
+const { KNOWLEDGE_DIR, RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
+const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/store.cjs'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 
@@ -479,6 +480,46 @@ function auditLedger(dir, ctx) {
   const product = ledger(['product']);
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
+
+  auditCopies(root, shownAt, standing, (id) => byId.get(id).product_wide === true, full, ctx);
+}
+
+// The ledger's copies in the knowledge directory, held to the records: a
+// copy for each place a shown entry stands in — its unit's own level, or a
+// topic — and for no other; each naming every entry shown there and no entry
+// that is not shown, so no replaced answer is in one; the product record's
+// file naming the shown entries marked product-wide alone; and the store
+// indexing the records' copies, never the product record's file.
+/**
+ * @param {string} root @param {Map<string, string[]>} shownAt
+ * @param {(id: string) => {unit: string, topic: string|null}} standing
+ * @param {(id: string) => boolean} productWide @param {(short: string) => string} full
+ * @param {(msg: string) => string} ctx
+ */
+function auditCopies(root, shownAt, standing, productWide, full, ctx) {
+  /** @type {Map<string, string[]>} */
+  const expected = new Map();
+  for (const id of shownAt.keys()) {
+    const { unit, topic } = standing(id);
+    const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
+    expected.set(file, [...(expected.get(file) ?? []), id]);
+  }
+  const markdown = (/** @type {string} */ rel) => (fs.existsSync(path.join(root, rel)) ? fs.readdirSync(path.join(root, rel), { withFileTypes: true }) : [])
+    .flatMap((entry) => (entry.isDirectory() ? markdown(`${rel}/${entry.name}`) : entry.name.endsWith('.md') ? [`${rel}/${entry.name}`] : []));
+  const copies = markdown(RECORDS_DIR).sort();
+  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry stands in'));
+  /** @param {string} rel */
+  const named = (rel) => [...fs.readFileSync(path.join(root, rel), 'utf8').matchAll(/Entry (\w+)\.$/gm)].map((m) => full(m[1]));
+  for (const [file, ids] of expected) {
+    const names = named(file);
+    assert.deepStrictEqual(ids.filter((id) => !names.includes(id)), [], ctx(`${file} does not name every entry its record shows`));
+    assert.deepStrictEqual(names.filter((id) => !shownAt.has(id)), [], ctx(`${file} names an entry that is not current`));
+  }
+  assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter(productWide).sort(),
+    ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
+  const storeFile = knowledgeFiles(root).store;
+  const indexed = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record').map((c) => c.source_file) : [];
+  assert.deepStrictEqual([...new Set(indexed)].sort(), copies, ctx('the store does not index the record copies alone'));
 }
 
 // The skills a menu's route reaches in place: another menu, or help.
@@ -3824,7 +3865,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record', () => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, read back as its records, its maps and the product record, and rendered to the knowledge base\'s copies, the records indexed', () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);

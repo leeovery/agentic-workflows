@@ -54,7 +54,9 @@
 //   the check and the append. The answer is made once the lock
 //   is released: the entry's short id, the commit, and as warnings a push
 //   that failed and what a landing finished on the way said, which a refusal
-//   carries too.
+//   carries too. Then, the lock released, the knowledge base's copies are
+//   rendered against the ledger and indexed (ledger-copies.cjs), a failure
+//   a warning on an entry that stands (22.6.15).
 // ---------------------------------------------------------------------------
 
 const { messageOf } = require('../kernel/call.cjs');
@@ -68,6 +70,7 @@ const { ID_FACTS, foldLedger, standingOf, notCurrent, currentsOf, replacedChain 
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
+const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -671,9 +674,10 @@ function land(cwd, request, warnings) {
 }
 
 /**
- * `ledger <verb>`: one event appended and committed. Answers the entry's
- * short id, the commit, and any warnings; a commit git refused is pending,
- * and the next write's commit takes the ledger whole.
+ * `ledger <verb>`: one event appended and committed, then the knowledge
+ * base's copies rendered and indexed. Answers the entry's short id, the
+ * commit, and any warnings; a commit git refused is pending, and the next
+ * write's commit takes the ledger whole.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
  * @returns {{id: string, committed: string|null, note?: string, warnings?: string[]}}
  */
@@ -683,6 +687,7 @@ function writeLedger(cwd, verb, args, stdin) {
   try {
     const request = requestOf(cwd, verb, args, stdin, warnings);
     const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
+    refreshLedgerCopies(cwd, warnings);
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
     const result = { id, committed: outcome.committed };
     if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write commits it';

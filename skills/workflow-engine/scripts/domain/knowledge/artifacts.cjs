@@ -6,6 +6,14 @@
 // manifests say belong in the store, and why an indexed identity no longer
 // does.
 //
+// A record is indexed through its rendered copy (22.6.2): a topic's at
+// `.knowledge/records/{unit}/{topic}.md`, and the record of a unit's own
+// level, whose entries carry no topic, at `.knowledge/records/{unit}.md`,
+// its identity's topic `.unit` — a name no topic's identity can take, as a
+// dotted one is refused. A live unit's copies on disk are what belongs: the
+// ledger's render writes each record that holds something and removes the
+// rest.
+//
 // The knowledge base's root is the state root, and an artifact is named by
 // its path from there — state-relative, so an identity never moves when the
 // checkout does, and never carries the state directory's name.
@@ -14,6 +22,7 @@
 const fs = require('fs');
 const path = require('path');
 const { readProjectManifest, listWorkUnitManifests } = require('../../kernel/manifest-io.cjs');
+const { RECORDS_DIR } = require('../../kernel/knowledge/files.cjs');
 const { TERMINAL_STATUSES, PROJECT_IDENTITIES } = require('../../kernel/manifest-schema.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
@@ -27,6 +36,12 @@ const { isIndexableImport, importArtifact } = require('../import-landing.cjs');
 const roadmapDir = () => require('../roadmap.cjs').ROADMAP_DIR;
 
 const BASELINE_PATH = /^\.baseline\/(.+)$/;
+
+/** The phase a record's chunks carry. */
+const RECORD_PHASE = 'record';
+
+/** The topic of the identity of a unit's own record. */
+const UNIT_RECORD = '.unit';
 const ANALYSIS_PATH = /^([^/]+)\/\.state\/(.+)$/;
 const PHASE_PATH = /^([^/]+)\/(research|discussion|investigation|specification|imports|seeds|discovery)\/(.+)$/;
 
@@ -44,7 +59,7 @@ const INDEXED_ARTIFACTS = {
 };
 
 /** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap'];
+const INDEXED_PHASES = ['research', 'discussion', 'investigation', 'specification', 'imports', 'seeds', 'analysis', 'discovery', 'baseline', 'roadmap', RECORD_PHASE];
 
 // The project-level places carry their own name as both work unit and work
 // type: the engine reserves each, so no work unit collides with it.
@@ -134,6 +149,55 @@ function baselineIdentity(rest) {
   }
   assertSegment('topic', fileMatch[1]);
   return { workUnit: BASELINE_IDENTITY, phase: 'baseline', topic: fileMatch[1] };
+}
+
+/**
+ * A record's rendered copy, state-relative: a topic's, or with no topic the
+ * record of the unit's own level.
+ * @param {string} unit @param {string|null} topic
+ */
+function recordFile(unit, topic) {
+  return topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
+}
+
+/**
+ * The identity a record copy's path names, its segments unchecked: `{unit}.md`,
+ * the unit's own record, or `{unit}/{topic}.md` — null for another shape.
+ * @param {string} rest the path beneath the records' folder
+ * @returns {Identity|null}
+ */
+function recordNamed(rest) {
+  const match = /^([^/]+?)(?:\/([^/]+))?\.md$/.exec(rest);
+  if (!match) return null;
+  const [, workUnit, topic = UNIT_RECORD] = match;
+  return { workUnit, phase: RECORD_PHASE, topic };
+}
+
+/**
+ * The scope of the chunks of the record copy at a state-relative path.
+ * @param {string} file
+ * @returns {Identity}
+ */
+function recordScope(file) {
+  return /** @type {Identity} */ (recordNamed(file.slice(RECORDS_DIR.length + 1)));
+}
+
+/**
+ * A record copy's identity.
+ * @param {string} rest the path beneath the records' folder
+ * @returns {Identity}
+ */
+function recordIdentity(rest) {
+  const named = recordNamed(rest);
+  if (!named) {
+    throw new UserError(
+      `Unexpected record path structure: ${rest}\n` +
+        `Expected: ${RECORDS_DIR}/{work_unit}.md or ${RECORDS_DIR}/{work_unit}/{topic}.md`
+    );
+  }
+  assertSegment('work unit', named.workUnit);
+  if (named.topic !== UNIT_RECORD) assertSegment('topic', named.topic);
+  return named;
 }
 
 /**
@@ -231,6 +295,7 @@ function deriveIdentity(filePath) {
 
   // The dotted directories first: they would otherwise fall into the `.state`
   // capture and read as an invalid work unit.
+  if (norm.startsWith(`${RECORDS_DIR}/`)) return recordIdentity(norm.slice(RECORDS_DIR.length + 1));
   const baselineMatch = BASELINE_PATH.exec(norm);
   if (baselineMatch) return baselineIdentity(baselineMatch[1]);
   if (norm.startsWith(`${roadmapDir()}/`)) return roadmapIdentity(norm.slice(roadmapDir().length + 1), filePath);
@@ -436,9 +501,26 @@ function projectArtifacts(root, roadmapSession) {
 }
 
 /**
+ * A unit's record copies on disk: its own level's, and each topic's whose
+ * name is dot-free.
+ * @param {string} root @param {string} workUnit
+ * @returns {Artifact[]}
+ */
+function recordArtifacts(root, workUnit) {
+  const own = recordFile(workUnit, null);
+  return [
+    ...(fs.existsSync(path.resolve(root, own)) ? [{ file: own, workUnit, phase: RECORD_PHASE, topic: UNIT_RECORD }] : []),
+    ...flatMarkdown(root, `${RECORDS_DIR}/${workUnit}`).map((f) => {
+      const topic = f.slice(0, -3);
+      return { file: recordFile(workUnit, topic), workUnit, phase: RECORD_PHASE, topic };
+    }),
+  ];
+}
+
+/**
  * A live work unit's artifacts: each completed per-topic item's file, its
- * imports and seeds, its analysis caches, and an epic's closed discovery
- * session logs.
+ * imports and seeds, its analysis caches, its record copies, and an epic's
+ * closed discovery session logs.
  * @param {string} root @param {Record<string, any>} unit
  * @returns {Artifact[]}
  */
@@ -458,6 +540,7 @@ function unitArtifacts(root, unit) {
   items.push(
     ...flatEntries(root, unit, 'imports', importArtifact),
     ...flatEntries(root, unit, 'seeds', (wu, dest) => path.posix.join(wu, 'seeds', dest)),
+    ...recordArtifacts(root, workUnit),
   );
   for (const [basename, topic] of Object.entries(ANALYSIS_CACHE_FILES)) {
     const file = path.posix.join(workUnit, '.state', `${basename}.md`);
@@ -536,7 +619,10 @@ function retirements(root, entries, manifests, scope) {
 module.exports = {
   INDEXED_ARTIFACTS,
   INDEXED_PHASES,
+  RECORD_PHASE,
   RESERVED_IDENTITIES,
+  recordFile,
+  recordScope,
   identityKey,
   deriveIdentity,
   workTypeOf,
