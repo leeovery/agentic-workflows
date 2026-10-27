@@ -236,6 +236,22 @@ describe('a place set aside (5.8.17)', () => {
     assert.match(await byArea('floating'), /\[0 results\]/);
   });
 
+  it('loses a unit\'s copies while it is cancelled, and has them back when it is completed from there', () => {
+    const finished = { items: { mint: { status: 'completed' } } };
+    createManifest(dir, 'mint', {
+      work_type: 'feature',
+      phases: { discussion: finished, specification: finished, planning: finished, implementation: finished, review: finished },
+    });
+    ask('mint.discussion.mint', 'Does Mint float its notes?');
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    assert.strictEqual(copy('.knowledge/records/mint/mint.md'), null);
+    assert.deepStrictEqual(indexedFiles(dir), []);
+    ok(dir, ['workunit', 'complete', 'mint', '-m', 'workflow(mint): complete']);
+    assert.match(/** @type {string} */ (copy('.knowledge/records/mint/mint.md')), /^## Does Mint float its notes\?$/m);
+    assert.deepStrictEqual(indexedFiles(dir), ['.knowledge/records/mint/mint.md']);
+  });
+
   it('loses its copy while its topic is postponed, and has it back once pulled back into its own epic (5.S32)', async () => {
     floatingPanel();
 

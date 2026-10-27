@@ -44,14 +44,12 @@ function placeName({ unit, topic }) {
   return topic === null ? `${unit}, at the unit's level` : `${unit} / ${topic}`;
 }
 
-/** Who made an entry. @param {string} by */
-function maker(by) {
-  return { person: 'the person', claude: 'Claude', review: 'the review' }[by] ?? by;
-}
+/** Who made an entry, by its `by`. @type {Readonly<Record<string, string>>} */
+const MAKERS = Object.freeze({ person: 'the person', claude: 'Claude', review: 'the review' });
 
 /** The line closing an entry: who made it, and how, where, and which entry it is. @param {Placed} placed @param {string} made */
 function provenance({ line, from }, made) {
-  const marks = [`${made} by ${maker(line.by)}`, ...(line.product_wide === true ? ['product-wide'] : []), ...(from === null ? [] : [`in ${placeName(from)}`])];
+  const marks = [`${made} by ${MAKERS[line.by]}`, ...(line.product_wide === true ? ['product-wide'] : []), ...(from === null ? [] : [`in ${placeName(from)}`])];
   return `${marks.join(', ')}. Entry ${line.id}.`;
 }
 
