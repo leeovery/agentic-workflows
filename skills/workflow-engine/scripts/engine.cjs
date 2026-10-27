@@ -68,6 +68,7 @@ const roadmapSession = require('./domain/roadmap-session.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf } = require('./kernel/call.cjs');
 const { findStateRoot, stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
+const { codeRoot } = require('./kernel/code-root.cjs');
 
 /** @typedef {import('./kernel/call.cjs').Call} Call */
 
@@ -1694,21 +1695,21 @@ function topicStatus(cwd, wu, phase, topic) {
  * Validate one declared code path. Code has no layout to derive a pathspec
  * from, so the paths are Claude's to name — each taken literally, so a
  * routing file (`app/[id]/page.tsx`) is that file and never a pattern — and
- * every one is checked before anything is staged: inside the project, never
- * a workflow artifact, which has a derived scope of its own, and committable
- * in the repo that owns it.
+ * every one is checked before anything is staged: never a workflow artifact,
+ * which has a derived scope of its own, inside the code root, and
+ * committable in the repo that owns it.
  * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given
- * @returns {string} the project-relative path
+ * @returns {string} the path as the code root names it
  */
 function codePathSpec(cwd, repos, given) {
   if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
   const abs = path.resolve(cwd, given);
-  const rel = path.relative(cwd, abs);
-  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error(`commit --paths: "${given}" resolves outside the project`);
-  }
   if (insideState(cwd, abs)) {
     throw new Error(`commit --paths: "${given}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
+  }
+  const rel = path.relative(codeRoot(cwd), abs);
+  if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`commit --paths: "${given}" resolves outside the project`);
   }
   const spec = rel.split(path.sep).join('/');
   assertCommittable(repos, spec, given);
@@ -1986,7 +1987,7 @@ function runCommit(call, argv) {
           }
         }
         const state = commitStateScoped(cwd, [`${wu}/planning/${plan}`, `${wu}/manifest.json`, 'manifest.json'], message);
-        const storage = stageableSpecs(cwd, declared);
+        const storage = stageableSpecs(codeRoot(cwd), declared);
         respond(call, bothSides(state, storage.length === 0 ? null : commitPathspecScoped(cwd, storage, message)));
         return;
       }
@@ -2136,28 +2137,26 @@ function runRender(call, argv) {
   }
 }
 
-// Every verb that writes the state runs whole under its writer lock, its
-// writes and its commit one hold, so no peer's write lands between them.
-// Per command, the sub-verbs that only read, or write nowhere a commit
-// reaches (the cache, a tmux label), run without it; a command absent here
-// never takes it — the knowledge base keeps its own lock, boot takes the
-// writer lock around its migrations alone, and the rest read.
-const WRITER_LOCK_EXEMPT = /** @type {Record<string, string[]>} */ ({
-  workunit: [],
-  'discussion-map': [],
-  'research-threads': [],
-  'discovery-map': [],
-  'build-order': [],
-  'discovery-session': [],
+// Every command runs whole under the writer lock, its writes and its commit
+// one hold, so no peer's write lands between them — a command added later
+// included — but the ones named here, with `*` for every sub-verb or the
+// sub-verbs alone. None of them writes what a state commit takes: the
+// knowledge base writes the store the state ignores, under a lock of its
+// own; boot takes the writer lock itself around each state write it makes;
+// presence, the cache and a session's label write only what the state
+// ignores; a conversation's folder is outside the project; and the rest
+// read. `manifest` takes it to write alone, and `commit` but for a code
+// commit (`--paths`).
+const WRITER_LOCK_EXEMPT = /** @type {Record<string, '*'|string[]>} */ ({
+  knowledge: '*',
+  boot: '*',
+  presence: '*',
+  conversation: '*',
+  code: '*',
+  render: '*',
+  handoff: '*',
   topic: ['mailbox', 'incorporations'],
-  experiment: [],
-  sources: [],
-  task: [],
-  inbox: [],
   roadmap: ['state'],
-  baseline: [],
-  walkthrough: [],
-  cache: [],
   agent: ['scan'],
   session: ['label', 'repair', 'cleanup', 'resume'],
 });
@@ -2166,7 +2165,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Record<string, string[]>} */ ({
 function takesWriterLock([command, sub, ...rest]) {
   if (command === 'manifest') return !isRead(sub);
   if (command === 'commit') return ![sub, ...rest].includes('--paths');
-  return Object.hasOwn(WRITER_LOCK_EXEMPT, command) && !WRITER_LOCK_EXEMPT[command].includes(sub);
+  const exempt = Object.hasOwn(WRITER_LOCK_EXEMPT, command) ? WRITER_LOCK_EXEMPT[command] : [];
+  return exempt !== '*' && !exempt.includes(sub);
 }
 
 /**

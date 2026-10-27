@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: the project's repos. The root is git as run at the project root,
-// whatever repository holds it. A nested repo is a folder inside the project
+// Kernel: the project's repos. The root is git as run at the code root
+// (kernel/code-root), whatever repository holds it. A nested repo is a folder inside the project
 // holding a `.git` of its own that its parent's git reports as a whole: an
 // untracked nested repo (named at any depth), a submodule (its gitlink), or
 // an ignored folder that holds `.git` itself. Each found repo is searched the
@@ -29,6 +29,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, tryGit, dirtyEntries, pathsTouchedBySubject } = require('./git.cjs');
 const { stateRoot } = require('./state-root.cjs');
+const { codeRoot } = require('./code-root.cjs');
 
 /**
  * A repo in the project: `dir` its folder from the project root (`''` for
@@ -118,12 +119,13 @@ function searched(dir, abs) {
 }
 
 /**
- * Every repo in the project: the root first, then the nested ones in `dir` order.
- * @param {string} root project root
+ * Every repo in the project: the code root's first, then the nested ones in
+ * `dir` order.
+ * @param {string} cwd
  * @returns {Repo[]}
  */
-function projectRepos(root) {
-  const [rootRepo, ...nested] = searched('', root);
+function projectRepos(cwd) {
+  const [rootRepo, ...nested] = searched('', codeRoot(cwd));
   return [rootRepo, ...nested.sort((a, b) => (a.dir < b.dir ? -1 : 1))];
 }
 

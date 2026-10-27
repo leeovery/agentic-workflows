@@ -16,8 +16,8 @@ const { git, GitError, hasCommits } = require('../kernel/git.cjs');
 const { projectRepos, projectPath } = require('../kernel/repos.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
+const { isolatedGit } = require('../kernel/isolated-git.cjs');
 
 /** The statuses a project manifest records; `none` is their absence. */
 const RECORDED_STATUSES = /** @type {const} */ (['native', 'in-progress', 'completed', 'skipped']);
@@ -41,7 +41,7 @@ const VERDICTS = /** @type {const} */ (['native', 'skipped']);
  * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
  * @property {number} commits_before  the commits before the arrival, summed: each repo's last commit made before the state's first commit and that commit's ancestors (each whole history when the state holds no commit)
  * @property {string[]} history_before  those commits as `date  subject`, oldest first across the repos — the head and tail kept around an elision line when the run is long
- * @property {number} files_at_arrival  project files (outside `.claude/`, `.worktreeinclude` aside) in the trees the workflows arrived into — each repo's at its last commit before the arrival; HEAD's trees when the state holds no commit
+ * @property {number} files_at_arrival  project files (outside `.claude/`) in the trees the workflows arrived into — each repo's at its last commit before the arrival; HEAD's trees when the state holds no commit
  * @property {string[]} tree_at_arrival  that tree's top-level shape, named from the project: `dir/ (n)` and root files, largest first, elided past a dozen
  */
 
@@ -153,14 +153,15 @@ function sum(values) {
 
 /**
  * The state's first commit — its author date and committer time — or null
- * when the state holds none yet.
+ * when the state holds none yet. Read in the state worktree, isolated.
  * @param {string} cwd
  * @returns {{date: string, time: string}|null}
  */
 function arrivalIn(cwd) {
   const state = findStateRoot(cwd);
-  if (state === null || !hasCommits(state)) return null;
-  const [first] = gitLines(state, ['log', '--no-show-signature', '--max-parents=0', '--format=%as%x09%ct', 'HEAD']);
+  if (state === null) return null;
+  const out = isolatedGit(state).tryRun(['log', '--no-show-signature', '--max-parents=0', '--format=%as%x09%ct', 'HEAD']);
+  const [first] = (out || '').split('\n').filter(Boolean);
   if (first === undefined) return null;
   const [date, time] = first.split('\t');
   return { date, time };
@@ -262,13 +263,13 @@ function elided(rows) {
 
 /**
  * The project's files, less the workflows' own footprint in the code tree
- * (the skills install under `.claude/`, the `.worktreeinclude` boot keeps):
- * a file count plus the top-level shape, largest entries first.
+ * (the skills install under `.claude/`): a file count plus the top-level
+ * shape, largest entries first.
  * @param {string[]} paths project paths
  * @returns {{files_at_arrival: number, tree_at_arrival: string[]}}
  */
 function treeShape(paths) {
-  const project = paths.filter((p) => !p.startsWith('.claude/') && p !== WORKTREE_INCLUDE);
+  const project = paths.filter((p) => !p.startsWith('.claude/'));
   /** @type {Map<string, number>} */
   const top = new Map();
   for (const p of project) {

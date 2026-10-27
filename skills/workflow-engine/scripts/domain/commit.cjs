@@ -9,12 +9,13 @@
 //   are state-relative.
 // - The code tree: the files the workflows own outside the state — the
 //   project's Claude Code settings, the worktree include and the `.gitignore`
-//   — and declared code paths are committed in the checkout's own tree, on
-//   the branch checked out. A process-wide lock (`.git/workflows-commit.lock`,
-//   on a long clock) holds each add+commit sequence alone, so concurrent
-//   sessions never interleave on git's shared index. The code commit lands
-//   in each repo that owns one of its paths (kernel/repos), deepest first,
-//   under that repo's own lock.
+//   — and declared code paths are committed in the code root's own tree
+//   (kernel/code-root), on the branch checked out, and never on the state
+//   branch. A process-wide lock (`.git/workflows-commit.lock`, on a long
+//   clock) holds each add+commit sequence alone, so concurrent sessions never
+//   interleave on git's shared index. The code commit lands in each repo that
+//   owns one of its paths (kernel/repos), deepest first, under that repo's
+//   own lock.
 //
 // Every commit is confined: it commits exactly the paths its action wrote,
 // so a peer session's dirty or staged files are never swept up under someone
@@ -24,14 +25,14 @@
 // side that changed.
 // ---------------------------------------------------------------------------
 
-const { gitPath, commitPathspec, commitStaged } = require('../kernel/git.cjs');
+const { gitPath, tryGit, commitPathspec, commitStaged } = require('../kernel/git.cjs');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { repoName } = require('../kernel/repos.cjs');
 const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { withStateLock, commitState } = require('./state-worktree.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
+const { STATE_BRANCH, withStateLock, commitState } = require('./state-worktree.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
-const { WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 
 /** The project manifest, state-relative. */
 const PROJECT_MANIFEST_SPEC = 'manifest.json';
@@ -43,7 +44,7 @@ const PROJECT_MANIFEST_SPEC = 'manifest.json';
  * migration commit; its state side is the whole state worktree.
  * @type {readonly string[]}
  */
-const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
+const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, '.worktreeinclude', '.gitignore']);
 
 /**
  * The discovery scope — what a discovery session writes: its session logs,
@@ -108,9 +109,20 @@ function commitLockPath(cwd) {
 }
 
 /**
- * Run `fn` holding the commit lock.
+ * Refuse a code commit in a tree that has the state branch checked out.
+ * @param {string} cwd the tree the commit would land in
+ */
+function refuseStateBranch(cwd) {
+  const head = tryGit(cwd, ['symbolic-ref', '-q', 'HEAD']);
+  if (head !== null && head.trim() === `refs/heads/${STATE_BRANCH}`) {
+    throw new Error(`refusing a code commit in ${cwd}: it has the state branch ${STATE_BRANCH} checked out — the state commits through its own door`);
+  }
+}
+
+/**
+ * Run `fn` holding the commit lock, in a tree that is not the state's.
  * @template T
- * @param {string} cwd project root, or a nested repo's
+ * @param {string} cwd the code root, or a nested repo's
  * @param {() => T} fn
  * @returns {T}
  */
@@ -122,6 +134,7 @@ const COMMIT_LOCK_STALE_MS = 300000;
 const COMMIT_LOCK_TIMEOUT_MS = 60000;
 
 function withCommitLock(cwd, fn) {
+  refuseStateBranch(cwd);
   const lockFile = commitLockPath(cwd);
   acquireLockFile(lockFile, 'Timed out waiting for the commit lock', COMMIT_LOCK_TIMEOUT_MS, COMMIT_LOCK_STALE_MS);
   try {
@@ -132,18 +145,19 @@ function withCommitLock(cwd, fn) {
 }
 
 /**
- * The code-tree commit: `commitPathspec` under the commit lock, committing
- * exactly the named paths and leaving every other process's dirty or staged
- * files untouched.
- * @param {string} cwd @param {string|string[]} pathspec @param {string} message
+ * The code-tree commit: `commitPathspec` in the code root under the commit
+ * lock, committing exactly the named paths and leaving every other process's
+ * dirty or staged files untouched.
+ * @param {string} cwd @param {string|string[]} pathspec as the code root names them @param {string} message
  * @param {() => void} [beforeInLock] index-mutating prep (e.g. git rm) that
  *   must run inside the same commit-lock hold as the commit that lands it
  * @returns {string|null}
  */
 function commitPathspecScoped(cwd, pathspec, message, beforeInLock) {
-  return withCommitLock(cwd, () => {
+  const root = codeRoot(cwd);
+  return withCommitLock(root, () => {
     if (beforeInLock) beforeInLock();
-    return commitPathspec(cwd, pathspec, message);
+    return commitPathspec(root, pathspec, message);
   });
 }
 
@@ -191,13 +205,14 @@ function commitInRepo(repo, paths, message, committed) {
 }
 
 /**
- * `commitStaged` under the commit lock: stage everything under the pathspecs
- * and commit exactly them as the index records them.
- * @param {string} cwd @param {readonly string[]} specs @param {string} message
+ * `commitStaged` in the code root under the commit lock: stage everything
+ * under the pathspecs and commit exactly them as the index records them.
+ * @param {string} cwd @param {readonly string[]} specs as the code root names them @param {string} message
  * @returns {string|null}
  */
 function commitStagedScoped(cwd, specs, message) {
-  return withCommitLock(cwd, () => commitStaged(cwd, [...specs], message));
+  const root = codeRoot(cwd);
+  return withCommitLock(root, () => commitStaged(root, [...specs], message));
 }
 
 /**

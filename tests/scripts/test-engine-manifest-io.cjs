@@ -524,6 +524,31 @@ describe('engine writes take the writer lock', () => {
     assert.ok(!fs.existsSync(lock));
   });
 
+  it('a command not named exempt takes the lock — one the engine does not know included', async () => {
+    fs.writeFileSync(lock, live());
+
+    const child = spawn('node', [ENGINE, 'not-a-verb'], { cwd: dir });
+    let stderr = '';
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    const exit = new Promise((resolve) => child.on('close', resolve));
+
+    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
+    assert.strictEqual(raced, 'waiting', 'an unnamed command must wait on a live lock');
+
+    fs.unlinkSync(lock);
+    assert.strictEqual(await exit, 1);
+    assert.match(stderr, /^Usage: engine <command>/);
+    assert.ok(!fs.existsSync(lock));
+  });
+
+  it('an exempt sub-verb of a locking verb answers at once while a live holder has the lock', () => {
+    fs.writeFileSync(lock, live());
+    const started = Date.now();
+    assert.strictEqual(engine(dir, ['topic', 'mailbox', 'payments', 'research', 'auth-flow']).ok, true);
+    assert.ok(Date.now() - started < 1500, `the mailbox read waited ${Date.now() - started}ms`);
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
+  });
+
   it('committing transactions hold the lock across their commit, and it never lands in one', () => {
     commitAll(dir, 'init');
 

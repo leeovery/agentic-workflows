@@ -194,30 +194,40 @@ describe('engine workunit import — from a code worktree (4.S1)', () => {
   beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { removeFixture(fix); });
 
+  // One worktree sits inside the main checkout, as Claude Code places them,
+  // and one beside it, where no folder above holds `.leeway/`: the state is
+  // found through the common directory from both.
   it('lands in the main checkout\'s one state, answers its absolute path, pushes the state branch, and leaves every code branch as it was', () => {
     const remote = path.join(fix.root, 'remote.git');
     git(fix.root, ['init', '-q', '--bare', remote]);
     git(fix.project, ['remote', 'add', 'origin', remote]);
-    const wt = path.join(fix.project, '.claude', 'worktrees', 'side');
-    git(fix.project, ['worktree', 'add', '-q', '-b', 'side', wt]);
-    const codeHeads = () => ['main', 'side'].map((branch) => git(fix.project, ['rev-parse', branch]).trim());
+    const worktrees = [
+      { branch: 'inside', wt: path.join(fix.project, '.claude', 'worktrees', 'inside'), name: 'inside' },
+      { branch: 'beside', wt: path.join(fix.root, 'beside'), name: 'beside' },
+    ];
+    for (const { branch, wt } of worktrees) git(fix.project, ['worktree', 'add', '-q', '-b', branch, wt]);
+    const codeHeads = () => ['main', ...worktrees.map((w) => w.branch)].map((branch) => git(fix.project, ['rev-parse', branch]).trim());
     const before = codeHeads();
-    writeFile(wt, 'notes/Field Notes.md', '# Field notes\n');
 
-    const res = ok(wt, ['workunit', 'import', 'ledger', 'notes/Field Notes.md', ...FROM_RESEARCH], { env: fix.env });
+    worktrees.forEach(({ wt, name }, i) => {
+      writeFile(wt, `notes/${name} notes.md`, `# ${name}\n`);
 
-    assert.deepStrictEqual(res, {
-      ok: true,
-      op: 'import',
-      imports: [{ path: landed(fix, 'field-notes.md'), origin: 'research/ledger' }],
-      skipped_imports: [],
-      committed: shortHead(fix),
+      const res = ok(wt, ['workunit', 'import', 'ledger', `notes/${name} notes.md`, ...FROM_RESEARCH], { env: fix.env });
+
+      assert.deepStrictEqual(res, {
+        ok: true,
+        op: 'import',
+        imports: [{ path: landed(fix, `${name}-notes.md`), origin: 'research/ledger' }],
+        skipped_imports: [],
+        committed: shortHead(fix),
+      }, name);
+      assert.strictEqual(fs.readFileSync(landed(fix, `${name}-notes.md`), 'utf8'), `# ${name}\n`, name);
+      assert.ok(!fs.existsSync(path.join(wt, '.leeway')), `the ${name} worktree holds no state of its own`);
+      assert.strictEqual(commitsSinceInit(fix), String(i + 1), name);
+      assert.strictEqual(git(remote, ['rev-parse', 'refs/heads/leeway-state']).trim(), stateGit(fix.project, ['rev-parse', 'HEAD']).trim(),
+        `the state commit from ${name} is on the remote`);
     });
-    assert.strictEqual(fs.readFileSync(landed(fix, 'field-notes.md'), 'utf8'), '# Field notes\n');
-    assert.ok(!fs.existsSync(path.join(wt, '.leeway')), 'the code worktree holds no state of its own');
-    assert.strictEqual(commitsSinceInit(fix), '1');
-    assert.strictEqual(git(remote, ['rev-parse', 'refs/heads/leeway-state']).trim(), stateGit(fix.project, ['rev-parse', 'HEAD']).trim(),
-      'the state commit is on the remote');
+    assert.ok(!fs.existsSync(path.join(fix.root, '.leeway')), 'nothing beside the checkout');
     assert.deepStrictEqual(codeHeads(), before, 'no code branch takes a state commit');
   });
 });

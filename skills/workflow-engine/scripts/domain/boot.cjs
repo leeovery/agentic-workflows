@@ -16,16 +16,19 @@
 // that line itself — this run's, or one an earlier boot stranded.
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
-// beside them the store's lock and the fill's claim — is local to each
-// checkout and git-ignored: boot keeps the first three listed in
-// `.worktreeinclude` so a worktree Claude Code creates starts with a copy.
-// A checkout set up (its local config) with no store gets one built when this
-// machine's config says how — it reads `buildable`. Anything else not-ready
-// is the caller's gate: boot never sets a checkout up itself, and a not-ready
-// response carries the system-config report so the gate can offer setup
-// without extra probes. A knowledge config setting the load ignores, a
-// failing index or compact, a provider key that does not resolve, and a
-// vector fill that fell short are warnings, never blocks.
+// beside them the store's lock and the fill's claim — sits in the one state
+// every worktree shares, git-ignored there, so there is nothing to copy into
+// a worktree. A checkout set up (its local config) with no store gets one
+// built when this machine's config says how — it reads `buildable`.
+// Anything else not-ready is the caller's gate: boot never sets a checkout
+// up itself, and a not-ready response carries the system-config report so
+// the gate can offer setup without extra probes. A knowledge config setting
+// the load ignores, a failing index or compact, a provider key that does not
+// resolve, and a vector fill that fell short are warnings, never blocks.
+//
+// The migrations run from the code root (kernel/code-root): the fleet
+// released while the state lived in the code tree upgrades the `.workflows/`
+// there, whichever folder boot was called from.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone. The start
@@ -37,6 +40,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { withProjectLock } = require('../kernel/manifest.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { commitPathspecScoped, commitStateScoped } = require('./commit.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -47,7 +51,6 @@ const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { dropPosition } = require('./position.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
-const { syncWorktreeInclude, WORKTREE_INCLUDE } = require('./worktree-include.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 
@@ -110,11 +113,10 @@ const LEDGER = '.state/migrations';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, the worktree include, an unreadable report block)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
- * @property {boolean} worktree_include_installed this boot changed `.worktreeinclude` — a knowledge file appended; false when it left the file as it was
  * @property {import('./gate-surface.cjs').GateSurface} gate_surface the gate mod, which boot writes nothing for — `unavailable` where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read) and `outdated` at a release before 2.1.287; where it can: `on` where it is running, its announcement in boot's own environment, and `not-running` where it is not — workflow-start shows a notice on `not-running` and carries on with typed menus, and stops on `outdated`
  * @property {'none'|'native'|'in-progress'|'completed'|'skipped'} baseline project baseline status from the project manifest — `none` means nothing recorded yet (workflow-start's one-time judgment: native, or the offer)
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state workflow-start's one-time offer keys on
@@ -212,12 +214,11 @@ function boot(cwd) {
   // edit past the review under boot's message.
   const commitOwn = !migrations.changed;
   const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
-  const worktreeIncludeInstalled = installWorktreeInclude(cwd, commitOwn, warnings);
   tidyConversations();
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, worktree_include_installed: worktreeIncludeInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);
@@ -235,7 +236,7 @@ function boot(cwd) {
  * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}}
  */
 function runMigrations(cwd, warnings) {
-  const mig = spawnSync('node', [MIGRATE_CJS, '--ledger', statePath(cwd, LEDGER)], { cwd, encoding: 'utf8' });
+  const mig = spawnSync('node', [MIGRATE_CJS, '--ledger', statePath(cwd, LEDGER)], { cwd: codeRoot(cwd), encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message
@@ -314,23 +315,6 @@ function installSessionHooks(cwd, commit, warnings) {
     commitPlumbing(cwd, SETTINGS_SPEC, 'chore: install workflow session hooks', 'project settings commit failed', warnings);
   }
   return sync.changed;
-}
-
-/**
- * Keep the knowledge files listed in `.worktreeinclude` so a worktree Claude
- * Code creates starts with a copy; committed where `commit` says so. The
- * read and the append share the project lock, so concurrent boots never
- * append twice. A file that cannot be written is a warning, never a block.
- * @param {string} cwd @param {boolean} commit @param {string[]} warnings
- * @returns {boolean} this boot wrote the file
- */
-function installWorktreeInclude(cwd, commit, warnings) {
-  const include = withProjectLock(cwd, () => syncWorktreeInclude(cwd));
-  if (include.error) warnings.push(`worktree include not written: ${include.error}`);
-  if (include.changed && commit) {
-    commitPlumbing(cwd, WORKTREE_INCLUDE, 'chore: copy the knowledge store into new worktrees', 'worktree include commit failed', warnings);
-  }
-  return include.changed;
 }
 
 module.exports = { boot, detectSystemConfig };

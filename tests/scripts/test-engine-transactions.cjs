@@ -2474,8 +2474,12 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
 });
 
 describe('engine usage banner', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
   it('lists every topic transition, reopen included', () => {
-    const res = call(process.cwd(), ['bogus-command']);
+    const res = call(dir, ['bogus-command']);
     assert.strictEqual(res.code, 1);
     for (const line of [
       'topic start <work-unit> <phase> <topic>',

@@ -4,7 +4,7 @@
 // Tests for the commit door: the state's pathspec'd commits (`engine commit
 // --topic` and its siblings) on the state branch, the code tree's (`--paths`,
 // the owned paths of `--migrations`) with their commit lock and index.lock
-// retry, and the transaction-tail degrade.
+// retry, never on the state branch, and the transaction-tail degrade.
 //
 
 require('./hermetic-env.cjs');
@@ -18,6 +18,7 @@ const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
+const { withCommitLock, commitAcrossRepos } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
 
 const { ENGINE, git, stateGit, commitAll, cleanupFixture } = harness;
 
@@ -607,6 +608,18 @@ describe('engine commit --paths: the code commit', () => {
     assert.match(engineFails(dir, ['commit', '--paths', 'src/app.js', '--for', 'payments', 'review/topic-a']).error, /Usage/);
     assert.match(engineFails(dir, ['commit', 'payments', '--paths', 'src/app.js', '-m', 'x', ...forTopic]).error, /Usage/);
     assert.strictEqual(codeStatusLines(dir).length, 0, 'a refusal touches nothing');
+  });
+
+  it('names a path in the state as in the state from a code worktree too, never as outside the project', () => {
+    const wt = `${dir}-side`;
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', wt]);
+    try {
+      const inState = path.join(dir, '.leeway/payments/discussion/topic-a.md');
+      assert.strictEqual(harness.refuses(wt, ['commit', '--paths', inState, '-m', 'x', ...forTopic]).error,
+        `commit --paths: "${inState}" is in the workflows' state — it commits by its own scope (--topic/--discovery/--plan)`);
+    } finally {
+      cleanupFixture(wt);
+    }
   });
 
   it('refuses a --for target that does not exist — the phantom-hold repro', () => {
@@ -1454,6 +1467,41 @@ describe('mechanical heartbeats: the self-referential rule', () => {
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.set, { routing: 'discussion' }, 'the response is the field surface\'s, untouched');
     assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/payments/discovery/topic-a/presence')));
+  });
+});
+
+describe('commit door: never a code commit on the state branch', () => {
+  let dir;
+  beforeEach(() => { dir = setupGitFixture(); });
+  afterEach(() => { cleanupFixture(dir); });
+
+  it('refuses a tree that has leeway-state checked out, running nothing there', () => {
+    const state = path.join(dir, '.leeway');
+    writeFile(state, 'stray.md', '# stray\n');
+    const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+    let ran = false;
+
+    assert.throws(() => withCommitLock(state, () => { ran = true; }),
+      new RegExp(`^Error: refusing a code commit in ${state}: it has the state branch leeway-state checked out`));
+    assert.throws(() => commitAcrossRepos([{ repo: { dir: '', path: state, heldOut: [], submodules: [] }, paths: ['stray.md'] }], 'stray'),
+      /leeway-state checked out/);
+
+    assert.strictEqual(ran, false);
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), before, 'nothing committed on the state branch');
+    assert.deepStrictEqual(statusLines(dir), ['?? stray.md'], 'nor staged');
+  });
+
+  it('commits the owned paths in the main checkout from inside the state worktree', () => {
+    writeFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
+    const stateHead = stateGit(dir, ['rev-parse', 'HEAD']).trim();
+
+    const res = harness.ok(path.join(dir, '.leeway'), ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+
+    assert.deepStrictEqual(res, { ok: true, committed: null, code_committed: git(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.deepStrictEqual(codeHeadFiles(dir), ['.claude/settings.json']);
+    assert.strictEqual(git(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'main');
+    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), stateHead);
+    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.claude')), false);
   });
 });
 

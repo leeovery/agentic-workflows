@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { gateSurfaceAnnounced } = require('./projections/surfaces.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 /**
  * The entrypoints the mod runs under: Claude Code's terminal app, and the
@@ -63,7 +64,7 @@ function supported(version) {
  */
 function gateSurface(cwd) {
   if (process.env.CLAUDE_CODE_REMOTE || !MOD_ENTRYPOINTS.has(process.env.CLAUDE_CODE_ENTRYPOINT || '')) return 'unavailable';
-  if (!fs.existsSync(path.join(cwd, MOD_DIR))) return 'unavailable';
+  if (!fs.existsSync(path.join(codeRoot(cwd), MOD_DIR))) return 'unavailable';
   const version = claudeCodeVersion(process.env.AI_AGENT);
   if (!version) return 'unavailable';
   if (!supported(version)) return 'outdated';

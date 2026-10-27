@@ -12,6 +12,7 @@ const { commitStateScoped } = require(path.resolve(__dirname, '..', '..', 'workf
 const { syncKnowledge } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'domain', 'knowledge', 'sync.cjs'));
 const { ENGINE_COMMAND } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'call.cjs'));
 const { stateRoot } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'state-root.cjs'));
+const { isolatedGit } = require(path.resolve(__dirname, '..', '..', 'workflow-engine', 'scripts', 'kernel', 'isolated-git.cjs'));
 
 function die(msg, code = 1) {
   process.stderr.write(`Error: ${msg}\n`);
@@ -30,8 +31,7 @@ function runCli(cwd, args) {
 // so it answers correctly even after the file has been moved on disk (the
 // index still records the old path until we stage the move).
 function isTracked(cwd, file) {
-  const r = spawnSync('git', ['ls-files', '--error-unmatch', '--', file], { cwd: stateRoot(cwd), encoding: 'utf8' });
-  return r.status === 0;
+  return isolatedGit(stateRoot(cwd)).tryRun(['ls-files', '--error-unmatch', '--', file]) !== null;
 }
 
 function makeDatetimeStamp() {

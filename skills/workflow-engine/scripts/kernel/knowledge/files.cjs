@@ -8,16 +8,12 @@
 // ---------------------------------------------------------------------------
 
 const path = require('path');
-const { STATE_DIR_NAME } = require('../state-root.cjs');
 
 /** The knowledge directory, state-relative. */
 const KNOWLEDGE_DIR = '.knowledge';
 
 /** The files a checkout sets up, by their names in the directory. */
 const NAMES = { store: 'store.bin', metadata: 'metadata.json', config: 'config.json' };
-
-/** The files a checkout sets up, as `.worktreeinclude` names them from a checkout's root. */
-const STORE_FILES = Object.values(NAMES).map((name) => `${STATE_DIR_NAME}/${KNOWLEDGE_DIR}/${name}`);
 
 /**
  * @typedef {object} KnowledgeFiles  absolute paths
@@ -47,4 +43,4 @@ function knowledgeFiles(root) {
   };
 }
 
-module.exports = { KNOWLEDGE_DIR, STORE_FILES, knowledgeFiles };
+module.exports = { KNOWLEDGE_DIR, knowledgeFiles };

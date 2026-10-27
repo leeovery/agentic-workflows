@@ -49,6 +49,7 @@ const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { section, timedInstruction, callout, CONTINUE_CLAUSE } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { workTree } = require('../kernel/isolated-git.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 // Every phase a session sits in — the schema's list minus discovery.
 const PHASES = VALID_PHASES.filter((p) => p !== 'discovery');
@@ -122,7 +123,7 @@ function beatPresence(cwd, workUnit, phase, topic) {
     pid,
     pid_start: processStartTime(pid),
     session_id: process.env.CLAUDE_CODE_SESSION_ID || null,
-    checkout: workTree(cwd),
+    checkout: workTree(codeRoot(cwd)),
   };
   fs.writeFileSync(p, JSON.stringify(record) + '\n');
   return { work_unit: workUnit, phase, topic, beat: true };
@@ -356,7 +357,7 @@ function scanProject(cwd) {
  * @returns {(PresenceRow & {work_unit: string})[]}
  */
 function heldCodeSessions(cwd) {
-  const checkout = workTree(cwd);
+  const checkout = workTree(codeRoot(cwd));
   return scanProject(cwd).sessions.filter((row) => row.held
     && CODE_PHASES.includes(row.phase)
     && row.checkout === checkout

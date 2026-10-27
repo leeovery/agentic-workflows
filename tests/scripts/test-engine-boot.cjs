@@ -47,19 +47,17 @@ const LABELS_ON = JSON.stringify({
   hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] },
 }, null, 2) + '\n';
 
-/** The knowledge directory's files, as boot keeps them listed in `.worktreeinclude`. */
+/** The knowledge directory's files, from the project root. */
 const KNOWLEDGE_DIR = '.leeway/.knowledge';
 const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${KNOWLEDGE_DIR}/${f}`);
-const WORKTREE_INCLUDE = STORE_FILES.join('\n') + '\n';
 
 /**
  * A project fixture: a real git repo with its state worktree at `.leeway/`,
- * its settings already carrying the workflows' own hooks, and its
- * `.worktreeinclude` already listing the store — the state every booted
- * project reaches, so boot's own plumbing commits never join the history a
- * test reads. A test about either install takes its file away first. The
- * gate mod is not installed, so boot reports it unavailable; a test about
- * the mod installs it.
+ * its settings already carrying the workflows' own hooks — the state every
+ * booted project reaches, so boot's own plumbing commits never join the
+ * history a test reads. A test about the install takes the hooks away first.
+ * The gate mod is not installed, so boot reports it unavailable; a test
+ * about the mod installs it.
  */
 /**
  * A project still on the layout before the state worktree: its `.workflows/`
@@ -76,7 +74,6 @@ function setupProject(root) {
   const project = setupFixtureAt(path.join(root, 'project'));
   writeFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
   writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-  writeFile(project, '.worktreeinclude', WORKTREE_INCLUDE);
   commitAll(project, 'init');
   return project;
 }
@@ -237,7 +234,6 @@ describe('engine boot', () => {
       tmux_labels: 'prompt',
       label_repaired: false,
       session_hooks_installed: false,
-      worktree_include_installed: false,
       gate_surface: 'unavailable',
       baseline: 'none',
       walkthrough: 'none',
@@ -307,8 +303,8 @@ describe('engine boot', () => {
   /**
    * A scratch repo beside the fixture, hermetic like it, with dated
    * commits and the state arriving on a date of the test's choosing. Its
-   * settings carry the workflows' own hooks and its `.worktreeinclude` the
-   * store from the first commit on, like the fixture's, and it keeps the
+   * settings carry the workflows' own hooks from the first commit on, like
+   * the fixture's, and it keeps the
    * state out of its code tree by its own exclude: the history under test is
    * the project's own.
    */
@@ -316,7 +312,6 @@ describe('engine boot', () => {
     const project = harness.initRepo(path.join(fix.root, name));
     fs.appendFileSync(path.join(project, '.git/info/exclude'), '.leeway/\n');
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-    writeFile(project, '.worktreeinclude', WORKTREE_INCLUDE);
     const at = (date) => `${date}T12:00:00Z`;
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
@@ -425,14 +420,20 @@ describe('engine boot', () => {
     assert.strictEqual(plain.commits_before, 1);
   });
 
+  it('baseline_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {
+    const fromRoot = runEngine(stubbed, fix.project, ['boot']).baseline_signal;
+    const fromState = runEngine(stubbed, path.join(fix.project, '.leeway'), ['boot']).baseline_signal;
+
+    assert.deepStrictEqual(fromState, fromRoot);
+    assert.deepStrictEqual(fromState.history_before, ['2026-01-01  ignore the state']);
+  });
+
   it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
     const empty = harness.initRepo(path.join(fix.root, 'empty'));
     createState(path.join(empty, '.leeway'));
-    // The hooks and the worktree include already there, uncommitted: boot's
-    // plumbing installs would otherwise make the root commit — the history
-    // this test needs absent.
+    // The hooks already there, uncommitted: boot's plumbing install would
+    // otherwise make the root commit — the history this test needs absent.
     writeFile(empty, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
-    writeFile(empty, '.worktreeinclude', WORKTREE_INCLUDE);
     const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal, null);
@@ -531,10 +532,10 @@ describe('engine boot', () => {
       ['.state/migrations']);
   });
 
-  it('while a reviewed migration commit follows, boot\'s settings and include writes ride it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
+  it('while a reviewed migration commit follows, boot\'s settings write rides it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
     writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
-    commitAll(fix.project, 'labels on, no include');
+    commitAll(fix.project, 'labels on');
+    const codeHead = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update-config',
@@ -544,8 +545,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'labels on, no include', 'no commit of boot\'s');
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), codeHead, 'no commit of boot\'s');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8')),
       { permissions: {}, ...JSON.parse(LABELS_ON) }, 'the migration\'s edit and the hooks, side by side');
 
@@ -553,7 +553,7 @@ describe('engine boot', () => {
 
     assert.deepStrictEqual(
       git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
-      ['.claude/settings.json', '.gitignore', '.worktreeinclude']);
+      ['.claude/settings.json', '.gitignore']);
     assert.deepStrictEqual(
       stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
       ['.state/migrations']);
@@ -748,12 +748,11 @@ describe('engine boot', () => {
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its commits — the migration ledger, the
-    // project settings sync and the worktree include — must take their own
-    // paths and nothing else, staged peer content included.
+    // other one on the checkout. Its commits — the migration ledger and the
+    // project settings sync — must take their own paths and nothing else,
+    // staged peer content included.
     writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
     writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
     commitAll(fix.project, 'a peer topic');
     writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
     stateGit(fix.project, ['add', '--', 'payments/discussion/topic-a.md']);
@@ -763,11 +762,9 @@ describe('engine boot', () => {
     assert.strictEqual(res.ok, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.deepStrictEqual(git(fix.project, ['log', '-3', '--pretty=%s']).trim().split('\n'), [
-      'chore: copy the knowledge store into new worktrees',
+    assert.deepStrictEqual(git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
       'chore: install workflow session hooks',
-      'a peer topic',
+      'init',
     ]);
     assert.deepStrictEqual(stateGit(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
       'chore: record workflow migrations',
@@ -873,91 +870,23 @@ describe('engine boot', () => {
   });
 });
 
-describe('engine boot: the worktree include', () => {
+describe('engine boot: no worktree include', () => {
   let fix;
-  beforeEach(() => {
-    fix = setupFixture();
-    git(fix.project, ['rm', '-q', '--', '.worktreeinclude']);
-    git(fix.project, ['commit', '-q', '-m', 'no worktree include']);
-  });
+  beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  const include = () => fs.readFileSync(path.join(fix.project, '.worktreeinclude'), 'utf8');
-  const head = () => git(fix.project, ['rev-parse', 'HEAD']).trim();
-
-  it('creates the file listing the knowledge files, committed confined — and a second boot changes nothing', () => {
-    writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
-    stateGit(fix.project, ['add', '--', 'payments/discussion/topic-a.md']);
-
-    const first = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(first.worktree_include_installed, true);
-    assert.deepStrictEqual(first.warnings, []);
-    assert.strictEqual(include(), WORKTREE_INCLUDE);
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: copy the knowledge store into new worktrees');
-    assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.worktreeinclude']);
-    assert.strictEqual(stateGit(fix.project, ['diff', '--cached', '--name-only']).trim(), 'payments/discussion/topic-a.md', 'a peer\'s staged work stays staged');
-
-    const after = head();
-    const second = runEngine(stubbed, fix.project, ['boot']);
-    assert.strictEqual(second.worktree_include_installed, false);
-    assert.strictEqual(head(), after);
-    assert.strictEqual(include(), WORKTREE_INCLUDE);
-  });
-
-  it('appends to the user\'s own file, every existing line left as it was', () => {
-    writeFile(fix.project, '.worktreeinclude', '# local env\n.env\n\n.env.local');
+  it('writes none — a project without one stays without one, and the user\'s own is left as it was', () => {
+    const include = path.join(fix.project, '.worktreeinclude');
+    const head = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(include(), `# local env\n.env\n\n.env.local\n${WORKTREE_INCLUDE}`);
-  });
-
-  it('appends only what is missing', () => {
-    writeFile(fix.project, '.worktreeinclude', `node_modules/\n${STORE_FILES[1]}\n`);
-
+    assert.strictEqual('worktree_include_installed' in res, false);
+    assert.strictEqual(fs.existsSync(include), false);
+    writeFile(fix.project, '.worktreeinclude', '# local env\n.env\n');
     runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(include(), `node_modules/\n${STORE_FILES[1]}\n${STORE_FILES[0]}\n${STORE_FILES[2]}\n`);
-  });
-
-  it('a file already listing the knowledge files is left alone', () => {
-    const content = `${STORE_FILES[1]}\n  ${STORE_FILES[0]}  \nnode_modules/\n${STORE_FILES[2]}\n`;
-    writeFile(fix.project, '.worktreeinclude', content);
-    git(fix.project, ['add', '--', '.worktreeinclude']);
-    git(fix.project, ['commit', '-q', '-m', 'the user\'s include']);
-    const before = head();
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.worktree_include_installed, false);
-    assert.strictEqual(include(), content);
-    assert.strictEqual(head(), before);
-  });
-
-  it('a commit that fails is a warning — the file is written, the next boot finds it listed', () => {
-    writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
-    fs.chmodSync(path.join(fix.project, '.git/hooks/pre-commit'), 0o755);
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.worktree_include_installed, true);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^worktree include commit failed: /);
-    assert.strictEqual(include(), WORKTREE_INCLUDE);
-  });
-
-  it('a path that cannot be written is a warning, never a block', () => {
-    fs.mkdirSync(path.join(fix.project, '.worktreeinclude'));
-
-    const res = runEngine(stubbed, fix.project, ['boot']);
-
-    assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.worktree_include_installed, false);
-    assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /^worktree include not written: \.worktreeinclude — /);
+    assert.strictEqual(fs.readFileSync(include, 'utf8'), '# local env\n.env\n');
+    assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'and commits nothing on the code branch');
   });
 });
 
@@ -1403,6 +1332,24 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     } finally {
       fs.rmSync(config, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
+  });
+
+  it('a boot from inside the state worktree installs into the main checkout — its settings, committed on its branch — and the state branch gains nothing', () => {
+    dropSettings();
+    const state = path.join(fix.project, '.leeway');
+    const stateHead = stateGit(fix.project, ['rev-parse', 'HEAD']).trim();
+
+    const res = runEngine(stubbed, state, ['boot']);
+
+    assert.strictEqual(res.session_hooks_installed, true);
+    assert.deepStrictEqual(res.warnings, []);
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install workflow session hooks');
+    assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'main']).trim().split('\n'), ['.claude/settings.json']);
+    assert.strictEqual(stateGit(fix.project, ['rev-parse', 'HEAD']).trim(), stateHead, 'no commit on leeway-state');
+    assert.strictEqual(fs.existsSync(path.join(state, '.claude')), false);
+    assert.strictEqual(fs.existsSync(path.join(state, '.worktreeinclude')), false);
+    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
   });
 
   it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end` — committed confined, and a second boot changes nothing', () => {

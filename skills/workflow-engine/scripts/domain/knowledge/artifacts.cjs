@@ -490,21 +490,10 @@ function discoverArtifacts(root, manifests) {
 // ---------------------------------------------------------------------------
 
 /**
- * Whether a recorded source path lands outside this project — a chunk indexed
- * by absolute path from another checkout.
- * @param {string} root @param {string} file
- */
-function outsideProject(root, file) {
-  const rel = path.relative(root, path.resolve(root, file));
-  return rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
-}
-
-/**
  * Why an indexed identity no longer belongs in the store, or null while it
  * may. Only positive knowledge retires: the source gone from disk, the work
  * unit unregistered or cancelled, the per-topic item gone or terminal. A
- * source outside the project is no evidence it was deleted, a work unit
- * whose manifest could not be read is evidence of nothing, and the
+ * work unit whose manifest could not be read is evidence of nothing, and the
  * project-level identities answer to their files alone.
  * @param {string} root @param {Identity & {file: string}} entry
  * @param {Map<string, Record<string, any>>} units  work-unit manifests by name
@@ -512,7 +501,7 @@ function outsideProject(root, file) {
  * @returns {string|null}
  */
 function retiredReason(root, entry, units, registry) {
-  if (!outsideProject(root, entry.file) && !fs.existsSync(path.resolve(root, entry.file))) return 'source deleted';
+  if (!fs.existsSync(path.join(root, entry.file))) return 'source deleted';
   if (RESERVED_IDENTITIES.has(entry.workUnit)) return null;
   if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
   const unit = units.get(entry.workUnit);

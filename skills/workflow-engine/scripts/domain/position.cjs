@@ -45,6 +45,7 @@ const { stepOfInternalId } = require('./tasks.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
+const { codeRoot } = require('../kernel/code-root.cjs');
 
 const FILE = 'position.json';
 
@@ -468,7 +469,8 @@ function positionReads(cwd, sessionId) {
   if (closed !== null) return nothing(`This conversation was working in ${where}, but ${closed}, so there is nothing to carry on from.`);
   const work = workAt(cwd, position, manifest);
   if (work.skill === null) return nothing(`This conversation is at ${where}, outside any phase, so there is nothing to carry on from.`);
-  const absolute = (/** @type {string} */ f) => path.resolve(cwd, f);
+  const root = codeRoot(cwd);
+  const absolute = (/** @type {string} */ f) => path.resolve(root, f);
   const skill = absolute(skillFile(work.skill));
   if (!fs.existsSync(skill)) return nothing(`This conversation was working in ${where}, but this project has no ${work.skill} skill, so there is nothing to carry on from.`);
   const files = [...new Set(work.documents)].map(absolute).filter((f) => fs.existsSync(f));

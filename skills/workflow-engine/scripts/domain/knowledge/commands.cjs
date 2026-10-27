@@ -26,7 +26,7 @@ const { readiness, statusReport } = require('./status.cjs');
 const { countChunks, removeChunks, planCompaction, compact } = require('./maintenance.cjs');
 const { parseSetupForm, runFromSystem, runKeywordOnly, runProviderForm } = require('./setup-forms.cjs');
 const { runWizard, runKeyOnly } = require('./setup-wizard.cjs');
-const { STATE_DIR_NAME, findStateRoot, stateRelative } = require('../../kernel/state-root.cjs');
+const { stateRoot, stateRelative } = require('../../kernel/state-root.cjs');
 
 /** @typedef {import('../../kernel/call.cjs').Call} Call */
 /** @typedef {import('../../kernel/knowledge/files.cjs').KnowledgeFiles} KnowledgeFiles */
@@ -524,13 +524,10 @@ function runKnowledge(call, argv) {
   const handler = Object.hasOwn(VERBS, verb) ? VERBS[verb].run : null;
   if (!handler) stop(call, `Unknown command "${verb}".\n\n${USAGE}\n`);
 
-  // Where no state is found, the folder it would be: each verb meets its own
-  // not-initialised answer there.
-  const root = findStateRoot(call.cwd) || path.join(path.resolve(call.cwd), STATE_DIR_NAME);
-  const request = { root, files: knowledgeFiles(root), args, flags, options: buildOptions(flags, boosts) };
   let answer;
   try {
-    answer = handler(call, request);
+    const root = stateRoot(call.cwd);
+    answer = handler(call, { root, files: knowledgeFiles(root), args, flags, options: buildOptions(flags, boosts) });
   } catch (err) {
     failed(call, err);
   }
