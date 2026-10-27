@@ -551,7 +551,7 @@ function removeFiles(cwd, paths) {
 }
 
 module.exports = {
-  git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
+  READ_BUDGET_BYTES, git, tryGit, GitError, gitPath, commitPathspec, commitStaged, dirtyEntries, hasCommits, commitsBySubject, pathsTouchedBySubject,
   parentOrEmptyTree, emptyTree, diffPatch, diffWithUntracked, literally,
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, removeFiles,
 };

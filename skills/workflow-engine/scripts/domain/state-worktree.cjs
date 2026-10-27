@@ -18,9 +18,12 @@
 //   and a process may take it again while it holds it. The commit is built
 //   in a private index from HEAD and the working tree, never through the
 //   worktree's own index, so nothing a killed verb or a person left staged
-//   there can break it. Then the branch is pushed wherever the project has a
-//   remote, never forced; a push that fails, runs out of time, or finds no
-//   remote chosen among several is a warning, and the commit stands.
+//   there can break it. A merge's landing a kill cut short is finished
+//   first (state-merge-landing.cjs), so the commit moves the branch on from
+//   where that landing put it. Then the branch is pushed wherever the
+//   project has a remote, never forced; a push that fails, runs out of
+//   time, or finds no remote chosen among several is a warning, and the
+//   commit stands.
 //
 // Every git call goes through kernel/isolated-git: hooks off, the caller's
 // repository environment cleared.
@@ -32,6 +35,7 @@ const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
 const { WRITER_LOCK, withWriterLock } = require('../kernel/manifest-io.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
+const { finishLanding } = require('./state-merge-landing.cjs');
 
 const STATE_BRANCH = 'leeway-state';
 const STATE_DIR = STATE_DIR_NAME;
@@ -85,12 +89,14 @@ const PUSH_TIMEOUT_MS = 15000;
 
 /**
  * The state worktree as git opens it: a runner bound to it, the ref its HEAD
- * names (`HEAD` when detached), and where its private index goes.
+ * names (`HEAD` when detached), where its private index goes, and its own
+ * git dir.
  * @typedef {{
  *   opened: true,
  *   git: import('../kernel/isolated-git.cjs').IsolatedGit,
  *   head: string,
  *   index: string,
+ *   gitDir: string,
  * }} OpenWorktree
  */
 
@@ -172,17 +178,17 @@ function openWorktree(root) {
   const git = isolatedGit(root);
   let out;
   try {
-    out = git.run(['rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--symbolic-full-name', 'HEAD']);
+    out = git.run(['rev-parse', '--show-toplevel', '--git-common-dir', '--git-path', PRIVATE_INDEX, '--absolute-git-dir', '--symbolic-full-name', 'HEAD']);
   } catch (err) {
     if (!(err instanceof GitError)) throw err;
     return { opened: false, why: err.message };
   }
-  const [top, common, index, head] = out.split('\n');
+  const [top, common, index, gitDir, head] = out.split('\n');
   const repository = realpathOrSelf(path.resolve(root, common));
   if (realpathOrSelf(top) !== root || repository !== path.join(mainOf(root), '.git')) {
     return { opened: false, why: `git reads it as part of ${top}, whose repository is ${repository}` };
   }
-  return { opened: true, git, head, index: path.resolve(root, index) };
+  return { opened: true, git, head, index: path.resolve(root, index), gitDir };
 }
 
 /** @param {string} root @returns {StateFolder} */
@@ -440,7 +446,8 @@ function push(git, timeoutMs) {
  * `leeway-state` in the state worktree, then push. The caller holds the
  * writer lock (`withStateLock`). Refuses, committing nothing, where git
  * cannot open the state worktree and where it has another branch checked
- * out. Paths that hold no change commit nothing and push nothing.
+ * out. A merge's landing a kill cut short is finished first. Paths that hold
+ * no change commit nothing and push nothing.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
@@ -457,11 +464,12 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } =
     throw new Error(`the state worktree at ${root} has ${checkedOut} checked out, not ${STATE_BRANCH} — nothing committed`);
   }
   if (specs.length === 0) return { commit: null, pushed: false, warnings: [] };
+  const landed = finishLanding(root, STATE_BRANCH, worktree.gitDir);
   const commit = commitPaths(worktree.git, root, worktree.index, specs, message);
-  const aligned = alignIndex(worktree.git, specs);
-  if (commit === null) return { commit: null, pushed: false, warnings: aligned };
+  const warnings = [...landed, ...alignIndex(worktree.git, specs)];
+  if (commit === null) return { commit: null, pushed: false, warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
-  return { commit, pushed: pushed.pushed, warnings: [...aligned, ...pushed.warnings] };
+  return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };
 }
 
 /**

@@ -224,6 +224,31 @@ describe('the isolated runner', () => {
     assert.strictEqual(gitDir, path.join(main, '.git'));
   });
 
+  it('reads an answer past spawnSync\'s 1 MiB default whole', () => {
+    const { main } = project();
+    const runner = isolatedGit(main);
+    const text = `${'x'.repeat(2 * 1024 * 1024)}\n`;
+    const oid = runner.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
+
+    assert.strictEqual(runner.run(['cat-file', 'blob', oid]), text);
+  });
+
+  it('writes an answer to the file it is given whole, answering nothing', () => {
+    const { main } = project();
+    const runner = isolatedGit(main);
+    const text = `${'x'.repeat(2 * 1024 * 1024)}\n`;
+    const oid = runner.run(['hash-object', '-w', '--stdin'], { input: text }).trim();
+    const file = path.join(world, 'answer');
+    const fd = fs.openSync(file, 'w');
+
+    try {
+      assert.deepStrictEqual([runner.run(['cat-file', 'blob', oid], { out: fd }), runner.tryRun(['cat-file', 'blob', oid], { out: fd })], ['', '']);
+    } finally {
+      fs.closeSync(fd);
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), text + text);
+  });
+
   it('keeps the state\'s commit and push off whatever the environment points git at', () => {
     const { main, root, bare } = project({ remote: true });
     const elsewhere = elsewhereRepo();
