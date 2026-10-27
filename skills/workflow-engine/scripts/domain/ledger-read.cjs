@@ -14,9 +14,9 @@
 //   the entries standing in a unit, or one topic — each where the first
 //   entry of its chain stands, a question where it was last moved — each
 //   current entry with the live entries it replaced folded beneath it,
-//   newest first, and the confirmations that it still holds (5.6.5); the
-//   questions moved away, and the merges made there, each with the
-//   duplicate it set aside; and, read from their own current entries, never
+//   newest first, and the live confirmations that it still holds (5.6.5);
+//   the questions moved away, and the merges made there, each with the
+//   duplicate it named; and, read from their own current entries, never
 //   copied, the entries standing elsewhere that it relies on, merged into,
 //   or that answer its questions (5.8.4). `ledger map` reads a topic's
 //   questions, each answered as its record shows it. A unit or topic that is
@@ -31,7 +31,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
-const { ID_FACTS, readFolded, factsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, isLive, holdsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -83,9 +83,9 @@ function showerOf(folded, entryAt) {
   return { folded, show, short };
 }
 
-/** An entry with the confirmations that it still holds. @param {Shower} shower @param {string} id @returns {Shown} */
+/** An entry with the live confirmations that it still holds. @param {Shower} shower @param {string} id @returns {Shown} */
 function held({ folded, show }, id) {
-  return { ...show(id), holds: factsOf(folded, id).holds.map(show) };
+  return { ...show(id), holds: holdsOf(folded, id).map(show) };
 }
 
 /** A current entry with its chain folded beneath it, newest first (5.6.5). @param {Shower} shower @param {string} id @returns {Shown} */
@@ -99,10 +99,10 @@ function movedRow({ folded, show }, id) {
   return { ...show(id), text: show(question).text };
 }
 
-/** A merge, with the line of the duplicate it set aside, or null for none. @param {Shower} shower @param {string} id @returns {Shown} */
+/** A merge, with the line of the duplicate it named, or null for none or one that is not live. @param {Shower} shower @param {string} id @returns {Shown} */
 function mergedRow({ folded, show }, id) {
   const { duplicate } = factsOf(folded, id);
-  return { ...show(id), duplicate_entry: duplicate === null ? null : show(duplicate) };
+  return { ...show(id), duplicate_entry: duplicate === null || !isLive(folded, duplicate) ? null : show(duplicate) };
 }
 
 /**

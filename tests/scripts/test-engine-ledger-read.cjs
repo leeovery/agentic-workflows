@@ -14,8 +14,10 @@
 // product-wide. Siblings stand apart; a reworded question keeps its
 // answers and its parts; a merged duplicate is no second entry; a cancelled
 // topic or unit, or a postponed topic while it waits, holds nothing current
-// until it comes back — and a replacement or a merge made there counts for
-// nothing meanwhile — and the write verbs decide by the same rule. A ledger
+// until it comes back — and a replacement, a merge or a confirmation made
+// there counts for nothing meanwhile, and a chain goes with the place it
+// stands on — and the write verbs decide by the same rule; of merges
+// crossing each other, the later holds, whichever entry is read first. A ledger
 // past the 64 MiB a pipe holds is read without being held: each read
 // answers under a heap a reader holding its lines cannot fit in.
 //
@@ -39,6 +41,8 @@ const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId, shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { ID_FACTS, foldLedger, isCurrent, currentsOf, mergeHolds } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
+const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 
 const UNIT = 'fumi';
@@ -47,6 +51,7 @@ const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION_ID });
 const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const NOTE = `${UNIT}.discussion.note-window`;
 const SPACE = `${UNIT}.discussion.space-homing`;
+const MENU = `${UNIT}.discussion.menu-bar`;
 // Every field of an event that names an entry.
 const LINKS = ['id', 'answers', 'part_of', 'relies_on', 'replaces', 'cause', 'question', 'into', 'duplicate', 'entry', 'after'];
 // What a reader holding the ledger's lines would need many times over, and
@@ -190,6 +195,17 @@ function changeFromSpec(old, content) {
 /** `question` reworded at `address`: the new wording's short id. @param {string} address @param {string} question @param {string} text */
 function reword(address, question, text) {
   return write('replace', address, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], text }).id;
+}
+
+/** A third topic on the unit, the menu bar. */
+function menuBar() {
+  createManifest(dir, UNIT, {
+    work_type: 'epic',
+    phases: {
+      discovery: { items: { ...PHASES.discovery.items, 'menu-bar': row(3, 'The menu bar') } },
+      discussion: { items: { ...PHASES.discussion.items, 'menu-bar': { status: 'in-progress' } } },
+    },
+  });
 }
 
 /** A second unit on the project, mint, a feature discussing itself. */
@@ -496,6 +512,114 @@ describe('where an entry stands (5.3.3, 5.8.4)', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window').questions, []);
     assert.deepStrictEqual(answered('note-window'), [[reworded, 'moved-away', []]]);
   });
+
+  it('leads a question moved away to its current wording and the topic it stands on now, however often it moved on', () => {
+    menuBar();
+    const first = ask(NOTE, 'Which Space does a new note open on?');
+    write('move', NOTE, ['--question', first, '--to', 'space-homing'], MADE);
+    const reworded = reword(SPACE, first, 'Which Space, on which display, does a new note open on?');
+
+    write('move', SPACE, ['--question', reworded, '--to', 'menu-bar'], MADE);
+
+    const away = (/** @type {string} */ topic) => read('map', UNIT, topic).questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.stands, r.moved_to]);
+    assert.deepStrictEqual([away('note-window'), away('space-homing')], [[[reworded, 'moved-away', 'menu-bar']], [[reworded, 'moved-away', 'menu-bar']]]);
+    assert.deepStrictEqual(answered('menu-bar'), [[reworded, 'open', []]]);
+  });
+});
+
+describe('merges crossing each other (5.5.5)', () => {
+  /**
+   * Two questions on two topics, each answered there, the first moved to the
+   * menu bar and merged into the second's answer, its own answer the
+   * duplicate; the menu bar cancelled, so the second is merged the other way
+   * while the first merge is set aside; the menu bar reactivated.
+   */
+  function crossed() {
+    menuBar();
+    const first = ask(NOTE, 'Does a note float above every Space?');
+    const floats = decide(NOTE, first, 'Notes float above every Space.');
+    const second = ask(SPACE, 'Does a note stay on its Space?');
+    const stays = decide(SPACE, second, 'Notes float, and never stay.');
+    write('move', NOTE, ['--question', first, '--to', 'menu-bar'], MADE);
+    const earlier = write('merge', MENU, ['--question', first, '--into', stays, '--duplicate', floats], MADE).id;
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'menu-bar']);
+    const later = write('merge', SPACE, ['--question', second, '--into', floats, '--duplicate', stays], MADE).id;
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'menu-bar']);
+    return { first, floats, second, stays, earlier, later };
+  }
+
+  it('lets the later merge hold and the earlier not, so the decision the later went into stays current, through a reactivate of the earlier', () => {
+    const { first, floats, second, stays, earlier, later } = crossed();
+
+    assert.deepStrictEqual([answered('menu-bar'), answered('space-homing')], [[[first, 'answered', [floats]]], [[second, 'merged', [floats]]]]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(floats)]);
+    const space = read('record', UNIT, 'space-homing');
+    assert.deepStrictEqual([space.decisions, space.merged, space.other_topics], [[], [{ ...line(later), duplicate_entry: line(stays) }], [{ ...line(floats), named: [second, floats] }]]);
+    assert.deepStrictEqual(ids(read('record', UNIT, 'menu-bar').merged), [earlier]);
+    for (const topic of ['note-window', 'space-homing', 'menu-bar']) assertAgree(topic);
+    const refusal = refuses(dir, ['ledger', 'replace', SPACE, '--replaces', stays, '--reason', 'changed-mind'], { env: SESSION, stdin: JSON.stringify({ ...MADE, drops: [], text: 'Again.', why: 'Again.' }) });
+    assert.match(refusal.error, new RegExp(`^ledger replace --replaces names ${stays}, which ${later} merged as a duplicate — the current one is ${floats}$`));
+    change(NOTE, floats, 'Notes float above every Space and display.');
+  });
+
+  it('works out which merge holds the same whichever entry or merge is read first', () => {
+    const { floats, stays, earlier, later } = crossed();
+    const facts = foldLedger(statePath(dir), ID_FACTS, []);
+    const asked = [floats, stays, earlier, later].map(full);
+    /** Each asked id's answers from a fresh read, the ids asked in `order`. @param {string[]} order */
+    const readIn = (order) => {
+      const folded = { facts, live: liveness(statePath(dir)) };
+      const answers = new Map(order.map((id) => [id, [isCurrent(folded, id), currentsOf(folded, id), mergeHolds(folded, id)]]));
+      return asked.map((id) => answers.get(id));
+    };
+
+    const forwards = readIn(asked);
+    assert.deepStrictEqual(readIn([...asked].reverse()), forwards);
+    assert.deepStrictEqual(readIn([asked[3], asked[1], asked[0], asked[2]]), forwards);
+    assert.deepStrictEqual(forwards.map(([current_, currents, holds]) => [current_, currents, holds]), [
+      [true, [full(floats)], false], [false, [full(floats)], false], [false, [], false], [false, [], true],
+    ]);
+  });
+
+  it('takes a later merge whose entry leads on only through an earlier merge once the earlier is taken', () => {
+    menuBar();
+    const settled = ask(NOTE, 'Does a note float above every Space?');
+    const floats = decide(NOTE, settled, 'Notes float above every Space.');
+    write('move', NOTE, ['--question', settled, '--to', 'menu-bar'], MADE);
+    const owners = decide(SPACE, ask(SPACE, 'Does a note follow the person?'), 'A note follows the person, floating.');
+    const reached = ask(MENU, 'Does a note stay on its Space?');
+    const stays = decide(MENU, reached, 'Notes float, and never stay.');
+    write('merge', MENU, ['--question', settled, '--into', owners, '--duplicate', floats], MADE);
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
+    write('merge', MENU, ['--question', reached, '--into', floats, '--duplicate', stays], MADE);
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+
+    assert.deepStrictEqual(answered('menu-bar'), [[settled, 'merged', [owners]], [reached, 'merged', [owners]]]);
+    assert.deepStrictEqual(read('record', UNIT, 'menu-bar').decisions, []);
+    assertAgree('menu-bar');
+  });
+
+  it('lets the later merge hold where the earlier set aside another unit\'s replacement, that unit cancelled while the later was made and reactivated since', () => {
+    mint();
+    const first = ask(NOTE, 'Does a note float above every Space?');
+    const floats = decide(NOTE, first, 'Notes float.');
+    const minted = change('mint.discussion.mint', floats, 'Notes float above every Space.');
+    const second = ask(SPACE, 'Does a note stay on its Space?');
+    const stays = decide(SPACE, second, 'Notes float, and never stay.');
+    const earlier = write('merge', NOTE, ['--question', first, '--into', stays, '--duplicate', minted], MADE).id;
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    write('merge', SPACE, ['--question', second, '--into', floats, '--duplicate', stays], MADE);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').merged, [{ ...line(earlier), duplicate_entry: null }], 'a merge showed a duplicate that is not live');
+
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+
+    assert.deepStrictEqual([answered('note-window'), answered('space-homing')], [[[first, 'answered', [minted]]], [[second, 'merged', [minted]]]]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(minted, [floats])]);
+    assertAgree('note-window');
+    assertAgree('space-homing');
+  });
 });
 
 describe('the product record (5.8.6)', () => {
@@ -646,6 +770,38 @@ describe('liveness (5.8.17)', () => {
     assert.deepStrictEqual(read('record', UNIT, 'space-homing').other_topics, [{ ...line(replacement), named: [decided] }]);
     ok(dir, ['workunit', 'reactivate', 'mint']);
     assert.deepStrictEqual(ids(read('record', UNIT, 'space-homing').other_topics), [reworked, replacement]);
+  });
+
+  it('shows a confirmation made where it is live alone: another unit\'s, cancelled with its unit, until the unit is reactivated', () => {
+    mint();
+    const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.');
+    const relying = find(NOTE, 'A panel takes no focus.', ['--relies-on', decided]);
+    const replacement = change(NOTE, decided, 'A sheet.');
+    const confirmed = write('hold', 'mint.discussion.mint', ['--entry', relying, '--after', replacement], MADE).id;
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').findings, [current(relying, [], [confirmed])]);
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').findings, [current(relying)]);
+
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').findings, [current(relying, [], [confirmed])]);
+  });
+
+  it('takes a chain with the place it stands on: another unit\'s replacement in a cancelled unit, and one from the spec on a cancelled topic, are current nowhere', () => {
+    mint();
+    const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.', [], { product_wide: true });
+    const minted = change('mint.discussion.mint', decided, 'A sheet.');
+    const specced = decide(SPACE, ask(SPACE, 'Does a note follow the person?'), 'It follows.', [], { product_wide: true });
+    const fromSpec = changeFromSpec(specced, { text: 'It follows, on every display.', why: 'Displays.' });
+    assert.deepStrictEqual(ids(read('product').decisions), [minted, fromSpec]);
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
+    assert.deepStrictEqual([ids(read('record', UNIT).decisions), ids(read('product').decisions)], [[minted], [minted]]);
+
+    ok(dir, ['workunit', 'cancel', UNIT]);
+    assert.deepStrictEqual([read('record', 'mint').decisions, read('product').decisions], [[], []]);
+    const refusal = refuses(dir, ['ledger', 'hold', 'mint.discussion.mint', '--entry', minted, '--after', minted], { env: SESSION, stdin: JSON.stringify(MADE) });
+    assert.match(refusal.error, new RegExp(`^ledger hold --entry names ${minted}, which is not current: ${UNIT} is cancelled$`));
   });
 
   it('sets a merged duplicate aside only while the entry it went into has a current form: the owner\'s topic cancelled, the duplicate answers its question again, until the topic is reactivated (5.5.5)', () => {

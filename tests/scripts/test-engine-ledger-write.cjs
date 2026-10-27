@@ -707,6 +707,20 @@ describe('whose entries a link names, and how they relate', () => {
     assert.deepStrictEqual(entries().slice(-2).map((e) => [e.reason, e.cause]), [['new-fact', full(finding)], ['changed-mind', full(theirs)]]);
   });
 
+  it('judges another topic\'s decision by where it and the replaced entry stand: another unit\'s replacement standing here is changed for a decision of its unit\'s topic, and one replaced from the spec never for a decision on the topic it stands on (5.3.8)', () => {
+    const mint = mints();
+    const ours = decide(ask().id).id;
+    const minted = write('replace', 'mint.discussion.dock-icon', ['--replaces', ours, '--reason', 'changed-mind'], CHANGE).id;
+    write('replace', NOTE, ['--replaces', minted, '--reason', 'other-topic', '--cause', mint.decision], { ...CHANGE, text: 'A frameless panel, as Mint has no dock icon.' });
+
+    const here = decide(ask('Does a note snap?').id, { text: 'Notes snap to the grid.' }).id;
+    const sibling = decide(ask('Does a note resize?').id, { text: 'Notes resize from any edge.' }).id;
+    const fromSpec = write('replace', `${UNIT}.specification`, ['--replaces', here, '--reason', 'changed-mind'], CHANGE).id;
+    refused('replace', NOTE, ['--replaces', fromSpec, '--reason', 'other-topic', '--cause', sibling], CHANGE,
+      new RegExp(`^ledger replace --cause names ${sibling}, a decision on note-window — --reason other-topic needs a decision on a topic other than the replaced entry's$`));
+    refused('replace', `${UNIT}.specification`, ['--replaces', fromSpec, '--reason', 'other-topic', '--cause', sibling], CHANGE, /a decision on note-window — --reason other-topic needs/);
+  });
+
   it('keeps the replaced entry\'s product-wide mark where the replacement leaves it out, and takes the one it gives (5.2.5)', () => {
     const wide = decide(ask().id, { product_wide: true }).id;
     const kept = change(wide).id;
@@ -861,6 +875,33 @@ describe('the writer lock and the commit', () => {
     assert.deepStrictEqual(entries().map((e) => e.text), ['What is a note, at its most basic?', 'Waited its turn?']);
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
     assert.ok(!fs.existsSync(lock));
+  });
+
+  it('reads the place a write is made, and a move\'s destination, live again under the lock: a topic cancelled while the write waited takes nothing', async () => {
+    const question = ask().id;
+    const lock = statePath(dir, '.lock');
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const env = { ...process.env, ...SESSION };
+    const waiting = [
+      { args: ['ledger', 'ask', SPACE], stdin: { ...MADE, text: 'Asked on a topic cancelled meanwhile?' } },
+      { args: ['ledger', 'move', NOTE, '--question', question, '--to', 'space-homing'], stdin: MADE },
+    ].map(({ args, stdin }) => {
+      const child = spawn('node', [ENGINE, ...args], { cwd: dir, env });
+      child.stdin.end(JSON.stringify(stdin));
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      return new Promise((resolve) => child.on('close', (code) => resolve({ code, stderr })));
+    });
+    const raced = await Promise.race([Promise.all(waiting).then(() => 'exited'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 1500))]);
+    assert.strictEqual(raced, 'waiting', 'the writes did not wait on the lock');
+
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { ...PHASES.discovery.items, 'space-homing': { cancelled: true } } } } });
+    fs.unlinkSync(lock);
+
+    const [asked, moved] = /** @type {{code: number, stderr: string}[]} */ (await Promise.all(waiting));
+    assert.deepStrictEqual([asked.code, JSON.parse(asked.stderr).error], [1, 'ledger ask: fumi.discussion.space-homing takes no writes — its topic, space-homing, is cancelled']);
+    assert.deepStrictEqual([moved.code, JSON.parse(moved.stderr).error], [1, 'ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled']);
+    assert.deepStrictEqual(entries().map((e) => e.event), ['asked'], 'a write landed in a topic cancelled while it waited');
   });
 
   it('lands two processes\' appends made at once, under ids that differ and are no sequence, a read made meanwhile meeting whole lines only (5.S2)', async () => {

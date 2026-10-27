@@ -19,7 +19,12 @@
 // again.
 //
 // Read against liveness, the state answers:
-// - Whether an entry is live: its own unit and topic are (ledger-units.cjs).
+// - Where an entry stands: where the first entry of its chain stood, as a
+//   question stands where it was last moved, however and wherever a later
+//   entry of the chain was written.
+// - Whether an event is live: the unit and topic it was made on are, and
+//   those it stands on (ledger-units.cjs). A chain goes with the place it
+//   stands on, so a current entry is always one a live record shows.
 // - Whether an entry is current, by one rule (5.8.17, 5.3.13): it is live,
 //   no live entry replaces it, and no merge that holds took it as a
 //   duplicate. A merge holds while it is live and the entry it went into,
@@ -28,12 +33,20 @@
 //   nothing while it is, and what it replaced or merged away stands again;
 //   the ledger keeps every line. A write's link that must be current and
 //   every read decide by this rule alone.
+// - Which merges hold, worked out once for the whole ledger, so the answer
+//   never turns on which entry is read first. From none holding, the latest
+//   live merge that would still lead to a current entry once it held is
+//   taken, again and again, until no other would; a merge that sets nothing
+//   aside — it names no duplicate, or a live replacement sets its duplicate
+//   aside already — then holds where it leads to a current entry. Merges
+//   crossing each other, each duplicate the entry another went into, cannot
+//   all hold: the later is taken first and holds, as a later replacement
+//   wins — it was written while the earlier did not hold, and a reactivate
+//   of the earlier never undoes it. Taking a merge never leaves one taken
+//   before it leading nowhere.
 // - The current form of an entry: the current entries its chain leads to,
-//   down every live replacement, and through a merge that holds to the entry
-//   the duplicate was merged into.
-// - Where an entry stands: where the first entry of its chain stood, as a
-//   question stands where it was last moved, however and wherever a later
-//   entry of the chain was written.
+//   down every live replacement, and through each merge that holds to the
+//   entry the duplicate was merged into.
 // - A question's current answer: every current entry naming it or any
 //   earlier wording of it, so a replaced sibling never touches the others
 //   and a rewording keeps its answers (5.3.13).
@@ -45,7 +58,7 @@
 // - A record: the current entries standing in a unit or a topic, the moves
 //   and merges made there while live, and the current entries standing
 //   elsewhere that its entries rely on, its merges went into, or that answer
-//   its questions (5.8.4).
+//   its questions (5.8.4); of an entry's confirmations, the live ones.
 // - The product record: the current entries marked product-wide (5.8.6).
 // ---------------------------------------------------------------------------
 
@@ -121,12 +134,14 @@ function named(facts, id) {
 }
 
 /**
- * `id` linked back from the id `to` names, on its list `back`.
+ * `id` linked back from the id `to` names, appended to its list `back`; a
+ * list still the shared empty one taking a list of its own.
  * @param {Map<string, IdFacts>} facts @param {unknown} to @param {BackLinks} back @param {string} id
  */
 function linkBack(facts, to, back, id) {
   const linked = named(facts, to);
-  linked[back] = [...linked[back], id];
+  if (linked[back] === NONE) linked[back] = [id];
+  else /** @type {string[]} */ (linked[back]).push(id);
 }
 
 /**
@@ -225,34 +240,100 @@ function standingOf(folded, id) {
   return { unit: first.unit, topic: first.topic };
 }
 
-/** Whether `id`'s own unit and topic are live. @param {Folded} folded @param {string} id */
-function isLive(folded, id) {
+/**
+ * Why `id` is not live — the unit or topic it was made on, or the one it
+ * stands on, set aside — or null where it is.
+ * @param {Folded} folded @param {string} id
+ * @returns {string|null}
+ */
+function whyDead(folded, id) {
   const facts = factsOf(folded, id);
-  return folded.live(facts.unit, facts.topic) === null;
+  const standing = standingOf(folded, id);
+  return folded.live(facts.unit, facts.topic) ?? folded.live(standing.unit, standing.topic);
+}
+
+/** Whether `id` is live. @param {Folded} folded @param {string} id */
+function isLive(folded, id) {
+  return whyDead(folded, id) === null;
+}
+
+/** The live replacements naming `id`. @param {Folded} folded @param {string} id */
+function liveReplacers(folded, id) {
+  return factsOf(folded, id).replaced_by.filter((r) => isLive(folded, r));
+}
+
+/** The entry a merge went into. @param {Folded} folded @param {string} merge */
+function intoOf(folded, merge) {
+  return /** @type {string} */ (factsOf(folded, merge).into);
 }
 
 /**
- * Whether each merge holds, as worked out for one folded ledger. A merge
- * asked after while its own answer is still being worked out reads as not
- * holding, so merges crossing each other end.
- * @type {WeakMap<Folded, Map<string, boolean>>}
+ * The current entries `id` leads to while the merges `holding` hold: itself
+ * where it is a live entry nothing sets aside; else those of every live
+ * replacement naming it, or, while none does, of the entry each holding
+ * merge that took it as a duplicate went into; none where it leads nowhere
+ * current. An entry met twice adds nothing, so a cycle leads nowhere.
+ * @param {Folded} folded @param {ReadonlySet<string>} holding @param {string} id @param {Set<string>} seen
+ * @returns {string[]}
  */
-const MERGES_HOLDING = new WeakMap();
+function leadsTo(folded, holding, id, seen) {
+  if (seen.has(id)) return [];
+  seen.add(id);
+  const replacers = liveReplacers(folded, id);
+  const merges = factsOf(folded, id).merged_by.filter((m) => holding.has(m));
+  const next = replacers.length > 0 ? replacers : merges.map((m) => intoOf(folded, m));
+  if (next.length === 0) return factsOf(folded, id).kind !== null && isLive(folded, id) ? [id] : [];
+  return [...new Set(next.flatMap((n) => leadsTo(folded, holding, n, seen)))];
+}
+
+/** Whether the entry `merge` went into leads to a current one while `holding` hold. @param {Folded} folded @param {ReadonlySet<string>} holding @param {string} merge */
+function leadsSomewhere(folded, holding, merge) {
+  return leadsTo(folded, holding, intoOf(folded, merge), new Set()).length > 0;
+}
 
 /**
- * Whether a merge holds: it is live, and the entry it went into, followed
- * down its chain, has a current form.
- * @param {Folded} folded @param {string} merge
+ * The merges that hold, as worked out for one folded ledger, all at once.
+ * @type {WeakMap<Folded, ReadonlySet<string>>}
  */
+const HOLDING = new WeakMap();
+
+/**
+ * The merges that hold. Of the live merges whose duplicate nothing else sets
+ * aside, one is taken at a time — the latest that leads to a current entry
+ * once it holds — until no other would; each other live merge then holds
+ * where it leads to a current entry.
+ * @param {Folded} folded
+ * @returns {ReadonlySet<string>}
+ */
+function holdingMerges(folded) {
+  const known = HOLDING.get(folded);
+  if (known !== undefined) return known;
+  /** @type {string[]} */
+  const live = [];
+  for (const [id, facts] of folded.facts) if (facts.event === 'merged' && isLive(folded, id)) live.push(id);
+  live.reverse();
+  const settingAside = live.filter((m) => {
+    const duplicate = factsOf(folded, m).duplicate;
+    return duplicate !== null && liveReplacers(folded, duplicate).length === 0;
+  });
+  /** @type {Set<string>} */
+  const holding = new Set();
+  const takes = (/** @type {string} */ m) => {
+    holding.add(m);
+    if (leadsSomewhere(folded, holding, m)) return true;
+    holding.delete(m);
+    return false;
+  };
+  let tookOne = true;
+  while (tookOne) tookOne = settingAside.some((m) => !holding.has(m) && takes(m));
+  for (const m of live) if (!settingAside.includes(m) && leadsSomewhere(folded, holding, m)) holding.add(m);
+  HOLDING.set(folded, holding);
+  return holding;
+}
+
+/** Whether a merge holds. @param {Folded} folded @param {string} merge */
 function mergeHolds(folded, merge) {
-  let known = MERGES_HOLDING.get(folded);
-  if (known === undefined) MERGES_HOLDING.set(folded, (known = new Map()));
-  const answer = known.get(merge);
-  if (answer !== undefined) return answer;
-  known.set(merge, false);
-  const holds = isLive(folded, merge) && currentsOf(folded, /** @type {string} */ (factsOf(folded, merge).into)).length > 0;
-  known.set(merge, holds);
-  return holds;
+  return holdingMerges(folded).has(merge);
 }
 
 /**
@@ -261,12 +342,11 @@ function mergeHolds(folded, merge) {
  * @returns {NotCurrent|null}
  */
 function notCurrent(folded, id) {
-  const facts = factsOf(folded, id);
-  const replacer = facts.replaced_by.find((r) => isLive(folded, r));
+  const [replacer] = liveReplacers(folded, id);
   if (replacer !== undefined) return { replaced_by: replacer };
-  const merge = facts.merged_by.find((m) => mergeHolds(folded, m));
+  const merge = factsOf(folded, id).merged_by.find((m) => mergeHolds(folded, m));
   if (merge !== undefined) return { merged_by: merge };
-  const dead = folded.live(facts.unit, facts.topic);
+  const dead = whyDead(folded, id);
   return dead === null ? null : { dead };
 }
 
@@ -278,20 +358,18 @@ function isCurrent(folded, id) {
 /**
  * The current entries `id`'s chain leads to: itself while current; else
  * those of every live replacement naming it, or, while none does, of the
- * entry a merge that holds took it into as a duplicate; none where it leads
- * nowhere current.
- * @param {Folded} folded @param {string} id @param {Set<string>} [seen]
+ * entry each merge that holds took it into as a duplicate; none where it
+ * leads nowhere current.
+ * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
-function currentsOf(folded, id, seen = new Set()) {
-  if (seen.has(id)) return [];
-  seen.add(id);
-  if (isCurrent(folded, id)) return [id];
-  const facts = factsOf(folded, id);
-  const replacers = facts.replaced_by.filter((r) => isLive(folded, r));
-  const merge = facts.merged_by.find((m) => mergeHolds(folded, m));
-  const next = replacers.length > 0 ? replacers : merge === undefined ? [] : [/** @type {string} */ (factsOf(folded, merge).into)];
-  return [...new Set(next.flatMap((n) => currentsOf(folded, n, seen)))];
+function currentsOf(folded, id) {
+  return leadsTo(folded, holdingMerges(folded), id, new Set());
+}
+
+/** The confirmations that `id` still holds, made where it is live. @param {Folded} folded @param {string} id */
+function holdsOf(folded, id) {
+  return factsOf(folded, id).holds.filter((hold) => isLive(folded, hold));
 }
 
 /**
@@ -344,7 +422,7 @@ function currentAnswer(folded, question) {
  */
 function mergedAnswer(folded, question) {
   const merges = wordingsOf(folded, question).flatMap((w) => factsOf(folded, w).merges).filter((m) => mergeHolds(folded, m));
-  return [...new Set(merges.flatMap((m) => currentsOf(folded, /** @type {string} */ (factsOf(folded, m).into))))];
+  return [...new Set(merges.flatMap((m) => currentsOf(folded, intoOf(folded, m))))];
 }
 
 /**
@@ -377,13 +455,14 @@ function movedFrom(folded, move) {
   return /** @type {string} */ (factsOf(folded, move).topic);
 }
 
-/**
- * The question a part is part of, in its current wording: the first current
- * form of the question it names, or that question where it has none.
- * @param {Folded} folded @param {string|null} whole
- */
+/** A question in its current wording: the first current form of it, or itself where it has none. @param {Folded} folded @param {string} question */
+function inCurrentWording(folded, question) {
+  return currentsOf(folded, question)[0] ?? question;
+}
+
+/** The question a part is part of, in its current wording. @param {Folded} folded @param {string|null} whole */
 function wholeOf(folded, whole) {
-  return whole === null ? null : currentsOf(folded, whole)[0] ?? whole;
+  return whole === null ? null : inCurrentWording(folded, whole);
 }
 
 /**
@@ -414,8 +493,8 @@ function standsAt(folded, id, unit, topic) {
 
 /**
  * A topic's map (5.8.5): every current question standing on it, and every
- * question moved away from it, where it went, in the ledger's order. None on
- * a topic that is not live.
+ * question moved away from it, in its current wording and with the topic it
+ * stands on now, in the ledger's order. None on a topic that is not live.
  * @param {Folded} folded @param {string} unit @param {string} topic
  * @returns {MapRow[]}
  */
@@ -429,10 +508,12 @@ function mapOf(folded, unit, topic) {
       if (isCurrent(folded, id)) rows.push(standingRow(folded, id));
       continue;
     }
-    const away = facts.root === id ? facts.moves.filter((m) => factsOf(folded, m).unit === unit && movedFrom(folded, m) === topic).at(-1) : undefined;
-    if (away !== undefined) {
-      const moved = /** @type {string} */ (factsOf(folded, away).question);
-      rows.push({ id: moved, stands: 'moved-away', moved_from: null, moved_to: factsOf(folded, away).to, answers: [], part_of: wholeOf(folded, factsOf(folded, moved).part_of), parts: [] });
+    if (facts.root === id && facts.moves.some((m) => factsOf(folded, m).unit === unit && movedFrom(folded, m) === topic)) {
+      const wording = inCurrentWording(folded, /** @type {string} */ (factsOf(folded, /** @type {string} */ (facts.moves.at(-1))).question));
+      rows.push({
+        id: wording, stands: 'moved-away', moved_from: null, moved_to: standingOf(folded, id).topic,
+        answers: [], part_of: wholeOf(folded, factsOf(folded, wording).part_of), parts: [],
+      });
     }
   }
   return rows;
@@ -477,7 +558,7 @@ function recordOf(folded, unit, topic) {
     if (facts.event === 'moved') record.moved.push(id);
     if (facts.event === 'merged') {
       record.merged.push(id);
-      show(currentsOf(folded, /** @type {string} */ (facts.into)), /** @type {string} */ (facts.into));
+      show(currentsOf(folded, intoOf(folded, id)), intoOf(folded, id));
     }
     if (facts.kind === null || !isCurrent(folded, id)) continue;
     record[SECTIONS[facts.kind]].push(id);
@@ -506,6 +587,6 @@ function productOf(folded) {
 }
 
 module.exports = {
-  ID_FACTS, readFolded, foldLedger, factsOf, standingOf, isLive, notCurrent, isCurrent, currentsOf, replacedChain, foldedBeneath,
-  currentAnswer, answersOf, mapOf, recordOf, productOf,
+  ID_FACTS, readFolded, foldLedger, factsOf, standingOf, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, holdsOf, replacedChain,
+  foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, productOf,
 };
