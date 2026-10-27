@@ -41,10 +41,12 @@
 //   merge (4.7.11).
 //
 // Every git call goes through kernel/isolated-git, under the state's writer
-// lock.
+// lock, but those of the stop's screen, which reads the merge waiting on a
+// pick in files of its own.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError } = require('../kernel/git.cjs');
@@ -522,15 +524,20 @@ function waitingMerge(state) {
 /**
  * The state merge waiting on the person's pick, as it is now asked; null
  * where none waits, or every field is picked and the next catch-up finishes
- * it.
+ * it. A read, outside the writer lock: its private index and scratch files
+ * are in a folder of its own, so it never meets those of a merge a peer
+ * holds the lock for, and the pick asks afresh under the lock.
  * @param {string} root  the state root
  * @returns {{conflicts: Conflict[]}|null}
  */
 function pendingStateMerge(root) {
-  return withStateLock(root, () => {
-    const waiting = waitingMerge(openState(root, {}));
+  const own = fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-merge-'));
+  try {
+    const waiting = waitingMerge({ ...openState(root, {}), index: path.join(own, 'index'), scratch: path.join(own, 'files') });
     return waiting === null || !waiting.conflicts.some(open) ? null : waiting;
-  });
+  } finally {
+    fs.rmSync(own, { recursive: true, force: true });
+  }
 }
 
 /**

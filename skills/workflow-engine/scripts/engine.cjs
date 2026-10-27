@@ -47,6 +47,7 @@ const { archiveItems, restoreItems, deleteItems } = require('./domain/inbox.cjs'
 const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
+const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -146,6 +147,7 @@ const USAGE = `Usage: engine <command> [args]
 
 Commands:
   boot
+  state-merge pick <1|2> <choice>
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]
   manifest set    <dotpath> <field> <value>
@@ -418,6 +420,7 @@ Commands:
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
   render legacy-split-gate --variant themes|plan | --variant remove --theme <name>
+  render state-merge-gate
   render legacy-split-display --variant candidates|plan|errors|apply --file <payload.json> | <wu> --variant sources | <wu> --variant processing --source <name> | --variant complete --applied N --abandoned N --errored N
   render signpost <label> [--style step|substep] [--width N]     (dev aid)
   render box <title> [--width N]                                 (dev aid)
@@ -1629,6 +1632,21 @@ function runBoot(call) {
 }
 
 // ---------------------------------------------------------------------------
+// state-merge — the person's pick at the state merge's stop, which boot's
+// catch-up leaves where both clones changed a manifest field
+// (domain/state-merge.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runStateMerge(call, argv) {
+  try {
+    respond(call, stateMergeCommand(call.cwd, argv));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // commit — the scoped commit helper. Every form computes a pathspec and
 // commits confined to it. The state's forms commit on the state branch: the
 // work unit, the inbox, the roadmap, the whole state, one topic's artifacts
@@ -2144,6 +2162,7 @@ function runRender(call, argv) {
 const COMMANDS = Object.freeze({
   knowledge: runKnowledge,
   boot: runBoot,
+  'state-merge': runStateMerge,
   manifest: runManifest,
   workunit: runWorkunit,
   'discussion-map': runDiscussionMap,

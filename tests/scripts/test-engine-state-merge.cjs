@@ -14,8 +14,9 @@
 // uncommitted files merged in place and never committed; a field both sides
 // changed stopping the merge with nothing written, kept for the person's
 // picks; the git calls a merge makes, and the files it reads past the read
-// budget; and a catch-up killed between its steps, or raced by another
-// session's write, losing nothing.
+// budget; a catch-up killed between its steps, or raced by another
+// session's write, losing nothing; and the pick and the screen through the
+// engine's CLI, the screen answering while a peer holds the writer lock.
 //
 // Real repositories in temp folders: a bare remote, and two clones of the
 // state, each with its state worktree made through the machinery. A `git`
@@ -30,9 +31,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawnSync } = require('child_process');
+const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo } = require('./engine-harness.cjs');
+const {
+  ENGINE, git, initRepo, ok, output, refuses,
+} = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 
@@ -47,6 +50,7 @@ const {
 } = require(path.join(SCRIPTS, 'domain/state-merge-rules.cjs'));
 const { stateMergeGate } = require(path.join(SCRIPTS, 'domain/projections/state-merge.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
+const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 /** @type {string} */
 let world;
@@ -1749,6 +1753,55 @@ describe('the pick\'s command', () => {
     const out = stateMergeCommand(here.main, ['pick', '2', shownChoice(here)]);
 
     assert.deepStrictEqual([out.action, out.pushed, out.commit], ['fast-forwarded', false, remoteTip(bare)]);
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));
+  });
+
+  it('answers `engine state-merge pick` and `engine render state-merge-gate`, refusing where no stop waits and a pick that is none', () => {
+    const { here, there, bare } = twoMachines({ 'manifest.json': projectManifest('now') });
+    assert.match(refuses(here.main, ['render', 'state-merge-gate']).error, /no state merge is waiting on a pick/);
+    assert.strictEqual(refuses(here.main, ['state-merge', 'pick', '1', 'a-choice']).error, 'no state merge is waiting on a pick');
+    commitUnpushed(here, { 'manifest.json': projectManifest('next') });
+    commitOn(there, { 'manifest.json': projectManifest('someday') });
+    catchUpState(here.root);
+
+    assert.strictEqual(output(here.main, ['render', 'state-merge-gate']), stateMergeGateSurface(here.main, {}));
+    assert.strictEqual(refuses(here.main, ['state-merge', 'pick']).error, 'Usage: engine state-merge pick <1|2> <choice>');
+    assert.match(refuses(here.main, ['state-merge', 'pick', '3', shownChoice(here)]).error, /is 1 \(this machine's value\) or 2 \(the remote's\), got "3"/);
+    const out = ok(here.main, ['state-merge', 'pick', '2', shownChoice(here)]);
+
+    assert.deepStrictEqual([out.action, out.pushed, out.commit], ['fast-forwarded', false, remoteTip(bare)]);
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));
+  });
+
+  it('renders the stop\'s screen at once while a peer holds the writer lock, never touching the peer\'s merge files; the pick waits for the peer, then lands', async () => {
+    const { here, there, bare } = twoMachines({ 'manifest.json': projectManifest('now') });
+    commitUnpushed(here, { 'manifest.json': projectManifest('next') });
+    commitOn(there, { 'manifest.json': projectManifest('someday') });
+    catchUpState(here.root);
+    const screen = stateMergeGateSurface(here.main, {});
+    const choice = shownChoice(here);
+    const lock = path.join(here.root, '.lock');
+    const live = JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) });
+    fs.writeFileSync(lock, live);
+    const gitDir = path.dirname(keptStopFile(here.root));
+    const peers = [path.join(gitDir, 'leeway-merge-files', 'blobs'), path.join(gitDir, 'leeway-merge.index')];
+    fs.mkdirSync(path.dirname(peers[0]));
+    for (const file of peers) fs.writeFileSync(file, 'the peer\'s merge');
+
+    const shown = spawnSync('node', [ENGINE, 'render', 'state-merge-gate'], { cwd: here.main, encoding: 'utf8', timeout: 10000 });
+    assert.deepStrictEqual([shown.signal, shown.status, shown.stdout], [null, 0, screen], shown.stderr);
+    assert.deepStrictEqual(peers.map((file) => fs.existsSync(file) && fs.readFileSync(file, 'utf8')), ['the peer\'s merge', 'the peer\'s merge']);
+    const picking = spawn('node', [ENGINE, 'state-merge', 'pick', '2', choice], { cwd: here.main });
+    let answer = '';
+    picking.stdout.on('data', (chunk) => { answer += chunk; });
+    const exit = new Promise((resolve) => picking.on('close', resolve));
+    const raced = await Promise.race([exit.then(() => 'exited'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 1500))]);
+    assert.strictEqual(raced, 'waiting', 'the pick did not wait on the peer');
+    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next'));
+    fs.unlinkSync(lock);
+
+    assert.strictEqual(await exit, 0);
+    assert.deepStrictEqual(JSON.parse(answer), { ...JSON.parse(answer), ok: true, action: 'fast-forwarded', commit: remoteTip(bare) });
     assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));
   });
 });

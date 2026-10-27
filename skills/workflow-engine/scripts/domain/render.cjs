@@ -72,6 +72,7 @@ const { specificationConfirmation } = require('./projections/specification.cjs')
 const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateMergeGateSurface } = require('./state-merge.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -7256,6 +7257,7 @@ const SURFACES = {
   'knowledge-ready': knowledgeReadySurface,
   'legacy-split-gate': legacySplitGateSurface,
   'legacy-split-display': legacySplitDisplaySurface,
+  'state-merge-gate': stateMergeGateSurface,
 };
 
 /**
