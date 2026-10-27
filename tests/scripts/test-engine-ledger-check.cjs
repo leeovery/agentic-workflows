@@ -256,6 +256,29 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     assert.deepStrictEqual({ ledger: ledgerText(), calls: calls().length }, before, 'a call was spent on a write its links refuse');
   });
 
+  it('reads the ledger before the lock once for a replacement, as for a decision: the one reading gives the replacement its kind and checks its links before the call', (t) => {
+    const question = ask();
+    const decision = decide(question, PANEL, { '': rules(PANEL) });
+    const open = fs.openSync;
+    let reads = 0;
+    t.mock.method(fs, 'openSync', (/** @type {fs.PathLike} */ file, /** @type {fs.OpenMode} */ flags, /** @type {any[]} */ ...rest) => {
+      if (flags === 'r' && String(file).endsWith(LEDGER)) reads += 1;
+      return open(file, flags, ...rest);
+    });
+    /** The ledger's reads a write makes. @param {() => void} written */
+    const readsOf = (written) => {
+      const before = reads;
+      written();
+      return reads - before;
+    };
+
+    const deciding = readsOf(() => decide(question, SYNC, { '': rules(SYNC) }));
+    const replacing = readsOf(() => write('replace', NOTE, ['--replaces', decision, '--reason', 'changed-mind'], { ...MADE, drops: [], text: 'A frameless panel.', why: 'Lighter.' }, { '': rules('A frameless panel.') }));
+
+    assert.ok(deciding > 0, 'the write read no ledger');
+    assert.strictEqual(replacing, deciding, 'a replacement read the ledger again before the lock');
+  });
+
   it('lands the decision unchecked where the call cannot run — no login, a rate limit, an outage, an answer that does not fit, no temp folder to run it from — and the write answers as ever, recording never stopped for the call', () => {
     const question = ask();
     const nowhere = { TMPDIR: path.join(dir, 'nowhere') };

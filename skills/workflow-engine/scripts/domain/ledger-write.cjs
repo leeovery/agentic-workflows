@@ -10,6 +10,8 @@
 //   exist, and the phase be discovery or one of its work type's. A topic
 //   exists only before the spec (4.11.2) and must hold an item in the phase;
 //   from the spec on every entry is the unit's, carrying no topic (5.2.3).
+//   The unit and topic must be live (5.8.17), as a move's destination must,
+//   both before the lock and again under it.
 //   The session is the conversation's own (CLAUDE_CODE_SESSION_ID); a write
 //   without one is refused.
 // - What: the content comes as one JSON object on stdin, the links as flags.
@@ -18,22 +20,25 @@
 //   (5.3.5), and must name what it links to: a decision answers a question
 //   (5.5.1), and only a question moves or merges. An entry is replaced or
 //   held only while current — a replacement names one entry, its siblings
-//   untouched (5.3.13) — a question moves or merges only while current, and
-//   a merge goes into a current decision — current by the one rule every
-//   read decides by (ledger-fold.cjs), which asks that its topic and unit be
-//   live too.
+//   untouched (5.3.13) — a question is answered, has parts, moves or merges
+//   only while current, and a merge goes into a current decision — current
+//   by the one rule every read decides by (ledger-fold.cjs).
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
-//   (5.6.1) or held. Before the spec, an entry of the unit is written on only
-//   from the topic it stands on, a question standing where it was last
-//   moved: another topic's change goes to it by message (5.6.9, 10.2.2).
+//   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
+//   the earliest entry of its chain in a live place was made on — normally
+//   the first, a question's wording on the topic its unit last moved it to
+//   — by the rule every read places it by (ledger-fold.cjs); before the
+//   spec, an entry of the unit is written on only from the topic it stands
+//   on: another topic's change goes to it by message (5.6.9, 10.2.2).
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
-//   other than the one it goes into (5.5.4, 5.5.5); a held entry relies on
-//   what the replacement replaced, or on an earlier entry of its chain
-//   (5.6.10); a replacement's cause is never what it replaces, a new fact's
-//   being a finding and another topic's a decision on a topic other than
-//   the replaced entry's (5.3.8).
+//   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
+//   a held entry relies on what the replacement replaced, or on an earlier
+//   entry of its chain (5.6.10); a replacement's cause is never what it
+//   replaces, a new fact's being a finding and another topic's a decision
+//   standing on a topic other than the one the replaced entry stands on
+//   (5.3.8).
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
 //   content leaves it out, the replaced entry's product-wide mark (5.2.5); a
@@ -43,15 +48,16 @@
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
 //   write never waits on a peer; then a decision's links are resolved and
-//   checked against the ledger as it stands, so no call is spent on a write
-//   they refuse, and it is judged, one rule or several, by the separate
-//   Claude call, which no peer waits on either. Under the lock the ledger is
-//   folded (ledger-fold.cjs), every link resolved and its currency and
-//   relations checked again, the event appended and the ledger committed, so
-//   no peer's write lands between the fold and the append. The answer is made
-//   once the lock is released: the entry's short id, the commit, and as
-//   warnings a push that failed and what a landing finished on the way said,
-//   which a refusal carries too.
+//   checked against the ledger as it stands — folded once before the lock, a
+//   replacement's reading reused — so no call is spent on a write they
+//   refuse, and it is judged, one rule or several, by the separate Claude
+//   call, which no peer waits on either. Under the lock the ledger is folded
+//   (ledger-fold.cjs), the place's liveness read again, every link resolved
+//   and its currency and relations checked again, the event appended and the
+//   ledger committed, so no peer's write or lifecycle change lands between
+//   the check and the append. The answer is made once the lock is released:
+//   the entry's short id, the commit, and as warnings a push that failed and
+//   what a landing finished on the way said, which a refusal carries too.
 // ---------------------------------------------------------------------------
 
 const { messageOf } = require('../kernel/call.cjs');
@@ -61,7 +67,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, standingOf, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
@@ -69,6 +75,8 @@ const { checkOneDecision } = require('./ledger-one-decision.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** @typedef {import('./ledger-fold.cjs').Standing} Standing */
+/** @typedef {import('./ledger-fold.cjs').Liveness} Liveness */
 /** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
 
 /**
@@ -102,20 +110,24 @@ const { checkOneDecision } = require('./ledger-one-decision.cjs');
 /**
  * A write verb: the event it appends, the flags it takes, whether it is made
  * from a topic alone, and what it checks of what it is given before the
- * lock, and of the entries its links name under it.
+ * lock, of the places it names beyond its own as liveness reads them —
+ * before the lock and again under it — and of the entries its links name
+ * under it.
  * @typedef {{
  *   event: string,
  *   flags: Flag[],
  *   fromTopic: boolean,
  *   checkGiven: (at: Address, given: Map<string, string[]>) => void,
+ *   checkLive: (at: Address, given: Map<string, string[]>, live: Liveness) => void,
  *   checkLinked: (linked: Linked, read: Folded) => void,
  * }} Write
  */
 
 /**
- * Where a write is made: the project's state root, the unit and its
- * manifest, the phase, and the topic, or null at the unit's level.
- * @typedef {{root: string, unit: string, manifest: Record<string, any>, phase: string, topic: string|null}} Address
+ * Where a write is made: the dot-path naming it, the project's state root,
+ * the unit and its manifest, the phase, and the topic, or null at the
+ * unit's level.
+ * @typedef {{dotpath: string, root: string, unit: string, manifest: Record<string, any>, phase: string, topic: string|null}} Address
  */
 
 /**
@@ -123,8 +135,9 @@ const { checkOneDecision } = require('./ledger-one-decision.cjs');
  * it is made, the session, each flag's values by field, the kind of entry it
  * writes — null for an event that is no entry — its content, checked in
  * that kind's shape, and, for a decision, whether it lands unchecked: true
- * until the one-decision check finds it holds one rule.
- * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean}} Request
+ * until the one-decision check finds it holds one rule; and the ledger as it
+ * stood before the lock, folded the first time a step reads it.
+ * @typedef {{verb: string, write: Write, at: Address, session: string, given: Map<string, string[]>, kind: EntryKind|null, content: Record<string, unknown>, unchecked: boolean, before: () => Folded}} Request
  */
 
 /** @param {string} is @param {(facts: IdFacts) => boolean} test @returns {Names} */
@@ -139,15 +152,15 @@ const A_REPLACEMENT = names('a replacement', (f) => f.event === 'replaced');
 
 /**
  * What a reason's cause must name, where the reason needs one (5.3.8): said
- * for its refusal, and the test of the cause's facts against the replaced
- * entry's.
- * @type {Readonly<Record<string, {is: string, test: (cause: IdFacts, replaced: IdFacts) => boolean}>>}
+ * for its refusal, and the test of the cause's facts and where it stands
+ * against where the replaced entry stands.
+ * @type {Readonly<Record<string, {is: string, test: (cause: IdFacts, causeAt: Standing, replacedAt: Standing) => boolean}>>}
  */
 const CAUSES = Object.freeze({
   'new-fact': { is: 'a finding', test: (cause) => cause.kind === 'finding' },
   'other-topic': {
     is: 'a decision on a topic other than the replaced entry\'s',
-    test: (cause, replaced) => cause.kind === 'decision' && (cause.unit !== replaced.unit || cause.topic !== replaced.topic),
+    test: (cause, causeAt, replacedAt) => cause.kind === 'decision' && (causeAt.unit !== replacedAt.unit || causeAt.topic !== replacedAt.topic),
   },
 });
 
@@ -176,18 +189,18 @@ function nothingToCheck() {}
 
 /**
  * @param {string} event @param {Flag[]} flags
- * @param {{fromTopic?: boolean, checkGiven?: Write['checkGiven'], checkLinked?: Write['checkLinked']}} [opts]
+ * @param {{fromTopic?: boolean, checkGiven?: Write['checkGiven'], checkLive?: Write['checkLive'], checkLinked?: Write['checkLinked']}} [opts]
  * @returns {Write}
  */
-function writeOf(event, flags, { fromTopic = false, checkGiven = nothingToCheck, checkLinked = nothingToCheck } = {}) {
-  return { event, flags, fromTopic, checkGiven, checkLinked };
+function writeOf(event, flags, { fromTopic = false, checkGiven = nothingToCheck, checkLive = nothingToCheck, checkLinked = nothingToCheck } = {}) {
+  return { event, flags, fromTopic, checkGiven, checkLive, checkLinked };
 }
 
 /** @type {Readonly<Record<string, Write>>} */
 const WRITES = Object.freeze({
-  ask: writeOf('asked', [link('part_of', A_QUESTION), links('relies_on', AN_ENTRY)]),
+  ask: writeOf('asked', [link('part_of', A_QUESTION, { current: true }), links('relies_on', AN_ENTRY)]),
   find: writeOf('found', [links('relies_on', AN_ENTRY)]),
-  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, owner: 'unit' }), links('relies_on', AN_ENTRY)]),
+  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, current: true, owner: 'unit' }), links('relies_on', AN_ENTRY)]),
   replace: writeOf('replaced', [
     link('replaces', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
     plain('reason', `<${REASONS.join('|')}>`),
@@ -198,7 +211,9 @@ const WRITES = Object.freeze({
     link('entry', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
     link('after', A_REPLACEMENT, { required: true }),
   ], { checkLinked: checkHeld }),
-  move: writeOf('moved', [link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }), plain('to', '<topic>')], { fromTopic: true, checkGiven: checkDestination }),
+  move: writeOf('moved', [link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }), plain('to', '<topic>')], {
+    fromTopic: true, checkGiven: checkDestination, checkLive: checkDestinationLive,
+  }),
   merge: writeOf('merged', [
     link('question', A_QUESTION, { required: true, current: true, owner: 'unit' }),
     link('into', A_DECISION, { required: true, current: true }),
@@ -279,8 +294,8 @@ function phasesOf(manifest) {
 /**
  * Where a write is made, read from its dot-path. Refuses a path of another
  * shape, a phase that is none, a unit that does not exist, a phase its work
- * type does not have, a topic from the spec on, and a topic with no item in
- * the phase.
+ * type does not have, a topic from the spec on, a topic with no item in the
+ * phase, and a unit or topic that is not live.
  * @param {string} cwd @param {string} verb @param {string} dotpath
  * @returns {Address}
  */
@@ -300,7 +315,19 @@ function addressOf(cwd, verb, dotpath) {
     throw new Error(`ledger ${verb}: a topic exists only before the spec, and ${phase} is the unit's — write at ${unit}.${phase}`);
   }
   if (topic !== null && !hasItem(manifest, phase, topic)) throw new Error(`ledger ${verb}: ${unit} has no topic "${topic}" in ${phase}`);
-  return { root, unit, manifest, phase, topic };
+  const at = { dotpath, root, unit, manifest, phase, topic };
+  checkPlaceLive(verb, at, liveness(root));
+  return at;
+}
+
+/**
+ * Refuse a write on a unit or topic that is not live as `live` reads it
+ * (5.8.17).
+ * @param {string} verb @param {Address} at @param {Liveness} live
+ */
+function checkPlaceLive(verb, at, live) {
+  const dead = live(at.unit, at.topic);
+  if (dead !== null) throw new Error(`ledger ${verb}: ${at.dotpath} takes no writes — ${dead}`);
 }
 
 /**
@@ -329,14 +356,25 @@ function checkCauseGiven(_at, given) {
 }
 
 /**
- * Refuse a move to the topic it is made from, or to a topic the unit does
- * not have (5.3.3).
+ * Refuse a move to the topic it is made from, to a topic the unit does not
+ * have (5.3.3), or to a topic that is not live (5.8.17).
  * @param {Address} at @param {Map<string, string[]>} given
  */
 function checkDestination(at, given) {
   const [to] = /** @type {string[]} */ (given.get('to'));
   if (to === at.topic) throw new Error(`ledger move: --to names ${to}, the topic it moves from — a question moves to another topic`);
   if (!hasTopic(at.manifest, to)) throw new Error(`ledger move: ${at.unit} has no topic "${to}" to move the question to`);
+  checkDestinationLive(at, given, liveness(at.root));
+}
+
+/**
+ * Refuse a move to a topic that is not live as `live` reads it (5.8.17).
+ * @param {Address} at @param {Map<string, string[]>} given @param {Liveness} live
+ */
+function checkDestinationLive(at, given, live) {
+  const [to] = /** @type {string[]} */ (given.get('to'));
+  const dead = live(at.unit, to);
+  if (dead !== null) throw new Error(`ledger move: --to names ${to}, which takes no question — ${dead}`);
 }
 
 /**
@@ -360,23 +398,24 @@ function described(facts) {
   return facts.kind === null ? `a ${facts.event} event` : `a ${facts.kind}`;
 }
 
-/** Where an entry stands in its unit. @param {IdFacts} facts */
-function placeOf(facts) {
-  return facts.topic === null ? 'at the unit\'s level' : `on ${facts.topic}`;
+/** Where in its unit an entry stands. @param {Standing} standing */
+function whereItStands({ topic }) {
+  return topic === null ? 'at the unit\'s level' : `on ${topic}`;
 }
 
 /**
- * Why a link whose entries are `owner`'s may not name `named` from `at`, or
- * null where it may: another unit's, for a link of the unit's own; before
- * the spec, one of the unit's on another topic than the write's (5.6.9).
- * @param {Owner} owner @param {Address} at @param {IdFacts} named
+ * Why a link whose entries are `owner`'s may not name an entry standing at
+ * `standing` from `at`, or null where it may: another unit's, for a link of
+ * the unit's own; before the spec, one of the unit's on another topic than
+ * the write's (5.6.9).
+ * @param {Owner} owner @param {Address} at @param {Standing} standing
  * @returns {string|null}
  */
-function strayed(owner, at, named) {
+function strayed(owner, at, standing) {
   if (owner === null) return null;
-  if (named.unit !== at.unit) return owner === 'unit' ? `of ${named.unit} — it must be ${at.unit}'s own` : null;
-  if (!TOPIC_PHASES.includes(at.phase) || named.topic === at.topic) return null;
-  return `${placeOf(named)} — before the spec a topic writes on its own entries alone, and another topic's change goes to it by message`;
+  if (standing.unit !== at.unit) return owner === 'unit' ? `of ${standing.unit} — it must be ${at.unit}'s own` : null;
+  if (!TOPIC_PHASES.includes(at.phase) || standing.topic === at.topic) return null;
+  return `${whereItStands(standing)} — before the spec a topic writes on its own entries alone, and another topic's change goes to it by message`;
 }
 
 /**
@@ -418,7 +457,7 @@ function resolveLink(verb, at, flag, prefix, read) {
   if (!what.test(named)) throw new Error(`${where} names ${short(id)}, ${described(named)} — it must name ${what.is}`);
   const stale = flag.current ? notCurrent(read, id) : null;
   if (stale !== null) throw new Error(`${where} names ${short(id)}, ${staleness(read, id, stale, short)}`);
-  const why = strayed(flag.owner, at, named);
+  const why = strayed(flag.owner, at, standingOf(read, id));
   if (why !== null) throw new Error(`${where} names ${short(id)}, ${described(named)} ${why}`);
   return id;
 }
@@ -429,7 +468,7 @@ function resolveLink(verb, at, flag, prefix, read) {
  * @param {Request} request @param {Folded} read
  * @returns {Linked}
  */
-function linkFields(request, read) {
+function resolvedLinks(request, read) {
   const { verb, write, at, given } = request;
   /** @type {Linked} */
   const fields = {};
@@ -443,18 +482,20 @@ function linkFields(request, read) {
 
 /**
  * Refuse a replacement's cause that is what it replaces, or that is not what
- * its reason needs (5.3.8).
+ * its reason needs, by where each stands (5.3.8).
  * @param {Linked} linked @param {Folded} read
  */
-function checkCause(linked, { facts }) {
+function checkCause(linked, read) {
   if (linked.cause === null) return;
+  const { facts } = read;
   const [cause, replaces, reason] = /** @type {string[]} */ ([linked.cause, linked.replaces, linked.reason]);
   const where = `ledger replace --cause names ${shortId(cause, facts.keys())}`;
   if (cause === replaces) throw new Error(`${where}, the entry it replaces — a cause is what made the change`);
   if (!Object.hasOwn(CAUSES, reason)) return;
   const named = /** @type {IdFacts} */ (facts.get(cause));
-  if (!CAUSES[reason].test(named, /** @type {IdFacts} */ (facts.get(replaces)))) {
-    throw new Error(`${where}, ${described(named)} ${placeOf(named)} — --reason ${reason} needs ${CAUSES[reason].is}`);
+  const causeAt = standingOf(read, cause);
+  if (!CAUSES[reason].test(named, causeAt, standingOf(read, replaces))) {
+    throw new Error(`${where}, ${described(named)} ${whereItStands(causeAt)} — --reason ${reason} needs ${CAUSES[reason].is}`);
   }
 }
 
@@ -474,17 +515,21 @@ function checkHeld(linked, read) {
 
 /**
  * Refuse a merge's duplicate that is the entry it goes into, or that answers
- * another question than the one merged (5.5.4, 5.5.5).
+ * another question than the one merged, in any of its wordings (5.3.13,
+ * 5.5.4, 5.5.5).
  * @param {Linked} linked @param {Folded} read
  */
-function checkDuplicate(linked, { facts }) {
+function checkDuplicate(linked, read) {
   if (linked.duplicate === null) return;
+  const { facts } = read;
   const [question, into, duplicate] = /** @type {string[]} */ ([linked.question, linked.into, linked.duplicate]);
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   const where = `ledger merge --duplicate names ${short(duplicate)}`;
   if (duplicate === into) throw new Error(`${where}, the decision --into names — a duplicate is another entry`);
   const answers = /** @type {string} */ (/** @type {IdFacts} */ (facts.get(duplicate)).answers);
-  if (answers !== question) throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}`);
+  if (![question, ...replacedChain(read, question)].includes(answers)) {
+    throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}, in any of its wordings`);
+  }
 }
 
 /**
@@ -513,13 +558,27 @@ function readNow(at, warnings) {
 }
 
 /**
+ * The ledger as it stands before the lock, folded the first time a step
+ * asks for it and never again.
+ * @param {Address} at @param {string[]} warnings
+ * @returns {() => Folded}
+ */
+function readBefore(at, warnings) {
+  /** @type {Folded|null} */
+  let read = null;
+  return () => {
+    read ??= readNow(at, warnings);
+    return read;
+  };
+}
+
+/**
  * The entry a replacement replaces, read from the ledger before the lock:
  * its facts, its link checked as the lock checks it again.
- * @param {string} verb @param {Address} at @param {Map<string, string[]>} given @param {string[]} warnings
+ * @param {string} verb @param {Address} at @param {Map<string, string[]>} given @param {Folded} read
  * @returns {IdFacts}
  */
-function replacedEntry(verb, at, given, warnings) {
-  const read = readNow(at, warnings);
+function replacedEntry(verb, at, given, read) {
   const flag = /** @type {Flag} */ (WRITES[verb].flags.find((f) => f.field === 'replaces'));
   const id = resolveLink(verb, at, flag, /** @type {string[]} */ (given.get('replaces'))[0], read);
   return /** @type {IdFacts} */ (read.facts.get(id));
@@ -587,12 +646,14 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   checkValues(verb, given);
   write.checkGiven(at, given);
   const content = stdinContent(verb, stdin());
-  const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, warnings) : null;
+  const before = readBefore(at, warnings);
+  const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, before()) : null;
   return {
     verb, write, at, session, given,
     kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
     content: contentFields(verb, write, content, replaced),
     unchecked: true,
+    before,
   };
 }
 
@@ -605,7 +666,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
  */
 function eventOf(request, read) {
   const { write, at, session, kind, content, unchecked } = request;
-  const linked = linkFields(request, read);
+  const linked = resolvedLinks(request, read);
   write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
@@ -614,15 +675,15 @@ function eventOf(request, read) {
 }
 
 /**
- * A decision's links resolved and checked before the one-decision call, as
- * the lock checks them again, so no call is spent on a write its links
- * refuse. Answers the entries they name, by short id, for the call's
- * refusal.
- * @param {Request} request @param {string[]} warnings
+ * A decision's links resolved and checked before the one-decision call,
+ * against the ledger as read before the lock, as the lock checks them again,
+ * so no call is spent on a write its links refuse. Answers the entries they
+ * name, by short id, for the call's refusal.
+ * @param {Request} request
  * @returns {import('./ledger-one-decision.cjs').Named}
  */
-function linkedBeforeCall(request, warnings) {
-  const read = readNow(request.at, warnings);
+function linkedBeforeCall(request) {
+  const read = request.before();
   const { answers, replaces } = eventOf(request, read);
   const short = (/** @type {unknown} */ id) => shortId(/** @type {string} */ (id), read.facts.keys());
   return { answers: short(answers), replaces: replaces === undefined ? null : short(replaces) };
@@ -630,11 +691,11 @@ function linkedBeforeCall(request, warnings) {
 
 /**
  * A write as asked, a decision among them judged by the one-decision check.
- * @param {Request} request @param {string[]} warnings
+ * @param {Request} request
  * @returns {Request}
  */
-function oneDecisionChecked(request, warnings) {
-  return request.kind === 'decision' ? checkOneDecision(request, linkedBeforeCall(request, warnings)) : request;
+function oneDecisionChecked(request) {
+  return request.kind === 'decision' ? checkOneDecision(request, linkedBeforeCall(request)) : request;
 }
 
 /**
@@ -647,15 +708,18 @@ function ledgerMessage(unit, event, id, topic) {
 }
 
 /**
- * Under the writer lock: the ledger folded, the event appended, and the
- * ledger committed to the state branch, a commit git refuses a warning.
+ * Under the writer lock: the ledger folded, the places the write names read
+ * live again, the event appended, and the ledger committed to the state
+ * branch, a commit git refuses a warning.
  * Answers the entry as written and its short id.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
  * @returns {{entry: Record<string, unknown>, id: string, outcome: {committed: string|null, failed: boolean}}}
  */
 function land(cwd, request, warnings) {
-  const { at, write } = request;
+  const { verb, at, write, given } = request;
   const read = readNow(at, warnings);
+  checkPlaceLive(verb, at, read.live);
+  write.checkLive(at, given, read.live);
   const entry = appendEntry(at.root, eventOf(request, read), warnings);
   const id = /** @type {string} */ (entry.id);
   return { entry, id: shortId(id, read.facts.keys()), outcome: commitStateTail(cwd, LEDGER, ledgerMessage(at.unit, write.event, id, at.topic), warnings) };
@@ -672,7 +736,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const request = oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings), warnings);
+    const request = oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings));
     const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
     const result = { id, committed: outcome.committed };

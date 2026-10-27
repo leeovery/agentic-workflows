@@ -2276,12 +2276,12 @@ const COMMANDS = Object.freeze({
 // read of the ledger, the append and the commit alone, so what it does
 // before and after holds no peer up — its Claude call among it — the late
 // check holds it around each result it records, and a `ledger` read takes
-// none; `presence`, `session label`, `repair`,
-// `cleanup` and `resume`, and the hold `topic mailbox` refreshes write only
-// the session files the state ignores; a conversation's folder is outside
-// the project; and the rest read, `layout guard` among them, run before
-// every file Claude writes. `manifest` takes it to write alone, and `commit`
-// but for a code commit (`--paths`).
+// none; `presence`, `session label`, `repair`, `cleanup` and `resume`, and
+// the hold `topic mailbox` refreshes write only the session files the state
+// ignores; a conversation's folder is outside the project; and the rest
+// read, `layout guard` among them, run before every file Claude writes.
+// `manifest` takes it to write alone, and `commit` but for a code commit
+// (`--paths`).
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
