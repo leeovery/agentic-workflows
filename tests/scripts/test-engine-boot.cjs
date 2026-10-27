@@ -302,16 +302,17 @@ describe('engine boot', () => {
 
   /**
    * A scratch repo beside the fixture, hermetic like it, with dated
-   * commits and the state arriving on a date of the test's choosing. Its
-   * settings carry the workflows' own hooks from the first commit on, like
-   * the fixture's, and it keeps the
-   * state out of its code tree by its own exclude: the history under test is
-   * the project's own.
+   * commits and the state arriving on a date of the test's choosing. From
+   * the first commit on, its settings carry the workflows' own hooks, like
+   * the fixture's, and its `.worktreeinclude` the knowledge files an earlier
+   * boot listed there; it keeps the state out of its code tree by its own
+   * exclude: the history under test is the project's own.
    */
   function scratchRepo(name) {
     const project = harness.initRepo(path.join(fix.root, name));
     fs.appendFileSync(path.join(project, '.git/info/exclude'), '.leeway/\n');
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+    writeFile(project, '.worktreeinclude', STORE_FILES.join('\n') + '\n');
     const at = (date) => `${date}T12:00:00Z`;
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
@@ -322,8 +323,9 @@ describe('engine boot', () => {
   }
 
   it('baseline_signal: a codebase committed before `.leeway/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
-    // A brownfield repo: two commits of code (the skills install beside it,
-    // which never counts as project code), then the workflows land.
+    // A brownfield repo: two commits of code (the skills install and an
+    // earlier boot's `.worktreeinclude` beside it, which never count as
+    // project code), then the workflows land.
     const { project, commit, arrive } = scratchRepo('brownfield');
     writeFile(project, 'src/app.js', 'export default 1;\n');
     writeFile(project, 'README.md', '# App\n');

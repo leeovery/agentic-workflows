@@ -2137,17 +2137,52 @@ function runRender(call, argv) {
   }
 }
 
-// Every command runs whole under the writer lock, its writes and its commit
-// one hold, so no peer's write lands between them — a command added later
-// included — but the ones named here, with `*` for every sub-verb or the
-// sub-verbs alone. None of them writes what a state commit takes: the
-// knowledge base writes the store the state ignores, under a lock of its
-// own; boot takes the writer lock itself around each state write it makes;
-// presence, the cache and a session's label write only what the state
-// ignores; a conversation's folder is outside the project; and the rest
-// read. `manifest` takes it to write alone, and `commit` but for a code
+/**
+ * Every command the engine dispatches, by name.
+ * @type {Readonly<Record<string, (call: Call, argv: string[]) => void|Promise<void>>>}
+ */
+const COMMANDS = Object.freeze({
+  knowledge: runKnowledge,
+  boot: runBoot,
+  manifest: runManifest,
+  workunit: runWorkunit,
+  'discussion-map': runDiscussionMap,
+  'research-threads': runResearchThreads,
+  'discovery-map': runDiscoveryMap,
+  'build-order': runBuildOrder,
+  'discovery-session': runDiscoverySession,
+  topic: runTopic,
+  experiment: runExperiment,
+  sources: runSources,
+  presence: runPresence,
+  session: runSession,
+  conversation: runConversation,
+  task: runTask,
+  inbox: runInbox,
+  roadmap: runRoadmap,
+  baseline: runBaseline,
+  walkthrough: runWalkthrough,
+  cache: runCache,
+  agent: runAgent,
+  commit: runCommit,
+  code: runCode,
+  render: runRender,
+  handoff: runHandoff,
+});
+
+// Every command dispatched runs whole under the writer lock, its writes and
+// its commit one hold, so no peer's write lands between them — a command
+// added later included — but the ones named here, `*` for every sub-verb or
+// the sub-verbs alone. None of them writes what a state commit takes, and
+// none but `boot` waits on the lock: `knowledge` writes the store the state
+// ignores, under a lock of its own; `boot` holds the writer lock around each
+// state write it makes and no longer, so its knowledge pass never holds a
+// peer up; `presence`, `session label`, `repair`, `cleanup` and `resume`,
+// and the hold `topic mailbox` refreshes write only the session files the
+// state ignores; a conversation's folder is outside the project; and the
+// rest read. `manifest` takes it to write alone, and `commit` but for a code
 // commit (`--paths`).
-const WRITER_LOCK_EXEMPT = /** @type {Record<string, '*'|string[]>} */ ({
+const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',
   presence: '*',
@@ -2157,9 +2192,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Record<string, '*'|string[]>} */ ({
   handoff: '*',
   topic: ['mailbox', 'incorporations'],
   roadmap: ['state'],
-  agent: ['scan'],
   session: ['label', 'repair', 'cleanup', 'resume'],
-});
+}));
 
 /** @param {string[]} argv @returns {boolean} */
 function takesWriterLock([command, sub, ...rest]) {
@@ -2171,11 +2205,15 @@ function takesWriterLock([command, sub, ...rest]) {
 
 /**
  * The command argv names — answering later only where the command waits on
- * the embedding provider.
+ * the embedding provider. One the engine does not dispatch answers the
+ * usage at once, with no state to find and no lock to wait on.
  * @param {Call} call @param {string[]} argv @returns {void|Promise<void>}
  */
 function runCli(call, argv) {
-  if (!takesWriterLock(argv)) return runVerb(call, argv);
+  const [command, ...rest] = argv;
+  if (!Object.hasOwn(COMMANDS, command)) die(call, USAGE);
+  const handler = COMMANDS[command];
+  if (!takesWriterLock(argv)) return handler(call, rest);
   /** @type {string} */
   let root;
   try {
@@ -2183,93 +2221,7 @@ function runCli(call, argv) {
   } catch (err) {
     failJson(call, err);
   }
-  return withStateLock(root, () => runVerb(call, argv));
-}
-
-/** @param {Call} call @param {string[]} argv @returns {void|Promise<void>} */
-function runVerb(call, argv) {
-  const [command, ...rest] = argv;
-  switch (command) {
-    case 'knowledge':
-      return runKnowledge(call, rest);
-    case 'boot':
-      runBoot(call);
-      break;
-    case 'manifest':
-      runManifest(call, rest);
-      break;
-    case 'workunit':
-      runWorkunit(call, rest);
-      break;
-    case 'discussion-map':
-      runDiscussionMap(call, rest);
-      break;
-    case 'research-threads':
-      runResearchThreads(call, rest);
-      break;
-    case 'discovery-map':
-      runDiscoveryMap(call, rest);
-      break;
-    case 'build-order':
-      runBuildOrder(call, rest);
-      break;
-    case 'discovery-session':
-      runDiscoverySession(call, rest);
-      break;
-    case 'topic':
-      runTopic(call, rest);
-      break;
-    case 'experiment':
-      runExperiment(call, rest);
-      break;
-    case 'sources':
-      runSources(call, rest);
-      break;
-    case 'presence':
-      runPresence(call, rest);
-      break;
-    case 'session':
-      runSession(call, rest);
-      break;
-    case 'conversation':
-      runConversation(call, rest);
-      break;
-    case 'task':
-      runTask(call, rest);
-      break;
-    case 'inbox':
-      runInbox(call, rest);
-      break;
-    case 'roadmap':
-      runRoadmap(call, rest);
-      break;
-    case 'baseline':
-      runBaseline(call, rest);
-      break;
-    case 'walkthrough':
-      runWalkthrough(call, rest);
-      break;
-    case 'cache':
-      runCache(call, rest);
-      break;
-    case 'agent':
-      runAgent(call, rest);
-      break;
-    case 'commit':
-      runCommit(call, rest);
-      break;
-    case 'code':
-      runCode(call, rest);
-      break;
-    case 'render':
-      runRender(call, rest);
-      break;
-    case 'handoff':
-      runHandoff(call, rest);
-      break;
-    default:
-      die(call, USAGE);
-  }
+  return withStateLock(root, () => handler(call, rest));
 }
 
 // The commands Claude Code's own hooks run as any conversation in the project
@@ -2453,4 +2405,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { parseArgs, run, runAsync };
+module.exports = { parseArgs, run, runAsync, COMMANDS, WRITER_LOCK_EXEMPT };

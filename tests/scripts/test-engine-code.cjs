@@ -354,6 +354,45 @@ describe('engine code diff and status: the change not yet committed', () => {
   });
 });
 
+describe('engine code: the state held out of the code\'s dirt where nothing ignores it', () => {
+  let dir;
+  let side;
+  beforeEach(() => {
+    dir = setupGitFixture('engine-code-unignored-');
+    writeFile(dir, '.leeway/pay/manifest.json', JSON.stringify({
+      name: 'pay',
+      work_type: 'feature',
+      status: 'in-progress',
+      phases: { implementation: { items: { pay: { status: 'in-progress' } } } },
+    }, null, 2) + '\n');
+    writeFile(dir, 'src/app.js', '1\n');
+    commitAll(dir, 'init');
+    // Tracked files alone: an `add -A` would take the unignored state in as
+    // a nested repository.
+    writeFile(dir, '.gitignore', '');
+    git(dir, ['commit', '-q', '-am', 'nothing ignored']);
+    side = `${dir}-side`;
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', side]);
+  });
+  afterEach(() => {
+    cleanupFixture(side);
+    cleanupFixture(dir);
+  });
+
+  it('code status and a code commit\'s left_dirty never name .leeway/ — from the main checkout, a code worktree, and inside the state', () => {
+    const state = path.join(dir, '.leeway');
+    writeFile(state, 'pay/notes.md', 'a doc session\'s own\n');
+    assert.match(git(dir, ['status', '--porcelain']), /^\?\? \.leeway\/$/m, 'git sees the state: the hold-out alone keeps it out');
+
+    for (const [where, checkout] of [[dir, dir], [side, side], [state, dir]]) {
+      assert.deepStrictEqual(harness.ok(where, ['code', 'status']).files, [], `code status from ${where}`);
+      writeFile(checkout, 'src/app.js', `${where}\n`);
+      const res = harness.ok(where, ['commit', '--paths', path.join(checkout, 'src/app.js'), '-m', 'impl(pay): the app', '--for', 'pay', 'implementation/pay']);
+      assert.deepStrictEqual(res.left_dirty, [], `left_dirty from ${where}`);
+    }
+  });
+});
+
 describe('engine code in a project of one repo: what git answers', () => {
   let dir;
   beforeEach(() => {
@@ -526,10 +565,9 @@ describe('engine code in a project nested inside a larger repository: the projec
     ]);
   });
 
-  it('diff and status: the uncommitted change in the project alone — the larger repository\'s dirt, .leeway/, the ignored clone\'s folder and the nested repo\'s held out of the root', () => {
+  it('diff and status: the uncommitted change in the project alone — the larger repository\'s dirt, the ignored clone\'s folder and the nested repo\'s held out of the root', () => {
     writeFile(project, 'src/app.js', '3\n');
     writeFile(project, 'src/new.js', 'new\n');
-    writeFile(project, '.leeway/pay/notes.md', 'a doc session\'s own\n');
     writeFile(dir, 'other/o.js', '4\n');
     writeFile(dir, 'other/new.js', 'new\n');
     writeFile(api, 'src/handler.js', '2\n');

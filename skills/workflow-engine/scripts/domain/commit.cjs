@@ -37,6 +37,9 @@ const { SETTINGS_SPEC } = require('./settings.cjs');
 /** The project manifest, state-relative. */
 const PROJECT_MANIFEST_SPEC = 'manifest.json';
 
+/** The file Claude Code reads to copy ignored files into a new worktree, from the project root. */
+const WORKTREE_INCLUDE = '.worktreeinclude';
+
 /**
  * The files the workflows own in the code tree — everything a migration or
  * boot writes outside the state: the project's Claude Code settings, the
@@ -44,7 +47,7 @@ const PROJECT_MANIFEST_SPEC = 'manifest.json';
  * migration commit; its state side is the whole state worktree.
  * @type {readonly string[]}
  */
-const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, '.worktreeinclude', '.gitignore']);
+const OWNED_PATHS = Object.freeze([SETTINGS_SPEC, WORKTREE_INCLUDE, '.gitignore']);
 
 /**
  * The discovery scope — what a discovery session writes: its session logs,
@@ -282,4 +285,5 @@ module.exports = {
   discoveryScope,
   OWNED_PATHS,
   PROJECT_MANIFEST_SPEC,
+  WORKTREE_INCLUDE,
 };

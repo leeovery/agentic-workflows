@@ -18,11 +18,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
+const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/workflow-engine/scripts/engine.cjs');
 
 const { ENGINE, stateGit, commitAll, cleanupFixture, ok: engine } = harness;
 
@@ -472,6 +473,34 @@ describe('structurally corrupt manifests refuse writes', () => {
   });
 });
 
+/**
+ * Well inside the writer lock's 60s wait: a call still running at this
+ * point was waiting on the lock, and is killed.
+ */
+const ANSWERS_AT_ONCE_MS = 10000;
+
+/**
+ * One call per entry of the writer lock's exempt table, each one that
+ * succeeds in the epic fixture with a specification beside its research.
+ * Boot is the table's one verb that waits on the lock, around each state
+ * write it makes, so it has none.
+ */
+const EXEMPT_CALLS = [
+  ['knowledge', 'status'],
+  ['presence', 'scan', 'payments'],
+  ['conversation', 'position', 'sess-1'],
+  ['code', 'status'],
+  ['render', 'signpost', 'Hello'],
+  ['handoff', 'workflow-continue-epic', 'payments'],
+  ['topic', 'mailbox', 'payments', 'research', 'auth-flow'],
+  ['topic', 'incorporations', 'payments', 'auth-flow'],
+  ['roadmap', 'state'],
+  ['session', 'label', 'payments'],
+  ['session', 'repair'],
+  ['session', 'cleanup', 'sess-1'],
+  ['session', 'resume', 'sess-1'],
+];
+
 describe('engine writes take the writer lock', () => {
   let dir;
   let lock;
@@ -524,28 +553,36 @@ describe('engine writes take the writer lock', () => {
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('a command not named exempt takes the lock — one the engine does not know included', async () => {
+  it('a command the engine does not dispatch answers the usage at once — no lock waited on, no state looked for', () => {
     fs.writeFileSync(lock, live());
-
-    const child = spawn('node', [ENGINE, 'not-a-verb'], { cwd: dir });
-    let stderr = '';
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
-    const exit = new Promise((resolve) => child.on('close', resolve));
-
-    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'an unnamed command must wait on a live lock');
-
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 1);
-    assert.match(stderr, /^Usage: engine <command>/);
-    assert.ok(!fs.existsSync(lock));
+    const stateless = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-io-stateless-'));
+    try {
+      for (const [where, args] of [[dir, ['not-a-verb']], [dir, []], [dir, ['toString']], [stateless, ['not-a-verb']], [stateless, []]]) {
+        const res = spawnSync('node', [ENGINE, ...args], { cwd: where, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
+        assert.strictEqual(res.status, 1, `engine ${args.join(' ')} in ${where}: ${res.signal ? 'waited on the lock' : res.stderr}`);
+        assert.match(res.stderr, /^Usage: engine <command>/);
+      }
+    } finally {
+      fs.rmSync(stateless, { recursive: true, force: true });
+    }
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('an exempt sub-verb of a locking verb answers at once while a live holder has the lock', () => {
+  it('every exempt command answers at once while a live holder has the lock — none but boot takes it anywhere', () => {
+    const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
+    const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot'].sort(), table.sort(), 'a call below for every exempt entry, boot aside');
+    assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
+      'the table names dispatched commands alone');
+    const manifest = readManifest(dir, 'payments');
+    manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
+    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     fs.writeFileSync(lock, live());
-    const started = Date.now();
-    assert.strictEqual(engine(dir, ['topic', 'mailbox', 'payments', 'research', 'auth-flow']).ok, true);
-    assert.ok(Date.now() - started < 1500, `the mailbox read waited ${Date.now() - started}ms`);
+
+    for (const args of EXEMPT_CALLS) {
+      const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
+      assert.strictEqual(res.status, 0, `engine ${args.join(' ')}: ${res.signal ? 'waited on the lock' : res.stderr}`);
+    }
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
