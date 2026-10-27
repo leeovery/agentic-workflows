@@ -3882,7 +3882,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, read back as its records, its maps, the product record, what a replacement affects and Claude\'s calls since the person last looked, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and the departures waiting on a verdict, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -3904,7 +3904,7 @@ describe('pipeline simulation', () => {
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
     const affected = () => sim.run(['ledger', 'affected', wu]).affected.map((/** @type {{id: string}} */ e) => e.id);
     assert.deepStrictEqual(affected(), [relying], 'what the replacement affects is not what relies on the decision it replaced');
-    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ replaced/, null, JSON.stringify(made));
+    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ changed/, null, JSON.stringify(made));
     const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
     assert.deepStrictEqual(affected(), [], 'a confirmation that it still holds left the entry affected');
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
@@ -4029,6 +4029,14 @@ describe('pipeline simulation', () => {
     assert.ok(decided().includes(kept), 'a merge on a cancelled topic still set its duplicate aside');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'space-homing']);
     assert.ok(!decided().includes(kept), 'a reactivated merge no longer set its duplicate aside');
+
+    // The verdict queue: nothing waits while every answer is Claude's; the
+    // person's replacement of Claude's own call, for a mistake, stands over
+    // its lean and waits on a verdict.
+    assert.deepStrictEqual(sim.run(['ledger', 'verdicts']).departures, []);
+    const departed = ledger(['replace', note, '--replaces', sized, '--reason', 'was-wrong'],
+      { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' });
+    assert.deepStrictEqual(sim.run(['ledger', 'verdicts']).departures.map((/** @type {Record<string, unknown>} */ d) => [d.id, d.lean]), [[departed, 'A note keeps its own size.']]);
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {

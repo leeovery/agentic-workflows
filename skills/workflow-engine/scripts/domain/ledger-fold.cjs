@@ -9,10 +9,10 @@
 // The fold keeps, of each id the ledger holds, what the reads decide by and
 // never what they show: the event that wrote it; the kind of entry it is, a
 // replacement taking the kind it stands for, or none for an event that is no
-// entry; who made it; the unit and topic it was written on; the first entry
-// of its chain; its links; every entry linking back to it — the
-// replacements naming it, the merges that took it as a duplicate, the
-// entries answering it, the merges of it, the questions part of it
+// entry; who made it, and who moved whom; the unit and topic it was written
+// on; the first entry of its chain; its links; every entry linking back to
+// it — the replacements naming it, the merges that took it as a duplicate,
+// the entries answering it, the merges of it, the questions part of it
 // (5.3.11), the confirmations that it still holds, and on the first entry of
 // a question's chain, the moves of any wording; and where its line sits, so
 // a read shows an entry by reading that one line again. It keeps one thing a
@@ -55,7 +55,7 @@
 // - The current form of an entry: the current entries its chain leads to,
 //   down every live replacement, and through each merge that holds to the
 //   entry the duplicate was merged into; and the live replacements met on
-//   the way, which are what changed it.
+//   the way, which are what changed it, the latest last.
 // - A question's current answer: every current entry naming it or any
 //   earlier wording of it, so a replaced sibling never touches the others
 //   and a rewording keeps its answers (5.3.13).
@@ -99,6 +99,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   event: string,
  *   kind: EntryKind|null,
  *   by: string|null,
+ *   who_moved_whom: string|null,
  *   unit: string,
  *   topic: string|null,
  *   root: string,
@@ -113,6 +114,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   into: string|null,
  *   duplicate: string|null,
  *   entry: string|null,
+ *   after: string|null,
  *   replaced_by: readonly string[],
  *   merged_by: readonly string[],
  *   answered_by: readonly string[],
@@ -175,6 +177,7 @@ const ID_FACTS = {
       event: /** @type {string} */ (event.event),
       kind,
       by: typeof event.by === 'string' ? event.by : null,
+      who_moved_whom: typeof event.who_moved_whom === 'string' ? event.who_moved_whom : null,
       unit: /** @type {string} */ (event.unit),
       topic: idOrNull(event.topic),
       root: event.event === 'replaced' ? named(facts, event.replaces).root : id,
@@ -189,6 +192,7 @@ const ID_FACTS = {
       into: idOrNull(event.into),
       duplicate: idOrNull(event.duplicate),
       entry: idOrNull(event.entry),
+      after: idOrNull(event.after),
       replaced_by: NONE,
       merged_by: NONE,
       answered_by: NONE,
@@ -440,14 +444,15 @@ function replacementsDown(folded, holding, id, seen) {
 }
 
 /**
- * What changed `id`: the live replacements down its chain to its current
- * forms, past each merge that holds, a merge changing nothing — a duplicate
- * gives the same answer (5.5.5). None while it is current.
+ * What changed `id`: the live replacements on its way to its current forms,
+ * past each merge that holds, a merge changing nothing — a duplicate gives
+ * the same answer (5.5.5) — in the ledger's order, the latest last. None
+ * while it is current.
  * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
 function replacementsOf(folded, id) {
-  return [...new Set(replacementsDown(folded, holdingMerges(folded), id, new Set()))];
+  return inLedgerOrder(folded, replacementsDown(folded, holdingMerges(folded), id, new Set()));
 }
 
 /** The confirmations that `id` still holds, made where it is live. @param {Folded} folded @param {string} id */
