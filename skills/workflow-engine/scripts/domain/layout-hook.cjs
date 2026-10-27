@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findStateRoot, stateRelative, resolvedPath, ignoresCase } = require('../kernel/state-root.cjs');
-const { LEDGER } = require('./state-merge-rules.cjs');
+const { LEDGER } = require('./ledger-events.cjs');
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const LAYOUT_HOOK_TOOLS = ['Write', 'Edit', 'NotebookEdit'];

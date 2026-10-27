@@ -22,7 +22,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/state-merge-rules.cjs');
+const { LEDGER } = require('../../skills/workflow-engine/scripts/domain/ledger-events.cjs');
 const { ignoresCase } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
 
 /** @type {string} */
