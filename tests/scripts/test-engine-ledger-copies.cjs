@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const { ENGINE, ok, callAsync, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, ok, callAsync, keywordOnlyKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -99,6 +99,11 @@ function copy(rel) {
 function identities() {
   const file = knowledgeFiles(statePath(dir)).store;
   return [...new Set(store.allChunks(store.loadStore(file)).map((c) => `${c.work_unit}/${c.phase}/${c.topic}`))].sort();
+}
+
+/** The text of every chunk the store holds. */
+function indexedText() {
+  return store.allChunks(store.loadStore(knowledgeFiles(statePath(dir)).store)).map((c) => c.content).join('\n');
 }
 
 /** A read by area: the knowledge base searched over the records alone. @param {string[]} terms */
@@ -232,6 +237,20 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.match(text, /^\\~~~$/m);
   });
 
+  it('heads a decision whose question is set aside with its own words, so no words of an entry that is not current reach a copy, the product record\'s file or a search (5.8.17)', async () => {
+    const question = ask(NOTE, 'Is a note a zebrawindow?');
+    decide(`${UNIT}.specification`, question, 'Notes float as panels.', [], { product_wide: true });
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+
+    const own = /** @type {string} */ (copy('.knowledge/records/fumi.md'));
+    assert.match(own, /^## Notes float as panels\.\n\nNotes float as panels\.$/m);
+    assert.doesNotMatch(own, /zebrawindow/);
+    assert.doesNotMatch(/** @type {string} */ (copy('.knowledge/product.md')), /zebrawindow/);
+    assert.match(/** @type {string} */ (copy('.knowledge/product.md')), /^## Notes float as panels\.$/m);
+    assert.match(await callAsync(dir, ['knowledge', 'query', 'zebrawindow']).then((r) => r.stdout), /\[0 results\]/);
+  });
+
   it('removes a temporary file a render killed before its rename left behind', () => {
     floatingPanel();
     const left = [statePath(dir, '.knowledge/records/fumi/.note-window.md.99999.tmp'), statePath(dir, '.knowledge/.product.md.99999.tmp')];
@@ -347,32 +366,31 @@ describe('boot (22.6.14, 22.6.15)', () => {
     fs.writeFileSync(statePath(dir, SPACE_COPY), '# stale\n');
     fs.writeFileSync(statePath(dir, '.knowledge/records/fumi/gone.md'), '# gone\n');
     fs.rmSync(statePath(dir, '.knowledge/product.md'));
-    const before = { note: copy(NOTE_COPY), space: copy(SPACE_COPY) };
 
     ok(dir, ['boot']);
 
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
     assert.match(/** @type {string} */ (copy(SPACE_COPY)), /^## Does a note open on the active Space\?\n\nAsked by Claude\. Entry \w+\.\n\nYes\./m);
-    assert.notDeepStrictEqual({ note: copy(NOTE_COPY), space: copy(SPACE_COPY) }, before);
     assert.strictEqual(copy('.knowledge/records/fumi/gone.md'), null);
     assert.match(/** @type {string} */ (copy('.knowledge/product.md')), /Nothing is marked product-wide yet\./);
     assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY, SPACE_COPY]);
   });
 
-  it('makes good an index that failed after an entry changed: the entry stands, the write warns, and the next start indexes the record (22.S36)', () => {
-    unreadableKnowledge(dir);
+  it('makes good an index that failed after an entry changed: the entry stands, the write warns, and the next start indexes the record into the store it failed on (22.S36)', () => {
     const question = ask(NOTE, 'Is a note a window?');
+    const { store: storeFile } = knowledgeFiles(statePath(dir));
+    const working = fs.readFileSync(storeFile);
+    fs.writeFileSync(storeFile, 'not a store');
     const decided = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A floating panel.', why: 'It follows the person.' });
 
     assert.match(decided.warnings.join('\n'), /^knowledge index \(\.knowledge\/records\/fumi\/note-window\.md\) failed: /m);
     assert.strictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
 
-    const files = knowledgeFiles(statePath(dir));
-    fs.rmSync(files.store);
-    fs.rmSync(files.metadata);
+    fs.writeFileSync(storeFile, working);
+    assert.ok(!indexedText().includes('A floating panel.'), 'the store held the decision before the start');
     ok(dir, ['boot']);
-    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
+    assert.ok(indexedText().includes('A floating panel.'), 'the start did not index the record the write failed to');
   });
 
   it('makes good a render that failed after an entry changed: the entry stands, the write warns, and the next start renders and indexes the record (22.S36)', () => {

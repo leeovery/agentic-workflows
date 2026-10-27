@@ -76,7 +76,8 @@
 //   from what its map shows: the question may stand elsewhere now, or not
 //   be current.
 //   A unit's own level has a record of its own: the entries standing in the
-//   unit on no topic.
+//   unit on no topic. Every place's record is built in one pass, each id's
+//   standing worked out once.
 // - The product record: the current entries marked product-wide (5.8.6).
 // ---------------------------------------------------------------------------
 
@@ -283,15 +284,27 @@ function isLive(folded, id) {
 }
 
 /**
+ * Where each id stands, as worked out for one folded ledger.
+ * @type {WeakMap<Folded, Map<string, Standing>>}
+ */
+const STANDINGS = new WeakMap();
+
+/**
  * Where `id` stands: where the earliest entry of its chain, back to the
  * first, made in a live place was made; where none is, where the first was.
  * @param {Folded} folded @param {string} id
  * @returns {Standing}
  */
 function standingOf(folded, id) {
-  let earliest = factsOf(folded, id).root;
-  for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
-  return madeOn(folded, earliest);
+  let known = STANDINGS.get(folded);
+  if (known === undefined) STANDINGS.set(folded, known = new Map());
+  let standing = known.get(id);
+  if (standing === undefined) {
+    let earliest = factsOf(folded, id).root;
+    for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
+    known.set(id, standing = madeOn(folded, earliest));
+  }
+  return standing;
 }
 
 /** The live replacements naming `id`. @param {Folded} folded @param {string} id */
@@ -606,14 +619,15 @@ function mapOf(folded, unit, topic) {
  */
 
 /**
- * The record of the entries `here` names in `unit`: what it shows, by id.
- * Nothing on a unit or topic that is not live, nor a move or merge made on
- * one.
+ * The record of the entries among `ids` that `here` names in `unit`: what
+ * it shows, by id. Nothing on a unit or topic that is not live, nor a move
+ * or merge made on one.
  * @param {Folded} folded @param {string} unit @param {string|null} topic the place whose liveness decides
+ * @param {Iterable<string>} ids the ids it may hold, in the ledger's order
  * @param {(id: string) => boolean} here whether `id` stands in the record
  * @returns {RecordIds}
  */
-function recordWhere(folded, unit, topic, here) {
+function recordFrom(folded, unit, topic, ids, here) {
   /** @type {RecordIds} */
   const record = { questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [] };
   if (folded.live(unit, topic) !== null) return record;
@@ -627,7 +641,8 @@ function recordWhere(folded, unit, topic, here) {
       outside.set(id, ties);
     }
   };
-  for (const [id, facts] of folded.facts) {
+  for (const id of ids) {
+    const facts = factsOf(folded, id);
     if (!here(id) || !isLive(folded, id)) continue;
     if (facts.event === 'moved') record.moved.push(id);
     if (facts.event === 'merged') {
@@ -649,38 +664,34 @@ function recordWhere(folded, unit, topic, here) {
  * @returns {RecordIds}
  */
 function recordOf(folded, unit, topic) {
-  return recordWhere(folded, unit, topic, (id) => standsAt(folded, id, unit, topic));
-}
-
-/**
- * The record of a unit's own level: the entries standing in it on no topic,
- * as every entry from the spec on does (5.2.3).
- * @param {Folded} folded @param {string} unit
- * @returns {RecordIds}
- */
-function unitLevelRecordOf(folded, unit) {
-  return recordWhere(folded, unit, null, (id) => {
-    const standing = standingOf(folded, id);
-    return standing.unit === unit && standing.topic === null;
-  });
+  return recordFrom(folded, unit, topic, folded.facts.keys(), (id) => standsAt(folded, id, unit, topic));
 }
 
 /**
  * Every place a live event stands in — a unit, and a topic or none at its
- * own level — once each, in the ledger's order.
+ * own level — with its record, in the ledger's order: each id's standing
+ * worked out once, and each record built from the ids standing in it alone.
  * @param {Folded} folded
- * @returns {Standing[]}
+ * @returns {{unit: string, topic: string|null, record: RecordIds}[]}
  */
-function placesOf(folded) {
-  /** @type {Map<string, Standing>} */
+function placeRecords(folded) {
+  /** @type {Map<string, {standing: Standing, ids: string[]}>} */
   const places = new Map();
   for (const id of folded.facts.keys()) {
     if (!isLive(folded, id)) continue;
     const standing = standingOf(folded, id);
     const key = `${standing.unit}\0${standing.topic ?? ''}`;
-    if (!places.has(key)) places.set(key, standing);
+    const place = places.get(key) ?? { standing, ids: [] };
+    place.ids.push(id);
+    places.set(key, place);
   }
-  return [...places.values()];
+  return [...places.values()].map(({ standing: { unit, topic }, ids }) => {
+    const here = (/** @type {string} */ id) => {
+      const standing = standingOf(folded, id);
+      return standing.unit === unit && standing.topic === topic;
+    };
+    return { unit, topic, record: recordFrom(folded, unit, topic, ids, here) };
+  });
 }
 
 /**
@@ -702,5 +713,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, factsOf, madeOn, standingOf, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  replacedChain, foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, unitLevelRecordOf, placesOf, productOf,
+  replacedChain, foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, placeRecords, productOf,
 };

@@ -486,22 +486,24 @@ function auditLedger(dir, ctx) {
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
 
-  auditCopies(root, shownAt, standing, (id) => byId.get(id).product_wide === true, full, ctx);
+  auditCopies(root, events, shownAt, standing, full, ctx);
 }
 
 // The ledger's copies in the knowledge directory, held to the records: a
 // copy for each place a shown entry stands in — its unit's own level, or a
 // topic — and for no other; each naming every entry shown there and no entry
 // that is not shown, so no replaced answer is in one; the product record's
-// file naming the shown entries marked product-wide alone; and the store
-// indexing the records' copies, never the product record's file.
+// file naming the shown entries marked product-wide alone; no words of an
+// entry that is not shown — a question's wording, an answer's text, its why
+// — in any copy or the product record's file, but where a shown entry says
+// them too; and the store indexing the records' copies, never the product
+// record's file.
 /**
- * @param {string} root @param {Map<string, string[]>} shownAt
+ * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
  * @param {(id: string) => {unit: string, topic: string|null}} standing
- * @param {(id: string) => boolean} productWide @param {(short: string) => string} full
- * @param {(msg: string) => string} ctx
+ * @param {(short: string) => string} full @param {(msg: string) => string} ctx
  */
-function auditCopies(root, shownAt, standing, productWide, full, ctx) {
+function auditCopies(root, events, shownAt, standing, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
   for (const id of shownAt.keys()) {
@@ -520,8 +522,18 @@ function auditCopies(root, shownAt, standing, productWide, full, ctx) {
     assert.deepStrictEqual(ids.filter((id) => !names.includes(id)), [], ctx(`${file} does not name every entry its record shows`));
     assert.deepStrictEqual(names.filter((id) => !shownAt.has(id)), [], ctx(`${file} names an entry that is not current`));
   }
-  assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter(productWide).sort(),
+  const byId = new Map(events.map((e) => [e.id, e]));
+  assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
+  /** @param {Record<string, any>} e @returns {string[]} */
+  const words = (e) => [e.text, e.why, e.how, ...(e.rules_out ?? [])].filter((w) => typeof w === 'string');
+  const shownWords = [...shownAt.keys()].flatMap((id) => words(byId.get(id)));
+  const unshown = events.filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event) && !shownAt.has(e.id))
+    .flatMap((e) => words(e).map((w) => [e.id, w])).filter(([, w]) => !shownWords.some((shown) => shown.includes(w)));
+  for (const file of [...copies, PRODUCT_FILE]) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.deepStrictEqual(unshown.filter(([, w]) => text.includes(w)), [], ctx(`${file} holds the words of an entry that is not shown`));
+  }
   const storeFile = knowledgeFiles(root).store;
   const indexed = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record').map((c) => c.source_file) : [];
   assert.deepStrictEqual([...new Set(indexed)].sort(), copies, ctx('the store does not index the record copies alone'));

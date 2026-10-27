@@ -45,7 +45,7 @@ const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs'
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile } = require('./ledger.cjs');
-const { ID_FACTS, readFolded, factsOf, standingOf, currentsOf, answersOf, recordOf, unitLevelRecordOf, placesOf, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, standingOf, currentsOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
 const { showerOf } = require('./ledger-read.cjs');
 const { liveness } = require('./ledger-units.cjs');
 const { recordCopy, productCopy } = require('./projections/ledger-copy.cjs');
@@ -77,15 +77,20 @@ function textOf(shower, id) {
   return /** @type {string} */ (shower.show(id).text);
 }
 
-/** The question a decision answers, in its current wording. @param {Shower} shower @param {string} decision */
+/**
+ * The question a decision answers, in its current wording, or null where
+ * none is current: its topic or unit set aside, or leading nowhere current.
+ * @param {Shower} shower @param {string} decision
+ * @returns {string|null}
+ */
 function questionOf(shower, decision) {
-  const asked = /** @type {string} */ (factsOf(shower.folded, decision).answers);
-  return currentsOf(shower.folded, asked)[0] ?? asked;
+  return currentsOf(shower.folded, /** @type {string} */ (factsOf(shower.folded, decision).answers))[0] ?? null;
 }
 
 /**
  * Decisions under the questions they answer, in the order each question is
- * first met.
+ * first met; a decision whose question is not current under its own text,
+ * so nothing that is not current lends a copy its words.
  * @param {Shower} shower @param {string[]} decisions @param {(id: string) => boolean} inCopy
  * @returns {Asked[]}
  */
@@ -93,7 +98,7 @@ function byQuestion(shower, decisions, inCopy) {
   /** @type {Map<string, Asked>} */
   const asked = new Map();
   for (const id of decisions) {
-    const question = questionOf(shower, id);
+    const question = questionOf(shower, id) ?? id;
     /** @type {Asked} */
     const group = asked.get(question) ?? { text: textOf(shower, question), question: null, answers: [] };
     group.answers.push(placed(shower, id, inCopy));
@@ -148,10 +153,9 @@ function copiesOf(root, notes) {
     const shower = showerOf({ facts, live }, entryAt);
     /** @type {Map<string, string>} */
     const copies = new Map();
-    for (const { unit, topic } of placesOf(shower.folded)) {
-      const ids = topic === null ? unitLevelRecordOf(shower.folded, unit) : recordOf(shower.folded, unit, topic);
-      if (ids.questions.length + ids.findings.length + ids.decisions.length === 0) continue;
-      copies.set(recordFile(unit, topic), recordText(shower, unit, topic, ids));
+    for (const { unit, topic, record } of placeRecords(shower.folded)) {
+      if (record.questions.length + record.findings.length + record.decisions.length === 0) continue;
+      copies.set(recordFile(unit, topic), recordText(shower, unit, topic, record));
     }
     copies.set(PRODUCT_FILE, productText(shower));
     return copies;
