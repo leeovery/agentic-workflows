@@ -596,7 +596,7 @@ n/no  → Leave it unset — setup carries on without it
 
 4.5.1 Boot finds the remote's state branch with no worktree and adds the worktree, locked. [plan 10.5, plan 9.2; Claude's]
 
-4.5.2 Finding neither a state worktree nor a state branch on the remote, on a project being set up, boot creates the orphan branch. A project being set up is one whose repository holds nothing the workflows commit to its code (6.3.11, 6.3.15): no workflows hook in its `.claude/settings.json` and no line naming `.leeway/` in its `.gitignore`, on any branch, this clone's or the remote's, or in any tree checked out. Where either is there, the state was lost, and boot stops as 4.4.5 says; a project on today's layout, its `.workflows/` still on the code branch, is the migration's (§21). Boot writes the `.gitignore` line only after the state branch exists, so a setup cut short never reads as lost state. [plan 10.5; Claude's; Claude's derivation 2026-10-25: the code tree's own trace tells a new project from lost state; Claude's derivation 2026-10-27, from the build: each boot leaves the trace on the branch its session has checked out, so the whole repository is read]
+4.5.2 Finding neither a state worktree nor a state branch on the remote, on a project being set up, boot creates the orphan branch. A project being set up is one whose repository holds nothing the workflows commit to its code (6.3.11, 6.3.15): no workflows hook in its `.claude/settings.json` and no line naming `.leeway/` in its `.gitignore`, on any branch, this clone's or the remote's, or in any tree checked out. Where either is there, the state was lost, and boot stops as 4.4.5 says; a project on today's layout, its `.workflows/` still on the code branch, is the migration's (§21). Boot writes the trace, the hooks and the `.gitignore` line, only after the state branch exists, so a setup cut short never reads as lost state. [plan 10.5; Claude's; Claude's derivation 2026-10-25: the code tree's own trace tells a new project from lost state; Claude's derivation 2026-10-27, from the build: each boot leaves the trace on the branch its session has checked out, so the whole repository is read]
 
 ### 4.7 A second clone
 
@@ -1244,7 +1244,7 @@ Screen, drawn by Claude: the engine stopped by a ledger line that isn't as commi
 
 6.3.14 Left to the builder: the code commit's message beyond the task's id. [Claude's sort, B17]
 
-6.3.15 The files the workflows own outside `.leeway/` are not code: the project's `.claude/settings.json` and `.gitignore`. Boot commits its own changes to them on the branch checked out, as today, and waits out any operation git holds open there — a merge, rebase, cherry-pick, revert or bisect — committing them at a later boot. A migration's changes to them go through the migration review, whose one yes makes one commit on the code branch and one on the state branch where it changed both (21.9.2). [today's product (`engine-commands.md:26`, `:436`); R15, R35, plan 6.3; Claude's derivation, T9; Claude's derivation 2026-10-27, from the build: a commit made inside an open operation takes on its state]
+6.3.15 The files the workflows own outside `.leeway/` are not code: the project's `.claude/settings.json` and `.gitignore`. Boot commits its own changes to them on the branch checked out, as today, and waits out any operation git holds open there — a merge, rebase, cherry-pick, revert or bisect — committing them at a later boot. Where a file also holds the person's own uncommitted edits, boot leaves its change uncommitted and says so, and commits it once theirs is in. A migration's changes to them go through the migration review, whose one yes makes one commit on the code branch and one on the state branch where it changed both (21.9.2). [today's product (`engine-commands.md:26`, `:436`); R15, R35, plan 6.3; Claude's derivation, T9; Claude's derivation 2026-10-27, from the build: a commit made inside an open operation takes on its state]
 
 ### 6.4 The checklists
 
@@ -10075,7 +10075,7 @@ r/roadmap → The roadmap, as postponed topics — I'll ask which
 
 21.9.1 Finish is code: the records are indexed (§22), then the migration's commit is made on the person's yes, as today. [R37, R44, plan 5.2]
 
-21.9.2 The migration's commit is two commits: the default branch dropping `.workflows/` and Tick's `.tick/` (21.5.18), and the state branch's first. [plan 6.3, R37; Claude's, agreed; Claude's derivation, O81]
+21.9.2 The migration's commit is two commits: the default branch dropping `.workflows/` and Tick's `.tick/` (21.5.18) and taking the project's files to the new names (21.5.19), and the state branch's first. [plan 6.3, R37; Claude's, agreed; Claude's derivation, O81]
 
 21.9.3 Nothing is committed before the migration's commit. [R38]
 
@@ -10256,7 +10256,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S50 Given a project whose baseline status records `native`, and another whose status records `skipped`, when the migration runs, then neither holds a baseline status field, each project manifest remembers the brownfield offer's answer, and the start menu makes neither the offer. (21.11.2, 8.12.11)
 
-21.S51 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows/` is gone, the project's settings hooks and `.gitignore` name `.leeway/` and the engine under its new name, and its `.worktreeinclude` holds none of the workflows' lines. (21.5.19)
+21.S51 Given a project on today's layout and a `~/.config/workflows/` holding its config, its credentials and its conversations' folders, when the migration's move runs, then `~/.config/leeway/` holds them unchanged and `~/.config/workflows/` is gone, the project's settings hooks and `.gitignore` name `.leeway/` and the engine under its new name, and its `.worktreeinclude` holds none of the workflows' lines, or is gone where it held nothing else, all in the migration's commit on the code branch. (21.5.19)
 
 ## 22. Setup, environment and the knowledge base
 
