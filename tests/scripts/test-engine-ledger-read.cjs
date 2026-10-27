@@ -5,21 +5,22 @@
 // the fold they read through (domain/ledger-fold.cjs) and the one liveness
 // rule (domain/ledger-units.cjs): `engine ledger record|map|product`, each a
 // projection of the ledger answered as JSON — the current entries standing
-// in a unit or a topic, each where the first entry of its chain stands,
-// with the live answers it replaced folded beneath it and the confirmations
-// that it still holds, its moves, its merges each with its duplicate, and
-// the current entries standing elsewhere that it relies on or that answer
-// its questions, read from their own lines; a topic's questions, where each
-// stands and its answers, which its record shows too; the entries marked
-// product-wide. Siblings stand apart; a reworded question keeps its
-// answers and its parts; a merged duplicate is no second entry; a cancelled
-// topic or unit, or a postponed topic while it waits, holds nothing current
-// until it comes back — and a replacement, a merge or a confirmation made
-// there counts for nothing meanwhile, and a chain goes with the place it
-// stands on — and the write verbs decide by the same rule; of merges
-// crossing each other, the later holds, whichever entry is read first. A ledger
-// past the 64 MiB a pipe holds is read without being held: each read
-// answers under a heap a reader holding its lines cannot fit in.
+// in a unit or a topic, each where the earliest entry of its chain in a
+// live place stands, with the live answers it replaced folded beneath it
+// and the confirmations that it still holds, its moves, its merges each
+// with its duplicate, and the current entries standing elsewhere that it
+// relies on or that answer its questions, read from their own lines; a
+// topic's questions, where each stands and its answers, which its record
+// shows too; the entries marked product-wide. Siblings stand apart; a
+// reworded question keeps its answers and its parts; a merged duplicate is
+// no second entry; a cancelled topic or unit, or a postponed topic while it
+// waits, holds nothing current until it comes back — and a replacement, a
+// merge or a confirmation made there counts for nothing meanwhile, while
+// another unit's replacement of an entry there stands where it was made —
+// and the write verbs decide by the same rule; of merges crossing each
+// other, the later holds, whichever entry is read first. A ledger past the
+// 64 MiB a pipe holds is read without being held: each read answers under a
+// heap a reader holding its lines cannot fit in.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // units' manifests written there; the lifecycle verbs cancel, postpone and
@@ -787,21 +788,47 @@ describe('liveness (5.8.17)', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window').findings, [current(relying, [], [confirmed])]);
   });
 
-  it('takes a chain with the place it stands on: another unit\'s replacement in a cancelled unit, and one from the spec on a cancelled topic, are current nowhere', () => {
+  it('stands another unit\'s replacement where it was made while the entry it replaced is set aside: its unit cancelled, then its topic, each until reactivated (5.6.1)', () => {
     mint();
     const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.', [], { product_wide: true });
     const minted = change('mint.discussion.mint', decided, 'A sheet.');
-    const specced = decide(SPACE, ask(SPACE, 'Does a note follow the person?'), 'It follows.', [], { product_wide: true });
-    const fromSpec = changeFromSpec(specced, { text: 'It follows, on every display.', why: 'Displays.' });
-    assert.deepStrictEqual(ids(read('product').decisions), [minted, fromSpec]);
-
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
-    assert.deepStrictEqual([ids(read('record', UNIT).decisions), ids(read('product').decisions)], [[minted], [minted]]);
+    /** Where the replacement shows: the topic it replaced on, each unit's record, and the product record. */
+    const shown = () => ({
+      note: read('record', UNIT, 'note-window').decisions,
+      fumi: ids(read('record', UNIT).decisions),
+      mint: read('record', 'mint').decisions,
+      product: ids(read('product').decisions),
+    });
+    const standing = { note: [current(minted, [decided])], fumi: [minted], mint: [], product: [minted] };
+    const fallenBack = { note: [], fumi: [], mint: [current(minted)], product: [minted] };
+    assert.deepStrictEqual(shown(), standing);
 
     ok(dir, ['workunit', 'cancel', UNIT]);
-    assert.deepStrictEqual([read('record', 'mint').decisions, read('product').decisions], [[], []]);
-    const refusal = refuses(dir, ['ledger', 'hold', 'mint.discussion.mint', '--entry', minted, '--after', minted], { env: SESSION, stdin: JSON.stringify(MADE) });
-    assert.match(refusal.error, new RegExp(`^ledger hold --entry names ${minted}, which is not current: ${UNIT} is cancelled$`));
+    assert.deepStrictEqual(shown(), fallenBack);
+    ok(dir, ['workunit', 'reactivate', UNIT]);
+    assert.deepStrictEqual(shown(), standing);
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+    assert.deepStrictEqual(shown(), fallenBack);
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+    assert.deepStrictEqual(shown(), standing);
+  });
+
+  it('stands a chain across three units where its earliest entry in a live place stands: the first unit cancelled, then the second', () => {
+    mint();
+    createManifest(dir, 'zeta', { work_type: 'feature', phases: { discussion: { items: { zeta: { status: 'in-progress' } } } } });
+    const decided = decide(NOTE, ask(NOTE, 'Is a note a window?'), 'A panel.', [], { product_wide: true });
+    const minted = change('mint.discussion.mint', decided, 'A sheet.');
+    const latest = change('zeta.discussion.zeta', minted, 'A card.');
+    const shown = () => ({
+      fumi: read('record', UNIT).decisions, mint: read('record', 'mint').decisions, zeta: read('record', 'zeta').decisions, product: ids(read('product').decisions),
+    });
+    assert.deepStrictEqual(shown(), { fumi: [current(latest, [minted, decided])], mint: [], zeta: [], product: [latest] });
+
+    ok(dir, ['workunit', 'cancel', UNIT]);
+    assert.deepStrictEqual(shown(), { fumi: [], mint: [current(latest, [minted])], zeta: [], product: [latest] });
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    assert.deepStrictEqual(shown(), { fumi: [], mint: [], zeta: [current(latest)], product: [latest] });
   });
 
   it('sets a merged duplicate aside only while the entry it went into has a current form: the owner\'s topic cancelled, the duplicate answers its question again, until the topic is reactivated (5.5.5)', () => {

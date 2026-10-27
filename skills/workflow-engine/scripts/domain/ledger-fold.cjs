@@ -19,12 +19,15 @@
 // again.
 //
 // Read against liveness, the state answers:
-// - Where an entry stands: where the first entry of its chain stood, as a
-//   question stands where it was last moved, however and wherever a later
-//   entry of the chain was written.
-// - Whether an event is live: the unit and topic it was made on are, and
-//   those it stands on (ledger-units.cjs). A chain goes with the place it
-//   stands on, so a current entry is always one a live record shows.
+// - Whether an event is live: the unit and topic it was made on are
+//   (ledger-units.cjs), a question's wording on the topic it was last moved
+//   to.
+// - Where an entry stands: where the earliest entry of its chain made in a
+//   live place stands. Normally that is the first entry, a question where
+//   it was last moved, however and wherever a later entry of the chain was
+//   written; while the first entry's place is set aside, the earliest live
+//   replacement stands where it was made, so a current entry is always one
+//   a live record shows.
 // - Whether an entry is current, by one rule (5.8.17, 5.3.13): it is live,
 //   no live entry replaces it, and no merge that holds took it as a
 //   duplicate. A merge holds while it is live and the entry it went into,
@@ -234,27 +237,29 @@ function factsOf({ facts }, id) {
   return named(facts, id);
 }
 
-/** Where `id` stands: where the first entry of its chain stands. @param {Folded} folded @param {string} id @returns {Standing} */
-function standingOf(folded, id) {
-  const first = factsOf(folded, factsOf(folded, id).root);
-  return { unit: first.unit, topic: first.topic };
-}
-
-/**
- * Why `id` is not live — the unit or topic it was made on, or the one it
- * stands on, set aside — or null where it is.
- * @param {Folded} folded @param {string} id
- * @returns {string|null}
- */
+/** Why `id` is not live — the unit or topic it was made on set aside — or null where it is. @param {Folded} folded @param {string} id */
 function whyDead(folded, id) {
   const facts = factsOf(folded, id);
-  const standing = standingOf(folded, id);
-  return folded.live(facts.unit, facts.topic) ?? folded.live(standing.unit, standing.topic);
+  return folded.live(facts.unit, facts.topic);
 }
 
 /** Whether `id` is live. @param {Folded} folded @param {string} id */
 function isLive(folded, id) {
   return whyDead(folded, id) === null;
+}
+
+/**
+ * Where `id` stands: where the earliest entry of its chain, back to the
+ * first, made in a live place stands; where none is, where the first
+ * stands.
+ * @param {Folded} folded @param {string} id
+ * @returns {Standing}
+ */
+function standingOf(folded, id) {
+  let earliest = factsOf(folded, id).root;
+  for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
+  const { unit, topic } = factsOf(folded, earliest);
+  return { unit, topic };
 }
 
 /** The live replacements naming `id`. @param {Folded} folded @param {string} id */

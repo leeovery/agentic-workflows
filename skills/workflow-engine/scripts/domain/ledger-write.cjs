@@ -25,11 +25,12 @@
 //   by the one rule every read decides by (ledger-fold.cjs).
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
-//   (5.6.1) or held. An entry is the unit's, and stands on the topic, where
-//   the first entry of its chain stands, a question where it was last moved;
-//   before the spec, an entry of the unit is written on only from the topic
-//   it stands on: another topic's change goes to it by message (5.6.9,
-//   10.2.2).
+//   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
+//   the earliest entry of its chain in a live place stands on — normally the
+//   first, a question where it was last moved — by the rule every read
+//   places it by (ledger-fold.cjs); before the spec, an entry of the unit is
+//   written on only from the topic it stands on: another topic's change goes
+//   to it by message (5.6.9, 10.2.2).
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
 //   other than the one it goes into (5.5.4, 5.5.5); a held entry relies on

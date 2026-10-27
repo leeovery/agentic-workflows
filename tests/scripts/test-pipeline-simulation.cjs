@@ -267,10 +267,11 @@ function auditState(dir, label) {
 // The ledger's projections, held to properties the events and the manifests
 // settle whatever the fold does inside, both read here directly: a unit is
 // live while its manifest is there and not cancelled, a topic while its map
-// row is neither cancelled nor postponed; an entry stands where the first
-// entry of its chain stands, a question where it was last moved, and is in
-// a live place while that place and the one it was made on are live — a
-// question's wording of the unit taking the topic it stands on. Current is
+// row is neither cancelled nor postponed; an event is in a live place while
+// the unit and topic it was made on are live — a question's wording taking
+// the topic a later move of its unit made from a wording at or after it
+// moved it to — and an entry stands where the earliest entry of its chain
+// in a live place stands, or where the first does when none is. Current is
 // what the records show. Every entry in a live place is shown, or leads to a
 // shown entry down its live replacements or, with none, its live merges; a
 // shown entry is in a live place, no live replacement names it, no live
@@ -313,18 +314,26 @@ function auditLedger(dir, ctx) {
   const chainOf = (id) => (replacedBy(id) === null ? [id] : [id, ...chainOf(/** @type {string} */ (replacedBy(id)))]);
   /** @param {string} id @returns {Record<string, any>} */
   const firstOf = (id) => byId.get(/** @type {string} */ (chainOf(id).at(-1)));
-  /** @type {Map<string, string>} */
-  const movedTo = new Map();
-  for (const e of events) if (e.event === 'moved') movedTo.set(firstOf(e.question).id, e.to);
-  /** @param {string} id @returns {{unit: string, topic: string|null}} */
-  const standing = (id) => ({ unit: firstOf(id).unit, topic: movedTo.get(firstOf(id).id) ?? firstOf(id).topic });
   /** @param {Record<string, any>} e */
   const isQuestion = (e) => e.event === 'asked' || e.of === 'question';
+  const movesMade = events.filter((e) => e.event === 'moved');
+  /** @type {Map<string, string|null>} */
+  const madeOn = new Map();
+  /** The topic `id` was made on, or the one the last move of a wording at or after it moved it to. @param {string} id */
+  const topicOf = (id) => {
+    if (!madeOn.has(id)) {
+      const e = byId.get(id);
+      const move = isQuestion(e) ? movesMade.filter((m) => m.unit === e.unit && chainOf(m.question).includes(id)).at(-1) : undefined;
+      madeOn.set(id, move === undefined ? e.topic : move.to);
+    }
+    return /** @type {string|null} */ (madeOn.get(id));
+  };
   /** @param {string} id */
-  const inLivePlace = (id) => {
-    const e = byId.get(id);
-    const at = standing(id);
-    return placeLive(at.unit, at.topic) && placeLive(e.unit, ENTRIES.includes(e.event) && isQuestion(e) && e.unit === at.unit ? at.topic : e.topic);
+  const inLivePlace = (id) => placeLive(byId.get(id).unit, topicOf(id));
+  /** @param {string} id @returns {{unit: string, topic: string|null}} */
+  const standing = (id) => {
+    const at = /** @type {string} */ (chainOf(id).filter(inLivePlace).at(-1) ?? chainOf(id).at(-1));
+    return { unit: byId.get(at).unit, topic: topicOf(at) };
   };
   const liveEvents = (/** @type {string} */ event) => events.filter((e) => e.event === event && inLivePlace(e.id));
   const replacements = liveEvents('replaced');

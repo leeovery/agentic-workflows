@@ -11,14 +11,14 @@
 //   pass opened, so its cost in memory is the fold's plus what it shows.
 // - Current entries only, by the one rule (5.8.17), so a session in any unit
 //   reads any unit's entries directly (5.1.5, 5.8.11): `ledger record` reads
-//   the entries standing in a unit, or one topic — each where the first
-//   entry of its chain stands, a question where it was last moved — each
-//   current entry with the live entries it replaced folded beneath it,
-//   newest first, and the live confirmations that it still holds (5.6.5);
-//   the questions moved away, and the merges made there, each with the
-//   duplicate it named; and, read from their own current entries, never
-//   copied, the entries standing elsewhere that it relies on, merged into,
-//   or that answer its questions (5.8.4). `ledger map` reads a topic's
+//   the entries standing in a unit, or one topic — each where the earliest
+//   entry of its chain in a live place stands, a question where it was last
+//   moved — each current entry with the live entries it replaced folded
+//   beneath it, newest first, and the live confirmations that it still
+//   holds (5.6.5); the questions moved away, and the merges made there, each
+//   with the duplicate it named; and, read from their own current entries,
+//   never copied, the entries standing elsewhere that it relies on, merged
+//   into, or that answer its questions (5.8.4). `ledger map` reads a topic's
 //   questions, each answered as its record shows it. A unit or topic that is
 //   not live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
