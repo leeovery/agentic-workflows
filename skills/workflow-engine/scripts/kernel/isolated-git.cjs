@@ -14,6 +14,11 @@
 // each hook the config defines by name (git 2.54 on) is disabled by that
 // name. The fsmonitor hook goes off with them.
 //
+// Files go into git and come out of it as the bytes they are, whatever the
+// person's config says: line endings are never converted (`core.autocrlf`),
+// and the person's own attributes file (`core.attributesFile`), which can
+// name a conversion for every path, is never read.
+//
 // Mechanism only: it knows nothing about the workflows' state.
 // ---------------------------------------------------------------------------
 
@@ -49,6 +54,7 @@ const REPOSITORY_ENV = Object.freeze([
 ]);
 
 const HOOKS_OFF = Object.freeze(['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=']);
+const CONVERSION_OFF = Object.freeze(['-c', 'core.autocrlf=false', '-c', 'core.attributesFile=/dev/null']);
 
 /**
  * A call's stdin, its time limit, variables layered over the isolated
@@ -111,8 +117,8 @@ function hooksOffEnv(cwd) {
 }
 
 /**
- * A git runner bound to `cwd`, isolated and with hooks off. The config's
- * hooks are read once, at the runner's first call.
+ * A git runner bound to `cwd`, isolated, with hooks and conversions off. The
+ * config's hooks are read once, at the runner's first call.
  * @param {string} cwd
  * @returns {IsolatedGit}
  */
@@ -123,7 +129,7 @@ function isolatedGit(cwd) {
   /** @param {string[]} args @param {RunOptions} opts */
   function spawn(args, { input, timeoutMs, env, out } = {}) {
     base ??= hooksOffEnv(cwd);
-    return spawnSync('git', [...HOOKS_OFF, ...args], {
+    return spawnSync('git', [...HOOKS_OFF, ...CONVERSION_OFF, ...args], {
       cwd, encoding: 'utf8', input, timeout: timeoutMs, env: { ...base, ...env }, maxBuffer: READ_BUDGET_BYTES, stdio: ['pipe', out ?? 'pipe', 'pipe'],
     });
   }

@@ -15,8 +15,10 @@
 // changed stopping the merge with nothing written, kept for the person's
 // picks; the git calls a merge makes, and the files it reads past the read
 // budget; a catch-up killed between its steps, or raced by another
-// session's write, losing nothing; and the pick and the screen through the
-// engine's CLI, the screen answering while a peer holds the writer lock.
+// session's write, losing nothing; the state byte for byte whatever line
+// endings the person's git config names; and the pick and the screen
+// through the engine's CLI, the screen answering while a peer holds the
+// writer lock.
 //
 // Real repositories in temp folders: a bare remote, and two clones of the
 // state, each with its state worktree made through the machinery. A `git`
@@ -51,6 +53,7 @@ const {
 const { stateMergeGate } = require(path.join(SCRIPTS, 'domain/projections/state-merge.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
+const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 
 /** @type {string} */
 let world;
@@ -1331,6 +1334,39 @@ describe('any other file both sides changed', () => {
       'unit/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
       'unit/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
     ]);
+  });
+});
+
+describe('the person\'s line-ending config', () => {
+  it('leaves the state byte for byte through a checkout, a state commit and a merge, its status clean, under a global config converting line endings and a global attributes file naming CRLF', () => {
+    const SPEC = 'unit/spec.md';
+    const IMPORT = 'unit/imports/notes.txt';
+    const attributes = path.join(world, 'attributes');
+    const config = path.join(world, 'gitconfig');
+    fs.writeFileSync(attributes, '* text eol=crlf\n');
+    fs.writeFileSync(config, `[core]\n\tautocrlf = true\n\tattributesFile = ${attributes}\n`);
+    const pinned = process.env.GIT_CONFIG_GLOBAL;
+    process.env.GIT_CONFIG_GLOBAL = config;
+    try {
+      const base = { '.ledger.jsonl': ledger('base'), [SPEC]: 'ONE\n\nTWO\n', [IMPORT]: 'ONE\r\nTWO\r\n' };
+      const { here, there } = twoMachines(base);
+      const exact = (/** @type {Machine} */ machine, /** @type {Record<string, string>} */ files) => {
+        const isolated = isolatedGit(machine.root);
+        assert.deepStrictEqual(Object.keys(files).map((file) => [read(machine.root, file), isolated.run(['cat-file', 'blob', `HEAD:${file}`])]), Object.values(files).map((text) => [text, text]));
+        assert.strictEqual(isolated.run(['status', '--porcelain', '--untracked-files=all']), '');
+      };
+      exact(there, base);
+
+      commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), [SPEC]: 'ONE\n\ntwo\n' });
+      commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1'), [SPEC]: 'one\n\nTWO\n', [IMPORT]: 'ONE\r\nTWO\r\nTHREE\r\n' });
+      exact(here, { '.ledger.jsonl': ledger('base', 'a1'), [SPEC]: 'one\n\nTWO\n', [IMPORT]: 'ONE\r\nTWO\r\nTHREE\r\n' });
+      const out = catchUpState(here.root);
+
+      assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
+      exact(here, { '.ledger.jsonl': ledger('base', 'b1', 'a1'), [SPEC]: 'one\n\ntwo\n', [IMPORT]: 'ONE\r\nTWO\r\nTHREE\r\n' });
+    } finally {
+      process.env.GIT_CONFIG_GLOBAL = pinned;
+    }
   });
 });
 
