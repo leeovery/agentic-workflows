@@ -2,10 +2,18 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the boot pipeline — the sequential entry checks Step 0 needs,
-// collapsed into one call: run migrations, probe the knowledge base, and when
-// it is ready bring the store's keyword side in line with the files, compact
-// it, and hand the vectors it awaits to the background fill — a start never
-// waits on embedding.
+// collapsed into one call: put the state in place and catch it up, run
+// migrations, probe the knowledge base, and when it is ready bring the
+// store's keyword side in line with the files, compact it, and hand the
+// vectors it awaits to the background fill — a start never waits on
+// embedding.
+//
+// The state comes first, before anything writes it (state-checks.cjs): the
+// branch and its worktree put in place — or set up, or, lost, the stop
+// whose yes is `boot --start-again` — then the catch-up from the remote,
+// whose stop on a field both clones changed ends boot there for the
+// person's pick (state-merge.cjs). Then the main checkout's `.gitignore`
+// keeps the state's ignore line, committed through the code door.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
 // error — migrations must never half-run silently. The run records into the
@@ -44,6 +52,10 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { systemConfigPath } = require('../kernel/knowledge/config.cjs');
 const { commitPathspecScoped, commitStateScoped } = require('./commit.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
+const { placeState } = require('./state-checks.cjs');
+const { catchUpState } = require('./state-merge.cjs');
+const { keepStateIgnored } = require('./code-trace.cjs');
+const { githubRuleOffered } = require('./github-rule.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks } = require('./session-label.cjs');
@@ -107,7 +119,21 @@ const LEDGER = '.state/migrations';
  */
 
 /**
+ * Boot stopped by the state, before anything wrote it: `lost`, the state
+ * branch gone here and on the remote in a project holding the workflows'
+ * trace — `render state-lost-gate` draws the stop, and its yes is `boot
+ * --start-again`; `merge`, the catch-up stopped by a field both clones
+ * changed — `render state-merge-gate` draws it, and `state-merge pick`
+ * answers it.
+ * @typedef {object} BootStop
+ * @property {'lost'|'merge'} state
+ * @property {string[]} warnings
+ */
+
+/**
  * @typedef {object} BootResult
+ * @property {'ready'|'restarted'} state `restarted` where this boot started a lost state again, on the person's yes — the product's read of the code follows
+ * @property {boolean} github_rule_offer the state's remote is on GitHub and the rule against deleting or force-pushing its branch was never answered — `render github-rule-gate` offers it, and `github-rule <yes|no>` answers
  * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[], notices: MigrationNotice[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
@@ -195,18 +221,26 @@ function trimReport(stdout) {
 }
 
 /**
- * Run the boot pipeline against the project at `cwd`.
+ * Run the boot pipeline against the project at `cwd`. `startAgain` is the
+ * person's yes at the lost-state stop: a state still lost is started again.
  * @param {string} cwd project root
- * @returns {BootResult}
+ * @param {{startAgain?: boolean}} [opts]
+ * @returns {BootResult|BootStop}
  */
-function boot(cwd) {
+function boot(cwd, { startAgain = false } = {}) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
-  /** @type {string[]} */
-  const warnings = [];
-  const { migrations, migrationsCommitted } = withStateLock(stateRoot(cwd), () => runMigrations(cwd, warnings));
+  const placed = placeState(cwd, { startAgain });
+  if (placed.lost) return { state: 'lost', warnings: [] };
+  const root = stateRoot(cwd);
+  const warnings = [...placed.warnings];
+  const caught = catchUpState(root, { listing: placed.listing });
+  warnings.push(...caught.warnings);
+  if (caught.action === 'stopped') return { state: 'merge', warnings };
+  keepStateIgnored(cwd, warnings);
+
+  const { migrations, migrationsCommitted } = withStateLock(root, () => runMigrations(cwd, warnings));
 
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
-
 
   // While a reviewed migration commit follows, it takes every path the
   // workflows own, so boot's own writes there ride it as the ledger does —
@@ -218,7 +252,7 @@ function boot(cwd) {
 
   const baseline = baselineState(cwd).status;
   /** @type {BootResult} */
-  const result = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status };
+  const result = { state: placed.made === 'restarted' ? 'restarted' : 'ready', migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, gate_surface: gateSurface(cwd), baseline, walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd) };
   // The signal travels only while nothing is recorded: the calling skill
   // judges once, then the verdict is on the manifest.
   if (baseline === 'none') result.baseline_signal = baselineSignal(cwd);

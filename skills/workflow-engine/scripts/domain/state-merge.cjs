@@ -6,8 +6,9 @@
 // only where a push failed. Boot runs the catch-up before anything writes
 // state (4.7.8); it loses nothing, and never rewrites what was pushed.
 //
-// - Catching up: ask the state's remote where its `leeway-state` stands,
-//   and fetch it where this clone lacks that tip. Where only the remote
+// - Catching up: ask the state's remote where its `leeway-state` stands —
+//   or take the answer boot's checks got, so a boot asks once — and fetch
+//   it where this clone lacks that tip. Where only the remote
 //   moved, the branch fast-forwards to it with no commit; where only this
 //   clone moved, it pushes what a failed push left behind; where both moved,
 //   it merges. No remote, or a remote holding no state branch, leaves
@@ -51,7 +52,9 @@ const path = require('path');
 const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { GitError } = require('../kernel/git.cjs');
 const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState } = require('./state-worktree.cjs');
+const {
+  STATE_BRANCH, stateRoot, inspectState, withStateLock, pushState, askStateRemote, fetchStateTip,
+} = require('./state-worktree.cjs');
 const { ruleOf, choiceId } = require('./state-merge-rules.cjs');
 const { changedPaths, entriesOf, writeTree, mergeTrees } = require('./state-merge-paths.cjs');
 const { workingEntries, planWorktree } = require('./state-merge-worktree.cjs');
@@ -79,6 +82,7 @@ const NOT_ASKED = 'the pick answered a question the state merge no longer asks, 
 /** @typedef {import('./state-merge-paths.cjs').PickOf} PickOf */
 /** @typedef {import('./state-merge-worktree.cjs').WorktreePlan} WorktreePlan */
 /** @typedef {import('./state-merge-landing.cjs').Landing} Landing */
+/** @typedef {import('./state-worktree.cjs').RemoteAnswer} RemoteAnswer */
 
 /**
  * The state worktree opened for a catch-up: the merge's context, the
@@ -342,54 +346,44 @@ function pushWithLease(state, onto, timeoutMs) {
 // --- one catch-up step, and the bounded loop -------------------------------
 
 /**
- * A call to the remote: its output, or, where it fails, the outcome that
- * leaves the session on the state it has.
- * @param {State} state @param {string[]} args @param {number} timeoutMs
- * @returns {{out: string}|{outcome: CatchUpOutcome}}
+ * The outcome that leaves the session on the state it has, the remote out
+ * of reach.
+ * @param {State} state @param {string} why
+ * @returns {{outcome: CatchUpOutcome}}
  */
-function overNetwork(state, args, timeoutMs) {
-  try {
-    return { out: state.main.run(args, { timeoutMs, env: NETWORK_ENV }) };
-  } catch (err) {
-    if (!(err instanceof GitError)) throw err;
-    return {
-      outcome: outcome(state, 'unreachable', {
-        warnings: [`${STATE_BRANCH} could not be fetched from ${state.remote}, so this session works on the state it has: ${err.message}`],
-      }),
-    };
-  }
+function unreachable(state, why) {
+  return {
+    outcome: outcome(state, 'unreachable', {
+      warnings: [`${STATE_BRANCH} could not be fetched from ${state.remote}, so this session works on the state it has: ${why}`],
+    }),
+  };
 }
 
 /**
  * Bring the remote's state branch here, answering its tip, or the outcome
  * where there is nothing to bring or the remote cannot be reached. The
- * remote is asked once where its tip stands; a tip this clone already holds
- * needs no fetch, and a remote holding no state branch leaves its stale
+ * remote is asked once where its tip stands — or its answer is the one
+ * given, asked already by the caller; a tip this clone already holds needs
+ * no fetch, and a remote holding no state branch leaves its stale
  * remote-tracking branch to go.
- * @param {State} state @param {number} timeoutMs
+ * @param {State} state @param {number} timeoutMs @param {RemoteAnswer} [asked]
  * @returns {{tip: string}|{outcome: CatchUpOutcome}}
  */
-function fetchState(state, timeoutMs) {
-  const { remote, remotes } = state;
-  if (remote === null) {
-    const warnings = remotes.length === 0 ? [] : [
-      `${STATE_BRANCH} was not fetched: the project has several remotes (${remotes.join(', ')}), and none is named origin or tracked by the main checkout's branch`,
+function fetchState(state, timeoutMs, asked) {
+  const answer = asked ?? askStateRemote(state.root, { timeoutMs });
+  if (answer.remote === null) {
+    const warnings = answer.remotes.length === 0 ? [] : [
+      `${STATE_BRANCH} was not fetched: the project has several remotes (${answer.remotes.join(', ')}), and none is named origin or tracked by the main checkout's branch`,
     ];
     return { outcome: outcome(state, 'nothing', { reason: 'no-remote', warnings }) };
   }
-  const listed = overNetwork(state, ['ls-remote', remote, BRANCH_REF], timeoutMs);
-  if ('outcome' in listed) return listed;
-  const tip = listed.out.split('\n').map((line) => line.split('\t')).find(([, ref]) => ref === BRANCH_REF)?.[0];
-  if (tip === undefined) {
-    state.main.tryRun(['update-ref', '-d', trackingRef(remote)]);
+  if ('unreachable' in answer) return unreachable(state, answer.unreachable);
+  if (answer.tip === null) {
+    state.main.tryRun(['update-ref', '-d', trackingRef(answer.remote)]);
     return { outcome: outcome(state, 'nothing', { reason: 'no-remote-branch' }) };
   }
-  if (state.main.tryRun(['cat-file', '-e', `${tip}^{commit}`]) !== null) {
-    state.main.run(['update-ref', trackingRef(remote), tip]);
-    return { tip };
-  }
-  const fetched = overNetwork(state, ['fetch', '--quiet', '--no-tags', '--no-write-fetch-head', remote, `+${BRANCH_REF}:${trackingRef(remote)}`], timeoutMs);
-  return 'outcome' in fetched ? fetched : { tip: tipOf(state.main, trackingRef(remote)) };
+  const failed = fetchStateTip(state.root, answer.remote, answer.tip, { timeoutMs });
+  return failed === null ? { tip: tipOf(state.main, trackingRef(answer.remote)) } : unreachable(state, failed);
 }
 
 /**
@@ -435,10 +429,11 @@ function mergeSides(state, sides, timeouts) {
  * One step: fetch, then act on where the two sides stand. After a push that
  * failed, a remote that has not moved since ends the loop with that failure.
  * @param {State} state @param {Timeouts} timeouts @param {Retry|null} retry
+ * @param {RemoteAnswer} [asked] the remote's answer, where the caller asked it already
  * @returns {{outcome: CatchUpOutcome}|{retry: Retry}}
  */
-function step(state, timeouts, retry) {
-  const fetched = fetchState(state, timeouts.fetchMs);
+function step(state, timeouts, retry, asked) {
+  const fetched = fetchState(state, timeouts.fetchMs, asked);
   if ('outcome' in fetched) {
     return { outcome: retry === null ? fetched.outcome : { ...retry.outcome, warnings: [...retry.outcome.warnings, ...fetched.outcome.warnings] } };
   }
@@ -451,20 +446,22 @@ function step(state, timeouts, retry) {
 
 /**
  * Catch up: first finish a landing a kill cut short, then step, retrying
- * while the remote moves under the push. What earlier steps merged rides on
- * the outcome the last one answers. A kept stop goes once the catch-up
- * settles anywhere but at a stop or an unreachable remote.
- * @param {State} state @param {Timeouts} timeouts
+ * while the remote moves under the push — the first step on the remote's
+ * answer where the caller asked it already, each retry asking afresh. What
+ * earlier steps merged rides on the outcome the last one answers. A kept
+ * stop goes once the catch-up settles anywhere but at a stop or an
+ * unreachable remote.
+ * @param {State} state @param {Timeouts} timeouts @param {RemoteAnswer} [asked]
  * @returns {CatchUpOutcome}
  */
-function converge(state, timeouts) {
+function converge(state, timeouts, asked) {
   const carried = { notes: finishLanding(state.root, STATE_BRANCH, state.gitDir), merged: /** @type {string[]} */ ([]) };
   /** @type {Retry|null} */
   let retry = null;
   /** @type {CatchUpOutcome|null} */
   let settled = null;
   for (let attempt = 1; attempt <= MERGE_ATTEMPTS && settled === null; attempt++) {
-    const next = step(state, timeouts, retry);
+    const next = step(state, timeouts, retry, attempt === 1 ? asked : undefined);
     if ('outcome' in next) {
       settled = next.outcome;
     } else {
@@ -495,13 +492,14 @@ function timeoutsOf({ fetchTimeoutMs = FETCH_TIMEOUT_MS, pushTimeoutMs = PUSH_TI
 /**
  * Bring the state up to date with the remote's (4.7.8), under the writer
  * lock: fast-forward, push what a failed push left behind, or merge. Boot
- * runs it before anything writes state.
+ * runs it before anything writes state, on the remote's answer its own
+ * checks asked (`listing`), so the remote is asked once.
  * @param {string} root  the state root
- * @param {CatchUpOptions} [opts]
+ * @param {CatchUpOptions & {listing?: RemoteAnswer}} [opts]
  * @returns {CatchUpOutcome}
  */
 function catchUpState(root, opts = {}) {
-  return withStateLock(root, () => converge(openState(root, opts), timeoutsOf(opts)));
+  return withStateLock(root, () => converge(openState(root, opts), timeoutsOf(opts), opts.listing));
 }
 
 /**

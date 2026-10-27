@@ -225,6 +225,7 @@ describe('engine boot', () => {
 
     assert.deepStrictEqual(res, {
       ok: true,
+      state: 'ready',
       migrations: { changed: false, ran: 0, output: '[SKIP] No changes needed', verify: [], notices: [] },
       knowledge: 'ready',
       indexed: true,
@@ -237,6 +238,7 @@ describe('engine boot', () => {
       gate_surface: 'unavailable',
       baseline: 'none',
       walkthrough: 'none',
+      github_rule_offer: false,
       // The state arrived beside the fixture's first code commit, its
       // `.gitignore`: that commit came before it, and the rest after.
       baseline_signal: {
@@ -305,12 +307,14 @@ describe('engine boot', () => {
    * commits and the state arriving on a date of the test's choosing. From
    * the first commit on, its settings carry the workflows' own hooks, like
    * the fixture's, and its `.worktreeinclude` the knowledge files an earlier
-   * boot listed there; it keeps the state out of its code tree by its own
-   * exclude: the history under test is the project's own.
+   * boot listed there; its `.gitignore` names the state, as boot keeps it,
+   * held out of the history by its own exclude: the history under test is
+   * the project's own.
    */
   function scratchRepo(name) {
     const project = harness.initRepo(path.join(fix.root, name));
-    fs.appendFileSync(path.join(project, '.git/info/exclude'), '.leeway/\n');
+    fs.appendFileSync(path.join(project, '.git/info/exclude'), '.gitignore\n');
+    writeFile(project, '.gitignore', '.leeway/\n');
     writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
     writeFile(project, '.worktreeinclude', STORE_FILES.join('\n') + '\n');
     const at = (date) => `${date}T12:00:00Z`;
@@ -433,9 +437,11 @@ describe('engine boot', () => {
   it('baseline_signal: no honest history to read — no commits, no repository, a shallow clone — is null, never a failure and never a fresh-start signal', () => {
     const empty = harness.initRepo(path.join(fix.root, 'empty'));
     createState(path.join(empty, '.leeway'));
-    // The hooks already there, uncommitted: boot's plumbing install would
-    // otherwise make the root commit — the history this test needs absent.
+    // The hooks and the state's ignore line already there, uncommitted:
+    // boot's plumbing would otherwise make the root commit — the history
+    // this test needs absent.
     writeFile(empty, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+    writeFile(empty, '.gitignore', '.leeway/\n');
     const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.baseline, 'none');
     assert.strictEqual(res.baseline_signal, null);
@@ -565,10 +571,10 @@ describe('engine boot', () => {
   it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
     // Track a config baseline, then dirty both files with no migration running.
     writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
-    writeFile(fix.project, '.gitignore', 'node_modules\n');
+    writeFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n');
     commitAll(fix.project, 'config baseline');
     writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: { allow: ['x'] } }));
-    writeFile(fix.project, '.gitignore', 'node_modules\n.DS_Store\n');
+    writeFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -641,7 +647,8 @@ describe('engine boot', () => {
   });
 
   it('a failing ledger commit is a warning, never a block — the ledger is already right on disk', () => {
-    stateGit(fix.project, ['checkout', '-q', '--detach']);
+    // Another git process holding the state branch's ref lock.
+    fs.writeFileSync(path.join(fix.project, '.git/refs/heads/leeway-state.lock'), '');
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 

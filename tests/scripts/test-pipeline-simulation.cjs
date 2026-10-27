@@ -5615,6 +5615,31 @@ describe('pipeline simulation', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
+  it('boot: lost state stops at its screen and the yes starts it again; a GitHub remote gets the rule\'s offer once, and the no is recorded', () => {
+    // The state branch and its worktree gone, the code tree still ignoring
+    // the state: lost, here and with no remote to restore it from.
+    git(sim.dir, ['worktree', 'remove', '--force', '--force', statePath(sim.dir)]);
+    git(sim.dir, ['branch', '-D', 'leeway-state']);
+
+    assert.deepStrictEqual(sim.run(['boot']), { ok: true, state: 'lost', warnings: [] });
+    assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
+    assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
+    const restarted = sim.run(['boot', '--start-again']);
+    assert.deepStrictEqual([restarted.state, restarted.github_rule_offer], ['restarted', false]);
+    assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'leeway-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
+
+    // A remote on GitHub, out of reach: boot works on the state it has, and
+    // offers the rule until the offer is answered.
+    git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
+    sim.env = { ...sim.env, GIT_SSH_COMMAND: 'false' };
+    const offered = sim.run(['boot']);
+    assert.deepStrictEqual([offered.state, offered.github_rule_offer], ['ready', true]);
+    assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Set that rule on GitHub\?/);
+    assert.strictEqual(sim.run(['github-rule', 'no']).github_rule, 'declined');
+    assert.strictEqual(sim.run(['boot']).github_rule_offer, false);
+    sim.refuses(['github-rule', 'yes'], /an answer is recorded once/);
+  });
+
   // -------------------------------------------------------------------------
   // Concurrency — several sessions on one checkout, interleaved.
   //

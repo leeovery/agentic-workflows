@@ -48,6 +48,7 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
+const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
 const { markConversation, endConversation } = require('./domain/conversation.cjs');
@@ -146,8 +147,9 @@ function parseArgs(argv, booleans = [], repeatable = []) {
 const USAGE = `Usage: engine <command> [args]
 
 Commands:
-  boot
+  boot [--start-again]
   state-merge pick <1|2> <choice>
+  github-rule <yes|no>
   knowledge <index|query|check|status|remove|compact|rebuild|fill|setup> … (engine knowledge --help)
   manifest get    <dotpath> [<field.path>]
   manifest set    <dotpath> <field> <value>
@@ -416,6 +418,8 @@ Commands:
   render walkthrough-topic --name <slug> [--menu-only]
   render migrations-applied --file <payload.json>
   render migration-gate
+  render state-lost-gate
+  render github-rule-gate
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
   render knowledge-ready
@@ -1618,14 +1622,34 @@ function runAgent(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// boot — the entry pipeline: migrations (hard error on failure), knowledge
-// check (failure reports not-ready), and when ready the keyword side brought
-// in line, compacted and the vector fill launched (warn-don't-block).
+// boot — the entry pipeline: the state put in place and caught up (a lost
+// state or a merge waiting on a pick stops it), migrations (hard error on
+// failure), knowledge check (failure reports not-ready), and when ready the
+// keyword side brought in line, compacted and the vector fill launched
+// (warn-don't-block). `--start-again` is the person's yes at the lost-state
+// stop.
 // ---------------------------------------------------------------------------
 
-function runBoot(call) {
+/** @param {Call} call @param {string[]} argv */
+function runBoot(call, argv) {
   try {
-    respond(call, boot(call.cwd));
+    if (argv.length > 1 || (argv.length === 1 && argv[0] !== '--start-again')) throw new Error('Usage: engine boot [--start-again]');
+    respond(call, boot(call.cwd, { startAgain: argv.length === 1 }));
+  } catch (err) {
+    failJson(call, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// github-rule — the person's answer to setup's offer of the rule on GitHub
+// against deleting or force-pushing the state branch (domain/github-rule.cjs).
+// ---------------------------------------------------------------------------
+
+/** @param {Call} call @param {string[]} argv */
+function runGithubRule(call, argv) {
+  try {
+    if (argv.length !== 1) throw new Error('Usage: engine github-rule <yes|no>');
+    respond(call, answerGithubRule(call.cwd, argv[0]));
   } catch (err) {
     failJson(call, err);
   }
@@ -2163,6 +2187,7 @@ const COMMANDS = Object.freeze({
   knowledge: runKnowledge,
   boot: runBoot,
   'state-merge': runStateMerge,
+  'github-rule': runGithubRule,
   manifest: runManifest,
   workunit: runWorkunit,
   'discussion-map': runDiscussionMap,

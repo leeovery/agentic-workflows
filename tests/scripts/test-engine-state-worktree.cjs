@@ -31,7 +31,7 @@ const { processStartTime } = require('../../skills/workflow-engine/scripts/kerne
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
   stateRoot, inspectState, createState, addStateWorktree, repairStateWorktree, createStateBranchFromRemote, lockStateWorktree,
-  withStateLock, commitState, pushState,
+  askStateRemote, fetchStateTip, codeBranchSharing, stateRemoteUrl, withStateLock, commitState, pushState,
 } = state;
 
 /** @type {string} */
@@ -206,6 +206,21 @@ describe('the main checkout', () => {
   it('refuses a folder outside any repository', () => {
     assert.throws(() => mainCheckout(world), /is not inside a git repository/);
   });
+
+  it('refuses a copy\'s worktree folder, which git reads as the original\'s, and finds the copy from its own main checkout', () => {
+    const { main, root } = project();
+    createState(root);
+    const side = path.join(main, 'side');
+    git(main, ['worktree', 'add', '-q', '-b', 'side', side]);
+    const copy = path.join(world, 'copy');
+    fs.cpSync(main, copy, { recursive: true, verbatimSymlinks: true });
+
+    for (const [cwd, original] of [[path.join(copy, '.leeway'), root], [path.join(copy, 'side'), side]]) {
+      assert.throws(() => mainCheckout(cwd),
+        new RegExp(`^Error: ${cwd} is in a copy of the worktree at ${original}: git reads it as that worktree, in that repository, so the workflows read and write nothing through it — run from the copy's own project folder$`));
+    }
+    assert.strictEqual(mainCheckout(copy), copy);
+  });
 });
 
 describe('the isolated runner', () => {
@@ -364,6 +379,18 @@ describe('creating the state', () => {
 
     assert.throws(() => createState(root), /already exists/);
     assert.strictEqual(git(main, ['branch', '--list', STATE_BRANCH]), '');
+  });
+
+  it('clears a registration a deleted folder left at .leeway/, and checks the new branch out there', () => {
+    const { main, root } = project();
+    createState(root);
+    fs.rmSync(root, { recursive: true, force: true });
+    git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
+
+    const created = createState(root);
+
+    assert.strictEqual(tip(main, STATE_BRANCH), created.commit);
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
   });
 
   it('refuses where leeway-state already exists, adding no worktree', () => {
@@ -542,7 +569,7 @@ describe('the repairs, each on its own', () => {
       /^Error: git cannot open the state worktree at .*moved\/\.leeway: git rev-parse failed: fatal: .+ — nothing committed$/s);
     assert.throws(() => addStateWorktree(movedRoot), /a folder is already at .*moved\/\.leeway — repair its worktree rather than add one over it/);
 
-    repairStateWorktree(movedRoot);
+    assert.deepStrictEqual(repairStateWorktree(movedRoot), { was: 'moved', from: main });
 
     assert.deepStrictEqual(pick(inspectState(movedRoot)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
     assert.strictEqual(fs.readFileSync(path.join(movedRoot, 'manifest.json'), 'utf8'), '{"kept":true}\n');
@@ -565,6 +592,143 @@ describe('the repairs, each on its own', () => {
       new RegExp(`git cannot open the state worktree at .*copy/\\.leeway: git reads it as part of .*, whose repository is ${main}/\\.git`));
     assert.strictEqual(tip(main, STATE_BRANCH), before);
     assert.strictEqual(tip(copy, STATE_BRANCH), before);
+  });
+
+  it('relinks a copied project\'s state worktree to the copy\'s own registration, the original\'s links — its code worktrees\' too — left as they were', () => {
+    const { main, root } = project();
+    createState(root);
+    const side = path.join(main, 'side');
+    git(main, ['worktree', 'add', '-q', '-b', 'side', side]);
+    const admin = path.join(main, '.git/worktrees');
+    const links = () => [path.join(root, '.git'), path.join(side, '.git'), ...fs.readdirSync(admin).map((id) => path.join(admin, id, 'gitdir'))]
+      .map((file) => [file, fs.readFileSync(file, 'utf8')]);
+    const before = links();
+    const copy = path.join(world, 'copy');
+    fs.cpSync(main, copy, { recursive: true, verbatimSymlinks: true });
+    const copyRoot = stateRoot(copy);
+
+    assert.deepStrictEqual(repairStateWorktree(copyRoot), { was: 'copied', from: main });
+
+    assert.deepStrictEqual(links(), before);
+    assert.deepStrictEqual(pick(inspectState(copyRoot)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
+    write(copyRoot, 'manifest.json', '{"copy":true}\n');
+    const ours = withStateLock(copyRoot, () => commitState(copyRoot, ['manifest.json'], 'state: the copy'));
+    assert.strictEqual(tip(copy, STATE_BRANCH), ours.commit);
+    assert.notStrictEqual(tip(main, STATE_BRANCH), ours.commit);
+  });
+
+  it('relinks a registration whose own link went stale, the folder\'s already right', () => {
+    const { main, root } = project();
+    createState(root);
+    fs.writeFileSync(path.join(main, '.git/worktrees/-leeway/gitdir'), `${path.join(world, 'elsewhere/.git')}\n`);
+
+    assert.deepStrictEqual(repairStateWorktree(root), { was: 'own', from: main });
+
+    assert.deepStrictEqual(pick(inspectState(root)), { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE_LOCK_REASON }, folder: 'linked' });
+  });
+
+  it('refuses a folder holding no link, and one naming a registration this repository does not keep — nothing relinked', () => {
+    const { main, root } = project();
+    createState(root);
+
+    fs.writeFileSync(path.join(root, '.git'), 'not a link\n');
+    assert.throws(() => repairStateWorktree(root), new RegExp(`^Error: ${root} holds no worktree link git can read — nothing relinked$`));
+
+    const stranger = path.join(world, 'other/.git/worktrees/stranger');
+    fs.writeFileSync(path.join(root, '.git'), `gitdir: ${stranger}\n`);
+    assert.throws(() => repairStateWorktree(root), new RegExp(`^Error: ${root} links to ${stranger}, and this repository keeps no registration by that name — nothing relinked$`));
+    assert.strictEqual(fs.readFileSync(path.join(main, '.git/worktrees/-leeway/gitdir'), 'utf8'), `${path.join(root, '.git')}\n`);
+  });
+});
+
+describe('the remote, asked', () => {
+  it('answers no remote where the project has none, never asking', () => {
+    const { root } = project();
+    createState(root);
+
+    const { result, commands } = traced(() => askStateRemote(root));
+
+    assert.deepStrictEqual(result, { remote: null, remotes: [] });
+    assert.ok(!commands.includes('ls-remote'));
+  });
+
+  it('answers the remote\'s tip, or none where it holds no leeway-state', () => {
+    const { main, root, bare } = project({ remote: true });
+
+    assert.deepStrictEqual(askStateRemote(root), { remote: 'origin', remotes: ['origin'], tip: null });
+    createState(root);
+    assert.deepStrictEqual(askStateRemote(root), { remote: 'origin', remotes: ['origin'], tip: remoteTip(bare) });
+    assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
+  });
+
+  it('answers why a remote out of reach could not be reached, never that it holds none', () => {
+    const { main, root } = project({ remote: true });
+    git(main, ['remote', 'set-url', 'origin', path.join(world, 'nowhere.git')]);
+
+    const answer = askStateRemote(root);
+
+    assert.deepStrictEqual([answer.remote, 'tip' in answer], ['origin', false]);
+    assert.match(/** @type {{unreachable: string}} */ (answer).unreachable, /^git ls-remote failed: /);
+  });
+
+  it('brings the remote\'s tip into its tracking branch: set where this clone holds it, fetched where not', () => {
+    const { root, bare } = project({ remote: true });
+    createState(root);
+    const fresh = path.join(world, 'fresh');
+    git(world, ['clone', '-q', '--single-branch', '--branch', 'main', `file://${bare}`, fresh]);
+
+    const fetched = traced(() => fetchStateTip(stateRoot(fresh), 'origin', remoteTip(bare)));
+    assert.deepStrictEqual([fetched.result, fetched.commands.includes('fetch')], [null, true]);
+    assert.strictEqual(tip(fresh, `refs/remotes/origin/${STATE_BRANCH}`), remoteTip(bare));
+
+    git(fresh, ['update-ref', '-d', `refs/remotes/origin/${STATE_BRANCH}`]);
+    const set = traced(() => fetchStateTip(stateRoot(fresh), 'origin', remoteTip(bare)));
+    assert.deepStrictEqual([set.result, set.commands.includes('fetch')], [null, false]);
+    assert.strictEqual(tip(fresh, `refs/remotes/origin/${STATE_BRANCH}`), remoteTip(bare));
+  });
+
+  it('answers why a fetch failed, the tracking branch untouched', () => {
+    const { root, bare } = project({ remote: true });
+    createState(root);
+    const fresh = clone(bare, 'fresh');
+    git(fresh, ['update-ref', '-d', `refs/remotes/origin/${STATE_BRANCH}`]);
+    git(fresh, ['remote', 'set-url', 'origin', path.join(world, 'nowhere.git')]);
+
+    assert.match(fetchStateTip(stateRoot(fresh), 'origin', 'f'.repeat(40)) ?? '', /^git fetch failed: /);
+    assert.strictEqual(git(fresh, ['for-each-ref', `refs/remotes/origin/${STATE_BRANCH}`]), '');
+  });
+
+  it('reads the URL the state\'s remote fetches from, any insteadOf applied, and none without a remote', () => {
+    const { main, root, bare } = project({ remote: true });
+    git(main, ['config', `url.${bare}.insteadOf`, 'gh:acme/portal']);
+    git(main, ['remote', 'set-url', 'origin', 'gh:acme/portal']);
+
+    assert.strictEqual(stateRemoteUrl(root), bare);
+    assert.strictEqual(stateRemoteUrl(project({ name: 'alone' }).root), null);
+  });
+});
+
+describe('a leeway-state holding code history', () => {
+  it('shares a commit with a code branch, which is named; the orphan shares none, its remote copies not counted as code', () => {
+    const code = project({ name: 'code' });
+    git(code.main, ['branch', STATE_BRANCH, 'main']);
+    assert.strictEqual(codeBranchSharing(code.root, STATE_BRANCH), 'main');
+
+    const { root, bare } = project({ remote: true });
+    createState(root);
+    const fresh = clone(bare, 'fresh');
+    createStateBranchFromRemote(stateRoot(fresh));
+    assert.strictEqual(codeBranchSharing(root, STATE_BRANCH), null);
+    assert.strictEqual(codeBranchSharing(stateRoot(fresh), STATE_BRANCH), null);
+  });
+
+  it('reads a remote\'s as last fetched', () => {
+    const { main, bare } = project({ remote: true });
+    git(main, ['push', '-q', 'origin', `main:refs/heads/${STATE_BRANCH}`]);
+    const fresh = clone(bare, 'fresh');
+
+    assert.strictEqual(codeBranchSharing(stateRoot(fresh), `refs/remotes/origin/${STATE_BRANCH}`), 'origin/main');
   });
 });
 

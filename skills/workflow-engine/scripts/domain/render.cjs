@@ -37,7 +37,7 @@ const { baselineState } = require('./baseline.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughHome, walkthroughTopics, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
-const { migrationsApplied, migrationGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../kernel/call.cjs');
@@ -73,6 +73,7 @@ const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
+const { projectName } = require('./state-checks.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
 // overview surfaces accept, validated here so the error names the surface
@@ -7252,6 +7253,8 @@ const SURFACES = {
   'walkthrough-topic': walkthroughTopicSurface,
   'migrations-applied': migrationsAppliedSurface,
   'migration-gate': () => migrationGate(),
+  'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
+  'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ready': knowledgeReadySurface,
