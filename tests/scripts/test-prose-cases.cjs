@@ -17,8 +17,6 @@ const cases = require('../prose/lib/cases.cjs');
 describe('prose-test corpus', () => {
   const all = cases.loadAllCases();
 
-  // The corpus went in #1522 and is rebuilt phase by phase from 29.11. Until
-  // then every check below has nothing to loop over.
   it('holds no cases until the prose tests are rewritten at the end of the build', () => {
     assert.deepStrictEqual(all.map((c) => c.id), []);
   });
