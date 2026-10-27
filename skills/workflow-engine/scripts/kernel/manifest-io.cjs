@@ -373,32 +373,53 @@ function releaseLockFile(lockFile) {
 }
 
 /**
- * The owner a claim file records — null where it cannot be read.
- * @param {string} claimFile @returns {{pid?: number, pid_start?: string|null}|null}
+ * The owner a claim's record names — null where it names none.
+ * @param {string} record @returns {{pid?: number, pid_start?: string|null}|null}
  */
-function claimOwner(claimFile) {
+function ownerIn(record) {
   try {
-    const record = JSON.parse(fs.readFileSync(claimFile, 'utf8'));
-    return record && typeof record === 'object' ? record : null;
+    const owner = JSON.parse(record);
+    return owner && typeof owner === 'object' ? owner : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Whether a claim stands: its owner still runs — or, where no owner can be
- * read, it is younger than `staleMs`. A claim that is gone stands for no one.
- * @param {string} claimFile @param {number} staleMs
+ * The owner a claim file records — null where it cannot be read.
+ * @param {string} claimFile @returns {{pid?: number, pid_start?: string|null}|null}
  */
-function claimStands(claimFile, staleMs) {
-  let stat;
+function claimOwner(claimFile) {
   try {
-    stat = fs.statSync(claimFile);
+    return ownerIn(fs.readFileSync(claimFile, 'utf8'));
   } catch {
-    return false;
+    return null;
   }
-  const owner = claimOwner(claimFile);
-  return owner ? ownerAlive(owner) : Date.now() - stat.mtimeMs <= staleMs;
+}
+
+/**
+ * Where a claim stands: `gone`; `held` while its owner still runs — or,
+ * where no owner can be read, while it is younger than `staleMs`; and
+ * `abandoned` after. Its record and its age are read through one open, so
+ * both are the same claim's.
+ * @param {string} claimFile @param {number} staleMs
+ * @returns {'gone'|'held'|'abandoned'}
+ */
+function claimState(claimFile, staleMs) {
+  let fd;
+  try {
+    fd = fs.openSync(claimFile, 'r');
+  } catch (e) {
+    if (!(e && typeof e === 'object' && 'code' in e) || e.code !== 'ENOENT') throw e;
+    return 'gone';
+  }
+  try {
+    const owner = ownerIn(fs.readFileSync(fd, 'utf8'));
+    const stands = owner ? ownerAlive(owner) : Date.now() - fs.fstatSync(fd).mtimeMs <= staleMs;
+    return stands ? 'held' : 'abandoned';
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 /**
@@ -428,7 +449,9 @@ function createClaim(claimFile, record) {
  * takes, so liveness is its owner's, never its age. The claim is created
  * exclusively with this process's identity, or taken over (guarded, as a
  * stale lock's break is) from an owner that no longer runs; a claim whose
- * owner cannot be read stands until it is older than `staleMs`.
+ * owner cannot be read stands until it is older than `staleMs`. A claim
+ * found gone is created again, never broken: by the time a break unlinks
+ * it, the file may be a claim another contender has just made.
  * @param {string} claimFile @param {number} [staleMs]
  * @returns {(() => void)|null} the release — which removes the claim only
  *   while it is still this process's — or null while another holds it
@@ -439,10 +462,12 @@ function tryClaimFile(claimFile, staleMs = LOCK_STALE_MS) {
     const owner = claimOwner(claimFile);
     if (owner && owner.pid === own.pid && owner.pid_start === own.pid_start) releaseLockFile(claimFile);
   };
+  const abandoned = () => claimState(claimFile, staleMs) === 'abandoned';
   for (let attempt = 0; attempt < 2; attempt++) {
     if (createClaim(claimFile, JSON.stringify(own))) return release;
-    if (claimStands(claimFile, staleMs)) return null;
-    breakGuarded(claimFile, () => !claimStands(claimFile, staleMs), staleMs);
+    const state = claimState(claimFile, staleMs);
+    if (state === 'held') return null;
+    if (state === 'abandoned') breakGuarded(claimFile, abandoned, staleMs);
   }
   return null;
 }
