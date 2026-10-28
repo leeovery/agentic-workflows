@@ -507,7 +507,7 @@ describe('the writer lock and the commit', () => {
 
     assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed', 'note', 'warnings']);
     assert.strictEqual(res.committed, null);
-    assert.strictEqual(res.note, 'commit pending — the entry is in the ledger, and the next ledger write commits it');
+    assert.strictEqual(res.note, 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it');
     assert.match(res.warnings[0], /^commit failed: git commit-tree failed: fatal: refused here$/);
     assert.strictEqual(stateTip(), tip);
     assert.strictEqual(entries().at(-1).text, 'Committed later?');

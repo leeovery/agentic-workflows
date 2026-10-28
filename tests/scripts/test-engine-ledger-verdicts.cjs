@@ -168,6 +168,23 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
       'ledger decide: who_moved_whom is person-moved-claude — an entry Claude made never stands over its own lean: none or claude-moved-person');
   });
 
+  it('measures the person\'s replacement carrying Claude\'s sealed answer against it, as any answer is: the writer\'s who moved whom stands, any of the three, whatever the reason, and a departure waits with its own sealed answer as the lean; Claude\'s still never stands over its own (5.3.10, 16.10.10)', () => {
+    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike' });
+    const blind = (/** @type {string} */ moved) => ({ ...persons(moved), sealed: 'A sheet.' });
+    const agreed = decide('A panel.', MADE);
+    const departedFor = decide('A frameless window.', MADE);
+    const returned = decide('A floating note.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
+    assert.strictEqual(refused(...replacing(agreed, 'was-wrong', { by: 'person', sealed: 'A sheet.' })), 'ledger replace: the content needs who_moved_whom');
+    assert.strictEqual(refused(...replacing(agreed, 'was-wrong', { by: 'claude', who_moved_whom: 'person-moved-claude', sealed: 'A sheet.' })),
+      'ledger replace: who_moved_whom is person-moved-claude — an entry Claude made never stands over its own lean: none or claude-moved-person');
+
+    write(...replacing(agreed, 'was-wrong', blind('none')));
+    const departed = write(...replacing(departedFor, 'new-fact', blind('person-moved-claude'), ['--cause', fact]));
+    write(...replacing(returned, 'changed-mind', blind('none')));
+
+    assert.deepStrictEqual(waiting(), [[returned, 'A panel.'], [departed, 'A sheet.']]);
+  });
+
   it('leaves out a departure the trust log holds a verdict on, and one made where it is set aside until it comes back', (t) => {
     const judged = decide('A sheet.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
     const unjudged = decide('A frameless window.', { ...persons('person-moved-claude'), sealed: 'A panel.' });

@@ -6,13 +6,13 @@
 // 22.6.6), and the product record's file, which it never does (5.8.13,
 // 22.6.12). They are a cache, rebuilt from the ledger (22.6.7).
 //
-// - What is rendered: every place a live event stands in whose record holds
-//   a current entry — a topic's, or a unit's own level's (ledger-fold.cjs) —
-//   each showing its current answers only, never what they replaced, and the
-//   current entries elsewhere it rests on; and once the ledger exists, the
-//   product record. A place whose record holds nothing has no copy: a
-//   cancelled topic or unit, or a postponed topic while it waits, has its
-//   copy removed, and gets it back when it is live again (5.8.17).
+// - What is rendered: every place whose record shows a current entry — a
+//   topic's, or a unit's own level's (ledger-fold.cjs) — each showing its
+//   current answers only, never what they replaced, and the current entries
+//   elsewhere made there or that it rests on (5.8.19); and once the ledger
+//   exists, the product record. A place whose record shows nothing has no
+//   copy: a cancelled topic or unit, or a postponed topic while it waits,
+//   has its copy removed, and gets it back when it is live again (5.8.17).
 // - When: the whole set is rendered against the ledger after a ledger write
 //   commits and its lock is released, and after any command that changes
 //   what is live — the engine's dispatcher stamps the units' manifests
@@ -133,7 +133,8 @@ function byQuestion(shower, decisions, inCopy) {
 /**
  * A record's copy: its questions with their answers, then the questions
  * elsewhere its own decisions answer; its findings; and the entries
- * elsewhere it rests on that answer none of its questions.
+ * elsewhere made there or that it rests on that answer none of its
+ * questions.
  * @param {Shower} shower @param {string} unit @param {string|null} topic @param {RecordIds} ids
  */
 function recordText(shower, unit, topic, ids) {
@@ -177,7 +178,7 @@ function copiesOf(root, notes) {
     /** @type {Map<string, string>} */
     const copies = new Map();
     for (const { unit, topic, record } of placeRecords(shower.folded)) {
-      if (record.questions.length + record.findings.length + record.decisions.length === 0) continue;
+      if (record.questions.length + record.findings.length + record.decisions.length + record.other_topics.length === 0) continue;
       copies.set(recordFile(unit, topic), recordText(shower, unit, topic, record));
     }
     copies.set(PRODUCT_FILE, productText(shower));

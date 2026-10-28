@@ -5,10 +5,10 @@
 // read through domain/ledger-read.cjs, `engine ledger record|map`): where
 // the earliest entry of its chain in a live place was made. A replacement
 // made from the spec or by another unit stays on the topic's record and
-// map, off the replacing unit's own; a finished unit stays finished when a
-// later one replaces its decision; a question reworded or moved, after it
-// was answered or however often, stands whole where it is now, its answers
-// read from their own lines.
+// map, and shows where it was made as another place's current answer; a
+// finished unit stays finished when a later one replaces its decision; a
+// question reworded or moved, after it was answered or however often,
+// stands whole where it is now, its answers read from their own lines.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there.
@@ -53,7 +53,7 @@ describe('where an entry stands (5.3.3, 5.8.4)', () => {
     assertAgree('note-window');
   });
 
-  it('keeps another unit\'s replacement of a topic\'s decision on that topic\'s record and map, where its chain stands, and off the replacing unit\'s record (5.6.1)', () => {
+  it('keeps another unit\'s replacement of a topic\'s decision on that topic\'s record and map, where its chain stands, and shows it where it was made, on the replacing unit\'s record and map, as another place\'s current answer (5.6.1, 5.8.19)', () => {
     mint();
     const question = ask(NOTE, 'Is a note a window?');
     const decided = decide(NOTE, question, 'A panel.');
@@ -62,7 +62,11 @@ describe('where an entry stands (5.3.3, 5.8.4)', () => {
 
     assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions, [current(replacement, [decided])]);
     assert.deepStrictEqual(read('map', UNIT, 'note-window').questions[0].answers, [{ id: replacement, unit: 'mint', topic: 'mint', by: 'claude', text: 'A sheet.' }]);
-    assert.deepStrictEqual(read('record', 'mint').decisions, []);
+    for (const minted of [read('record', 'mint'), read('record', 'mint', 'mint')]) {
+      assert.deepStrictEqual([minted.questions, minted.decisions, minted.other_topics], [[], [], [{ ...line(replacement), named: [] }]]);
+    }
+    const [row] = read('map', 'mint', 'mint').questions;
+    assert.deepStrictEqual([row.id, row.stands, row.stands_in, ids(row.answers)], [question, 'elsewhere', { unit: UNIT, topic: 'note-window' }, [replacement]]);
     assertAgree('note-window');
   });
 

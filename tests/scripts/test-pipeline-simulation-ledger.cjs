@@ -51,7 +51,7 @@ describe('pipeline simulation: ledger', () => {
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
     const affected = () => sim.run(['ledger', 'affected', wu]).affected.map((/** @type {{id: string}} */ e) => e.id);
     assert.deepStrictEqual(affected(), [relying], 'what the replacement affects is not what relies on the decision it replaced');
-    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ changed/, null, JSON.stringify(made));
+    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which is held against nothing \w+ changed/, null, JSON.stringify(made));
     const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
     assert.deepStrictEqual(affected(), [], 'a confirmation that it still holds left the entry affected');
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
@@ -88,7 +88,8 @@ describe('pipeline simulation: ledger', () => {
     const looked = stateGit(sim.dir, ['rev-parse', 'HEAD']);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu, 'note-window']).calls), [replacement]);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'shown', wu, 'note-window']).calls), [replacement]);
-    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu]).calls), []);
+    const mark = statePath(sim.dir, '.cache', '.marks', `${wu}.json`);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu]).calls), [], `listed after the look, the mark reading ${fs.existsSync(mark) ? fs.readFileSync(mark, 'utf8') : 'nothing'}`);
     assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']), looked, 'a look made a commit');
 
     const homingAt = `${wu}.discussion.space-homing`;
@@ -141,6 +142,10 @@ describe('pipeline simulation: ledger', () => {
       { ...made, drops: ['frameless'], text: 'A framed panel.', why: 'Mint frames its notes.' });
     const overruling = sim.run(['ledger', 'record', wu, 'note-window']);
     assert.deepStrictEqual([ids(overruling.decisions), ids(overruling.decisions[0].replaced)], [[overruled], [replacement, decision]]);
+    const since = (/** @type {string[]} */ place) => ids(sim.run(['ledger', 'since', ...place]).calls);
+    assert.deepStrictEqual([since([mint]), since([wu, 'note-window'])], [[overruled], [overruled]], 'a call made in one unit standing in another is not listed in both');
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'shown', mint, mint]).calls), [overruled]);
+    assert.deepStrictEqual([since([wu]), since([mint])], [[], []], 'a look where a call shows left it listed where else it shows');
     const follows = ledger(['ask', homingAt], { ...made, text: 'Does a note follow the person across Spaces?' });
     const following = ledger(['decide', homingAt, '--answers', follows], { ...made, text: 'A note follows the person.', why: 'Furniture moves with you.' });
     ledger(['merge', note, '--question', question, '--into', following, '--duplicate', overruled], made);

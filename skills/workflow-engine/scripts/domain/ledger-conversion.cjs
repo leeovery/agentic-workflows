@@ -32,8 +32,9 @@ const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { fileLines } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
-const { ledgerBlobs, fileStartsWith, idsDeparture, passFile, ledgerStopped, diskChange } = require('./ledger-check.cjs');
-const { BRANCH_REF, commitState } = require('./state-worktree.cjs');
+const { ledgerBlobs, idsDeparture, passFile, ledgerStopped, diskChange } = require('./ledger-check.cjs');
+const { BRANCH_REF } = require('./state-worktree.cjs');
+const { commitUncommitted } = require('./ledger.cjs');
 
 const MIGRATION_FILE = /(?:^|[\\/])migrations[\\/]\d+-[^\\/]*\.cjs$/;
 const TAIL_MESSAGE = 'state: the ledger as written, before its conversion';
@@ -79,18 +80,6 @@ function* eventsOf(file) {
     }
     yield event;
   }
-}
-
-/**
- * Commit the lines the ledger holds past the committed one, where an
- * earlier write left them uncommitted. The writer lock is boot's.
- * @param {import('./ledger-check.cjs').CheckedTree} tree @param {string} file
- * @returns {string[]} the commit's warnings
- */
-function commitTail(tree, file) {
-  const [committed] = ledgerBlobs(tree.git, [BRANCH_REF]);
-  if (!fs.existsSync(file) || fs.statSync(file).size <= (committed?.size ?? 0) || !fileStartsWith(file, committed)) return [];
-  return commitState(tree.root, [LEDGER], TAIL_MESSAGE).warnings;
 }
 
 /**
@@ -149,7 +138,7 @@ function convertLedger(projectDir, convert) {
   if (change !== null) throw ledgerStopped(tree, change, 'nothing converted');
 
   const file = path.join(root, LEDGER);
-  const warnings = commitTail(tree, file);
+  const { warnings } = commitUncommitted(root, TAIL_MESSAGE);
   const copy = `${file}.${process.pid}.tmp`;
   try {
     const events = writeCopy(file, copy, convert);

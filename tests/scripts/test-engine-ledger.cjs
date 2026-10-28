@@ -15,7 +15,9 @@
 // lock; a rewritten, removed, swapped or truncated line, or a shorter file,
 // stopping the read and refusing the commit, in a sha1 repository and a
 // sha256 one, the branch read before the file and a failed check made again
-// under the lock; and a migration's converted copy, its every event through
+// under the lock; the entries an append left uncommitted counted past the
+// committed ledger, where the disk starts with it, and committed with no
+// push; and a migration's converted copy, its every event through
 // with the same ids in the same order, let through for its own commit
 // alone.
 //
@@ -33,14 +35,14 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, testIdentity, ok, refuses, output, setupGitFixture, cleanupFixture, statePath } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, bareRepo, remoteTip } = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
 const CONVERSION_MODULE = path.join(SCRIPTS, 'domain/ledger-conversion.cjs');
-const { ledgerChange, checkLedger, readLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
+const { ledgerChange, checkLedger, commitUncommitted, readLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
 const { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { ID_LENGTH, SHORT_MIN, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged, checkLedgerCommit, keptStop } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
@@ -514,6 +516,30 @@ describe('the append', () => {
     writeLedger(root, unfinished);
     assert.throws(() => appendEntry(root, question(), []), /ends in an unfinished line — nothing appended/);
     assert.strictEqual(ledgerText(root), unfinished);
+  });
+
+  it('counts the entries appends left uncommitted past the committed ledger, every line where none is committed and none where the ledger changed other than at its end, and commits them pushing nothing (4.7.8)', () => {
+    const { main, root } = project();
+    const tail = () => withStateLock(root, () => commitUncommitted(root, 'state: the tail'));
+    appendEntry(root, question({ text: 'Never committed?' }), []);
+    assert.deepStrictEqual(tail(), { entries: 1, warnings: [] });
+    assert.deepStrictEqual(tail(), { entries: 0, warnings: [] });
+    const bare = bareRepo(path.join(world, 'fumi.git'));
+    git(main, ['remote', 'add', 'origin', bare]);
+    git(main, ['push', '-q', 'origin', STATE_BRANCH]);
+    const pushed = tip(main, STATE_BRANCH);
+
+    appendEntry(root, question({ text: 'Left by a kill?' }), []);
+    appendEntry(root, question({ text: 'And this one?' }), []);
+    assert.deepStrictEqual(tail(), { entries: 2, warnings: [] });
+
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), ledgerText(root));
+    assert.deepStrictEqual([tip(main, `${STATE_BRANCH}^`), remoteTip(bare)], [pushed, pushed]);
+    const committed = tip(main, STATE_BRANCH);
+    const [a, b, c] = ledgerText(root).split('\n');
+    writeLedger(root, `${b}\n${a}\n${c}\n${a}\n`);
+    assert.deepStrictEqual(tail(), { entries: 0, warnings: [] });
+    assert.strictEqual(tip(main, STATE_BRANCH), committed);
   });
 });
 

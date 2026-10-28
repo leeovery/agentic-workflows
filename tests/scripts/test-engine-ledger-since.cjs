@@ -3,13 +3,15 @@
 // ---------------------------------------------------------------------------
 // "What have you decided without me?" and "since you last looked"
 // (workflow-engine/scripts/domain/ledger-since.cjs): `engine ledger since`,
-// Claude's current calls in a unit or on a topic that no look on this
-// machine has shown, the build's calls among them; `engine ledger shown`,
-// the one read that adds the calls it showed to the mark, under the mark's
-// own lock; the mark kept on each machine in the cache, never committed,
-// through a merge that lays the other machine's calls before ones shown
-// here and through the unit's cancel; and nothing any ledger read answers
-// left on disk.
+// Claude's current calls showing in a unit or on a topic — where each
+// stands, where it was made, and on the map of each question it answers —
+// that no look on this machine has shown, the build's calls among them;
+// `engine ledger shown`, the one read that adds the calls it showed to the
+// mark, under the mark's own lock, taken once the read's fold is done, a
+// look anywhere a call shows clearing it everywhere; the mark kept on each
+// machine in the cache, never committed, through a merge that lays the
+// other machine's calls before ones shown here and through the unit's
+// cancel; and nothing any ledger read answers left on disk.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there; a bare remote and a second clone stand for
@@ -28,6 +30,7 @@ const {
   lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld } = require('./ledger-world.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -70,7 +73,12 @@ function calls(verb, ...place) {
 
 /** @param {string} at @param {'since'|'shown'} verb @param {string[]} place */
 function callsIn(at, verb, ...place) {
-  return ok(at, ['ledger', verb, UNIT, ...place]).calls.map((/** @type {{id: string}} */ c) => c.id);
+  return callsOf(at, verb, UNIT, ...place);
+}
+
+/** The calls a read answers in `unit`, by id. @param {string} at @param {'since'|'shown'} verb @param {string} unit @param {string[]} topic */
+function callsOf(at, verb, unit, ...topic) {
+  return ok(at, ['ledger', verb, unit, ...topic]).calls.map((/** @type {{id: string}} */ c) => c.id);
 }
 
 /** The ledger's ids, in order. @param {string} at */
@@ -137,6 +145,43 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     assert.deepStrictEqual(calls('since'), [homed, built]);
     assert.deepStrictEqual(calls('shown'), [homed, built]);
     assert.deepStrictEqual(marks(), { shown: [full(noted), full(homed), full(built)] });
+    assert.deepStrictEqual(calls('since'), []);
+  });
+
+  it('lists a later unit\'s call replacing a finished unit\'s decision in both units: on the later unit\'s map and in its record as the other place\'s current answer, a look there clearing it from both (5.8.19, 5.S39)', () => {
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const decided = call(NOTE, 'A note is a panel.', 'person');
+    ok(dir, ['manifest', 'set', UNIT, 'status', 'completed']);
+    const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
+    const since = () => [callsOf(dir, 'since', UNIT), callsOf(dir, 'since', UNIT, 'note-window'), callsOf(dir, 'since', 'mint'), callsOf(dir, 'since', 'mint', 'mint')];
+    assert.deepStrictEqual(since(), [[sheet], [sheet], [sheet], [sheet]]);
+
+    const [row] = ok(dir, ['ledger', 'map', 'mint', 'mint']).questions;
+    assert.deepStrictEqual([row.stands, row.stands_in, row.answers.map((/** @type {{id: string}} */ a) => a.id)], ['elsewhere', { unit: UNIT, topic: 'note-window' }, [sheet]]);
+    assert.deepStrictEqual(ok(dir, ['ledger', 'record', 'mint', 'mint']).other_topics.map((/** @type {{id: string}} */ e) => e.id), [sheet]);
+    assert.deepStrictEqual(callsOf(dir, 'shown', 'mint', 'mint'), [sheet]);
+
+    assert.deepStrictEqual(since(), [[], [], [], []]);
+  });
+
+  it('lists a call on the map of the question it answers, moved to another topic, as where it stands, a look at either clearing it from both (5.8.19)', () => {
+    const question = writeIn(dir, 'ask', NOTE, [], { ...MADE, text: 'Which Space does a note open on?' });
+    const answer = writeIn(dir, 'decide', NOTE, ['--answers', question], { ...MADE, text: 'The active Space.', why: 'Furniture.' });
+    writeIn(dir, 'move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
+    assert.deepStrictEqual([calls('since', 'note-window'), calls('since', 'space-homing'), calls('since', 'menu-bar')], [[answer], [answer], []]);
+
+    assert.deepStrictEqual(calls('shown', 'space-homing'), [answer]);
+
+    assert.deepStrictEqual([calls('since', 'note-window'), calls('since')], [[], []]);
+  });
+
+  it('lists only a current call: one replaced leaves the list, Claude\'s replacement taking its place, and the person\'s replacement lists nothing', () => {
+    const first = call(NOTE, 'A note is a panel.');
+    const second = writeIn(dir, 'replace', NOTE, ['--replaces', first, '--reason', 'changed-mind'], { ...MADE, drops: ['a panel'], text: 'A frameless window.', why: 'Lighter.' });
+    assert.deepStrictEqual(calls('since', 'note-window'), [second]);
+
+    writeIn(dir, 'replace', NOTE, ['--replaces', second, '--reason', 'changed-mind'], { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['a frameless window'], text: 'A sheet.', why: 'Mine.' });
+
     assert.deepStrictEqual(calls('since'), []);
   });
 
@@ -219,6 +264,27 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
     assert.deepStrictEqual(whileHeld, [null, null], 'a look moved the mark while a peer held its lock');
     assert.deepStrictEqual(marks(), { shown: [full(homed), full(noted)] }, 'the peer\'s look was lost');
+  });
+
+  it('takes the mark\'s lock only once its fold is done: a look whose check waits on the writer lock for a landing to finish holds no mark lock meanwhile', (t) => {
+    const [noted, sized] = ['A note is a panel.', 'A note keeps its size.'].map((text) => call(NOTE, text));
+    const lines = fs.readFileSync(statePath(dir, '.ledger.jsonl'), 'utf8').split('\n');
+    fs.writeFileSync(statePath(dir, '.ledger.jsonl'), [lines[0], lines[2], lines[1], ...lines.slice(3)].join('\n'));
+    const writer = statePath(dir, '.lock');
+    fs.writeFileSync(writer, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    /** @type {boolean[]} */
+    const markLocked = [];
+    // Once the look waits on the writer lock, the landing it waits on lands
+    // the rewritten ledger and lets go.
+    lockAttempts(t, writer, () => {
+      markLocked.push(fs.existsSync(`${marksFile()}.lock`));
+      stateGit(dir, ['commit', '-q', '-m', 'state: the landing moves the branch', '--', '.ledger.jsonl']);
+      fs.unlinkSync(writer);
+    });
+
+    assert.deepStrictEqual(calls('shown', 'note-window'), [sized, noted]);
+
+    assert.deepStrictEqual(markLocked, [false]);
   });
 
   it('refuses a read naming no unit, a topic the unit does not have, or a mark it cannot read, naming the mark', () => {

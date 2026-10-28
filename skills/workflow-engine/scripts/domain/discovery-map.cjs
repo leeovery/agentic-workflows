@@ -15,9 +15,12 @@
 // render-time join the epic detail builder uses (computeTopicLifecycle in
 // domain/derivations) — one computation, two consumers, no
 // drift, and the engine can never be the permissive path around the prose's
-// conversational pre-validation. All errors throw loud and specific, before
-// anything is written. Every load→mutate→save runs under the work unit's
-// manifest lock (the same lock every manifest writer honours).
+// conversational pre-validation. A topic the ledger names keeps its name for
+// good (ledger-fold.cjs): remove and rename refuse it, whatever its
+// lifecycle, the ledger read before the lock is taken. All errors throw loud
+// and specific, before anything is written. Every load→mutate→save runs
+// under the work unit's manifest lock (the same lock every manifest writer
+// honours).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -27,6 +30,7 @@ const { commitStateTail, noteCommitOutcome, discoveryScope } = require('./commit
 const { computeTopicLifecycle, phaseItems, lifecyclePhrase, CLOSED_LIFECYCLES, mailboxDepth } = require('./derivations.cjs');
 const { VALID_ROUTINGS } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
+const { namesTopic } = require('./ledger-fold.cjs');
 
 /**
  * @typedef {object} SequenceResult
@@ -58,7 +62,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
  * @property {boolean} [undismissed]      add: a dismissed entry was cleared (--force-dismissed)
  * @property {boolean} [backfill]         add: item landed without summary/description for summary-backfill
  * @property {string[]} [roadmap_reverted] remove: roadmap items un-pulled (their joins named this topic)
- * @property {string[]} [warnings]         remove: the un-pull's tail commit failed
+ * @property {string[]} [warnings]         remove/rename: what a landing the ledger's read finished said; remove: the un-pull's tail commit failed
  * @property {number} map_total           items on the map after the op — no follow-up read needed
  */
 
@@ -142,6 +146,26 @@ function assertFresh(manifest, name, verbPhrase) {
         ? 'pull it forward from the roadmap first'
         : 'cancel from the epic menu instead';
   throw new Error(`"${name}" can't be ${verbPhrase} — ${lifecyclePhrase(lifecycle, research_state)}; ${recovery}`);
+}
+
+/**
+ * Gate remove and rename on the ledger: a topic any of its events names is
+ * refused, its entries naming it for good.
+ * @param {boolean} named @param {string} name @param {string} verbPhrase  "removed" | "renamed"
+ */
+function assertUnnamed(named, name, verbPhrase) {
+  if (named) throw new Error(`"${name}" can't be ${verbPhrase} — the ledger holds entries on it, which name it for good; cancel from the epic menu instead`);
+}
+
+/**
+ * The ledger's say on a topic, read before the work unit's lock is taken:
+ * whether it names the topic, and what a landing its read finished said.
+ * @param {string} cwd @param {string} workUnit @param {string} name
+ */
+function ledgerOn(cwd, workUnit, name) {
+  /** @type {string[]} */
+  const notes = [];
+  return { named: namesTopic(stateRoot(cwd), workUnit, name, notes), notes };
 }
 
 /**
@@ -401,11 +425,13 @@ function editItem(cwd, workUnit, name, { summary, description } = {}) {
  * @returns {MapOpResult}
  */
 function removeItem(cwd, workUnit, name) {
+  const ledger = ledgerOn(cwd, workUnit, name);
   const result = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
     mapItem(manifest, name);
     assertFresh(manifest, name, 'removed');
+    assertUnnamed(ledger.named, name, 'removed');
 
     delete items[name];
     const discovery = manifest.phases.discovery;
@@ -436,14 +462,13 @@ function removeItem(cwd, workUnit, name) {
   // project manifest).
   const { revertJoins } = require('./roadmap.cjs');
   const reverted = revertJoins(cwd, workUnit, { topic: name });
+  const warnings = ledger.notes;
   if (reverted.length > 0) {
     result.roadmap_reverted = reverted;
     const { PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-    /** @type {string[]} */
-    const warnings = [];
     commitStateTail(cwd, PROJECT_MANIFEST_SPEC, `roadmap: un-pull ${reverted.join(', ')} (${name} removed from ${workUnit})`, warnings);
-    if (warnings.length > 0) result.warnings = warnings;
   }
+  if (warnings.length > 0) result.warnings = warnings;
   return result;
 }
 
@@ -463,11 +488,13 @@ function removeItem(cwd, workUnit, name) {
  * @returns {MapOpResult}
  */
 function renameItem(cwd, workUnit, oldName, newName) {
+  const ledger = ledgerOn(cwd, workUnit, oldName);
   return withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const items = discoveryItems(manifest);
     const item = mapItem(manifest, oldName);
     assertFresh(manifest, oldName, 'renamed');
+    assertUnnamed(ledger.named, oldName, 'renamed');
     if (!newName || newName === oldName) {
       throw new Error(`new name must differ from "${oldName}"`);
     }
@@ -527,6 +554,7 @@ function renameItem(cwd, workUnit, oldName, newName) {
       map_total: Object.keys(rebuilt).length,
     };
     if (briefOnDisk) result.brief_moved = true;
+    if (ledger.notes.length > 0) result.warnings = ledger.notes;
     return result;
   });
 }

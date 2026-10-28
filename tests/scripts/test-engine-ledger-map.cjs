@@ -45,9 +45,9 @@ describe('a topic\'s map (5.8.5)', () => {
     const map = read('map', UNIT, 'note-window');
 
     assert.deepStrictEqual(map.questions, [
-      { id: open, text: 'Does a note snap to the grid?', by: 'claude', at: line(open).at, stands: 'open', moved_from: null, moved_to: null, part_of: null, parts: [], answers: [] },
+      { id: open, text: 'Does a note snap to the grid?', by: 'claude', at: line(open).at, stands: 'open', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [] },
       {
-        id: answered, text: 'Is a note a window?', by: 'person', at: line(answered).at, stands: 'answered', moved_from: null, moved_to: null, part_of: null, parts: [],
+        id: answered, text: 'Is a note a window?', by: 'person', at: line(answered).at, stands: 'answered', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [],
         answers: [{ id: answer, unit: UNIT, topic: 'note-window', by: 'person', text: 'A panel.' }],
       },
     ]);
@@ -151,13 +151,13 @@ describe('a topic\'s map (5.8.5)', () => {
 });
 
 describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
-  it('shows no move another unit made: a question one unit moved and another reworded stands, while the first is cancelled, where the rewording was made, moved from nowhere', () => {
+  it('shows no move another unit made: a question one unit moved and another reworded shows where the rewording was made as standing elsewhere, and stands there, moved from nowhere, while the first is cancelled (5.8.19)', () => {
     mint();
     const question = ask(NOTE, 'Which Space does a new note open on?');
     write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
     const reworded = reword('mint.discussion.mint', question, 'Which Space, on which display, does a new note open on?');
     assert.deepStrictEqual([moves(UNIT, 'note-window'), moves(UNIT, 'space-homing'), moves('mint', 'mint')], [
-      [[reworded, 'moved-away', null, 'space-homing']], [[reworded, 'open', 'note-window', null]], [],
+      [[reworded, 'moved-away', null, 'space-homing']], [[reworded, 'open', 'note-window', null]], [[reworded, 'elsewhere', null, null]],
     ]);
 
     ok(dir, ['workunit', 'cancel', UNIT]);
@@ -165,7 +165,7 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     assert.deepStrictEqual(moves('mint', 'mint'), [[reworded, 'open', null, null]]);
   });
 
-  it('leads a question moved away only to a topic of the unit it stands in: another unit\'s move, made while the question stood there, shows on no map once it stands where it was asked again — the first unit\'s topic of the same name\'s included — and on its record as history', () => {
+  it('leads a question moved away only to a topic of the unit it stands in: another unit\'s move, made while the question stood there, shows on no map once it stands where it was asked again — the first unit\'s topic of the same name\'s included — and on its record as history, the rewording standing elsewhere on the topic that unit moved it to (5.8.19)', () => {
     dock();
     const question = ask(NOTE, 'Does a note show on the dock?');
     const reworded = reword('dock.discussion.space-homing', question, 'Does a note badge the dock icon?');
@@ -175,7 +175,7 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
 
     ok(dir, ['workunit', 'reactivate', UNIT]);
 
-    assert.deepStrictEqual([moves('dock', 'space-homing'), moves('dock', 'badge'), moves(UNIT, 'note-window'), moves(UNIT, 'space-homing')], [[], [], [[reworded, 'open', null, null]], []]);
+    assert.deepStrictEqual([moves('dock', 'space-homing'), moves('dock', 'badge'), moves(UNIT, 'note-window'), moves(UNIT, 'space-homing')], [[], [[reworded, 'elsewhere', null, null]], [[reworded, 'open', null, null]], []]);
     assert.deepStrictEqual(read('record', 'dock', 'space-homing').moved, [{ ...line(moved), text: 'Does a note badge the dock icon?' }]);
   });
 

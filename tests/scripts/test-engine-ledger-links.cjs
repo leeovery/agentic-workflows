@@ -190,7 +190,7 @@ describe('whose entries a link names, and how they relate', () => {
     const onSecond = find(['--relies-on', second]).id;
     const third = change(second, { text: 'A translucent surface.', why: 'Lighter still.' }).id;
     const nothingReplaced = (/** @type {string} */ entry, /** @type {string} */ after) => new RegExp(
-      `^ledger hold --entry names ${entry}, which relies on nothing ${after} changed — it holds an entry relying on one whose way to its current form the replacement is on$`);
+      `^ledger hold --entry names ${entry}, which is held against nothing ${after} changed — it holds an entry relying on or answering one whose way to its current form the replacement is on$`);
 
     refused('hold', NOTE, ['--entry', unrelated, '--after', second], MADE, nothingReplaced(unrelated, second));
     refused('hold', NOTE, ['--entry', onSecond, '--after', second], MADE, nothingReplaced(onSecond, second));
