@@ -1608,7 +1608,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 7.S14 Given a project on GitHub without the code host's CLI or its stack extension, when the build reaches ready to build, then the driver's check of them fails there (what follows is §22's). (7.2.10)
 
-7.S15 Given the task and landing conformance suites, when they run in the hermetic environment, then the task suite exercises a phase, links across phases, ready returning several, done unblocking, close and close unblocking, list and show against a real Tick at or above its declared floor; the landing suite runs the local driver fully and GitHub's against a stubbed CLI; and no live GitHub run happens without the person's word. (7.1.7, 7.1.12, 7.3.1, 7.3.2, 7.3.3, 7.3.4, 7.3.5, 7.3.6, 7.3.7)
+7.S15 Given the task and landing conformance suites, when they run in the hermetic environment, then the task suite exercises a phase, links across phases, ready returning several, done unblocking, close and close unblocking, an addition to a task, list and show against a real Tick at or above its declared floor; the landing suite runs the local driver fully and GitHub's against a stubbed CLI; and no live GitHub run happens without the person's word. (7.1.7, 7.1.12, 7.3.1, 7.3.2, 7.3.3, 7.3.4, 7.3.5, 7.3.6, 7.3.7)
 
 7.S16 Given a cut of five phases of which two are written, when the progress view or a menu shows the build, then phases 3 to 5 read "not yet written"; when every task of phase 2 is done and the tracker has nothing ready, then the build reads the cut and does not treat the unit as finished. (7.4.1, 7.4.2, 7.4.3)
 
@@ -6714,7 +6714,7 @@ Comment → Tell me how to word it
 
 16.S73 Given Claude's call written to the ledger, and later the person's replacement, for a changed mind and carrying no sealed answer, of a decision that held Claude's lean, when each command returns, then the trust log holds a call event naming the entry and a reversal event naming the entry it reverses, each written by the command that wrote its entry. (16.13.3, 16.13.4, 16.12.1)
 
-16.S74 Given a trust log append that fails, when the command returns, then it has warned and the event waits in the conversation's folder; when the conversation next writes to the trust log, or the next boot runs, then the event lands before any tidy-up, and landing it again counts it once. (16.13.3)
+16.S74 Given a trust log append that fails, when the command returns, then it has warned and the event waits in the conversation's folder; when a boot runs while the append still fails, then the event still waits and the tidy-up keeps its folder, though Claude Code has deleted the transcript; once the append can succeed, when the conversation next writes to the trust log, or the next boot runs, then the event lands, and landing it again counts it once. (16.13.3)
 
 ## 17. Measures
 
@@ -10336,8 +10336,10 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 22.1.1 Boot keeps running the migrations, the knowledge sync, the hooks and
 the worktree include. Boot also keeps its two housekeeping passes. The label
 repair puts back this session's tmux name and any stranded one. The tidy-up
-removes a conversation's folder once Claude Code has deleted its transcript,
-never by age. [plan 9.2; Claude's; today's product; Claude's sort, T36]
+removes a conversation's folder once Claude Code has deleted its transcript
+and no trust log event waits in it (16.13.3), never by age. [plan 9.2;
+Claude's; today's product; Claude's sort, T36; Claude's derivation 2026-10-28: a pending trust log
+event must not be lost]
 
 22.1.2 Boot also adds the state worktree on a fresh clone, locked, and checks
 the state worktree and the state branch on every run (§4), and catches the state up from the remote before anything
@@ -10772,7 +10774,8 @@ links it. (22.6.12)
 
 22.S31 Given a tmux session name a crashed session left changed, when boot
 runs, then the name is put back; given a conversation folder whose transcript
-Claude Code has deleted, boot removes the folder, and a folder whose
+Claude Code has deleted and in which no trust log event waits, boot removes
+the folder, and a folder whose
 transcript remains stays, however old. (22.1.1)
 
 22.S32 Given the engine as installed, then it runs on Node 18 with Node's
@@ -10815,7 +10818,7 @@ and epic menus, and the build's progress. [plan 9.3; Claude's]
 
 23.1.3 No help screen, walkthrough fixture, help content file or glossary
 entry names the tracker or the code host's CLI: each is named only where
-7.1.10 allows: its driver, test fixtures, the user docs and design notes. [R35; ruled by the person 2026-10-17
+7.1.10 and 7.2.13 allow. [R35; ruled by the person 2026-10-17
 and 2026-10-18; Claude's derivation, O92]
 
 23.1.4 Help, the glossary and the user docs call the product "the
@@ -10948,8 +10951,8 @@ subject. [plan 9.4, record 3599–3603; Claude's; Claude's derivation, T24]
 23.4.4 planning.md goes, and the tracker moves to the configuration and
 build chapters. [plan 9.4; Claude's]
 
-23.4.5 The docs are one of the places a driver's tool may be named, beside
-its driver, test fixtures and design notes (7.1.10). [plan 9.4, R35; Claude's]
+23.4.5 The docs are one of the places a driver's tool may be named (7.1.10,
+7.2.13). [plan 9.4, R35; Claude's]
 
 23.4.6 The person's internal products are never named in the docs, only
 described. [plan 9.4; Claude's]
