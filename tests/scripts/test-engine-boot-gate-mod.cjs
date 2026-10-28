@@ -27,7 +27,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   let fix;
   beforeEach(() => { fix = setupFixture(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
-  const { dropSettings, commitSettings, bootWith, settings } = hookHelpers(() => fix);
+  const { dropSettings, commitSettings, bootWith } = hookHelpers(() => fix);
 
   /** The fixture's own settings, as boot leaves every project. */
   const HOOKS_ONLY = { hooks: OWN_HOOKS };

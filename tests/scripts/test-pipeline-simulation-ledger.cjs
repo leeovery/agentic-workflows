@@ -1,0 +1,188 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// The pipeline simulation's ledger scenario: an epic's questions, findings
+// and decisions written through the ledger verbs, each committing the
+// ledger alone on the state branch.
+//
+// Layer: simulation. World: the project every scenario starts from
+// (pipeline-world.cjs), a copy per scenario; each replays the engine calls
+// the skill prose makes, in prose order, and the oracle
+// (pipeline-oracle.cjs) audits the whole state after every mutation.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const ROOT = path.join(__dirname, '../..');
+const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
+const { launcher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/call.cjs'));
+const { stateGit } = require('./engine-harness.cjs');
+const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
+const { Sim, sessionLog, mappedEpic } = require('./pipeline-world.cjs');
+
+describe('pipeline simulation: ledger', () => {
+  let sim;
+  beforeEach(() => { sim = new Sim(); });
+  afterEach(() => { sim.destroy(); });
+
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and the departures waiting on a verdict, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
+    const wu = 'fumi';
+    mappedEpic(sim, wu, ['note-window', 'space-homing']);
+    sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
+    sim.run(['topic', 'start', wu, 'discussion', 'space-homing']);
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    const note = `${wu}.discussion.note-window`;
+    /** One write, its content on stdin: its short id. @param {string[]} args @param {Record<string, unknown>} content */
+    const ledger = (args, content) => {
+      const res = sim.run(['ledger', ...args], null, JSON.stringify(content));
+      assert.strictEqual(res.committed, stateGit(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
+      assert.strictEqual(stateGit(sim.dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
+      return res.id;
+    };
+
+    const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
+    const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike', product_wide: true });
+    const decision = ledger(['decide', note, '--answers', question, '--relies-on', finding], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
+    const relying = ledger(['ask', note, '--relies-on', decision], { ...made, text: 'Does a floating panel take focus?' });
+    const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
+    const affected = () => sim.run(['ledger', 'affected', wu]).affected.map((/** @type {{id: string}} */ e) => e.id);
+    assert.deepStrictEqual(affected(), [relying], 'what the replacement affects is not what relies on the decision it replaced');
+    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ changed/, null, JSON.stringify(made));
+    const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
+    assert.deepStrictEqual(affected(), [], 'a confirmation that it still holds left the entry affected');
+    const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
+    const moved = ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
+    const merged = ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
+    const review = ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
+    sim.refuses(['ledger', 'decide', note], /^ledger decide needs --answers <id>/, null, JSON.stringify({ ...made, text: 'Unanchored.', why: 'No question.' }));
+    sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /the current one is/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
+
+    const events = fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+    assert.deepStrictEqual(events.map((e) => [e.event, e.topic, e.session]), [
+      ['asked', 'note-window', 'sim-session'], ['found', 'note-window', 'sim-session'], ['decided', 'note-window', 'sim-session'],
+      ['asked', 'note-window', 'sim-session'], ['replaced', 'note-window', 'sim-session'], ['still-holds', 'note-window', 'sim-session'],
+      ['asked', 'note-window', 'sim-session'], ['moved', 'note-window', 'sim-session'], ['merged', 'space-homing', 'sim-session'],
+      ['asked', null, 'sim-session'],
+    ]);
+    assert.strictEqual(stateGit(sim.dir, ['show', `HEAD:${LEDGER}`]), fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8'));
+
+    /** @param {{id: string}[]} shown */
+    const ids = (shown) => shown.map((e) => e.id);
+    const record = sim.run(['ledger', 'record', wu, 'note-window']);
+    assert.deepStrictEqual([ids(record.questions), ids(record.findings), ids(record.decisions)], [[question, relying], [finding], [replacement]]);
+    assert.deepStrictEqual([ids(record.decisions[0].replaced), ids(record.questions[1].holds), ids(record.moved), record.moved[0].to], [[decision], [held], [moved], 'space-homing']);
+    const homing = sim.run(['ledger', 'map', wu, 'space-homing']);
+    assert.deepStrictEqual(homing.questions.map((/** @type {Record<string, any>} */ q) => [q.id, q.stands, q.moved_from, ids(q.answers)]), [[moving, 'merged', 'note-window', [replacement]]]);
+    const there = sim.run(['ledger', 'record', wu, 'space-homing']);
+    assert.deepStrictEqual([ids(there.merged), ids(there.other_topics)], [[merged], [replacement]]);
+    const unit = sim.run(['ledger', 'record', wu]);
+    assert.deepStrictEqual(ids(unit.questions), [question, relying, moving, review]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'product']).findings), [finding]);
+
+    // Claude's calls since the person last looked: a look moves the mark in
+    // the cache, and commits nothing.
+    const looked = stateGit(sim.dir, ['rev-parse', 'HEAD']);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu, 'note-window']).calls), [replacement]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'shown', wu, 'note-window']).calls), [replacement]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu]).calls), []);
+    assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']), looked, 'a look made a commit');
+
+    const homingAt = `${wu}.discussion.space-homing`;
+    const reached = ledger(['ask', homingAt], { ...made, text: 'Does a note stay on its Space?' });
+    const duplicate = ledger(['decide', homingAt, '--answers', reached], { ...made, text: 'Notes float above every Space.', why: 'Furniture.' });
+    ledger(['merge', homingAt, '--question', reached, '--into', replacement, '--duplicate', duplicate], made);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'map', wu, 'space-homing']).questions[1].answers), [replacement]);
+
+    sim.run(['topic', 'cancel', wu, 'discovery', 'note-window']);
+    const cancelledOwner = sim.run(['ledger', 'map', wu, 'space-homing']).questions;
+    assert.deepStrictEqual([cancelledOwner[0].id, cancelledOwner[0].moved_from], [moving, null], 'a move did not outlive the topic it was made from');
+    assert.deepStrictEqual(cancelledOwner[0].answers, [], 'a cancelled topic\'s entry answered a question');
+    assert.deepStrictEqual(ids(cancelledOwner[1].answers), [duplicate], 'a duplicate merged into a cancelled topic\'s entry stayed set aside');
+    assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
+    assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
+
+    // The world has no login for the separate call, so every decision landed
+    // unchecked — the merged duplicate among them. The next start launches
+    // the late check; the check, given a login, records what it finds beside
+    // each — the replacement holding several rules, flagged where its record
+    // is read — and a start after it launches none.
+    const decisions = fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line))
+      .filter((e) => e.event === 'decided' || e.of === 'decision');
+    assert.deepStrictEqual(decisions.map((e) => e.unchecked), [true, true, true]);
+    /** @type {string[]} */
+    const launched = [];
+    t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => { if (argv.join(' ') === 'ledger late-check') launched.push(root); });
+    sim.run(['boot']);
+    assert.deepStrictEqual(launched, [fs.realpathSync(statePath(sim.dir))]);
+    const withoutLogin = sim.env;
+    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ 'A frameless panel.': { rules: ['A frameless panel.', 'It takes no focus.'] }, '': { rules: ['One rule.'] } }) };
+    assert.deepStrictEqual(sim.run(['ledger', 'late-check']), { ok: true, ran: true, checked: 3, several: 1, owed: 0 });
+    sim.env = withoutLogin;
+    const checked = sim.run(['ledger', 'record', wu, 'note-window']).decisions[0];
+    assert.deepStrictEqual([checked.id, checked.late_check, checked.replaced.map((/** @type {{late_check: string}} */ d) => d.late_check)], [replacement, 'several', ['one']]);
+    sim.run(['boot']);
+    assert.strictEqual(launched.length, 1, 'a start launched the late check with no decision owed one');
+
+    // Another unit's replacement counts while that unit is live, and of two
+    // merges crossing each other the later holds: the note window's question
+    // merged into space homing's answer, the other unit's replacement its
+    // duplicate; that unit cancelled, so the entry it replaced stands again
+    // and space homing's question is merged the other way, into it; the unit
+    // reactivated, the later merge still holds.
+    const mint = 'mint';
+    sim.run(['workunit', 'create', mint, 'feature', '--description', 'Mint', '--session-log-file', sessionLog(sim, mint)]);
+    sim.run(['topic', 'start', mint, 'discussion', mint]);
+    const overruled = ledger(['replace', `${mint}.discussion.${mint}`, '--replaces', replacement, '--reason', 'changed-mind'],
+      { ...made, drops: ['frameless'], text: 'A framed panel.', why: 'Mint frames its notes.' });
+    const overruling = sim.run(['ledger', 'record', wu, 'note-window']);
+    assert.deepStrictEqual([ids(overruling.decisions), ids(overruling.decisions[0].replaced)], [[overruled], [replacement, decision]]);
+    const follows = ledger(['ask', homingAt], { ...made, text: 'Does a note follow the person across Spaces?' });
+    const following = ledger(['decide', homingAt, '--answers', follows], { ...made, text: 'A note follows the person.', why: 'Furniture moves with you.' });
+    ledger(['merge', note, '--question', question, '--into', following, '--duplicate', overruled], made);
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'record', wu, 'note-window']).decisions), [replacement]);
+    ledger(['merge', homingAt, '--question', follows, '--into', replacement, '--duplicate', following], made);
+    sim.run(['workunit', 'reactivate', mint]);
+    const answer = (/** @type {string} */ topic, /** @type {string} */ asked) => {
+      const row = sim.run(['ledger', 'map', wu, topic]).questions.find((/** @type {{id: string}} */ q) => q.id === asked);
+      return [row.stands, ids(row.answers)];
+    };
+    assert.deepStrictEqual([answer('note-window', question), answer('space-homing', follows)], [['answered', [overruled]], ['merged', [overruled]]]);
+
+    // The unit whose decision mint replaced cancelled: the replacement, the
+    // earliest entry of its chain in a live place, stands in mint meanwhile,
+    // and back in the note window once the unit is reactivated.
+    sim.run(['workunit', 'cancel', wu]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'record', mint]).decisions), [overruled]);
+    sim.run(['workunit', 'reactivate', wu]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'record', mint]).decisions), []);
+
+    // A merge counts only while it is live: space homing, holding a merge
+    // whose duplicate stands on the note window, cancelled, the duplicate
+    // stands again; reactivated, the merge holds again.
+    const sized = ledger(['decide', note, '--answers', ledger(['ask', note], { ...made, text: 'Is a note\'s size its own?' })], { ...made, text: 'A note keeps its own size.', why: 'Furniture keeps its shape.' });
+    const keeps = ledger(['ask', note], { ...made, text: 'Does a note keep its size across Spaces?' });
+    const kept = ledger(['decide', note, '--answers', keeps], { ...made, text: 'It keeps its size.', why: 'Furniture keeps its shape.' });
+    ledger(['move', note, '--question', keeps, '--to', 'space-homing'], made);
+    ledger(['merge', homingAt, '--question', keeps, '--into', sized, '--duplicate', kept], made);
+    const decided = () => ids(sim.run(['ledger', 'record', wu, 'note-window']).decisions);
+    assert.ok(!decided().includes(kept), 'a duplicate a holding merge took stayed current');
+    sim.run(['topic', 'cancel', wu, 'discovery', 'space-homing']);
+    assert.ok(decided().includes(kept), 'a merge on a cancelled topic still set its duplicate aside');
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'space-homing']);
+    assert.ok(!decided().includes(kept), 'a reactivated merge no longer set its duplicate aside');
+
+    // The verdict queue: nothing waits while every answer is Claude's; the
+    // person's replacement of Claude's own call, for a mistake, stands over
+    // its lean and waits on a verdict.
+    assert.deepStrictEqual(sim.run(['ledger', 'verdicts']).departures, []);
+    const departed = ledger(['replace', note, '--replaces', sized, '--reason', 'was-wrong'],
+      { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' });
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'verdicts']).departures), [departed]);
+  });
+});

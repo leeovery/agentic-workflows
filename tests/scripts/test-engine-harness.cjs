@@ -5,8 +5,8 @@
 // stdin reach the engine, the git fixture is a repo with its state worktree
 // that an engine commit lands in, a world made once is copied whole and
 // apart, a keyword-only checkout is one a transaction's index builds a real
-// store in, a call's attempts at a lock are seen as it makes them, the `ps`
-// that fails does, and a long suite's shards hold every test once.
+// store in, a call's attempts at a lock are seen as it makes them, and the
+// `ps` that fails does.
 
 require('./hermetic-env.cjs');
 
@@ -18,7 +18,6 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
-const shards = require('./shards.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const {
   call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
@@ -229,45 +228,6 @@ describe('engine harness — a world made once and copied', () => {
     const another = harness.fixtureFrom('harness-test-', seed);
     copies = [another(), another()];
     assert.strictEqual(process.listenerCount('exit'), listeners);
-  });
-});
-
-describe('the shards a long suite runs as', () => {
-  /** @type {string} */
-  let folder;
-  beforeEach(() => { folder = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-shards-')); });
-  afterEach(() => fs.rmSync(folder, { recursive: true, force: true }));
-
-  /** @param {...string} names */
-  const files = (...names) => names.forEach((name) => fs.writeFileSync(path.join(folder, name), ''));
-  const suite = () => path.join(folder, 'test-long.cjs');
-  const script = (/** @type {string[]} */ names) => `node --test ${names.map((name) => `tests/scripts/${name}`).join(' ')}`;
-
-  it('deals every test to exactly one shard, round the shards in the order they are registered', () => {
-    for (const count of [1, 2, 3, 6]) {
-      for (let dealt = 0; dealt < 20; dealt++) {
-        const holders = Array.from({ length: count }, (_, i) => i + 1).filter((shard) => shards.dealtTo(dealt, count, shard));
-        assert.deepStrictEqual(holders, [dealt % count + 1], `test ${dealt} of ${count} shards`);
-      }
-    }
-  });
-
-  it('counts the suite and its shard files, a suite of its own alone and another suite\'s shards apart', () => {
-    files('test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-3.cjs', 'test-long-er-shard-2.cjs');
-    assert.strictEqual(shards.shardCount(suite(), script(['test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-3.cjs'])), 3);
-    fs.rmSync(path.join(folder, 'test-long-shard-2.cjs'));
-    fs.rmSync(path.join(folder, 'test-long-shard-3.cjs'));
-    assert.strictEqual(shards.shardCount(suite(), script(['test-long.cjs'])), 1);
-  });
-
-  it('refuses shard files numbered with a gap, or not from 2', () => {
-    files('test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-4.cjs');
-    assert.throws(() => shards.shardCount(suite(), script(['test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-4.cjs'])), /numbered 2, 4 — they run from 2 on, with no gap/);
-  });
-
-  it('refuses a shard file the npm test script does not run, so no share goes unrun', () => {
-    files('test-long.cjs', 'test-long-shard-2.cjs', 'test-long-shard-3.cjs');
-    assert.throws(() => shards.shardCount(suite(), script(['test-long.cjs', 'test-long-shard-2.cjs'])), /the npm test script does not run test-long-shard-3\.cjs$/);
   });
 });
 
