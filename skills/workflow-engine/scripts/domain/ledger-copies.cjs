@@ -46,8 +46,10 @@
 //   through is never matched against a mark that render is about to replace.
 // - The fold's check finishes a landing a kill cut short under the writer
 //   lock (ledger.cjs): a writer checks the ledger before it claims the
-//   render, so that wait is taken with the claim free. A fold never renders
-//   what the branch has not committed (5.4.3).
+//   render, so that wait is taken with the claim free. A fold renders what
+//   the append-only check passed: the branch's committed ledger and any
+//   tail appended after it, a killed write's uncommitted tail among them
+//   (5.4.3).
 // - Indexing follows each render inside the claim, once a checkout's
 //   knowledge base is set up: each copy written indexed and each removed
 //   taken out. The keyword side lands at once, the vectors left to the

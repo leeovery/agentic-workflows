@@ -297,4 +297,4 @@ function askClaude(ask) {
   }
 }
 
-module.exports = { BINARY_VAR, askClaude };
+module.exports = { askClaude };

@@ -174,6 +174,17 @@ function stateGit(dir, args) {
   return git(statePath(dir), args);
 }
 
+/**
+ * The ledger's entries in order, as the engine reads them: checked first,
+ * each line read as an event of its version's shape.
+ * @param {string} root the state root @param {string[]} [notes] what a landing the check finished said, pushed to
+ * @returns {Record<string, unknown>[]}
+ */
+function ledgerEntries(root, notes = []) {
+  const { withLedger } = require('../../skills/workflow-engine/scripts/domain/ledger.cjs');
+  return withLedger(root, notes, (ledger) => [...ledger.entries()].map(({ event }) => event));
+}
+
 /** A ref's commit. @param {string} dir @param {string} ref @returns {string} */
 function tip(dir, ref) {
   return git(dir, ['rev-parse', ref]).trim();
@@ -335,6 +346,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output, lockAttempts,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  STATE_DIR_NAME, statePath, git, stateGit, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
+  STATE_DIR_NAME, statePath, git, stateGit, ledgerEntries, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
   setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
 };
