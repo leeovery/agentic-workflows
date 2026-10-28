@@ -174,4 +174,4 @@ function blobIds(file, lengths, objectFormat) {
   return hashes.map((hash, i) => (read >= lengths[i] ? hash.digest('hex') : null));
 }
 
-module.exports = { runToFile, blobToFile, fileChunks, fileLineBytes, fileLines, fdLines, lineAt, endsWithNewline, blobIds };
+module.exports = { runToFile, blobToFile, fileLineBytes, fileLines, fdLines, lineAt, endsWithNewline, blobIds };

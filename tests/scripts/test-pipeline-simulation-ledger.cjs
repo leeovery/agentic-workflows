@@ -194,6 +194,29 @@ describe('pipeline simulation: ledger', () => {
     sim.run(['workunit', 'reactivate', mint]);
     assert.deepStrictEqual(answer('note-window', unfocused), ['answered', [dimmer]]);
 
+    // A question's wordings read as one line: mint's rewording, set aside
+    // while sage rewords the same question, reads once back as the earlier
+    // of the two, and the question shows once, in sage's wording; of three
+    // wordings, the middle set aside, the first is an earlier wording of the
+    // last, never a row of its own.
+    const sage = 'sage';
+    sim.run(['workunit', 'create', sage, 'feature', '--description', 'Sage', '--session-log-file', sessionLog(sim, sage)]);
+    sim.run(['topic', 'start', sage, 'discussion', sage]);
+    const reword = (/** @type {string} */ unit, /** @type {string} */ wording, /** @type {string} */ text) => ledger(['replace', `${unit}.discussion.${unit}`, '--replaces', wording, '--reason', 'changed-mind'], { ...made, drops: ['the old wording'], text });
+    const tilting = ledger(['ask', note], { ...made, text: 'Does a note tilt?' });
+    const tilts = ledger(['decide', note, '--answers', tilting], { ...made, text: 'It tilts with the desk.', why: 'Furniture leans.' });
+    reword(mint, tilting, 'Does a note tilt in Mint?');
+    sim.run(['workunit', 'cancel', mint]);
+    const sageTilting = reword(sage, tilting, 'Does a note tilt in Sage?');
+    sim.run(['workunit', 'reactivate', mint]);
+    assert.deepStrictEqual(answer('note-window', sageTilting), ['answered', [tilts]]);
+    const glowing = ledger(['ask', note], { ...made, text: 'Does a note glow?' });
+    const glows = ledger(['decide', note, '--answers', glowing], { ...made, text: 'It glows when new.', why: 'New furniture shines.' });
+    const eitherGlowing = reword(sage, reword(mint, glowing, 'Does a note glow in Mint?'), 'Does a note glow in either?');
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(answer('note-window', eitherGlowing), ['answered', [glows]]);
+    sim.run(['workunit', 'reactivate', mint]);
+
     // The verdict queue: nothing waits while every answer is Claude's; the
     // person's replacement of Claude's own call, for a mistake, stands over
     // its lean and waits on a verdict.

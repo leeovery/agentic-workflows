@@ -126,24 +126,6 @@ describe('a topic\'s map (5.8.5)', () => {
     assertAgree('note-window');
   });
 
-  it('keeps a question answered by an answer to a later wording set aside since: the question stands again in its first wording, answered, never open and with no row of the answer\'s own, as its record and `since` show it (5.3.13, 5.8.17)', () => {
-    mint();
-    const question = ask(NOTE, 'What is a note?');
-    const decided = decide(NOTE, question, 'A panel.');
-    const reworded = reword(MINT, question, 'What is a note in Mint?');
-    const replacement = change(NOTE, decided, 'A frameless window.');
-    const beside = decide(NOTE, reworded, 'A window that keeps its size.');
-    assert.deepStrictEqual([line(replacement).answers, line(beside).answers], [reworded, reworded]);
-
-    ok(dir, ['workunit', 'cancel', 'mint']);
-
-    assert.deepStrictEqual(answered('note-window'), [[question, 'answered', [replacement, beside]]]);
-    assert.deepStrictEqual(read('since', UNIT, 'note-window').calls.map((/** @type {{id: string}} */ c) => c.id), [replacement, beside]);
-    assertAgree('note-window');
-    ok(dir, ['workunit', 'reactivate', 'mint']);
-    assert.deepStrictEqual(answered('note-window'), [[reworded, 'answered', [replacement, beside]]]);
-  });
-
   it('keeps a reworded question merged: it stands answered by the entry an earlier wording was merged into (5.5.5)', () => {
     const owners = decide(NOTE, ask(NOTE, 'Does a note float above every Space?'), 'Notes float above every Space.');
     const reached = ask(SPACE, 'Does a note stay on its Space?');

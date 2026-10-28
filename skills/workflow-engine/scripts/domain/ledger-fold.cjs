@@ -27,12 +27,20 @@
 //   question's wording is made on the topic the last live move its unit
 //   made of the question took it to (5.3.3), or where none is, the topic it
 //   was written on.
+// - A question's line (5.8): the live wordings of its chain, in the
+//   ledger's order, read as one line. A wording set aside drops out of it;
+//   one whose own predecessor is set aside reads as rewording the nearest
+//   live wording before it; of two live rewordings of one wording, the
+//   later replaces the earlier. The last is the question's wording, every
+//   other live one an earlier wording of it, so a question is one entry
+//   however its rewordings forked or were set aside. A wording set aside
+//   reads as the nearest live wording it grew from, down its own chain.
 // - Where an entry stands: in the unit and on the topic the earliest entry
-//   of its chain made in a live place was made on. Normally that is the
-//   first entry, however and wherever a later entry of the chain was
-//   written; while the first entry's place is set aside, the earliest live
-//   replacement stands where it was made, so a current entry is always one
-//   a live record shows.
+//   of its chain made in a live place was made on — a question's, the
+//   first wording of its line. Normally that is the first entry, however
+//   and wherever a later entry of the chain was written; while the first
+//   entry's place is set aside, the earliest live replacement stands where
+//   it was made, so a current entry is always one a live record shows.
 // - Where an entry is placed (5.8.19): where it stands, and where it was
 //   made where that differs, so a later unit's replacement of an earlier
 //   unit's decision shows in both. Every map, record and copy places an
@@ -41,13 +49,14 @@
 //   besides on the map of every question it answers; every place an entry
 //   shows in is `showsIn`'s, which "since you last looked" reads.
 // - Whether an entry is current, by one rule (5.8.17, 5.3.13): it is live,
-//   no live entry replaces it, and no merge that holds took it as a
-//   duplicate. A merge holds while it is live and the entry it went into,
-//   followed down its chain, has a current form (5.5.4, 5.5.5). So a
-//   replacement or a merge whose topic or unit is set aside counts for
-//   nothing while it is, and what it replaced or merged away stands again;
-//   the ledger keeps every line. A write's link that must be current and
-//   every read decide by this rule alone.
+//   no live entry replaces it — a question's wording read along its line,
+//   so its last live wording alone is current — and no merge that holds
+//   took it as a duplicate. A merge holds while it is live and the entry
+//   it went into, followed down its chain, has a current form (5.5.4,
+//   5.5.5). So a replacement or a merge whose topic or unit is set aside
+//   counts for nothing while it is, and what it replaced or merged away
+//   stands again; the ledger keeps every line. A write's link that must be
+//   current and every read decide by this rule alone.
 // - Which merges hold, worked out once for the whole ledger, so the answer
 //   never turns on which entry is read first. From none holding, the latest
 //   live merge that would still lead to a current entry once it held is
@@ -62,7 +71,10 @@
 // - The current form of an entry: the current entries its chain leads to,
 //   down every live replacement, and through each merge that holds to the
 //   entry the duplicate was merged into; and the live replacements met on
-//   the way, which are what changed it, the latest last.
+//   the way, which are what changed it, the latest last. A question's
+//   wording's, along its line: the question's wording, and the live
+//   wordings after the nearest live one it grew from — every live wording
+//   where none is.
 // - A question's current answer: every current entry naming any wording of
 //   it, earlier or later, standing or set aside, so a replaced sibling never
 //   touches the others, a rewording keeps its answers (5.3.13), and an
@@ -70,7 +82,8 @@
 //   (5.8.17). What a question's merges resolve to answers it too, a merge
 //   of any wording alike.
 // - The chain (5.6.5): the entries a current one replaced, newest first,
-//   down to the first that is not live, as though it were not there.
+//   down to the first that is not live, as though it were not there; a
+//   question's, the earlier wordings of its line.
 // - A topic's map (5.8.5): its questions, where each stands, and the
 //   answers to each, its current answer and what its merges resolve to —
 //   which the topic's record shows too. A map shows where a question stands
@@ -334,6 +347,66 @@ function isLive(folded, id) {
   return whyDead(folded, id) === null;
 }
 
+/** Whether `id` is a question's wording, read along its line. @param {Folded} folded @param {string} id */
+function isWording(folded, id) {
+  return factsOf(folded, id).kind === 'question';
+}
+
+/**
+ * Each question's line, by the first wording of its chain, as worked out
+ * for one folded ledger.
+ * @type {WeakMap<Folded, Map<string, string[]>>}
+ */
+const LINES = new WeakMap();
+
+/**
+ * The line of the question `id` is a wording of (5.8): the live wordings of
+ * its chain, in the ledger's order — none where every one is set aside.
+ * Every read of a question's wordings goes by it.
+ * @param {Folded} folded @param {string} id
+ * @returns {readonly string[]}
+ */
+function lineOf(folded, id) {
+  let known = LINES.get(folded);
+  if (known === undefined) {
+    known = new Map();
+    for (const [entry, facts] of folded.facts) {
+      if (facts.kind !== 'question' || !isLive(folded, entry)) continue;
+      const line = known.get(facts.root);
+      if (line === undefined) known.set(facts.root, [entry]);
+      else line.push(entry);
+    }
+    LINES.set(folded, known);
+  }
+  return known.get(factsOf(folded, id).root) ?? NONE;
+}
+
+/**
+ * A question's wording: the last live wording of its line, or null where
+ * every one is set aside.
+ * @param {Folded} folded @param {string} id any wording of it
+ * @returns {string|null}
+ */
+function wordingOf(folded, id) {
+  return lineOf(folded, id).at(-1) ?? null;
+}
+
+/**
+ * The live wordings of `id`'s line after the nearest live wording it grew
+ * from, down its own chain — itself while live — in the ledger's order;
+ * every live wording where none is.
+ * @param {Folded} folded @param {string} id
+ * @returns {string[]}
+ */
+function wordingsAfter(folded, id) {
+  let from = /** @type {string|null} */ (id);
+  while (from !== null && !isLive(folded, from)) from = factsOf(folded, from).replaces;
+  const line = lineOf(folded, id);
+  if (from === null) return [...line];
+  const at = factsOf(folded, from).place.number;
+  return line.filter((wording) => factsOf(folded, wording).place.number > at);
+}
+
 /**
  * Where each id stands, as worked out for one folded ledger.
  * @type {WeakMap<Folded, Map<string, Standing>>}
@@ -341,8 +414,22 @@ function isLive(folded, id) {
 const STANDINGS = new WeakMap();
 
 /**
- * Where `id` stands: where the earliest entry of its chain, back to the
- * first, made in a live place was made; where none is, where the first was.
+ * The earliest entry of `id`'s chain made in a live place — a question's,
+ * the first wording of its line — or, where none is, its first.
+ * @param {Folded} folded @param {string} id
+ * @returns {string}
+ */
+function earliestLive(folded, id) {
+  const { root } = factsOf(folded, id);
+  if (isWording(folded, id)) return lineOf(folded, id)[0] ?? root;
+  let earliest = root;
+  for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
+  return earliest;
+}
+
+/**
+ * Where `id` stands: where the earliest entry of its chain made in a live
+ * place was made; where none is, where the first was.
  * @param {Folded} folded @param {string} id
  * @returns {Standing}
  */
@@ -350,11 +437,7 @@ function standingOf(folded, id) {
   let known = STANDINGS.get(folded);
   if (known === undefined) STANDINGS.set(folded, known = new Map());
   let standing = known.get(id);
-  if (standing === undefined) {
-    let earliest = factsOf(folded, id).root;
-    for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
-    known.set(id, standing = madeOn(folded, earliest));
-  }
+  if (standing === undefined) known.set(id, standing = madeOn(folded, earliestLive(folded, id)));
   return standing;
 }
 
@@ -474,12 +557,13 @@ function mergeHolds(folded, merge) {
 }
 
 /**
- * Why the entry `id` is not current, or null where it is (5.8.17, 5.3.13).
+ * Why the entry `id` is not current, or null where it is (5.8.17, 5.3.13):
+ * a question's wording replaced by the next on its line.
  * @param {Folded} folded @param {string} id
  * @returns {NotCurrent|null}
  */
 function notCurrent(folded, id) {
-  const [replacer] = liveReplacers(folded, id);
+  const [replacer] = isWording(folded, id) ? wordingsAfter(folded, id) : liveReplacers(folded, id);
   if (replacer !== undefined) return { replaced_by: replacer };
   const merge = factsOf(folded, id).merged_by.find((m) => mergeHolds(folded, m));
   if (merge !== undefined) return { merged_by: merge };
@@ -496,12 +580,14 @@ function isCurrent(folded, id) {
  * The current entries `id`'s chain leads to: itself while current; else
  * those of every live replacement naming it, or, while none does, of the
  * entry each merge that holds took it into as a duplicate; none where it
- * leads nowhere current.
+ * leads nowhere current. A question's wording's: the question's wording.
  * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
 function currentsOf(folded, id) {
-  return leadsTo(folded, holdingMerges(folded), id, new Set());
+  if (!isWording(folded, id)) return leadsTo(folded, holdingMerges(folded), id, new Set());
+  const wording = wordingOf(folded, id);
+  return wording === null ? [] : [wording];
 }
 
 /**
@@ -519,12 +605,14 @@ function replacementsDown(folded, holding, id, seen) {
 /**
  * What changed `id`: the live replacements on its way to its current forms,
  * past each merge that holds, a merge changing nothing — a duplicate gives
- * the same answer (5.5.5) — in the ledger's order, the latest last. None
- * while it is current.
+ * the same answer (5.5.5) — in the ledger's order, the latest last; a
+ * question's wording's, the wordings after it on its line. None while it is
+ * current.
  * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
 function replacementsOf(folded, id) {
+  if (isWording(folded, id)) return wordingsAfter(folded, id);
   return inLedgerOrder(folded, replacementsDown(folded, holdingMerges(folded), id, new Set()));
 }
 
@@ -534,25 +622,18 @@ function holdsOf(folded, id) {
 }
 
 /**
- * The entries a replacement replaced, as its line names them: the one it
- * names, then each that one replaced, back down its chain — newest first,
- * oldest last.
- * @param {Folded} folded @param {string} id
- * @returns {string[]}
- */
-function replacedChain(folded, id) {
-  const replaced = factsOf(folded, id).replaces;
-  return replaced === null ? [] : [replaced, ...replacedChain(folded, replaced)];
-}
-
-/**
  * The chain folded beneath a current entry (5.6.5): the entries it
  * replaced, newest first, down to the first that is not live, as though
- * that one were not there — what it replaced stands again on its own.
+ * that one were not there — what it replaced stands again on its own. A
+ * question's wording's: the wordings before it on its line, newest first.
  * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
 function foldedBeneath(folded, id) {
+  if (isWording(folded, id)) {
+    const at = factsOf(folded, id).place.number;
+    return lineOf(folded, id).filter((wording) => factsOf(folded, wording).place.number < at).reverse();
+  }
   const replaced = factsOf(folded, id).replaces;
   return replaced === null || !isLive(folded, replaced) ? [] : [replaced, ...foldedBeneath(folded, replaced)];
 }
@@ -563,20 +644,8 @@ function inLedgerOrder(folded, ids) {
 }
 
 /**
- * The question an answer answers, as the first wording of its chain: an
- * answer to any wording of a question, standing or set aside, answers that
- * question (5.3.13, 5.8.17). Every read crediting an answer to a question,
- * and every write checking one, goes by it.
- * @param {Folded} folded @param {string} answer
- * @returns {string}
- */
-function questionAnswered(folded, answer) {
-  return chainRoot(folded.facts, factsOf(folded, answer).answers);
-}
-
-/**
- * A question's current answer (5.3.13): every current entry answering it,
- * by `questionAnswered`, in the ledger's order.
+ * A question's current answer (5.3.13): every current entry answering any
+ * wording of it, standing or set aside, in the ledger's order.
  * @param {Folded} folded @param {string} question
  */
 function currentAnswer(folded, question) {
@@ -675,9 +744,9 @@ function movedFrom(folded, move) {
   return /** @type {string} */ (factsOf(folded, move).topic);
 }
 
-/** The question a part is part of, by any wording, in its current wording: the first current form of it, or the wording named where it has none. @param {Folded} folded @param {string|null} whole */
+/** The question a part is part of, by any wording, in its wording: the last of its line, or the wording named where none is live. @param {Folded} folded @param {string|null} whole */
 function wholeOf(folded, whole) {
-  return whole === null ? null : currentsOf(folded, chainRoot(folded.facts, whole))[0] ?? whole;
+  return whole === null ? null : wordingOf(folded, whole) ?? whole;
 }
 
 /**
@@ -892,5 +961,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  replacedChain, foldedBeneath, questionAnswered, answersOf, showsIn, mapOf, recordOf, placeRecords, productOf,
+  foldedBeneath, wordingOf, answersOf, showsIn, mapOf, recordOf, placeRecords, productOf,
 };

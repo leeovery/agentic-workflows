@@ -245,26 +245,6 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     assert.deepStrictEqual(changes(), flagged);
   });
 
-  it('holds a replacement written while a rewording was live against that wording, which it saw, set aside and back; a further replacement written while it is set aside answers the wording that stands, whatever the one it replaces names, and is flagged once the rewording is back (5.6.10)', () => {
-    const question = ask(NOTE, 'What is a note?');
-    const answer = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note is a panel.', why: 'Furniture.' });
-    const reworded = reword(MINT, question, 'What is a note in Mint?');
-    const replacement = change(NOTE, answer, 'A note is a frameless window.');
-    for (const verb of ['cancel', 'reactivate']) {
-      ok(dir, ['workunit', verb, 'mint']);
-      assert.deepStrictEqual(changes(), {}, `flagged once mint was ${verb}d`);
-    }
-    ok(dir, ['workunit', 'cancel', 'mint']);
-
-    const again = change(NOTE, replacement, 'A note is a borderless window.');
-
-    const answers = (/** @type {string} */ id) => ledger.entries().find((e) => e.id === ledger.full(id)).answers;
-    assert.deepStrictEqual([answers(replacement), answers(again)], [ledger.full(reworded), ledger.full(question)]);
-    assert.deepStrictEqual(changes(), {});
-    ok(dir, ['workunit', 'reactivate', 'mint']);
-    assert.deepStrictEqual(changes(), { [again]: [[question, [reworded]]] });
-  });
-
   it('flags no answer to a question merged or moved, neither being a rewording (5.S41)', () => {
     const question = ask(NOTE, 'Does a note follow the person?');
     const answer = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note stays put.', why: 'Furniture.' });

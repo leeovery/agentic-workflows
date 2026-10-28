@@ -23,7 +23,8 @@
 //   its siblings untouched (5.3.13) — a question is answered, has parts,
 //   moves or merges only while current, and a merge goes into a current
 //   decision — current by the one rule every read decides by
-//   (ledger-fold.cjs).
+//   (ledger-fold.cjs), so a question is named in its wording, the last of
+//   its line.
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
 //   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
@@ -47,9 +48,11 @@
 //   and on the person's replacement of a decision carrying no sealed answer
 //   of Claude's, what its reason and the entry it replaces allow.
 // - What the engine sets: a replacement's kind; the question a replaced
-//   decision answers, in the wording live as the replacement is written,
-//   found from the question's first wording, so it is held against what it
-//   saw as an answer is (ledger-affected.cjs);
+//   decision answers, in its wording as the replacement is written — the
+//   last of its line, whatever wording the replaced decision named — so it
+//   is held against what it saw as an answer is (ledger-affected.cjs), or
+//   the wording the replaced decision named where every wording is set
+//   aside;
 //   the question a replaced question is part of; and, where the
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
 //   and who moved whom where the departure rule settles it; a decision's
@@ -81,7 +84,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, questionAnswered } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
@@ -547,30 +550,28 @@ function checkDuplicate(linked, read) {
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   const where = `ledger merge --duplicate names ${short(duplicate)}`;
   if (duplicate === into) throw new Error(`${where}, the decision --into names — a duplicate is another entry`);
-  if (questionAnswered(read, duplicate) !== factsOf(read, question).root) {
-    const answers = /** @type {string} */ (factsOf(read, duplicate).answers);
+  const answers = /** @type {string} */ (factsOf(read, duplicate).answers);
+  if (factsOf(read, answers).root !== factsOf(read, question).root) {
     throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}, in any of its wordings`);
   }
 }
 
 /**
  * What follows from a replacement's link to what it replaces: the kind it
- * stands for; for a decision, the question it answers in the wording live
- * as it is written — the latest live rewording of the question's first
- * wording, or that wording where none is — whatever wording the replaced
- * decision named; for a question, the question it is part of. Nothing for
- * any other write.
+ * stands for; for a decision, the question it answers in its wording as the
+ * replacement is written, whatever wording the replaced decision named — or
+ * that one, where every wording is set aside; for a question, the question
+ * it is part of. Nothing for any other write.
  * @param {Write} write @param {Linked} linked @param {Folded} read
  * @returns {Record<string, unknown>}
  */
 function followed(write, linked, read) {
   if (write.event !== 'replaced') return {};
-  const replaces = /** @type {string} */ (linked.replaces);
-  const replaced = factsOf(read, replaces);
+  const replaced = factsOf(read, /** @type {string} */ (linked.replaces));
   const of = replaced.kind;
   if (of === 'decision') {
-    const question = questionAnswered(read, replaces);
-    return { of, answers: replacementsOf(read, question).at(-1) ?? question };
+    const named = /** @type {string} */ (replaced.answers);
+    return { of, answers: wordingOf(read, named) ?? named };
   }
   if (of === 'question') return { of, part_of: replaced.part_of };
   return { of };

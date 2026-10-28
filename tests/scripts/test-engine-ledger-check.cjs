@@ -391,6 +391,26 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.ok(!fs.existsSync(claim), 'the check left its claim behind');
   });
 
+  for (const [what, written, refusal] of /** @type {[string, (line: string) => string, RegExp][]} */ ([
+    ['repeating an id', (line) => line, /^line 3 of the ledger repeats the id \w+, which line 2 holds$/],
+    ['that is no entry', () => 'not json\n', /^line 3 of the ledger is not JSON: not json$/],
+  ])) {
+    it(`commits no result over a line ${what} written outside the engine while the call judged: the ledger is read again under the lock before each append (5.4.4)`, (t) => {
+      decide(ask(), PANEL);
+      const [, decided] = ledgerText().split(/(?<=\n)/);
+      const tip = stateTip();
+      t.mock.method(claudeCall, 'askClaude', () => {
+        fs.appendFileSync(statePath(dir, LEDGER), written(decided));
+        return { answer: rules(PANEL), cost: 0 };
+      });
+
+      assert.match(refuses(dir, ['ledger', 'late-check'], { env: armed() }).error, refusal);
+
+      assert.strictEqual(stateTip(), tip, 'the check committed over the line');
+      assert.ok(!ledgerText().includes('"checked"'), 'the check appended its result');
+    });
+  }
+
   it('leaves a decision the call still cannot judge owed, for the next start: no login, a rate limit, an outage or a timeout leaves every decision after it owed too, an answer that does not fit only that one', (t) => {
     const first = decide(ask(), PANEL);
     const second = decide(ask(NOTE, 'How do notes reach a second Mac?'), SYNC);

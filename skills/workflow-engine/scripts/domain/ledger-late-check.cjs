@@ -10,10 +10,12 @@
 //   as a detached `engine ledger late-check`, so a start never waits on it.
 //   One check works at a time: a second finds the first's claim, in the
 //   state's cache, and ends at once.
-// - Each owed decision is judged outside the writer lock; then, under it, a
-//   `checked` event naming it and the rules it holds, `one` or `several`, is
-//   appended and committed, one decision at a time, so a check cut short
-//   keeps what it found. The event is recorded beside the entry, tagged as
+// - Each owed decision is judged outside the writer lock; then, under it,
+//   the ledger is read again as every read takes it — a line written
+//   outside the engine since the check's own read stops it, never committed
+//   with its result (5.4.4) — and a `checked` event naming the decision and
+//   the rules it holds, `one` or `several`, is appended and committed, one
+//   decision at a time, so a check cut short keeps what it found. The event is recorded beside the entry, tagged as
 //   the entry is — its unit, topic, phase and session — and the entry's own
 //   line is never touched (5.4.1).
 // - A decision the call still cannot judge stays owed, for the next start.
@@ -29,7 +31,7 @@ const path = require('path');
 const { messageOf, launcher } = require('../kernel/call.cjs');
 const { tryClaimFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { appendEntry, carrying } = require('./ledger.cjs');
+const { appendEntry, carrying, checkLines } = require('./ledger.cjs');
 const { LEDGER, entryKind } = require('./ledger-events.cjs');
 const { readFolded } = require('./ledger-fold.cjs');
 const { ledgerMessage } = require('./ledger-write.cjs');
@@ -65,13 +67,15 @@ function claimFile(root) {
 }
 
 /**
- * Record what the check found of `entry` beside it: a `checked` event, under
- * the writer lock, then committed.
+ * Record what the check found of `entry` beside it: under the writer lock,
+ * the ledger's lines read again, then a `checked` event appended and
+ * committed.
  * @param {string} cwd @param {string} root @param {Record<string, unknown>} entry @param {'one'|'several'} rules
  * @param {string[]} warnings
  */
 function recordChecked(cwd, root, entry, rules, warnings) {
   withStateLock(root, () => {
+    checkLines(root, warnings);
     const { unit, topic, phase, session, id } = /** @type {Record<string, string>} */ (entry);
     const checked = appendEntry(root, { event: 'checked', unit, topic, phase, session, entry: id, rules }, warnings);
     commitStateTail(cwd, LEDGER, ledgerMessage(unit, 'checked', /** @type {string} */ (checked.id), topic), warnings);

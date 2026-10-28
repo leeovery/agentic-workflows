@@ -19,9 +19,10 @@
 //   (ledger-events), and its id held by no earlier line: a line that is no
 //   entry, or repeats an id, is refused, naming it — and the line holding
 //   the id first — so every read stops on it (5.4.4), and every write,
-//   which reads the ledger before it appends. A line a newer release wrote
-//   stops the engine. A read that shows entries keeps where each line sits
-//   and reads the ones it shows again, from the file it opened.
+//   which reads the ledger under the lock before it appends. A line a
+//   newer release wrote stops the engine. A read that shows entries keeps
+//   where each line sits and reads the ones it shows again, from the file
+//   it opened.
 // - An entry is appended under the writer lock, its id, version and time
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
@@ -278,6 +279,21 @@ function appendLine(file, line) {
 }
 
 /**
+ * Every line of the ledger read as a read takes it, the first it refuses
+ * refused (5.4.4): for a writer that read the ledger before taking the
+ * lock, so a line written outside the engine meanwhile is never committed
+ * with its own.
+ * @param {string} root
+ * @param {string[]} notes what a landing the check finished said, pushed to
+ */
+function checkLines(root, notes) {
+  withLedger(root, notes, (ledger) => {
+    const lines = ledger.entries();
+    while (!lines.next().done);
+  });
+}
+
+/**
  * Append one entry: `fields` are its event, tags and own fields, and the
  * engine gives it its version, id and time. Under the writer lock, the
  * ledger checked first. Refuses an entry that is not an event of the
@@ -344,4 +360,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, checkLedger, commitUncommitted, withLedger, appendEntry, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, withLedger, appendEntry, carrying, ledgerStopSurface };
