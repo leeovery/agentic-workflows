@@ -5,7 +5,8 @@
 // (workflow-engine/scripts/domain/projections/state-merge.cjs, the merge's
 // pick): the shown choice, its account and its gate; and the pick and the
 // screen through the engine's argv, the screen answering while a peer holds
-// the writer lock.
+// the writer lock, the pick waiting for it and reading the waiting merge
+// again once it holds the lock.
 //
 // Layer: git. World: real repositories in a temp folder per test, a project
 // on a bare remote and a second clone of it on "another machine", each with
@@ -217,5 +218,28 @@ describe('the pick\'s command', () => {
     assert.deepStrictEqual(whileHeld, [projectManifest('next'), projectManifest('next')], 'the pick landed while the peer held the lock');
     assert.deepStrictEqual([out.action, out.commit], ['fast-forwarded', remoteTip(bare)]);
     assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('someday'));
+  });
+
+  it('reads the waiting merge again under the lock: one a peer finished while the pick waited takes no pick', (t) => {
+    const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
+    commitUnpushed(here, { 'manifest.json': projectManifest('next') });
+    commitOn(there, { 'manifest.json': projectManifest('someday') });
+    catchUpState(here.root);
+    const choice = shownChoice(here);
+    const stop = keptStopFile(here.root);
+    const lock = holdLock(path.join(here.root, '.lock'));
+    // The peer finishes the merge, its stop gone, and lets go once the pick has found the lock held and tried again.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      if (taken < 2) return;
+      fs.rmSync(stop);
+      fs.unlinkSync(lock);
+    });
+
+    // Called below the engine's entry, which takes the writer lock for every command before the pick runs.
+    assert.throws(() => stateMergeCommand(here.main, ['pick', '2', choice]), { message: 'no state merge is waiting on a pick' });
+
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.ok(!fs.existsSync(stop), 'the pick wrote back the stop the peer finished');
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('next'));
   });
 });
