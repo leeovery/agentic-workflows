@@ -255,4 +255,4 @@ function readLedgerVerb(cwd, verb, args) {
   }
 }
 
-module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb };
+module.exports = { LEDGER_READ_USAGE, READ_VERBS: Object.keys(READS), readLedgerVerb, showerOf };
