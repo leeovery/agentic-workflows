@@ -36,6 +36,19 @@ function processStartTime(pid) {
   } catch { return null; }
 }
 
+/** @type {string|null} */
+let ownStart = null;
+
+/**
+ * This process's own start time, read once — it never changes. A read that
+ * fails is tried again at the next call.
+ * @returns {string|null}
+ */
+function ownStartTime() {
+  ownStart ??= processStartTime(process.pid);
+  return ownStart;
+}
+
 /** Zero-signal existence probe; EPERM means alive. @param {number} pid */
 function processAlive(pid) {
   try { process.kill(pid, 0); return true; }
@@ -46,15 +59,20 @@ function processAlive(pid) {
  * Does the record's owning process still run? Identity is pid + start time
  * where the record carries both (a recycled pid carries a different start
  * time), bare aliveness where it predates start times. A record with no pid
- * carries no identity to verify and is never alive. `startOf` lets a
- * scan memoise the `ps` read across records.
+ * carries no identity to verify and is never alive. A start time that
+ * cannot be read — `ps` failed to spawn or answered nothing — proves
+ * nothing, so a pid that is there counts as the record's: only a pid that
+ * is gone, or a start time read and found different, reads as dead.
+ * `startOf` lets a scan memoise the `ps` read across records.
  * @param {{pid?: number|null, pid_start?: string|null}} record
  * @param {(pid: number) => string|null|undefined} [startOf]
  * @returns {boolean}
  */
 function ownerAlive(record, startOf = processStartTime) {
-  if (!record.pid) return false;
-  return record.pid_start ? startOf(record.pid) === record.pid_start : processAlive(record.pid);
+  if (!record.pid || !processAlive(record.pid)) return false;
+  if (!record.pid_start) return true;
+  const start = startOf(record.pid);
+  return start == null || start === record.pid_start;
 }
 
 /**
@@ -74,4 +92,4 @@ function ownsRow(record) {
   return (mySession !== null && record.session_id === mySession) || (myPid !== null && record.pid === myPid);
 }
 
-module.exports = { sleepSync, processStartTime, processAlive, ownerAlive, ownsRow };
+module.exports = { sleepSync, processStartTime, ownStartTime, processAlive, ownerAlive, ownsRow };
