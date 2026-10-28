@@ -24,16 +24,26 @@
 //   of a move, a unit whose replacement stops counting — so the render never
 //   works out which: a copy is written where its text differs from what is
 //   on disk, and removed where no record holds it.
-// - One render at a time, and no one waits for it: a writer marks the copies
-//   out of date, then claims their render without waiting. The holder folds
-//   the ledger, renders and indexes, and goes round again while the mark
-//   moved since its fold began; it checks the mark once more after letting
-//   go, so a writer that found it held — and left at once — is rendered by
-//   it. The fold reads every write committed before it, and no render folded
-//   earlier lands over a later one, in the copies or the store (5.S22). The
-//   claim is known by its holder's process — never broken while it runs,
-//   however long a render or its index pass takes, and taken over once it
-//   is gone.
+// - One render at a time, and no one waits on its claim: a writer marks the
+//   copies out of date with a token later than any before it, then claims
+//   their render without waiting. The holder folds the ledger, renders and
+//   indexes, records the token its fold began from, and goes round again
+//   while the mark moved since; it checks the mark once more after letting
+//   go, so a write no render reached is rendered by it — a few renders at
+//   most, the rest left to the writers waiting on them. A writer that finds
+//   the claim held waits, bounded, until a render has reached its token —
+//   a search after its write finds what it wrote (5.8.12) — and claims the
+//   render itself where it comes free short of that, so a holder that fails
+//   or dies drops no write. Past the bound it returns with a warning, its
+//   entry standing. The fold reads every
+//   write committed before it, and no render folded earlier lands over a
+//   later one, in the copies or the store (5.S22). The claim is known by its
+//   holder's process — never broken while it runs, however long a render or
+//   its index pass takes, and taken over once it is gone.
+// - What is live is stored as each render's fold began from it. While a
+//   render holds the claim, a command that changed any unit counts the
+//   copies as behind, so a change that undoes one the render is part way
+//   through is never matched against a mark that render is about to replace.
 // - The fold's check finishes a landing a kill cut short under the writer
 //   lock (ledger.cjs): a writer checks the ledger before it claims the
 //   render, so that wait is taken with the claim free. A fold never renders
@@ -51,7 +61,8 @@
 const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
-const { tryClaimFile } = require('../kernel/manifest-io.cjs');
+const { TMP_STALE_MS, LOCK_RETRY_MS, tryClaimFile } = require('../kernel/manifest-io.cjs');
+const { sleepSync } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
@@ -177,6 +188,18 @@ function copiesOf(root, notes) {
 /** A copy's temporary file, as `writeWhole` names it. */
 const TEMPORARY = /^\..+\.md\.\d+\.tmp$/;
 
+/** A temporary file of the copies' own marks, as `writeWhole` names it — a writer's, outside the claim, so swept only once it is an orphan. */
+const MARK_TEMPORARY = /^\.\.copies-.+\.\d+\.tmp$/;
+
+/** How long a writer that finds the render claimed waits for a render to reach its write. */
+const REACHED_MS = 10000;
+
+/** The most renders one writer makes before it leaves the rest to the writers waiting on them. */
+const PASSES = 3;
+
+/** How many of a waiting writer's polls pass between its tries at a claim still held — each asks after its holder's process. */
+const TAKEOVER_POLLS = 20;
+
 /** The files in a folder of the state, state-relative, none where it is missing. @param {string} root @param {string} dir */
 function filesIn(root, dir) {
   try {
@@ -208,11 +231,17 @@ function recordCopiesOnDisk(root) {
   const copies = [];
   for (const dir of copyFolders(root)) {
     for (const name of filesIn(root, dir)) {
-      if (TEMPORARY.test(name)) fs.rmSync(path.join(root, dir, name), { force: true });
+      if (TEMPORARY.test(name) || (MARK_TEMPORARY.test(name) && orphaned(path.join(root, dir, name)))) fs.rmSync(path.join(root, dir, name), { force: true });
       else if (dir !== path.dirname(PRODUCT_FILE) && name.endsWith('.md') && !name.startsWith('.')) copies.push(`${dir}/${name}`);
     }
   }
   return copies;
+}
+
+/** Whether a temporary file is older than any live writer's. @param {string} file */
+function orphaned(file) {
+  const stat = fs.statSync(file, { throwIfNoEntry: false });
+  return stat !== undefined && Date.now() - stat.mtimeMs > TMP_STALE_MS;
 }
 
 /** `text` written to `file`, whole or not at all. @param {string} file @param {string} text */
@@ -233,42 +262,86 @@ function readOrNull(file) {
 }
 
 /**
- * The copies marked out of date, then brought in line with the ledger where
- * no render holds their claim — `after` given what each render changed,
- * holding it — going round while the mark moves. A project with no ledger
- * and no knowledge directory has nothing to render, and the directory is
- * not made for it.
+ * The copies marked out of date, then brought in line with the ledger — by
+ * this process where no render holds their claim, `after` given what each
+ * render changed, holding it — or else waited on until a render has reached
+ * the mark. A project with no ledger and no knowledge directory has nothing
+ * to render, and the directory is not made for it.
  * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
  * @param {(rendered: Rendered) => void} after
+ * @returns {boolean} whether a render reached the mark before the bound
  */
 function renderCopies(root, notes, after) {
   const files = knowledgeFiles(root);
-  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(files.dir)) return;
-  writeWhole(files.copiesOutdated, `${process.pid}.${Date.now()}.${Math.random()}`);
-  for (let release = claimRender(root, notes); release !== null; release = claimRender(root, notes)) {
-    /** @type {string|null} */
-    let seen;
-    try {
-      do {
-        seen = readOrNull(files.copiesOutdated);
-        after(renderLocked(root, notes));
-      } while (readOrNull(files.copiesOutdated) !== seen);
-    } finally {
-      release();
+  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(files.dir)) return true;
+  const mark = laterToken(readOrNull(files.copiesOutdated));
+  writeWhole(files.copiesOutdated, mark);
+  const deadline = Date.now() + REACHED_MS;
+  let passes = PASSES;
+  for (let poll = 0; ; poll += 1) {
+    const tryClaim = passes > 0 && (poll % TAKEOVER_POLLS === 0 || !fs.existsSync(files.copies));
+    const release = tryClaim ? claimRender(root, notes) : null;
+    if (release !== null) {
+      const rounds = renderRounds(root, notes, after, release, passes);
+      passes -= rounds.passes;
+      if (rounds.seen === readOrNull(files.copiesOutdated)) return true;
+    } else if ((readOrNull(files.copiesRendered) ?? '') >= mark) {
+      return true;
+    } else if (Date.now() >= deadline) {
+      return false;
+    } else {
+      sleepSync(LOCK_RETRY_MS);
     }
-    if (readOrNull(files.copiesOutdated) === seen) return;
   }
 }
 
 /**
- * The render claimed without waiting — the ledger checked first, so a
- * landing to finish is waited on with the claim free: its release, or null
- * where another render holds it.
+ * A token later than `last`, and than every token before it: the time in
+ * nanoseconds, or one past the last where the clock has not moved on, then
+ * the process — fixed width, so they order as text.
+ * @param {string|null} last
+ */
+function laterToken(last) {
+  const now = BigInt(Math.round((performance.timeOrigin + performance.now()) * 1e6));
+  const after = last === null ? 0n : BigInt(last.split('.')[0]) + 1n;
+  return `${(now > after ? now : after).toString().padStart(22, '0')}.${String(process.pid).padStart(10, '0')}`;
+}
+
+/**
+ * Renders holding the claim, each recording the mark its fold began from
+ * once it is indexed, until the mark holds still or `budget` renders are
+ * made; then the claim let go.
+ * @param {string} root @param {string[]} notes @param {(rendered: Rendered) => void} after @param {() => void} release @param {number} budget
+ * @returns {{seen: string|null, passes: number}} the mark the last render began from, and how many were made
+ */
+function renderRounds(root, notes, after, release, budget) {
+  const files = knowledgeFiles(root);
+  /** @type {string|null} */
+  let seen;
+  let passes = 0;
+  try {
+    do {
+      seen = readOrNull(files.copiesOutdated);
+      after(renderLocked(root, notes));
+      if (seen !== null) writeWhole(files.copiesRendered, seen);
+      passes += 1;
+    } while (passes < budget && readOrNull(files.copiesOutdated) !== seen);
+  } finally {
+    release();
+  }
+  return { seen, passes };
+}
+
+/**
+ * The render claimed without waiting — where it is free, the ledger checked
+ * first, so a landing to finish is waited on with the claim free: its
+ * release, or null where another render holds it.
  * @param {string} root @param {string[]} notes
  */
 function claimRender(root, notes) {
-  if (fs.existsSync(ledgerFile(root))) checkLedger(root, notes);
-  return tryClaimFile(knowledgeFiles(root).copies);
+  const { copies } = knowledgeFiles(root);
+  if (!fs.existsSync(copies) && fs.existsSync(ledgerFile(root))) checkLedger(root, notes);
+  return tryClaimFile(copies);
 }
 
 /**
@@ -301,13 +374,16 @@ function renderLocked(root, notes) {
 }
 
 /**
- * The copies rendered against the ledger, a failure a warning.
+ * The copies rendered against the ledger, a failure a warning, and a render
+ * another holds that has not reached this one's mark by the bound.
  * @param {string} cwd @param {string[]} warnings
- * @param {(rendered: Rendered) => void} [after] run holding the copies' lock
+ * @param {(rendered: Rendered) => void} [after] run holding the copies' claim
  */
 function renderLedgerCopies(cwd, warnings, after = () => {}) {
   try {
-    renderCopies(stateRoot(cwd), warnings, after);
+    if (!renderCopies(stateRoot(cwd), warnings, after)) {
+      warnings.push('knowledge record render pending: another render holds the copies and has not reached this change yet — it renders it, or the next start does');
+    }
   } catch (err) {
     warnings.push(`knowledge record render failed: ${messageOf(err)} — the next start renders it again`);
   }
@@ -332,12 +408,15 @@ function refreshLedgerCopies(cwd, warnings) {
 /**
  * Whether the copies are behind what is live for the units `changed` names:
  * each one's liveness now against what it was when the copies were last
- * rendered. A unit that cannot be read counts as behind, so the render that
- * follows says why.
+ * rendered — or any change at all while a render holds the claim, whose
+ * marks may be replaced by ones its fold read before this change. A unit
+ * that cannot be read counts as behind, so the render that follows says
+ * why.
  * @param {string} root @param {string[]} changed
  */
 function copiesBehind(root, changed) {
   if (changed.length === 0 || !fs.existsSync(ledgerFile(root))) return false;
+  if (fs.existsSync(knowledgeFiles(root).copies)) return true;
   try {
     const shown = JSON.parse(readOrNull(knowledgeFiles(root).copiesLive) ?? '{}');
     return changed.some((unit) => unitMark(unit, manifestOf(root, unit)) !== (shown[unit] ?? null));

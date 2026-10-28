@@ -7,8 +7,8 @@
 // store's lock and the vector fill's claim; and the copies rendered from the
 // ledger — each record's, which the store indexes, and the product record's,
 // which it never does (4.11.10) — beside their render's claim, the token a
-// writer leaves to say they are out of date, and what was live when they
-// were last rendered.
+// writer leaves to say they are out of date, the token the last render
+// reached, and what was live when they were last rendered.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -36,6 +36,7 @@ const NAMES = { store: 'store.bin', metadata: 'metadata.json', config: 'config.j
  * @property {string} fill  held by the vector fill while it works
  * @property {string} copies  claimed by a render of the ledger's copies
  * @property {string} copiesOutdated  a token each writer rewrites to say the copies are out of date
+ * @property {string} copiesRendered  the token the last render's fold began from, once it was indexed
  * @property {string} copiesLive  what was live, unit by unit, when the copies were last rendered
  */
 
@@ -55,6 +56,7 @@ function knowledgeFiles(root) {
     fill: path.join(dir, '.fill'),
     copies: path.join(dir, '.copies'),
     copiesOutdated: path.join(dir, '.copies-outdated'),
+    copiesRendered: path.join(dir, '.copies-rendered'),
     copiesLive: path.join(dir, '.copies-live.json'),
   };
 }
