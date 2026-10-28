@@ -3,7 +3,9 @@
 // The shared engine runner's own contract: each shape answers what its name
 // says, the refusal shape asserts the refusal, the call's environment and
 // stdin reach the engine, the git fixture is a repo with its state worktree
-// that an engine commit lands in, a keyword-only checkout is one a transaction's index builds a real
+// that an engine commit lands in, every remote in the tests is a bare repo
+// that runs no maintenance, a world made once is copied whole and
+// apart, a keyword-only checkout is one a transaction's index builds a real
 // store in, a call's attempts at a lock are seen as it makes them, and the
 // `ps` that fails does.
 
@@ -14,7 +16,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
@@ -150,6 +152,92 @@ describe('engine harness — the git fixture', () => {
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'research(pay): notes');
     assert.strictEqual(git(dir, ['rev-parse', 'HEAD']).trim(), head);
+  });
+
+  it('runs no auto maintenance after a commit, so nothing of git\'s outlives the call', () => {
+    const trace = path.join(dir, '.git', 'trace.log');
+    fs.writeFileSync(path.join(dir, 'a.txt'), 'a\n');
+    git(dir, ['add', 'a.txt']);
+    execFileSync('git', ['commit', '-q', '-m', 'a'], { cwd: dir, env: { ...process.env, GIT_TRACE: trace } });
+    assert.match(fs.readFileSync(trace, 'utf8'), /built-in: git commit/, 'the trace caught nothing');
+    assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
+  });
+
+  it('pushes to a bare remote that runs no auto maintenance on receiving', () => {
+    const world = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-remote-'));
+    try {
+      const bare = harness.bareRepo(path.join(world, 'remote.git'));
+      const trace = path.join(world, 'trace.log');
+      execFileSync('git', ['push', '-q', bare, 'main'], { cwd: dir, env: { ...process.env, GIT_TRACE: trace } });
+      assert.match(fs.readFileSync(trace, 'utf8'), /receive-pack/, 'the trace caught nothing of the remote');
+      assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
+      assert.strictEqual(git(bare, ['rev-parse', 'main']), git(dir, ['rev-parse', 'main']));
+    } finally {
+      cleanupFixture(world);
+    }
+  });
+
+  it('is the one bare init in the tests: every other remote comes from it, so none runs maintenance', () => {
+    const tests = path.join(__dirname, '..');
+    const inits = /** @type {string[]} */ (fs.readdirSync(tests, { recursive: true }))
+      .filter((name) => /\.(cjs|js|sh)$/.test(name) && !name.includes('node_modules'))
+      .filter((name) => /\binit\b.*--bare/.test(fs.readFileSync(path.join(tests, name), 'utf8')))
+      .sort();
+    assert.deepStrictEqual(inits, ['scripts/discovery-test-utils.cjs']);
+  });
+});
+
+describe('engine harness — a world made once and copied', () => {
+  /** @type {string[]} */
+  const made = [];
+  const world = harness.fixtureFrom('harness-test-', (at) => {
+    made.push(at);
+    seed(at);
+  });
+  /** @type {string[]} */
+  let copies = [];
+  afterEach(() => { copies.forEach(cleanupFixture); copies = []; });
+
+  it('is built once, at the first copy, and each copy holds what the build left', () => {
+    copies = [world(), world()];
+    assert.strictEqual(made.length, 1);
+    for (const copy of copies) {
+      assert.strictEqual(stateGit(copy, ['log', '-1', '--pretty=%s']).trim(), 'init');
+      assert.strictEqual(fs.readFileSync(statePath(copy, 'pay/research/pay.md'), 'utf8'), '# Research\n');
+    }
+  });
+
+  it('is a world of its own each time: its state worktree is its own repository\'s, and a commit in one reaches neither the other nor the template', () => {
+    copies = [world(), world()];
+    const [one, two] = copies;
+    assert.strictEqual(stateGit(one, ['rev-parse', '--path-format=absolute', '--git-common-dir']).trim(), path.join(one, '.git'));
+    fs.writeFileSync(statePath(one, 'pay/research/pay.md'), '# Research\n\nMore.\n');
+    ok(one, ['commit', 'pay', '-m', 'research(pay): notes', '--topic', 'research/pay']);
+    for (const other of [two, made[0]]) {
+      assert.strictEqual(stateGit(other, ['log', '-1', '--pretty=%s']).trim(), 'init');
+      assert.strictEqual(fs.readFileSync(statePath(other, 'pay/research/pay.md'), 'utf8'), '# Research\n');
+    }
+  });
+
+  it('is copied to the folder given, where one is', () => {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-')));
+    copies = [root];
+    const at = world(path.join(root, 'project'));
+    assert.strictEqual(at, path.join(root, 'project'));
+    assert.strictEqual(stateGit(at, ['log', '-1', '--pretty=%s']).trim(), 'init');
+  });
+
+  it('is made under a temp prefix of the template\'s own, so a leftover template is told from a leftover copy', () => {
+    copies = [world()];
+    assert.match(path.basename(made[0]), /^harness-test-template-/);
+    assert.doesNotMatch(path.basename(copies[0]), /template/);
+  });
+
+  it('adds no exit listener of its own: every template is removed by the one the fixture library holds', () => {
+    const listeners = process.listenerCount('exit');
+    const another = harness.fixtureFrom('harness-test-', seed);
+    copies = [another(), another()];
+    assert.strictEqual(process.listenerCount('exit'), listeners);
   });
 });
 

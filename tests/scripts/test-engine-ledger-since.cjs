@@ -24,8 +24,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const {
+  lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, cleanupFixture,
+} = require('./engine-harness.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -33,12 +35,7 @@ const { catchUpState } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
-const UNIT = 'fumi';
-const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
-const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const TOPICS = Object.freeze(['note-window', 'space-homing', 'menu-bar']);
-const NOTE = `${UNIT}.discussion.note-window`;
-const SPACE = `${UNIT}.discussion.space-homing`;
 
 /** @type {string} */
 let dir;
@@ -46,12 +43,8 @@ let dir;
 let asked;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-since-');
+  dir = ledgerWorld('ledger-since-', { discussion: { items: Object.fromEntries(TOPICS.map((topic) => [topic, { status: 'in-progress' }])) } });
   asked = new Map();
-  createManifest(dir, UNIT, {
-    work_type: 'epic',
-    phases: { discussion: { items: Object.fromEntries(TOPICS.map((topic) => [topic, { status: 'in-progress' }])) } },
-  });
 });
 
 afterEach(() => {
@@ -150,8 +143,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
   it('keeps the mark on each machine, off the state branch: a look makes no commit, each clone counts from its own looks, and a call merged in from the other is new though it lands before one shown here (5.S33)', () => {
     const world = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-since-machines-')));
     try {
-      const bare = path.join(world, 'fumi.git');
-      git(world, ['init', '-q', '--bare', '--initial-branch=main', bare]);
+      const bare = bareRepo(path.join(world, 'fumi.git'), ['--initial-branch=main']);
       git(dir, ['remote', 'add', 'origin', bare]);
       git(dir, ['push', '-q', 'origin', 'main']);
       stateGit(dir, ['add', '-A']);

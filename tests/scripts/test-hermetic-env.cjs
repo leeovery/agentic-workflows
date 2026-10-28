@@ -110,11 +110,23 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('the separate Claude call runs the stub, never a real Claude — and the stub has no login until a test arms it', () => {
-    assert.strictEqual(process.env.LEEWAY_CLAUDE, path.join(__dirname, 'claude-stub.cjs'));
+    assert.strictEqual(process.env.LEEWAY_CLAUDE, path.join(__dirname, 'claude-stub.sh'));
     assert.ok(fs.statSync(process.env.LEEWAY_CLAUDE).mode & 0o111, 'the stub runs as a binary');
     const res = spawnSync(process.env.LEEWAY_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question' });
     assert.strictEqual(res.status, 1, res.stderr);
     assert.strictEqual(JSON.parse(res.stdout).result, 'Not logged in · Please run /login');
+  });
+
+  it('the stub unarmed answers in the shell byte for byte as its node side does unarmed, and armed is its node side', () => {
+    const ask = (/** @type {string} */ binary, /** @type {NodeJS.ProcessEnv} */ env) => {
+      const res = spawnSync(binary, ['-p'], { encoding: 'utf8', input: 'a question', env });
+      return [res.status, res.stdout, res.stderr];
+    };
+    const node = path.join(__dirname, 'claude-stub.cjs');
+    assert.deepStrictEqual(ask(process.env.LEEWAY_CLAUDE, process.env), ask(node, process.env));
+    const armed = { ...process.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) };
+    assert.deepStrictEqual(ask(process.env.LEEWAY_CLAUDE, armed), ask(node, armed));
+    assert.strictEqual(JSON.parse(ask(process.env.LEEWAY_CLAUDE, armed)[1]).structured_output.rules[0], 'One rule.');
   });
 
   it('the stub writes down its environment\'s names, and no value a test did not name — a login the environment holds never lands in its log', () => {
@@ -152,7 +164,7 @@ describe('hermetic environment — the pins', () => {
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
       WORKFLOWS_DISPLAY_WIDTH: '65',
-      LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.cjs'),
+      LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
     });
   });
 
@@ -168,7 +180,7 @@ describe('hermetic environment — the pins', () => {
       handoff: null,
       session: null,
       width: '65',
-      binary: path.join(__dirname, 'claude-stub.cjs'),
+      binary: path.join(__dirname, 'claude-stub.sh'),
     });
   });
 });

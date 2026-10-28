@@ -16,7 +16,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
 | `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
 
-A new node suite is added to the `test` script in `package.json`, or it never runs.
+`package.json` lists the node suites one by one, slowest first by each one's CPU time run alone, so no long file starts last and runs on alone; a new suite goes where its time places it. `test-suite-list.cjs` holds the script to the folder, so a suite left out fails the run rather than never running: a suite the script leaves out or names twice, or a file it names that is no suite, fails it. A suite is any file under `tests/` that takes a test from `node:test`, whatever its name, extension or folder.
 
 ## 2. The layers
 
@@ -26,10 +26,10 @@ Every test belongs to one layer, and every file sits in one. The layer decides h
 |---|---|---|---|---|
 | **unit** | A kernel or projection module called with values: render, terminal, state-root path forms, ledger events, ids and folds, the knowledge kernel, the Claude call | In process, no git. A projection takes its state as a value, or as a plain temp folder with `pinStateRoot`, never a copied repository. | under 1 s | `test-render.cjs`, `test-engine-state-root.cjs`, `test-knowledge-store.cjs` |
 | **verb** | The engine's argv contract: the response, the state written, the state commit, and a refusal leaving nothing behind | `engine-harness.cjs` in process, over a world copied from a template (§3) | ≤ 15 s, ≤ ~100 tests | `test-engine-ledger-write.cjs`, `test-engine-workunit-create.cjs` |
-| **git** | What only real git shows: the state worktree, the merge between clones, push and catch-up, the commit door across repos, lost-state recovery | Real repositories from the git world templates (§3): a project, a project with a bare remote, two machines | ≤ 30 s | `test-engine-state-merge.cjs`, `test-engine-state-worktree.cjs` |
+| **git** | What only real git shows: the state worktree, the merge between clones, push and catch-up, the commit door across repos, lost-state recovery | Real repositories from the git world templates (§3): a project, a project with a bare remote, two machines | ≤ 30 s | `test-engine-state-merge-catch-up.cjs`, `test-engine-state-worktree.cjs` |
 | **process** | What only a process shows: the real CLI's exit codes and streams, hooks fed stdin JSON, races between processes, detached launches, killed writers | Spawned; each race proves its contention happened (§6) | a handful of tests, beside the verb they concern | the hook tests in `test-engine-layout-hook.cjs`; the races in `test-engine-manifest-io.cjs` |
 | **conformance** | One contract run against each driver (§10) | One suite per kind of driver, parametrised over the drivers | — | none yet |
-| **simulation** | End-to-end replays of the engine call sequences the prose makes, with the state oracle after every mutation (§11) | In process | ≤ 30 s per scenario file | `test-pipeline-simulation.cjs` |
+| **simulation** | End-to-end replays of the engine call sequences the prose makes, with the state oracle after every mutation (§11) | In process | ≤ 30 s per scenario file | `test-pipeline-simulation-feature.cjs` |
 | **migration** | One suite per migration, against a plain temp project of the shape it migrates from (§9) | `run()` called in process | — | `test-migration-070.cjs` |
 | **prose** | The prose harness's own units and its corpus perimeter (§13) | `tests/prose/` | — | `test-prose-invariants.cjs` |
 
@@ -52,17 +52,21 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | Module | What it owns |
 |---|---|
 | `hermetic-env.cjs` | the pinned environment. Every node suite requires it first; `test-hermetic-env.cjs` enforces that. |
-| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, and the project world (`setupGitFixture`) |
-| `discovery-test-utils.cjs` | the project world's template, made once per process and copied; `statePath`, `createManifest`, `createFile`, `datedAt` |
+| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `tip`, `remoteTip`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
+| `discovery-test-utils.cjs` | the project world's template, made once per process and copied by `copyWorld`, which relinks the copy's state worktree; `templateFolder(prefix)`, the temp folder a world made once is built in, every template removed at exit by one listener; `bareRepo(dir)`, a bare remote with auto maintenance off; `useTempFolder(prefix)`, a temp folder for each test of the calling file; `statePath`, `createManifest`, `createFile`, `readFile`, `datedAt` |
 | `knowledge-harness.cjs` | the stand-in embeddings endpoint, `heldCall`, `recordLaunches`, `withoutBackoff` |
 | `gate-audit.cjs` | a gate payload held against the menu it states |
 | `claude-stub.cjs`, `tmux-stub.cjs` | the stand-ins for `claude` and `tmux` |
+| `{family}-world.cjs` | what one family's suites share and no other suite uses: its constants, its worlds, and its helpers over the suite's own world (`state-merge-world.cjs`, `ledger-world.cjs`); a seam that must load before the engine does is a module of its own (`ledger-copies-seams.cjs`) |
+| `pipeline-oracle.cjs`, `pipeline-world.cjs` | the simulation's oracle; its world, `Sim` and the steps the prose takes (§11) |
 
-Not yet in the library: the remote and two-machine worlds (the state and ledger suites each build their own today), the layout helper beyond `statePath`, `refusedPristine`, the state reads beyond `stateGit`, one stub engine tree (two suites build their own), and the frozen clock (only `tests/prose/lib/fake-clock.cjs` has one, as `withFrozenClock`). Fixtures are being built once per process now for speed, and the surviving state suites then adopt the library.
+Not yet in the library: the remote and two-machine worlds (the state and ledger suites each build their own today), the layout helper beyond `statePath`, `refusedPristine`, the state reads beyond `stateGit`, one stub engine tree (two suites build their own), and the frozen clock (only `tests/prose/lib/fake-clock.cjs` has one, as `withFrozenClock`). The project world is a template made once per process and copied for each test, and a world of a suite's own is built once through `fixtureFrom` and copied the same way; the remote and two-machine worlds are not templates yet, and are built for each test over `bareRepo`.
 
 `knowledge-eval*.cjs` and `knowledge-openai-smoke.cjs` sit beside the suites but are tools, not support.
 
-**The rule:** a helper used by two suites moves into the library in the same change. No suite keeps a file-local copy of a library helper (`readManifest`, `writeFile`, a local `engine` wrapper over `ok`, a local `setupGitFixture`).
+**The rule:** a helper used by two suites moves into the library in the same change, or into its family's module where only that family's suites use it. No suite keeps a file-local copy of a library helper (`readManifest`, `writeFile`, a local `engine` wrapper over `ok`, a local `setupGitFixture`).
+
+**Every remote comes from `bareRepo`.** A hand-written `git init --bare` brings git's auto maintenance back: it starts at the end of every push the remote receives, and outlives the call. `test-engine-harness.cjs` holds the tests to the one bare init.
 
 ## 4. Writing a suite
 
@@ -128,7 +132,7 @@ A new driver joins its kind's suite; it never gets a suite of its own.
 - **A scenario** replays, in order, the engine calls the skill prose makes for one path through the work.
 - **The oracle** runs after every mutation and checks the state across verbs: every manifest parses and is schema-valid, every derivation computes, every gateway and render reads the state and states its menu whole in its gate payload, and the ledger holds.
 - **What a verb answers belongs in the verb's suite.** A scenario's calls stay, since each buys the oracle's audit; a scenario never re-asserts a verb's response, its refusal text or its render, which the verb's suite owns.
-- **The target:** the oracle as a shared module, and scenario files per work type, each within 30 s. The simulation is rebuilt that way as the phases land; until then, `test-pipeline-simulation.cjs` is one file, and a change adds or replaces scenarios without restructuring it.
+- **The files:** the oracle is `pipeline-oracle.cjs`; the world, `Sim` and the steps the prose takes are `pipeline-world.cjs`; the scenarios sit in `test-pipeline-simulation-{subject}.cjs`, one file per work type or subject, each within 30 s. A new scenario goes in its work type's or its subject's file, and a file past 30 s splits by subject.
 
 ## 12. Measuring
 

@@ -5,7 +5,9 @@
 // default branch holds one commit, the code tree's `.gitignore` naming it.
 // Both first commits carry one fixed date, so a suite's own commits always
 // come after them. One template is made per process and copied for each
-// fixture, its state worktree relinked by the machinery's repair.
+// fixture, its state worktree relinked by the machinery's repair
+// (`copyWorld`) — as is every richer world the harness makes once per
+// process (`fixtureFrom`, engine-harness.cjs).
 
 require('./hermetic-env.cjs');
 
@@ -13,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const { beforeEach, afterEach } = require('node:test');
 
 const { createState, repairStateWorktree } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const { STATE_DIR_NAME } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
@@ -23,13 +26,32 @@ function git(dir, args) {
 }
 
 /**
- * The test identity and no signing, on the repo at `dir`.
+ * The test identity, no signing, and no auto maintenance, on the repo at
+ * `dir`. Git otherwise ends every commit and fetch by starting its
+ * maintenance in the background, which outlives the call: a test pays for
+ * the process, and a copy or removal of the repository meets its lock file
+ * coming and going.
  * @param {string} dir
  */
 function testIdentity(dir) {
   git(dir, ['config', 'user.email', 'test@example.com']);
   git(dir, ['config', 'user.name', 'Test']);
   git(dir, ['config', 'commit.gpgsign', 'false']);
+  git(dir, ['config', 'maintenance.auto', 'false']);
+}
+
+/**
+ * A bare repository at `dir`, a remote, the folder made where it is
+ * missing. Auto maintenance is off here too: git starts it at the end of
+ * every push the repository receives.
+ * @param {string} dir @param {string[]} [flags] further `git init` flags
+ * @returns {string} dir
+ */
+function bareRepo(dir, flags = []) {
+  fs.mkdirSync(dir, { recursive: true });
+  git(dir, ['init', '-q', '--bare', ...flags]);
+  git(dir, ['config', 'maintenance.auto', 'false']);
+  return dir;
 }
 
 /** When the template's two commits were made. */
@@ -53,14 +75,29 @@ function datedAt(date, fn) {
   }
 }
 
+/** Every template this process made, removed as it exits. @type {string[]} */
+const templates = [];
+process.on('exit', () => templates.forEach(cleanupFixture));
+
+/**
+ * An empty temp folder for a world the process makes once, removed as the
+ * process exits.
+ * @param {string} prefix temp-directory prefix, a template's own, so a leftover template is told from a leftover copy
+ * @returns {string} symbolic links resolved
+ */
+function templateFolder(prefix) {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  templates.push(dir);
+  return dir;
+}
+
 /** @type {string|null} */
 let template = null;
 
 /** The process's template world, made at its first fixture. @returns {string} */
 function fixtureTemplate() {
   if (template !== null) return template;
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-template-')));
-  process.on('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
+  const dir = templateFolder('leeway-template-');
   git(dir, ['init', '-q', '--template=', '-b', 'main']);
   testIdentity(dir);
   fs.writeFileSync(path.join(dir, '.gitignore'), `${STATE_DIR_NAME}/\n`);
@@ -74,16 +111,26 @@ function fixtureTemplate() {
 }
 
 /**
+ * A copy of the world at `from` at `dir`, the folder made where it is
+ * missing, its state worktree relinked to the copy's own repository.
+ * @param {string} from @param {string} dir
+ * @returns {string} dir, symbolic links resolved — the path the engine names it by
+ */
+function copyWorld(from, dir) {
+  fs.mkdirSync(dir, { recursive: true });
+  const at = fs.realpathSync(dir);
+  fs.cpSync(from, at, { recursive: true });
+  repairStateWorktree(path.join(at, STATE_DIR_NAME));
+  return at;
+}
+
+/**
  * A fresh world at `dir`, the folder made where it is missing.
  * @param {string} dir
  * @returns {string} dir, symbolic links resolved — the path the engine names it by
  */
 function setupFixtureAt(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-  const at = fs.realpathSync(dir);
-  fs.cpSync(fixtureTemplate(), at, { recursive: true });
-  repairStateWorktree(path.join(at, STATE_DIR_NAME));
-  return at;
+  return copyWorld(fixtureTemplate(), dir);
 }
 
 /**
@@ -125,6 +172,29 @@ function createManifest(dir, name, data) {
   return manifest;
 }
 
+/**
+ * A temp folder for each test of the calling file, made before it and
+ * removed after it.
+ * @param {string} prefix temp-directory prefix, so a leftover names its suite
+ * @returns {() => string} the running test's folder, symbolic links resolved
+ */
+function useTempFolder(prefix) {
+  /** @type {string} */
+  let folder;
+  beforeEach(() => {
+    folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  });
+  afterEach(() => {
+    fs.rmSync(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+  return () => folder;
+}
+
+/** A file's text. @param {string} dir @param {string} relativePath */
+function readFile(dir, relativePath) {
+  return fs.readFileSync(path.join(dir, relativePath), 'utf8');
+}
+
 function createFile(dir, relativePath, content) {
   const full = path.join(dir, relativePath);
   fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -133,6 +203,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
-  createManifest, createFile,
+  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  createManifest, createFile, readFile,
 };

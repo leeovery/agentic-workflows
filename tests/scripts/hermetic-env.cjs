@@ -68,7 +68,7 @@ const HERMETIC_ENV = Object.freeze({
   WORKFLOWS_DISPLAY_WIDTH: '65',
   // The separate Claude call runs the binary this names: the stub, which
   // has no login unless a test arms it with answers.
-  LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.cjs'),
+  LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
 });
 
 Object.assign(process.env, HERMETIC_ENV);

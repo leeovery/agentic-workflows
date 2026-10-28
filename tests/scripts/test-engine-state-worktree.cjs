@@ -21,7 +21,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, bareRepo } = require('./engine-harness.cjs');
 
 const STATE = path.join(__dirname, '../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const state = require(STATE);
@@ -59,7 +59,7 @@ function project({ remote = false, name = 'project' } = {}) {
   git(main, ['commit', '-q', '-m', 'code']);
   const bare = path.join(world, `${name}-remote.git`);
   if (remote) {
-    git(world, ['init', '-q', '--bare', bare]);
+    bareRepo(bare);
     git(main, ['remote', 'add', 'origin', bare]);
     git(main, ['push', '-q', 'origin', 'main']);
   }
@@ -70,8 +70,7 @@ function project({ remote = false, name = 'project' } = {}) {
 function clone(bare, name) {
   const dir = path.join(world, name);
   git(world, ['clone', '-q', bare, dir]);
-  git(dir, ['config', 'user.email', 'test@example.com']);
-  git(dir, ['config', 'user.name', 'Test']);
+  testIdentity(dir);
   return dir;
 }
 
@@ -190,8 +189,7 @@ describe('the main checkout', () => {
   });
 
   it('refuses a bare repository, from its folder and from a worktree of it', () => {
-    const bare = path.join(world, 'bare.git');
-    git(world, ['init', '-q', '--bare', bare]);
+    const bare = bareRepo(path.join(world, 'bare.git'));
     const seed = initRepo(path.join(world, 'seed'));
     write(seed, 'a.md', 'a\n');
     git(seed, ['add', 'a.md']);
@@ -679,6 +677,7 @@ describe('the remote, asked', () => {
     createState(root);
     const fresh = path.join(world, 'fresh');
     git(world, ['clone', '-q', '--single-branch', '--branch', 'main', `file://${bare}`, fresh]);
+    testIdentity(fresh);
 
     const fetched = traced(() => fetchStateTip(stateRoot(fresh), 'origin', remoteTip(bare)));
     assert.deepStrictEqual([fetched.result, fetched.commands.includes('fetch')], [null, true]);
@@ -1226,8 +1225,7 @@ describe('committing state', () => {
   it('warns on every push where several remotes choose none, and pushes to the one the main checkout\'s branch tracks', () => {
     const { main, root } = project();
     const [fork, upstream] = ['fork', 'upstream'].map((name) => {
-      const bare = path.join(world, `${name}.git`);
-      git(world, ['init', '-q', '--bare', bare]);
+      const bare = bareRepo(path.join(world, `${name}.git`));
       git(main, ['remote', 'add', name, bare]);
       return bare;
     });

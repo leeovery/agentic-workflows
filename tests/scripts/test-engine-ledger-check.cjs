@@ -27,8 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 
-const { ENGINE, ok, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
@@ -38,10 +38,6 @@ const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
-const UNIT = 'fumi';
-const SESSION_ID = 'session-1';
-const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
-const NOTE = `${UNIT}.discussion.note-window`;
 const SPEC = `${UNIT}.specification`;
 const ANSWERS_AT_ONCE_MS = 10000;
 const DETACHED_MS = 20000;
@@ -61,8 +57,7 @@ let dir;
 let log;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-check-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-check-', PHASES);
   log = path.join(dir, 'claude-calls.jsonl');
 });
 
@@ -85,13 +80,16 @@ function rules(...rules) {
   return { rules };
 }
 
+const ledger = ledgerHelpers(() => dir);
+const { ledgerText, entries, full } = ledger;
+
 /**
  * One ledger write that must succeed: its response.
  * @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content
  * @param {Record<string, unknown>} [answers]
  */
 function write(verb, address, flags, content, answers) {
-  return ok(dir, ['ledger', verb, address, ...flags], { env: armed(answers), stdin: JSON.stringify(content) });
+  return ledger.write(verb, address, flags, content, armed(answers));
 }
 
 /** A question asked at `address`: its short id. @param {string} [address] @param {string} [text] */
@@ -108,27 +106,9 @@ function decide(question, text, answers, { address = NOTE, content = {} } = {}) 
   return write('decide', address, ['--answers', question], { ...MADE, text, why: 'Notes are furniture on the desk.', ...content }, answers).id;
 }
 
-/** The ledger's text, '' where there is none. */
-function ledgerText() {
-  const file = statePath(dir, LEDGER);
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-}
-
-/** The ledger's events. @returns {Record<string, any>[]} */
-function events() {
-  return ledgerText().split('\n').slice(0, -1).map((line) => JSON.parse(line));
-}
-
-/** The full id a short id shows. @param {string} short */
-function full(short) {
-  const ids = events().map((e) => e.id).filter((id) => id.startsWith(short));
-  assert.strictEqual(ids.length, 1, `${short} names ${ids.length} ids`);
-  return ids[0];
-}
-
 /** The event a short id names. @param {string} short */
 function eventOf(short) {
-  return /** @type {Record<string, any>} */ (events().find((e) => e.id === full(short)));
+  return /** @type {Record<string, any>} */ (entries().find((e) => e.id === full(short)));
 }
 
 /** What each call handed the stub. @returns {{argv: string[], input: string}[]} */
@@ -328,11 +308,11 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     while (calls().length < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
     assert.strictEqual(calls().length, 2, 'the call waited on the lock');
     assert.strictEqual(child.exitCode, null, 'the write did not wait on the lock');
-    assert.strictEqual(events().length, 1, 'appended while a peer held the lock');
+    assert.strictEqual(entries().length, 1, 'appended while a peer held the lock');
 
     fs.unlinkSync(lock);
     assert.strictEqual(await exit, 0);
-    assert.deepStrictEqual([events().length, events()[1].text, events()[1].unchecked], [2, PANEL, false]);
+    assert.deepStrictEqual([entries().length, entries()[1].text, entries()[1].unchecked], [2, PANEL, false]);
   });
 });
 
@@ -416,7 +396,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
     fs.writeFileSync(claim, JSON.stringify({ pid: 2 ** 22 + 1, pid_start: 'gone' }));
     assert.deepStrictEqual(lateCheck({ '': rules(PANEL) }), { ok: true, ran: true, checked: 1, several: 0, owed: 0 });
-    assert.strictEqual(events().at(-1).entry, full(decision));
+    assert.strictEqual(entries().at(-1).entry, full(decision));
     assert.ok(!fs.existsSync(claim), 'the check left its claim behind');
   });
 
@@ -433,14 +413,14 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.deepStrictEqual(lateCheck(), { ok: true, ran: true, checked: 0, several: 0, owed: 2, cannot: { reason: 'timeout', detail: 'no answer within 60 s' } });
     assert.strictEqual(timedOut.count, 1, 'a check went on past a timeout');
     t.mock.restoreAll();
-    assert.ok(!events().some((e) => e.event === 'checked'), 'a check recorded a result it never had');
+    assert.ok(!entries().some((e) => e.event === 'checked'), 'a check recorded a result it never had');
 
     const res = lateCheck({ [PANEL]: 'misfit', [SYNC]: rules(SYNC) });
     assert.deepStrictEqual([res.checked, res.owed, res.cannot.reason], [1, 1, 'misfit']);
-    assert.deepStrictEqual(events().filter((e) => e.event === 'checked').map((e) => e.entry), [full(second)]);
+    assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), [full(second)]);
 
     assert.deepStrictEqual(lateCheck({ [PANEL]: rules(PANEL) }), { ok: true, ran: true, checked: 1, several: 0, owed: 0 });
-    assert.deepStrictEqual(events().filter((e) => e.event === 'checked').map((e) => e.entry), [full(second), full(first)]);
+    assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), [full(second), full(first)]);
   });
 
   it('runs detached: the launch hands the check a process of its own, which records its result and lets its claim go after the launch has answered', async () => {
@@ -458,11 +438,11 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
     const claim = statePath(dir, '.cache', '.late-check');
     const deadline = Date.now() + DETACHED_MS;
-    const done = () => events().some((e) => e.event === 'checked') && !fs.existsSync(claim);
+    const done = () => entries().some((e) => e.event === 'checked') && !fs.existsSync(claim);
     while (!done() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
 
     assert.ok(done(), 'the detached check recorded nothing');
-    assert.deepStrictEqual([events().at(-1).entry, events().at(-1).rules], [full(decision), 'several']);
+    assert.deepStrictEqual([entries().at(-1).entry, entries().at(-1).rules], [full(decision), 'several']);
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
   });
 });

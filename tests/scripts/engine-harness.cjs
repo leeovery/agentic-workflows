@@ -20,9 +20,10 @@
 // assertion, and no vector fill is ever launched.
 //
 // A fixture is a git repository with its state worktree at `.leeway/`
-// (`discovery-test-utils.cjs` makes it). A suite reads a state commit off the
-// state branch (`stateGit`), and an owned code-tree file's off the code
-// tree's.
+// (`discovery-test-utils.cjs` makes it). A world many tests start from is
+// built once per process and copied for each (`fixtureFrom`). A suite reads
+// a state commit off the state branch (`stateGit`), and an owned code-tree
+// file's off the code tree's.
 //
 // A suite spawns a process only where the process is the subject: the real
 // CLI's pipe and exit behaviour, a child that must run concurrently (a lock
@@ -35,10 +36,11 @@ require('./hermetic-env.cjs');
 
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const {
-  STATE_DIR_NAME, git, testIdentity, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, git, testIdentity, bareRepo, templateFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
 } = require('./discovery-test-utils.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
@@ -172,6 +174,17 @@ function stateGit(dir, args) {
   return git(statePath(dir), args);
 }
 
+/** A ref's commit. @param {string} dir @param {string} ref @returns {string} */
+function tip(dir, ref) {
+  return git(dir, ['rev-parse', ref]).trim();
+}
+
+/** The remote's state branch tip, or '' where it holds none. @param {string} bare */
+function remoteTip(bare) {
+  const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+  return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
+}
+
 /**
  * Everything in the world committed, each side where it holds a change: the
  * code tree on its branch, the state on the state branch where the
@@ -244,6 +257,29 @@ function setupGitFixture(prefix = 'engine-') {
 }
 
 /**
+ * A world many tests start from, made once per process: `build` fills a
+ * fresh world at the first call, and every call answers a copy of it — at
+ * the folder given, or in a temp folder of its own — the build's git work
+ * paid once, not per test. A world whose git config names a path outside
+ * it, a remote beside it, is no template: the copy would share it.
+ * @param {string} prefix temp-directory prefix, so a leftover names its suite; the template's is `{prefix}template-`
+ * @param {(dir: string) => void} build
+ * @returns {(dir?: string) => string} symbolic links resolved — the path the engine names it by
+ */
+function fixtureFrom(prefix, build) {
+  /** @type {string|null} */
+  let made = null;
+  return (dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))) => {
+    if (made === null) {
+      const template = setupFixtureAt(templateFolder(`${prefix}template-`));
+      build(template);
+      made = template;
+    }
+    return copyWorld(made, dir);
+  };
+}
+
+/**
  * `rel` added to the repo at `dir` as a submodule cloned from the repo at
  * `source`, the addition committed; the clone commits under the test identity.
  * `force` adds it where the repo ignores its folder.
@@ -299,6 +335,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output, lockAttempts,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, initRepo, githubOffline, failingPs,
-  setupGitFixture, setupFixtureAt, addSubmodule, cleanupFixture,
+  STATE_DIR_NAME, statePath, git, stateGit, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
+  setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
 };

@@ -20,7 +20,7 @@ const harness = require('./engine-harness.cjs');
 const { commitStaged } = require('../../skills/workflow-engine/scripts/kernel/git.cjs');
 const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/workflow-engine/scripts/domain/commit.cjs');
 
-const { ENGINE, git, stateGit, commitAll, cleanupFixture } = harness;
+const { ENGINE, git, stateGit, commitAll, cleanupFixture, fixtureFrom } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-commit-');
 
@@ -78,15 +78,30 @@ function epicManifest() {
   };
 }
 
-/** Two in-progress discussion topics, both committed clean. */
-function setupTwoTopicFixture() {
-  const dir = setupGitFixture();
+/** Two in-progress discussion topics, both committed clean. @param {string} dir */
+function twoTopics(dir) {
   writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(epicManifest(), null, 2) + '\n');
   writeFile(dir, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
   writeFile(dir, '.leeway/payments/discussion/topic-b.md', '# Topic B\n');
   commitAll(dir, 'init');
-  return dir;
 }
+
+/**
+ * The two topics, topic-a's implementation in progress, and code committed
+ * at `src/app.js` — with `more` written beside it before the commit.
+ * @param {string} dir @param {Record<string, string>} [more]
+ */
+function implementing(dir, more = {}) {
+  twoTopics(dir);
+  const manifest = epicManifest();
+  manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
+  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+  writeFile(dir, 'src/app.js', 'const x = 1;\n');
+  for (const [rel, content] of Object.entries(more)) writeFile(dir, rel, content);
+  commitAll(dir, 'code');
+}
+
+const setupTwoTopicFixture = fixtureFrom('engine-commit-', twoTopics);
 
 describe('engine commit --topic: pathspec isolation', () => {
   let dir;
@@ -480,17 +495,9 @@ describe('engine commit --plan: the planning topic plus the plan\'s storage', ()
 });
 
 describe('engine commit --paths: the code commit', () => {
+  const setup = fixtureFrom('engine-commit-', (at) => implementing(at, { 'src/other.js': 'const y = 1;\n', 'src/gone.js': 'const z = 1;\n' }));
   let dir;
-  beforeEach(() => {
-    dir = setupTwoTopicFixture();
-    const manifest = epicManifest();
-    manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, 'src/app.js', 'const x = 1;\n');
-    writeFile(dir, 'src/other.js', 'const y = 1;\n');
-    writeFile(dir, 'src/gone.js', 'const z = 1;\n');
-    commitAll(dir, 'code');
-  });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
 
   const forTopic = ['--for', 'payments', 'implementation/topic-a'];
@@ -684,22 +691,20 @@ describe('engine commit --paths: the code commit', () => {
 });
 
 describe('engine commit --paths: code in repos of its own', () => {
+  const setup = fixtureFrom('engine-commit-', (at) => {
+    implementing(at, { '.gitignore': '.leeway/\napi/\n' });
+    // An ignored clone: a repo of its own that the root's .gitignore lists.
+    const clone = harness.initRepo(path.join(at, 'api'));
+    writeFile(clone, 'src/handler.js', 'const h = 1;\n');
+    writeFile(clone, 'src/other.js', 'const o = 1;\n');
+    writeFile(clone, 'src/old.js', 'const d = 1;\n');
+    commitAll(clone, 'init');
+  });
   let dir;
   let api;
   beforeEach(() => {
-    dir = setupTwoTopicFixture();
-    const manifest = epicManifest();
-    manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, '.gitignore', '.leeway/\napi/\n');
-    writeFile(dir, 'src/app.js', 'const x = 1;\n');
-    commitAll(dir, 'code');
-    // An ignored clone: a repo of its own that the root's .gitignore lists.
-    api = harness.initRepo(path.join(dir, 'api'));
-    writeFile(api, 'src/handler.js', 'const h = 1;\n');
-    writeFile(api, 'src/other.js', 'const o = 1;\n');
-    writeFile(api, 'src/old.js', 'const d = 1;\n');
-    commitAll(api, 'init');
+    dir = setup();
+    api = path.join(dir, 'api');
   });
   afterEach(() => { cleanupFixture(dir); });
 
@@ -1049,16 +1054,16 @@ describe('engine commit --paths: code in repos of its own', () => {
 });
 
 describe('engine commit --migrations: the state and the paths the workflows own', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    writeFile(dir, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
-    writeFile(dir, '.claude/settings.json', '{}\n');
-    writeFile(dir, '.worktreeinclude', '.leeway/.knowledge/store.bin\n');
-    writeFile(dir, '.gitignore', '.leeway/\nnode_modules\n');
-    writeFile(dir, 'src/app.js', 'const x = 1;\n');
-    commitAll(dir, 'init');
+  const setup = fixtureFrom('engine-commit-', (at) => {
+    writeFile(at, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
+    writeFile(at, '.claude/settings.json', '{}\n');
+    writeFile(at, '.worktreeinclude', '.leeway/.knowledge/store.bin\n');
+    writeFile(at, '.gitignore', '.leeway/\nnode_modules\n');
+    writeFile(at, 'src/app.js', 'const x = 1;\n');
+    commitAll(at, 'init');
   });
+  let dir;
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
 
   const migrate = (message = 'chore: apply workflow migrations') => engine(dir, ['commit', '--migrations', '-m', message]);
@@ -1532,12 +1537,12 @@ describe('commit door: never a code commit inside an operation git holds open', 
 });
 
 describe('commit door: a confined commit that does not land leaves the index as it found it', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setupGitFixture();
-    writeFile(dir, 'a.txt', 'one\n');
-    commitAll(dir, 'a');
+  const setup = fixtureFrom('engine-commit-', (at) => {
+    writeFile(at, 'a.txt', 'one\n');
+    commitAll(at, 'a');
   });
+  let dir;
+  beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
 
   it('a commit a hook refuses unstages what it staged and puts back what the person had staged — on its own paths and elsewhere', () => {
@@ -1571,14 +1576,10 @@ describe('commit door: a confined commit that does not land leaves the index as 
 });
 
 describe('commit door: index.lock retry and the commit lock', () => {
+  const setup = fixtureFrom('engine-commit-', implementing);
   let dir;
   beforeEach(() => {
-    dir = setupTwoTopicFixture();
-    const manifest = epicManifest();
-    manifest.phases.implementation = { items: { 'topic-a': { status: 'in-progress' } } };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-    writeFile(dir, 'src/app.js', 'const x = 1;\n');
-    commitAll(dir, 'code');
+    dir = setup();
     writeFile(dir, 'src/app.js', 'const x = 2;\n');
   });
   afterEach(() => { cleanupFixture(dir); });
@@ -1755,8 +1756,7 @@ describe('commit door: a push the remote refuses (4.S4)', () => {
   let bare;
   beforeEach(() => {
     dir = setupTwoTopicFixture();
-    bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-remote-'));
-    git(bare, ['init', '-q', '--bare']);
+    bare = harness.bareRepo(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-remote-')));
     git(dir, ['remote', 'add', 'origin', bare]);
     git(dir, ['push', '-q', 'origin', 'leeway-state']);
     fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });
