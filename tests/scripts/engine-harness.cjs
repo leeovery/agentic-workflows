@@ -37,7 +37,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  STATE_DIR_NAME, git, testIdentity, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, git, testIdentity, bareRepo, templateFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
 } = require('./discovery-test-utils.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
@@ -231,7 +231,7 @@ function setupGitFixture(prefix = 'engine-') {
  * the folder given, or in a temp folder of its own — the build's git work
  * paid once, not per test. A world whose git config names a path outside
  * it, a remote beside it, is no template: the copy would share it.
- * @param {string} prefix temp-directory prefix, so a leftover names its suite
+ * @param {string} prefix temp-directory prefix, so a leftover names its suite; the template's is `{prefix}template-`
  * @param {(dir: string) => void} build
  * @returns {(dir?: string) => string} symbolic links resolved — the path the engine names it by
  */
@@ -240,8 +240,7 @@ function fixtureFrom(prefix, build) {
   let made = null;
   return (dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))) => {
     if (made === null) {
-      const template = setupFixture(prefix);
-      process.on('exit', () => fs.rmSync(template, { recursive: true, force: true }));
+      const template = setupFixtureAt(templateFolder(`${prefix}template-`));
       build(template);
       made = template;
     }
@@ -271,6 +270,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, initRepo, githubOffline,
+  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, bareRepo, initRepo, githubOffline,
   setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
 };

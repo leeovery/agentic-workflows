@@ -39,6 +39,20 @@ function testIdentity(dir) {
   git(dir, ['config', 'maintenance.auto', 'false']);
 }
 
+/**
+ * A bare repository at `dir`, a remote, the folder made where it is
+ * missing. Auto maintenance is off here too: git starts it at the end of
+ * every push the repository receives.
+ * @param {string} dir @param {string[]} [flags] further `git init` flags
+ * @returns {string} dir
+ */
+function bareRepo(dir, flags = []) {
+  fs.mkdirSync(dir, { recursive: true });
+  git(dir, ['init', '-q', '--bare', ...flags]);
+  git(dir, ['config', 'maintenance.auto', 'false']);
+  return dir;
+}
+
 /** When the template's two commits were made. */
 const TEMPLATE_DATE = '2026-01-01T00:00:00Z';
 
@@ -60,14 +74,29 @@ function datedAt(date, fn) {
   }
 }
 
+/** Every template this process made, removed as it exits. @type {string[]} */
+const templates = [];
+process.on('exit', () => templates.forEach(cleanupFixture));
+
+/**
+ * An empty temp folder for a world the process makes once, removed as the
+ * process exits.
+ * @param {string} prefix temp-directory prefix, a template's own, so a leftover template is told from a leftover copy
+ * @returns {string} symbolic links resolved
+ */
+function templateFolder(prefix) {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  templates.push(dir);
+  return dir;
+}
+
 /** @type {string|null} */
 let template = null;
 
 /** The process's template world, made at its first fixture. @returns {string} */
 function fixtureTemplate() {
   if (template !== null) return template;
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-template-')));
-  process.on('exit', () => fs.rmSync(dir, { recursive: true, force: true }));
+  const dir = templateFolder('leeway-template-');
   git(dir, ['init', '-q', '--template=', '-b', 'main']);
   testIdentity(dir);
   fs.writeFileSync(path.join(dir, '.gitignore'), `${STATE_DIR_NAME}/\n`);
@@ -150,6 +179,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, bareRepo, templateFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
   createManifest, createFile,
 };

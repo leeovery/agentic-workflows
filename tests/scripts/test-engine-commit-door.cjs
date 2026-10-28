@@ -1756,8 +1756,7 @@ describe('commit door: a push the remote refuses (4.S4)', () => {
   let bare;
   beforeEach(() => {
     dir = setupTwoTopicFixture();
-    bare = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-remote-'));
-    git(bare, ['init', '-q', '--bare']);
+    bare = harness.bareRepo(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-remote-')));
     git(dir, ['remote', 'add', 'origin', bare]);
     git(dir, ['push', '-q', 'origin', 'leeway-state']);
     fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });

@@ -160,6 +160,20 @@ describe('engine harness — the git fixture', () => {
     assert.match(fs.readFileSync(trace, 'utf8'), /built-in: git commit/, 'the trace caught nothing');
     assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
   });
+
+  it('pushes to a bare remote that runs no auto maintenance on receiving', () => {
+    const world = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-remote-'));
+    try {
+      const bare = harness.bareRepo(path.join(world, 'remote.git'));
+      const trace = path.join(world, 'trace.log');
+      execFileSync('git', ['push', '-q', bare, 'main'], { cwd: dir, env: { ...process.env, GIT_TRACE: trace } });
+      assert.match(fs.readFileSync(trace, 'utf8'), /receive-pack/, 'the trace caught nothing of the remote');
+      assert.doesNotMatch(fs.readFileSync(trace, 'utf8'), /maintenance/);
+      assert.strictEqual(git(bare, ['rev-parse', 'main']), git(dir, ['rev-parse', 'main']));
+    } finally {
+      cleanupFixture(world);
+    }
+  });
 });
 
 describe('engine harness — a world made once and copied', () => {
@@ -200,6 +214,19 @@ describe('engine harness — a world made once and copied', () => {
     const at = world(path.join(root, 'project'));
     assert.strictEqual(at, path.join(root, 'project'));
     assert.strictEqual(stateGit(at, ['log', '-1', '--pretty=%s']).trim(), 'init');
+  });
+
+  it('is made under a temp prefix of the template\'s own, so a leftover template is told from a leftover copy', () => {
+    copies = [world()];
+    assert.match(path.basename(made[0]), /^harness-test-template-/);
+    assert.doesNotMatch(path.basename(copies[0]), /template/);
+  });
+
+  it('adds no exit listener of its own: every template is removed by the one the fixture library holds', () => {
+    const listeners = process.listenerCount('exit');
+    const another = harness.fixtureFrom('harness-test-', seed);
+    copies = [another(), another()];
+    assert.strictEqual(process.listenerCount('exit'), listeners);
   });
 });
 

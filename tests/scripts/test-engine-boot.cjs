@@ -17,7 +17,7 @@ const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
-const { datedAt } = require('./discovery-test-utils.cjs');
+const { datedAt, templateFolder } = require('./discovery-test-utils.cjs');
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
@@ -159,8 +159,7 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
  * each test brings its own project.
  */
 function stubbedSkillsTree() {
-  const skills = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-skills-'));
-  process.on('exit', () => fs.rmSync(skills, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const skills = templateFolder('engine-boot-skills-');
   fs.cpSync(REAL_ENGINE_SKILL, path.join(skills, 'workflow-engine'), { recursive: true });
   writeFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
   return path.join(skills, 'workflow-engine/scripts/engine.cjs');

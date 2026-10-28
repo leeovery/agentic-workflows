@@ -37,7 +37,7 @@ const { execFileSync, spawn, spawnSync } = require('child_process');
 const it = require('./shards.cjs').shardedIt(__filename);
 
 const {
-  ENGINE, git, initRepo, testIdentity, ok, output, refuses,
+  ENGINE, git, initRepo, testIdentity, bareRepo, ok, output, refuses,
 } = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { openGate } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
@@ -151,8 +151,7 @@ function twoMachines(base = {}) {
   write(main, 'README.md', '# Fumi\n');
   git(main, ['add', 'README.md']);
   git(main, ['commit', '-q', '-m', 'code']);
-  const bare = path.join(world, 'fumi-remote.git');
-  git(world, ['init', '-q', '--bare', bare]);
+  const bare = bareRepo(path.join(world, 'fumi-remote.git'));
   git(main, ['remote', 'add', 'origin', bare]);
   git(main, ['push', '-q', 'origin', 'main']);
   const here = { main, root: path.join(main, '.leeway') };
@@ -403,8 +402,7 @@ describe('catching up when one side moved (4.S36)', () => {
     git(main, ['commit', '-q', '-m', 'code']);
     const root = path.join(main, '.leeway');
     createState(root);
-    const bare = path.join(world, 'fresh-remote.git');
-    git(world, ['init', '-q', '--bare', bare]);
+    const bare = bareRepo(path.join(world, 'fresh-remote.git'));
     git(main, ['remote', 'add', 'origin', bare]);
     git(main, ['update-ref', `refs/remotes/origin/${STATE_BRANCH}`, STATE_BRANCH]);
 

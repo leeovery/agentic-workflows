@@ -32,7 +32,7 @@ const it = require('./shards.cjs').shardedIt(__filename);
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { datedAt } = require('./discovery-test-utils.cjs');
+const { datedAt, templateFolder } = require('./discovery-test-utils.cjs');
 
 const { git, initRepo, testIdentity, githubOffline } = harness;
 const SCRIPTS = path.dirname(harness.ENGINE);
@@ -65,8 +65,7 @@ process.stdout.write('[SKIP] No changes needed\\n---MIGRATIONS_RUN---\\n{"ran":0
 
 /** The engine copied beside the stand-in runner, which boot finds beside itself. */
 function stubbedEngine() {
-  const skills = fs.mkdtempSync(path.join(os.tmpdir(), 'boot-state-skills-'));
-  process.on('exit', () => fs.rmSync(skills, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+  const skills = templateFolder('boot-state-skills-');
   fs.cpSync(path.dirname(SCRIPTS), path.join(skills, 'workflow-engine'), { recursive: true });
   fs.mkdirSync(path.join(skills, 'workflow-migrate/scripts'), { recursive: true });
   fs.writeFileSync(path.join(skills, 'workflow-migrate/scripts/migrate.cjs'), STUB_MIGRATE);
@@ -108,12 +107,6 @@ function tip(dir, ref) {
 /** The remote's `leeway-state`, or '' where it holds none. @param {string} bare */
 function remoteTip(bare) {
   return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
-}
-
-/** A bare repository at `dir`, as a remote. @param {string} dir */
-function bareRemote(dir) {
-  git(world, ['init', '-q', '--bare', dir]);
-  return dir;
 }
 
 /**
@@ -243,7 +236,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('pushes the new branch where the project has a remote', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = codeProject({ remote: bare });
 
     boot(main);
@@ -359,7 +352,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a fresh clone ignores the state at once, before any commit — even a boot killed as the worktree is locked', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
     git(bare, ['update-ref', 'refs/heads/main', git(main, ['rev-parse', 'main~2']).trim()]);
     const fresh = cloneOf(bare, 'fresh');
@@ -379,7 +372,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('a boot from a code worktree commits the line and the hooks on that worktree\'s branch, never on the main checkout\'s', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = codeProject({ remote: bare });
     const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
     boot(main);
@@ -604,7 +597,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
   });
 
   it('the old layout beside a remote holding leeway-state is a clone to bring the state into, not refused', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
     const other = cloneOf(bare, 'other');
     write(other, '.workflows/payments/manifest.json', '{}\n');
@@ -620,7 +613,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
 describe('a fresh clone (4.S11, 22.S2)', () => {
   it('makes the remote\'s leeway-state its own, checked out at .leeway/ and locked — and the next boot has nothing to do', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { root } = setUp({ remote: bare });
     commitOnState(root, { 'manifest.json': '{"kept":true}\n' });
     const fresh = cloneOf(bare, 'fresh');
@@ -635,7 +628,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
   });
 
   it('with the remote out of reach, checks out its branch as the clone fetched it, and says the remote could not be reached', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     setUp({ remote: bare });
     const fresh = cloneOf(bare, 'fresh');
     outOfReach(fresh);
@@ -651,7 +644,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
   });
 
   it('with the remote out of reach and nothing fetched, stops saying so — never as lost state — and writes nothing', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     setUp({ remote: bare });
     const fresh = cloneOf(bare, 'fresh', ['--single-branch', '--branch', 'main']);
     outOfReach(fresh);
@@ -711,7 +704,7 @@ describe('two boots at once (4.S3)', () => {
   });
 
   it('on a fresh clone, both answer ready, and the remote\'s branch is checked out once', async () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     setUp({ remote: bare });
     const fresh = cloneOf(bare, 'fresh');
 
@@ -729,7 +722,7 @@ describe('two boots at once (4.S3)', () => {
 
 describe('a lost local branch (4.S8)', () => {
   it('deleted with its worktree, is restored from the remote and checked out again, locked', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     commitOnState(root, { 'manifest.json': '{"kept":true}\n' });
     git(main, ['worktree', 'remove', '--force', '--force', root]);
@@ -744,7 +737,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree, is restored and the folder linked to it again, what the folder holds kept', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     write(root, 'notes.md', 'not yet committed\n');
@@ -758,7 +751,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree while the remote moved on, its folder is brought to the remote\'s tip: the next write undoes nothing the remote changed, and edits not yet committed survive', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     commitOnState(root, { 'notes.md': 'one\ntwo\nthree\n' });
     const other = cloneOf(bare, 'other');
@@ -788,7 +781,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree holding a commit a failed push left behind, is restored with that commit, which the catch-up pushes', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     const hook = path.join(bare, 'hooks', 'pre-receive');
     fs.writeFileSync(hook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
@@ -805,7 +798,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree in a repository whose config turns ref logs off, still reads where the folder stands — the engine logs the state\'s refs whatever the config says', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = codeProject({ remote: bare });
     git(main, ['config', 'core.logAllRefUpdates', 'false']);
     assert.strictEqual(boot(main).state, 'ready');
@@ -820,7 +813,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under a folder with a code branch checked out, is refused: the commit the folder stands at holds code history — nothing written, no ref made', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     git(root, ['checkout', '-q', '--ignore-other-worktrees', 'main']);
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
@@ -836,7 +829,7 @@ describe('a lost local branch (4.S8)', () => {
   });
 
   it('deleted under its worktree whose HEAD log is gone, is refused: boot cannot tell where the folder stands, and writes nothing', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     const registration = read(root, '.git').replace(/^gitdir: /, '').trim();
@@ -856,7 +849,7 @@ describe('a lost local branch (4.S8)', () => {
 
 describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
   it('is pushed back — and the next boot has nothing to do', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
     git(bare, ['branch', '-D', STATE_BRANCH]);
 
@@ -867,7 +860,7 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
   });
 
   it('is never pushed back to a remote out of reach, which says nothing of what it holds', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
     git(bare, ['branch', '-D', STATE_BRANCH]);
     outOfReach(main);
@@ -881,7 +874,7 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
   });
 
   it('gone here and on the remote but held by another clone: this clone stops, the other pushes it back, and this one restores it with nothing lost', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main: other, root: otherRoot } = setUp({ remote: bare });
     const here = cloneOf(bare, 'here');
     boot(here);
@@ -1070,7 +1063,7 @@ const WRAP = '\u00a0'.repeat(8);
 
 describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   it('gone here and on the remote, in a project whose committed settings hold the workflows\' hooks, stops boot with nothing written — and the next boot stops again', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = lostProject({ remote: bare, trace: { '.claude/settings.json': WORKFLOW_HOOKS } });
     const before = untouched(main, bare);
 
@@ -1099,7 +1092,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
   describe('the trace read across the repository, not one checkout (4.5.2)', () => {
     it('set up from a code worktree, its trace on that branch alone: a boot in the main checkout stops at the lost state, nothing written', () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       const main = codeProject({ remote: bare });
       const code = path.join(world, 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
@@ -1114,7 +1107,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('the main checkout on a branch cut before setup, the trace on a branch checked out nowhere: stops at the lost state, nothing written', () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       const main = lostProject({ remote: bare });
       git(main, ['checkout', '-q', '-b', 'before-setup', 'main~1']);
       const before = untouched(main, bare);
@@ -1125,7 +1118,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('the trace on a remote-tracking branch alone: a clone whose own branches never carried it stops at the lost state, nothing written', () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       lostProject({ remote: bare });
       const fresh = cloneOf(bare, 'fresh', ['--branch', 'main']);
       git(fresh, ['checkout', '-q', '-b', 'before-setup', 'origin/main~1']);
@@ -1171,7 +1164,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('the trace pushed from another clone on a branch this one never fetched: the remote\'s branches are fetched first, and boot stops at the lost state', () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       const main = codeProject({ remote: bare });
       const old = cloneOf(bare, 'old', ['--branch', 'main']);
       const code = path.join(world, 'portal-feature');
@@ -1188,7 +1181,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('a fetch of the remote\'s branches that fails is never read as a project being set up: boot stops, writing nothing', () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       const main = codeProject({ remote: bare });
       const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
       const wrapper = fs.mkdtempSync(path.join(world, 'git-'));
@@ -1206,7 +1199,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
 
     it('a project with no trace on any branch, local or remote-tracking, nor in any tree checked out, is being set up', () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       const main = codeProject({ remote: bare });
       git(main, ['checkout', '-q', '-b', 'feature']);
       write(main, '.gitignore', 'node_modules\n');
@@ -1277,7 +1270,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   });
 
   it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again — the baseline signal reads all the code as before the workflows', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = lostProject({ remote: bare });
     const code = tip(main, 'main');
 
@@ -1305,7 +1298,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
   });
 
   it('a state folder with no branch here or on the remote is refused, saying what happened and the ways on, nothing written', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
     git(bare, ['branch', '-D', STATE_BRANCH]);
@@ -1328,7 +1321,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
 describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
   it('here, is refused: no worktree is added onto it, and it is never pushed', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = codeProject({ remote: bare });
     git(main, ['branch', STATE_BRANCH]);
 
@@ -1339,7 +1332,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
   });
 
   it('on the remote, is refused: no local branch is made from it', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = codeProject({ remote: bare });
     git(main, ['push', '-q', 'origin', `main:${STATE_BRANCH}`]);
     const fresh = cloneOf(bare, 'fresh');
@@ -1351,7 +1344,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
   });
 
   it('checked out at .leeway/ by hand, is never pushed to a remote that lacks it', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const main = codeProject({ remote: bare });
     git(main, ['worktree', 'add', '-q', '-b', STATE_BRANCH, path.join(main, '.leeway')]);
     git(main, ['worktree', 'lock', '--reason', STATE_LOCK_REASON, path.join(main, '.leeway')]);
@@ -1367,7 +1360,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
 
   for (const fetched of [false, true]) {
     it(`pushed over the remote's, is refused by the catch-up before anything is merged or pushed${fetched ? ' — the person having fetched it already' : ''}`, () => {
-      const bare = bareRemote(path.join(world, 'portal.git'));
+      const bare = harness.bareRepo(path.join(world, 'portal.git'));
       const { main } = setUp({ remote: bare });
       commitOnState(path.join(main, '.leeway'), { 'manifest.json': '{"kept":true}\n' });
       git(main, ['push', '-q', '-f', 'origin', `main:${STATE_BRANCH}`]);
@@ -1386,7 +1379,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
   }
 
   it('pointed at code under its worktree, is refused by the catch-up and never pushed', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
     git(main, ['update-ref', `refs/heads/${STATE_BRANCH}`, 'main']);
     const before = stateAsIs(main, bare);
@@ -1401,7 +1394,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
   });
 
   it('is told from a state started again elsewhere, a line of its own too, which the catch-up merges as ever', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
     commitOnState(path.join(main, '.leeway'), { 'notes.md': 'kept here\n' });
     const other = initRepo(path.join(world, 'other'));
@@ -1430,7 +1423,7 @@ function fakeGithub() {
   const served = path.join(world, 'github');
   const bare = path.join(served, 'acme', 'portal.git');
   fs.mkdirSync(path.dirname(bare), { recursive: true });
-  bareRemote(bare);
+  harness.bareRepo(bare);
   const ssh = path.join(world, 'fake-ssh');
   write(world, 'fake-ssh', [
     '#!/bin/sh',
@@ -1621,7 +1614,7 @@ describe('the GitHub rule (4.4.6, 4.S10, 4.S30)', () => {
 
 describe('the GitHub rule beyond GitHub', () => {
   it('a remote that is not on GitHub is offered nothing, and a yes there is refused', () => {
-    const bare = bareRemote(path.join(world, 'portal.git'));
+    const bare = harness.bareRepo(path.join(world, 'portal.git'));
     const { main } = setUp({ remote: bare });
 
     assert.strictEqual(boot(main).github_rule_offer, false);
@@ -1646,7 +1639,7 @@ describe('the GitHub rule beyond GitHub', () => {
 
 /** Two clones of one project's state: `there` set up and pushed, `here` a clone of it. */
 function twoClones() {
-  const bare = bareRemote(path.join(world, 'portal.git'));
+  const bare = harness.bareRepo(path.join(world, 'portal.git'));
   const there = setUp({ name: 'there', remote: bare });
   commitOnState(there.root, { 'manifest.json': JSON.stringify({ defaults: { plan_format: 'local' } }, null, 2) + '\n' });
   const main = cloneOf(bare, 'here');

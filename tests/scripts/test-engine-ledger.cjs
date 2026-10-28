@@ -33,7 +33,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, ok, refuses, output, setupGitFixture, cleanupFixture, statePath } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, ok, refuses, output, setupGitFixture, cleanupFixture, statePath } = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -76,9 +76,7 @@ function project({ objectFormat = 'sha1' } = {}) {
   } else {
     fs.mkdirSync(main);
     git(main, ['init', '-q', '-b', 'main', `--object-format=${objectFormat}`]);
-    git(main, ['config', 'user.email', 'test@example.com']);
-    git(main, ['config', 'user.name', 'Test']);
-    git(main, ['config', 'commit.gpgsign', 'false']);
+    testIdentity(main);
   }
   fs.writeFileSync(path.join(main, 'README.md'), '# Fumi\n');
   git(main, ['add', 'README.md']);

@@ -24,7 +24,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const { ENGINE, ok, refuses, git, stateGit, statePath, testIdentity, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -145,8 +145,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
   it('keeps the mark on each machine, off the state branch: a look makes no commit, and each of two clones counts from its own look (5.S33)', () => {
     const world = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-since-machines-')));
     try {
-      const bare = path.join(world, 'fumi.git');
-      git(world, ['init', '-q', '--bare', '--initial-branch=main', bare]);
+      const bare = bareRepo(path.join(world, 'fumi.git'), ['--initial-branch=main']);
       git(dir, ['remote', 'add', 'origin', bare]);
       git(dir, ['push', '-q', 'origin', 'main']);
       stateGit(dir, ['add', '-A']);

@@ -14,7 +14,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  git, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+  git, bareRepo, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
 } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
@@ -198,8 +198,7 @@ describe('engine workunit import — from a code worktree (4.S1)', () => {
   // and one beside it, where no folder above holds `.leeway/`: the state is
   // found through the common directory from both.
   it('lands in the main checkout\'s one state, answers its absolute path, pushes the state branch, and leaves every code branch as it was', () => {
-    const remote = path.join(fix.root, 'remote.git');
-    git(fix.root, ['init', '-q', '--bare', remote]);
+    const remote = bareRepo(path.join(fix.root, 'remote.git'));
     git(fix.project, ['remote', 'add', 'origin', remote]);
     const worktrees = [
       { branch: 'inside', wt: path.join(fix.project, '.claude', 'worktrees', 'inside'), name: 'inside' },

@@ -8488,7 +8488,7 @@ describe('render — the adopted phase gates', () => {
   });
 
   describe('checkpoint-files-gate: the dirty code read from git', () => {
-    const { git, initRepo } = require('./engine-harness.cjs');
+    const { git, initRepo, testIdentity } = require('./engine-harness.cjs');
     const write = (rel, text) => {
       fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
       fs.writeFileSync(path.join(dir, rel), text);
@@ -8499,9 +8499,7 @@ describe('render — the adopted phase gates', () => {
     };
     beforeEach(() => {
       git(dir, ['init', '-q', '-b', 'main']);
-      git(dir, ['config', 'user.email', 'test@example.com']);
-      git(dir, ['config', 'user.name', 'Test']);
-      git(dir, ['config', 'commit.gpgsign', 'false']);
+      testIdentity(dir);
       write('src/cart.js', '1');
       write('src/billing file.js', '1');
       write('README.md', '1');
