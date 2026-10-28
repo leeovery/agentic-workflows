@@ -46,6 +46,8 @@ const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/dom
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
 const { KNOWLEDGE_DIR, RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
 const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/store.cjs'));
+const chunker = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs'));
+const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/workflow-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 const { launcher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/call.cjs'));
@@ -526,7 +528,7 @@ function auditCopies(root, events, shownAt, standing, full, ctx) {
   assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
   /** @param {Record<string, any>} e @returns {string[]} */
-  const words = (e) => [e.text, e.why, e.how, ...(e.rules_out ?? [])].filter((w) => typeof w === 'string');
+  const words = (e) => [e.text, e.why, e.how, e.rules_out, e.alternatives, e.evidence, e.drops].flat().filter((w) => typeof w === 'string');
   const shownWords = [...shownAt.keys()].flatMap((id) => words(byId.get(id)));
   const unshown = events.filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event) && !shownAt.has(e.id))
     .flatMap((e) => words(e).map((w) => [e.id, w])).filter(([, w]) => !shownWords.some((shown) => shown.includes(w)));
@@ -535,8 +537,14 @@ function auditCopies(root, events, shownAt, standing, full, ctx) {
     assert.deepStrictEqual(unshown.filter(([, w]) => text.includes(w)), [], ctx(`${file} holds the words of an entry that is not shown`));
   }
   const storeFile = knowledgeFiles(root).store;
-  const indexed = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record').map((c) => c.source_file) : [];
-  assert.deepStrictEqual([...new Set(indexed)].sort(), copies, ctx('the store does not index the record copies alone'));
+  const chunks = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record') : [];
+  assert.deepStrictEqual([...new Set(chunks.map((c) => c.source_file))].sort(), copies, ctx('the store does not index the record copies alone'));
+  for (const file of copies) {
+    const held = chunks.filter((c) => c.source_file === file).sort((a, b) => a.id.localeCompare(b.id)).map((c) => c.content);
+    const cut = chunker.chunk(fs.readFileSync(path.join(root, file), 'utf8'), RECORD_CHUNKING).map((c) => c.content);
+    assert.deepStrictEqual(held, cut, ctx(`the store's chunks of ${file} are not the copy as it stands`));
+  }
+  assert.deepStrictEqual(chunks.flatMap((c) => unshown.filter(([, w]) => c.content.includes(w))), [], ctx('a chunk in the store holds the words of an entry that is not shown'));
 }
 
 // The skills a menu's route reaches in place: another menu, or help.

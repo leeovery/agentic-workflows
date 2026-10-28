@@ -5,8 +5,10 @@
 // directory sits in the state, local to the machine and never committed: the
 // store, its metadata and the knowledge config setup wrote, beside the
 // store's lock and the vector fill's claim; and the copies rendered from the
-// ledger, under a lock of their own — each record's, which the store indexes, and the product record's,
-// which it never does (4.11.10).
+// ledger — each record's, which the store indexes, and the product record's,
+// which it never does (4.11.10) — beside their render's claim, the token a
+// writer leaves to say they are out of date, and what was live when they
+// were last rendered.
 // ---------------------------------------------------------------------------
 
 const path = require('path');
@@ -32,7 +34,9 @@ const NAMES = { store: 'store.bin', metadata: 'metadata.json', config: 'config.j
  * @property {string} config
  * @property {string} lock  held by every store write
  * @property {string} fill  held by the vector fill while it works
- * @property {string} copies  held by a render of the ledger's copies
+ * @property {string} copies  claimed by a render of the ledger's copies
+ * @property {string} copiesOutdated  a token each writer rewrites to say the copies are out of date
+ * @property {string} copiesLive  what was live, unit by unit, when the copies were last rendered
  */
 
 /**
@@ -50,6 +54,8 @@ function knowledgeFiles(root) {
     lock: path.join(dir, '.lock'),
     fill: path.join(dir, '.fill'),
     copies: path.join(dir, '.copies'),
+    copiesOutdated: path.join(dir, '.copies-outdated'),
+    copiesLive: path.join(dir, '.copies-live.json'),
   };
 }
 

@@ -15,26 +15,34 @@
 //   copy removed, and gets it back when it is live again (5.8.17).
 // - When: the whole set is rendered against the ledger after a ledger write
 //   commits and its lock is released, and after any command that changes
-//   what is live — the engine's dispatcher marks liveness around every
-//   command it runs under the writer lock, however the change is made. One entry's change can move
-//   records in other topics and units — one relying on an answer replaced,
-//   both ends of a move, a unit whose replacement stops counting — so the
-//   render never works out which: a copy is written where its text differs
-//   from what is on disk, and removed where no record holds it.
-// - One render at a time, under the copies' own lock, never the writer's:
-//   the ledger is folded inside it, so the render that holds it last reads
-//   every write committed before it, and no render folded earlier lands
-//   over a later one. A replaced answer is out of every copy once the
-//   render after its write is done.
-// - Indexing follows a render inside the same lock, once a checkout's
+//   what is live — the engine's dispatcher stamps the units' manifests
+//   around every command it runs under the writer lock, and holds the units
+//   whose manifests changed against what was live when the copies were last
+//   rendered, so a change is seen however it was made, and a command that
+//   changes nothing pays a stat a unit. One entry's change can move records
+//   in other topics and units — one relying on an answer replaced, both ends
+//   of a move, a unit whose replacement stops counting — so the render never
+//   works out which: a copy is written where its text differs from what is
+//   on disk, and removed where no record holds it.
+// - One render at a time, and no one waits for it: a writer marks the copies
+//   out of date, then claims their render without waiting. The holder folds
+//   the ledger, renders and indexes, and goes round again while the mark
+//   moved since its fold began; it checks the mark once more after letting
+//   go, so a writer that found it held — and left at once — is rendered by
+//   it. The fold reads every write committed before it, and no render folded
+//   earlier lands over a later one, in the copies or the store (5.S22). The
+//   claim is known by its holder's process — never broken while it runs,
+//   however long a render or its index pass takes, and taken over once it
+//   is gone.
+// - The fold's check finishes a landing a kill cut short under the writer
+//   lock (ledger.cjs): a writer checks the ledger before it claims the
+//   render, so that wait is taken with the claim free. A fold never renders
+//   what the branch has not committed (5.4.3).
+// - Indexing follows each render inside the claim, once a checkout's
 //   knowledge base is set up: each copy written indexed and each removed
-//   taken out, so no index built from an earlier render lands over a later
-//   one's, in the store as in the copies (5.S22). The keyword side lands at
-//   once, the vectors left to the background fill (knowledge/sync.cjs). The
-//   lock is held across a pass that waits on the store's own lock, so its
-//   holder is known by its process — never broken while it runs, taken over
-//   once it is gone. Boot renders alone before its own knowledge pass, which
-//   brings the store in line with the copies.
+//   taken out. The keyword side lands at once, the vectors left to the
+//   background fill (knowledge/sync.cjs). Boot renders before its own
+//   knowledge pass, which brings the store in line with the copies.
 // - A render or an index that fails is a warning, never a refusal: what
 //   called it stands, and the next start renders and indexes it again
 //   (22.6.15).
@@ -43,17 +51,19 @@
 const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
-const { withStateLockFile } = require('../kernel/manifest-io.cjs');
+const { tryClaimFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
-const { ledgerFile } = require('./ledger.cjs');
+const { ledgerFile, checkLedger } = require('./ledger.cjs');
 const { ID_FACTS, readFolded, factsOf, standingOf, currentsOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
 const { showerOf } = require('./ledger-read.cjs');
-const { liveness } = require('./ledger-units.cjs');
+const { liveness, manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
+const { withStateLock } = require('./state-worktree.cjs');
 const { recordCopy, productCopy } = require('./projections/ledger-copy.cjs');
 const { recordFile, recordScope } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 
+/** @typedef {import('../kernel/call.cjs').Call} Call */
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 /** @typedef {import('./ledger-fold.cjs').RecordIds} RecordIds */
 /** @typedef {import('./projections/ledger-copy.cjs').Placed} Placed */
@@ -223,20 +233,42 @@ function readOrNull(file) {
 }
 
 /**
- * The copies brought in line with the ledger, under their lock, the ledger
- * folded inside it: each whose text differs from what is on disk written,
- * and each no record holds removed, a unit's folder with it once empty —
- * then, still holding it, `after` given what changed. A project with no
- * ledger and no knowledge directory has nothing to render, and the
- * directory is not made for it.
+ * The copies marked out of date, then brought in line with the ledger where
+ * no render holds their claim — `after` given what each render changed,
+ * holding it — going round while the mark moves. A project with no ledger
+ * and no knowledge directory has nothing to render, and the directory is
+ * not made for it.
  * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
  * @param {(rendered: Rendered) => void} after
  */
 function renderCopies(root, notes, after) {
-  const { dir, copies: lock } = knowledgeFiles(root);
-  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(dir)) return;
-  fs.mkdirSync(dir, { recursive: true });
-  withStateLockFile(lock, () => after(renderLocked(root, notes)));
+  const files = knowledgeFiles(root);
+  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(files.dir)) return;
+  writeWhole(files.copiesOutdated, `${process.pid}.${Date.now()}.${Math.random()}`);
+  for (let release = claimRender(root, notes); release !== null; release = claimRender(root, notes)) {
+    /** @type {string|null} */
+    let seen;
+    try {
+      do {
+        seen = readOrNull(files.copiesOutdated);
+        after(renderLocked(root, notes));
+      } while (readOrNull(files.copiesOutdated) !== seen);
+    } finally {
+      release();
+    }
+    if (readOrNull(files.copiesOutdated) === seen) return;
+  }
+}
+
+/**
+ * The render claimed without waiting — the ledger checked first, so a
+ * landing to finish is waited on with the claim free: its release, or null
+ * where another render holds it.
+ * @param {string} root @param {string[]} notes
+ */
+function claimRender(root, notes) {
+  if (fs.existsSync(ledgerFile(root))) checkLedger(root, notes);
+  return tryClaimFile(knowledgeFiles(root).copies);
 }
 
 /**
@@ -245,6 +277,7 @@ function renderCopies(root, notes, after) {
  * @returns {Rendered}
  */
 function renderLocked(root, notes) {
+  const live = livenessMarks(root);
   const copies = copiesOf(root, notes);
   /** @type {Rendered} */
   const rendered = { written: [], removed: [] };
@@ -262,6 +295,7 @@ function renderLocked(root, notes) {
   for (const dir of new Set(rendered.removed.map((file) => path.dirname(file)))) {
     if (dir !== RECORDS_DIR && fs.readdirSync(path.join(root, dir)).length === 0) fs.rmdirSync(path.join(root, dir));
   }
+  writeWhole(knowledgeFiles(root).copiesLive, JSON.stringify(live));
   return rendered;
 }
 
@@ -294,4 +328,89 @@ function refreshLedgerCopies(cwd, warnings) {
   });
 }
 
-module.exports = { renderLedgerCopies, refreshLedgerCopies };
+/**
+ * Whether the copies are behind what is live for the units `changed` names:
+ * each one's liveness now against what it was when the copies were last
+ * rendered. A unit that cannot be read counts as behind, so the render that
+ * follows says why.
+ * @param {string} root @param {string[]} changed
+ */
+function copiesBehind(root, changed) {
+  if (changed.length === 0 || !fs.existsSync(ledgerFile(root))) return false;
+  try {
+    const shown = JSON.parse(readOrNull(knowledgeFiles(root).copiesLive) ?? '{}');
+    return changed.some((unit) => unitMark(unit, manifestOf(root, unit)) !== (shown[unit] ?? null));
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * A command run under the writer lock, then — the lock released — the
+ * ledger's copies rendered and indexed where it changed what is live
+ * (ledger-copies.cjs). Every change to a unit's or a topic's liveness is
+ * such a command, however it is made, so the copies follow each one from
+ * here: under the lock, the units whose manifests the command changed are
+ * held against what was live when the copies were last rendered. Its
+ * response waits until then, so a failure there rides it as a warning,
+ * whether the command answered or failed.
+ * @param {Call} call @param {string} root @param {(held: Call) => void} command
+ */
+function followingLiveness(call, root, command) {
+  /** @type {string[]} */
+  const out = [];
+  /** @type {string[]} */
+  const err = [];
+  let behind = false;
+  try {
+    withStateLock(root, () => {
+      const before = manifestStamps(root);
+      try {
+        command({ ...call, out: (text) => out.push(text), err: (text) => err.push(text) });
+      } finally {
+        behind = copiesBehind(root, changedUnits(root, before));
+      }
+    });
+  } finally {
+    /** @type {string[]} */
+    const warnings = [];
+    if (behind) refreshLedgerCopies(call.cwd, warnings);
+    carryWarnings(out, err, warnings);
+    for (const text of out) call.out(text);
+    for (const text of err) call.err(text);
+  }
+}
+
+/**
+ * `warnings` added to the ones a response's JSON line carries — its answer
+ * on stdout, or else its failure on stderr — or, where neither is JSON, on
+ * a line of their own on stderr.
+ * @param {string[]} out @param {string[]} err @param {string[]} warnings
+ */
+function carryWarnings(out, err, warnings) {
+  if (warnings.length === 0) return;
+  if (out.length > 0 && carriedBy(out, warnings)) return;
+  if (err.length > 0 && carriedBy(err, warnings)) return;
+  err.push(`${JSON.stringify({ warnings })}\n`);
+}
+
+/**
+ * Whether the first of `lines` opens with a JSON object, `warnings` then
+ * added to it.
+ * @param {string[]} lines @param {string[]} warnings
+ */
+function carriedBy(lines, warnings) {
+  const [first] = lines;
+  const end = first.includes('\n') ? first.indexOf('\n') : first.length;
+  let answer;
+  try {
+    answer = JSON.parse(first.slice(0, end));
+  } catch {
+    return false;
+  }
+  if (answer === null || typeof answer !== 'object' || Array.isArray(answer)) return false;
+  lines[0] = `${JSON.stringify({ ...answer, warnings: [...(answer.warnings ?? []), ...warnings] })}${first.slice(end)}`;
+  return true;
+}
+
+module.exports = { renderLedgerCopies, refreshLedgerCopies, followingLiveness };

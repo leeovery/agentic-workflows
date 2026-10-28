@@ -32,8 +32,10 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
-const { tryClaimFile } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { followingLiveness } = require(path.join(SCRIPTS, 'domain/ledger-copies.cjs'));
+const { readWorkUnitManifest, writeWorkUnitManifestAtomic } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
+const { ExitSignal } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 
 const UNIT = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
@@ -213,66 +215,57 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.doesNotMatch(relying, /floating/);
   });
 
-  it('renders one at a time, the ledger folded under the copies\' lock: two writers whose renders wait behind one that folded before either leave a copy holding both writes', async () => {
-    const question = ask(NOTE, 'Is a note a window?');
-    const folded = /** @type {string} */ (copy(NOTE_COPY));
-    const release = /** @type {() => void} */ (tryClaimFile(knowledgeFiles(statePath(dir)).copies));
-    const before = commits();
-
-    const writers = [
-      spawnWrite(['decide', NOTE, '--answers', question], { text: 'A floating panel.', why: 'It follows the person.' }),
-      spawnWrite(['find', NOTE], { text: 'Panels float above every Space.', how: 'a spike' }),
-    ];
-    await until(() => commits() === before + 2, 'the two writes did not both commit');
-    assert.strictEqual(copy(NOTE_COPY), folded, 'a render ran while another held the copies\' lock');
-
-    // The render holding the lock folded before either write: it lands its text, then lets go.
-    fs.writeFileSync(statePath(dir, NOTE_COPY), folded);
-    release();
-    assert.deepStrictEqual(await Promise.all(writers.map((w) => w.done)), [0, 0]);
-
-    const text = /** @type {string} */ (copy(NOTE_COPY));
-    assert.match(text, /^A floating panel\.$/m);
-    assert.match(text, /^## Finding: Panels float above every Space\.$/m);
-    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
-    assert.match(await byArea('floating'), /^A floating panel\.$/m);
-  });
-
-  it('indexes under the copies\' lock: a later render waits for an earlier one\'s index pass, so the store ends with the later text, the replaced answer gone from it (5.S22)', async () => {
+  it('renders one at a time and no writer waits for it: a write that lands while a render holds the claim leaves at once, and the holder renders and indexes it, the store ending with the later text (5.S22)', async () => {
     const { decision } = floatingPanel();
     const files = knowledgeFiles(statePath(dir));
     fs.writeFileSync(files.lock, String(process.pid));
     const before = commits();
 
-    const earlier = spawnWrite(['replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], { text: 'A framed panel.', why: 'Frames read as furniture.', drops: ['the old one'] });
+    const holder = spawnWrite(['replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], { text: 'A framed panel.', why: 'Frames read as furniture.', drops: ['the old one'] });
+    // The barrier: the holder has rendered its write and waits on the store inside its index pass.
     await until(() => commits() === before + 1 && /A framed panel\./.test(copy(NOTE_COPY) ?? ''), 'the replace did not commit and render');
     const later = spawnWrite(['find', NOTE], { text: 'Panels float above every Space.', how: 'a spike' });
-    await until(() => commits() === before + 2, 'the finding did not commit');
+    assert.strictEqual(await later.done, 0);
 
-    // The barrier: the earlier render waits on the store inside its index pass, the later render behind it.
-    assert.strictEqual(JSON.parse(fs.readFileSync(files.copies, 'utf8')).pid, earlier.pid, 'the copies\' lock was let go before the index pass');
-    assert.doesNotMatch(/** @type {string} */ (copy(NOTE_COPY)), /Finding/);
+    assert.strictEqual(commits(), before + 2);
+    assert.strictEqual(JSON.parse(fs.readFileSync(files.copies, 'utf8')).pid, holder.pid, 'the holder let the claim go before its index pass');
+    assert.doesNotMatch(/** @type {string} */ (copy(NOTE_COPY)), /Finding/, 'the later write rendered while another held the claim');
     fs.unlinkSync(files.lock);
-    assert.deepStrictEqual([await earlier.done, await later.done], [0, 0]);
+    assert.strictEqual(await holder.done, 0);
 
-    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^## Finding: Panels float above every Space\.$/m);
+    assert.ok(!fs.existsSync(files.copies), 'the holder kept the claim');
+    const text = /** @type {string} */ (copy(NOTE_COPY));
+    assert.match(text, /^A framed panel\.$/m);
+    assert.match(text, /^## Finding: Panels float above every Space\.$/m);
     const indexed = indexedText();
     assert.match(indexed, /A framed panel\./);
     assert.match(indexed, /Panels float above every Space\./);
     assert.doesNotMatch(indexed, /floating/i);
   });
 
+  it('takes over the claim from a render whose process is gone', () => {
+    const files = knowledgeFiles(statePath(dir));
+    fs.writeFileSync(files.copies, JSON.stringify({ pid: 2 ** 22 + 1, pid_start: 'long gone' }));
+    floatingPanel();
+    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^A floating panel\.$/m);
+    assert.ok(!fs.existsSync(files.copies));
+  });
+
   it('keeps each entry inside its own section, whatever its text holds: a line that would open a heading or a fence reads as text', () => {
     const question = ask(NOTE, 'Is a note a window?');
-    decide(NOTE, question, 'A panel.\n## Not a heading\n```', [], { why: 'It floats.\n# Nor this', rules_out: ['a window\n  ### nor this'] });
-    write('find', NOTE, [], { ...MADE, text: 'Panels float.\n~~~', how: 'a spike\n## still the finding' });
+    decide(NOTE, question, 'A panel.\n## Not a heading\n```', [], { why: 'It floats.\r# Nor this', rules_out: ['a window\n  ### nor this', 'a sheet\r\n\f\u00a0~~~'] });
+    write('find', NOTE, [], { ...MADE, text: 'Panels float.\n~~~', how: 'a spike\n\v## still the finding' });
 
     const text = /** @type {string} */ (copy(NOTE_COPY));
-    assert.deepStrictEqual(text.split('\n').filter((line) => /^\s*(#|```|~~~)/.test(line)), ['# fumi / note-window', '## Is a note a window?', '## Finding: Panels float. ~~~']);
+    // Lines as the chunker breaks them, and its own matches for a heading and a fence.
+    const opening = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((line) => /^(#{1,6})\s+(.*)$/.test(line) || /^\s*(```+|~~~+)/.test(line));
+    assert.deepStrictEqual(opening, ['# fumi / note-window', '## Is a note a window?', '## Finding: Panels float. ~~~']);
     assert.match(text, /^\\## Not a heading\n\\```$/m);
     assert.match(text, /^Why: It floats\.\n\\# Nor this$/m);
     assert.match(text, /^- a window\n {2}\\### nor this$/m);
+    assert.match(text, /^- a sheet\n\f\u00a0\\~~~$/m);
     assert.match(text, /^\\~~~$/m);
+    assert.match(text, /^\v\\## still the finding$/m);
   });
 
   it('heads a decision whose question is set aside with its own words, so no words of an entry that is not current reach a copy, the product record\'s file or a search (5.8.17)', async () => {
@@ -422,6 +415,7 @@ describe('boot (22.6.14, 22.6.15)', () => {
     const decided = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A floating panel.', why: 'It follows the person.' });
 
     assert.match(decided.warnings.join('\n'), /^knowledge index \(\.knowledge\/records\/fumi\/note-window\.md\) failed: /m);
+    assert.ok(!fs.existsSync(knowledgeFiles(statePath(dir)).copies), 'a failed index kept the render\'s claim');
     assert.strictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
 
@@ -445,6 +439,31 @@ describe('boot (22.6.14, 22.6.15)', () => {
     ok(dir, ['boot']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^## Is a note a window\?$/m);
     assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
+  });
+});
+
+describe('a command that fails', () => {
+  it('carries a render\'s failure on its refusal, where it changed what is live before it failed (22.6.15)', () => {
+    ask(NOTE, 'Is a note a window?');
+    ok(dir, ['manifest', 'set', 'fumi.discovery.note-window', 'cancelled', 'true']);
+    fs.rmSync(statePath(dir, '.knowledge/records'), { recursive: true });
+    fs.writeFileSync(statePath(dir, '.knowledge/records'), 'in the way\n');
+    /** @type {{out: string[], err: string[]}} */
+    const said = { out: [], err: [] };
+    const call = { cwd: dir, out: (/** @type {string} */ text) => said.out.push(text), err: (/** @type {string} */ text) => said.err.push(text), stdin: () => '' };
+
+    assert.throws(() => followingLiveness(call, statePath(dir), (held) => {
+      const manifest = readWorkUnitManifest(statePath(dir), UNIT);
+      delete manifest.phases.discovery.items['note-window'].cancelled;
+      writeWorkUnitManifestAtomic(statePath(dir), UNIT, manifest);
+      held.err(`${JSON.stringify({ ok: false, error: 'the commit failed' })}\n`);
+      throw new ExitSignal(1);
+    }), ExitSignal);
+
+    assert.deepStrictEqual(said.out, []);
+    const refusal = JSON.parse(said.err.join(''));
+    assert.strictEqual(refusal.error, 'the commit failed');
+    assert.match(refusal.warnings.join('\n'), /^knowledge record render failed: /m);
   });
 });
 

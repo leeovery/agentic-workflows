@@ -35,13 +35,14 @@ const { entryKind } = require('../ledger-events.cjs');
 /** What the product record's file shows. @typedef {{asked: Asked[], findings: Placed[]}} ProductView */
 
 /**
- * Text as a body's lines: a line that would open a heading or a fence —
- * cutting the copy's sections where the text says, not where its entries do
- * — escaped to read as text.
+ * Text as a body's lines, broken where the chunker breaks them: a line that
+ * would open a heading or a fence — cutting the copy's sections where the
+ * text says, not where its entries do — escaped to read as text, past any
+ * leading space the chunker's own match passes over (kernel/knowledge/chunker.cjs).
  * @param {string} text
  */
 function body(text) {
-  return text.replace(/^([ \t]*)(#|```|~~~)/gm, '$1\\$2');
+  return text.replace(/\r\n?/g, '\n').replace(/^([^\S\n]*)(#|```|~~~)/gm, '$1\\$2');
 }
 
 /** Text as one heading's line. @param {string} text */

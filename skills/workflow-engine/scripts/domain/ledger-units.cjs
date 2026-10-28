@@ -16,15 +16,16 @@
 //   made at the unit's level carries no topic, and its unit alone decides.
 // - A unit is finished once its status reads completed; until then it is
 //   still under way.
-// - What is live, marked whole: a value two reads of the manifests answer
-//   alike exactly when they set the same units and topics aside, so a
-//   change to what is live is seen however it was made.
+// - What is live, marked unit by unit: a value two reads of a unit's
+//   manifest answer alike exactly when they set the same of its topics, or
+//   the unit, aside, so a change to what is live is seen however it was
+//   made. Which units a command may have changed is told by their
+//   manifests' stamps — a stat each, no read — so the marks are worked out
+//   for those alone.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
-const path = require('path');
-const { isObject, workUnitManifestPath, readWorkUnitManifest, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
-const { LEDGER } = require('./ledger-events.cjs');
+const { isObject, workUnitManifestPath, readWorkUnitManifest, workUnitNames, listWorkUnitManifests } = require('../kernel/manifest-io.cjs');
 const { computeTopicLifecycle } = require('./derivations.cjs');
 
 /** The phases a topic exists in: those before the spec (4.11.2). */
@@ -112,20 +113,65 @@ function topicsOf(manifest) {
 }
 
 /**
- * What is live across the project, marked whole: each unit there, and why
- * it and each topic it names is not live where one is not. Null where the
- * project has no ledger, whose liveness nothing reads.
- * @param {string} root the project's state root
+ * What is live of a unit, marked: why it and each topic it names is not
+ * live where one is not; null where it has no manifest.
+ * @param {string} unit @param {Record<string, any>|null} manifest
  * @returns {string|null}
  */
-function livenessMark(root) {
-  if (!fs.existsSync(path.join(root, LEDGER))) return null;
-  const units = listWorkUnitManifests(root).filter((manifest) => typeof manifest.name === 'string').sort((a, b) => a.name.localeCompare(b.name));
-  return JSON.stringify(units.map((manifest) => [
-    manifest.name,
-    deadReason(manifest.name, null, manifest),
-    topicsOf(manifest).map((topic) => [topic, deadReason(manifest.name, topic, manifest)]),
-  ]));
+function unitMark(unit, manifest) {
+  if (manifest === null) return null;
+  return JSON.stringify([deadReason(unit, null, manifest), topicsOf(manifest).map((topic) => [topic, deadReason(unit, topic, manifest)])]);
 }
 
-module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits, livenessMark };
+/**
+ * What is live across the project, marked unit by unit: each unit whose
+ * manifest reads, by its name.
+ * @param {string} root the project's state root
+ * @returns {Record<string, string>}
+ */
+function livenessMarks(root) {
+  /** @type {Record<string, string>} */
+  const marks = {};
+  for (const manifest of listWorkUnitManifests(root)) {
+    if (typeof manifest.name === 'string') marks[manifest.name] = /** @type {string} */ (unitMark(manifest.name, manifest));
+  }
+  return marks;
+}
+
+/**
+ * Each unit's manifest as it stands on disk, by a stat alone: its file's
+ * identity, size and time, empty where there is none. Units are the
+ * registered ones, or the state's folders where the project manifest does
+ * not read — never a throw, as a command runs between two stampings.
+ * @param {string} root the project's state root
+ * @returns {Map<string, string>}
+ */
+function manifestStamps(root) {
+  /** @type {string[]} */
+  let units;
+  try {
+    units = workUnitNames(root);
+  } catch {
+    units = workUnitNames(root, {});
+  }
+  /** @type {Map<string, string>} */
+  const stamps = new Map();
+  for (const unit of units) {
+    const stat = fs.statSync(workUnitManifestPath(root, unit), { bigint: true, throwIfNoEntry: false });
+    stamps.set(unit, stat ? `${stat.ino}:${stat.size}:${stat.mtimeNs}` : '');
+  }
+  return stamps;
+}
+
+/**
+ * The units whose manifests differ from `before`'s stamps — one added,
+ * removed or rewritten.
+ * @param {string} root @param {Map<string, string>} before
+ * @returns {string[]}
+ */
+function changedUnits(root, before) {
+  const after = manifestStamps(root);
+  return [...new Set([...before.keys(), ...after.keys()])].filter((unit) => (before.get(unit) ?? '') !== (after.get(unit) ?? ''));
+}
+
+module.exports = { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness, finishedUnits, unitMark, livenessMarks, manifestStamps, changedUnits };
