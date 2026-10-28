@@ -20,14 +20,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, write, read, tip, remoteTip, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, bootsWithNothingToDo, untouched,
-} = require('./boot-state-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, bootsWithNothingToDo, untouched } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -45,7 +44,7 @@ describe('a lost local branch (4.S8)', () => {
 
     assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(read(root, 'manifest.json'), '{"kept":true}\n');
+    assert.strictEqual(readFile(root, 'manifest.json'), '{"kept":true}\n');
     bootsWithNothingToDo(main, bare);
   });
 
@@ -53,13 +52,13 @@ describe('a lost local branch (4.S8)', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
-    write(root, 'notes.md', 'not yet committed\n');
+    createFile(root, 'notes.md', 'not yet committed\n');
 
     assert.strictEqual(boot(main).state, 'ready');
 
     assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(read(root, 'notes.md'), 'not yet committed\n');
+    assert.strictEqual(readFile(root, 'notes.md'), 'not yet committed\n');
     bootsWithNothingToDo(main, bare);
   });
 
@@ -70,8 +69,8 @@ describe('a lost local branch (4.S8)', () => {
     const other = cloneOf(bare, 'other');
     boot(other);
     commitOnState(path.join(other, '.leeway'), { 'notes.md': 'one\ntwo\nthree, theirs\n', 'theirs.md': 'from the other clone\n' });
-    write(root, 'notes.md', 'one, mine\ntwo\nthree\n');
-    write(root, 'draft.md', 'not yet committed\n');
+    createFile(root, 'notes.md', 'one, mine\ntwo\nthree\n');
+    createFile(root, 'draft.md', 'not yet committed\n');
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
 
     const res = boot(main);
@@ -79,9 +78,9 @@ describe('a lost local branch (4.S8)', () => {
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     assert.strictEqual(tip(main, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(read(root, 'theirs.md'), 'from the other clone\n');
-    assert.strictEqual(read(root, 'notes.md'), 'one, mine\ntwo\nthree, theirs\n');
-    assert.strictEqual(read(root, 'draft.md'), 'not yet committed\n');
+    assert.strictEqual(readFile(root, 'theirs.md'), 'from the other clone\n');
+    assert.strictEqual(readFile(root, 'notes.md'), 'one, mine\ntwo\nthree, theirs\n');
+    assert.strictEqual(readFile(root, 'draft.md'), 'not yet committed\n');
     assert.deepStrictEqual(git(root, ['status', '--porcelain']).split('\n').filter(Boolean), [' M notes.md', '?? draft.md'],
       'the index reads the remote\'s tip: only the edits show');
 
@@ -106,7 +105,7 @@ describe('a lost local branch (4.S8)', () => {
 
     assert.strictEqual(tip(main, STATE_BRANCH), left);
     assert.strictEqual(remoteTip(bare), left);
-    assert.strictEqual(read(root, 'mine.md'), 'committed, never pushed\n');
+    assert.strictEqual(readFile(root, 'mine.md'), 'committed, never pushed\n');
     assert.strictEqual(git(root, ['status', '--porcelain']), '');
   });
 
@@ -145,7 +144,7 @@ describe('a lost local branch (4.S8)', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const { main, root } = setUp({ remote: bare });
     git(main, ['update-ref', '-d', `refs/heads/${STATE_BRANCH}`]);
-    const registration = read(root, '.git').replace(/^gitdir: /, '').trim();
+    const registration = readFile(root, '.git').replace(/^gitdir: /, '').trim();
     fs.rmSync(path.join(registration, 'logs'), { recursive: true, force: true });
     const before = git(main, ['for-each-ref']);
 

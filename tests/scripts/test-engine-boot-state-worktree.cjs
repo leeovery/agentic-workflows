@@ -20,14 +20,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, tip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, write, read, tip, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, bootsWithNothingToDo,
-} = require('./boot-state-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -51,7 +50,7 @@ describe('the state worktree (4.S29, 22.S3)', () => {
     assert.strictEqual(boot(main).state, 'ready');
 
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(read(root, '.gitignore'), STATE_GITIGNORE);
+    assert.strictEqual(readFile(root, '.gitignore'), STATE_GITIGNORE);
     bootsWithNothingToDo(main, null);
   });
 
@@ -94,14 +93,14 @@ function links(main, worktrees) {
       if (fs.statSync(file).isFile()) files[file] = fs.readFileSync(file, 'utf8');
     }
   }
-  for (const dir of worktrees) files[path.join(dir, '.git')] = read(dir, '.git');
+  for (const dir of worktrees) files[path.join(dir, '.git')] = readFile(dir, '.git');
   return files;
 }
 
 describe('a project folder moved or copied', () => {
   it('moved: the state worktree is linked where it now is, what it holds and its lock kept, and commits again', () => {
     const { main, root } = setUp();
-    write(root, 'manifest.json', '{"kept":true}\n');
+    createFile(root, 'manifest.json', '{"kept":true}\n');
     const moved = path.join(world(), 'moved');
     fs.renameSync(main, moved);
 
@@ -110,7 +109,7 @@ describe('a project folder moved or copied', () => {
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     const movedRoot = path.join(moved, '.leeway');
     assert.deepStrictEqual(placed(movedRoot), IN_PLACE);
-    assert.strictEqual(read(movedRoot, 'manifest.json'), '{"kept":true}\n');
+    assert.strictEqual(readFile(movedRoot, 'manifest.json'), '{"kept":true}\n');
     const out = commitOnState(movedRoot, { 'manifest.json': '{"kept":true}\n' });
     assert.strictEqual(tip(moved, STATE_BRANCH), out.commit);
     bootsWithNothingToDo(moved, null);

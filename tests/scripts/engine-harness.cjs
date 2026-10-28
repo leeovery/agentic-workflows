@@ -174,6 +174,17 @@ function stateGit(dir, args) {
   return git(statePath(dir), args);
 }
 
+/** A ref's commit. @param {string} dir @param {string} ref @returns {string} */
+function tip(dir, ref) {
+  return git(dir, ['rev-parse', ref]).trim();
+}
+
+/** The remote's state branch tip, or '' where it holds none. @param {string} bare */
+function remoteTip(bare) {
+  const { STATE_BRANCH } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
+  return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
+}
+
 /**
  * Everything in the world committed, each side where it holds a change: the
  * code tree on its branch, the state on the state branch where the
@@ -324,6 +335,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output, lockAttempts,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
+  STATE_DIR_NAME, statePath, git, stateGit, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
   setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
 };

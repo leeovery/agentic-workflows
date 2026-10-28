@@ -21,11 +21,12 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { git, commitAll } = harness;
 
-const { hookHelpers, writeFile, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, setupFixture } = require('./boot-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { hookHelpers, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, bootProject } = require('./boot-world.cjs');
 
 describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   let fix;
-  beforeEach(() => { fix = setupFixture(); });
+  beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
   const { dropSettings, commitSettings, bootWith } = hookHelpers(() => fix);
 
@@ -44,7 +45,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   }
   /** Install the mod where an install puts it, committed, so boot's commits are the only new ones. */
   function installMod() {
-    writeFile(fix.project, '.claude/skills/workflow-gates/.claude-plugin/plugin.json', '{"name":"workflow-gates"}\n');
+    createFile(fix.project, '.claude/skills/workflow-gates/.claude-plugin/plugin.json', '{"name":"workflow-gates"}\n');
     commitAll(fix.project, 'install the mod');
   }
   /** The fixture's Claude Code config directory, and a home holding no `.claude` — neither made unless a test makes it. */
@@ -78,7 +79,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       '{not json',
     ];
     for (const content of contents) {
-      writeFile(claudeDir(), 'settings.json', content);
+      createFile(claudeDir(), 'settings.json', content);
       fs.chmodSync(userSettingsFile(), 0o600);
       const before = fs.statSync(userSettingsFile());
       const res = bootTerminal();
@@ -210,7 +211,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
       ['fresh-settings.json', null, hooked(WORKFLOW_HOOKS)],
     ]) {
       const target = path.join(fix.root, 'shared', name);
-      if (before !== null) writeFile(fix.root, `shared/${name}`, before);
+      if (before !== null) createFile(fix.root, `shared/${name}`, before);
       fs.rmSync(link, { force: true });
       fs.symlinkSync(target, link);
       const res = bootWith();
@@ -224,7 +225,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('a session-hooks commit git refuses is a warning, never a block — the hooks are on disk', () => {
     dropSettings();
-    writeFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+    createFile(fix.project, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
     fs.chmodSync(path.join(fix.project, '.git/hooks/pre-commit'), 0o755);
     const res = bootWith();
     assert.strictEqual(res.ok, true);

@@ -19,15 +19,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { datedAt } = require('./discovery-test-utils.cjs');
-const { git, initRepo } = harness;
+const { datedAt, readFile } = require('./discovery-test-utils.cjs');
+const { git, initRepo, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_LOCK_REASON, createState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, read, tip, remoteTip, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState,
-} = require('./boot-state-world.cjs');
+const { useWorld, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -118,7 +116,7 @@ describe('a leeway-state holding code history (4.9.2, 4.S19)', () => {
     assert.strictEqual(boot(main).state, 'ready');
 
     assert.strictEqual(git(main, ['log', '-1', '--format=%P', STATE_BRANCH]).trim(), again, 'merged onto the remote\'s line');
-    assert.strictEqual(read(main, '.leeway/notes.md'), 'kept here\n');
+    assert.strictEqual(readFile(main, '.leeway/notes.md'), 'kept here\n');
     assert.strictEqual(remoteTip(bare), tip(main, STATE_BRANCH));
   });
 });

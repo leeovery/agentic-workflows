@@ -18,13 +18,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { writeFile, stubbed, readyKnowledge, setupFixture, runEngine } = require('./boot-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { stubbed, readyKnowledge, bootProject, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot system-config detection', () => {
   let fix;
   let home;
   beforeEach(() => {
-    fix = setupFixture();
+    fix = bootProject();
     // Hermetic home: system-config detection resolves ~ via $HOME, so the
     // developer's real ~/.config/workflows never leaks into assertions.
     home = path.join(fix.root, 'home');
@@ -33,7 +34,7 @@ describe('engine boot system-config detection', () => {
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   function writeSystemConfig(content) {
-    writeFile(home, '.config/workflows/config.json', content);
+    createFile(home, '.config/workflows/config.json', content);
   }
 
   // The suite's hermetic config directory answers ahead of $HOME, so it comes
@@ -52,7 +53,7 @@ describe('engine boot system-config detection', () => {
       knowledge: { provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 },
     }));
     // Both key sources present on disk/env — neither may reach the response.
-    writeFile(home, '.config/workflows/credentials.json', JSON.stringify({
+    createFile(home, '.config/workflows/credentials.json', JSON.stringify({
       credentials: { openai: { api_key: 'sk-STORED-SECRET' } },
     }));
 

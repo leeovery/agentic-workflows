@@ -18,16 +18,15 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { git } = require('./engine-harness.cjs');
+const { git, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
-const {
-  useWorld, read, tip, remoteTip, parents, status, commitOn, commitUnpushed, twoMachines, ledger, json, projectManifest, traced, keptStopFile, pickShown,
-} = require('./state-merge-world.cjs');
+const { readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, parents, status, commitOn, commitUnpushed, twoMachines, ledger, json, projectManifest, traced, keptStopFile, pickShown } = require('./state-merge-world.cjs');
 
 useWorld();
 
@@ -40,7 +39,7 @@ describe('the migrations record (4.S16)', () => {
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
-    assert.strictEqual(read(here.root, '.state/migrations'), '001\n002\n073\n074\n075\n');
+    assert.strictEqual(readFile(here.root, '.state/migrations'), '001\n002\n073\n074\n075\n');
   });
 });
 
@@ -53,7 +52,7 @@ describe('the manifests (4.S17)', () => {
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.conflicts], ['merged', []]);
-    const merged = JSON.parse(read(here.root, 'manifest.json'));
+    const merged = JSON.parse(readFile(here.root, 'manifest.json'));
     assert.strictEqual(merged.defaults.plan_format, 'tick');
     assert.strictEqual(merged.roadmap.items['a-lifetime-tier'].horizon, 'next');
   });
@@ -67,7 +66,7 @@ describe('the manifests (4.S17)', () => {
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
-    assert.deepStrictEqual(JSON.parse(read(here.root, 'auth-flow/manifest.json')), { work_type: 'feature', status: 'completed', closed_by: 'here' });
+    assert.deepStrictEqual(JSON.parse(readFile(here.root, 'auth-flow/manifest.json')), { work_type: 'feature', status: 'completed', closed_by: 'here' });
   });
 
   it('stops on a field both sides changed to different values, with both values and nothing written; the pick finishes the merge', () => {
@@ -96,8 +95,8 @@ describe('the manifests (4.S17)', () => {
     assert.ok(!commands.some((c) => /^(commit-tree|update-ref|push|checkout-index) /.test(c)), `the stop wrote: ${commands.filter((c) => /^(commit-tree|update-ref|push|checkout-index) /.test(c))}`);
     assert.strictEqual(tip(here.main, STATE_BRANCH), mine);
     assert.strictEqual(remoteTip(bare), theirs);
-    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next'));
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'a1'));
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('next'));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'a1'));
     assert.strictEqual(status(here.root), '');
 
     const picked = pickShown(here, '2');
@@ -105,8 +104,8 @@ describe('the manifests (4.S17)', () => {
     assert.deepStrictEqual([picked.action, picked.pushed], ['merged', true]);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [theirs]);
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'someday');
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'a1'));
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'someday');
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'a1'));
     assert.ok(!fs.existsSync(keptStopFile(here.root)));
     assert.strictEqual(pendingStateMerge(here.root), null);
   });
@@ -135,12 +134,12 @@ describe('the manifests (4.S17)', () => {
 
     const next = pickShown(here, '1');
     assert.deepStrictEqual([next.action, next.conflicts.map((c) => c.pick)], ['stopped', ['local', null]]);
-    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next', { defaults: { plan_format: 'tick' } }));
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('next', { defaults: { plan_format: 'tick' } }));
     assert.match(stateMergeGateSurface(here.main, {}), /Field 2 of 2\. In Fumi's project manifest, the horizon of the roadmap item "A lifetime tier" changed/);
 
     const done = pickShown(here, '2');
     assert.strictEqual(done.action, 'merged');
-    const merged = JSON.parse(read(here.root, 'manifest.json'));
+    const merged = JSON.parse(readFile(here.root, 'manifest.json'));
     assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['tick', 'someday']);
   });
 

@@ -26,19 +26,18 @@ const { git, stateGit, commitAll } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 
-const {
-  hookHelpers, writeFile, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, stubbed, setupFixture, runEngine, runEngineFails,
-} = require('./boot-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { hookHelpers, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, stubbed, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   let fix;
-  beforeEach(() => { fix = setupFixture(); });
+  beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
   const { dropSettings, commitSettings, bootWith, settings } = hookHelpers(() => fix);
 
   /** Stamp the label choice on the project manifest and commit it, so boot's only new dirt is its own. */
   function recordChoice(value) {
-    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
+    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
     commitAll(fix.project, 'record the defaults');
   }
 
@@ -183,7 +182,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const attempts = harness.lockAttempts(t, lock, (taken) => {
       written.push(fs.existsSync(settingsFile));
       if (taken < 2) return;
-      writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+      createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
       stateGit(fix.project, ['add', '--', 'manifest.json']);
       stateGit(fix.project, ['commit', '-q', '-m', 'labels on']);
       unlink(lock);
@@ -219,7 +218,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('a settings file that does not parse is a warning, never a block — left as found', () => {
     recordChoice(true);
-    writeFile(fix.project, '.claude/settings.json', '{not json');
+    createFile(fix.project, '.claude/settings.json', '{not json');
     const res = bootWith();
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.session_hooks_installed, false);

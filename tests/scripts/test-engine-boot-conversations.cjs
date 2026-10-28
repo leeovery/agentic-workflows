@@ -19,13 +19,14 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { writeFile, setupProject, stubbed, setupFixture, runEngine } = require('./boot-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { setupProject, stubbed, bootProject, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot: the conversation folders', () => {
   let fix;
   let config;
   beforeEach(() => {
-    fix = setupFixture();
+    fix = bootProject();
     config = path.join(fix.root, 'config');
   });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
@@ -34,7 +35,7 @@ describe('engine boot: the conversation folders', () => {
 
   /** A conversation's folder holding `files`, by name. */
   function conversation(/** @type {string} */ id, /** @type {Record<string, string>} */ files) {
-    for (const [name, content] of Object.entries(files)) writeFile(folder(id), name, content);
+    for (const [name, content] of Object.entries(files)) createFile(folder(id), name, content);
   }
 
   /** Boot in `project`, the system config directory this test's own. */
@@ -46,7 +47,7 @@ describe('engine boot: the conversation folders', () => {
   /** `id`'s transcript, made in project folder `key`. */
   function transcript(/** @type {string} */ key, /** @type {string} */ id) {
     const file = transcriptPath(key, id);
-    writeFile(path.dirname(file), path.basename(file), '');
+    createFile(path.dirname(file), path.basename(file), '');
     return file;
   }
 

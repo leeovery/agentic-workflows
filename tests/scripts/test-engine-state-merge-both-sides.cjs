@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
-const { git } = require('./engine-harness.cjs');
+const { git, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -27,9 +27,8 @@ const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 
 const { catchUpState, pickStateMerge } = require(MERGE);
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 
-const {
-  useWorld, write, read, tip, remoteTip, blobId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, entry, ledger, projectManifest, appendOnly, traced, keptStopFile, shownChoice, gitWrapper, withPath,
-} = require('./state-merge-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, blobId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, entry, ledger, projectManifest, appendOnly, traced, keptStopFile, shownChoice, gitWrapper, withPath } = require('./state-merge-world.cjs');
 
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
 
@@ -51,8 +50,8 @@ describe('the merge, both sides moved (4.S14)', () => {
 
     const merged = tip(here.main, STATE_BRANCH);
     assert.deepStrictEqual([out.action, out.pushed, out.warnings, out.commit], ['merged', true, [], merged]);
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'a1', 'a2'));
-    assert.ok(read(here.root, '.ledger.jsonl').startsWith(remoteLedger));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'a1', 'a2'));
+    assert.ok(readFile(here.root, '.ledger.jsonl').startsWith(remoteLedger));
     assert.deepStrictEqual(parents(here.main, merged), [theirs]);
     assert.strictEqual(remoteTip(bare), merged);
     for (const sha of mine) {
@@ -66,7 +65,7 @@ describe('the merge, both sides moved (4.S14)', () => {
 
     const thereBefore = git(there.root, ['show', `${STATE_BRANCH}:.ledger.jsonl`]);
     assert.strictEqual(catchUpState(there.root).action, 'fast-forwarded');
-    assert.ok(read(there.root, '.ledger.jsonl').startsWith(thereBefore));
+    assert.ok(readFile(there.root, '.ledger.jsonl').startsWith(thereBefore));
     assert.ok(appendOnly(here.root), 'the append-only check fails here');
     assert.ok(appendOnly(there.root), 'the append-only check fails on the other machine');
     assert.deepStrictEqual([mergeDrivers(here.main), mergeDrivers(there.main)], ['', '']);
@@ -83,7 +82,7 @@ describe('the merge, both sides moved (4.S14)', () => {
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
-    assert.ok(read(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
+    assert.ok(readFile(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
   });
 
   it('merges a text file whose merged copy is past what git\'s answer is read to, each side within the budget', () => {
@@ -93,14 +92,14 @@ describe('the merge, both sides moved (4.S14)', () => {
     const { here, there } = twoMachines({ [SPEC]: base });
     commitUnpushed(here, { [SPEC]: lines('here', 2) + base });
     commitOn(there, { [SPEC]: base + lines('there', 2) });
-    assert.ok(Buffer.byteLength(read(here.root, SPEC)) <= READ_BUDGET_BYTES);
+    assert.ok(Buffer.byteLength(readFile(here.root, SPEC)) <= READ_BUDGET_BYTES);
 
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
     const merged = lines('here', 2) + base + lines('there', 2);
     assert.ok(Buffer.byteLength(merged) > READ_BUDGET_BYTES);
-    assert.ok(read(here.root, SPEC) === merged, 'the merged copy is not both sides\' lines');
+    assert.ok(readFile(here.root, SPEC) === merged, 'the merged copy is not both sides\' lines');
   });
 
   it('keeps a line both sides hold by id once', () => {
@@ -110,7 +109,7 @@ describe('the merge, both sides moved (4.S14)', () => {
 
     catchUpState(here.root);
 
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'both', 'a1'));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'both', 'a1'));
   });
 
   it('keeps the remote\'s ledger byte for byte, adding a last newline it lacks only before lines it adds', () => {
@@ -120,13 +119,13 @@ describe('the merge, both sides moved (4.S14)', () => {
     commitOn(there, { '.ledger.jsonl': held });
 
     assert.strictEqual(catchUpState(here.root).action, 'fast-forwarded');
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), held);
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), held);
 
     commitUnpushed(here, { '.ledger.jsonl': `${held}\n${ledger('a1')}` });
     commitOn(there, { '.ledger.jsonl': `${held}\n{"id":"b2"}` });
     catchUpState(here.root);
 
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), `${held}\n{"id":"b2"}\n${ledger('a1')}`);
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), `${held}\n{"id":"b2"}\n${ledger('a1')}`);
   });
 
   it('merges over the read budget a ledger a line at a time and a manifest field by field, stopping on its conflict, and keeps any other file whole, never read', () => {
@@ -150,10 +149,10 @@ describe('the merge, both sides moved (4.S14)', () => {
 
     const notesBeside = `unit/notes.${blobId(`${notes}here\n`).slice(0, 8)}.md`;
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
-    assert.ok(read(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
-    assert.strictEqual(read(here.root, 'unit/notes.md'), `there\n${notes}`);
-    assert.strictEqual(read(here.root, notesBeside), `${notes}here\n`);
-    assert.strictEqual(read(here.root, 'unit/manifest.json'), unit('next', { there: 1, here: 1 }));
+    assert.ok(readFile(here.root, '.ledger.jsonl') === long + ledger('b1', 'a1'), 'the merged ledger is not the remote\'s then this clone\'s');
+    assert.strictEqual(readFile(here.root, 'unit/notes.md'), `there\n${notes}`);
+    assert.strictEqual(readFile(here.root, notesBeside), `${notes}here\n`);
+    assert.strictEqual(readFile(here.root, 'unit/manifest.json'), unit('next', { there: 1, here: 1 }));
     assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/notes.md']);
   });
 
@@ -179,7 +178,7 @@ describe('the merge, both sides moved (4.S14)', () => {
     commitUnpushed(here, { '.ledger.jsonl': crlf(ledger('base', 'a1')), 'unit/spec.md': crlf('ONE\n\ntwo\n') });
     commitOn(there, { '.ledger.jsonl': crlf(ledger('base', 'b1')), 'unit/spec.md': crlf('one\n\nTWO\n') });
     git(here.main, ['config', 'core.autocrlf', 'true']);
-    write(path.join(here.main, '.git/info'), 'attributes', '* text eol=crlf\n');
+    createFile(path.join(here.main, '.git/info'), 'attributes', '* text eol=crlf\n');
 
     assert.strictEqual(catchUpState(here.root).action, 'merged');
 
@@ -200,14 +199,14 @@ describe('the merge, both sides moved (4.S14)', () => {
 
     assert.deepStrictEqual([out.action, out.pushed, out.conflicts], ['merged', true, []]);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [fresh]);
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('fresh', 'base', 'a1'));
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).started, 'again');
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('fresh', 'base', 'a1'));
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).started, 'again');
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
   });
 
   it('takes a file only one side changed whole, adds and deletions too', () => {
     const { here, there } = twoMachines({ 'unit/topics/a/log.md': '# a\n', 'unit/topics/b/log.md': '# b\n', 'unit/gone-here.md': 'g\n', 'unit/gone-there.md': 'g\n' });
-    write(here.root, 'unit/topics/a/log.md', '# a, here\n');
+    createFile(here.root, 'unit/topics/a/log.md', '# a, here\n');
     fs.rmSync(path.join(here.root, 'unit/gone-here.md'));
     commitUnpushed(here, { 'unit/topics/a/log.md': '# a, here\n', 'unit/new-here.md': 'n\n', 'unit/gone-here.md': '' });
     fs.rmSync(path.join(here.root, 'unit/gone-here.md'));
@@ -221,8 +220,8 @@ describe('the merge, both sides moved (4.S14)', () => {
     assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
     assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']),
       'unit/new-here.md\nunit/new-there.md\nunit/topics/a/log.md\nunit/topics/b/log.md\n');
-    assert.strictEqual(read(here.root, 'unit/topics/a/log.md'), '# a, here\n');
-    assert.strictEqual(read(here.root, 'unit/topics/b/log.md'), '# b, there\n');
+    assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a, here\n');
+    assert.strictEqual(readFile(here.root, 'unit/topics/b/log.md'), '# b, there\n');
     assert.ok(!fs.existsSync(path.join(here.root, 'unit/gone-there.md')));
     assert.strictEqual(status(here.root), '');
   });
@@ -254,7 +253,7 @@ describe('the remote moving under the merge (4.S15)', () => {
     assert.deepStrictEqual([out.action, out.pushed, out.warnings], ['merged', true, []]);
     assert.strictEqual(remoteTip(bare), landed);
     assert.deepStrictEqual(parents(here.main, landed), [second]);
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'b2', 'a1'));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'b2', 'a1'));
     const leases = commands.filter((c) => c.startsWith('push ') && c.includes('--force-with-lease'));
     assert.deepStrictEqual(leases.map((c) => /--force-with-lease=\S+:([0-9a-f]+)/.exec(c)?.[1]), [first, second]);
     assert.ok(appendOnly(here.root));
@@ -273,8 +272,8 @@ describe('the remote moving under the merge (4.S15)', () => {
     assert.deepStrictEqual([out.action, out.pushed, out.warnings], ['merged', true, []]);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [second]);
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'b2', 'a1'));
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'b2', 'a1'));
     assert.ok(!fs.existsSync(keptStopFile(here.root)));
   });
 
@@ -295,6 +294,6 @@ describe('the remote moving under the merge (4.S15)', () => {
 
     assert.deepStrictEqual([next.action, next.pushed], ['merged', true]);
     assert.deepStrictEqual(parents(here.main, STATE_BRANCH), [waiting[2]]);
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'b2', 'b3', 'b4', 'a1'));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1', 'b2', 'b3', 'b4', 'a1'));
   });
 });

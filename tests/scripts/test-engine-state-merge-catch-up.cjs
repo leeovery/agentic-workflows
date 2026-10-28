@@ -19,7 +19,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { git, initRepo, bareRepo } = require('./engine-harness.cjs');
+const { git, initRepo, bareRepo, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -28,18 +28,17 @@ const {
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState } = require(MERGE);
 
-const {
-  useWorld, write, read, tip, remoteTip, blobId, parents, status, commitOn, commitUnpushed, twoMachines, ledger, traced, gitWrapper, withPath,
-} = require('./state-merge-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, blobId, parents, status, commitOn, commitUnpushed, twoMachines, ledger, traced, gitWrapper, withPath } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
 describe('catching up when one side moved (4.S36)', () => {
   it('fast-forwards the branch and the worktree to the remote\'s tip, with no merge commit, where only the remote moved', () => {
     const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base'), 'unit/topics/a/log.md': '# a\n', 'unit/old.md': 'old\n' });
-    write(there.root, 'unit/topics/a/log.md', '# a\n\n## a session elsewhere\n');
+    createFile(there.root, 'unit/topics/a/log.md', '# a\n\n## a session elsewhere\n');
     fs.rmSync(path.join(there.root, 'unit/old.md'));
-    const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), 'unit/topics/a/log.md': read(there.root, 'unit/topics/a/log.md'), 'unit/old.md': '' }).commit;
+    const theirs = commitOn(there, { '.ledger.jsonl': ledger('base', 'b1'), 'unit/topics/a/log.md': readFile(there.root, 'unit/topics/a/log.md'), 'unit/old.md': '' }).commit;
     git(there.root, ['rm', '-q', 'unit/old.md']);
     const removed = withStateLock(there.root, () => commitState(there.root, ['unit/old.md'], 'state: drop old')).commit;
     const before = tip(here.main, STATE_BRANCH);
@@ -53,8 +52,8 @@ describe('catching up when one side moved (4.S36)', () => {
     assert.deepStrictEqual(parents(here.main, removed), [theirs]);
     assert.strictEqual(git(here.main, ['rev-list', '--count', `${before}..${STATE_BRANCH}`]).trim(), '2');
     assert.strictEqual(git(here.main, ['rev-list', '--merges', STATE_BRANCH]), '');
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base', 'b1'));
-    assert.strictEqual(read(here.root, 'unit/topics/a/log.md'), '# a\n\n## a session elsewhere\n');
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base', 'b1'));
+    assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## a session elsewhere\n');
     assert.ok(!fs.existsSync(path.join(here.root, 'unit/old.md')));
     assert.strictEqual(status(here.root), '');
   });
@@ -119,7 +118,7 @@ describe('catching up when one side moved (4.S36)', () => {
 
   it('does nothing, fetching nothing, where the project has no remote', () => {
     const main = initRepo(path.join(world(), 'alone'));
-    write(main, 'README.md', '# Alone\n');
+    createFile(main, 'README.md', '# Alone\n');
     git(main, ['add', 'README.md']);
     git(main, ['commit', '-q', '-m', 'code']);
     const root = path.join(main, '.leeway');
@@ -134,7 +133,7 @@ describe('catching up when one side moved (4.S36)', () => {
 
   it('does nothing where the remote holds no state branch, and leaves pushing it back to boot', () => {
     const main = initRepo(path.join(world(), 'fresh'));
-    write(main, 'README.md', '# Fresh\n');
+    createFile(main, 'README.md', '# Fresh\n');
     git(main, ['add', 'README.md']);
     git(main, ['commit', '-q', '-m', 'code']);
     const root = path.join(main, '.leeway');
@@ -163,7 +162,7 @@ describe('catching up when one side moved (4.S36)', () => {
     assert.strictEqual(out.warnings.length, 1);
     assert.match(out.warnings[0], /^leeway-state could not be fetched from origin, so this session works on the state it has: git ls-remote failed: /);
     assert.strictEqual(commands.filter((c) => /^(ls-remote|fetch) /.test(c)).length, 1, 'the remote was asked again after it failed');
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base'));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base'));
     assert.strictEqual(status(here.root), '');
   });
 
@@ -189,7 +188,7 @@ describe('catching up when one side moved (4.S36)', () => {
     git(here.root, ['checkout', '-q', '-b', 'elsewhere']);
 
     assert.throws(() => catchUpState(here.root), /is not checked out on leeway-state/);
-    assert.strictEqual(read(here.root, '.ledger.jsonl'), ledger('base'));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), ledger('base'));
   });
 });
 
@@ -199,7 +198,7 @@ describe('another session writing while the catch-up runs', () => {
   /** An uncommitted change here and a remote change to the same file. */
   function racing() {
     const machines = twoMachines({ [LOG]: '# a\n\n## first\n' });
-    write(machines.here.root, LOG, '# a\n\n## first\n\n## here\n');
+    createFile(machines.here.root, LOG, '# a\n\n## first\n\n## here\n');
     commitOn(machines.there, { [LOG]: '# a\n\n## first\n\n## elsewhere\n' });
     return machines;
   }
@@ -217,7 +216,7 @@ describe('another session writing while the catch-up runs', () => {
     const out = withPath(writerAfterStaging(here.root, ['## another session']), () => catchUpState(here.root));
 
     assert.strictEqual(out.action, 'fast-forwarded');
-    assert.strictEqual(read(here.root, LOG), '# a\n\n## first\n\n## elsewhere\n## here\n## another session\n');
+    assert.strictEqual(readFile(here.root, LOG), '# a\n\n## first\n\n## elsewhere\n## here\n## another session\n');
   });
 
   it('keeps a file the update removes where the other session wrote it meanwhile', () => {
@@ -229,7 +228,7 @@ describe('another session writing while the catch-up runs', () => {
     const out = withPath(writer, () => catchUpState(here.root));
 
     assert.strictEqual(out.action, 'fast-forwarded');
-    assert.strictEqual(read(here.root, 'unit/gone.md'), 'gone\nwritten meanwhile\n');
+    assert.strictEqual(readFile(here.root, 'unit/gone.md'), 'gone\nwritten meanwhile\n');
     assert.deepStrictEqual(out.warnings, ['unit/gone.md was deleted on one machine and changed on the other: the changed copy is kept']);
   });
 
@@ -242,8 +241,8 @@ describe('another session writing while the catch-up runs', () => {
     const beside = `unit/topics/a/log.${blobId(mergedCopy).slice(0, 8)}.md`;
     assert.strictEqual(out.action, 'fast-forwarded');
     assert.strictEqual(tip(here.main, STATE_BRANCH), tip(there.main, STATE_BRANCH));
-    assert.strictEqual(read(here.root, LOG), '# a\n\n## first\n\n## here\n## another session\n## and again\n');
-    assert.strictEqual(read(here.root, beside), mergedCopy);
+    assert.strictEqual(readFile(here.root, LOG), '# a\n\n## first\n\n## here\n## another session\n## and again\n');
+    assert.strictEqual(readFile(here.root, beside), mergedCopy);
     assert.ok(out.warnings.includes(
       `${LOG} changed while the state caught up and was left as it stands, with the merged copy beside it as ${beside}: `
       + `committing ${LOG} as it stands leaves the remote's change only in ${beside}`,

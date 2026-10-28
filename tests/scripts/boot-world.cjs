@@ -2,7 +2,7 @@
 
 // The world the boot suites share (test-engine-boot-*.cjs): the project
 // fixture, a git repository with its state worktree and the workflows' own
-// hooks in its settings, made once per process and copied (`setupFixture`,
+// hooks in its settings, made once per process and copied (`bootProject`,
 // `setupProject`); the engine copied beside a stand-in migrate.cjs whose
 // behaviour STUB_MIGRATE_MODE and its siblings pick (`stubbed`), and the
 // repo's real scripts (`real`); the hooks boot installs, as settings read;
@@ -19,14 +19,8 @@ const harness = require('./engine-harness.cjs');
 const { git, commitAll, fixtureFrom } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
-const { templateFolder } = require('./discovery-test-utils.cjs');
+const { templateFolder, createFile } = require('./discovery-test-utils.cjs');
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
-
-function writeFile(dir, rel, content) {
-  const full = path.join(dir, rel);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, content);
-}
 
 // The session hooks boot keeps in every project's `.claude/settings.json`,
 // and the function-hooks flag migration 065 takes out of it.
@@ -64,8 +58,8 @@ const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((f) => `${
  * about the mod installs it. Made once per process, copied for each test.
  */
 const projectWorld = fixtureFrom('engine-boot-project-', (project) => {
-  writeFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
-  writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  createFile(project, '.leeway/payments/manifest.json', '{"name":"payments"}\n');
+  createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
   commitAll(project, 'init');
 });
 
@@ -75,7 +69,7 @@ const projectWorld = fixtureFrom('engine-boot-project-', (project) => {
  * @param {string} project
  */
 function legacyLayout(project) {
-  writeFile(project, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
+  createFile(project, '.workflows/payments/manifest.json', '{"name":"payments"}\n');
   git(project, ['add', '--', '.workflows']);
   git(project, ['commit', '-q', '-m', 'the old layout']);
 }
@@ -160,7 +154,7 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 function stubbedSkillsTree() {
   const skills = templateFolder('engine-boot-skills-');
   fs.cpSync(REAL_ENGINE_SKILL, path.join(skills, 'workflow-engine'), { recursive: true });
-  writeFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
+  createFile(skills, 'workflow-migrate/scripts/migrate.cjs', STUB_MIGRATE);
   return path.join(skills, 'workflow-engine/scripts/engine.cjs');
 }
 
@@ -190,7 +184,7 @@ function recordStubbedLaunches(t) {
  * @param {string} project @param {Record<string, unknown>} [settings]  over the keyword-only pin
  */
 function readyKnowledge(project, settings = {}) {
-  writeFile(project, '.leeway/.knowledge/config.json', JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
+  createFile(project, '.leeway/.knowledge/config.json', JSON.stringify({ knowledge: { provider: null, ...settings } }) + '\n');
   store.saveStore(store.createStore(), path.join(project, '.leeway/.knowledge/store.bin'));
   store.writeMetadata(path.join(project, '.leeway/.knowledge/metadata.json'), { last_indexed: null });
 }
@@ -201,16 +195,16 @@ function readyKnowledge(project, settings = {}) {
  * @param {string} project @param {string} body
  */
 function completedDiscussion(project, body) {
-  writeFile(project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/manifest.json', JSON.stringify({
+  createFile(project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'feature' } } }, null, 2) + '\n');
+  createFile(project, '.leeway/payments/manifest.json', JSON.stringify({
     name: 'payments', work_type: 'feature', status: 'in-progress', created: '2026-01-01',
     phases: { discussion: { items: { payments: { status: 'completed' } } } },
   }, null, 2) + '\n');
-  writeFile(project, '.leeway/payments/discussion/payments.md', body);
+  createFile(project, '.leeway/payments/discussion/payments.md', body);
 }
 
 /** A git-repo project carrying the settings every booted project has. */
-function setupFixture() {
+function bootProject() {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-')));
   return { root, project: setupProject(root) };
 }
@@ -235,7 +229,7 @@ function hookHelpers(fix) {
 
   /** Commit `content` as the project's settings. */
   function commitSettings(content) {
-    writeFile(fix().project, '.claude/settings.json', content);
+    createFile(fix().project, '.claude/settings.json', content);
     git(fix().project, ['add', '--', '.claude/settings.json']);
     git(fix().project, ['commit', '-q', '-m', 'settings']);
   }
@@ -258,5 +252,5 @@ function hookHelpers(fix) {
 }
 
 module.exports = {
-  hookHelpers, writeFile, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, KNOWLEDGE_DIR, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, setupFixture, runEngine, runEngineFails,
+  hookHelpers, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, KNOWLEDGE_DIR, STORE_FILES, legacyLayout, setupProject, stubbed, real, recordStubbedLaunches, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails,
 };

@@ -21,15 +21,13 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { datedAt } = require('./discovery-test-utils.cjs');
-const { git, initRepo } = harness;
+const { datedAt, createFile } = require('./discovery-test-utils.cjs');
+const { git, initRepo, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, engine, write, tip, remoteTip, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, untouched,
-} = require('./boot-state-world.cjs');
+const { useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, engine, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -44,10 +42,10 @@ const world = useWorld();
 function lostProject({ remote = null, trace = { '.gitignore': '.leeway/\n', '.claude/settings.json': WORKFLOW_HOOKS } } = {}) {
   const main = initRepo(path.join(world(), 'portal'));
   datedAt('2025-03-01T12:00:00Z', () => {
-    write(main, 'src/app.js', 'export default 1;\n');
+    createFile(main, 'src/app.js', 'export default 1;\n');
     git(main, ['add', '-A']);
     git(main, ['commit', '-q', '-m', 'the app']);
-    for (const [rel, content] of Object.entries(trace)) write(main, rel, content);
+    for (const [rel, content] of Object.entries(trace)) createFile(main, rel, content);
     git(main, ['add', '-A']);
     git(main, ['commit', '-q', '-m', 'set up']);
   });
@@ -141,7 +139,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       const main = codeProject();
       const code = path.join(world(), 'portal-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', code]);
-      write(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+      createFile(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
       fs.chmodSync(path.join(main, '.git/hooks/pre-commit'), 0o755);
       assert.strictEqual(boot(code).state, 'ready');
       assert.strictEqual(git(main, ['rev-list', '--count', 'main..feature']).trim(), '0', 'nothing of the trace committed');
@@ -155,7 +153,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     it('a project nested in a larger repository, set up from a worktree on a branch since checked out nowhere: stops at the lost state', () => {
       const top = initRepo(path.join(world(), 'mono'));
-      write(top, 'app/README.md', '# app\n');
+      createFile(top, 'app/README.md', '# app\n');
       git(top, ['add', '-A']);
       git(top, ['commit', '-q', '-m', 'code']);
       const code = path.join(world(), 'mono-feature');
@@ -192,7 +190,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       const main = codeProject({ remote: bare });
       const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
       const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
-      write(wrapper, 'git', `#!/bin/sh\ncase "$*" in *" fetch "*) echo "fatal: the remote hung up" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
+      createFile(wrapper, 'git', `#!/bin/sh\ncase "$*" in *" fetch "*) echo "fatal: the remote hung up" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
       fs.chmodSync(path.join(wrapper, 'git'), 0o755);
       const before = untouched(main, bare);
 
@@ -209,8 +207,8 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       const bare = harness.bareRepo(path.join(world(), 'portal.git'));
       const main = codeProject({ remote: bare });
       git(main, ['checkout', '-q', '-b', 'feature']);
-      write(main, '.gitignore', 'node_modules\n');
-      write(main, '.claude/settings.json', JSON.stringify({
+      createFile(main, '.gitignore', 'node_modules\n');
+      createFile(main, '.claude/settings.json', JSON.stringify({
         hooks: {
           SessionEnd: [{ hooks: [{ type: 'command', command: 'echo bye' }] }],
           PreToolUse: [{ matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: 'node lint.cjs' }] }],

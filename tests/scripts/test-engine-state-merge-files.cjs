@@ -28,9 +28,8 @@ const { STATE_BRANCH, withStateLock, commitState } = require(path.join(SCRIPTS, 
 const { catchUpState, pickStateMerge } = require(MERGE);
 const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
 
-const {
-  useWorld, read, blobId, treeId, status, commitOn, pushFailing, commitUnpushed, twoMachines, ledger, projectManifest, traced, shownChoice,
-} = require('./state-merge-world.cjs');
+const { readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, blobId, treeId, status, commitOn, pushFailing, commitUnpushed, twoMachines, ledger, projectManifest, traced, shownChoice } = require('./state-merge-world.cjs');
 
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
 
@@ -45,7 +44,7 @@ describe('any other file both sides changed', () => {
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
-    assert.strictEqual(read(here.root, 'unit/spec.md'), '# Spec\n\nONE\n\ntwo\n\nTHREE\n');
+    assert.strictEqual(readFile(here.root, 'unit/spec.md'), '# Spec\n\nONE\n\ntwo\n\nTHREE\n');
   });
 
   it('keeps both sides\' lines where both changed the same place, the remote\'s first, and says so', () => {
@@ -55,7 +54,7 @@ describe('any other file both sides changed', () => {
 
     const out = catchUpState(here.root);
 
-    assert.strictEqual(read(here.root, 'unit/topics/a/log.md'), '# a\n\n## there\n## here\n');
+    assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## there\n## here\n');
     assert.deepStrictEqual(out.warnings, [
       'unit/topics/a/log.md was changed in the same place on both machines: both machines\' lines are kept there, the remote\'s first — read it through',
     ]);
@@ -70,8 +69,8 @@ describe('any other file both sides changed', () => {
     const out = catchUpState(here.root);
 
     const beside = `unit/assets/chart.${mine.slice(0, 8)}.png`;
-    assert.strictEqual(read(here.root, 'unit/assets/chart.png'), 'png\0there');
-    assert.strictEqual(read(here.root, beside), 'png\0here');
+    assert.strictEqual(readFile(here.root, 'unit/assets/chart.png'), 'png\0there');
+    assert.strictEqual(readFile(here.root, beside), 'png\0here');
     assert.deepStrictEqual(out.warnings, [
       `unit/assets/chart.png was changed on both machines and is not merged line by line: the remote's copy stays at unit/assets/chart.png, and this machine's is kept beside it as ${beside}`,
     ]);
@@ -89,8 +88,8 @@ describe('any other file both sides changed', () => {
 
     const beside = `unit/blob.${blobId(binary('here')).slice(0, 8)}.bin`;
     assert.deepStrictEqual([out.action, commands.filter((c) => c.startsWith("cat-file '--batch=")).length], ['merged', 1]);
-    assert.strictEqual(read(here.root, 'unit/empty.md'), 'there\nhere\n');
-    assert.strictEqual(read(here.root, 'unit/spec.md'), 'ONE\n\nTWO\n');
+    assert.strictEqual(readFile(here.root, 'unit/empty.md'), 'there\nhere\n');
+    assert.strictEqual(readFile(here.root, 'unit/spec.md'), 'ONE\n\nTWO\n');
     assert.ok(fs.readFileSync(path.join(here.root, 'unit/blob.bin')).equals(binary('there')), 'the remote\'s bytes are not at the path');
     assert.ok(fs.readFileSync(path.join(here.root, beside)).equals(binary('here')), 'this machine\'s bytes are not beside it');
   });
@@ -119,10 +118,10 @@ describe('any other file both sides changed', () => {
     const data = `unit/data.${blobId('{\n  "a": 2,\n  "b": 1\n}\n').slice(0, 8)}.json`;
     const events = `unit/events.${blobId('{"n":1}\n{"n":2}\n').slice(0, 8)}.jsonl`;
     assert.strictEqual(out.action, 'merged');
-    assert.strictEqual(read(here.root, 'unit/data.json'), '{\n  "a": 1,\n  "b": 3\n}\n');
-    assert.strictEqual(read(here.root, data), '{\n  "a": 2,\n  "b": 1\n}\n');
-    assert.strictEqual(read(here.root, 'unit/events.jsonl'), '{"n":1}\n{"n":3}\n');
-    assert.strictEqual(read(here.root, events), '{"n":1}\n{"n":2}\n');
+    assert.strictEqual(readFile(here.root, 'unit/data.json'), '{\n  "a": 1,\n  "b": 3\n}\n');
+    assert.strictEqual(readFile(here.root, data), '{\n  "a": 2,\n  "b": 1\n}\n');
+    assert.strictEqual(readFile(here.root, 'unit/events.jsonl'), '{"n":1}\n{"n":3}\n');
+    assert.strictEqual(readFile(here.root, events), '{"n":1}\n{"n":2}\n');
     assert.deepStrictEqual(out.warnings.map((w) => w.split(' was ')[0]), ['unit/data.json', 'unit/events.jsonl']);
   });
 
@@ -136,8 +135,8 @@ describe('any other file both sides changed', () => {
     const beside = `unit/z.${treeId(here.root, { 'inside.md': 'inside, here\n' }).slice(0, 8)}`;
     assert.deepStrictEqual([out.action, out.pushed], ['merged', true]);
     assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/a.md\nunit/z\n${beside}/inside.md\n`);
-    assert.strictEqual(read(here.root, 'unit/z'), 'z, a file there\n');
-    assert.strictEqual(read(here.root, `${beside}/inside.md`), 'inside, here\n');
+    assert.strictEqual(readFile(here.root, 'unit/z'), 'z, a file there\n');
+    assert.strictEqual(readFile(here.root, `${beside}/inside.md`), 'inside, here\n');
     assert.deepStrictEqual(out.warnings, [
       `unit/z is a file on the remote and a folder on this machine: the remote's file stays at unit/z, and this machine's folder is kept beside it as ${beside}`,
     ]);
@@ -153,8 +152,8 @@ describe('any other file both sides changed', () => {
 
     const beside = `unit/w.${blobId('w, a file here\n').slice(0, 8)}`;
     assert.strictEqual(git(here.main, ['ls-tree', '-r', '--name-only', STATE_BRANCH, 'unit']), `unit/a.md\n${beside}\nunit/w/inside.md\n`);
-    assert.strictEqual(read(here.root, 'unit/w/inside.md'), 'inside, there\n');
-    assert.strictEqual(read(here.root, beside), 'w, a file here\n');
+    assert.strictEqual(readFile(here.root, 'unit/w/inside.md'), 'inside, there\n');
+    assert.strictEqual(readFile(here.root, beside), 'w, a file here\n');
     assert.deepStrictEqual(out.warnings, [
       `unit/w is a folder on the remote and a file on this machine: the remote's folder stays at unit/w, and this machine's file is kept beside it as ${beside}`,
     ]);
@@ -172,8 +171,8 @@ describe('any other file both sides changed', () => {
 
     const out = catchUpState(here.root);
 
-    assert.strictEqual(read(here.root, 'unit/notes.md'), 'n, changed there\n');
-    assert.strictEqual(read(here.root, 'unit/brief.md'), 'b, changed here\n');
+    assert.strictEqual(readFile(here.root, 'unit/notes.md'), 'n, changed there\n');
+    assert.strictEqual(readFile(here.root, 'unit/brief.md'), 'b, changed here\n');
     assert.deepStrictEqual(out.warnings.sort(), [
       'unit/brief.md was deleted on one machine and changed on the other: the changed copy is kept',
       'unit/notes.md was deleted on one machine and changed on the other: the changed copy is kept',
@@ -196,7 +195,7 @@ describe('the person\'s line-ending config', () => {
       const { here, there } = twoMachines(base);
       const exact = (/** @type {Machine} */ machine, /** @type {Record<string, string>} */ files) => {
         const isolated = isolatedGit(machine.root);
-        assert.deepStrictEqual(Object.keys(files).map((file) => [read(machine.root, file), isolated.run(['cat-file', 'blob', `HEAD:${file}`])]), Object.values(files).map((text) => [text, text]));
+        assert.deepStrictEqual(Object.keys(files).map((file) => [readFile(machine.root, file), isolated.run(['cat-file', 'blob', `HEAD:${file}`])]), Object.values(files).map((text) => [text, text]));
         assert.strictEqual(isolated.run(['status', '--porcelain', '--untracked-files=all']), '');
       };
       exact(there, base);
@@ -235,7 +234,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
     const { result: out, traced: commands } = traced(() => catchUpState(here.root));
 
     assert.deepStrictEqual([out.action, out.warnings], ['merged', []]);
-    for (const file of FILES) assert.strictEqual(read(here.root, file), 'ONE\n\ntwo\n\nTHREE\n');
+    for (const file of FILES) assert.strictEqual(readFile(here.root, file), 'ONE\n\ntwo\n\nTHREE\n');
     assert.deepStrictEqual(
       ['ls-tree ', 'read-tree ', "cat-file '--batch-check=", "cat-file '--batch=", 'cat-file blob ', 'merge-file ', 'hash-object ']
         .map((prefix) => calls(commands, prefix)),
@@ -278,7 +277,7 @@ describe('the git calls a merge makes, all under the writer lock', () => {
     }
 
     assert.deepStrictEqual([out.action, readInTree], ['merged', []]);
-    assert.strictEqual(read(here.root, LOG), '# a\n\n## there\n');
+    assert.strictEqual(readFile(here.root, LOG), '# a\n\n## there\n');
   });
 
   it('leaves no file open where writing the ledger\'s union fails part-way', () => {

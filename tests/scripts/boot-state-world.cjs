@@ -6,18 +6,16 @@
 // beside a stand-in migration runner (`engine`, `STUB_ENGINE`), which
 // records the state branch's tip where STUB_MIGRATE_MARK names a file; the
 // workflows' own hooks as boot installs them; and the reads the assertions
-// make: tips, the state worktree in place, what a stopped boot leaves, a
+// make: the state worktree in place, what a stopped boot leaves, a
 // boot with nothing to do.
 
 require('./hermetic-env.cjs');
 
-const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { templateFolder } = require('./discovery-test-utils.cjs');
+const { templateFolder, useTempFolder, createFile, readFile } = require('./discovery-test-utils.cjs');
 const { git, initRepo, testIdentity } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
@@ -25,22 +23,13 @@ const {
   STATE_BRANCH, STATE_LOCK_REASON, inspectState, withStateLock, commitState,
 } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-/** @type {string} */
+/** The running test's folder, once the calling file has taken `useWorld`. @type {() => string} */
 let world;
 
-/**
- * A temp folder for each test of the calling file, made before it and
- * removed after it.
- * @returns {() => string} the running test's folder
- */
+/** A temp folder for each test of the calling file: its getter. */
 function useWorld() {
-  beforeEach(() => {
-    world = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'boot-state-')));
-  });
-  afterEach(() => {
-    fs.rmSync(world, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  });
-  return () => world;
+  world = useTempFolder('boot-state-');
+  return world;
 }
 
 // The workflows' own hooks, as boot installs them.
@@ -79,35 +68,14 @@ const engine = harness.harness(STUB_ENGINE);
 
 // --- the worlds -------------------------------------------------------------
 
-/** @param {string} dir @param {string} rel @param {string} content */
-function write(dir, rel, content) {
-  fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-  fs.writeFileSync(path.join(dir, rel), content);
-}
-
-/** @param {string} dir @param {string} rel */
-function read(dir, rel) {
-  return fs.readFileSync(path.join(dir, rel), 'utf8');
-}
-
-/** @param {string} dir @param {string} ref @returns {string} */
-function tip(dir, ref) {
-  return git(dir, ['rev-parse', ref]).trim();
-}
-
-/** The remote's `leeway-state`, or '' where it holds none. @param {string} bare */
-function remoteTip(bare) {
-  return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
-}
-
 /**
  * A project with one code commit on `main` — Portal by default — and `origin`
  * where `remote` names one, `main` pushed there.
  * @param {{name?: string, remote?: string|null}} [opts]
  */
 function codeProject({ name = 'portal', remote = null } = {}) {
-  const main = initRepo(path.join(world, name));
-  write(main, 'README.md', `# ${name}\n`);
+  const main = initRepo(path.join(world(), name));
+  createFile(main, 'README.md', `# ${name}\n`);
   git(main, ['add', 'README.md']);
   git(main, ['commit', '-q', '-m', 'code']);
   if (remote !== null) {
@@ -119,8 +87,8 @@ function codeProject({ name = 'portal', remote = null } = {}) {
 
 /** A clone of the remote, under the test identity. @param {string} remote @param {string} name @param {string[]} [args] */
 function cloneOf(remote, name, args = []) {
-  const dir = path.join(world, name);
-  git(world, ['clone', '-q', ...args, remote, dir]);
+  const dir = path.join(world(), name);
+  git(world(), ['clone', '-q', ...args, remote, dir]);
   testIdentity(dir);
   return dir;
 }
@@ -149,7 +117,7 @@ function setUp(opts = {}) {
 
 /** Commit `files` in the state worktree at `root`. @param {string} root @param {Record<string, string>} files */
 function commitOnState(root, files) {
-  for (const [rel, content] of Object.entries(files)) write(root, rel, content);
+  for (const [rel, content] of Object.entries(files)) createFile(root, rel, content);
   return withStateLock(root, () => commitState(root, Object.keys(files), 'state: a change'));
 }
 
@@ -167,7 +135,7 @@ const IN_PLACE = { worktree: { branch: STATE_BRANCH, locked: true, reason: STATE
  * @template T @param {(env: Record<string, string>) => T} fn @returns {{result: T, commands: string[]}}
  */
 function traced(fn) {
-  const file = path.join(world, `trace-${Date.now()}-${Math.random()}.log`);
+  const file = path.join(world(), `trace-${Date.now()}-${Math.random()}.log`);
   const result = fn({ GIT_TRACE: file });
   const log = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
   return { result, commands: [...log.matchAll(/trace: built-in: git (.*)$/gm)].map((m) => m[1]) };
@@ -178,7 +146,7 @@ function snapshot(main, bare) {
   return {
     refs: git(main, ['for-each-ref', '--format=%(refname) %(objectname)']),
     worktrees: git(main, ['worktree', 'list', '--porcelain']),
-    link: read(main, '.leeway/.git'),
+    link: readFile(main, '.leeway/.git'),
     code: git(main, ['log', '--format=%H', '-n', '3']),
     remote: bare === null ? '' : git(bare, ['for-each-ref', '--format=%(refname) %(objectname)']),
   };
@@ -201,7 +169,7 @@ function bootsWithNothingToDo(main, bare, env = {}) {
 
 /** A remote out of reach: `origin` pointed at a folder that is not there. @param {string} dir */
 function outOfReach(dir) {
-  git(dir, ['remote', 'set-url', 'origin', path.join(world, 'nowhere.git')]);
+  git(dir, ['remote', 'set-url', 'origin', path.join(world(), 'nowhere.git')]);
 }
 
 /** What a stopped boot must leave as it was. @param {string} main @param {string|null} bare */
@@ -215,5 +183,5 @@ function untouched(main, bare) {
 }
 
 module.exports = {
-  useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, STUB_ENGINE, engine, write, read, tip, remoteTip, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach, untouched,
+  useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, STUB_ENGINE, engine, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach, untouched,
 };

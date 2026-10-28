@@ -19,16 +19,15 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { git } = require('./engine-harness.cjs');
+const { git, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
-const {
-  useWorld, write, read, tip, remoteTip, status, commitOn, commitUnpushed, twoMachines, projectManifest, keptStopFile, shownChoice, pickShown, mergeLeftovers, killedAfter,
-} = require('./state-merge-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, status, commitOn, commitUnpushed, twoMachines, projectManifest, keptStopFile, shownChoice, pickShown, mergeLeftovers, killedAfter } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
@@ -69,7 +68,7 @@ describe('a kept stop', () => {
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), { before: ['roadmap.items.a-lifetime-tier.horizon'], action: 'merged', pushed: true });
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
   });
 
   it('keeps the picks made so far through a catch-up that finds the same sides', () => {
@@ -83,7 +82,7 @@ describe('a kept stop', () => {
 
     assert.deepStrictEqual([again.action, again.conflicts.map((c) => c.pick)], ['stopped', ['remote', null]]);
     assert.strictEqual(pickShown(here, '1').action, 'merged');
-    const merged = JSON.parse(read(here.root, 'manifest.json'));
+    const merged = JSON.parse(readFile(here.root, 'manifest.json'));
     assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['linear', 'next']);
   });
 
@@ -108,7 +107,7 @@ describe('a kept stop', () => {
 
     assert.strictEqual(shownChoice(here), shown);
     assert.strictEqual(pickStateMerge(here.root, '1', shown).action, 'merged');
-    const merged = JSON.parse(read(here.root, 'manifest.json'));
+    const merged = JSON.parse(readFile(here.root, 'manifest.json'));
     assert.deepStrictEqual([merged.defaults.plan_format, merged.roadmap.items['a-lifetime-tier'].horizon], ['tick', 'next']);
   });
 
@@ -122,11 +121,11 @@ describe('a kept stop', () => {
 
     assert.deepStrictEqual([refused.action, refused.conflicts.map((c) => [c.remote, c.pick])], ['stopped', [[{ set: true, value: 'later' }, null]]]);
     assert.deepStrictEqual(refused.warnings, ['the pick answered a question the state merge no longer asks, so it was not taken']);
-    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('next'));
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('next'));
     assert.notStrictEqual(shownChoice(here), shown);
 
     assert.strictEqual(pickShown(here, '2').action, 'fast-forwarded');
-    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'));
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('later'));
   });
 
   it('asks afresh as this clone moves, showing this machine\'s value as it now stands', () => {
@@ -138,16 +137,16 @@ describe('a kept stop', () => {
     assert.match(stateMergeGateSurface(here.main, {}), /^> - this machine: never$/m);
     assert.strictEqual(pickStateMerge(here.root, '1', shown).action, 'stopped');
     assert.strictEqual(pickShown(here, '1').action, 'merged');
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'never');
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'never');
   });
 
   it('asks with the uncommitted value as the working tree now holds it', () => {
     const { here, there } = twoMachines({ 'manifest.json': projectManifest('now') });
-    write(here.root, 'manifest.json', projectManifest('next'));
+    createFile(here.root, 'manifest.json', projectManifest('next'));
     commitOn(there, { 'manifest.json': projectManifest('someday') });
     assert.strictEqual(catchUpState(here.root).action, 'stopped');
 
-    write(here.root, 'manifest.json', projectManifest('never'));
+    createFile(here.root, 'manifest.json', projectManifest('never'));
 
     assert.deepStrictEqual(pendingStateMerge(here.root)?.conflicts.map((c) => c.local), [{ set: true, value: 'never' }]);
   });
@@ -168,7 +167,7 @@ describe('a kept stop', () => {
     const online = catchUpState(here.root);
 
     assert.deepStrictEqual([online.action, online.pushed], ['merged', true]);
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).roadmap.items['a-lifetime-tier'].horizon, 'next');
     assert.ok(!fs.existsSync(keptStopFile(here.root)));
   });
 
@@ -184,7 +183,7 @@ describe('a kept stop', () => {
     const out = catchUpState(here.root);
 
     assert.deepStrictEqual([out.action, out.conflicts], ['fast-forwarded', []]);
-    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('later'));
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('later'));
     assert.deepStrictEqual(mergeLeftovers(here.root), []);
   });
 
@@ -200,6 +199,6 @@ describe('a kept stop', () => {
 
     assert.strictEqual(out.action, 'fast-forwarded');
     assert.strictEqual(tip(here.main, STATE_BRANCH), remoteTip(bare));
-    assert.strictEqual(read(here.root, 'manifest.json'), projectManifest('someday'));
+    assert.strictEqual(readFile(here.root, 'manifest.json'), projectManifest('someday'));
   });
 });

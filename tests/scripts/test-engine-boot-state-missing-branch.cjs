@@ -18,14 +18,13 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, read, tip, remoteTip, cloneOf, boot, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach,
-} = require('./boot-state-world.cjs');
+const { readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, cloneOf, boot, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -73,7 +72,7 @@ describe('a branch missing from the remote (4.4.12, 4.S31)', () => {
     assert.strictEqual(boot(here).state, 'ready');
 
     assert.strictEqual(tip(here, STATE_BRANCH), kept);
-    assert.strictEqual(read(here, '.leeway/manifest.json'), '{"kept":true}\n');
+    assert.strictEqual(readFile(here, '.leeway/manifest.json'), '{"kept":true}\n');
     assert.deepStrictEqual(placed(path.join(here, '.leeway')), IN_PLACE);
   });
 });

@@ -23,13 +23,13 @@ const harness = require('./engine-harness.cjs');
 const { git } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
-const { datedAt } = require('./discovery-test-utils.cjs');
+const { datedAt, createFile } = require('./discovery-test-utils.cjs');
 
-const { writeFile, WORKFLOW_HOOKS, hooked, stubbed, setupFixture, runEngine } = require('./boot-world.cjs');
+const { WORKFLOW_HOOKS, hooked, stubbed, bootProject, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
-  beforeEach(() => { fix = setupFixture(); });
+  beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('baseline: reports the project-manifest status; unrecognised or malformed values read none', () => {
@@ -97,8 +97,8 @@ describe('engine boot', () => {
   function scratchRepo(name) {
     const project = harness.initRepo(path.join(fix.root, name));
     fs.appendFileSync(path.join(project, '.git/info/exclude'), '.gitignore\n');
-    writeFile(project, '.gitignore', '.leeway/\n');
-    writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+    createFile(project, '.gitignore', '.leeway/\n');
+    createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
     const at = (date) => (date.includes('T') ? date : `${date}T12:00:00Z`);
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
@@ -112,10 +112,10 @@ describe('engine boot', () => {
     // A brownfield repo: two commits of code (the skills install beside it,
     // which never counts as project code), then the workflows land.
     const { project, commit, arrive } = scratchRepo('brownfield');
-    writeFile(project, 'src/app.js', 'export default 1;\n');
-    writeFile(project, 'README.md', '# App\n');
+    createFile(project, 'src/app.js', 'export default 1;\n');
+    createFile(project, 'README.md', '# App\n');
     commit('initial', '2025-03-01');
-    writeFile(project, 'src/lib.js', 'export const x = 2;\n');
+    createFile(project, 'src/lib.js', 'export const x = 2;\n');
     commit('more code', '2025-06-15');
 
     // No state yet — the workflows arriving now: the whole history predates
@@ -130,7 +130,7 @@ describe('engine boot', () => {
     // The state lands, and the code goes on: the two commits before its first
     // commit are the history, and the tree is the one it arrived into.
     arrive('2025-09-01');
-    writeFile(project, 'src/later.js', 'export const y = 3;\n');
+    createFile(project, 'src/later.js', 'export const y = 3;\n');
     commit('after the workflows', '2025-10-01');
     const res = runEngine(stubbed, project, ['boot']);
     assert.strictEqual(res.baseline, 'none');
@@ -143,7 +143,7 @@ describe('engine boot', () => {
 
   it('baseline_signal: the workflows arriving with the codebase\'s first commit report the tree they arrived into — a legacy codebase put under git at install is not a fresh start', () => {
     const { project, commit, arrive } = scratchRepo('legacy');
-    for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) writeFile(project, f, '# code\n');
+    for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) createFile(project, f, '# code\n');
     commit('import', '2025-01-01');
     arrive('2025-01-01T12:00:01Z');
     const res = runEngine(stubbed, project, ['boot']);
@@ -158,13 +158,13 @@ describe('engine boot', () => {
     // of a side branch cut from root in Mar. Its commit is older than the
     // arrival, but main never held it until the merge.
     const { project, commit, arrive } = scratchRepo('branched');
-    writeFile(project, 'src/a.js', 'a\n');
+    createFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
-    writeFile(project, 'src/b.js', 'b\n');
-    writeFile(project, 'src/c.js', 'c\n');
+    createFile(project, 'src/b.js', 'b\n');
+    createFile(project, 'src/c.js', 'c\n');
     commit('main work', '2025-02-01');
     git(project, ['checkout', '-q', '-b', 'side', 'HEAD~1']);
-    writeFile(project, 'docs/side.md', 'side\n');
+    createFile(project, 'docs/side.md', 'side\n');
     commit('side work', '2025-03-01');
     git(project, ['checkout', '-q', 'main']);
     arrive('2025-04-01');
@@ -180,7 +180,7 @@ describe('engine boot', () => {
   it('baseline_signal: a long run keeps its head and tail around one elision line, and the tree its largest dozen entries', () => {
     const { project, commit, arrive } = scratchRepo('long');
     for (let i = 1; i <= 15; i += 1) {
-      writeFile(project, `dir${String(i).padStart(2, '0')}/f.js`, `${i}\n`);
+      createFile(project, `dir${String(i).padStart(2, '0')}/f.js`, `${i}\n`);
       commit(`commit ${i}`, `2025-01-${String(i).padStart(2, '0')}`);
     }
     arrive('2025-02-01');
@@ -197,7 +197,7 @@ describe('engine boot', () => {
 
   it('baseline_signal: reads the same through a signing user\'s `log.showSignature`', () => {
     const { project, commit, arrive } = scratchRepo('signed');
-    writeFile(project, 'src/a.js', 'a\n');
+    createFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
     arrive('2025-02-01');
     const plain = runEngine(stubbed, project, ['boot']).baseline_signal;
@@ -209,8 +209,8 @@ describe('engine boot', () => {
 
   it('baseline_signal: a `.worktreeinclude` in the tree is the project\'s own file, counted as any other — boot writes none', () => {
     const { project, commit, arrive } = scratchRepo('included');
-    writeFile(project, 'src/a.js', 'a\n');
-    writeFile(project, '.worktreeinclude', '.env\n');
+    createFile(project, 'src/a.js', 'a\n');
+    createFile(project, '.worktreeinclude', '.env\n');
     commit('root', '2025-01-01');
     arrive('2025-02-01');
 
@@ -221,7 +221,7 @@ describe('engine boot', () => {
 
   it('baseline_signal: a boot from inside the state worktree reads the code history, never the state branch\'s', () => {
     const { project, commit, arrive } = scratchRepo('inside');
-    writeFile(project, 'src/a.js', 'a\n');
+    createFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
     arrive('2025-02-01');
     const fromRoot = runEngine(stubbed, project, ['boot']).baseline_signal;
@@ -236,7 +236,7 @@ describe('engine boot', () => {
     createState(path.join(empty, '.leeway'));
     // A hook refusing every code commit: boot's plumbing would otherwise
     // make the root commit — the history this test needs absent.
-    writeFile(empty, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+    createFile(empty, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
     fs.chmodSync(path.join(empty, '.git/hooks/pre-commit'), 0o755);
     const res = runEngine(stubbed, empty, ['boot']);
     assert.strictEqual(res.baseline, 'none');
@@ -250,9 +250,9 @@ describe('engine boot', () => {
     // A shallow clone of a brownfield history looks like a root-commit
     // arrival; it is truncated, not fresh, so the signal says so.
     const { project, commit, arrive } = scratchRepo('deep');
-    writeFile(project, 'src/a.js', 'a\n');
+    createFile(project, 'src/a.js', 'a\n');
     commit('root', '2025-01-01');
-    writeFile(project, 'src/b.js', 'b\n');
+    createFile(project, 'src/b.js', 'b\n');
     commit('more', '2025-02-01');
     arrive('2025-03-01');
     const shallow = path.join(fix.root, 'shallow');
@@ -279,7 +279,7 @@ describe('engine boot', () => {
 
 describe('engine boot: no worktree include', () => {
   let fix;
-  beforeEach(() => { fix = setupFixture(); });
+  beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('writes none — a project without one stays without one, and the user\'s own is left as it was', () => {
@@ -290,7 +290,7 @@ describe('engine boot: no worktree include', () => {
 
     assert.strictEqual('worktree_include_installed' in res, false);
     assert.strictEqual(fs.existsSync(include), false);
-    writeFile(fix.project, '.worktreeinclude', '# local env\n.env\n');
+    createFile(fix.project, '.worktreeinclude', '# local env\n.env\n');
     runEngine(stubbed, fix.project, ['boot']);
     assert.strictEqual(fs.readFileSync(include, 'utf8'), '# local env\n.env\n');
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']).trim(), head, 'and commits nothing on the code branch');

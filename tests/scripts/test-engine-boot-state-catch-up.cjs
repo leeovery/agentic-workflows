@@ -18,14 +18,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, engine, read, tip, remoteTip, cloneOf, boot, setUp, commitOnState,
-} = require('./boot-state-world.cjs');
+const { readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, engine, cloneOf, boot, setUp, commitOnState } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -51,7 +50,7 @@ describe('the catch-up at boot (4.7.8)', () => {
 
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     assert.strictEqual(tip(here.main, STATE_BRANCH), moved);
-    assert.strictEqual(read(here.root, 'notes.md'), 'from there\n');
+    assert.strictEqual(readFile(here.root, 'notes.md'), 'from there\n');
     assert.strictEqual(fs.readFileSync(mark, 'utf8').trim(), moved, 'the migrations ran over the state already caught up');
   });
 
@@ -75,7 +74,7 @@ describe('the catch-up at boot (4.7.8)', () => {
 
     const res = boot(here.main, { STUB_MIGRATE_MARK: mark });
     assert.strictEqual(res.state, 'ready');
-    assert.strictEqual(JSON.parse(read(here.root, 'manifest.json')).defaults.plan_format, 'tick');
+    assert.strictEqual(JSON.parse(readFile(here.root, 'manifest.json')).defaults.plan_format, 'tick');
     assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
     assert.strictEqual(fs.readFileSync(mark, 'utf8').trim(), tip(here.main, STATE_BRANCH));
   });

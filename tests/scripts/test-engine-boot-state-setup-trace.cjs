@@ -18,9 +18,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, tip } = harness;
 
-const { useWorld, write, read, tip, codeProject, boot } = require('./boot-state-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, codeProject, boot } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -29,7 +30,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     /** A hook in the main checkout refusing every code commit, and its removal. @param {string} main */
     function refusingCommits(main) {
       const hook = path.join(main, '.git/hooks/pre-commit');
-      write(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
+      createFile(main, '.git/hooks/pre-commit', '#!/bin/sh\nexit 1\n');
       fs.chmodSync(hook, 0o755);
       return () => fs.rmSync(hook);
     }
@@ -38,7 +39,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       const main = codeProject();
       const allow = refusingCommits(main);
       const head = tip(main, 'main');
-      write(main, 'README.md', '# portal, staged\n');
+      createFile(main, 'README.md', '# portal, staged\n');
       git(main, ['add', 'README.md']);
 
       const refused = boot(main);
@@ -65,9 +66,9 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       const allow = refusingCommits(main);
       boot(main);
       allow();
-      const settings = JSON.parse(read(main, '.claude/settings.json'));
-      write(main, '.claude/settings.json', JSON.stringify({ model: 'opus', ...settings }, null, 2));
-      const theirs = read(main, '.claude/settings.json');
+      const settings = JSON.parse(readFile(main, '.claude/settings.json'));
+      createFile(main, '.claude/settings.json', JSON.stringify({ model: 'opus', ...settings }, null, 2));
+      const theirs = readFile(main, '.claude/settings.json');
 
       const res = boot(main);
 
@@ -75,19 +76,19 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
         '.claude/settings.json holds changes of yours not yet committed, so the workflows\' own change to it was not committed either — ' +
         'commit yours, and the next boot commits theirs',
       ]);
-      assert.strictEqual(read(main, '.claude/settings.json'), theirs);
+      assert.strictEqual(readFile(main, '.claude/settings.json'), theirs);
       assert.strictEqual(git(main, ['ls-tree', '--name-only', 'HEAD', '--', '.claude']), '', 'nothing of the file committed');
       assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .leeway/, the workflows state', 'the line, the workflows\' alone, committed');
     });
 
     it('a .gitignore of the person\'s never committed takes the line, and is left for them to commit, with a warning', () => {
       const main = codeProject();
-      write(main, '.gitignore', 'node_modules\n');
+      createFile(main, '.gitignore', 'node_modules\n');
       const head = tip(main, 'main');
 
       const res = boot(main);
 
-      assert.strictEqual(read(main, '.gitignore'), 'node_modules\n.leeway/\n');
+      assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.leeway/\n');
       assert.ok(res.warnings.includes(
         '.gitignore holds changes of yours not yet committed, so the workflows\' own change to it was not committed either — ' +
         'commit yours, and the next boot commits theirs',
@@ -97,7 +98,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     it('a settings file git ignores is owed nothing: the hooks stay on disk, uncommitted, with no warning — the line still commits', () => {
       const main = codeProject();
-      write(main, '.gitignore', '.claude/\n');
+      createFile(main, '.gitignore', '.claude/\n');
       git(main, ['add', '.gitignore']);
       git(main, ['commit', '-q', '-m', 'keep .claude out']);
       const head = tip(main, 'main');
@@ -112,12 +113,12 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     it('a .gitignore checked out with CRLF line endings under core.autocrlf is compared as git stages it: the line commits, with no warning', () => {
       const main = codeProject();
       git(main, ['config', 'core.autocrlf', 'true']);
-      write(main, '.gitignore', 'node_modules\n');
+      createFile(main, '.gitignore', 'node_modules\n');
       git(main, ['add', '.gitignore']);
       git(main, ['commit', '-q', '-m', 'ignore']);
       fs.rmSync(path.join(main, '.gitignore'));
       git(main, ['checkout', '--', '.gitignore']);
-      assert.strictEqual(read(main, '.gitignore'), 'node_modules\r\n', 'checked out with CRLF');
+      assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\r\n', 'checked out with CRLF');
 
       assert.deepStrictEqual(boot(main).warnings, []);
 
@@ -131,7 +132,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     function midBisect() {
       const main = codeProject();
       for (const n of ['two', 'three']) {
-        write(main, 'README.md', `# ${n}\n`);
+        createFile(main, 'README.md', `# ${n}\n`);
         git(main, ['commit', '-q', '-am', n]);
       }
       git(main, ['bisect', 'start', 'HEAD', 'HEAD~2']);
@@ -175,7 +176,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       fs.rmSync(path.join(main, '.claude'), { recursive: true });
       git(main, ['add', '-A']);
       git(main, ['commit', '-q', '-m', 'drop the trace']);
-      write(main, 'x.txt', 'x\n');
+      createFile(main, 'x.txt', 'x\n');
       git(main, ['add', 'x.txt']);
       git(main, ['commit', '-q', '-m', 'x']);
       assert.throws(() => git(main, ['rebase', '--exec', 'false', 'HEAD~1']));
@@ -190,12 +191,12 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.strictEqual(boot(main).state, 'ready');
 
       assert.strictEqual(tip(main, 'HEAD'), head, 'nothing committed into the rebase');
-      assert.strictEqual(read(main, '.gitignore'), '');
+      assert.strictEqual(readFile(main, '.gitignore'), '');
       assert.ok(!fs.existsSync(path.join(main, '.claude')), 'no hooks waiting to be swept into the rebase');
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
       git(main, ['rebase', '--abort']);
       assert.deepStrictEqual(boot(main).warnings, []);
-      assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
+      assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
         ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');

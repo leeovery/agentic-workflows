@@ -24,13 +24,12 @@ const { git, stateGit, commitAll } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
-const {
-  writeFile, WORKFLOW_HOOKS, hooked, LABELS_ON, stubbed, readyKnowledge, completedDiscussion, setupFixture, runEngine, runEngineFails,
-} = require('./boot-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { WORKFLOW_HOOKS, hooked, LABELS_ON, stubbed, readyKnowledge, completedDiscussion, bootProject, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 describe('engine boot', () => {
   let fix;
-  beforeEach(() => { fix = setupFixture(); });
+  beforeEach(() => { fix = bootProject(); });
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('pending migration: changed true, report captured with the stop-gate lines stripped', () => {
@@ -94,7 +93,7 @@ describe('engine boot', () => {
   });
 
   it('while a reviewed migration commit follows, boot\'s settings write rides it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
-    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'labels on');
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
@@ -123,11 +122,11 @@ describe('engine boot', () => {
 
   it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
     // Track a config baseline, then dirty both files with no migration running.
-    writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
-    writeFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n');
+    createFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
+    createFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n');
     commitAll(fix.project, 'config baseline');
-    writeFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: { allow: ['x'] } }));
-    writeFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
+    createFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: { allow: ['x'] } }));
+    createFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -160,9 +159,9 @@ describe('engine boot', () => {
     // The state this bug leaves behind: a previous boot recorded an ID and
     // never committed it. Those migrations are recorded now, so nothing runs
     // — and the line still has to go.
-    writeFile(fix.project, '.leeway/.state/migrations', '045\n');
+    createFile(fix.project, '.leeway/.state/migrations', '045\n');
     commitAll(fix.project, 'record baseline');
-    writeFile(fix.project, '.leeway/.state/migrations', '045\n046\n');
+    createFile(fix.project, '.leeway/.state/migrations', '045\n046\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -189,7 +188,7 @@ describe('engine boot', () => {
   it('a migrations record with nothing to commit — already clean — is null and silent', () => {
     // Clean: the run recorded nothing new (a re-append restoring what HEAD
     // already holds), so the tracked record matches HEAD.
-    writeFile(fix.project, '.leeway/.state/migrations', '045\n');
+    createFile(fix.project, '.leeway/.state/migrations', '045\n');
     commitAll(fix.project, 'record baseline');
 
     const clean = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_REPORT: '{"ran": 2}' });
@@ -246,10 +245,10 @@ describe('engine boot', () => {
     // other one on the checkout. Its commits — the migrations record and the
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.
-    writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
-    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    createFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
+    createFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'a peer topic');
-    writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
+    createFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\nhalf a turn\n');
     stateGit(fix.project, ['add', '--', 'payments/discussion/topic-a.md']);
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });

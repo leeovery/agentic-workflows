@@ -4,20 +4,19 @@
 // (test-engine-state-merge-*.cjs): a temp folder per test (`useWorld`), a
 // project on a bare remote and a second clone of it on "another machine"
 // (`twoMachines`), commits made on either side, pushed or with the push
-// failing, and the reads their assertions make: tips, parents, status, the
+// failing, and the reads their assertions make: parents, status, the
 // merge's kept stop and its leftovers. A `git` wrapper first on PATH
 // (`gitWrapper`, `withPath`) stands in for another session's write, a
 // remote moving, or a kill (`killedAfter`).
 
 require('./hermetic-env.cjs');
 
-const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const { git, initRepo, testIdentity, bareRepo } = require('./engine-harness.cjs');
+const { useTempFolder, createFile } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -29,46 +28,16 @@ const { LedgerChanged, checkLedgerCommit } = require(path.join(SCRIPTS, 'domain/
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { pickStateMerge, stateMergeGateSurface } = require(MERGE);
 
-/** @type {string} */
+/** The running test's folder, once the calling file has taken `useWorld`. @type {() => string} */
 let world;
 
-/**
- * A temp folder for each test of the calling file, made before it and
- * removed after it.
- * @returns {() => string} the running test's folder
- */
+/** A temp folder for each test of the calling file: its getter. */
 function useWorld() {
-  beforeEach(() => {
-    world = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'state-merge-')));
-  });
-  afterEach(() => {
-    fs.rmSync(world, { recursive: true, force: true });
-  });
-  return () => world;
+  world = useTempFolder('state-merge-');
+  return world;
 }
 
 /** @typedef {{main: string, root: string}} Machine */
-
-/** @param {string} dir @param {string} rel @param {string} content */
-function write(dir, rel, content) {
-  fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-  fs.writeFileSync(path.join(dir, rel), content);
-}
-
-/** @param {string} dir @param {string} rel */
-function read(dir, rel) {
-  return fs.readFileSync(path.join(dir, rel), 'utf8');
-}
-
-/** @param {string} dir @param {string} ref @returns {string} */
-function tip(dir, ref) {
-  return git(dir, ['rev-parse', ref]).trim();
-}
-
-/** The remote's `leeway-state`, or '' where it holds none. @param {string} bare */
-function remoteTip(bare) {
-  return git(bare, ['for-each-ref', '--format=%(objectname)', `refs/heads/${STATE_BRANCH}`]).trim();
-}
 
 /** The id git names a blob of `text` by. @param {string} text */
 function blobId(text) {
@@ -93,13 +62,13 @@ function status(dir) {
 
 /** Write `files` in the machine's state worktree and commit them there, pushing. @param {Machine} machine @param {Record<string, string>} files */
 function commitOn(machine, files, message = 'state: a change') {
-  for (const [rel, content] of Object.entries(files)) write(machine.root, rel, content);
+  for (const [rel, content] of Object.entries(files)) createFile(machine.root, rel, content);
   return withStateLock(machine.root, () => commitState(machine.root, Object.keys(files), message));
 }
 
 /** Run `fn` with the machine's pushes going nowhere, as a failed push leaves the state. @template T @param {Machine} machine @param {() => T} fn @returns {T} */
 function pushFailing(machine, fn) {
-  git(machine.main, ['config', 'remote.origin.pushurl', path.join(world, 'nowhere.git')]);
+  git(machine.main, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
   try {
     return fn();
   } finally {
@@ -122,19 +91,19 @@ function commitUnpushed(machine, files, message = 'state: unpushed') {
  * @returns {{here: Machine, there: Machine, bare: string}}
  */
 function twoMachines(base = {}) {
-  const main = initRepo(path.join(world, 'fumi'));
-  write(main, 'README.md', '# Fumi\n');
+  const main = initRepo(path.join(world(), 'fumi'));
+  createFile(main, 'README.md', '# Fumi\n');
   git(main, ['add', 'README.md']);
   git(main, ['commit', '-q', '-m', 'code']);
-  const bare = bareRepo(path.join(world, 'fumi-remote.git'));
+  const bare = bareRepo(path.join(world(), 'fumi-remote.git'));
   git(main, ['remote', 'add', 'origin', bare]);
   git(main, ['push', '-q', 'origin', 'main']);
   const here = { main, root: path.join(main, '.leeway') };
   createState(here.root);
   if (Object.keys(base).length > 0) commitOn(here, base, 'state: base');
 
-  const other = path.join(world, 'other-machine');
-  git(world, ['clone', '-q', bare, other]);
+  const other = path.join(world(), 'other-machine');
+  git(world(), ['clone', '-q', bare, other]);
   testIdentity(other);
   const there = { main: other, root: stateRoot(other) };
   createStateBranchFromRemote(there.root);
@@ -184,7 +153,7 @@ function appendOnly(root) {
  * @template T @param {() => T} fn @returns {{result: T, traced: string[]}}
  */
 function traced(fn) {
-  const file = path.join(world, 'git-trace.log');
+  const file = path.join(world(), 'git-trace.log');
   fs.rmSync(file, { force: true });
   process.env.GIT_TRACE = file;
   try {
@@ -226,7 +195,7 @@ function mergeLeftovers(root) {
  */
 function gitWrapper(marker, after) {
   const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
-  const dir = fs.mkdtempSync(path.join(world, 'git-'));
+  const dir = fs.mkdtempSync(path.join(world(), 'git-'));
   fs.writeFileSync(path.join(dir, 'git'), [
     '#!/bin/sh',
     `real="${real}"`,
@@ -268,5 +237,5 @@ function killedAfter(root, call, marker) {
 }
 
 module.exports = {
-  useWorld, write, read, tip, remoteTip, blobId, treeId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, entry, ledger, json, projectManifest, appendOnly, traced, keptStopFile, shownChoice, pickShown, mergeLeftovers, gitWrapper, withPath, killedAfter,
+  useWorld, blobId, treeId, parents, status, commitOn, pushFailing, commitUnpushed, twoMachines, entry, ledger, json, projectManifest, appendOnly, traced, keptStopFile, shownChoice, pickShown, mergeLeftovers, gitWrapper, withPath, killedAfter,
 };

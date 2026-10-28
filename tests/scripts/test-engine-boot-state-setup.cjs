@@ -23,15 +23,13 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { datedAt } = require('./discovery-test-utils.cjs');
-const { git, initRepo } = harness;
+const { datedAt, createFile, readFile } = require('./discovery-test-utils.cjs');
+const { git, initRepo, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, WORKFLOW_HOOKS, STUB_ENGINE, write, read, tip, remoteTip, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo,
-} = require('./boot-state-world.cjs');
+const { useWorld, WORKFLOW_HOOKS, STUB_ENGINE, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, bootsWithNothingToDo } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -48,7 +46,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)], 'one commit, with no parent');
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
     const ignored = git(main, ['log', '--format=%H %s', '--', '.gitignore']).trim();
     assert.match(ignored, / chore: ignore \.leeway\/, the workflows state$/);
     assert.deepStrictEqual(git(main, ['show', '--name-only', '--format=', ignored.split(' ')[0]]).trim().split('\n'), ['.gitignore']);
@@ -69,18 +67,18 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
   it('appends the ignore line to a .gitignore that holds others, and keeps one that names the state as it is', () => {
     const main = codeProject();
-    write(main, '.gitignore', 'node_modules');
+    createFile(main, '.gitignore', 'node_modules');
     git(main, ['add', '.gitignore']);
     git(main, ['commit', '-q', '-m', 'ignore']);
 
     boot(main);
-    assert.strictEqual(read(main, '.gitignore'), 'node_modules\n.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.leeway/\n');
 
-    write(main, '.gitignore', 'node_modules\n/.leeway\n');
+    createFile(main, '.gitignore', 'node_modules\n/.leeway\n');
     git(main, ['commit', '-q', '-am', 'anchored']);
     const before = tip(main, 'main');
     boot(main);
-    assert.strictEqual(read(main, '.gitignore'), 'node_modules\n/.leeway\n');
+    assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n/.leeway\n');
     assert.strictEqual(tip(main, 'main'), before);
   });
 
@@ -88,7 +86,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const main = codeProject();
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
-    write(wrapper, 'git', `#!/bin/sh\n"${real}" "$@"\nstatus=$?\ncase "$*" in *"worktree lock"*) kill -9 "$PPID" ;; esac\nexit $status\n`);
+    createFile(wrapper, 'git', `#!/bin/sh\n"${real}" "$@"\nstatus=$?\ncase "$*" in *"worktree lock"*) kill -9 "$PPID" ;; esac\nexit $status\n`);
     fs.chmodSync(path.join(wrapper, 'git'), 0o755);
 
     const killed = spawnSync('node', [STUB_ENGINE, 'boot'], { cwd: main, encoding: 'utf8', env: { ...process.env, PATH: `${wrapper}:${process.env.PATH}` } });
@@ -101,14 +99,14 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     assert.strictEqual(boot(main).state, 'ready');
     assert.strictEqual(tip(main, STATE_BRANCH), made, 'the state was made once');
-    assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
   });
 
   it('a boot whose branch cannot be checked out writes no trace', () => {
     const main = codeProject();
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
-    write(wrapper, 'git', `#!/bin/sh\ncase "$*" in *"worktree add"*) echo "fatal: refused" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
+    createFile(wrapper, 'git', `#!/bin/sh\ncase "$*" in *"worktree add"*) echo "fatal: refused" >&2; exit 128 ;; esac\nexec "${real}" "$@"\n`);
     fs.chmodSync(path.join(wrapper, 'git'), 0o755);
 
     assert.match(bootRefused(main, { PATH: `${wrapper}:${process.env.PATH}` }), /git worktree failed: fatal: refused/);
@@ -117,7 +115,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(path.join(main, '.claude/settings.json')));
     assert.strictEqual(boot(main).state, 'ready', 'the branch made is checked out at the next boot');
     assert.deepStrictEqual(placed(path.join(main, '.leeway')), IN_PLACE);
-    assert.strictEqual(read(main, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
   });
 
   it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
@@ -131,7 +129,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
   it('keeps the line in the .gitignore of a project nested in a larger one, beside its settings, the state at the repository\'s top ignored by the exclude file', () => {
     const top = initRepo(path.join(world(), 'mono'));
-    write(top, 'app/README.md', '# app\n');
+    createFile(top, 'app/README.md', '# app\n');
     git(top, ['add', '-A']);
     git(top, ['commit', '-q', '-m', 'code']);
     const app = path.join(top, 'app');
@@ -139,13 +137,13 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(boot(app).state, 'ready');
 
     assert.deepStrictEqual(placed(path.join(top, '.leeway')), IN_PLACE);
-    assert.strictEqual(read(app, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(app, '.gitignore'), '.leeway/\n');
     assert.ok(fs.existsSync(path.join(app, '.claude/settings.json')), 'the hooks it sits beside');
     assert.ok(!fs.existsSync(path.join(top, '.gitignore')), 'nothing written outside the project');
     assert.deepStrictEqual(git(top, ['show', '--name-only', '--format=', 'HEAD~1', 'HEAD']).trim().split('\n').filter(Boolean).sort(), ['app/.claude/settings.json', 'app/.gitignore']);
     assert.strictEqual(git(top, ['status', '--porcelain']), '');
     assert.strictEqual(boot(app).state, 'ready');
-    assert.strictEqual(read(app, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(app, '.gitignore'), '.leeway/\n');
   });
 
   it('keeps the state folder in the repository\'s exclude file, once, on every boot — so no branch takes it in', () => {
@@ -153,11 +151,11 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const exclude = path.join(main, '.git/info/exclude');
 
     boot(main);
-    fs.writeFileSync(exclude, read(main, '.git/info/exclude').replace('/.leeway/\n', ''));
+    fs.writeFileSync(exclude, readFile(main, '.git/info/exclude').replace('/.leeway/\n', ''));
     boot(main);
     boot(main);
 
-    assert.strictEqual(read(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
+    assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
   });
 
   it('a code branch cut before setup, checked out in the main checkout, takes nothing of the state in — `git add -A` stages none of it (4.1.2, 4.1.3)', () => {
@@ -181,7 +179,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(path.join(fresh, '.gitignore')), 'the clone\'s branch holds no ignore line');
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
-    write(wrapper, 'git', `#!/bin/sh\n"${real}" "$@"\nstatus=$?\ncase "$*" in *"worktree lock"*) kill -9 "$PPID" ;; esac\nexit $status\n`);
+    createFile(wrapper, 'git', `#!/bin/sh\n"${real}" "$@"\nstatus=$?\ncase "$*" in *"worktree lock"*) kill -9 "$PPID" ;; esac\nexit $status\n`);
     fs.chmodSync(path.join(wrapper, 'git'), 0o755);
 
     const killed = spawnSync('node', [STUB_ENGINE, 'boot'], { cwd: fresh, encoding: 'utf8', env: { ...process.env, PATH: `${wrapper}:${process.env.PATH}` } });
@@ -208,14 +206,14 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
     assert.deepStrictEqual(git(fresh, ['log', '--format=%s', `${before.feature}..feature`]).trim().split('\n'),
       ['chore: install workflow session hooks', 'chore: ignore .leeway/, the workflows state']);
-    assert.strictEqual(read(code, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(code, '.gitignore'), '.leeway/\n');
     assert.ok(!fs.existsSync(path.join(code, '.leeway')));
   });
 
   it('a project on the layout before the state branch stops for the migration: boot writes nothing — and the next boot stops again', () => {
     const main = codeProject();
-    write(main, '.workflows/payments/manifest.json', '{}\n');
-    write(main, '.claude/settings.json', WORKFLOW_HOOKS);
+    createFile(main, '.workflows/payments/manifest.json', '{}\n');
+    createFile(main, '.claude/settings.json', WORKFLOW_HOOKS);
     git(main, ['add', '-A']);
     git(main, ['commit', '-q', '-m', 'the old layout']);
     const before = git(main, ['for-each-ref']);
@@ -232,7 +230,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const { main } = setUp({ remote: bare });
     const other = cloneOf(bare, 'other');
-    write(other, '.workflows/payments/manifest.json', '{}\n');
+    createFile(other, '.workflows/payments/manifest.json', '{}\n');
     git(other, ['add', '-A']);
     git(other, ['commit', '-q', '-m', 'the old layout']);
 

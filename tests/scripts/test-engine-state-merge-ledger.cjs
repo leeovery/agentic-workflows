@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { git, ok, refuses } = require('./engine-harness.cjs');
+const { git, ok, refuses, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
@@ -30,9 +30,8 @@ const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
 const { catchUpState } = require(MERGE);
 
-const {
-  useWorld, write, read, tip, remoteTip, blobId, commitOn, commitUnpushed, twoMachines, entry, ledger, json, mergeLeftovers, withPath, killedAfter,
-} = require('./state-merge-world.cjs');
+const { createFile, readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, blobId, commitOn, commitUnpushed, twoMachines, entry, ledger, json, mergeLeftovers, withPath, killedAfter } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
@@ -89,7 +88,7 @@ describe('the ledger through a catch-up', () => {
     it(`finishes a landing a kill cut short at ${what}, under the writer lock, so nothing the landing wrote reads as this machine's change, and hands on what the landing said`, () => {
       const [a1, b1] = ['Here?', 'There?'].map(askedLine);
       const { here, base } = killedLanding({ here: a1, there: b1 });
-      assert.strictEqual(read(here.root, '.ledger.jsonl'), `${base}${b1}${a1}`, 'the kill left no merged ledger on disk');
+      assert.strictEqual(readFile(here.root, '.ledger.jsonl'), `${base}${b1}${a1}`, 'the kill left no merged ledger on disk');
       assert.strictEqual(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]), `${base}${a1}`, 'the kill left the branch moved');
       /** @type {string[]} */
       const notes = [];
@@ -97,7 +96,7 @@ describe('the ledger through a catch-up', () => {
       act(here.root, notes);
 
       assert.ok(git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`]).startsWith(`${base}${b1}${a1}`));
-      assert.ok(read(here.root, '.ledger.jsonl').startsWith(`${base}${b1}${a1}`));
+      assert.ok(readFile(here.root, '.ledger.jsonl').startsWith(`${base}${b1}${a1}`));
       assert.deepStrictEqual(mergeLeftovers(here.root), []);
       assert.deepStrictEqual(notes, [chartNote()]);
     });
@@ -114,7 +113,7 @@ describe('the ledger through a catch-up', () => {
   ])) {
     it(`hands on what a landing it finished at ${what} said, though the engine then stops on a ledger changed outside it`, () => {
       const { here } = killedLanding(null);
-      write(here.root, '.ledger.jsonl', askedLine('Changed by hand?'));
+      createFile(here.root, '.ledger.jsonl', askedLine('Changed by hand?'));
       /** @type {string[]} */
       const notes = [];
 
@@ -129,7 +128,7 @@ describe('the ledger through a catch-up', () => {
     const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base') });
     commitUnpushed(here, { '.ledger.jsonl': ledger('base', 'a1') });
     commitOn(there, { '.ledger.jsonl': ledger('base', 'b1') });
-    const before = { tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: read(here.root, '.ledger.jsonl') };
+    const before = { tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: readFile(here.root, '.ledger.jsonl') };
     const tampered = JSON.stringify({ v: 1, id: 'tampered', event: 'decided' });
     const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
     const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
@@ -145,7 +144,7 @@ describe('the ledger through a catch-up', () => {
     assert.throws(() => withPath(wrapper, () => catchUpState(here.root)),
       (err) => err instanceof LedgerChanged && JSON.stringify(err.change) === JSON.stringify({ line: 1, found: tampered }) && /— nothing committed$/.test(err.message));
 
-    assert.deepStrictEqual({ tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: read(here.root, '.ledger.jsonl') }, before);
+    assert.deepStrictEqual({ tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: readFile(here.root, '.ledger.jsonl') }, before);
     assert.strictEqual(ledgerChange(here.root), null, 'the disk is not as the branch committed it');
     assert.match(ledgerStopSurface(here.main, {}), /line 1 isn't the line the state branch last committed there\. The line it found:\n>   \{"v":1,"id":"tampered","event":"decided"\}\n/);
   });

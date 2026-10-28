@@ -24,15 +24,14 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate } = require('./gate-audit.cjs');
-const { git, githubOffline } = harness;
+const { git, githubOffline, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { RULESET, githubRepository } = require(path.join(SCRIPTS, 'domain/github-rule.cjs'));
 
-const {
-  useWorld, engine, write, tip, remoteTip, codeProject, cloneOf, boot, setUp,
-} = require('./boot-state-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { useWorld, engine, codeProject, cloneOf, boot, setUp } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -52,7 +51,7 @@ function fakeGithub() {
   fs.mkdirSync(path.dirname(bare), { recursive: true });
   harness.bareRepo(bare);
   const ssh = path.join(world(), 'fake-ssh');
-  write(world(), 'fake-ssh', [
+  createFile(world(), 'fake-ssh', [
     '#!/bin/sh',
     'for last; do :; done',
     'service=${last%% *}',
@@ -73,7 +72,7 @@ function ghStub({ signedOut = false, refuses = false } = {}) {
   const bin = fs.mkdtempSync(path.join(world(), 'gh-'));
   const log = path.join(bin, 'calls');
   const input = path.join(bin, 'input');
-  write(bin, 'gh', [
+  createFile(bin, 'gh', [
     '#!/bin/sh',
     `printf '%s\\n' "$*" >> "${log}"`,
     'case "$1" in',

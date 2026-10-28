@@ -19,14 +19,13 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git } = harness;
+const { git, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
-const {
-  useWorld, STUB_ENGINE, read, tip, remoteTip, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach,
-} = require('./boot-state-world.cjs');
+const { readFile } = require('./discovery-test-utils.cjs');
+const { useWorld, STUB_ENGINE, codeProject, cloneOf, boot, bootRefused, setUp, commitOnState, placed, IN_PLACE, traced, bootsWithNothingToDo, outOfReach } = require('./boot-state-world.cjs');
 
 const world = useWorld();
 
@@ -44,7 +43,7 @@ describe('a fresh clone (4.S11, 22.S2)', () => {
     assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
     assert.strictEqual(tip(fresh, STATE_BRANCH), remoteTip(bare));
     assert.deepStrictEqual(placed(path.join(fresh, '.leeway')), IN_PLACE);
-    assert.strictEqual(read(fresh, '.leeway/manifest.json'), '{"kept":true}\n');
+    assert.strictEqual(readFile(fresh, '.leeway/manifest.json'), '{"kept":true}\n');
     bootsWithNothingToDo(fresh, bare);
   });
 
@@ -104,7 +103,7 @@ function madeOnce(main) {
   return {
     roots: git(main, ['rev-list', '--max-parents=0', STATE_BRANCH]).trim().split('\n').length,
     registrations: fs.readdirSync(path.join(main, '.git/worktrees')),
-    ignore: read(main, '.gitignore'),
+    ignore: readFile(main, '.gitignore'),
     code: git(main, ['log', '--format=%s']).trim().split('\n'),
   };
 }

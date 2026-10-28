@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const { beforeEach, afterEach } = require('node:test');
 
 const { createState, repairStateWorktree } = require('../../skills/workflow-engine/scripts/domain/state-worktree.cjs');
 const { STATE_DIR_NAME } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
@@ -171,6 +172,29 @@ function createManifest(dir, name, data) {
   return manifest;
 }
 
+/**
+ * A temp folder for each test of the calling file, made before it and
+ * removed after it.
+ * @param {string} prefix temp-directory prefix, so a leftover names its suite
+ * @returns {() => string} the running test's folder, symbolic links resolved
+ */
+function useTempFolder(prefix) {
+  /** @type {string} */
+  let folder;
+  beforeEach(() => {
+    folder = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  });
+  afterEach(() => {
+    fs.rmSync(folder, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  });
+  return () => folder;
+}
+
+/** A file's text. @param {string} dir @param {string} relativePath */
+function readFile(dir, relativePath) {
+  return fs.readFileSync(path.join(dir, relativePath), 'utf8');
+}
+
 function createFile(dir, relativePath, content) {
   const full = path.join(dir, relativePath);
   fs.mkdirSync(path.dirname(full), { recursive: true });
@@ -179,6 +203,6 @@ function createFile(dir, relativePath, content) {
 }
 
 module.exports = {
-  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, bareRepo, templateFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
-  createManifest, createFile,
+  STATE_DIR_NAME, TEMPLATE_DATE, datedAt, git, testIdentity, bareRepo, templateFolder, useTempFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
+  createManifest, createFile, readFile,
 };

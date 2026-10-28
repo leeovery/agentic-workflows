@@ -23,9 +23,8 @@ const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 
-const {
-  writeFile, FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, legacyLayout, setupProject, real, runEngine,
-} = require('./boot-world.cjs');
+const { createFile } = require('./discovery-test-utils.cjs');
+const { FLAG, WORKFLOW_HOOKS, OWN_HOOKS, hooked, LABELS_ON, legacyLayout, setupProject, real, runEngine } = require('./boot-world.cjs');
 
 describe('engine boot (real scripts)', () => {
   let root;
@@ -71,8 +70,8 @@ describe('engine boot (real scripts)', () => {
     // The user runs knowledge setup outside the session — simulated here by
     // writing what setup writes: a keyword-only config and a real store file
     // the readiness check loads.
-    writeFile(project, '.leeway/.knowledge/config.json', '{"knowledge":{}}\n');
-    writeFile(project, '.leeway/.knowledge/metadata.json', '{"provider":null}\n');
+    createFile(project, '.leeway/.knowledge/config.json', '{"knowledge":{}}\n');
+    createFile(project, '.leeway/.knowledge/metadata.json', '{"provider":null}\n');
     store.saveStore(store.createStore(), path.join(project, '.leeway/.knowledge/store.bin'));
 
     // …and the restart's boot finds the store ready and leaves the whole
@@ -97,8 +96,8 @@ describe('engine boot (real scripts)', () => {
 
   it('a project carrying the function-hooks flag the workflows wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
     legacyLayout(project);
-    writeFile(project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
-    writeFile(project, '.claude/settings.json', JSON.stringify({ hooks: OWN_HOOKS, env: { [FLAG]: '1' } }, null, 2) + '\n');
+    createFile(project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    createFile(project, '.claude/settings.json', JSON.stringify({ hooks: OWN_HOOKS, env: { [FLAG]: '1' } }, null, 2) + '\n');
     commitAll(project, 'labels on, the flag in the project');
     const before = git(project, ['rev-parse', 'HEAD']).trim();
 
@@ -129,7 +128,7 @@ describe('engine boot verification addenda (real scripts)', () => {
 
   it('carries an executed migration\'s checks in migrations.verify, stripped from the report', () => {
     legacyLayout(project);
-    writeFile(project, '.workflows/payments/discussion/alpha.md',
+    createFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
     const res = runEngine(real, project, ['boot']);
@@ -147,7 +146,7 @@ describe('engine boot verification addenda (real scripts)', () => {
 
   it('hands back 054\'s check and then 071\'s, naming the mailbox, where one boot runs both over a straggler 054 cannot convert', () => {
     legacyLayout(project);
-    writeFile(project, '.workflows/payments/discussion/alpha.md',
+    createFile(project, '.workflows/payments/discussion/alpha.md',
       '# D\n\n## Triage:\n\n### Parked\n*From: x · discussion · d*\n\nBody.\n');
 
     const res = runEngine(real, project, ['boot']);
@@ -171,7 +170,7 @@ describe('engine boot migration notices (real scripts)', () => {
 
   it('tells the person of a plan-mode setting the project had committed, once', () => {
     legacyLayout(project);
-    writeFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
+    createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
     git(project, ['commit', '-q', '-am', 'plan mode on']);
 
     const res = runEngine(real, project, ['boot']);
