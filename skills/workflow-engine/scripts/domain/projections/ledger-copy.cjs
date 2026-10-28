@@ -34,6 +34,17 @@ const { entryKind } = require('../ledger-events.cjs');
 
 /** What the product record's file shows. @typedef {{asked: Asked[], findings: Placed[]}} ProductView */
 
+/**
+ * Text as a body's lines, broken where the chunker breaks them: a line that
+ * would open a heading or a fence — cutting the copy's sections where the
+ * text says, not where its entries do — escaped to read as text, past any
+ * leading space the chunker's own match passes over (kernel/knowledge/chunker.cjs).
+ * @param {string} text
+ */
+function body(text) {
+  return text.replace(/\r\n?/g, '\n').replace(/^([^\S\n]*)(#|```|~~~)/gm, '$1\\$2');
+}
+
 /** Text as one heading's line. @param {string} text */
 function heading(text) {
   return text.replace(/\s+/g, ' ').trim();
@@ -57,20 +68,20 @@ function provenance({ line, from }, made) {
 function decisionBody(placed) {
   const { text, why, rules_out: rulesOut } = placed.line;
   return [
-    text, '', `Why: ${why}`,
-    ...(rulesOut.length === 0 ? [] : ['', 'Rules out:', ...rulesOut.map((/** @type {string} */ ruled) => `- ${ruled}`)]),
+    body(text), '', `Why: ${body(why)}`,
+    ...(rulesOut.length === 0 ? [] : ['', 'Rules out:', ...rulesOut.map((/** @type {string} */ ruled) => `- ${body(ruled)}`)]),
     '', provenance(placed, 'Decided'),
   ];
 }
 
 /** A finding's body: the fact and how it is known. @param {Placed} placed @returns {string[]} */
 function findingBody(placed) {
-  return [placed.line.text, '', `How it is known: ${placed.line.how}`, '', provenance(placed, 'Found')];
+  return [body(placed.line.text), '', `How it is known: ${body(placed.line.how)}`, '', provenance(placed, 'Found')];
 }
 
 /** A question's body, where it stands as an entry of its own. @param {Placed} placed @returns {string[]} */
 function questionBody(placed) {
-  return [placed.line.text, '', provenance(placed, 'Asked')];
+  return [body(placed.line.text), '', provenance(placed, 'Asked')];
 }
 
 /** @type {Record<import('../ledger-events.cjs').EntryKind, (placed: Placed) => string[]>} */

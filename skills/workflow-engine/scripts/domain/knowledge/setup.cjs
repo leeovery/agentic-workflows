@@ -89,20 +89,22 @@ function detectSystemConfig(sysPath) {
 }
 
 /**
- * Which of a project's knowledge files exist.
+ * Which of a project's knowledge files exist: partly set up where some of
+ * the files setup writes are there and not all. The directory alone says
+ * nothing — the ledger's copies live in it whether or not a knowledge base
+ * is set up (4.11.10).
  * @param {KnowledgeFiles} files
  */
 function detectProjectInit(files) {
-  const dirExists = fs.existsSync(files.dir);
   const configExists = fs.existsSync(files.config);
   const storeExists = fs.existsSync(files.store);
   const metadataExists = fs.existsSync(files.metadata);
+  const fullyInitialised = configExists && storeExists && metadataExists;
   return {
-    dirExists,
     configExists,
     storeExists,
-    fullyInitialised: configExists && storeExists && metadataExists,
-    partiallyInitialised: dirExists && !(configExists && storeExists && metadataExists),
+    fullyInitialised,
+    partiallyInitialised: !fullyInitialised && (configExists || storeExists || metadataExists),
   };
 }
 
