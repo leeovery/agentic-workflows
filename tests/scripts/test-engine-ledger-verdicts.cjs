@@ -132,14 +132,17 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     assert.deepStrictEqual(waiting(), [reversed, reversedToo]);
   });
 
-  it('takes a reversal back to Claude\'s lean as the person coming round, the departure it reverses still waiting', () => {
-    const departed = decide('A sheet.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
-    assert.strictEqual(refused(...replacing(departed, 'changed-mind', persons('person-moved-claude'))),
-      'ledger replace: who_moved_whom is person-moved-claude — the person replacing an answer that stood over Claude\'s lean, for a changed mind or a mistake, comes back round to it: claude-moved-person');
+  it('takes the person\'s replacement of their own departure at their word, a return to Claude\'s lean or a third answer still against it, never the lean from the start: the return leaves the departure waiting alone, and a third answer waits beside it', () => {
+    const returned = decide('A sheet.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
+    assert.strictEqual(refused(...replacing(returned, 'changed-mind', persons('none'))),
+      'ledger replace: who_moved_whom is none — the person replacing an answer that stood over Claude\'s lean, for a changed mind or a mistake, comes back round to it or stands over it still: claude-moved-person or person-moved-claude');
+    write(...replacing(returned, 'changed-mind', persons('claude-moved-person')));
+    assert.deepStrictEqual(waiting(), [returned]);
 
-    write(...replacing(departed, 'changed-mind', persons('claude-moved-person')));
+    const departed = decide('A frameless window.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
+    const third = write(...replacing(departed, 'was-wrong', persons('person-moved-claude')));
 
-    assert.deepStrictEqual(waiting(), [departed]);
+    assert.deepStrictEqual(waiting(), [returned, departed, third]);
   });
 
   it('never takes a replacement for a new fact or another topic\'s decision as a departure: new information, not disagreement', () => {

@@ -39,10 +39,11 @@
 //   replacement is on, past each merge that holds (5.6.10); a replacement's
 //   cause is never what it replaces, a new fact's being a finding and
 //   another topic's a decision standing on a topic other than the one the
-//   replaced entry stands on (5.3.8); who moved whom is what the departure rule allows
-//   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
-//   lean on an entry Claude made, and on the person's replacement of a
-//   decision, what its reason and the entry it replaces make it.
+//   replaced entry stands on (5.3.8); who moved whom is what the departure
+//   rule allows (ledger-verdicts.cjs) — never the person's answer standing
+//   over Claude's lean on an entry Claude made, and on the person's
+//   replacement of a decision, what its reason and the entry it replaces
+//   allow.
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
 //   content leaves it out, the replaced entry's product-wide mark (5.2.5); a
