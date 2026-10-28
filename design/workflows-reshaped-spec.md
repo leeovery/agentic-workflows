@@ -1618,7 +1618,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 7.S19 Given a task whose change touches the project's repository and a clone nested inside it, when the task lands, then the change lands in both repos, and the commit door, the project's checks and the review phase read both; given a change to a submodule, its moved pointer is recorded in the repo that holds it. (7.2.17, 7.3.4)
 
-7.S20 Given a task of type fix in unit pay, phase 2, task 3, titled "Round totals", when its pull request opens, then its branch is `fix/pay-2.3-round-totals`, its title "fix(pay): Round totals", and its body names task 2.3; once it is merged, the default branch's commit carries that title. (7.2.18, 12.4.1)
+7.S20 Given a task of type fix in unit pay, phase 2, task 3, titled "Round totals", when its pull request opens, then its branch is `fix/pay-2.3-round-totals`, its title "fix(pay): Round totals", and its body carries the task's id, `pay-2-3`; once it is merged, the default branch's commit carries that title. (7.2.18, 12.4.1)
 
 7.S21 Given no driver setting and a project whose remote is on GitHub, when the first task verb runs, then the project manifest holds Tick as the task driver; when the first `land` verb runs, it holds GitHub's driver as the landing driver; and when the remote then moves off GitHub, the landing driver stays GitHub's. (7.1.4, 22.4.3)
 
