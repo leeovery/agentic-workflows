@@ -11,16 +11,16 @@
 // Lines an earlier write left uncommitted are committed first, so every
 // line the conversion rewrites is in git as it was written — where each is
 // a whole line holding a JSON object with an id no earlier line holds, else
-// nothing is committed or converted. The migration's
-// converter then takes the ledger's events in order, each line read as JSON,
-// and yields the converted copy's. The door's rule refuses unless every
-// event comes through, with the same ids in the same order
-// (ledger-check.cjs), and then nothing is converted. Else the copy replaces
-// the ledger, and a pass left in the state worktree's git dir lets the
-// commit carrying it through the append-only check, that commit alone; the
-// parent commit keeps the original byte for byte. The pass is left before
-// the copy is renamed in, so a kill between leaves the original standing,
-// which the check still passes.
+// nothing is committed or converted. The migration's converter then takes
+// the ledger's events in order, each line read as JSON, and yields the
+// converted copy's. The door's rule refuses unless every event comes
+// through, with the same ids in the same order (ledger-check.cjs), and then
+// nothing is converted. Else the copy replaces the ledger, and a pass left
+// in the state worktree's git dir lets the commit carrying it through the
+// append-only check, that commit alone; the parent commit keeps the
+// original byte for byte. The pass is left before the copy is renamed in,
+// so a kill between leaves the original standing, which the check still
+// passes.
 //
 // The door reads the ledger in whatever shape a migration finds it, never
 // the current schema's: the migrations after it convert it on. It takes no

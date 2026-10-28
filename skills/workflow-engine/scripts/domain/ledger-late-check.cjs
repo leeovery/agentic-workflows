@@ -15,9 +15,9 @@
 //   outside the engine since the check's own read stops it, never committed
 //   with its result (5.4.4) — and a `checked` event naming the decision and
 //   the rules it holds, `one` or `several`, is appended and committed, one
-//   decision at a time, so a check cut short keeps what it found. The event is recorded beside the entry, tagged as
-//   the entry is — its unit, topic, phase and session — and the entry's own
-//   line is never touched (5.4.1).
+//   decision at a time, so a check cut short keeps what it found. The event
+//   is recorded beside the entry, tagged as the entry is — its unit, topic,
+//   phase and session — and the entry's own line is never touched (5.4.1).
 // - A decision the call still cannot judge stays owed, for the next start.
 //   An answer that does not fit is the decision's own, and the check goes
 //   on to the next; any other failure — no login, a rate limit, a timeout,

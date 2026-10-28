@@ -11,9 +11,9 @@
 //   exists only before the spec (4.11.2) and must hold an item in the phase;
 //   from the spec on every entry is the unit's, carrying no topic (5.2.3).
 //   The unit and topic must be live (5.8.17), as a move's destination must,
-//   both before the lock and again under it.
-//   The session is the conversation's own (CLAUDE_CODE_SESSION_ID); a write
-//   without one is refused.
+//   both before the lock and again under it. The session is the
+//   conversation's own (CLAUDE_CODE_SESSION_ID); a write without one is
+//   refused.
 // - What: the content comes as one JSON object on stdin, the links as flags.
 //   Content never carries a link, nor anything the engine gives. A link names
 //   an entry by a prefix of its id, resolved as git resolves a short hash
@@ -36,24 +36,23 @@
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
 //   by any of its wordings, standing or set aside (ledger-fold.cjs), other
-//   than the one it goes into (5.5.4, 5.5.5);
-//   a hold names the latest live replacement on the way to its current
-//   form, past each merge that holds, of an entry the held entry is held
-//   against: one it relies on, or the question an answer answers (5.6.10);
-//   a replacement's cause is never what it replaces, a new fact's being a
-//   finding and another topic's a decision standing on a topic other than
-//   the one the replaced entry stands on (5.3.8); who moved whom
-//   is what the departure rule allows (ledger-verdicts.cjs) — never the
-//   person's answer standing over Claude's lean on an entry Claude made,
-//   and on the person's replacement of a decision carrying no sealed answer
-//   of Claude's, what its reason and the entry it replaces allow.
+//   than the one it goes into (5.5.4, 5.5.5); a hold names the latest live
+//   replacement on the way to its current form, past each merge that holds,
+//   of an entry the held entry is held against: one it relies on, or the
+//   question an answer answers (5.6.10); a replacement's cause is never what
+//   it replaces, a new fact's being a finding and another topic's a decision
+//   standing on a topic other than the one the replaced entry stands on
+//   (5.3.8); who moved whom is what the departure rule allows
+//   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
+//   lean on an entry Claude made, and on the person's replacement of a
+//   decision carrying no sealed answer of Claude's, what its reason and the
+//   entry it replaces allow.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
 //   is held against what it saw as an answer is (ledger-affected.cjs), or
 //   the wording the replaced decision named where every wording is set
-//   aside;
-//   the question a replaced question is part of; and, where the
+//   aside; the question a replaced question is part of; and, where the
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
 //   and who moved whom where the departure rule settles it; a decision's
 //   being unchecked, where the one-decision check could not judge it

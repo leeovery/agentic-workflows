@@ -13,11 +13,11 @@
 // on; the first entry of its chain; its links; every entry linking back to
 // it — the replacements naming it, the merges that took it as a duplicate,
 // the confirmations that it still holds, and on the first entry of a
-// question's chain, the answers to, the parts of (5.3.11), the merges of
-// and the moves of any wording; and where its line sits, so
-// a read shows an entry by reading that one line again. It keeps one thing a
-// read shows that the entry's line never holds: what the late one-decision
-// check last found of a decision that landed unchecked (16.19.8).
+// question's chain, the answers to, the parts of (5.3.11), the merges of and
+// the moves of any wording; and where its line sits, so a read shows an
+// entry by reading that one line again. It keeps one thing a read shows that
+// the entry's line never holds: what the late one-decision check last found
+// of a decision that landed unchecked (16.19.8).
 //
 // Read against liveness, the state answers:
 // - Whether an event is live: the unit and topic it was made on are
@@ -27,7 +27,7 @@
 //   question's wording is made on the topic the last live move its unit
 //   made of the question took it to (5.3.3), or where none is, the topic it
 //   was written on.
-// - A question's line (5.8): the live wordings of its chain, in the
+// - A question's line (5.8.20): the live wordings of its chain, in the
 //   ledger's order, read as one line. A wording set aside drops out of it;
 //   one whose own predecessor is set aside reads as rewording the nearest
 //   live wording before it; of two live rewordings of one wording, the
@@ -360,9 +360,9 @@ function isWording(folded, id) {
 const LINES = new WeakMap();
 
 /**
- * The line of the question `id` is a wording of (5.8): the live wordings of
- * its chain, in the ledger's order — none where every one is set aside.
- * Every read of a question's wordings goes by it.
+ * The line of the question `id` is a wording of (5.8.20): the live
+ * wordings of its chain, in the ledger's order — none where every one is
+ * set aside. Every read of a question's wordings goes by it.
  * @param {Folded} folded @param {string} id
  * @returns {readonly string[]}
  */
@@ -605,9 +605,11 @@ function replacementsDown(folded, holding, id, seen) {
 /**
  * What changed `id`: the live replacements on its way to its current forms,
  * past each merge that holds, a merge changing nothing — a duplicate gives
- * the same answer (5.5.5) — in the ledger's order, the latest last; a
- * question's wording's, the wordings after it on its line. None while it is
- * current.
+ * the same answer (5.5.5) — in the ledger's order, the latest last. A
+ * question's wording's are the wordings on its line after it, or, while it
+ * is set aside, after the nearest live wording it grew from down its own
+ * chain; the whole line where nothing it grew from is live (5.8.20). None
+ * while it is current.
  * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
