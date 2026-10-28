@@ -38,6 +38,10 @@
 // the gate can offer setup without extra probes. A knowledge config setting
 // the load ignores, a failing index or compact, a provider key that does not
 // resolve, and a vector fill that fell short are warnings, never blocks.
+// Before that pass the ledger's copies in the knowledge directory are
+// rendered again, any missing or stale against the ledger written and any no
+// record holds removed (ledger-copies.cjs), so the pass indexes what the
+// ledger says now; a render that fails is a warning too.
 //
 // The migrations run from the code root (kernel/code-root), whichever folder
 // boot was called from, recording into the state's migrations record.
@@ -66,6 +70,7 @@ const { catchUpState } = require('./state-merge.cjs');
 const { keepStateIgnored } = require('./code-trace.cjs');
 const { githubRuleOffered } = require('./github-rule.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
+const { renderLedgerCopies } = require('./ledger-copies.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, commitSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
@@ -150,7 +155,7 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the migrations record's commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the record dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched, the ledger's copies not rendered)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`) for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
@@ -254,6 +259,7 @@ function boot(cwd, { startAgain = false } = {}) {
   if (migrated === null) return { state: 'merge', warnings };
   const { migrations, migrationsCommitted } = migrated;
 
+  renderLedgerCopies(cwd, warnings);
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
 
   // While a reviewed migration commit follows, it takes every path the

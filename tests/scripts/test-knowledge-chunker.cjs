@@ -573,7 +573,9 @@ describe('phase chunking configs', () => {
       assert.strictEqual(cfg.strategy, 'split-on-heading');
       assert.strictEqual(cfg.primary_level, 2);
       assert.strictEqual(cfg.fallback_level, 3);
-      assert.strictEqual(cfg.keep_whole_below, 50);
+      // A record's copy cuts at every heading however short it is, so each
+      // question, finding and entry from elsewhere is a chunk of its own.
+      assert.strictEqual(cfg.keep_whole_below, phase === 'record' ? 0 : 50);
       assert.strictEqual(cfg.strip_frontmatter, true);
       assert.strictEqual(cfg.skip_empty_sections, true);
       assert.strictEqual(typeof cfg.special_sections, 'object');

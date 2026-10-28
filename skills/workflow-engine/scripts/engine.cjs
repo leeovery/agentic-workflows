@@ -29,7 +29,6 @@ const path = require('path');
 const { signpost, box, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render.cjs');
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitPathspecScoped, commitAcrossRepos, commitStagedScoped, commitStateScoped, discoveryScope, OWNED_PATHS } = require('./domain/commit.cjs');
-const { withStateLock } = require('./domain/state-worktree.cjs');
 const { stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused } = require('./kernel/git.cjs');
 const { projectRepos, repoOf, repoPath, repoName, commitGroups, projectDirtyEntries } = require('./kernel/repos.cjs');
 const { recordSubtopicAdd, recordSubtopicState, recordSubtopicStates, SUBTOPIC_STATES } = require('./domain/discussion-map.cjs');
@@ -51,6 +50,7 @@ const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
+const { followingLiveness } = require('./domain/ledger-copies.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -2324,7 +2324,7 @@ function runCli(call, argv) {
   } catch (err) {
     failJson(call, err);
   }
-  return withStateLock(root, () => handler(call, rest));
+  return followingLiveness(call, root, (held) => handler(held, rest));
 }
 
 // The commands Claude Code's own hooks run as any conversation in the project

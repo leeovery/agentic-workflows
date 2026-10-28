@@ -47,7 +47,10 @@ const derivations = require(path.join(ROOT, 'skills/workflow-engine/scripts/doma
 const { roadmapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/roadmap.cjs'));
 const { mapState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/discussion-map.cjs'));
 const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/research-threads.cjs'));
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
+const { KNOWLEDGE_DIR, RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
+const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/store.cjs'));
+const chunker = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs'));
+const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/workflow-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 const { launcher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/call.cjs'));
@@ -487,6 +490,64 @@ function auditLedger(dir, ctx) {
   const product = ledger(['product']);
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
+
+  auditCopies(root, events, shownAt, standing, full, ctx);
+}
+
+// The ledger's copies in the knowledge directory, held to the records: a
+// copy for each place a shown entry stands in — its unit's own level, or a
+// topic — and for no other; each naming every entry shown there and no entry
+// that is not shown, so no replaced answer is in one; the product record's
+// file naming the shown entries marked product-wide alone; no words of an
+// entry that is not shown — a question's wording, an answer's text, its why
+// — in any copy or the product record's file, but where a shown entry says
+// them too; and the store indexing the records' copies, never the product
+// record's file.
+/**
+ * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
+ * @param {(id: string) => {unit: string, topic: string|null}} standing
+ * @param {(short: string) => string} full @param {(msg: string) => string} ctx
+ */
+function auditCopies(root, events, shownAt, standing, full, ctx) {
+  /** @type {Map<string, string[]>} */
+  const expected = new Map();
+  for (const id of shownAt.keys()) {
+    const { unit, topic } = standing(id);
+    const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
+    expected.set(file, [...(expected.get(file) ?? []), id]);
+  }
+  const markdown = (/** @type {string} */ rel) => (fs.existsSync(path.join(root, rel)) ? fs.readdirSync(path.join(root, rel), { withFileTypes: true }) : [])
+    .flatMap((entry) => (entry.isDirectory() ? markdown(`${rel}/${entry.name}`) : entry.name.endsWith('.md') ? [`${rel}/${entry.name}`] : []));
+  const copies = markdown(RECORDS_DIR).sort();
+  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry stands in'));
+  /** @param {string} rel */
+  const named = (rel) => [...fs.readFileSync(path.join(root, rel), 'utf8').matchAll(/Entry (\w+)\.$/gm)].map((m) => full(m[1]));
+  for (const [file, ids] of expected) {
+    const names = named(file);
+    assert.deepStrictEqual(ids.filter((id) => !names.includes(id)), [], ctx(`${file} does not name every entry its record shows`));
+    assert.deepStrictEqual(names.filter((id) => !shownAt.has(id)), [], ctx(`${file} names an entry that is not current`));
+  }
+  const byId = new Map(events.map((e) => [e.id, e]));
+  assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
+    ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
+  /** @param {Record<string, any>} e @returns {string[]} */
+  const words = (e) => [e.text, e.why, e.how, e.rules_out, e.alternatives, e.evidence, e.drops].flat().filter((w) => typeof w === 'string');
+  const shownWords = [...shownAt.keys()].flatMap((id) => words(byId.get(id)));
+  const unshown = events.filter((e) => ['asked', 'found', 'decided', 'replaced'].includes(e.event) && !shownAt.has(e.id))
+    .flatMap((e) => words(e).map((w) => [e.id, w])).filter(([, w]) => !shownWords.some((shown) => shown.includes(w)));
+  for (const file of [...copies, PRODUCT_FILE]) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.deepStrictEqual(unshown.filter(([, w]) => text.includes(w)), [], ctx(`${file} holds the words of an entry that is not shown`));
+  }
+  const storeFile = knowledgeFiles(root).store;
+  const chunks = fs.existsSync(storeFile) ? knowledgeStore.allChunks(knowledgeStore.loadStore(storeFile)).filter((c) => c.phase === 'record') : [];
+  assert.deepStrictEqual([...new Set(chunks.map((c) => c.source_file))].sort(), copies, ctx('the store does not index the record copies alone'));
+  for (const file of copies) {
+    const held = chunks.filter((c) => c.source_file === file).sort((a, b) => a.id.localeCompare(b.id)).map((c) => c.content);
+    const cut = chunker.chunk(fs.readFileSync(path.join(root, file), 'utf8'), RECORD_CHUNKING).map((c) => c.content);
+    assert.deepStrictEqual(held, cut, ctx(`the store's chunks of ${file} are not the copy as it stands`));
+  }
+  assert.deepStrictEqual(chunks.flatMap((c) => unshown.filter(([, w]) => c.content.includes(w))), [], ctx('a chunk in the store holds the words of an entry that is not shown'));
 }
 
 // The skills a menu's route reaches in place: another menu, or help.
@@ -3837,7 +3898,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and the departures waiting on a verdict; a decision the one-decision check could not judge is checked at a later start', (t) => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps, the product record, what a replacement affects, Claude\'s calls since the person last looked and the departures waiting on a verdict, and rendered to the knowledge base\'s copies, the records indexed; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);

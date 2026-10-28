@@ -17,6 +17,10 @@ const cases = require('../prose/lib/cases.cjs');
 describe('prose-test corpus', () => {
   const all = cases.loadAllCases();
 
+  it('holds no cases until the prose tests are rewritten at the end of the build', () => {
+    assert.deepStrictEqual(all.map((c) => c.id), []);
+  });
+
   it('validates cleanly', () => {
     const errors = cases.validateCorpus(all);
     assert.deepStrictEqual(errors, [],

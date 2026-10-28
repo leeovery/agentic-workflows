@@ -16,6 +16,7 @@ This file holds the rules for working on the repo and a map of the system. How t
 - **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, and the knowledge-base code.
 - **`skills/workflow-help/references/glossary.md`** — the canonical vocabulary.
 - **`skills/workflow-gates/README.md`** and **`skills/workflow-gates-rows/README.md`** — the Claude Code mods.
+- **`tests/README.md`** — how a test is written: the layers, the fixture library, assertions, measuring.
 - **`tests/prose/README.md`** — the prose-test harness.
 - **`design/`** — each programme's design record.
 
@@ -144,7 +145,8 @@ Migrations keep existing projects' `.workflows/` in step with the current design
 The gates, run locally before every commit (`docs/contributing.md` lists what each covers): `npm test`, `npm run test:cli`, `npm run test:migrations`, `npm run typecheck`, and for any change under `skills/workflow-gates*/`, `npm run test:mod`.
 
 - **Add or update a test alongside any change** to engine scripts (the knowledge base's among them), adapters, migrations, or the gate mods.
-- **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`; their headers carry the rules.
+- **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`.
+- **How a test is written** — its layer, its fixtures, its assertions, its cost — is `tests/README.md`; read it before writing a suite.
 - **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/workflow-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
 - **Any change to the workflows updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
@@ -154,9 +156,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 `tests/prose/` walks the skill prose end to end (`tests/prose/README.md`).
 
 - Walks cost tokens: run them on command through `/prose-test`, never as part of a routine gate.
-- When an engine change moves a world, regenerate with `node tests/prose/run.cjs snap {case-id}` and land the snapshot diff in the same PR; never hand-edit a snapshot.
-- Every review finding lands twice: the fix, and the case that would have caught it.
-- At the end of a PR that touches skill prose, run `node tests/prose/run.cjs select --diff main` and suggest running the intersecting cases.
+- The corpus is rewritten after the reshape's manual testing, then run as the clean baseline (`tests/README.md` §13). Until then no change adds a case or a snapshot.
 
 ## Skill Authoring
 

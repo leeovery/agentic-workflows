@@ -41,7 +41,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { git, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/workflow-migrate/scripts/migrations/071-triage-queue-to-mailbox.cjs');
 
 let dir, updates, skips;
@@ -99,7 +99,7 @@ function epic() {
 
 describe('migration 071: the triage queue becomes the mailbox', () => {
   beforeEach(() => {
-    dir = setupGitFixture('migration-071-');
+    dir = initRepo(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-071-'))));
     updates = 0;
     skips = 0;
   });
