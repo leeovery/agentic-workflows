@@ -30,14 +30,14 @@
 //   this as it is written (ledger-write.cjs), so the ledger's line says it.
 // - The queue: every departure made in a live place, current or replaced
 //   since — it happened, and its verdict is owed — less those the trust log
-//   holds a verdict on (16.10.9), read through `trustLog.verdicts` alone,
-//   which holds none until the trust log is built (29.4). Each shows
-//   Claude's lean beside it: the sealed answer of the nearest entry down its
-//   chain that holds one, or the answer of the nearest that held the lean,
-//   past the person's own earlier departures.
+//   holds a verdict on (16.10.9), read through `trustLog.verdicts` alone.
+//   Each shows Claude's lean beside it: the sealed answer of the nearest
+//   entry down its chain that holds one, or the answer of the nearest that
+//   held the lean, past the person's own earlier departures.
 // ---------------------------------------------------------------------------
 
 const { factsOf, standingOf, isLive } = require('./ledger-fold.cjs');
+const { judgedDepartures } = require('./trust-log.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
@@ -121,12 +121,11 @@ function isDeparture(folded, id) {
 /**
  * The trust log as the verdict queue reads it: the full ids of the
  * departures it holds a verdict on — nothing, a fix later or a real loss; a
- * skip leaves one waiting (16.10.1). None until the trust log is built
- * (29.4).
+ * skip leaves one waiting (16.10.1).
  */
 const trustLog = {
-  /** @param {string} _root the project's state root @returns {ReadonlySet<string>} */
-  verdicts: (_root) => new Set(),
+  /** @param {string} root the project's state root @returns {ReadonlySet<string>} */
+  verdicts: (root) => judgedDepartures(root),
 };
 
 /**

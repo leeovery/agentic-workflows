@@ -12,7 +12,13 @@
 // project's boot runs over every folder, looking for the transcript by its
 // file name in every project folder of the projects directory the recorded
 // path names — a leading `~` read as the home directory, a relative path as
-// naming none, each projects directory read once.
+// naming none, each projects directory read once; and the model a command's
+// caller runs on, its transcript's last assistant message's, the transcript
+// found by its name in Claude Code's own projects directory, read past the
+// messages Claude Code writes itself — a subagent's where the command runs
+// in the worktree of one still at work, the deepest where worktrees nest,
+// its record's model before its transcript names one; else the
+// conversation's.
 //
 
 require('./hermetic-env.cjs');
@@ -24,7 +30,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { tidyConversations } = require('../../skills/workflow-engine/scripts/domain/conversation.cjs');
+const { tidyConversations, callerModel } = require('../../skills/workflow-engine/scripts/domain/conversation.cjs');
 
 const SKILLS = path.resolve(__dirname, '..', '..', 'skills');
 
@@ -473,5 +479,149 @@ describe('tidyConversations', () => {
     fs.writeFileSync(path.join(conversationsRoot(), 'stray'), '/gone/transcript.jsonl');
     tidyConversations();
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['stray']);
+  });
+});
+
+describe('the conversation\'s model (16.4.4)', () => {
+  /** @type {string} */
+  let claude;
+  /** @type {string|undefined} */
+  let pinnedClaude;
+  beforeEach(() => {
+    claude = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-conversation-claude-'));
+    pinnedClaude = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = claude;
+  });
+  afterEach(() => {
+    process.env.CLAUDE_CONFIG_DIR = pinnedClaude;
+    fs.rmSync(claude, { recursive: true, force: true });
+  });
+
+  /** `id`'s transcript in project folder `key` of Claude Code's projects directory, holding `lines`. @param {string} key @param {string} id @param {string[]} lines */
+  function transcript(key, id, lines) {
+    const file = path.join(claude, 'projects', key, `${id}.jsonl`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, lines.join('\n'));
+  }
+
+  /** A transcript line: the message of `type`, with `message` its own. @param {string} type @param {Record<string, unknown>} [message] */
+  const line = (type, message = {}) => JSON.stringify({ type, message });
+
+  it('is the model the transcript\'s last assistant message names, read from its end past a long tool result and a line still being written — the transcript in whichever project folder holds it', () => {
+    transcript('-Users-me-app', 'other', [line('assistant', { model: 'claude-sonnet-5' }), '']);
+    transcript('-Users-me-app-wt', 'sess-1', [
+      line('assistant', { model: 'claude-haiku-5' }),
+      line('user'),
+      line('assistant', { model: 'claude-opus-5-5', content: 'x'.repeat(100000) }),
+      line('user', { content: 'y'.repeat(200000) }),
+      '{"type":"assistant","message":{"model":"claude-unfinished',
+    ]);
+    assert.strictEqual(callerModel('sess-1', claude), 'claude-opus-5-5');
+  });
+
+  it('reads past the messages Claude Code writes itself, naming the model <synthetic>, to the last real one', () => {
+    transcript('-Users-me-app', 'sess-1', [
+      line('assistant', { model: 'claude-opus-5-5' }),
+      line('user'),
+      line('assistant', { model: '<synthetic>', content: 'No response requested.' }),
+      '',
+    ]);
+    assert.strictEqual(callerModel('sess-1', claude), 'claude-opus-5-5');
+  });
+
+  it('is null where none can be read: no transcript, no projects directory, no assistant message, one naming no model', () => {
+    assert.strictEqual(callerModel('sess-1', claude), null, 'no projects directory');
+    transcript('-Users-me-app', 'other', [line('assistant', { model: 'claude-opus-5-5' }), '']);
+    assert.strictEqual(callerModel('sess-1', claude), null, 'no transcript');
+    transcript('-Users-me-app', 'users', [line('user'), line('system'), '']);
+    assert.strictEqual(callerModel('users', claude), null, 'no assistant message');
+    transcript('-Users-me-app', 'unnamed', [line('assistant', { model: 'claude-opus-5-5' }), line('assistant', { content: 'hi' }), '']);
+    assert.strictEqual(callerModel('unnamed', claude), null, 'the last assistant message names none');
+  });
+
+  /**
+   * A subagent of conversation `sess-1` in project folder `-Users-me-app`:
+   * its transcript holding `lines`, and its record naming `worktree` where
+   * one is given — none at all where the record is null.
+   * @param {string} id @param {string[]} lines @param {Record<string, unknown>|null} record
+   */
+  function subagent(id, lines, record) {
+    const file = path.join(claude, 'projects', '-Users-me-app', 'sess-1', 'subagents', `agent-${id}.jsonl`);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, lines.join('\n'));
+    if (record !== null) fs.writeFileSync(file.replace(/\.jsonl$/, '.meta.json'), JSON.stringify(record));
+  }
+
+  /** A folder of this test's, made: a subagent's worktree. @param {string} rel */
+  function folder(rel) {
+    const at = path.join(claude, rel);
+    fs.mkdirSync(at, { recursive: true });
+    return at;
+  }
+
+  it('a command run in a subagent\'s own worktree — below it, through a link to it, or where its record names it through a link — is that subagent\'s: its model, never the conversation\'s; one run anywhere else, a folder whose name extends it among them, is the conversation\'s or that other subagent\'s', () => {
+    const [a1, a10, a1Old, b] = ['agent-a1', 'agent-a10', 'agent-a1-old', 'agent-b'].map((name) => folder(`worktrees/${name}`));
+    fs.mkdirSync(path.join(a1, 'src'));
+    fs.symlinkSync(a1, path.join(claude, 'into-a1'));
+    fs.symlinkSync(b, path.join(claude, 'into-b'));
+    transcript('-Users-me-app', 'sess-1', [line('assistant', { model: 'claude-opus-5-5' }), '']);
+    subagent('a1', [line('assistant', { model: 'claude-sonnet-5' }), ''], { agentType: 'builder', worktreePath: a1 });
+    subagent('a10', [line('assistant', { model: 'claude-haiku-5' }), ''], { agentType: 'builder', worktreePath: a10 });
+    subagent('b', [line('assistant', { model: 'claude-opus-4' }), ''], { agentType: 'builder', worktreePath: path.join(claude, 'into-b') });
+
+    assert.deepStrictEqual([a1, path.join(a1, 'src'), path.join(claude, 'into-a1'), b, a10, a1Old, claude].map((cwd) => callerModel('sess-1', cwd)),
+      ['claude-sonnet-5', 'claude-sonnet-5', 'claude-sonnet-5', 'claude-opus-4', 'claude-haiku-5', 'claude-opus-5-5', 'claude-opus-5-5']);
+  });
+
+  it('a subagent with no worktree of its own at work — none named, one named relatively, no record of it, or one finished — leaves the command the conversation\'s model', () => {
+    const done = folder('worktrees/done');
+    transcript('-Users-me-app', 'sess-1', [line('assistant', { model: 'claude-opus-5-5' }), '']);
+    subagent('explorer', [line('assistant', { model: 'claude-haiku-5' }), ''], { agentType: 'Explore' });
+    subagent('relative', [line('assistant', { model: 'claude-haiku-5' }), ''], { worktreePath: '.' });
+    subagent('unrecorded', [line('assistant', { model: 'claude-haiku-5' }), ''], null);
+    subagent('finished', [line('assistant', { model: 'claude-haiku-5' }), ''], { worktreePath: done, finished: true });
+
+    assert.deepStrictEqual([claude, process.cwd(), done].map((cwd) => callerModel('sess-1', cwd)), Array(3).fill('claude-opus-5-5'));
+  });
+
+  it('where worktrees nest, a command in the inner one is the inner subagent\'s, whichever subagent lists first', () => {
+    const [outer, inner, top, below] = [folder('outer'), folder('outer/inner'), folder('top'), folder('top/below')];
+    transcript('-Users-me-app', 'sess-1', [line('assistant', { model: 'claude-opus-5-5' }), '']);
+    subagent('a-outer', [line('assistant', { model: 'claude-sonnet-5' }), ''], { worktreePath: outer });
+    subagent('z-inner', [line('assistant', { model: 'claude-haiku-5' }), ''], { worktreePath: inner });
+    subagent('a-below', [line('assistant', { model: 'claude-fable-5' }), ''], { worktreePath: below });
+    subagent('z-top', [line('assistant', { model: 'claude-opus-4' }), ''], { worktreePath: top });
+
+    assert.deepStrictEqual([inner, outer, below, top].map((cwd) => callerModel('sess-1', cwd)), ['claude-haiku-5', 'claude-sonnet-5', 'claude-fable-5', 'claude-opus-4']);
+  });
+
+  it('before a subagent\'s transcript holds an assistant message, its model is the one its record names — none for one that inherits the conversation\'s, or names none; once it holds one, that message\'s', () => {
+    const [named, inherits, unnamed, answered] = [folder('named'), folder('inherits'), folder('unnamed'), folder('answered')];
+    transcript('-Users-me-app', 'sess-1', [line('assistant', { model: 'claude-opus-5-5' }), '']);
+    subagent('named', [line('user'), ''], { worktreePath: named, model: 'sonnet' });
+    subagent('inherits', [line('user'), ''], { worktreePath: inherits, model: 'inherit' });
+    subagent('unnamed', [''], { worktreePath: unnamed });
+    subagent('answered', [line('user'), line('assistant', { model: 'claude-sonnet-5' }), ''], { worktreePath: answered, model: 'sonnet' });
+
+    assert.deepStrictEqual([named, inherits, unnamed, answered].map((cwd) => callerModel('sess-1', cwd)), ['sonnet', null, null, 'claude-sonnet-5']);
+  });
+
+  it('a session id never reaches outside the projects directory — its safe characters alone name the transcript', () => {
+    transcript('-Users-me-app', 'sess-1', [line('assistant', { model: 'claude-opus-5-5' }), '']);
+    assert.strictEqual(callerModel('../sess-1', claude), 'claude-opus-5-5');
+  });
+
+  it('with no CLAUDE_CONFIG_DIR, the projects directory is the home directory\'s `.claude`', () => {
+    const home = process.env.HOME;
+    process.env.HOME = claude;
+    delete process.env.CLAUDE_CONFIG_DIR;
+    try {
+      const file = path.join(claude, '.claude', 'projects', '-Users-me-app', 'sess-1.jsonl');
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, `${line('assistant', { model: 'claude-opus-5-5' })}\n`);
+      assert.strictEqual(callerModel('sess-1', claude), 'claude-opus-5-5');
+    } finally {
+      process.env.HOME = home;
+    }
   });
 });

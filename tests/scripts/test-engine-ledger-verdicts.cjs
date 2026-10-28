@@ -21,13 +21,14 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const { ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { trustLog } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
+const { record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 
 /** The person's answer, and who moved whom on it. @param {string} moved */
@@ -185,18 +186,25 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
     assert.deepStrictEqual(waiting(), [[returned, 'A panel.'], [departed, 'A sheet.']]);
   });
 
-  it('leaves out a departure the trust log holds a verdict on, and one made where it is set aside until it comes back', (t) => {
+  it('leaves out a departure the trust log holds a verdict on, and one made where it is set aside until it comes back', () => {
     const judged = decide('A sheet.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
     const unjudged = decide('A frameless window.', { ...persons('person-moved-claude'), sealed: 'A panel.' });
     assert.deepStrictEqual(waiting(), [[judged, 'A panel.'], [unjudged, 'A panel.']]);
 
-    t.mock.method(trustLog, 'verdicts', () => new Set([full(judged)]));
-    assert.deepStrictEqual(waiting(), [[unjudged, 'A panel.']]);
+    const pinned = process.env.WORKFLOWS_CONFIG_DIR;
+    process.env.WORKFLOWS_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-verdicts-config-'));
+    try {
+      record('verdict', { entry: full(judged), verdict: 'loss', point: 'decided' }, { cwd: dir, warnings: [] });
+      assert.deepStrictEqual(waiting(), [[unjudged, 'A panel.']]);
 
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
-    assert.deepStrictEqual(waiting(), []);
-    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
-    assert.deepStrictEqual(waiting(), [[unjudged, 'A panel.']]);
+      ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+      assert.deepStrictEqual(waiting(), []);
+      ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+      assert.deepStrictEqual(waiting(), [[unjudged, 'A panel.']]);
+    } finally {
+      cleanupFixture(process.env.WORKFLOWS_CONFIG_DIR);
+      process.env.WORKFLOWS_CONFIG_DIR = pinned;
+    }
   });
 
   it('refuses a read naming a place', () => {

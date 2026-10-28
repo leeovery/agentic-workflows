@@ -351,7 +351,7 @@ describe('nothing on disk (4.11.9)', () => {
     ];
 
     assert.ok(answers.every((answer) => answer.length > 0), 'a read answered nothing, so proves nothing');
-    assert.deepStrictEqual(branch, ['.gitignore', '.ledger.jsonl', `${UNIT}/manifest.json`]);
+    assert.deepStrictEqual(branch, ['.gitignore', '.ledger.jsonl', `${UNIT}/manifest.json`, 'manifest.json']);
     assert.deepStrictEqual([tree(), stateGit(dir, ['rev-parse', 'leeway-state'])], [branch, head], 'a read committed');
     assert.deepStrictEqual(files(statePath(dir)), [...onDisk, `.cache/.marks/${UNIT}.json`].sort());
     assert.deepStrictEqual(fs.readdirSync(statePath(dir, UNIT)), ['manifest.json']);

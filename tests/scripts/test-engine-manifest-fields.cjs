@@ -338,6 +338,16 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
     assert.strictEqual(run(dir, ['exists', 'project.defaults.plan_format']).stdout, 'false\n');
   });
 
+  it('refuses set, push, pull and delete on the project\'s project_id, or under it, leaving the manifest as it was: the engine mints it with the state, and it never changes (16.13.5)', () => {
+    const file = path.join(dir, '.leeway', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    for (const args of [['set', 'project.project_id', 'another'], ['set', 'project.project_id.part', 'x'], ['push', 'project.project_id', 'x'], ['pull', 'project.project_id', 'x'], ['delete', 'project.project_id']]) {
+      assert.strictEqual(runFails(dir, args).error, 'project_id is the engine\'s own: it mints it as it creates the state, and it never changes', args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+    assert.strictEqual(runOk(dir, ['get', 'project.project_id']), `${JSON.parse(before).project_id}\n`);
+  });
+
   it('retired CLI commands and unknown sub-verbs refuse with the generic usage', () => {
     for (const verb of ['init', 'init-phase', 'project', 'create-discovery-topic', 'frobnicate']) {
       const err = runFails(dir, [verb]);

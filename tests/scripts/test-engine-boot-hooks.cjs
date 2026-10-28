@@ -155,7 +155,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('labels never asked wants the workflows\' own alone too — stale label hooks come back out', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false, 'the fixture already carries it');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/manifest.json')), 'no choice recorded');
+    assert.ok(!('defaults' in JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'))), 'no choice recorded');
     commitSettings(LABELS_ON);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);

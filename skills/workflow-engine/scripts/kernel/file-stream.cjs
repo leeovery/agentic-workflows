@@ -7,7 +7,8 @@
 // blob, a batch of them — writes it to a file instead. A file is read a
 // chunk at a time: as bytes, as lines, or hashed the way git names a blob,
 // so none is held in memory for its size alone; an open file's lines come
-// with where each sits, so one can be read again alone.
+// with where each sits, so one can be read again alone, and can be read from
+// the end, so the last of a long file's lines are read without the rest.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
@@ -123,17 +124,65 @@ function* fdLines(fd) {
 }
 
 /**
+ * An open file's lines from its end, each without its newline and with
+ * where it sits, read a chunk at a time from the end — so a line near the
+ * end is read without what comes before it. Each read reaches back at
+ * least as far as the line it has not finished, so a long line is read in
+ * time linear in its length.
+ * @param {number} fd @returns {Generator<{text: string, span: LineSpan}>}
+ */
+function* fdLinesBackward(fd) {
+  let position = fs.fstatSync(fd).size;
+  /** The bytes from `position` on not yet yielded, no line's start found among them but at their first. */
+  let rest = Buffer.alloc(0);
+  while (rest.length > 0 || position > 0) {
+    const eol = rest.length > 1 ? rest.lastIndexOf(0x0a, rest.length - 2) : -1;
+    if (eol === -1 && position > 0) {
+      const bytes = Math.min(Math.max(CHUNK_BYTES, rest.length), position);
+      position -= bytes;
+      rest = Buffer.concat([bytesAt(fd, position, bytes), rest]);
+      continue;
+    }
+    const line = rest.subarray(eol + 1);
+    yield { text: lineText(line), span: { offset: position + eol + 1, bytes: line.length } };
+    rest = rest.subarray(0, eol + 1);
+  }
+}
+
+/**
+ * A file's lines from its end, each without its newline, read a chunk at a
+ * time from the end.
+ * @param {string} file @returns {Generator<string>}
+ */
+function* fileLinesBackward(file) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    for (const { text } of fdLinesBackward(fd)) yield text;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/**
  * The line of an open file that sits at `span`, without its newline.
  * @param {number} fd @param {LineSpan} span @returns {string}
  */
 function lineAt(fd, { offset, bytes }) {
-  const line = Buffer.alloc(bytes);
-  for (let read = 0; read < bytes;) {
-    const got = fs.readSync(fd, line, read, bytes - read, offset + read);
+  return lineText(bytesAt(fd, offset, bytes));
+}
+
+/**
+ * The `bytes` bytes of an open file at `offset`.
+ * @param {number} fd @param {number} offset @param {number} bytes @returns {Buffer}
+ */
+function bytesAt(fd, offset, bytes) {
+  const read = Buffer.alloc(bytes);
+  for (let at = 0; at < bytes;) {
+    const got = fs.readSync(fd, read, at, bytes - at, offset + at);
     if (got === 0) throw new Error(`the file ends before the ${bytes} bytes at ${offset}`);
-    read += got;
+    at += got;
   }
-  return lineText(line);
+  return read;
 }
 
 /** Whether a file is empty or ends with a newline. @param {string} file */
@@ -174,4 +223,6 @@ function blobIds(file, lengths, objectFormat) {
   return hashes.map((hash, i) => (read >= lengths[i] ? hash.digest('hex') : null));
 }
 
-module.exports = { runToFile, blobToFile, fileLineBytes, fileLines, fdLines, lineAt, endsWithNewline, blobIds };
+module.exports = {
+  runToFile, blobToFile, fileLineBytes, fileLines, fdLines, fdLinesBackward, fileLinesBackward, lineAt, endsWithNewline, blobIds,
+};

@@ -3,8 +3,9 @@
 // ---------------------------------------------------------------------------
 // Lost state (workflow-engine/scripts/domain/state-checks.cjs,
 // domain/boot.cjs, domain/code-trace.cjs): the workflows' trace in the code
-// read across the repository, the stop with nothing written, its screen,
-// and the fresh start on yes (`boot --start-again`).
+// read across the repository, the stop with nothing written — the trust
+// log's waiting events landed all the same — its screen, and the fresh
+// start on yes (`boot --start-again`).
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -26,6 +27,8 @@ const { git, initRepo, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { trustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
+const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 
 const { useWorld, LAYOUT_GROUP, WORKFLOW_HOOKS, engine, codeProject, cloneOf, boot, bootRefused, setUp, placed, IN_PLACE, untouched } = require('./boot-state-world.cjs');
 
@@ -86,6 +89,20 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
 
     assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
     assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+  });
+
+  it('a boot that stops at the lost state still lands the trust log\'s events a conversation kept waiting: every boot does (16.13.3, 16.S74)', () => {
+    const main = lostProject();
+    const config = path.join(world(), 'config');
+    const session = '6f1c2b9a-0d4e-4a7b-9c3e-2f5a8b7d1e40';
+    const header = { id: newId(), at: '2026-10-28T10:00:00Z', project: null, project_name: null, model: null, session };
+    const waiting = `${JSON.stringify(trustEvent('call', header, { entry: newId(), kind: null, label: null, sort: null }))}\n`;
+    createFile(path.join(config, 'conversations', session), 'trust-pending.jsonl', waiting);
+
+    assert.deepStrictEqual(boot(main, { WORKFLOWS_CONFIG_DIR: config }), { ok: true, state: 'lost', warnings: [] });
+
+    assert.strictEqual(fs.readFileSync(path.join(config, 'trust.jsonl'), 'utf8'), waiting);
+    assert.ok(!fs.existsSync(path.join(config, 'conversations', session, 'trust-pending.jsonl')));
   });
 
   it('a line naming the state in the .gitignore is the trace too', () => {

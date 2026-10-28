@@ -578,9 +578,10 @@ describe('engine session label-config', () => {
   it('records the opt-in on the project manifest, installs the session hooks, and commits each where it lives, confined', () => {
     fs.writeFileSync(path.join(dir, 'peer-dirt.txt'), 'a peer session\'s file\n');
     fs.writeFileSync(path.join(dir, '.leeway', 'peer-dirt.txt'), 'a peer session\'s state\n');
+    const before = projectManifest();
     const res = engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } }, 'a missing manifest is created around the choice');
+    assert.deepStrictEqual(projectManifest(), { ...before, defaults: { tmux_labels: true } });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
     assert.match(git(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the code commit takes its own path and nothing else');
@@ -651,7 +652,7 @@ describe('engine session label-config', () => {
     assert.strictEqual(res.tmux_labels, true);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^commit failed, and the next boot tries again: /);
-    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'nothing landed in the code tree');
     assert.match(git(['status', '--porcelain']), /\.claude\//, 'the settings wait, uncommitted');
@@ -663,7 +664,7 @@ describe('engine session label-config', () => {
     const res = engine(['session', 'label-config', 'true']);
     assert.strictEqual(res.tmux_labels, true);
     assert.deepStrictEqual(res.warnings, ['session hooks not written: a rebase is in progress in the code tree — the next boot writes them']);
-    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write inside the rebase');
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });
@@ -671,7 +672,7 @@ describe('engine session label-config', () => {
   it('WORKFLOWS_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
     const res = engine(['session', 'label-config', 'true'], { extraEnv: { WORKFLOWS_HOLD_PROJECT_SETTINGS: '1' } });
     assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    assert.deepStrictEqual(projectManifest(), { defaults: { tmux_labels: true } });
+    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
     assert.deepStrictEqual(head(git), { subject: 'ignore the state', files: ['.gitignore'] }, 'no settings commit');

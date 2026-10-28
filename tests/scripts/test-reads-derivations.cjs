@@ -165,6 +165,7 @@ describe('reads + derivations', () => {
     });
 
     it('returns null when missing', () => {
+      fs.rmSync(path.join(dir, '.leeway', 'manifest.json'));
       assert.strictEqual(loadProjectManifest(dir), null);
     });
   });

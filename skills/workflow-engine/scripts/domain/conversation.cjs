@@ -26,6 +26,12 @@
 //                  executor (position.cjs) — what the tmux label's resume
 //                  re-applies, the gate mod's spinner says, and `conversation
 //                  position` names files for
+//   trust-pending.jsonl
+//                  the trust log's events the conversation could not append,
+//                  waiting for its next record to append them first
+//                  (trust-log.cjs) — the one writer that makes the folder
+//                  unmarked, so an event before the project has state waits
+//                  too
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press, or a handoff's
 //                  continuation with its line (the mod's own)
@@ -45,7 +51,25 @@
 // transcript is looked for by its file name in every project folder there. A
 // folder whose conversation ended without the hook names no transcript and
 // stays, as does one naming a relative path (a leading `~` is the home
-// directory) or a projects directory that cannot be read.
+// directory) or a projects directory that cannot be read, and one still
+// holding trust events boot could not append (trust-log.cjs).
+//
+// While the conversation runs, its transcript is found the same way, by its
+// file name in every project folder of the projects directory Claude Code
+// keeps in its config directory (`CLAUDE_CONFIG_DIR`, else `~/.claude`); a
+// transcript's last assistant message names the model it runs on, which the
+// trust log keys its evidence by (16.4.4) — read past the messages Claude
+// Code writes itself, which name the model `<synthetic>`. A subagent's
+// commands carry the conversation's session id and nothing naming the
+// subagent, so the model of a command's caller is told by where the command
+// runs: in the worktree of one of the conversation's subagents still at
+// work — its record beside its own transcript,
+// `{session-id}/subagents/agent-{id}.meta.json`, names it, and marks it
+// `finished` once it is done, a mark a resumed subagent's record drops — it
+// is that subagent's, the deepest where worktrees nest; and, before its
+// transcript holds an assistant message, the model its record names, if
+// any. Anywhere else it is the conversation's: every subagent that records
+// runs in a worktree of its own (29.14).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -53,8 +77,12 @@ const os = require('os');
 const path = require('path');
 const { systemConfigDir } = require('../kernel/system-config.cjs');
 const { findStateRoot } = require('../kernel/state-root.cjs');
+const { fileLinesBackward } = require('../kernel/file-stream.cjs');
+const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
 
 const MARKER = 'workflow';
+// The model Claude Code names on the messages it writes itself.
+const SYNTHETIC = '<synthetic>';
 const TRANSCRIPT = 'transcript';
 
 function conversationsRoot() {
@@ -67,7 +95,12 @@ function conversationsRoot() {
  * @param {string} sessionId
  */
 function conversationDir(sessionId) {
-  return path.join(conversationsRoot(), sessionId.replace(/[^A-Za-z0-9_-]/g, ''));
+  return path.join(conversationsRoot(), safeId(sessionId));
+}
+
+/** A session id's safe characters alone. @param {string} sessionId */
+function safeId(sessionId) {
+  return sessionId.replace(/[^A-Za-z0-9_-]/g, '');
 }
 
 /**
@@ -91,8 +124,9 @@ function markConversation(cwd) {
 
 /**
  * Whether the engine has marked the conversation `sessionId` as one that
- * runs the workflows — what every other writer of the folder waits on, so a
- * conversation the engine never marked gets no folder from them.
+ * runs the workflows — what every other writer of the folder but the trust
+ * log's waits on, so a conversation the engine never marked gets no folder
+ * from them.
  * @param {string} sessionId
  */
 function isMarked(sessionId) {
@@ -149,12 +183,132 @@ function transcriptNames(projects) {
   } catch { return null; }
 }
 
+/** The projects directory Claude Code keeps in its config directory. */
+function claudeProjectsDir() {
+  return path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'projects');
+}
+
+/**
+ * The running conversation's transcript: the file named by its session id
+ * in a project folder of the projects directory Claude Code keeps — null
+ * where none holds it, or the directory cannot be read.
+ * @param {string} sessionId @returns {string|null}
+ */
+function runningTranscript(sessionId) {
+  const projects = claudeProjectsDir();
+  const name = `${safeId(sessionId)}.jsonl`;
+  try {
+    for (const key of fs.readdirSync(projects, { withFileTypes: true })) {
+      const file = path.join(projects, key.name, name);
+      if (key.isDirectory() && fs.existsSync(file)) return file;
+    }
+  } catch { /* none can be found */ }
+  return null;
+}
+
+/**
+ * The model of a transcript line's assistant message: null where it names
+ * none, undefined where the line is no assistant message, or one Claude Code
+ * wrote itself.
+ * @param {string} line @returns {string|null|undefined}
+ */
+function assistantModel(line) {
+  let entry;
+  try {
+    entry = JSON.parse(line);
+  } catch {
+    return undefined;
+  }
+  if (entry === null || typeof entry !== 'object' || entry.type !== 'assistant') return undefined;
+  const model = entry.message?.model;
+  if (model === SYNTHETIC) return undefined;
+  return typeof model === 'string' && model !== '' ? model : null;
+}
+
+/**
+ * The model a transcript's last assistant message names, read from its end:
+ * null where it cannot be read, or names none.
+ * @param {string} transcript @returns {string|null}
+ */
+function lastModel(transcript) {
+  try {
+    for (const line of fileLinesBackward(transcript)) {
+      const model = assistantModel(line);
+      if (model !== undefined) return model;
+    }
+  } catch { /* unread, it names none */ }
+  return null;
+}
+
+/** @typedef {{transcript: string, worktree: string, model: string|null}} Subagent */
+
+/**
+ * A subagent still at work in a worktree of its own, from its record: the
+ * worktree, absolute and resolved, and the model it names — a model's own
+ * name, never `inherit`; null where it is done, names no worktree of its
+ * own, or cannot be read.
+ * @param {string} transcript the subagent's @returns {Subagent|null}
+ */
+function workingSubagent(transcript) {
+  let record;
+  try {
+    record = JSON.parse(fs.readFileSync(transcript.replace(/\.jsonl$/, '.meta.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+  if (record === null || typeof record !== 'object' || record.finished === true) return null;
+  const { worktreePath, model } = record;
+  if (typeof worktreePath !== 'string' || !path.isAbsolute(worktreePath)) return null;
+  return { transcript, worktree: realpathOrSelf(worktreePath), model: typeof model === 'string' && model !== '' && model !== 'inherit' ? model : null };
+}
+
+/**
+ * The running conversation's subagent at work in the worktree that holds
+ * `cwd`, the deepest where worktrees nest, from the folder beside the
+ * conversation's transcript; null where none does.
+ * @param {string} transcript @param {string} cwd @returns {Subagent|null}
+ */
+function subagentAt(transcript, cwd) {
+  const dir = path.join(transcript.slice(0, -path.extname(transcript).length), 'subagents');
+  let names;
+  try {
+    names = fs.readdirSync(dir).filter((name) => name.endsWith('.jsonl'));
+  } catch {
+    return null;
+  }
+  const here = realpathOrSelf(cwd);
+  /** @type {Subagent|null} */
+  let deepest = null;
+  for (const name of names) {
+    const subagent = workingSubagent(path.join(dir, name));
+    if (subagent === null || !within(here, subagent.worktree)) continue;
+    if (deepest === null || subagent.worktree.length > deepest.worktree.length) deepest = subagent;
+  }
+  return deepest;
+}
+
+/**
+ * The model the command calling from `cwd` in the conversation `sessionId`
+ * runs on: the subagent's at work in the worktree that holds `cwd` — its
+ * record's before its transcript names one — else the conversation's. Null
+ * where a transcript cannot be found or read, or names none.
+ * @param {string} sessionId @param {string} cwd @returns {string|null}
+ */
+function callerModel(sessionId, cwd) {
+  const transcript = runningTranscript(sessionId);
+  if (transcript === null) return null;
+  const subagent = subagentAt(transcript, cwd);
+  return subagent === null ? lastModel(transcript) : lastModel(subagent.transcript) ?? subagent.model;
+}
+
 /**
  * Boot's tidy-up: delete every folder whose transcript no project folder
  * holds, reading each projects directory once. A folder naming none stays,
- * and one that cannot be deleted waits for the next boot.
+ * as does one `keeps` holds on to — boot's, one a trust log event still
+ * waits in — and one that cannot be deleted waits for the next boot.
+ * @param {(dir: string) => boolean} [keeps]
  */
-function tidyConversations() {
+function tidyConversations(keeps = () => false) {
   const root = conversationsRoot();
   /** @type {string[]} */
   let folders = [];
@@ -171,9 +325,9 @@ function tidyConversations() {
     if (!projects) continue;
     if (!held.has(projects)) held.set(projects, transcriptNames(projects));
     const names = held.get(projects);
-    if (!names || names.has(path.basename(recorded))) continue;
+    if (!names || names.has(path.basename(recorded)) || keeps(dir)) continue;
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the next boot tries again */ }
   }
 }
 
-module.exports = { conversationDir, isMarked, markConversation, endConversation, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, isMarked, markConversation, endConversation, claudeProjectsDir, callerModel, tidyConversations };

@@ -48,9 +48,12 @@
 // boot was called from, recording into the state's migrations record.
 //
 // Boot is also where the conversation folders are tidied, whichever project
-// the conversations ran in: one goes once its transcript is gone. The start
-// menu is no position, so the calling conversation's own goes first, before
-// the migrations — a boot that fails leaves none.
+// the conversations ran in: one goes once its transcript is gone, and no
+// trust log event waits in it. Every boot appends the events any
+// conversation keeps waiting, first of all, so one that stops at the lost
+// state or the merge does too (trust-log.cjs): they need no project state.
+// The start menu is no position, so the calling conversation's own goes
+// first, before the migrations — a boot that fails leaves none.
 //
 // Where a decision landed unchecked and no late check has judged it, boot
 // launches the late one-decision check, detached, as it hands vectors to the
@@ -76,6 +79,7 @@ const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/set
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, commitSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
 const { tidyConversations } = require('./conversation.cjs');
+const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { dropPosition } = require('./position.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
@@ -157,7 +161,7 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the migrations record's commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the record dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched, the ledger's copies not rendered)
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched, the ledger's copies not rendered, the trust log's waiting events not appended)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`) for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
@@ -247,10 +251,13 @@ function trimReport(stdout) {
  */
 function boot(cwd, { startAgain = false } = {}) {
   dropPosition(process.env.CLAUDE_CODE_SESSION_ID);
+  /** @type {string[]} */
+  const warnings = [];
+  appendWaiting(warnings);
   const placed = placeState(cwd, { startAgain });
-  if ('stop' in placed) return { state: placed.stop, warnings: placed.warnings };
+  warnings.push(...placed.warnings);
+  if ('stop' in placed) return { state: placed.stop, warnings };
   const root = stateRoot(cwd);
-  const warnings = [...placed.warnings];
   const migrated = withStateLock(root, () => {
     commitLedgerTail(root, warnings);
     const caught = catchUpState(root, { listing: placed.listing });
@@ -271,7 +278,7 @@ function boot(cwd, { startAgain = false } = {}) {
   // edit past the review under boot's message.
   const commitOwn = !migrations.changed;
   const sessionHooksInstalled = installSessionHooks(cwd, commitOwn, warnings);
-  tidyConversations();
+  tidyConversations(holdsWaiting);
   launchLateCheck(root, warnings);
 
   const baseline = baselineState(cwd).status;

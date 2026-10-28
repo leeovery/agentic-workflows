@@ -109,7 +109,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.workflows/.roadmap/` — roadmap sessions, imports, and notes
 - `.workflows/.baseline/{area}.md` — the brownfield assessment
 - `.workflows/.knowledge/` — the checkout-local knowledge store and config, gitignored
-- `~/.config/workflows/` (or `WORKFLOWS_CONFIG_DIR`) — system config, credentials, and `conversations/{session-id}/`, per-conversation state
+- `~/.config/workflows/` (or `WORKFLOWS_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, and `conversations/{session-id}/`, per-conversation state
 
 ### State
 
