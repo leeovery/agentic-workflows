@@ -29,14 +29,20 @@ const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cj
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { followingLiveness } = require(path.join(SCRIPTS, 'domain/ledger-copies.cjs'));
 const { readWorkUnitManifest, writeWorkUnitManifestAtomic } = manifestIo;
-const { ExitSignal } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
+const { ExitSignal, launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 
 const dir = useCopiesWorld();
 
 const { write, ask, decide, copy, indexedText, floatingPanel } = copiesHelpers(dir);
 
+/** `engine boot`, launching nothing: a late check it launches would outlive the test. @param {import('node:test').TestContext} t */
+function boot(t) {
+  t.mock.method(launcher, 'launch', () => {});
+  ok(dir(), ['boot']);
+}
+
 describe('boot (22.6.14, 22.6.15)', () => {
-  it('renders each copy that is missing or stale against the ledger, removes one no record holds, and indexes them (22.S19)', () => {
+  it('renders each copy that is missing or stale against the ledger, removes one no record holds, and indexes them (22.S19)', (t) => {
     floatingPanel();
     decide(SPACE, ask(SPACE, 'Does a note open on the active Space?'), 'Yes.');
     fs.rmSync(statePath(dir(), NOTE_COPY));
@@ -44,7 +50,7 @@ describe('boot (22.6.14, 22.6.15)', () => {
     fs.writeFileSync(statePath(dir(), '.knowledge/records/fumi/gone.md'), '# gone\n');
     fs.rmSync(statePath(dir(), '.knowledge/product.md'));
 
-    ok(dir(), ['boot']);
+    boot(t);
 
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
     assert.match(/** @type {string} */ (copy(SPACE_COPY)), /^## Does a note open on the active Space\?\n\nAsked by Claude\. Entry \w+\.\n\nYes\./m);
@@ -53,7 +59,7 @@ describe('boot (22.6.14, 22.6.15)', () => {
     assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY, SPACE_COPY]);
   });
 
-  it('makes good an index that failed after an entry changed: the entry stands, the write warns, and the next start indexes the record into the store it failed on (22.S36)', () => {
+  it('makes good an index that failed after an entry changed: the entry stands, the write warns, and the next start indexes the record into the store it failed on (22.S36)', (t) => {
     const question = ask(NOTE, 'Is a note a window?');
     const { store: storeFile } = knowledgeFiles(statePath(dir()));
     const working = fs.readFileSync(storeFile);
@@ -67,11 +73,11 @@ describe('boot (22.6.14, 22.6.15)', () => {
 
     fs.writeFileSync(storeFile, working);
     assert.ok(!indexedText().includes('A floating panel.'), 'the store held the decision before the start');
-    ok(dir(), ['boot']);
+    boot(t);
     assert.ok(indexedText().includes('A floating panel.'), 'the start did not index the record the write failed to');
   });
 
-  it('makes good a render that failed after an entry changed: the entry stands, the write warns, and the next start renders and indexes the record (22.S36)', () => {
+  it('makes good a render that failed after an entry changed: the entry stands, the write warns, and the next start renders and indexes the record (22.S36)', (t) => {
     fs.writeFileSync(statePath(dir(), '.knowledge/records'), 'in the way\n');
     const asked = write('ask', NOTE, [], { ...MADE, text: 'Is a note a window?' });
 
@@ -82,7 +88,7 @@ describe('boot (22.6.14, 22.6.15)', () => {
     assert.match(reactivated.warnings.join('\n'), /^knowledge record render failed: /m, 'a lifecycle change does not carry the render\'s failure');
 
     fs.rmSync(statePath(dir(), '.knowledge/records'));
-    ok(dir(), ['boot']);
+    boot(t);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^## Is a note a window\?$/m);
     assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
   });

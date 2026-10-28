@@ -173,22 +173,6 @@ function* entriesAt(root, fd) {
 }
 
 /**
- * The ledger's entries in order, checked first, each line read as an event
- * of the shape its version names. Refuses a line that is not one.
- * @param {string} root @param {string[]} notes what a landing the check finished said, pushed to
- * @returns {Generator<Record<string, unknown>>}
- */
-function* readLedger(root, notes) {
-  const fd = openChecked(root, notes);
-  if (fd === null) return;
-  try {
-    for (const { event } of entriesAt(root, fd)) yield event;
-  } finally {
-    fs.closeSync(fd);
-  }
-}
-
-/**
  * The ledger as `withLedger` hands it over: its entries in order, each with
  * where its line sits, and the entry at any place read again.
  * @typedef {{
@@ -318,4 +302,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, ledgerChange, checkLedger, commitUncommitted, readLedger, withLedger, appendEntry, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, commitUncommitted, withLedger, appendEntry, carrying, ledgerStopSurface };

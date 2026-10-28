@@ -21,12 +21,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { git, ok, refuses, tip, remoteTip } = require('./engine-harness.cjs');
+const { git, ok, refuses, tip, remoteTip, ledgerEntries } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, withStateLock } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const { readLedger, appendEntry, ledgerChange, ledgerStopSurface, commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { checkLedger, appendEntry, ledgerStopSurface, commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
@@ -73,7 +73,7 @@ describe('the ledger through a catch-up', () => {
   }
 
   for (const [what, act] of /** @type {[string, (root: string, notes: string[]) => unknown][]} */ ([
-    ['a read', (root, notes) => [...readLedger(root, notes)]],
+    ['a read', (root, notes) => ledgerEntries(root, notes)],
     ['an append', (root, notes) => appendEntry(root, { ...ASKED, text: 'Asked after the kill?' }, notes)],
     ['a ledger write, among its warnings', (root, notes) => notes.push(...ok(path.dirname(root), ['ledger', 'ask', 'fumi.discussion.a'], { env: SESSION, stdin: ASKING }).warnings)],
     ['a ledger write the fold under the lock then refuses, among its refusal\'s warnings', (root, notes) => {
@@ -105,7 +105,7 @@ describe('the ledger through a catch-up', () => {
   }
 
   for (const [what, act] of /** @type {[string, (root: string, notes: string[]) => void][]} */ ([
-    ['a read', (root, notes) => assert.throws(() => [...readLedger(root, notes)], LedgerChanged)],
+    ['a read', (root, notes) => assert.throws(() => ledgerEntries(root, notes), LedgerChanged)],
     ['an append', (root, notes) => assert.throws(() => appendEntry(root, { ...ASKED, text: 'Asked after the kill?' }, notes), LedgerChanged)],
     ['a ledger write, in its refusal\'s warnings', (root, notes) => {
       const res = refuses(path.dirname(root), ['ledger', 'ask', 'fumi.discussion.a'], { env: SESSION, stdin: ASKING });
@@ -161,7 +161,7 @@ describe('the ledger through a catch-up', () => {
       (err) => err instanceof LedgerChanged && JSON.stringify(err.change) === JSON.stringify({ line: 1, found: tampered }) && /— nothing committed$/.test(err.message));
 
     assert.deepStrictEqual({ tip: tip(here.main, STATE_BRANCH), remote: remoteTip(bare), disk: readFile(here.root, '.ledger.jsonl') }, before);
-    assert.strictEqual(ledgerChange(here.root), null, 'the disk is not as the branch committed it');
+    checkLedger(here.root, []);
     assert.match(ledgerStopSurface(here.main, {}), /line 1 isn't the line the state branch last committed there\. The line it found:\n>   \{"v":1,"id":"tampered","event":"decided"\}\n/);
   });
 });

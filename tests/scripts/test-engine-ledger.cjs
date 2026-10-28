@@ -35,14 +35,14 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, testIdentity, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, bareRepo, remoteTip } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, lockAttempts, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, ledgerEntries, bareRepo, remoteTip } = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
 const CONVERSION_MODULE = path.join(SCRIPTS, 'domain/ledger-conversion.cjs');
-const { ledgerChange, checkLedger, commitUncommitted, readLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
+const { checkLedger, commitUncommitted, withLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
 const { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { ID_LENGTH, SHORT_MIN, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged, checkLedgerCommit, keptStop } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
@@ -135,10 +135,14 @@ function gitDirOf(root) {
   return git(root, ['rev-parse', '--absolute-git-dir']).trim();
 }
 
-/** What the check found, the engine's stop it throws beside it, kept as found. @param {string} root */
+/** The line the check found not as committed, the stop thrown and kept as found. @param {string} root */
 function stopped(root) {
-  const change = ledgerChange(root);
-  assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged && err.payload.stop === 'ledger' && /changed outside the engine/.test(err.message));
+  /** @type {any} */
+  let change = null;
+  assert.throws(() => checkLedger(root, []), (err) => {
+    change = err instanceof LedgerChanged ? err.change : null;
+    return change !== null && err.payload.stop === 'ledger' && /changed outside the engine/.test(err.message);
+  });
   assert.deepStrictEqual(keptStop(gitDirOf(root)), { stop: 'changed', ...change });
   return change;
 }
@@ -160,33 +164,13 @@ function traced(fn) {
   }
 }
 
-/** The lock file written as held by this live process — a peer holding the writer lock, to any other process. @param {string} root */
+/** The lock file written as held by this live process — a peer holding the writer lock, to any caller. @param {string} root */
 function holdLock(root) {
   const lock = path.join(root, '.lock');
   fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
   return lock;
 }
 
-/** A child running `call` on the ledger module, given `root`. @param {string} root @param {string} call @param {Record<string, string>} [env] */
-function ledgerChild(root, call, env = {}) {
-  return spawn('node', ['-e', `const ledger = require(process.argv[1]); const root = process.argv[2]; ${call};`, LEDGER_MODULE, root], {
-    env: { ...process.env, ...env },
-  });
-}
-
-/** A child's exit and what it wrote. @param {import('child_process').ChildProcess} child */
-function settled(child) {
-  let stdout = '';
-  let stderr = '';
-  child.stdout?.on('data', (chunk) => { stdout += chunk; });
-  child.stderr?.on('data', (chunk) => { stderr += chunk; });
-  return new Promise((resolve) => child.on('close', (code) => resolve({ code, stdout, stderr })));
-}
-
-/** Whether `child` is still running after `ms`. @param {Promise<unknown>} exit @param {number} ms */
-async function stillRunning(exit, ms) {
-  return (await Promise.race([exit.then(() => false), new Promise((resolve) => setTimeout(() => resolve(true), ms))]));
-}
 
 describe('the events and their schemas', () => {
   const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
@@ -316,13 +300,13 @@ describe('ids', () => {
 describe('the streamed reader', () => {
   it('reads every entry in order, each line read as an event of the current shape; no ledger reads as none', () => {
     const { root } = project();
-    assert.deepStrictEqual([...readLedger(root, [])], []);
+    assert.deepStrictEqual(ledgerEntries(root), []);
     const written = [appendEntry(root, question(), [])];
     written.push(appendEntry(root, decision(/** @type {string} */ (written[0].id)), []));
     commitLedger(root);
     written.push(appendEntry(root, decision(/** @type {string} */ (written[0].id), { text: 'Appended, not yet committed.' }), []));
 
-    assert.deepStrictEqual([...readLedger(root, [])], written);
+    assert.deepStrictEqual(ledgerEntries(root), written);
   });
 
   it('refuses a line that is no entry, naming its number: one that is not JSON, one of another shape, and an unfinished last line', () => {
@@ -338,7 +322,7 @@ describe('the streamed reader', () => {
     ];
     for (const [tail, message] of cases) {
       writeLedger(root, committed + tail);
-      assert.throws(() => [...readLedger(root, [])], (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(tail)} was not refused as ${message}`);
+      assert.throws(() => ledgerEntries(root), (err) => err instanceof LedgerLineError && message.test(err.message), `${JSON.stringify(tail)} was not refused as ${message}`);
     }
   });
 
@@ -375,7 +359,7 @@ describe('the streamed reader', () => {
     const gitDir = gitDirOf(root);
 
     const read = [];
-    assert.throws(() => { for (const entry of readLedger(root, [])) read.push(entry); },
+    assert.throws(() => withLedger(root, [], (ledger) => { for (const { event } of ledger.entries()) read.push(event); }),
       (err) => err instanceof LedgerNewer && !(err instanceof LedgerLineError) && err.payload.stop === 'ledger'
         && /holds entries a newer Leeway wrote, at schema version 2, and the workflows here read up to version 1 — update the workflows on this machine \(pull the project's code\) and start again/.test(err.message));
     assert.deepStrictEqual(read, [q]);
@@ -393,7 +377,7 @@ describe('the streamed reader', () => {
 
     for (const broken of [{ ...q, id: newId(), raised: true }, { ...q, id: newId(), event: 'noted' }]) {
       writeLedger(root, `${git(root, ['show', `${STATE_BRANCH}:${LEDGER}`])}${JSON.stringify(broken)}\n`);
-      assert.throws(() => [...readLedger(root, [])], (err) => err instanceof LedgerLineError && /^line 2 of the ledger is no ledger entry: /.test(err.message));
+      assert.throws(() => ledgerEntries(root), (err) => err instanceof LedgerLineError && /^line 2 of the ledger is no ledger entry: /.test(err.message));
     }
   });
 
@@ -417,14 +401,14 @@ describe('the streamed reader', () => {
     }
     commitLedger(root, 'state: a long ledger');
 
-    const clean = traced(() => {
+    const clean = traced(() => withLedger(root, [], (ledger) => {
       let read = 0;
-      for (const entry of readLedger(root, [])) {
+      for (const { event } of ledger.entries()) {
         read += 1;
-        if (read === count) assert.strictEqual(`${JSON.stringify(entry)}\n`, last);
+        if (read === count) assert.strictEqual(`${JSON.stringify(event)}\n`, last);
       }
       return read;
-    });
+    }));
     assert.strictEqual(clean.result, count);
     assert.ok(clean.traced.every((call) => !/^(cat-file blob|show)\b/.test(call)), `the clean read wrote a blob out: ${clean.traced}`);
 
@@ -436,7 +420,7 @@ describe('the streamed reader', () => {
     } finally {
       fs.closeSync(fd2);
     }
-    const changed = traced(() => ledgerChange(root));
+    const changed = traced(() => stopped(root));
     assert.deepStrictEqual(changed.result, { line: count, found: `${last.slice(0, -10)}X${last.slice(-9, -1)}` });
     assert.ok(changed.traced.some((call) => call.startsWith('cat-file blob')), `finding the line wrote no blob out: ${changed.traced}`);
     assert.throws(() => commitLedger(root), LedgerChanged);
@@ -486,20 +470,26 @@ describe('the append', () => {
     assert.strictEqual(ledgerText(root).split('\n').length, 3);
   });
 
-  it('appends under the writer lock, timed under it: a live peer holding it, the append waits, then lands with the time it took the lock', async () => {
+  it('appends under the writer lock, timed under it: a live peer holding it, the append waits, then lands with the time it took the lock', (t) => {
     const { root } = project();
     appendEntry(root, question(), []);
     const before = ledgerText(root);
     const lock = holdLock(root);
-    const exit = settled(ledgerChild(root, `ledger.appendEntry(root, ${JSON.stringify(question({ text: 'Waited its turn?' }))}, [])`));
+    /** @type {string[]} */
+    const whileHeld = [];
+    let released = 0;
+    // The lock is let go at the append's second attempt: it found the lock held, and waited.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      whileHeld.push(ledgerText(root));
+      if (taken < 2) return;
+      released = Math.floor(Date.now() / 1000) * 1000;
+      fs.unlinkSync(lock);
+    });
 
-    assert.ok(await stillRunning(exit, 2000), 'the append did not wait on the peer');
-    assert.strictEqual(ledgerText(root), before);
-    const released = Math.floor(Date.now() / 1000) * 1000;
-    fs.unlinkSync(lock);
+    appendEntry(root, question({ text: 'Waited its turn?' }), []);
 
-    const { code, stderr } = /** @type {{code: number, stderr: string}} */ (await exit);
-    assert.strictEqual(code, 0, stderr);
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [before, before], 'appended while the peer held the lock');
     const landed = JSON.parse(ledgerText(root).split('\n')[1]);
     assert.strictEqual(landed.text, 'Waited its turn?');
     assert.ok(Date.parse(landed.at) >= released, `the append was timed before it took the lock: ${landed.at}`);
@@ -548,9 +538,8 @@ describe('the append-only check on a read', () => {
     const { root } = project();
     checkLedger(root, []);
     threeCommitted(root);
-    assert.strictEqual(ledgerChange(root), null);
+    checkLedger(root, []);
     appendEntry(root, question(), []);
-    assert.strictEqual(ledgerChange(root), null);
     checkLedger(root, []);
   });
 
@@ -579,7 +568,7 @@ describe('the append-only check on a read', () => {
     const { main, root } = project({ objectFormat: 'sha256' });
     const [a, b, c] = threeCommitted(root);
     assert.strictEqual(git(main, ['rev-parse', `${STATE_BRANCH}:${LEDGER}`]).trim().length, 64);
-    assert.strictEqual(ledgerChange(root), null);
+    checkLedger(root, []);
 
     writeLedger(root, `${a}\n${c}\n${b}\n`);
 
@@ -587,7 +576,7 @@ describe('the append-only check on a read', () => {
     assert.throws(() => commitLedger(root), LedgerChanged);
   });
 
-  it('reads the branch before the file: an append committed between the two reads never reads as a change, and the check waits on no lock', () => {
+  it('reads the branch before the file: an append committed between the two reads never reads as a change, and the check waits on no lock', (t) => {
     const { root } = project();
     threeCommitted(root);
     const later = JSON.stringify(validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Landed between the reads?' }) }));
@@ -608,29 +597,36 @@ describe('the append-only check on a read', () => {
       'exec "$real" "$@"',
       '',
     ].join('\n'), { mode: 0o755 });
-    holdLock(root);
-
-    const res = spawnSync('node', ['-e', 'require(process.argv[1]).checkLedger(process.argv[2], []); process.stdout.write("as committed")', LEDGER_MODULE, root], {
-      encoding: 'utf8', timeout: 10000, env: { ...process.env, PATH: `${wrapper}:${process.env.PATH}` },
+    const attempts = lockAttempts(t, holdLock(root), () => {
+      throw new Error('the check tried the writer lock');
     });
+    const { PATH } = process.env;
+    process.env.PATH = `${wrapper}:${PATH}`;
+    try {
+      checkLedger(root, []);
+    } finally {
+      process.env.PATH = PATH;
+    }
 
-    assert.deepStrictEqual([res.signal, res.status, res.stdout], [null, 0, 'as committed'], res.stderr);
+    assert.deepStrictEqual(attempts, []);
     assert.ok(fs.existsSync(path.join(wrapper, 'done')), 'nothing landed between the reads');
     assert.ok(git(root, ['show', `${STATE_BRANCH}:${LEDGER}`]).endsWith(`${later}\n`));
   });
 
-  it('makes a failed check again under the writer lock before it stops: a landing that rewrote the file before moving the branch passes once it lands', async () => {
+  it('makes a failed check again under the writer lock before it stops: a landing that rewrote the file before moving the branch passes once it lands', (t) => {
     const { root } = project();
     const [a, b] = threeCommitted(root);
     const lock = holdLock(root);
     writeLedger(root, `${b}\n${a}\n`);
-    const exit = settled(ledgerChild(root, 'ledger.checkLedger(root, []); process.stdout.write("as committed")'));
+    // The landing, holding the lock, moves the branch and lets go once the check has found the lock held.
+    const attempts = lockAttempts(t, lock, () => {
+      git(root, ['commit', '-q', '-m', 'state: the landing moves the branch', '--', LEDGER]);
+      fs.unlinkSync(lock);
+    });
 
-    assert.ok(await stillRunning(exit, 1500), 'the check stopped without waiting for the lock');
-    git(root, ['commit', '-q', '-m', 'state: the landing moves the branch', '--', LEDGER]);
-    fs.unlinkSync(lock);
+    checkLedger(root, []);
 
-    assert.deepStrictEqual(await exit, { code: 0, stdout: 'as committed', stderr: '' });
+    assert.deepStrictEqual(attempts, ['taken', 'made']);
   });
 
   it('clears the blobs a killed check left written out in the git dir, never a running process\'s', () => {
@@ -652,19 +648,17 @@ describe('the append-only check on a read', () => {
     }
   });
 
-  it('stops once it holds the lock where the ledger is still not as committed', async () => {
+  it('stops once it holds the lock where the ledger is still not as committed', (t) => {
     const { root } = project();
     const [a, b] = threeCommitted(root);
     const lock = holdLock(root);
     writeLedger(root, `${b}\n${a}\n`);
-    const exit = settled(ledgerChild(root, 'ledger.checkLedger(root, [])'));
+    const attempts = lockAttempts(t, lock, () => fs.unlinkSync(lock));
 
-    assert.ok(await stillRunning(exit, 1500), 'the check stopped without waiting for the lock');
-    fs.unlinkSync(lock);
+    assert.throws(() => checkLedger(root, []), (err) => err instanceof LedgerChanged
+      && err.message === '.ledger.jsonl changed outside the engine: line 1 is not the line committed there — the engine stops here');
 
-    const { code, stderr } = /** @type {{code: number, stderr: string}} */ (await exit);
-    assert.strictEqual(code, 1);
-    assert.match(stderr, /\.ledger\.jsonl changed outside the engine: line 1 is not the line committed there — the engine stops here/);
+    assert.deepStrictEqual(attempts, ['taken', 'made']);
   });
 });
 
@@ -834,7 +828,7 @@ describe('the conversion door (5.S25)', () => {
 
     assert.deepStrictEqual(migrationAt('migrations/900-ledger-event-field.cjs', TO_CURRENT).run({ projectDir: main }), { events: 2, warnings: [] });
 
-    const converted = [...readLedger(root, [])];
+    const converted = ledgerEntries(root);
     assert.deepStrictEqual(converted.map((e) => e.event), ['asked', 'decided']);
     assert.deepStrictEqual(converted.map((e) => e.id), original.trim().split('\n').map((line) => JSON.parse(line).id));
     fs.writeFileSync(path.join(root, 'manifest.json'), '{}\n');
@@ -913,7 +907,7 @@ describe('the conversion door (5.S25)', () => {
 
     assert.strictEqual(ledgerText(root), original);
     assert.ok(fs.existsSync(passFile(root)));
-    assert.strictEqual(ledgerChange(root), null);
+    checkLedger(root, []);
     assert.strictEqual(commitLedger(root).commit, null);
     assert.deepStrictEqual(migrationAt('migrations/901-convert.cjs', TO_CURRENT).run({ projectDir: main }), { events: 2, warnings: [] });
     assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
@@ -935,7 +929,7 @@ describe('the conversion door (5.S25)', () => {
     assert.strictEqual(git(main, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'state: the ledger as written, before its conversion');
     assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}^:${LEDGER}`]), `${original}${tail}`);
-    assert.deepStrictEqual([...readLedger(root, [])].map((e) => e.text), ['What is a fumi, at its most basic?', 'A near-frameless floating note.', 'Left uncommitted?']);
+    assert.deepStrictEqual(ledgerEntries(root).map((e) => e.text), ['What is a fumi, at its most basic?', 'A near-frameless floating note.', 'Left uncommitted?']);
   });
 
   it('honours a pass only where its copy, stored in git, keeps the door\'s rule: a pass written by hand lifts no removed line from a read or a commit', () => {

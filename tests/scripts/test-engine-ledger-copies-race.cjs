@@ -34,6 +34,9 @@ const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cj
 const dir = useCopiesWorld();
 afterEach(clearSeams);
 
+/** How long a contender may run before it is killed: past the ten seconds a writer waits on a render's claim. */
+const CONTENDER_TIMEOUT_MS = 30000;
+
 const { write, ask, copy, indexedText, floatingPanel } = copiesHelpers(dir);
 
 /**
@@ -46,7 +49,9 @@ const { write, ask, copy, indexedText, floatingPanel } = copiesHelpers(dir);
  */
 function spawnEngine(args, content, atExit) {
   const stdin = stdinFile(content);
-  const child = spawn('node', [ENGINE, ...args], { cwd: dir(), env: { ...process.env, ...SESSION }, stdio: [stdin, 'ignore', 'ignore'] });
+  const child = spawn('node', [ENGINE, ...args], {
+    cwd: dir(), env: { ...process.env, ...SESSION }, stdio: [stdin, 'ignore', 'ignore'], timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL',
+  });
   fs.closeSync(stdin);
   return { pid: child.pid, done: new Promise((resolve) => child.on('close', (code) => resolve({ code, seen: atExit?.() }))) };
 }
@@ -61,7 +66,7 @@ function spawnReaped(args, content) {
   const pidFile = path.join(dir(), `pid-${spawned += 1}`);
   const input = stdinPath(content);
   const shell = spawn('sh', ['-c', '"$@" < "$LEEWAY_TEST_STDIN" & echo $! > "$LEEWAY_TEST_PID"; wait', 'sh', 'node', ENGINE, ...args], {
-    cwd: dir(), env: { ...process.env, ...SESSION, LEEWAY_TEST_STDIN: input, LEEWAY_TEST_PID: pidFile }, stdio: 'ignore',
+    cwd: dir(), env: { ...process.env, ...SESSION, LEEWAY_TEST_STDIN: input, LEEWAY_TEST_PID: pidFile }, stdio: 'ignore', timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL',
   });
   return { pid: () => (fs.existsSync(pidFile) ? Number(fs.readFileSync(pidFile, 'utf8')) || null : null), done: new Promise((resolve) => shell.on('close', resolve)) };
 }

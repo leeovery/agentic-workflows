@@ -52,7 +52,7 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | Module | What it owns |
 |---|---|
 | `hermetic-env.cjs` | the pinned environment. Every node suite requires it first; `test-hermetic-env.cjs` enforces that. |
-| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `tip`, `remoteTip`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
+| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `ledgerEntries` (the ledger as the engine reads it), `tip`, `remoteTip`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
 | `discovery-test-utils.cjs` | the project world's template, made once per process and copied by `copyWorld`, which relinks the copy's state worktree; `templateFolder(prefix)`, the temp folder a world made once is built in, every template removed at exit by one listener; `bareRepo(dir)`, a bare remote with auto maintenance off; `useTempFolder(prefix)`, a temp folder for each test of the calling file; `statePath`, `createManifest`, `createFile`, `readFile`, `datedAt` |
 | `knowledge-harness.cjs` | the stand-in embeddings endpoint, `heldCall`, `recordLaunches`, `withoutBackoff` |
 | `gate-audit.cjs` | a gate payload held against the menu it states |

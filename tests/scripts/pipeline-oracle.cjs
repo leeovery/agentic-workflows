@@ -37,7 +37,6 @@ const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/k
 const chunker = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/workflow-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
-const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-linear/scripts/gateway.cjs'));
@@ -51,6 +50,7 @@ const {
   resolveHandoff, HANDOFF_TARGETS,
 } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
+const { ledgerEntries } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
@@ -127,7 +127,7 @@ function auditState(dir, label) {
   // branch last committed, and every line is an event of its version's shape.
   // Its projections show what is current in it.
   if (fs.existsSync(statePath(dir, LEDGER))) {
-    assert.doesNotThrow(() => [...readLedger(statePath(dir), [])], ctx('the ledger does not read'));
+    assert.doesNotThrow(() => ledgerEntries(statePath(dir)), ctx('the ledger does not read'));
     auditLedger(dir, ctx);
   }
 
