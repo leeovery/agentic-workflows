@@ -2,9 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the ledger's read verbs (5.8.3, 6.1.4) — a record, a topic's
-// map and the product record — each a projection of the ledger worked out
-// when read, never kept (5.8.2), answered as JSON; what the person sees of
-// them is drawn later.
+// map, the product record, what a replacement affects (ledger-affected.cjs),
+// Claude's calls since the person last looked (ledger-since.cjs) and the
+// verdict queue (ledger-verdicts.cjs) — each a projection of the ledger
+// worked out when read, never kept (5.8.2), answered as JSON; what the
+// person sees of them is drawn later.
 //
 // - Each read folds the ledger in one streamed pass (ledger-fold.cjs) and
 //   reads again the lines of the entries it shows alone, from the file the
@@ -27,8 +29,9 @@
 //   as written but its schema version; a decision the late one-decision
 //   check judged shows beside it what the check found, `late_check`, one
 //   rule or several — several is the flag (16.19.8).
-// - A read takes no lock. What a landing its check finished said rides the
-//   answer, and a refusal, as warnings.
+// - A read takes no lock, but for `ledger shown`, which holds the
+//   last-looked mark's lock around its fold. What a landing its check
+//   finished said rides the answer, and a refusal, as warnings.
 // ---------------------------------------------------------------------------
 
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -37,6 +40,9 @@ const { linkFields } = require('./ledger-events.cjs');
 const { shortIds } = require('./ledger-ids.cjs');
 const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, foldedBeneath, mapOf, recordOf, productOf } = require('./ledger-fold.cjs');
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
+const { answerAffected } = require('./ledger-affected.cjs');
+const { answerSince, answerShown, withMarkLock } = require('./ledger-since.cjs');
+const { answerVerdicts } = require('./ledger-verdicts.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {Record<string, unknown>} Shown */
@@ -53,7 +59,17 @@ const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
  * @typedef {{folded: Folded, show: (id: string) => Shown, short: (id: string) => string}} Shower
  */
 
-/** A read verb: its usage, how many places it names, and its answer. @typedef {{usage: string, names: number[], answer: (shower: Shower, place: Place) => Record<string, unknown>}} Read */
+/**
+ * A read verb: its usage, how many places it names, and its answer, given
+ * the project's state root; and for a read that moves the last-looked mark,
+ * the lock it holds around its fold.
+ * @typedef {{
+ *   usage: string,
+ *   names: number[],
+ *   answer: (shower: Shower, place: Place, root: string) => Record<string, unknown>,
+ *   around?: (root: string, place: Place, read: () => Record<string, unknown>) => Record<string, unknown>,
+ * }} Read
+ */
 
 /**
  * An entry's line as a read shows it: as written, but its schema version,
@@ -191,6 +207,10 @@ const READS = Object.freeze({
   record: { usage: 'ledger record <work-unit> [<topic>]', names: [1, 2], answer: answerRecord },
   map: { usage: 'ledger map <work-unit> <topic>', names: [2], answer: answerMap },
   product: { usage: 'ledger product', names: [0], answer: answerProduct },
+  affected: { usage: 'ledger affected <work-unit> [<topic>]', names: [1, 2], answer: answerAffected },
+  since: { usage: 'ledger since <work-unit> [<topic>]', names: [1, 2], answer: answerSince },
+  shown: { usage: 'ledger shown <work-unit> [<topic>]', names: [1, 2], answer: answerShown, around: withMarkLock },
+  verdicts: { usage: 'ledger verdicts', names: [0], answer: answerVerdicts },
 });
 
 /** The read verbs' usage, a line each. */
@@ -214,8 +234,9 @@ function namedPlace(root, verb, args) {
 }
 
 /**
- * `ledger <record|map|product>`: the projection read, as JSON, and as
- * warnings what a landing its check finished said.
+ * `ledger <record|map|product|affected|since|shown|verdicts>`: the
+ * projection read, as JSON, and as warnings what a landing its check
+ * finished said.
  * @param {string} cwd @param {string} verb @param {string[]} args
  * @returns {Record<string, unknown>}
  */
@@ -226,7 +247,8 @@ function readLedgerVerb(cwd, verb, args) {
     const root = stateRoot(cwd);
     const place = namedPlace(root, verb, args);
     const live = liveness(root);
-    const answer = readFolded(root, ID_FACTS, warnings, (facts, entryAt) => READS[verb].answer(showerOf({ facts, live }, entryAt), place));
+    const { answer: answerOf, around = (_root, _place, read) => read() } = READS[verb];
+    const answer = around(root, place, () => readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answerOf(showerOf({ facts, live }, entryAt), place, root)));
     return warnings.length > 0 ? { ...answer, warnings } : answer;
   } catch (err) {
     throw carrying(err, warnings);

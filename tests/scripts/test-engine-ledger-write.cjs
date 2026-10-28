@@ -247,11 +247,11 @@ describe('the write verbs (6.1.4)', () => {
     const before = rawLines();
 
     const res = write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], {
-      by: 'person', who_moved_whom: 'none', drops: ['a near-frameless window'], text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'],
+      by: 'person', who_moved_whom: 'person-moved-claude', drops: ['a near-frameless window'], text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'],
     });
 
     const id = assertLast('replaced', AT_NOTE, {
-      by: 'person', who_moved_whom: 'none', replaces: full(old), reason: 'changed-mind', cause: null, drops: ['a near-frameless window'], of: 'decision',
+      by: 'person', who_moved_whom: 'person-moved-claude', replaces: full(old), reason: 'changed-mind', cause: null, drops: ['a near-frameless window'], of: 'decision',
       answers: full(question), text: 'A frameless surface.', why: 'Lighter on the desk.', rules_out: ['a border'], relies_on: [],
       product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, unchecked: true,
     });
@@ -408,7 +408,7 @@ describe('content and links', () => {
     refused('hold', NOTE, ['--entry', question], {}, /^ledger hold needs --after <id> — Usage: engine ledger hold <work-unit>\.<phase>\[\.<topic>\] --entry <id> --after <id>/);
     refuses(dir, ['ledger', 'ask'], { env: SESSION, stdin: JSON.stringify(content) });
     refused('ask', NOTE, [SPACE], content, /^Usage: engine ledger ask /);
-    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product\|late-check> …\nledger ask [^]*\nledger record [^]*\nledger late-check /);
+    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product\|affected\|since\|shown\|verdicts\|late-check> …\nledger ask [^]*\nledger record [^]*\nledger shown [^]*\nledger verdicts\nledger late-check /);
   });
 
   it('resolves each link from any prefix of four characters or more to the full id, and shows an id by its shortest prefix no other id shares', () => {
@@ -626,7 +626,7 @@ describe('whose entries a link names, and how they relate', () => {
     write('decide', NOTE, ['--answers', reworded], DECISION);
   });
 
-  it('answers a question, asks a part of it, and moves and merges it only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
+  it('answers a question, asks a part of it, relies on it, and moves and merges it only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
     const asked = ask().id;
     const reworded = write('replace', NOTE, ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note, at its simplest?' }).id;
     const owned = decide(ask('Is a note a window?').id).id;
@@ -634,15 +634,17 @@ describe('whose entries a link names, and how they relate', () => {
 
     refused('decide', NOTE, ['--answers', asked], DECISION, superseded('decide', '--answers'));
     refused('ask', NOTE, ['--part-of', asked], { ...MADE, text: 'Is a note a window?' }, superseded('ask', '--part-of'));
+    refused('find', NOTE, ['--relies-on', asked], { ...MADE, text: 'A note is a window.', how: 'by hand' }, superseded('find', '--relies-on'));
     refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move', '--question'));
     refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge', '--question'));
 
     write('decide', NOTE, ['--answers', reworded], DECISION);
     write('ask', NOTE, ['--part-of', reworded], { ...MADE, text: 'Is a note a window?' });
+    write('find', NOTE, ['--relies-on', reworded], { ...MADE, text: 'A note is a window.', how: 'by hand' });
     write('move', NOTE, ['--question', reworded, '--to', 'space-homing'], MADE);
     write('merge', SPACE, ['--question', reworded, '--into', owned], MADE);
-    assert.deepStrictEqual(entries().slice(-4).map((e) => [e.event, e.answers ?? e.part_of ?? e.question]), [
-      ['decided', full(reworded)], ['asked', full(reworded)], ['moved', full(reworded)], ['merged', full(reworded)],
+    assert.deepStrictEqual(entries().slice(-5).map((e) => [e.event, e.answers ?? e.part_of ?? e.relies_on?.[0] ?? e.question]), [
+      ['decided', full(reworded)], ['asked', full(reworded)], ['found', full(reworded)], ['moved', full(reworded)], ['merged', full(reworded)],
     ]);
   });
 
@@ -676,7 +678,7 @@ describe('whose entries a link names, and how they relate', () => {
     assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(reworded), full(duplicate)]);
   });
 
-  it('holds a current entry relying on what the replacement replaced, or on an earlier entry of its chain (5.6.10)', () => {
+  it('holds a current entry after the latest replacement on the way to its current form of an entry it relies on: what it replaced, or an earlier entry of its chain (5.6.10)', () => {
     const first = decide(ask().id).id;
     const relying = find(['--relies-on', first]).id;
     const unrelated = find().id;
@@ -684,17 +686,17 @@ describe('whose entries a link names, and how they relate', () => {
     const onSecond = find(['--relies-on', second]).id;
     const third = change(second, { text: 'A translucent surface.', why: 'Lighter still.' }).id;
     const nothingReplaced = (/** @type {string} */ entry, /** @type {string} */ after) => new RegExp(
-      `^ledger hold --entry names ${entry}, which relies on nothing ${after} replaced — it holds an entry relying on what the replacement replaced, or on an earlier entry of its chain$`);
+      `^ledger hold --entry names ${entry}, which relies on nothing ${after} changed — it holds an entry relying on one whose way to its current form the replacement is on$`);
 
     refused('hold', NOTE, ['--entry', unrelated, '--after', second], MADE, nothingReplaced(unrelated, second));
     refused('hold', NOTE, ['--entry', onSecond, '--after', second], MADE, nothingReplaced(onSecond, second));
-    write('hold', NOTE, ['--entry', relying, '--after', second], MADE);
     write('hold', NOTE, ['--entry', relying, '--after', third], MADE);
     write('hold', NOTE, ['--entry', onSecond, '--after', third], MADE);
 
-    const corrected = write('replace', NOTE, ['--replaces', relying, '--reason', 'was-wrong', '--relies-on', first], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' }).id;
+    const corrected = write('replace', NOTE, ['--replaces', relying, '--reason', 'was-wrong', '--relies-on', third], { ...MADE, drops: ['across restarts'], text: 'Spaces keep their ids within a login.', how: 'a second spike' }).id;
     refused('hold', NOTE, ['--entry', relying, '--after', third], MADE, new RegExp(`^ledger hold --entry names ${relying}, which ${corrected} replaced — the current one is ${corrected}$`));
-    write('hold', NOTE, ['--entry', corrected, '--after', third], MADE);
+    const fourth = change(third, { text: 'A clear surface.', why: 'Clearer still.' }).id;
+    write('hold', NOTE, ['--entry', corrected, '--after', fourth], MADE);
   });
 
   it('refuses a cause a reason cannot have: none for a new fact or another topic\'s decision, a new fact\'s that is no finding, another topic\'s that is no decision on another topic, and the entry replaced itself (5.3.8)', () => {

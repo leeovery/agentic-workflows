@@ -163,16 +163,28 @@ describe('engine workunit absorb — happy path', () => {
       /"payments" is not a feature/);
   });
 
-  it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', () => {
+  it('moves everything, mirrors statuses, deletes the feature, commits all three pathspecs once', (t) => {
     fix = setupFixture();
     indexFiles(fix, [...FEATURE_FILES, 'payments/research/exploration.md']);
     writeFile(fix.project, 'unrelated.txt', 'outside the scope\n');
     writeFile(fix.project, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    const marks = path.join(fix.project, '.leeway/.cache/.marks');
+    writeFile(fix.project, '.leeway/.cache/.marks/auth-flow.json', '{"shown":[]}\n');
+    writeFile(fix.project, '.leeway/.cache/.marks/payments.json', '{"shown":[]}\n');
+    const rmSync = fs.rmSync;
+    /** @type {boolean[]} */
+    const lockedAsRemoved = [];
+    t.mock.method(fs, 'rmSync', (/** @type {string} */ target, /** @type {fs.RmOptions} */ opts) => {
+      if (target.endsWith(path.join('.marks', 'auth-flow.json'))) lockedAsRemoved.push(fs.existsSync(`${target}.lock`));
+      return rmSync(target, opts);
+    });
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']);
     const stateCommits = Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD']));
     const res = engine(fix, ABSORB);
     assert.strictEqual(fs.existsSync(path.join(fix.project, '.leeway/.cache/auth-flow')), false,
       "the absorbed feature's scratch cache is purged with it");
+    assert.deepStrictEqual([fs.readdirSync(marks), lockedAsRemoved], [['payments.json'], [true]],
+      "the absorbed feature's last-looked mark goes with it, under the mark's lock, and the epic's stays");
 
     assert.deepStrictEqual(res, {
       ok: true,
