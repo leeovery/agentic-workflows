@@ -33,6 +33,7 @@ const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRI
 const { catchUpState } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
+const { WRITER_LOCK_TIMEOUT_MS } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
 const UNIT = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
@@ -43,9 +44,12 @@ const SPACE = `${UNIT}.discussion.space-homing`;
 
 /** @type {string} */
 let dir;
+/** The question each place's calls answer on each machine, asked once a test. @type {Map<string, string>} */
+let asked;
 
 beforeEach(() => {
   dir = setupGitFixture('ledger-since-');
+  asked = new Map();
   createManifest(dir, UNIT, {
     work_type: 'epic',
     phases: { discussion: { items: Object.fromEntries(TOPICS.map((topic) => [topic, { status: 'in-progress' }])) } },
@@ -61,10 +65,11 @@ function writeIn(at, verb, address, flags, content) {
   return ok(at, ['ledger', verb, address, ...flags], { env: SESSION, stdin: JSON.stringify(content) }).id;
 }
 
-/** A call answering a question asked with it, Claude's unless `by` says whose. @param {string} address @param {string} text @param {string} [by] */
+/** A call answering the place's question, Claude's unless `by` says whose. @param {string} address @param {string} text @param {string} [by] */
 function call(address, text, by = 'claude', at = dir) {
-  const question = writeIn(at, 'ask', address, [], { ...MADE, text: `${text}?` });
-  return writeIn(at, 'decide', address, ['--answers', question], { by, who_moved_whom: 'none', text, why: `Why: ${text}` });
+  const place = `${at}\0${address}`;
+  if (!asked.has(place)) asked.set(place, writeIn(at, 'ask', address, [], { ...MADE, text: 'What is a note?' }));
+  return writeIn(at, 'decide', address, ['--answers', /** @type {string} */ (asked.get(place))], { by, who_moved_whom: 'none', text, why: `Why: ${text}` });
 }
 
 /** The calls a read answers, by id. @param {'since'|'shown'} verb @param {string[]} place */
@@ -97,9 +102,9 @@ function marks(at = dir) {
   return fs.existsSync(marksFile(at)) ? JSON.parse(fs.readFileSync(marksFile(at), 'utf8')) : null;
 }
 
-/** The engine run as a process of its own: how it exits, and what it said. @param {string[]} args @returns {Promise<{code: number, stderr: string}>} */
+/** The engine run as a process of its own, ended past the lock's own wait: how it exits, and what it said. @param {string[]} args @returns {Promise<{code: number, stderr: string}>} */
 function engine(args) {
-  const child = spawn('node', [ENGINE, ...args], { cwd: dir, stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn('node', [ENGINE, ...args], { cwd: dir, stdio: ['ignore', 'ignore', 'pipe'], timeout: 2 * WRITER_LOCK_TIMEOUT_MS });
   let stderr = '';
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   return new Promise((resolve) => child.on('close', (code) => resolve({ code: /** @type {number} */ (code), stderr })));
@@ -230,7 +235,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, '{"shown":');
     assert.match(refuses(dir, ['ledger', 'since', UNIT]).error, new RegExp(`^the last-looked mark at ${file} is no JSON — `));
-    for (const wrong of ['[]', '{"spec":null}', '{"shown":"Ab12"}', '{"shown":[12]}', '{"shown":[],"spec":null}']) {
+    for (const wrong of ['[]', '{"spec":null}', '{"shown":"Ab12"}', '{"shown":[12]}', '{"shown":["Ab12"]}', '{"shown":[],"spec":null}']) {
       fs.writeFileSync(file, wrong);
       assert.strictEqual(refuses(dir, ['ledger', 'shown', UNIT]).error, `the last-looked mark at ${file} is not {"shown": [<id>, …]}, the ids of the calls shown`, wrong);
     }
