@@ -5,7 +5,8 @@
 // stdin reach the engine, the git fixture is a repo with its state worktree
 // that an engine commit lands in, a world made once is copied whole and
 // apart, a keyword-only checkout is one a transaction's index builds a real
-// store in, and a long suite's shards hold every test once.
+// store in, a call's attempts at a lock are seen as it makes them, the `ps`
+// that fails does, and a long suite's shards hold every test once.
 
 require('./hermetic-env.cjs');
 
@@ -14,10 +15,11 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const shards = require('./shards.cjs');
+const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const {
   call, ok, okSections, refuses, output, git, stateGit, statePath, commitAll, setupGitFixture, cleanupFixture,
 } = harness;
@@ -299,5 +301,37 @@ describe('engine harness — a keyword-only checkout', () => {
     const answer = await harness.callAsync(dir, ['knowledge', 'query', 'research']);
     assert.strictEqual(answer.code, 0);
     assert.match(answer.stdout, /^\[keyword-only mode — configure embedding provider for semantic search\]\n\[1 results\]\n/);
+  });
+});
+
+describe('engine harness — locks, and a `ps` that fails', () => {
+  let dir;
+  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-lock-')); });
+  afterEach(() => { fs.rmSync(dir, { recursive: true, force: true }); });
+
+  it('records each attempt at the lock, a lock file\'s or a claim\'s, made or taken — onTaken run before the attempt answers — and no other file\'s', (t) => {
+    const lock = path.join(dir, '.lock');
+    fs.writeFileSync(lock, String(process.pid));
+    /** @type {boolean[]} */
+    const heldAt = [];
+    const attempts = harness.lockAttempts(t, lock, (taken) => {
+      heldAt.push(fs.existsSync(lock));
+      if (taken === 2) fs.unlinkSync(lock);
+    });
+
+    io.acquireLockFile(lock, 'Timed out', io.LOCK_TIMEOUT_MS);
+    io.releaseLockFile(lock);
+    /** @type {() => void} */ (io.tryClaimFile(lock))();
+    /** @type {() => void} */ (io.tryClaimFile(path.join(dir, 'other')))();
+
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made', 'made']);
+    assert.deepStrictEqual(heldAt, [true, true]);
+  });
+
+  it('failingPs puts first on the PATH a `ps` that answers nothing and fails, logging what each run asked for', () => {
+    const ps = harness.failingPs(dir);
+    const res = spawnSync('ps', ['-p', String(process.pid), '-o', 'lstart='], { env: { ...process.env, PATH: ps.path }, encoding: 'utf8' });
+    assert.deepStrictEqual([res.status, res.stdout], [1, '']);
+    assert.deepStrictEqual(ps.runs(), [`-p ${process.pid} -o lstart=`]);
   });
 });

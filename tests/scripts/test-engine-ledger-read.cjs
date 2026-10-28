@@ -1011,12 +1011,13 @@ describe('a large ledger (5.7.6, 5.7.8)', () => {
     const product = underHeap([ENGINE, 'ledger', 'product']);
     const affected = underHeap([ENGINE, 'ledger', 'affected', UNIT]);
     const since = underHeap([ENGINE, 'ledger', 'since', UNIT, 'note-window']);
+    const verdicts = underHeap([ENGINE, 'ledger', 'verdicts']);
 
-    for (const [name, res] of Object.entries({ record, map, product, affected, since })) assert.strictEqual(res.status, 0, `${name} did not answer under ${HEAP_MB} MB: ${res.signal} ${res.err}`);
+    for (const [name, res] of Object.entries({ record, map, product, affected, since, verdicts })) assert.strictEqual(res.status, 0, `${name} did not answer under ${HEAP_MB} MB: ${res.signal} ${res.err}`);
     assert.deepStrictEqual([ids(record.out.questions), ids(record.out.decisions)], [[question], [decided]]);
     assert.deepStrictEqual(ids(map.out.questions), [question]);
     assert.deepStrictEqual([ids(product.out.decisions), product.out.findings], [[decided], []]);
-    assert.deepStrictEqual([affected.out.affected, ids(since.out.calls)], [[], [decided]]);
+    assert.deepStrictEqual([affected.out.affected, ids(since.out.calls), verdicts.out.departures], [[], [decided], []]);
     const holding = underHeap(['-e', `const lines = []; for (const l of require('fs').readFileSync(${JSON.stringify(file)}, 'utf8').split('\\n')) lines.push(l); console.log('{}')`]);
     assert.notStrictEqual(holding.status, 0, `a reader holding the ledger's lines fit in ${HEAP_MB} MB, so the heap proves nothing`);
   });

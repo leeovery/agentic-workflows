@@ -7,7 +7,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFileSync, spawn } = require('child_process');
+const { execFileSync } = require('child_process');
 const it = require('./shards.cjs').shardedIt(__filename);
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
@@ -26,8 +26,6 @@ function writeFile(dir, rel, content) {
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, content);
 }
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // The session hooks boot keeps in every project's `.claude/settings.json`,
 // and the function-hooks flag migration 065 takes out of it.
@@ -1426,29 +1424,38 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
   });
 
-  it('the hook sync waits on a live writer lock — the opt-in read and the write are one hold', async () => {
+  it('the hook sync waits on a live writer lock — the opt-in read and the write are one hold', (t) => {
     dropSettings();
-    // Held by this test's own process: alive, and never the child's.
     const lock = path.join(fix.project, '.leeway', '.lock');
-    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-    const env = { ...process.env };
-    delete env.TMUX;
-    delete env.WORKFLOWS_HOLD_PROJECT_SETTINGS;
-    const child = spawn('node', [STUB_ENGINE, 'boot'], { cwd: fix.project, env });
-    let stdout = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    // 'close', not 'exit': stdout must be fully flushed before it is parsed.
-    const exit = new Promise((resolve) => child.on('close', resolve));
+    const settingsFile = path.join(fix.project, '.claude/settings.json');
+    const unlink = fs.unlinkSync;
+    // A live peer takes the lock the moment boot's migrations let it go…
+    let peerTook = false;
+    t.mock.method(fs, 'unlinkSync', (/** @type {string} */ file) => {
+      unlink(file);
+      if (file !== lock || peerTook) return;
+      fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+      peerTook = true;
+    });
+    /** @type {boolean[]} */
+    const written = [];
+    // …and, once the hook sync has found it held and tried again, turns
+    // labels on and lets go.
+    const attempts = harness.lockAttempts(t, lock, (taken) => {
+      written.push(fs.existsSync(settingsFile));
+      if (taken < 2) return;
+      writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+      stateGit(fix.project, ['add', '--', 'manifest.json']);
+      stateGit(fix.project, ['commit', '-q', '-m', 'labels on']);
+      unlink(lock);
+    });
 
-    const raced = await Promise.race([exit.then(() => 'exited'), sleep(1500).then(() => 'waiting')]);
-    assert.strictEqual(raced, 'waiting', 'boot must wait on a live writer lock');
-    assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')), 'no settings write while the lock is held');
+    const res = bootWith();
 
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
-    const res = JSON.parse(stdout.trim());
+    assert.deepStrictEqual(attempts, ['made', 'taken', 'taken', 'made']);
+    assert.deepStrictEqual(written, [false, false], 'no settings write while the peer holds the lock');
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(fs.readFileSync(settingsFile, 'utf8'), LABELS_ON, 'the opt-in read under the hold that writes the settings');
   });
 
   it('installs into existing settings without disturbing them', () => {
