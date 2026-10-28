@@ -35,8 +35,8 @@
 
 const crypto = require('crypto');
 const { titlecase } = require('./conventions.cjs');
+const { LEDGER } = require('./ledger-events.cjs');
 
-const LEDGER = '.ledger.jsonl';
 const MIGRATIONS = '.state/migrations';
 // The project's manifest and each unit's; a unit's name never starts with
 // a dot, so a hidden folder's file is never a unit's manifest.
@@ -325,7 +325,6 @@ function askedAt(conflicts) {
 }
 
 module.exports = {
-  LEDGER,
   MIGRATIONS,
   MergeError,
   ruleOf,

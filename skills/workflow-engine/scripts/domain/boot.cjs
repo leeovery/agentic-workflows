@@ -21,11 +21,12 @@
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
 // error — migrations must never half-run silently. The run records into the
-// state's ledger, which boot names, under the writer lock: the runner takes
-// no lock of its own, so the parent's hold covers it. A run that recorded
-// migrations without changing a document leaves the ledger as the only dirt,
-// and no reviewed commit follows a report of no changes, so boot commits
-// that line itself — this run's, or one an earlier boot stranded.
+// state's migrations record, which boot names, under the writer lock: the
+// runner takes no lock of its own, so the parent's hold covers it. A run
+// that recorded migrations without changing a document leaves the record as
+// the only dirt, and no reviewed commit follows a report of no changes, so
+// boot commits that line itself — this run's, or one an earlier boot
+// stranded.
 //
 // The knowledge directory — the store, its metadata, the knowledge config,
 // beside them the store's lock and the fill's claim — sits in the one state
@@ -39,7 +40,7 @@
 // resolve, and a vector fill that fell short are warnings, never blocks.
 //
 // The migrations run from the code root (kernel/code-root), whichever folder
-// boot was called from, recording into the state's ledger.
+// boot was called from, recording into the state's migrations record.
 //
 // Boot is also where the conversation folders are tidied, whichever project
 // the conversations ran in: one goes once its transcript is gone. The start
@@ -92,11 +93,12 @@ const NOTICES_MARKER = '---MIGRATION_NOTICES---';
 // Marker preceding migrate.cjs's one-line JSON report of the run — `{ran}`:
 // the migrations executed. Counting runs is not counting files — a migration
 // that ran and found nothing to do still recorded its ID — so the stop gate
-// cannot speak for the ledger.
+// cannot speak for the record.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
-// The ledger the runner records into, state-relative.
-const LEDGER = '.state/migrations';
+// The record of the migrations applied, which the runner writes,
+// state-relative: never the project's ledger (domain/ledger.cjs).
+const MIGRATIONS_RECORD = '.state/migrations';
 
 /**
  * @typedef {object} SystemConfigReport
@@ -141,8 +143,8 @@ const LEDGER = '.state/migrations';
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
  * @property {boolean} compacted
- * @property {string|null} migrations_committed short sha of the tracking-ledger commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the ledger dirty
- * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, ledger commit, the session hooks, an unreadable report block)
+ * @property {string|null} migrations_committed short sha of the migrations record's commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the record dirty
+ * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block)
  * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, workflow-start's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end` for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
@@ -249,7 +251,7 @@ function boot(cwd, { startAgain = false } = {}) {
   const { knowledge, indexed, compacted } = bootKnowledge(cwd, warnings);
 
   // While a reviewed migration commit follows, it takes every path the
-  // workflows own, so boot's own writes there ride it as the ledger does —
+  // workflows own, so boot's own writes there ride it as the record does —
   // a confined commit of a file a migration also edited would carry that
   // edit past the review under boot's message.
   const commitOwn = !migrations.changed;
@@ -270,13 +272,13 @@ function boot(cwd, { startAgain = false } = {}) {
 }
 
 /**
- * Run the migrations into the state's ledger and, where no reviewed commit
- * will carry it, commit the ledger.
+ * Run the migrations into the state's migrations record and, where no
+ * reviewed commit will carry it, commit the record.
  * @param {string} cwd @param {string[]} warnings
  * @returns {{migrations: BootResult['migrations'], migrationsCommitted: string|null}}
  */
 function runMigrations(cwd, warnings) {
-  const mig = spawnSync('node', [MIGRATE_CJS, '--ledger', statePath(cwd, LEDGER)], { cwd: codeRoot(cwd), encoding: 'utf8' });
+  const mig = spawnSync('node', [MIGRATE_CJS, '--record', statePath(cwd, MIGRATIONS_RECORD)], { cwd: codeRoot(cwd), encoding: 'utf8' });
   if (mig.error || mig.status !== 0) {
     const detail = mig.error
       ? mig.error.message
@@ -300,23 +302,23 @@ function runMigrations(cwd, warnings) {
     notices: /** @type {MigrationNotice[]} */ (Array.isArray(notices) ? notices : []),
   };
 
-  // A migration that ran while changing no document still wrote the ledger,
+  // A migration that ran while changing no document still wrote the record,
   // and that write has no other path to a commit: with nothing to review the
   // calling skill says "up to date" and never reaches its `commit
-  // --migrations`. So boot leaves the ledger clean whenever no reviewed commit
+  // --migrations`. So boot leaves the record clean whenever no reviewed commit
   // will carry it — dirt this run recorded, and dirt an earlier boot left
   // behind the same way. When the review gate does fire, its own commit takes
-  // the ledger in with the diff the user approved and boot stays out of the
+  // the record in with the diff the user approved and boot stays out of the
   // way. The migrations are already applied, so a commit failure is a warning.
   /** @type {string|null} */
   let migrationsCommitted = null;
   if (!migrations.changed) {
     try {
-      const committed = commitStateScoped(cwd, LEDGER, 'chore: record workflow migrations');
+      const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, 'chore: record workflow migrations');
       migrationsCommitted = committed.committed;
       warnings.push(...committed.warnings);
     } catch (err) {
-      warnings.push(`migration ledger commit failed: ${err instanceof Error ? err.message : String(err)}`);
+      warnings.push(`migrations record commit failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
   return { migrations, migrationsCommitted };

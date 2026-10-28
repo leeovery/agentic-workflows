@@ -717,6 +717,11 @@ function bulletRow(text, { indent = '  ', width = displayWidth() } = {}) {
   return wrap(text, width - indent.length - 2).map((s, i) => (i === 0 ? `${indent}• ${s}` : `${indent}  ${s}`));
 }
 
+/** Text cut to `max` characters, an ellipsis ending what was cut. @param {string} text @param {number} max */
+function clipped(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
 /**
  * The line a flow shows where one actionable item leaves nothing to pick.
  * @param {string} name
@@ -759,5 +764,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, autoSelectLine, subDetail, treeList };
+module.exports = { DOTS, NBSP, MENU_GLYPH, gateSurfaceAnnounced, openGate, illustrate, gateBlock, section, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, TITLE_INSTRUCTION, dataSection, DATA_INSTRUCTION, actionsTable, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, AUTO_GATE_INSTRUCTION, AUTO_GATE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, labelParts, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, autoSelectLine, subDetail, treeList };
 

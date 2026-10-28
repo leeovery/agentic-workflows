@@ -11,10 +11,10 @@
 // the Node ones, in order.
 //
 // Tracking:
-//   - Progress lives in the ledger the caller names (`--ledger <path>`; boot
-//     names the state's `.state/migrations`), one numeric-only ID per line
-//     (e.g. "001", "047"). The ID is the filename's leading digits,
-//     extension-independent — .sh and .cjs share the same ID space.
+//   - Progress lives in the migrations record the caller names (`--record
+//     <path>`; boot names the state's `.state/migrations`), one numeric-only
+//     ID per line (e.g. "001", "047"). The ID is the filename's leading
+//     digits, extension-independent — .sh and .cjs share the same ID space.
 //   - An ID recorded once is never re-run. Delete the log to force a full
 //     re-run. An ID is recorded only AFTER its migration completes; any
 //     failure aborts the whole run without recording (boot treats a non-zero
@@ -68,11 +68,11 @@ const HANDBACKS = [
 // Marker preceding the one-line JSON report of what the run recorded:
 // `{"ran": <migrations executed>}`. Distinct from the stop gate, which counts
 // files: a migration that ran and found nothing to do still recorded its ID,
-// so the ledger is dirty on a run that updated nothing. Boot extracts and
+// so the record is dirty on a run that updated nothing. Boot extracts and
 // strips it.
 const MIGRATIONS_RUN_MARKER = '---MIGRATIONS_RUN---';
 
-const LEDGER_FLAG = '--ledger';
+const RECORD_FLAG = '--record';
 
 // The fleet released while the state lived in the code tree upgrades the
 // `.workflows/` there, and three of it (049, 053, 060) would create one from
@@ -81,9 +81,9 @@ const LEDGER_FLAG = '--ledger';
 const LAST_CODE_TREE_MIGRATION = 72;
 const CODE_TREE_STATE = '.workflows';
 
-/** @param {string} ledger @param {string} journal */
-function journalPath(ledger, journal) {
-  return path.join(path.dirname(ledger), journal);
+/** @param {string} record @param {string} journal */
+function journalPath(record, journal) {
+  return path.join(path.dirname(record), journal);
 }
 
 /** @param {string} file @returns {Record<string, string|null>[]} */
@@ -120,14 +120,14 @@ const SH_WRAPPER = [
 ].join('\n');
 
 /**
- * The ledger the caller names, resolved from the cwd.
+ * The migrations record the caller names, resolved from the cwd.
  * @param {string} cwd @param {string[]} args
  * @returns {string}
  */
-function ledgerOf(cwd, args) {
-  const at = args.indexOf(LEDGER_FLAG);
+function recordOf(cwd, args) {
+  const at = args.indexOf(RECORD_FLAG);
   const given = at === -1 ? undefined : args[at + 1];
-  if (!given) fail(`usage: migrate.cjs ${LEDGER_FLAG} <path> — the ledger the run records into`);
+  if (!given) fail(`usage: migrate.cjs ${RECORD_FLAG} <path> — the migrations record the run writes into`);
   return path.resolve(cwd, given);
 }
 
@@ -150,12 +150,12 @@ function compareMigrations(a, b) {
   return ba < bb ? -1 : ba > bb ? 1 : 0;
 }
 
-/** Whether `id` is already recorded in the ledger (grep -q "^id$").
- *  @param {string} ledger @param {string} id */
-function isRecorded(ledger, id) {
+/** Whether `id` is already in the record (grep -q "^id$").
+ *  @param {string} record @param {string} id */
+function isRecorded(record, id) {
   let content;
   try {
-    content = fs.readFileSync(ledger, 'utf8');
+    content = fs.readFileSync(record, 'utf8');
   } catch (_) {
     return false;
   }
@@ -165,14 +165,14 @@ function isRecorded(ledger, id) {
 /**
  * Run a `*.sh` migration by sourcing it in a spawned bash. Returns the counter
  * deltas; a non-zero exit surfaces the migration's stderr and aborts the run.
- * @param {string} cwd @param {string} scriptAbs @param {string} ledger
+ * @param {string} cwd @param {string} scriptAbs @param {string} record
  * @returns {{updated: number, skipped: number, stdout: string}}
  */
-function runShMigration(cwd, scriptAbs, ledger) {
+function runShMigration(cwd, scriptAbs, record) {
   const res = spawnSync(BASH, ['-c', SH_WRAPPER], {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, MG_SCRIPT: scriptAbs, MG_TRACKING: ledger, PROJECT_DIR: '.' },
+    env: { ...process.env, MG_SCRIPT: scriptAbs, MG_TRACKING: record, PROJECT_DIR: '.' },
     stdio: ['ignore', 'pipe', 'pipe', 'pipe'],
   });
   if (res.error || res.status !== 0) {
@@ -232,9 +232,9 @@ function fail(message, code) {
 
 function main() {
   const cwd = process.cwd();
-  const ledger = ledgerOf(cwd, process.argv.slice(2));
-  fs.mkdirSync(path.dirname(ledger), { recursive: true });
-  if (!fs.existsSync(ledger)) fs.writeFileSync(ledger, '');
+  const record = recordOf(cwd, process.argv.slice(2));
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  if (!fs.existsSync(record)) fs.writeFileSync(record, '');
   const codeTreeState = fs.existsSync(path.join(cwd, CODE_TREE_STATE));
 
   if (!fs.existsSync(MIGRATIONS_DIR)) {
@@ -269,20 +269,20 @@ function main() {
     }
 
     // Skip entire migration if already recorded.
-    if (isRecorded(ledger, id)) continue;
+    if (isRecorded(record, id)) continue;
     if (!codeTreeState && parseInt(id, 10) <= LAST_CODE_TREE_MIGRATION) {
-      fs.appendFileSync(ledger, id + '\n');
+      fs.appendFileSync(record, id + '\n');
       continue;
     }
 
     const result = script.endsWith('.cjs')
       ? runCjsMigration(script)
-      : runShMigration(cwd, script, ledger);
+      : runShMigration(cwd, script, record);
 
     if (result.stdout) process.stdout.write(result.stdout);
     filesUpdated += result.updated;
 
-    fs.appendFileSync(ledger, id + '\n');
+    fs.appendFileSync(record, id + '\n');
     migrationsRun += 1;
 
     // Journal what it handed back durably the moment its migration is
@@ -294,7 +294,7 @@ function main() {
       };
       for (const { key, journal } of HANDBACKS) {
         if (!entries[key]) continue;
-        const file = journalPath(ledger, journal);
+        const file = journalPath(record, journal);
         fs.writeFileSync(file, JSON.stringify([...readJournal(file), entries[key]]) + '\n');
       }
     }
@@ -314,7 +314,7 @@ function main() {
   // A fully successful run emits everything journaled — this run's entries
   // plus any stranded by an earlier aborted run — and clears each journal.
   for (const { marker, journal } of HANDBACKS) {
-    const file = journalPath(ledger, journal);
+    const file = journalPath(record, journal);
     const entries = readJournal(file);
     if (entries.length === 0) continue;
     process.stdout.write(marker + '\n');

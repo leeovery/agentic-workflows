@@ -73,6 +73,7 @@ const { manageDetail } = require('./workunit-manage.cjs');
 const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
+const { ledgerStopSurface } = require('./ledger.cjs');
 const { projectName } = require('./state-checks.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
@@ -7261,6 +7262,7 @@ const SURFACES = {
   'legacy-split-gate': legacySplitGateSurface,
   'legacy-split-display': legacySplitDisplaySurface,
   'state-merge-gate': stateMergeGateSurface,
+  'ledger-stop': ledgerStopSurface,
 };
 
 /**

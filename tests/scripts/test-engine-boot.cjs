@@ -85,12 +85,12 @@ const STUB_MIGRATE = `#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const mode = process.env.STUB_MIGRATE_MODE || '';
-const ledger = process.argv[process.argv.indexOf('--ledger') + 1];
+const record = process.argv[process.argv.indexOf('--record') + 1];
 let ran = 1;
 if (mode === 'update') {
-  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  fs.mkdirSync(path.dirname(record), { recursive: true });
   fs.mkdirSync('.leeway/payments', { recursive: true });
-  fs.appendFileSync(ledger, '045\\n');
+  fs.appendFileSync(record, '045\\n');
   fs.writeFileSync('.leeway/payments/marker.md', 'migrated\\n');
   process.stdout.write(
     '\\n' +
@@ -101,9 +101,9 @@ if (mode === 'update') {
     'Follow the explicit instructions in the migration skill before proceeding.\\n'
   );
 } else if (mode === 'update-config') {
-  fs.mkdirSync(path.dirname(ledger), { recursive: true });
+  fs.mkdirSync(path.dirname(record), { recursive: true });
   fs.mkdirSync('.claude', { recursive: true });
-  fs.appendFileSync(ledger, '046\\n');
+  fs.appendFileSync(record, '046\\n');
   fs.writeFileSync('.claude/settings.json', process.env.STUB_MIGRATE_SETTINGS || '{"permissions":{}}\\n');
   fs.appendFileSync('.gitignore', '.DS_Store\\n');
   process.stdout.write(
@@ -114,10 +114,10 @@ if (mode === 'update') {
     'You MUST now follow the migration skill instructions to STOP and let the user review.\\n'
   );
 } else if (mode === 'record-only') {
-  // A migration that ran and found nothing to do: the ledger gains its line,
+  // A migration that ran and found nothing to do: the record gains its line,
   // no document changes, no stop gate.
-  fs.mkdirSync(path.dirname(ledger), { recursive: true });
-  fs.appendFileSync(ledger, '047\\n');
+  fs.mkdirSync(path.dirname(record), { recursive: true });
+  fs.appendFileSync(record, '047\\n');
   process.stdout.write('[SKIP] No changes needed\\n');
 } else if (mode === 'fail') {
   process.stdout.write('partial output before the failure\\n');
@@ -599,7 +599,7 @@ describe('engine boot', () => {
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'config baseline');
   });
 
-  it('a migration that ran while changing nothing still recorded it — boot commits the ledger line no review gate would sweep', () => {
+  it('a migration that ran while changing nothing still recorded it — boot commits the migrations record line no review gate would sweep', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
     assert.strictEqual(res.ok, true);
@@ -616,12 +616,12 @@ describe('engine boot', () => {
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init', 'and nothing on the code side');
   });
 
-  it('a ledger an earlier boot left dirty is committed by the next one, which ran nothing at all', () => {
+  it('a migrations record an earlier boot left dirty is committed by the next one, which ran nothing at all', () => {
     // The state this bug leaves behind: a previous boot recorded an ID and
     // never committed it. Those migrations are recorded now, so nothing runs
     // — and the line still has to go.
     writeFile(fix.project, '.leeway/.state/migrations', '045\n');
-    commitAll(fix.project, 'ledger baseline');
+    commitAll(fix.project, 'record baseline');
     writeFile(fix.project, '.leeway/.state/migrations', '045\n046\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
@@ -634,32 +634,32 @@ describe('engine boot', () => {
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']).trim(), '');
   });
 
-  it('a run that changed documents leaves the ledger to the reviewed commit — boot never commits it twice', () => {
+  it('a run that changed documents leaves the migrations record to the reviewed commit — boot never commits it twice', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'update' });
 
     assert.strictEqual(res.migrations.changed, true);
     assert.strictEqual(res.migrations.ran, 1);
     assert.strictEqual(res.migrations_committed, null);
-    // The ledger line waits with the rest of the diff for the skill's
+    // The record's line waits with the rest of the diff for the skill's
     // `commit --migrations`, which the review gate runs on the user's yes.
     assert.match(stateGit(fix.project, ['status', '--porcelain', '--', '.state/migrations']), /migrations/);
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
-  it('a ledger with nothing to commit — already clean — is null and silent', () => {
+  it('a migrations record with nothing to commit — already clean — is null and silent', () => {
     // Clean: the run recorded nothing new (a re-append restoring what HEAD
-    // already holds), so the tracked ledger matches HEAD.
+    // already holds), so the tracked record matches HEAD.
     writeFile(fix.project, '.leeway/.state/migrations', '045\n');
-    commitAll(fix.project, 'ledger baseline');
+    commitAll(fix.project, 'record baseline');
 
     const clean = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_REPORT: '{"ran": 2}' });
     assert.strictEqual(clean.migrations.ran, 2);
     assert.strictEqual(clean.migrations_committed, null);
     assert.deepStrictEqual(clean.warnings, []);
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger baseline');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record baseline');
   });
 
-  it('a failing ledger commit is a warning, never a block — the ledger is already right on disk', () => {
+  it('a failing commit of the migrations record is a warning, never a block — the record is already right on disk', () => {
     // Another git process holding the state branch's ref lock.
     fs.writeFileSync(path.join(fix.project, '.git/refs/heads/leeway-state.lock'), '');
 
@@ -669,11 +669,11 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.ran, 1);
     assert.strictEqual(res.migrations_committed, null);
     assert.strictEqual(res.warnings.length, 1);
-    assert.match(res.warnings[0], /migration ledger commit failed/);
+    assert.match(res.warnings[0], /migrations record commit failed/);
     assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.state/migrations')), 'the recorded run survives');
   });
 
-  it('a run report boot cannot read degrades to a warning — ran 0, the ledger still committed, plumbing still stripped', () => {
+  it('a run report boot cannot read degrades to a warning — ran 0, the migrations record still committed, plumbing still stripped', () => {
     for (const payload of ['not json at all', '{"ran": "two"}', '{"ran": -1}']) {
       const res = runEngine(stubbed, fix.project, ['boot'], {
         STUB_MIGRATE_MODE: 'record-only',
@@ -690,7 +690,7 @@ describe('engine boot', () => {
     }
   });
 
-  it('a runner that reports nothing reads as no migrations run — the ledger it wrote still committed', () => {
+  it('a runner that reports nothing reads as no migrations run — the migrations record it wrote still committed', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'record-only',
       STUB_MIGRATE_NO_REPORT: '1',
@@ -770,7 +770,7 @@ describe('engine boot', () => {
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
     // Boot runs at `workflow-start`, which is a session opening beside every
-    // other one on the checkout. Its commits — the migration ledger and the
+    // other one on the checkout. Its commits — the migrations record and the
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.
     writeFile(fix.project, '.leeway/payments/discussion/topic-a.md', '# Topic A\n');
@@ -1709,7 +1709,7 @@ describe('engine boot (real scripts)', () => {
     assert.deepStrictEqual(fs.readFileSync(path.join(project, '.leeway/.state/migrations'), 'utf8').trim().split('\n').sort(), fleet);
     assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
     assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);
-    // The ledger, the only dirt, committed on the state branch — the code
+    // The migrations record, the only dirt, committed on the state branch — the code
     // branch takes none of it.
     assert.strictEqual(first.migrations_committed, stateGit(project, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
@@ -1739,7 +1739,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(second.compacted, true);
     assert.strictEqual(stateGit(project, ['status', '--porcelain', '--untracked-files=all', '--', '.knowledge']).trim(), '');
 
-    // Third boot: nothing new to commit, the ledger included — an index and
+    // Third boot: nothing new to commit, the migrations record included — an index and
     // a compact with nothing to do write nothing.
     const third = runEngine(real, project, ['boot']);
     assert.strictEqual(third.knowledge, 'ready');

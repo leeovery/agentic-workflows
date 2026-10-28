@@ -16,7 +16,7 @@
 // counts the step's fields and the account says which one this is.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION, dataSection } = require('./surfaces.cjs');
+const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION, dataSection, clipped } = require('./surfaces.cjs');
 const { escapeMarkdown } = require('./worklist.cjs');
 const { askedAt, choiceId } = require('../state-merge-rules.cjs');
 
@@ -72,11 +72,6 @@ function shown(side) {
   if (!side.set) return 'removed';
   const { value } = side;
   return typeof value === 'string' && value !== '' && !value.includes('\n') ? value : JSON.stringify(value);
-}
-
-/** @param {string} text @param {number} max */
-function clipped(text, max) {
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
 
 /**
