@@ -112,10 +112,10 @@ describe('projectRepos: the repos a project holds', () => {
     writeFile(api, 'index.js', '1\n');
     commitAll(api, 'init');
     const realpathSync = fs.realpathSync;
-    fs.realpathSync = /** @type {typeof fs.realpathSync} */ ((/** @type {string} */ p, ...rest) => {
+    fs.realpathSync = /** @type {typeof fs.realpathSync} */ (Object.assign((/** @type {string} */ p, /** @type {any[]} */ ...rest) => {
       if (String(p).endsWith(`${path.sep}api${path.sep}.git`)) throw Object.assign(new Error(`EACCES: permission denied, realpath '${p}'`), { code: 'EACCES' });
       return realpathSync(p, ...rest);
-    });
+    }, { native: realpathSync.native }));
     try {
       assert.deepStrictEqual(dirsOf(projectRepos(dir)), ['']);
     } finally {

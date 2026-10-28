@@ -2382,7 +2382,8 @@ describe('pipeline simulation', () => {
     // restore and the SessionStart resume — on stderr, its stdout being
     // conversation context — with nothing to resume; opting out takes
     // `session cleanup` and `session resume` back out and leaves the
-    // workflows' own.
+    // workflows' own, the layout hook before every write among them, which
+    // refuses a Write to the ledger and lets one to a manifest through.
     const label0 = sim.run(['session', 'label', wu, 'research', 'alpha']);
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
@@ -2394,7 +2395,8 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(hookVerbs(), {
       SessionEnd: ['engine.cjs" session cleanup', 'engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       SessionStart: ['engine.cjs" session resume'],
-    }, 'the opt-in installs the session hooks on both events');
+      PreToolUse: ['engine.cjs" layout guard'],
+    }, 'the opt-in installs the session hooks on both events, beside the layout hook');
     assert.strictEqual(stateGit(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
       'the choice is state');
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
@@ -2420,8 +2422,15 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.runOnStderr(['session', 'resume', 'sim-sess']), { ok: true, resumed: false });
     sim.run(['session', 'label-config', 'false']);
     assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
-    assert.deepStrictEqual(hookVerbs(), { SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'] },
-      'opting out leaves the workflows\' own in place');
+    assert.deepStrictEqual(hookVerbs(), {
+      SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
+      PreToolUse: ['engine.cjs" layout guard'],
+    }, 'opting out leaves the workflows\' own in place');
+    const beforeWrite = (/** @type {string} */ rel) => sim.engine(['layout', 'guard'], null, JSON.stringify({
+      hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Write', tool_input: { file_path: path.join(sim.dir, '.leeway', rel), content: '' },
+    }));
+    assert.strictEqual(beforeWrite('.ledger.jsonl').code, 2, 'the ledger is the engine\'s alone');
+    assert.deepStrictEqual(beforeWrite('manifest.json'), { stdout: '', stderr: '', code: 0 });
     // Concurrent-session shape: a --topic commit slices out only its own
     // topic's paths — a peer topic's dirty file survives unstaged and
     // uncommitted, and the commit contains no path outside the topic + manifest.

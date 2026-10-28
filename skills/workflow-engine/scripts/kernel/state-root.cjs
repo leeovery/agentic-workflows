@@ -100,13 +100,49 @@ function stateSpec(...segments) {
   return segments.length === 0 ? '.' : segments.join('/');
 }
 
+/** The links one walk follows before it stops, as the system's own limit does. */
+const MAX_LINKS = 40;
+
 /**
- * An absolute path with the symbolic links in the part of it that exists
- * resolved, as the state root's are.
+ * A path with every symbolic link in it followed, one name at a time from the
+ * top — a dangling one to where it points, which a write through it creates.
+ * A link's own target is read from the folder the link sits in, as the system
+ * reads it.
+ * @param {string} abs @param {{followed: number}} links
+ * @returns {string}
+ */
+function walkedPath(abs, links) {
+  let at = path.parse(abs).root;
+  for (const name of abs.slice(at.length).split(path.sep)) {
+    if (name === '' || name === '.') continue;
+    at = name === '..' ? path.dirname(at) : followedLink(path.join(at, name), links);
+  }
+  return at;
+}
+
+/**
+ * A name in a walked folder, its link followed where it is one.
+ * @param {string} file @param {{followed: number}} links
+ * @returns {string}
+ */
+function followedLink(file, links) {
+  let target;
+  try {
+    target = fs.readlinkSync(file);
+  } catch {
+    return file;
+  }
+  if (++links.followed > MAX_LINKS) return file;
+  return walkedPath(path.isAbsolute(target) ? target : `${path.dirname(file)}${path.sep}${target}`, links);
+}
+
+/**
+ * An absolute path spelled as the disk spells it: the part that exists in
+ * the case its names were made in, the rest as given.
  * @param {string} abs
  * @returns {string}
  */
-function resolvedPath(abs) {
+function onDiskPath(abs) {
   /** @type {string[]} */
   const missing = [];
   let at = abs;
@@ -116,7 +152,39 @@ function resolvedPath(abs) {
     missing.unshift(path.basename(at));
     at = parent;
   }
-  return path.join(fs.realpathSync(at), ...missing);
+  return path.join(fs.realpathSync.native(at), ...missing);
+}
+
+/**
+ * Where a path given to the engine — absolute, or read from `cwd` — lands:
+ * its `..` read from the text, as Claude Code's own tools read it before
+ * they write, then every link followed (`walkedPath`), spelled as the disk
+ * spells it (`onDiskPath`).
+ * @param {string} cwd @param {string} given
+ * @returns {string}
+ */
+function resolvedPath(cwd, given) {
+  return onDiskPath(walkedPath(path.resolve(cwd, given), { followed: 0 }));
+}
+
+/**
+ * Whether the filesystem an existing folder is on ignores case: the folder
+ * reached again under its name with the case of each letter turned. A name
+ * with no letters tells nothing, and answers no.
+ * @param {string} folder absolute
+ * @returns {boolean}
+ */
+function ignoresCase(folder) {
+  const name = path.basename(folder);
+  const turned = [...name].map((c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase())).join('');
+  if (turned === name) return false;
+  try {
+    const own = fs.statSync(folder);
+    const other = fs.statSync(path.join(path.dirname(folder), turned));
+    return own.dev === other.dev && own.ino === other.ino;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -128,7 +196,7 @@ function resolvedPath(abs) {
  * @returns {string|null}
  */
 function stateRelative(cwd, given) {
-  const rel = path.relative(stateRoot(cwd), resolvedPath(path.resolve(cwd, given)));
+  const rel = path.relative(onDiskPath(stateRoot(cwd)), resolvedPath(cwd, given));
   if (rel === '') return '.';
   if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return null;
   return rel.split(path.sep).join('/');
@@ -149,4 +217,5 @@ function insideState(cwd, given, ...segments) {
 
 module.exports = {
   STATE_DIR_NAME, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState,
+  resolvedPath, ignoresCase,
 };

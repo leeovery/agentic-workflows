@@ -31,7 +31,9 @@
 // end`, present in every workflow project regardless — the heartbeat sweep
 // and the conversation's transcript record are the workflows' own, not a
 // label preference. SessionStart (matcher `resume`) carries `session
-// resume` while labels are on. Recording the choice syncs the hooks
+// resume` while labels are on. PreToolUse, matched to the tools the layout
+// hook stands before, carries `layout guard` in every workflow project
+// (domain/layout-hook). Recording the choice syncs the hooks
 // (`recordLabelChoice`) and every boot re-syncs them (`syncSessionHooks`).
 //
 // The original name is stashed in the state's cache (`.cache/.session-labels/`,
@@ -68,12 +70,14 @@ const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./c
 const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, isPlace, dropPosition, placeLine } = require('./position.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
+const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
 const SESSION_RESUME_COMMAND = `${HOOK_ENGINE} session resume`;
 const PRESENCE_CLEANUP_COMMAND = `${HOOK_ENGINE} presence cleanup`;
 const CONVERSATION_END_COMMAND = `${HOOK_ENGINE} conversation end`;
+const LAYOUT_GUARD_COMMAND = `${HOOK_ENGINE} layout guard`;
 // What makes a hook ours: the exact `engine.cjs" <verb>` form. The path
 // before it and any arguments after are free, so a hook under another
 // install prefix or carrying a timeout is recognised and never twinned; the
@@ -140,7 +144,7 @@ function carriesOurHooks(settings) {
  * resumed session's label back, its matcher having Claude Code fire it on
  * `claude --resume` alone — and the workflows' own (`workflows`), where
  * SessionEnd sweeps the heartbeats and records the conversation's
- * transcript.
+ * transcript, and PreToolUse runs the layout hook before every write.
  * @param {{session: boolean, workflows: boolean}} want
  * @returns {{event: string, matcher?: string, commands: string[]}[]}
  */
@@ -150,6 +154,7 @@ function wantedByEvent({ session, workflows }) {
   return [
     { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, workflows && PRESENCE_CLEANUP_COMMAND, workflows && CONVERSATION_END_COMMAND]) },
     { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
+    { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([workflows && LAYOUT_GUARD_COMMAND]) },
   ];
 }
 
@@ -178,10 +183,11 @@ function reconcileEventGroups(groups, commands, matcher) {
 /**
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
- * end` iff `workflows`; SessionStart carries `session resume` iff `session`
- * — each event reconciled on its own, every other key (permissions, other
- * events, foreign groups and their matchers) preserved, an event emptied by
- * a removal gone. Null where the document already carries exactly those.
+ * end` iff `workflows`; SessionStart carries `session resume` iff `session`;
+ * PreToolUse carries `layout guard` iff `workflows` — each event reconciled
+ * on its own, every other key (permissions, other events, foreign groups
+ * and their matchers) preserved, an event emptied by a removal gone. Null
+ * where the document already carries exactly those.
  * @param {Record<string, any>} settings @param {{session: boolean, workflows: boolean}} want
  * @returns {Record<string, any>|null}
  */

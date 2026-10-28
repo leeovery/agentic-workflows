@@ -42,8 +42,12 @@ const { RULESET, githubRepository } = require(path.join(SCRIPTS, 'domain/github-
 
 // The workflows' own hooks, as boot installs them.
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
+const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: `${HOOK_ENGINE} layout guard` }] };
 const WORKFLOW_HOOKS = JSON.stringify({
-  hooks: { SessionEnd: [{ hooks: ['presence cleanup', 'conversation end'].map((verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` })) }] },
+  hooks: {
+    SessionEnd: [{ hooks: ['presence cleanup', 'conversation end'].map((verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` })) }],
+    PreToolUse: [LAYOUT_GROUP],
+  },
 }, null, 2) + '\n';
 
 // A migration runner that runs nothing. Where STUB_MIGRATE_MARK names a
@@ -1079,6 +1083,14 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual(untouched(main, bare), before);
   });
 
+  it('the layout hook alone, among the person\'s own hooks, is the trace', () => {
+    const settings = { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: 'echo theirs' }] }, LAYOUT_GROUP] } };
+    const main = lostProject({ trace: { '.claude/settings.json': JSON.stringify(settings, null, 2) + '\n' } });
+
+    assert.deepStrictEqual(boot(main), { ok: true, state: 'lost', warnings: [] });
+    assert.ok(!fs.existsSync(path.join(main, '.leeway')));
+  });
+
   it('a line naming the state in the .gitignore is the trace too', () => {
     const main = lostProject({ trace: { '.gitignore': 'node_modules\n.leeway/\n' } });
 
@@ -1199,7 +1211,12 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
       const main = codeProject({ remote: bare });
       git(main, ['checkout', '-q', '-b', 'feature']);
       write(main, '.gitignore', 'node_modules\n');
-      write(main, '.claude/settings.json', JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: 'echo bye' }] }] } }));
+      write(main, '.claude/settings.json', JSON.stringify({
+        hooks: {
+          SessionEnd: [{ hooks: [{ type: 'command', command: 'echo bye' }] }],
+          PreToolUse: [{ matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: 'node lint.cjs' }] }],
+        },
+      }));
       git(main, ['add', '-A']);
       git(main, ['commit', '-q', '-m', 'the person\'s own']);
       git(main, ['push', '-q', 'origin', 'feature']);

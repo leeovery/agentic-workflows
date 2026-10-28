@@ -34,15 +34,17 @@ const SESSION_HOOK = { type: 'command', command: `${HOOK_ENGINE} session cleanup
 const RESUME_HOOK = { type: 'command', command: `${HOOK_ENGINE} session resume` };
 const PRESENCE_HOOK = { type: 'command', command: `${HOOK_ENGINE} presence cleanup` };
 const END_HOOK = { type: 'command', command: `${HOOK_ENGINE} conversation end` };
+const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [{ type: 'command', command: `${HOOK_ENGINE} layout guard` }] };
 // The settings a project reaches with labels on — one group per event, ours
 // alone — and with them off.
 const LABELS_ON = {
   hooks: {
     SessionEnd: [{ hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
     SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }],
+    PreToolUse: [LAYOUT_GROUP],
   },
 };
-const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }] } };
+const LABELS_OFF = { hooks: { SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }], PreToolUse: [LAYOUT_GROUP] } };
 // The SessionStart hook's stdin, as Claude Code writes it on `claude --resume`.
 const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: id, hook_event_name: 'SessionStart', source: 'resume' });
 
@@ -695,7 +697,7 @@ describe('syncSessionHooks', () => {
     assert.deepStrictEqual(settings(), LABELS_OFF);
   });
 
-  it('installs beside everything already there — permissions, other events, foreign groups and their matchers on both events', () => {
+  it('installs beside everything already there — permissions, other events, foreign groups and their matchers on every event', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
     writeSettings({
       permissions: { allow: ['Bash(ls)'] },
@@ -703,6 +705,7 @@ describe('syncSessionHooks', () => {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ matcher: 'clear', hooks: [theirs] }],
         SessionStart: [{ matcher: 'startup', hooks: [theirs] }],
+        PreToolUse: [{ matcher: 'Write', hooks: [theirs] }],
       },
       showClearContextOnPlanAccept: true,
     });
@@ -713,6 +716,7 @@ describe('syncSessionHooks', () => {
         Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
         SessionEnd: [{ matcher: 'clear', hooks: [theirs] }, { hooks: [SESSION_HOOK, PRESENCE_HOOK, END_HOOK] }],
         SessionStart: [{ matcher: 'startup', hooks: [theirs] }, { matcher: 'resume', hooks: [RESUME_HOOK] }],
+        PreToolUse: [{ matcher: 'Write', hooks: [theirs] }, LAYOUT_GROUP],
       },
       showClearContextOnPlanAccept: true,
     });
@@ -736,6 +740,9 @@ describe('syncSessionHooks', () => {
         ],
         SessionStart: [
           { matcher: 'startup|resume', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session resume' }] },
+        ],
+        PreToolUse: [
+          { matcher: 'Edit|Write|NotebookEdit|Bash', hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" layout guard', timeout: 5 }] },
         ],
       },
     });
@@ -800,9 +807,9 @@ describe('syncSessionHooks', () => {
 
   it('reconciles the two events independently — a missing SessionStart group lands while a recognised SessionEnd group is left as it was', () => {
     const hand = { hooks: [{ type: 'command', command: 'node "/abs/engine.cjs" session cleanup', timeout: 5 }, PRESENCE_HOOK, END_HOOK] };
-    writeSettings({ hooks: { SessionEnd: [hand] } });
+    writeSettings({ hooks: { SessionEnd: [hand], PreToolUse: [LAYOUT_GROUP] } });
     assert.deepStrictEqual(syncSessionHooks(dir, BOTH), { changed: true });
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [hand], PreToolUse: [LAYOUT_GROUP], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }] } });
   });
 
   it('a hook of ours is ours under any event — a resume hook misplaced under SessionEnd moves to SessionStart', () => {

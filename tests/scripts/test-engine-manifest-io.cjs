@@ -499,6 +499,7 @@ const EXEMPT_CALLS = [
   ['session', 'repair'],
   ['session', 'cleanup', 'sess-1'],
   ['session', 'resume', 'sess-1'],
+  ['layout', 'guard'],
 ];
 
 describe('engine writes take the writer lock', () => {
