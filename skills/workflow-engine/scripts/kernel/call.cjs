@@ -3,11 +3,34 @@
 // ---------------------------------------------------------------------------
 // Kernel: one engine invocation — the command a person types to start one,
 // what it acts on, where its answers go, how a command ends it with an exit
-// code without ending its caller, and what a failure says.
+// code without ending its caller, what a failure says, and how a command
+// starts one detached, to outlive it.
 // ---------------------------------------------------------------------------
+
+const path = require('path');
+const childProcess = require('child_process');
 
 /** The command a person types at the project root to run the engine. */
 const ENGINE_COMMAND = 'node .claude/skills/workflow-engine/scripts/engine.cjs';
+
+const ENGINE_CJS = path.join(__dirname, '..', 'engine.cjs');
+
+/**
+ * The one door a detached engine job — the vector fill, the late
+ * one-decision check — is launched through: its own process, run from `cwd`,
+ * its output dropped, never waited on. Replaced by a test that must observe
+ * a launch without a process.
+ */
+const launcher = {
+  /** @param {string} cwd @param {string[]} argv the engine command */
+  launch(cwd, argv) {
+    const child = childProcess.spawn(process.execPath, [ENGINE_CJS, ...argv], { cwd, detached: true, stdio: 'ignore' });
+    // A job that could not start leaves its work for the next launch — never
+    // an unhandled error in the command that launched it.
+    child.on('error', () => {});
+    child.unref();
+  },
+};
 
 /**
  * The directory an invocation acts on, where its two output streams go, and
@@ -44,4 +67,4 @@ function messageOf(err) {
   return err instanceof Error ? err.message : String(err);
 }
 
-module.exports = { ENGINE_COMMAND, ExitSignal, messageOf };
+module.exports = { ENGINE_COMMAND, ExitSignal, messageOf, launcher };

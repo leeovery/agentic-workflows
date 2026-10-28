@@ -24,7 +24,9 @@
 //   questions as they stand now, each answered as its record shows it. A
 //   unit or topic that is not live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
-//   as written but its schema version.
+//   as written but its schema version; a decision the late one-decision
+//   check judged shows beside it what the check found, `late_check`, one
+//   rule or several — several is the flag (16.19.8).
 // - A read takes no lock. What a landing its check finished said rides the
 //   answer, and a refusal, as warnings.
 // ---------------------------------------------------------------------------
@@ -74,14 +76,19 @@ function shownLine(event, short) {
 }
 
 /**
- * The shower over a folded ledger, the entry at a place read again from it.
+ * The shower over a folded ledger, the entry at a place read again from it,
+ * with what the late one-decision check found of it, where it found anything.
  * @param {Folded} folded @param {(place: import('./ledger.cjs').EntryPlace) => Record<string, unknown>} entryAt
  * @returns {Shower}
  */
 function showerOf(folded, entryAt) {
   const shorts = shortIds(folded.facts.keys());
   const short = (/** @type {string} */ id) => /** @type {string} */ (shorts.get(id));
-  const show = (/** @type {string} */ id) => shownLine(entryAt(factsOf(folded, id).place), short);
+  const show = (/** @type {string} */ id) => {
+    const facts = factsOf(folded, id);
+    const shown = shownLine(entryAt(facts.place), short);
+    return facts.late_check === null ? shown : { ...shown, late_check: facts.late_check };
+  };
   return { folded, show, short };
 }
 
@@ -134,10 +141,14 @@ function answerRecord(shower, { unit, topic }) {
   };
 }
 
-/** A question's answer as its map row shows it: whose, where, and what. @param {Shower} shower @param {string} answer */
+/**
+ * A question's answer as its map row shows it: whose, where, and what, and
+ * what the late one-decision check found of it, where it found anything.
+ * @param {Shower} shower @param {string} answer
+ */
 function rowAnswer({ show }, answer) {
-  const { id, unit, topic, by, text } = show(answer);
-  return { id, unit, topic, by, text };
+  const { id, unit, topic, by, text, late_check: lateCheck } = show(answer);
+  return { id, unit, topic, by, text, ...(lateCheck === undefined ? {} : { late_check: lateCheck }) };
 }
 
 /**

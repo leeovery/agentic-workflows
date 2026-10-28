@@ -21,7 +21,8 @@ const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/sto
 const { StubProvider } = require('../../skills/workflow-engine/scripts/kernel/knowledge/embeddings.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
-const { launcher, fillVectors, fill } = require('../../skills/workflow-engine/scripts/domain/knowledge/vectors.cjs');
+const { fillVectors, fill } = require('../../skills/workflow-engine/scripts/domain/knowledge/vectors.cjs');
+const { launcher } = require('../../skills/workflow-engine/scripts/kernel/call.cjs');
 const { indexPath } = require('../../skills/workflow-engine/scripts/domain/knowledge/indexing.cjs');
 const { loadSettings } = require('../../skills/workflow-engine/scripts/domain/knowledge/embedder.cjs');
 const { syncKnowledge } = require('../../skills/workflow-engine/scripts/domain/knowledge/sync.cjs');
@@ -173,7 +174,7 @@ describe('the launch — only a provider that can embed, only while chunks await
       return { on: (/** @type {string} */ event) => { handled.push(event); }, unref: () => { unrefed = true; } };
     });
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-launch-'));
-    launcher.launch(root);
+    launcher.launch(root, ['knowledge', 'fill']);
     assert.deepStrictEqual(spawned, [[process.execPath, [ENGINE_CJS, 'knowledge', 'fill'], { cwd: root, detached: true, stdio: 'ignore' }]]);
     assert.ok(unrefed);
     assert.deepStrictEqual(handled, ['error'], 'a fill that cannot start never throws in its launcher');

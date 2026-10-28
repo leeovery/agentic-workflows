@@ -50,6 +50,7 @@ const { boot } = require('./domain/boot.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
+const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -167,6 +168,7 @@ Commands:
   manifest resolve <work-unit>.<phase>[.<topic>]
 ${LEDGER_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
+  ${LATE_CHECK_USAGE}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
   workunit import <work-unit> <path> [<path> …] --from <origin>
@@ -483,7 +485,8 @@ function runManifest(call, argv) {
 // never runCli's: around its fold of the ledger, the append and the commit
 // alone, so what its request alone refuses never waits on a peer. Each read
 // verb (domain/ledger-read.cjs) answers a projection of the ledger as JSON,
-// holding no lock.
+// holding no lock. The late one-decision check (domain/ledger-late-check.cjs)
+// is boot's detached job, taking the lock for each result it records.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -492,7 +495,8 @@ function runLedger(call, argv) {
   try {
     if (READ_VERBS.includes(verb)) respond(call, readLedgerVerb(call.cwd, verb, rest));
     else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
-    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}`);
+    else if (verb === LATE_CHECK_VERB) respond(call, lateCheck(call.cwd, rest));
+    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}`);
   } catch (err) {
     failJson(call, err);
   }
@@ -2270,9 +2274,10 @@ const COMMANDS = Object.freeze({
 // the writer lock around each state write it makes and no longer, so its
 // knowledge pass never holds a peer up; a `ledger` write holds it around its
 // read of the ledger, the append and the commit alone, so what it does
-// before and after holds no peer up, and a `ledger` read takes none;
-// `presence`, `session label`, `repair`, `cleanup` and `resume`, and the
-// hold `topic mailbox` refreshes write only the session files the state
+// before and after holds no peer up — its Claude call among it — the late
+// check holds it around each result it records, and a `ledger` read takes
+// none; `presence`, `session label`, `repair`, `cleanup` and `resume`, and
+// the hold `topic mailbox` refreshes write only the session files the state
 // ignores; a conversation's folder is outside the project; and the rest
 // read, `layout guard` among them, run before every file Claude writes.
 // `manifest` takes it to write alone, and `commit` but for a code commit

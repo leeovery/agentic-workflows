@@ -47,6 +47,7 @@ const { registerState } = require(path.join(ROOT, 'skills/workflow-engine/script
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/files.cjs'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
 const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
+const { launcher } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/call.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
 // pipelineOf): the schema's one home for pipeline order.
@@ -287,7 +288,8 @@ function auditState(dir, label) {
 // shows those answers, with exactly the entries standing elsewhere that its
 // entries rely on, its leading merges went into or that answer its
 // questions; its live moves and merges, a merge's duplicate where it is
-// live and whether the merge leads; each entry's live confirmations, and
+// live and whether the merge leads; each entry's live confirmations, what
+// the late one-decision check last found of it where it found anything, and
 // its chain down to the first entry not in a live place. A place that is
 // not live shows nothing; the product record holds the shown entries marked
 // product-wide.
@@ -345,6 +347,8 @@ function auditLedger(dir, ctx) {
   const replacements = liveEvents('replaced');
   const merges = liveEvents('merged');
   const confirmations = liveEvents('still-holds');
+  /** What the late check last found of each entry it judged. @type {Map<string, string>} */
+  const lateChecks = new Map(events.filter((e) => e.event === 'checked').map((e) => [e.entry, e.rules]));
 
   /** @param {string[]} args */
   const ledger = (args) => {
@@ -427,6 +431,7 @@ function auditLedger(dir, ctx) {
       for (const shownEntry of [e, ...e.replaced]) {
         assert.deepStrictEqual(shownEntry.holds.map((/** @type {{id: string}} */ h) => full(h.id)), confirmations.filter((c) => c.entry === full(shownEntry.id)).map((c) => c.id),
           ctx(`${place} does not show ${shownEntry.id}'s live confirmations alone`));
+        assert.strictEqual(shownEntry.late_check, lateChecks.get(full(shownEntry.id)), ctx(`${place} does not show what the late check last found of ${shownEntry.id}`));
       }
     }
     assert.deepStrictEqual(record.moved.map((/** @type {{id: string, text: string}} */ m) => [full(m.id), m.text]), moves.filter(made).map((m) => [m.id, byId.get(m.question).text]),
@@ -3824,7 +3829,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record', () => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record; a decision the one-decision check could not judge is checked at a later start', (t) => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -3889,6 +3894,28 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
     sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
     assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
+
+    // The world has no login for the separate call, so every decision landed
+    // unchecked — the merged duplicate among them. The next start launches
+    // the late check; the check, given a login, records what it finds beside
+    // each — the replacement holding several rules, flagged where its record
+    // is read — and a start after it launches none.
+    const decisions = fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line))
+      .filter((e) => e.event === 'decided' || e.of === 'decision');
+    assert.deepStrictEqual(decisions.map((e) => e.unchecked), [true, true, true]);
+    /** @type {string[]} */
+    const launched = [];
+    t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => { if (argv.join(' ') === 'ledger late-check') launched.push(root); });
+    sim.run(['boot']);
+    assert.deepStrictEqual(launched, [fs.realpathSync(statePath(sim.dir))]);
+    const withoutLogin = sim.env;
+    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ 'A frameless panel.': { rules: ['A frameless panel.', 'It takes no focus.'] }, '': { rules: ['One rule.'] } }) };
+    assert.deepStrictEqual(sim.run(['ledger', 'late-check']), { ok: true, ran: true, checked: 3, several: 1, owed: 0 });
+    sim.env = withoutLogin;
+    const checked = sim.run(['ledger', 'record', wu, 'note-window']).decisions[0];
+    assert.deepStrictEqual([checked.id, checked.late_check, checked.replaced.map((/** @type {{late_check: string}} */ d) => d.late_check)], [replacement, 'several', ['one']]);
+    sim.run(['boot']);
+    assert.strictEqual(launched.length, 1, 'a start launched the late check with no decision owed one');
 
     // Another unit's replacement counts while that unit is live, and of two
     // merges crossing each other the later holds: the note window's question
