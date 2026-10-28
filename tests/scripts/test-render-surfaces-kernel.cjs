@@ -9,9 +9,12 @@
 // `engine render` through the argv entry. Each phase's surfaces are in
 // test-engine-render-surfaces-{phase}.cjs.
 //
-// Layer: unit, and verb for a surface rendered, through `engine render` in
-// process (engine-harness.cjs). World: the project world (setupFixture), its
-// manifests and payloads written per test.
+// Layer: verb. World: the project world (setupFixture), a copied git project,
+// its manifests and payloads written per test; a surface renders through
+// `engine render` in process (engine-harness.cjs), every gate payload audited
+// against its menu (gate-audit.cjs). The catalogue dispatch calls the
+// domain's renderSurface: `engine render` answers an unknown name with its
+// usage, so the catalogue's own refusal is reached only there.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -22,9 +25,21 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
-
+const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
 const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, subDetail, treeList } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
+
+/**
+ * A surface rendered through `engine render`, its markers audited and, where
+ * it draws a menu, its gate payload held against it.
+ * @param {string} dir @param {string[]} args
+ */
+function render(dir, args) {
+  const out = harness.output(dir, ['render', ...args]);
+  auditMarkers(out, `render ${args[0]}`);
+  if (out.includes('=== MENU')) announced(() => auditGate(harness.output(dir, ['render', ...args]), `render ${args[0]}`));
+  return out;
+}
 
 describe('surfaces primitives', () => {
   it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
@@ -289,7 +304,7 @@ describe('worklist shape', () => {
     const file = writePayload(dir, 't.json', { label: 'Cycle', tasks: [
       { title: 'The traceability matrix omits three acceptance criteria', severity: 'Important' },
     ] });
-    const out = harness.output(dir, ['render', 'tasks-overview', 'pay.implementation.portal', '--file', file]);
+    const out = render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', file]);
     const body = out.split('===\n')[1].split('\n');
     assert.ok(body.some((l) => l === `${NB(5)}\`[Important]\``), `tag line missing: ${JSON.stringify(body)}`);
     for (const line of body) assert.ok(renderedLen(line) <= displayWidth(), `overflowing row: ${line}`);
@@ -306,15 +321,15 @@ describe('worklist shape', () => {
         assert.ok(renderedLen(line) <= width, `overflowing row: ${line}`);
       }
     };
-    holdWidth(harness.output(dir, ['render', 'tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'w.json', { label: 'Cycle', tasks: [
+    holdWidth(render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'w.json', { label: 'Cycle', tasks: [
       { title: long, severity: 'Important' },
       { title: 'Short', severity: 'low' },
     ] })]));
     writeManifest(dir, 'wu3', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
-    holdWidth(harness.output(dir, ['render', 'findings-summary', 'wu3.planning.portal', '--file', writePayload(dir, 'w2.json', { review_label: 'Integrity Review', items: [
+    holdWidth(render(dir, ['findings-summary', 'wu3.planning.portal', '--file', writePayload(dir, 'w2.json', { review_label: 'Integrity Review', items: [
       { title: long, tag: 'Important', summary: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
     ] })]));
-    holdWidth(harness.output(dir, ['render', 'finding-batch', 'wu3.discussion.checkout', '--file', writePayload(dir, 'w3.json', { lane: 'route', items: [
+    holdWidth(render(dir, ['finding-batch', 'wu3.discussion.checkout', '--file', writePayload(dir, 'w3.json', { lane: 'route', items: [
       { title: long, target: 'payments-reconciliation-storage', detail: 'Their subtopic owns the claim.' },
     ] })]));
   });
@@ -323,11 +338,11 @@ describe('worklist shape', () => {
     // Walked 1-digit head is 5 columns; budget 60 at width 65. Tag
     // `Important` costs 12 rendered (space + brackets + 9 letters). A
     // 48-char title fits inline at exactly the width; 49 forces the drop.
-    const at = harness.output(dir, ['render', 'tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'fit.json', { label: 'C', tasks: [
+    const at = render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'fit.json', { label: 'C', tasks: [
       { title: 'x'.repeat(48), severity: 'Important' },
     ] })]);
     assert.ok(at.includes('x'.repeat(48) + ' `[Important]`'), `expected inline tag: ${at}`);
-    const over = harness.output(dir, ['render', 'tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'over.json', { label: 'C', tasks: [
+    const over = render(dir, ['tasks-overview', 'pay.implementation.portal', '--file', writePayload(dir, 'over.json', { label: 'C', tasks: [
       { title: 'x'.repeat(49), severity: 'Important' },
     ] })]);
     assert.ok(over.includes(`${NB(5)}\`[Important]\``), `expected dropped tag: ${over}`);
@@ -337,13 +352,13 @@ describe('worklist shape', () => {
   it('rows pad 10+ numbering with NBSP, never a leading space', () => {
     writeManifest(dir, 'wu2', { phases: { planning: { items: { portal: { status: 'in-progress' } } }, discussion: { items: { checkout: { status: 'in-progress' } } } } });
     const items = Array.from({ length: 11 }, (_, i) => ({ title: `Item ${i + 1}`, tag: 'low', summary: `Detail ${i + 1}` }));
-    const out = harness.output(dir, ['render', 'findings-summary', 'wu2.planning.portal', '--file', writePayload(dir, 'b.json', { review_label: 'Rev', items })]);
+    const out = render(dir, ['findings-summary', 'wu2.planning.portal', '--file', writePayload(dir, 'b.json', { review_label: 'Rev', items })]);
     assert.ok(out.includes(`○ ${NB(1)}1. Item 1`), 'single-digit row pads with NBSP');
     assert.ok(out.includes('○ 11. Item 11'), 'two-digit row unpadded');
     // Batch rows are capped below padding range, but the leading column must
     // still never open on a real space — a markdown renderer would strip it.
     const batch = Array.from({ length: 5 }, (_, i) => ({ title: `Item ${i + 1}`, detail: `Detail ${i + 1}` }));
-    const bout = harness.output(dir, ['render', 'finding-batch', 'wu2.discussion.checkout', '--file', writePayload(dir, 'b2.json', { lane: 'apply', items: batch })]);
+    const bout = render(dir, ['finding-batch', 'wu2.discussion.checkout', '--file', writePayload(dir, 'b2.json', { lane: 'apply', items: batch })]);
     assert.ok(bout.includes('1\\. Item 1'), 'unglyphed row opens on its number');
     for (const line of [...out.split('\n'), ...bout.split('\n')]) {
       assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
@@ -356,7 +371,7 @@ describe('worklist shape', () => {
       items: [{ title: 'Escape <script> and ~tilde~', tag: 'low', summary: 'see foo_bar and [link] and \\slash' }],
     });
     writeManifest(dir, 'pay2', { phases: { planning: { items: { portal: { status: 'in-progress' } } } } });
-    const out = harness.output(dir, ['render', 'findings-summary', 'pay2.planning.portal', '--file', file]);
+    const out = render(dir, ['findings-summary', 'pay2.planning.portal', '--file', file]);
     assert.ok(out.includes('**Rev \\*2\\* \\[beta\\]**'), 'label escaped');
     assert.ok(out.includes('Escape \\<script\\> and \\~tilde\\~'), 'title escaped, angle brackets included');
     assert.ok(out.includes('↳ see foo\\_bar and \\[link\\] and \\\\slash'), 'note escaped');
@@ -368,7 +383,7 @@ describe('worklist shape', () => {
       review_label: 'Rev',
       items: [{ title: 'T', tag: 'low', summary: 'This note is deliberately long enough that the wrap point lands inside it and produces a continuation line beneath the arrow.' }],
     });
-    const out = harness.output(dir, ['render', 'findings-summary', 'pay3.planning.portal', '--file', file]);
+    const out = render(dir, ['findings-summary', 'pay3.planning.portal', '--file', file]);
     const lines = out.split('\n');
     const noteAt = lines.findIndex((l) => l.includes('↳ '));
     assert.ok(noteAt > 0, 'note rendered');

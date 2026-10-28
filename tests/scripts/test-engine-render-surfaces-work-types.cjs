@@ -1,21 +1,25 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The render catalogue's surfaces (domain/render.cjs) for the bugfix and
-// quick-fix. They go with the work types phase (29.15), which replaces them.
+// The render catalogue's surfaces (domain/render.cjs) for the bugfix's
+// investigation and the quick-fix's scoping. They go with the work types
+// phase (29.15), which removes their callers.
 //
-// Layer: unit, the domain's renderSurface called in process, every gate
-// payload audited against its menu (gate-audit.cjs). World: the project world
-// (setupFixture), its manifests and payloads written per test.
+// Layer: verb. World: the project world (setupFixture), a copied git project,
+// its manifests and payloads written per test; the domain's renderSurface is
+// called in process, every gate payload audited against its menu
+// (gate-audit.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 
 const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
-const { renderSurface, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
+const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 describe('render hypothesis-board', () => {
   let dir;
@@ -174,6 +178,163 @@ describe('render hypothesis-board', () => {
   });
 });
 
+describe('render findings-signoff-gate', () => {
+  let dir;
+  const dot = 'hooks.investigation.crash';
+  const record = () => {
+    const p = path.join(dir, '.leeway', 'hooks', 'investigation', 'crash.md');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, '# Investigation — crash\n');
+  };
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  it('asks the sign-off over the retelling, the technical lens and the record itself', () => {
+    record();
+    assert.strictEqual(renderSurface(dir, 'findings-signoff-gate', { dotpath: dot }), [
+      "=== MENU: findings sign-off gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
+      DOTS,
+      '**`◆ Do these findings match your understanding?`**',
+      '',
+      '**`y/yes`**            → Findings are correct, move to fix exploration',
+      "**`t/technical`**      → Retell the findings from the code's",
+      `${NB(19)}perspective`,
+      '**`v/view`**           → Show the full investigation file',
+      "**Provide feedback** → Tell me what's off or unclear",
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses another phase, an unknown unit, and a topic with no investigation file', () => {
+    record();
+    assert.throws(() => renderSurface(dir, 'findings-signoff-gate', { dotpath: 'hooks.discussion.crash' }),
+      /address must be <work_unit>\.investigation\.<topic>, got phase "discussion"/);
+    assert.throws(() => renderSurface(dir, 'findings-signoff-gate', { dotpath: 'ghost.investigation.crash' }),
+      /work unit "ghost" not found/);
+    assert.throws(() => renderSurface(dir, 'findings-signoff-gate', { dotpath: 'hooks.investigation.other' }),
+      /no investigation file for "other" — the sign-off is read from the record/);
+  });
+});
+
+describe('render validation-gate / validation-report', () => {
+  let dir;
+  const inv = 'hooks.investigation.crash';
+  beforeEach(() => {
+    dir = setup();
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
+  });
+  afterEach(() => teardown(dir));
+
+  const report = (variant, payload) => renderSurface(dir, 'validation-report', {
+    dotpath: inv, variant, file: writePayload(dir, `v-${variant}.json`, payload),
+  });
+
+  const RC_CHECKS = [['Symptom coverage', 'all three trace to the same call'], ['Blast radius', 'two further callers share the path']];
+  const FX_CHECKS = [['Root cause coverage', 'every symptom resolved'], ['Side effects', 'none identified']];
+  const rcClean = {
+    status: 'validated', confidence: 'high', checks: RC_CHECKS,
+    summary: 'The diagnosis holds against a fresh trace.',
+    analysis_path: '.leeway/.cache/hooks/investigation/crash/agents/002.md',
+  };
+  const fxClean = {
+    status: 'validated', confidence: 'medium', direction: 'Make the address optional', checks: FX_CHECKS,
+    summary: 'The direction breaks the causal chain and no caller depends on the throw.',
+    analysis_path: 'p.md',
+  };
+
+  it('offers the root cause validation in its own words, payload-less', () => {
+    const rc = renderSurface(dir, 'validation-gate', { dotpath: inv, variant: 'root-cause' });
+    assert.ok(rc.includes('=== MENU: root-cause validation offer'));
+    assert.ok(rc.includes('**`◆ Root cause documented. Run validation?`**'));
+    assert.ok(/\*\*`y\/yes`\*\* +→ Run root cause validation/.test(rc));
+    assert.ok(/\*\*`s\/skip`\*\* +→ Skip straight to findings sign-off/.test(rc));
+  });
+
+  it('never offers the fix validation — an agreed direction is always pressure-tested', () => {
+    assert.throws(
+      () => renderSurface(dir, 'validation-gate', { dotpath: inv, variant: 'fix' }),
+      /--variant must be root-cause — the fix direction is always pressure-tested/,
+    );
+    assert.throws(() => renderSurface(dir, 'validation-gate', { dotpath: inv }), /--variant must be root-cause/);
+  });
+
+  it('a clean pass carries the same readout as a failing one, and no menu', () => {
+    const out = report('root-cause', rcClean);
+    assert.ok(out.includes('**Root cause validation · high confidence** — validated, no gaps found'));
+    assert.ok(out.includes('- **Symptom coverage**: all three trace to the same call'));
+    assert.ok(out.includes('The diagnosis holds against a fresh trace.'));
+    assert.ok(out.includes('*Full analysis: `.leeway/.cache/hooks/investigation/crash/agents/002.md`*'));
+    assert.ok(!out.includes('=== MENU'), 'a validated verdict asks nothing');
+    const fx = report('fix', fxClean);
+    assert.ok(fx.includes('**Fix validation · "Make the address optional" · medium confidence** — confirmed, no unaddressed risks'));
+    assert.ok(fx.includes('- **Root cause coverage**: every symptom resolved'));
+  });
+
+  it('findings list under the confidence, with the checks, the analysis path and the handling gate', () => {
+    const long = 'The trace stops at the tax context, but nothing checks whether the billing address is reliably present on a digital-only order.';
+    const out = report('root-cause', {
+      ...rcClean, status: 'gaps_found', confidence: 'medium',
+      items: [long, 'Empty-string addresses were never exercised.'],
+      analysis_path: '.leeway/.cache/hooks/investigation/crash/agents/003.md',
+    });
+    assert.ok(out.includes('**Root cause validation · medium confidence** — 2 gaps'));
+    assert.ok(out.includes('1\\. The trace stops at the tax context'), 'a batch list numbers its rows and never walks them');
+    assert.ok(!out.includes('○ 1.'), 'nothing here is walked, so no state glyph');
+    assert.ok(out.includes('- **Blast radius**: two further callers share the path'), 'the findings say what was examined too');
+    assert.ok(out.includes('*Full analysis: `.leeway/.cache/hooks/investigation/crash/agents/003.md`*'));
+    assert.ok(out.includes('**`◆ How should these gaps be handled?`**'));
+    assert.ok(unwrap(out).includes('**`a/address`** → Work through them and fold the answers into the investigation'));
+    const fx = report('fix', { ...fxClean, status: 'risks_found', confidence: 'low', items: ['x'] });
+    assert.ok(fx.includes('**Fix validation · "Make the address optional" · low confidence** — 1 risk'));
+    assert.ok(unwrap(fx).includes('**`a/address`** → Work through them and fold the outcome into the fix direction'));
+  });
+
+  it('refuses a verdict that disagrees with its own findings', () => {
+    assert.throws(
+      () => report('root-cause', { ...rcClean, items: ['a gap'] }),
+      /"status" is "validated" but 1 gap\(s\) are listed — the verdict and the findings must agree/,
+    );
+    assert.throws(
+      () => report('root-cause', { ...rcClean, status: 'gaps_found', items: [] }),
+      /"status" is "gaps_found" but no gaps are listed/,
+    );
+    assert.throws(
+      () => report('root-cause', { ...rcClean, status: 'risks_found', items: ['x'] }),
+      /"status" must be "validated" or "gaps_found" for the root-cause variant/,
+    );
+    assert.throws(
+      () => report('fix', { ...fxClean, confidence: 'certain' }),
+      /"confidence" must be one of high\/medium\/low/,
+    );
+  });
+
+  it('holds every verdict to naming what it checked, concluded and confirmed', () => {
+    assert.throws(
+      () => report('fix', { ...fxClean, direction: undefined }),
+      /"direction" must name the agreed approach/,
+    );
+    assert.throws(
+      () => report('root-cause', { ...rcClean, direction: 'Make the address optional' }),
+      /"direction" belongs to the fix variant — root-cause validation has no chosen approach to name/,
+    );
+    assert.throws(() => report('fix', { ...fxClean, checks: [] }), /"checks" must be a non-empty array/);
+    assert.throws(() => report('fix', { ...fxClean, checks: [['Testing']] }), /checks\[0\] must be a \[label, outcome\] pair/);
+    assert.throws(() => report('fix', { ...fxClean, summary: undefined }), /"summary" must be a non-empty string/);
+    assert.throws(() => report('fix', { ...fxClean, analysis_path: undefined }), /"analysis_path" must be a non-empty string/);
+  });
+
+  it('holds the address to the investigation phase', () => {
+    writeManifest(dir, 'hooks', { work_type: 'bugfix', phases: { discussion: { items: { crash: { status: 'in-progress' } } } } });
+    assert.throws(
+      () => renderSurface(dir, 'validation-gate', { dotpath: 'hooks.discussion.crash', variant: 'root-cause' }),
+      /address must be <work_unit>\.investigation\.<topic>, got phase "discussion"/,
+    );
+  });
+});
+
 describe('render fix-direction', () => {
   let dir;
   const dot = 'hooks.investigation.checkout-crash';
@@ -295,7 +456,7 @@ describe('render scoping-questions', () => {
   });
 });
 
-describe('render complexity-gate / first-phase-gate', () => {
+describe('render complexity-gate', () => {
   let dir;
   beforeEach(() => {
     dir = setup();
