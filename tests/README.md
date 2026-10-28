@@ -16,7 +16,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
 | `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
 
-`package.json` lists the node suites one by one, slowest first by each one's CPU time run alone, so no long file starts last and runs on alone; a new suite goes where its time places it. `test-suite-list.cjs` holds the script to the folder: a suite the script leaves out or names twice, or a file it names that is no suite, fails it. A suite is any `.cjs` that takes a test from `node:test`, whatever its name.
+`package.json` lists the node suites one by one, slowest first by each one's CPU time run alone, so no long file starts last and runs on alone; a new suite goes where its time places it. `test-suite-list.cjs` holds the script to the folder, so a suite left out fails the run rather than never running: a suite the script leaves out or names twice, or a file it names that is no suite, fails it. A suite is any file under `tests/` that takes a test from `node:test`, whatever its name, extension or folder.
 
 ## 2. The layers
 
@@ -52,8 +52,8 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | Module | What it owns |
 |---|---|
 | `hermetic-env.cjs` | the pinned environment. Every node suite requires it first; `test-hermetic-env.cjs` enforces that. |
-| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
-| `discovery-test-utils.cjs` | the project world's template, made once per process and copied; `templateFolder(prefix)`, the temp folder a world made once is built in, every template removed at exit by one listener; `bareRepo(dir)`, a bare remote with auto maintenance off; `statePath`, `createManifest`, `createFile`, `datedAt` |
+| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `tip`, `remoteTip`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
+| `discovery-test-utils.cjs` | the project world's template, made once per process and copied by `copyWorld`, which relinks the copy's state worktree; `templateFolder(prefix)`, the temp folder a world made once is built in, every template removed at exit by one listener; `bareRepo(dir)`, a bare remote with auto maintenance off; `useTempFolder(prefix)`, a temp folder for each test of the calling file; `statePath`, `createManifest`, `createFile`, `readFile`, `datedAt` |
 | `knowledge-harness.cjs` | the stand-in embeddings endpoint, `heldCall`, `recordLaunches`, `withoutBackoff` |
 | `gate-audit.cjs` | a gate payload held against the menu it states |
 | `claude-stub.cjs`, `tmux-stub.cjs` | the stand-ins for `claude` and `tmux` |
