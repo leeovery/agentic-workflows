@@ -9,16 +9,18 @@
 // them (workflow-migrate), so no verb reaches it.
 //
 // Lines an earlier write left uncommitted are committed first, so every
-// line the conversion rewrites is in git as it was written. The migration's
-// converter then takes the ledger's events in order, each line read as JSON,
-// and yields the converted copy's. The door's rule refuses unless every
-// event comes through, with the same ids in the same order
-// (ledger-check.cjs), and then nothing is converted. Else the copy replaces
-// the ledger, and a pass left in the state worktree's git dir lets the
-// commit carrying it through the append-only check, that commit alone; the
-// parent commit keeps the original byte for byte. The pass is left before
-// the copy is renamed in, so a kill between leaves the original standing,
-// which the check still passes.
+// line the conversion rewrites is in git as it was written — where each is
+// a whole line holding a JSON object with an id no earlier line holds, else
+// nothing is committed or converted. The migration's converter then takes
+// the ledger's events in order, each line read as JSON, and yields the
+// converted copy's. The door's rule refuses unless every event comes
+// through, with the same ids in the same order (ledger-check.cjs), and then
+// nothing is converted. Else the copy replaces the ledger, and a pass left
+// in the state worktree's git dir lets the commit carrying it through the
+// append-only check, that commit alone; the parent commit keeps the
+// original byte for byte. The pass is left before the copy is renamed in,
+// so a kill between leaves the original standing, which the check still
+// passes.
 //
 // The door reads the ledger in whatever shape a migration finds it, never
 // the current schema's: the migrations after it convert it on. It takes no
@@ -32,8 +34,9 @@ const { writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { fileLines } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
-const { ledgerBlobs, fileStartsWith, idsDeparture, passFile, ledgerStopped, diskChange } = require('./ledger-check.cjs');
-const { BRANCH_REF, commitState } = require('./state-worktree.cjs');
+const { ledgerBlobs, idsDeparture, passFile, ledgerStopped, diskChange } = require('./ledger-check.cjs');
+const { BRANCH_REF } = require('./state-worktree.cjs');
+const { commitUncommitted } = require('./ledger.cjs');
 
 const MIGRATION_FILE = /(?:^|[\\/])migrations[\\/]\d+-[^\\/]*\.cjs$/;
 const TAIL_MESSAGE = 'state: the ledger as written, before its conversion';
@@ -58,6 +61,25 @@ function callerOf(fn) {
 }
 
 /**
+ * Line `number` of the ledger as an event, in whatever shape it was written:
+ * a JSON object with an id. Refuses a line that is not one.
+ * @param {string} line @param {number} number
+ * @returns {SourceEvent}
+ */
+function sourceEvent(line, number) {
+  let event;
+  try {
+    event = JSON.parse(line);
+  } catch {
+    event = null;
+  }
+  if (event === null || typeof event !== 'object' || Array.isArray(event) || typeof event.id !== 'string') {
+    throw new Error(`line ${number} of the ledger is not an entry with an id — nothing converted`);
+  }
+  return event;
+}
+
+/**
  * The ledger's lines as events, each a JSON object with an id. Refuses a
  * line that is not one.
  * @param {string} file
@@ -68,29 +90,8 @@ function* eventsOf(file) {
   let number = 0;
   for (const line of fileLines(file)) {
     number += 1;
-    let event;
-    try {
-      event = JSON.parse(line);
-    } catch {
-      event = null;
-    }
-    if (event === null || typeof event !== 'object' || Array.isArray(event) || typeof event.id !== 'string') {
-      throw new Error(`line ${number} of the ledger is not an entry with an id — nothing converted`);
-    }
-    yield event;
+    yield sourceEvent(line, number);
   }
-}
-
-/**
- * Commit the lines the ledger holds past the committed one, where an
- * earlier write left them uncommitted. The writer lock is boot's.
- * @param {import('./ledger-check.cjs').CheckedTree} tree @param {string} file
- * @returns {string[]} the commit's warnings
- */
-function commitTail(tree, file) {
-  const [committed] = ledgerBlobs(tree.git, [BRANCH_REF]);
-  if (!fs.existsSync(file) || fs.statSync(file).size <= (committed?.size ?? 0) || !fileStartsWith(file, committed)) return [];
-  return commitState(tree.root, [LEDGER], TAIL_MESSAGE).warnings;
 }
 
 /**
@@ -149,7 +150,7 @@ function convertLedger(projectDir, convert) {
   if (change !== null) throw ledgerStopped(tree, change, 'nothing converted');
 
   const file = path.join(root, LEDGER);
-  const warnings = commitTail(tree, file);
+  const { warnings } = commitUncommitted(root, TAIL_MESSAGE, sourceEvent);
   const copy = `${file}.${process.pid}.tmp`;
   try {
     const events = writeCopy(file, copy, convert);

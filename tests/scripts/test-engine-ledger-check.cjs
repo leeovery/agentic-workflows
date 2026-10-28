@@ -25,9 +25,8 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
 
-const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { holdLock, lockAttempts, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -36,10 +35,8 @@ const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/led
 const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
 const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
-const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const SPEC = `${UNIT}.specification`;
-const ANSWERS_AT_ONCE_MS = 10000;
 const DETACHED_MS = 20000;
 
 const PHASES = Object.freeze({
@@ -288,30 +285,26 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
     assert.strictEqual(eventOf(res.id).unchecked, true);
   });
 
-  it('runs before the writer lock: a peer holding the lock never holds the call up — a decision holding several rules is refused at once, and one holding one is judged while the write waits its turn', async () => {
+  it('runs before the writer lock: a peer holding the lock never holds the call up — a decision holding several rules is refused without trying the lock, and one holding one is judged before the write waits its turn', (t) => {
     const question = ask();
-    const lock = statePath(dir, '.lock');
-    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-    const env = { ...process.env, ...armed({ [BOTH]: rules(PANEL, SYNC), [PANEL]: rules(PANEL) }) };
-
-    const refused = spawnSync('node', [ENGINE, 'ledger', 'decide', NOTE, '--answers', question], {
-      cwd: dir, env, input: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things.' }), encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS,
+    const lock = holdLock(statePath(dir, '.lock'));
+    const env = armed({ [BOTH]: rules(PANEL, SYNC), [PANEL]: rules(PANEL) });
+    /** @type {{calls: number, entries: number}[]} */
+    const whileHeld = [];
+    // The lock is let go at the write's second attempt: it found the lock held, and waited.
+    const attempts = lockAttempts(t, lock, (taken) => {
+      whileHeld.push({ calls: calls().length, entries: entries().length });
+      if (taken === 2) fs.unlinkSync(lock);
     });
-    assert.strictEqual(refused.status, 1, refused.signal ? 'the call waited on the lock' : refused.stderr);
-    assert.match(JSON.parse(refused.stderr).error, /the decision holds 2 rules/);
-    assert.strictEqual(calls().length, 1);
 
-    const child = spawn('node', [ENGINE, 'ledger', 'decide', NOTE, '--answers', question], { cwd: dir, env });
-    child.stdin.end(JSON.stringify({ ...MADE, text: PANEL, why: 'One thing.' }));
-    const exit = new Promise((resolve) => child.on('close', resolve));
-    const deadline = Date.now() + ANSWERS_AT_ONCE_MS;
-    while (calls().length < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
-    assert.strictEqual(calls().length, 2, 'the call waited on the lock');
-    assert.strictEqual(child.exitCode, null, 'the write did not wait on the lock');
-    assert.strictEqual(entries().length, 1, 'appended while a peer held the lock');
+    const refused = refuses(dir, ['ledger', 'decide', NOTE, '--answers', question], { env, stdin: JSON.stringify({ ...MADE, text: BOTH, why: 'Two things.' }) });
+    assert.match(refused.error, /the decision holds 2 rules/);
+    assert.deepStrictEqual([attempts, calls().length], [[], 1], 'the refusal tried the lock');
 
-    fs.unlinkSync(lock);
-    assert.strictEqual(await exit, 0);
+    ok(dir, ['ledger', 'decide', NOTE, '--answers', question], { env, stdin: JSON.stringify({ ...MADE, text: PANEL, why: 'One thing.' }) });
+
+    assert.deepStrictEqual(attempts, ['taken', 'taken', 'made']);
+    assert.deepStrictEqual(whileHeld, [{ calls: 2, entries: 1 }, { calls: 2, entries: 1 }], 'the call waited on the lock');
     assert.deepStrictEqual([entries().length, entries()[1].text, entries()[1].unchecked], [2, PANEL, false]);
   });
 });
@@ -385,9 +378,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
   it('works one at a time: a second check finds the first\'s claim and ends at once, appending nothing; a claim whose owner is gone stands for no one', () => {
     const decision = decide(ask(), PANEL);
-    const claim = statePath(dir, '.cache', '.late-check');
-    fs.mkdirSync(path.dirname(claim), { recursive: true });
-    fs.writeFileSync(claim, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const claim = holdLock(statePath(dir, '.cache', '.late-check'));
     const before = { ledger: ledgerText(), calls: calls().length };
 
     assert.deepStrictEqual(lateCheck({ '': rules(PANEL) }), { ok: true, ran: false });
@@ -399,6 +390,26 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.strictEqual(entries().at(-1).entry, full(decision));
     assert.ok(!fs.existsSync(claim), 'the check left its claim behind');
   });
+
+  for (const [what, written, refusal] of /** @type {[string, (line: string) => string, RegExp][]} */ ([
+    ['repeating an id', (line) => line, /^line 3 of the ledger repeats the id \w+, which line 2 holds$/],
+    ['that is no entry', () => 'not json\n', /^line 3 of the ledger is not JSON: not json$/],
+  ])) {
+    it(`commits no result over a line ${what} written outside the engine while the call judged: the ledger is read again under the lock before each append (5.4.4)`, (t) => {
+      decide(ask(), PANEL);
+      const [, decided] = ledgerText().split(/(?<=\n)/);
+      const tip = stateTip();
+      t.mock.method(claudeCall, 'askClaude', () => {
+        fs.appendFileSync(statePath(dir, LEDGER), written(decided));
+        return { answer: rules(PANEL), cost: 0 };
+      });
+
+      assert.match(refuses(dir, ['ledger', 'late-check'], { env: armed() }).error, refusal);
+
+      assert.strictEqual(stateTip(), tip, 'the check committed over the line');
+      assert.ok(!ledgerText().includes('"checked"'), 'the check appended its result');
+    });
+  }
 
   it('leaves a decision the call still cannot judge owed, for the next start: no login, a rate limit, an outage or a timeout leaves every decision after it owed too, an answer that does not fit only that one', (t) => {
     const first = decide(ask(), PANEL);
@@ -425,16 +436,17 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
   it('runs detached: the launch hands the check a process of its own, which records its result and lets its claim go after the launch has answered', async () => {
     const decision = decide(ask(), PANEL);
+    // A peer holds the writer lock until the launch has answered: a check the launch waited on would wait on the lock with it, and never record.
+    const lock = holdLock(statePath(dir, '.lock'));
     const saved = { ...process.env };
     Object.assign(process.env, armed({ '': rules(PANEL, SYNC) }));
-    const started = Date.now();
     try {
       assert.strictEqual(launchLateCheck(fs.realpathSync(statePath(dir)), []), true);
     } finally {
       for (const key of Object.keys(process.env)) if (!Object.hasOwn(saved, key)) delete process.env[key];
       Object.assign(process.env, saved);
+      fs.unlinkSync(lock);
     }
-    assert.ok(Date.now() - started < ANSWERS_AT_ONCE_MS, 'the launch waited on the check');
 
     const claim = statePath(dir, '.cache', '.late-check');
     const deadline = Date.now() + DETACHED_MS;

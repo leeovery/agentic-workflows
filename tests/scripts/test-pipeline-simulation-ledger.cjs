@@ -51,7 +51,7 @@ describe('pipeline simulation: ledger', () => {
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
     const affected = () => sim.run(['ledger', 'affected', wu]).affected.map((/** @type {{id: string}} */ e) => e.id);
     assert.deepStrictEqual(affected(), [relying], 'what the replacement affects is not what relies on the decision it replaced');
-    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ changed/, null, JSON.stringify(made));
+    sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which is held against nothing \w+ changed/, null, JSON.stringify(made));
     const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
     assert.deepStrictEqual(affected(), [], 'a confirmation that it still holds left the entry affected');
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
@@ -88,7 +88,8 @@ describe('pipeline simulation: ledger', () => {
     const looked = stateGit(sim.dir, ['rev-parse', 'HEAD']);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu, 'note-window']).calls), [replacement]);
     assert.deepStrictEqual(ids(sim.run(['ledger', 'shown', wu, 'note-window']).calls), [replacement]);
-    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu]).calls), []);
+    const mark = statePath(sim.dir, '.cache', '.marks', `${wu}.json`);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'since', wu]).calls), [], `listed after the look, the mark reading ${fs.existsSync(mark) ? fs.readFileSync(mark, 'utf8') : 'nothing'}`);
     assert.strictEqual(stateGit(sim.dir, ['rev-parse', 'HEAD']), looked, 'a look made a commit');
 
     const homingAt = `${wu}.discussion.space-homing`;
@@ -141,6 +142,10 @@ describe('pipeline simulation: ledger', () => {
       { ...made, drops: ['frameless'], text: 'A framed panel.', why: 'Mint frames its notes.' });
     const overruling = sim.run(['ledger', 'record', wu, 'note-window']);
     assert.deepStrictEqual([ids(overruling.decisions), ids(overruling.decisions[0].replaced)], [[overruled], [replacement, decision]]);
+    const since = (/** @type {string[]} */ place) => ids(sim.run(['ledger', 'since', ...place]).calls);
+    assert.deepStrictEqual([since([mint]), since([wu, 'note-window'])], [[overruled], [overruled]], 'a call made in one unit standing in another is not listed in both');
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'shown', mint, mint]).calls), [overruled]);
+    assert.deepStrictEqual([since([wu]), since([mint])], [[], []], 'a look where a call shows left it listed where else it shows');
     const follows = ledger(['ask', homingAt], { ...made, text: 'Does a note follow the person across Spaces?' });
     const following = ledger(['decide', homingAt, '--answers', follows], { ...made, text: 'A note follows the person.', why: 'Furniture moves with you.' });
     ledger(['merge', note, '--question', question, '--into', following, '--duplicate', overruled], made);
@@ -176,6 +181,41 @@ describe('pipeline simulation: ledger', () => {
     assert.ok(decided().includes(kept), 'a merge on a cancelled topic still set its duplicate aside');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'space-homing']);
     assert.ok(!decided().includes(kept), 'a reactivated merge no longer set its duplicate aside');
+
+    // A replacement written while mint's rewording of a question is live
+    // answers that wording; mint cancelled, the question stands again in its
+    // first wording, still answered by it, and back with mint, reworded.
+    const dimming = ledger(['ask', note], { ...made, text: 'Does a note dim when idle?' });
+    const dims = ledger(['decide', note, '--answers', dimming], { ...made, text: 'It dims after a minute.', why: 'Quiet furniture.' });
+    const unfocused = ledger(['replace', `${mint}.discussion.${mint}`, '--replaces', dimming, '--reason', 'changed-mind'], { ...made, drops: ['idle'], text: 'Does a note dim when unfocused?' });
+    const dimmer = ledger(['replace', note, '--replaces', dims, '--reason', 'changed-mind'], { ...made, drops: ['a minute'], text: 'It dims at once.', why: 'Quieter.' });
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(answer('note-window', dimming), ['answered', [dimmer]], 'a question answered by an answer to a wording set aside shows open');
+    sim.run(['workunit', 'reactivate', mint]);
+    assert.deepStrictEqual(answer('note-window', unfocused), ['answered', [dimmer]]);
+
+    // A question's wordings read as one line: mint's rewording, set aside
+    // while sage rewords the same question, reads once back as the earlier
+    // of the two, and the question shows once, in sage's wording; of three
+    // wordings, the middle set aside, the first is an earlier wording of the
+    // last, never a row of its own.
+    const sage = 'sage';
+    sim.run(['workunit', 'create', sage, 'feature', '--description', 'Sage', '--session-log-file', sessionLog(sim, sage)]);
+    sim.run(['topic', 'start', sage, 'discussion', sage]);
+    const reword = (/** @type {string} */ unit, /** @type {string} */ wording, /** @type {string} */ text) => ledger(['replace', `${unit}.discussion.${unit}`, '--replaces', wording, '--reason', 'changed-mind'], { ...made, drops: ['the old wording'], text });
+    const tilting = ledger(['ask', note], { ...made, text: 'Does a note tilt?' });
+    const tilts = ledger(['decide', note, '--answers', tilting], { ...made, text: 'It tilts with the desk.', why: 'Furniture leans.' });
+    reword(mint, tilting, 'Does a note tilt in Mint?');
+    sim.run(['workunit', 'cancel', mint]);
+    const sageTilting = reword(sage, tilting, 'Does a note tilt in Sage?');
+    sim.run(['workunit', 'reactivate', mint]);
+    assert.deepStrictEqual(answer('note-window', sageTilting), ['answered', [tilts]]);
+    const glowing = ledger(['ask', note], { ...made, text: 'Does a note glow?' });
+    const glows = ledger(['decide', note, '--answers', glowing], { ...made, text: 'It glows when new.', why: 'New furniture shines.' });
+    const eitherGlowing = reword(sage, reword(mint, glowing, 'Does a note glow in Mint?'), 'Does a note glow in either?');
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(answer('note-window', eitherGlowing), ['answered', [glows]]);
+    sim.run(['workunit', 'reactivate', mint]);
 
     // The verdict queue: nothing waits while every answer is Claude's; the
     // person's replacement of Claude's own call, for a mistake, stands over

@@ -103,4 +103,4 @@ function resolveId(prefix, ids) {
   return /** @type {string} */ (named.values().next().value);
 }
 
-module.exports = { ID_ALPHABET, ID_LENGTH, SHORT_MIN, PREFIX_MIN, newId, isId, shortIds, shortId, resolveId };
+module.exports = { ID_LENGTH, newId, isId, shortIds, shortId, resolveId };

@@ -37,7 +37,6 @@ const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/k
 const chunker = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/workflow-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
-const { readLedger } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger.cjs'));
 const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-linear/scripts/gateway.cjs'));
@@ -51,6 +50,7 @@ const {
   resolveHandoff, HANDOFF_TARGETS,
 } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/handoff.cjs'));
 const { announced, auditGate } = require('./gate-audit.cjs');
+const { ledgerEntries } = require('./engine-harness.cjs');
 const { statePath } = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/state-root.cjs'));
 
 // The same per-type pipeline the start dashboard derives from (start.cjs
@@ -127,7 +127,7 @@ function auditState(dir, label) {
   // branch last committed, and every line is an event of its version's shape.
   // Its projections show what is current in it.
   if (fs.existsSync(statePath(dir, LEDGER))) {
-    assert.doesNotThrow(() => [...readLedger(statePath(dir), [])], ctx('the ledger does not read'));
+    assert.doesNotThrow(() => ledgerEntries(statePath(dir)), ctx('the ledger does not read'));
     auditLedger(dir, ctx);
   }
 
@@ -252,26 +252,43 @@ function auditState(dir, label) {
 // row is neither cancelled nor postponed; an event is in a live place while
 // the unit and topic it was made on are live — a move while its unit is, a
 // question's wording made on the topic the last move its unit made of the
-// question in a live place took it to — and an entry stands where the
-// earliest entry of its chain in a live place was made, or where the first
-// was when none is. Current is what the records show. Every entry in a live
-// place is shown, or leads to a shown entry down its live replacements or,
-// with none, its live merges; a shown entry is in a live place, no live
+// question in a live place took it to. A question's line is the wordings
+// of its chain in a live place, in the ledger's order: the last is the
+// question's wording, the rest earlier ones, and a wording reads as the
+// nearest wording in a live place it grew from, down its chain. An entry
+// stands where the earliest entry of its chain in a live place was made —
+// a question where the first wording of its line was — or where the first
+// was when none is; it is placed where it stands, and where it was made
+// where that differs (5.8.19). Current is what the records show. Every
+// entry in a live place is shown, or leads to a shown entry down its live
+// replacements — a question's wording, to the next on its line — or, with
+// none, its live merges; a shown entry is in a live place, no live
 // replacement names it, no live merge that would still lead to a shown
-// entry took it as a duplicate, and it shows exactly once in its unit's
-// record and once in its topic's. Each map holds a row for each shown
-// question standing on the topic — answered by the shown entries answering
-// any wording of it and those its leading merges lead to, merged while one
-// leads, moved in from where the last live move the map's unit made of it
-// was made, while that is live — and a row for each shown question
-// standing on another topic of the map's unit that the unit moved away from
-// the topic by a live move, leading to where it stands now. Each record
-// shows those answers, with exactly the entries standing elsewhere that its
-// entries rely on, its leading merges went into or that answer its
-// questions; its live moves and merges, a merge's duplicate where it is
-// live and whether the merge leads; each entry's live confirmations, what
-// the late one-decision check last found of it where it found anything, and
-// its chain down to the first entry not in a live place. A place that is
+// entry took it as a duplicate, a question is the last wording of its
+// line, and it shows exactly once in its unit's record and once in its
+// topic's. A question answers to every wording of its chain, the first and
+// each replacement since, on its line or not: each map shows each question
+// on one row, never two wordings of one, and never open while a shown entry
+// answers any wording of it; it holds a row for each shown question
+// standing on the topic — answered by the shown entries answering any
+// wording of it and those the leading merges of any wording lead to, merged
+// while one leads, moved in from where the last live move the map's unit
+// made of it was made, while that is live; a row for each shown question
+// standing on another topic of the map's unit that the unit moved away
+// from the topic by a live move, leading to where it stands now; and a row
+// for each other shown question placed on the topic or with an answer
+// placed there, saying where it stands. A row of a
+// question standing off the topic shows its answers placed on the topic
+// that no question standing there shows; and a row of its own for each
+// shown answer placed on the topic that answers no shown question, saying
+// where it stands where that is another place. Each record shows its maps'
+// answers, with exactly the entries standing elsewhere that were made
+// there, that its entries rely on, its leading merges went into or that
+// answer its questions; its live moves and merges, a merge's duplicate
+// where it is live and whether the merge leads; each entry's live
+// confirmations, what the late one-decision check last found of it where it
+// found anything, and its chain down to the first entry not in a live
+// place — a question's, the earlier wordings of its line. A place that is
 // not live shows nothing; the product record holds the shown entries marked
 // product-wide.
 /** @param {string} dir @param {(msg: string) => string} ctx */
@@ -319,10 +336,28 @@ function auditLedger(dir, ctx) {
   };
   /** @param {string} id */
   const inLivePlace = (id) => placeLive(byId.get(id).unit, topicOf(id));
+  /** Each question's line, by its chain's first wording: its wordings in a live place, in the ledger's order. @type {Map<string, string[]>} */
+  const lines = new Map();
+  for (const e of events.filter((ev) => isQuestion(ev) && inLivePlace(ev.id))) lines.set(firstOf(e.id).id, [...(lines.get(firstOf(e.id).id) ?? []), e.id]);
+  /** @param {string} id */
+  const lineOf = (id) => lines.get(firstOf(id).id) ?? [];
+  const position = new Map(events.map((e, at) => [e.id, at]));
+  /** The wordings of `id`'s line after the nearest wording in a live place it grew from; the whole line where none is. @param {string} id */
+  const wordingsAfter = (id) => {
+    const from = chainOf(id).find(inLivePlace);
+    return from === undefined ? lineOf(id) : lineOf(id).filter((wording) => position.get(wording) > position.get(from));
+  };
   /** @param {string} id @returns {{unit: string, topic: string|null}} */
   const standing = (id) => {
-    const at = /** @type {string} */ (chainOf(id).filter(inLivePlace).at(-1) ?? chainOf(id).at(-1));
+    const earliest = isQuestion(byId.get(id)) ? lineOf(id)[0] : chainOf(id).filter(inLivePlace).at(-1);
+    const at = /** @type {string} */ (earliest ?? chainOf(id).at(-1));
     return { unit: byId.get(at).unit, topic: topicOf(at) };
+  };
+  /** Where `id` is placed: where it stands, and where it was made where that differs. @param {string} id */
+  const placed = (id) => {
+    const at = standing(id);
+    const made = { unit: byId.get(id).unit, topic: topicOf(id) };
+    return at.unit === made.unit && at.topic === made.topic ? [at] : [at, made];
   };
   const liveEvents = (/** @type {string} */ event) => events.filter((e) => e.event === event && inLivePlace(e.id));
   const replacements = liveEvents('replaced');
@@ -350,8 +385,9 @@ function auditLedger(dir, ctx) {
   for (const [place, record] of records) for (const e of main(record)) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), place]);
   const shown = (/** @type {string} */ id) => shownAt.has(id);
 
-  /** Where `id` leads while not shown: its live replacements, or, with none, the entries its live merges went into. @param {string} id */
+  /** Where `id` leads while not shown: a question's wording, the next on its line; its live replacements, or, with none, the entries its live merges went into. @param {string} id */
   const next = (id) => {
+    if (isQuestion(byId.get(id))) return wordingsAfter(id).slice(0, 1);
     const replacers = replacements.filter((r) => r.replaces === id).map((r) => r.id);
     return replacers.length > 0 ? replacers : merges.filter((m) => m.duplicate === id).map((m) => m.into);
   };
@@ -371,13 +407,15 @@ function auditLedger(dir, ctx) {
   };
   /** Whether a merge leads somewhere: its duplicate, if any, is not shown, and what it went into leads to a shown entry. @param {Record<string, any>} m */
   const leads = (m) => (m.duplicate === null || !shown(m.duplicate)) && reach(m.into, m.duplicate).length > 0;
+  /** The shown entries answering any wording of `question`'s chain. @param {string} question */
+  const answering = (question) => events.filter((e) => typeof e.answers === 'string' && firstOf(e.answers).id === firstOf(question).id && shown(e.id)).map((e) => e.id);
   /** @param {string} question */
   const answersOf = (question) => {
-    const asked = chainOf(question);
-    const own = events.filter((e) => asked.includes(e.answers) && shown(e.id)).map((e) => e.id);
-    const leading = merges.filter((m) => asked.includes(m.question) && leads(m));
+    const own = answering(question);
+    const leading = merges.filter((m) => firstOf(m.question).id === firstOf(question).id && leads(m));
     return { answers: [...new Set([...own, ...leading.flatMap((m) => reach(m.into, m.duplicate))])].sort(), merged: leading.length > 0 };
   };
+  const answeringShown = new Set([...shownAt.keys()].filter((id) => isQuestion(byId.get(id))).flatMap((id) => answersOf(id).answers));
   /** @param {string} id */
   const placesOf = (id) => [`${standing(id).unit}\0`, ...(standing(id).topic === null ? [] : [`${standing(id).unit}\0${standing(id).topic}`])];
 
@@ -386,6 +424,7 @@ function auditLedger(dir, ctx) {
       assert.ok(inLivePlace(e.id), ctx(`${e.id} shows from a place that is not live`));
       assert.deepStrictEqual([...(shownAt.get(e.id) ?? [])].sort(), placesOf(e.id).sort(), ctx(`${e.id} does not show once in its unit's record and once in its topic's`));
       assert.ok(replacements.every((r) => r.replaces !== e.id), ctx(`${e.id} shows though a live replacement names it`));
+      assert.ok(!isQuestion(e) || lineOf(e.id).at(-1) === e.id, ctx(`${e.id} shows though it is an earlier wording of ${lineOf(e.id).at(-1)}, the last of its line`));
       for (const m of merges.filter((merge) => merge.duplicate === e.id)) {
         assert.deepStrictEqual(reach(m.into, e.id), [], ctx(`${e.id} shows though ${m.id}, a merge that leads to a shown entry, took it as a duplicate`));
       }
@@ -407,7 +446,8 @@ function auditLedger(dir, ctx) {
       const id = full(e.id);
       const beneath = chainOf(id).slice(1);
       const cut = beneath.findIndex((old) => !inLivePlace(old));
-      assert.deepStrictEqual(e.replaced.map((/** @type {{id: string}} */ r) => full(r.id)), cut === -1 ? beneath : beneath.slice(0, cut),
+      const earlier = lineOf(id).filter((wording) => position.get(wording) < position.get(id)).reverse();
+      assert.deepStrictEqual(e.replaced.map((/** @type {{id: string}} */ r) => full(r.id)), isQuestion(byId.get(id)) ? earlier : cut === -1 ? beneath : beneath.slice(0, cut),
         ctx(`${place} does not fold ${e.id}'s live chain beneath it`));
       for (const shownEntry of [e, ...e.replaced]) {
         assert.deepStrictEqual(shownEntry.holds.map((/** @type {{id: string}} */ h) => full(h.id)), confirmations.filter((c) => c.entry === full(shownEntry.id)).map((c) => c.id),
@@ -430,6 +470,9 @@ function auditLedger(dir, ctx) {
       if (isQuestion(byId.get(id))) tie(answersOf(id).answers, id);
     }
     for (const m of merges.filter(made).filter(leads)) tie(reach(m.into), m.into);
+    for (const id of shownAt.keys()) {
+      if (!within(id) && placed(id).some((p) => p.unit === unit && (at.topic === null || p.topic === at.topic))) expected.set(id, expected.get(id) ?? new Set());
+    }
     assert.deepStrictEqual(new Map(record.other_topics.map((/** @type {{id: string, named: string[]}} */ o) => [full(o.id), new Set(o.named.map(full))])), expected,
       ctx(`${place}'s record does not show exactly the entries standing elsewhere tied to it`));
   }
@@ -441,9 +484,26 @@ function auditLedger(dir, ctx) {
       assert.deepStrictEqual(map.questions, [], ctx(`${place}'s map, not live, shows something`));
       continue;
     }
-    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'moved-away');
-    assert.deepStrictEqual(standingHere.map((/** @type {{id: string}} */ row) => full(row.id)).sort(), [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && standing(id).unit === unit && standing(id).topic === topic).sort(),
+    const on = (/** @type {{unit: string, topic: string|null}} */ p) => p.unit === unit && p.topic === topic;
+    const shownRow = (/** @type {{id: string, answers: {id: string}[]}} */ row) => full(row.id);
+    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => !['moved-away', 'elsewhere', 'question-set-aside'].includes(row.stands));
+    const questionRows = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'question-set-aside').map(shownRow);
+    for (const [at, id] of questionRows.entries()) {
+      const twice = questionRows.slice(at + 1).find((other) => firstOf(other).id === firstOf(id).id);
+      assert.strictEqual(twice, undefined, ctx(`${place}'s map shows ${id} and ${twice}, two wordings of one question`));
+    }
+    for (const row of standingHere) {
+      assert.ok(row.stands !== 'open' || answering(full(row.id)).length === 0, ctx(`${place}'s map shows ${row.id} open, though a shown entry answers a wording of it`));
+    }
+    const questionsHere = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && on(standing(id)));
+    assert.deepStrictEqual(standingHere.map(shownRow).sort(), [...questionsHere].sort(),
       ctx(`${place}'s map does not hold a row for each shown question standing on it`));
+    for (const row of map.questions) {
+      if (row.stands === 'question-set-aside') assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(row.id)), ctx(`${place}'s record does not show ${row.id}, which its map shows as a row of its own`));
+      for (const { id: answer } of row.answers) {
+        assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(answer)), ctx(`${place}'s record does not show ${answer}, which its map shows answering ${row.id}`));
+      }
+    }
     for (const row of standingHere) {
       const movedIn = movesOf(full(row.id), unit).at(-1);
       assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, null],
@@ -456,22 +516,33 @@ function auditLedger(dir, ctx) {
         assert.ok(main(record).some((e) => full(e.id) === answer) || elsewhere?.named.map(full).includes(full(row.id)), ctx(`${place}'s record does not show ${answer}, answering ${row.id}`));
       }
     }
-    const away = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands === 'moved-away');
-    const movedAway = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && standing(id).unit === unit && standing(id).topic !== topic && movesOf(id, unit).some((m) => m.topic === topic));
-    assert.deepStrictEqual(away.map((/** @type {{id: string, moved_from: string|null, moved_to: string}} */ row) => [full(row.id), row.moved_from, row.moved_to]).sort(), movedAway.map((id) => [id, null, standing(id).topic]).sort(),
-      ctx(`${place}'s map does not lead each shown question its unit moved away from it to where it stands now`));
+    const shownHere = new Set(questionsHere.flatMap((id) => answersOf(id).answers));
+    const answersHere = (/** @type {string} */ id) => answersOf(id).answers.filter((a) => !shownHere.has(a) && placed(a).some(on));
+    /** @param {string} stands */
+    const rowsOf = (stands) => map.questions.filter((/** @type {{stands: string}} */ row) => row.stands === stands)
+      .map((/** @type {{id: string, moved_from: string|null, moved_to: string|null, stands_in: object|null, answers: {id: string}[]}} */ row) => [full(row.id), row.moved_from, row.moved_to, row.stands_in, row.answers.map((a) => full(a.id)).sort()]).sort();
+    const offTopic = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && !on(standing(id)));
+    const movedAway = offTopic.filter((id) => standing(id).unit === unit && movesOf(id, unit).some((m) => m.topic === topic));
+    assert.deepStrictEqual(rowsOf('moved-away'), movedAway.map((id) => [id, null, standing(id).topic, null, answersHere(id)]).sort(),
+      ctx(`${place}'s map does not lead each shown question its unit moved away from it to where it stands now, with its answers placed there`));
+    const elsewhere = offTopic.filter((id) => !movedAway.includes(id) && (placed(id).some(on) || answersHere(id).length > 0));
+    assert.deepStrictEqual(rowsOf('elsewhere'), elsewhere.map((id) => [id, null, null, standing(id), answersHere(id)]).sort(),
+      ctx(`${place}'s map does not show each shown question standing elsewhere placed on it, or answered by an entry placed there, where it stands (5.8.19)`));
+    const alone = [...shownAt.keys()].filter((id) => typeof byId.get(id).answers === 'string' && !answeringShown.has(id) && placed(id).some(on));
+    assert.deepStrictEqual(rowsOf('question-set-aside'), alone.map((id) => [id, null, null, on(standing(id)) ? null : standing(id), []]).sort(),
+      ctx(`${place}'s map does not show each shown answer placed on it that answers no shown question as a row of its own (5.8.19)`));
   }
 
   const product = ledger(['product']);
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
 
-  auditCopies(root, events, shownAt, standing, full, ctx);
+  auditCopies(root, events, shownAt, placed, full, ctx);
 }
 
 // The ledger's copies in the knowledge directory, held to the records: a
-// copy for each place a shown entry stands in — its unit's own level, or a
-// topic — and for no other; each naming every entry shown there and no entry
+// copy for each place a shown entry is placed in — its unit's own level, or
+// a topic — and for no other; each naming every entry shown there and no entry
 // that is not shown, so no replaced answer is in one; the product record's
 // file naming the shown entries marked product-wide alone; no words of an
 // entry that is not shown — a question's wording, an answer's text, its why
@@ -480,21 +551,22 @@ function auditLedger(dir, ctx) {
 // record's file.
 /**
  * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
- * @param {(id: string) => {unit: string, topic: string|null}} standing
+ * @param {(id: string) => {unit: string, topic: string|null}[]} placed
  * @param {(short: string) => string} full @param {(msg: string) => string} ctx
  */
-function auditCopies(root, events, shownAt, standing, full, ctx) {
+function auditCopies(root, events, shownAt, placed, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
   for (const id of shownAt.keys()) {
-    const { unit, topic } = standing(id);
-    const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
-    expected.set(file, [...(expected.get(file) ?? []), id]);
+    for (const { unit, topic } of placed(id)) {
+      const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
+      expected.set(file, [...(expected.get(file) ?? []), id]);
+    }
   }
   const markdown = (/** @type {string} */ rel) => (fs.existsSync(path.join(root, rel)) ? fs.readdirSync(path.join(root, rel), { withFileTypes: true }) : [])
     .flatMap((entry) => (entry.isDirectory() ? markdown(`${rel}/${entry.name}`) : entry.name.endsWith('.md') ? [`${rel}/${entry.name}`] : []));
   const copies = markdown(RECORDS_DIR).sort();
-  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry stands in'));
+  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry is placed in'));
   /** @param {string} rel */
   const named = (rel) => [...fs.readFileSync(path.join(root, rel), 'utf8').matchAll(/Entry (\w+)\.$/gm)].map((m) => full(m[1]));
   for (const [file, ids] of expected) {

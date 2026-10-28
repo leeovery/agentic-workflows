@@ -681,18 +681,17 @@ function push(git, timeoutMs) {
 
 /**
  * Commit exactly `paths`, as the working tree holds them, onto
- * `leeway-state` in the state worktree, then push. The caller holds the
- * writer lock (`withStateLock`). Refuses, committing nothing, where git
+ * `leeway-state` in the state worktree, pushing nothing. The caller holds
+ * the writer lock (`withStateLock`). Refuses, committing nothing, where git
  * cannot open the state worktree and where it has another branch checked
  * out. A merge's landing a kill cut short is finished first. Paths that hold
- * no change commit nothing and push nothing.
+ * no change commit nothing.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{pushTimeoutMs?: number}} [opts]
- * @returns {CommitOutcome}
+ * @returns {{commit: string|null, warnings: string[]}}
  */
-function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
+function commitHere(root, paths, message) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const specs = paths.map((given) => fromRoot(root, given));
   const worktree = openWorktree(root);
@@ -701,10 +700,23 @@ function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } =
     const checkedOut = worktree.head === 'HEAD' ? 'a detached HEAD' : worktree.head.replace(/^refs\/heads\//, '');
     throw new Error(`the state worktree at ${root} has ${checkedOut} checked out, not ${STATE_BRANCH} — nothing committed`);
   }
-  if (specs.length === 0) return { commit: null, pushed: false, warnings: [] };
+  if (specs.length === 0) return { commit: null, warnings: [] };
   const landed = finishLanding(worktree, STATE_BRANCH);
   const commit = commitPaths(worktree, specs, message);
-  const warnings = [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', specs)];
+  return { commit, warnings: [...landed, ...alignIndex(worktree.git, STATE_BRANCH, 'HEAD', specs)] };
+}
+
+/**
+ * Commit exactly `paths` as `commitHere` does, then push. Paths that hold no
+ * change commit nothing and push nothing.
+ * @param {string} root
+ * @param {string[]} paths absolute, or from the state root
+ * @param {string} message
+ * @param {{pushTimeoutMs?: number}} [opts]
+ * @returns {CommitOutcome}
+ */
+function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
+  const { commit, warnings } = commitHere(root, paths, message);
   if (commit === null) return { commit: null, pushed: false, warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };
@@ -748,6 +760,7 @@ module.exports = {
   stateRemoteUrl,
   withStateLock,
   withBootLock,
+  commitHere,
   commitState,
   pushState,
   pushRefusal,

@@ -19,7 +19,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -182,6 +182,19 @@ describe('whose entries a link names, and how they relate', () => {
     assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(reworded), full(duplicate)]);
   });
 
+  it('takes a duplicate answering a later wording another unit made, set aside since, as an answer to any wording answers the question (5.3.13, 5.8.17)', () => {
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const owned = decide(ask().id).id;
+    const asked = write('ask', SPACE, [], { ...MADE, text: 'Is a note a window?' }).id;
+    const reworded = write('replace', 'mint.discussion.mint', ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['window'], text: 'Is a note a window in Mint?' }).id;
+    const duplicate = write('decide', SPACE, ['--answers', reworded], DECISION).id;
+    ok(dir, ['workunit', 'cancel', 'mint']);
+
+    write('merge', SPACE, ['--question', asked, '--into', owned, '--duplicate', duplicate], MADE);
+
+    assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(asked), full(duplicate)]);
+  });
+
   it('holds a current entry after the latest replacement on the way to its current form of an entry it relies on: what it replaced, or an earlier entry of its chain (5.6.10)', () => {
     const first = decide(ask().id).id;
     const relying = find(['--relies-on', first]).id;
@@ -190,7 +203,7 @@ describe('whose entries a link names, and how they relate', () => {
     const onSecond = find(['--relies-on', second]).id;
     const third = change(second, { text: 'A translucent surface.', why: 'Lighter still.' }).id;
     const nothingReplaced = (/** @type {string} */ entry, /** @type {string} */ after) => new RegExp(
-      `^ledger hold --entry names ${entry}, which relies on nothing ${after} changed — it holds an entry relying on one whose way to its current form the replacement is on$`);
+      `^ledger hold --entry names ${entry}, which is held against nothing ${after} changed — it holds an entry relying on or answering one whose way to its current form the replacement is on$`);
 
     refused('hold', NOTE, ['--entry', unrelated, '--after', second], MADE, nothingReplaced(unrelated, second));
     refused('hold', NOTE, ['--entry', onSecond, '--after', second], MADE, nothingReplaced(onSecond, second));

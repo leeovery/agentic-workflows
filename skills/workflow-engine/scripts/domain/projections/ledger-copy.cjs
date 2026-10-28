@@ -5,8 +5,9 @@
 // renderers over what a record or the product record shows. A record's copy
 // is for search alone: its current answers only, each under a heading a
 // query can land on — the question it answers, a finding, or an entry from
-// elsewhere the record rests on — with its why and what it rules out. The
-// product record's file is for a CLAUDE.md line to point at.
+// elsewhere made in the record's place or that the record rests on — with
+// its why and what it rules out. The product record's file is for a
+// CLAUDE.md line to point at.
 // ---------------------------------------------------------------------------
 
 const { entryKind } = require('../ledger-events.cjs');
@@ -28,7 +29,8 @@ const { entryKind } = require('../ledger-events.cjs');
 /**
  * What a record's copy shows: its place; its questions, each with its
  * answers — an open one with none — and the questions elsewhere its own
- * decisions answer; its findings; and the entries elsewhere it rests on.
+ * decisions answer; its findings; and the entries elsewhere made there or
+ * that it rests on.
  * @typedef {{unit: string, topic: string|null, asked: Asked[], findings: Placed[], elsewhere: Placed[]}} RecordView
  */
 
@@ -105,7 +107,7 @@ function findingSection(placed) {
   return section(`Finding: ${placed.line.text}`, [findingBody(placed)]);
 }
 
-/** An entry elsewhere the record rests on. @param {Placed} placed */
+/** An entry elsewhere made in the record's place or that the record rests on. @param {Placed} placed */
 function elsewhereSection(placed) {
   const from = /** @type {Standing} */ (placed.from);
   const kind = /** @type {import('../ledger-events.cjs').EntryKind} */ (entryKind(placed.line));

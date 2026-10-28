@@ -356,6 +356,7 @@ module.exports = {
   LedgerChanged,
   ledgerBlobs,
   fileStartsWith,
+  idOf,
   idsOf,
   idsDeparture,
   passFile,

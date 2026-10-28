@@ -45,6 +45,16 @@ function takesATest(source) {
   });
 }
 
+/** A file's text, or null where a suite running alongside removed it after the folder was read. @param {string} file */
+function sourceOf(file) {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
 /**
  * The suites under `dir`, relative to `root`: every `.cjs`, `.js` or `.mjs`
  * at any depth that takes a test from `node:test`.
@@ -54,7 +64,10 @@ function takesATest(source) {
 function suites(dir, root) {
   return /** @type {string[]} */ (fs.readdirSync(dir, { recursive: true }))
     .filter((name) => /\.(c|m)?js$/.test(name) && !name.split(path.sep).includes('node_modules'))
-    .filter((name) => takesATest(fs.readFileSync(path.join(dir, name), 'utf8')))
+    .filter((name) => {
+      const source = sourceOf(path.join(dir, name));
+      return source !== null && takesATest(source);
+    })
     .map((name) => path.relative(root, path.join(dir, name)))
     .sort();
 }

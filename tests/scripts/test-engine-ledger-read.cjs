@@ -188,13 +188,16 @@ describe('the product record (5.8.6)', () => {
 });
 
 describe('a large ledger (5.7.6, 5.7.8)', () => {
+  const READER_TIMEOUT_MS = 120000;
+
   /**
    * `args` run by the engine in a process of its own, its heap held to
-   * `HEAP_MB`: what it answered, or how it died.
+   * `HEAP_MB`: what it answered, or how it died — never of its timeout.
    * @param {string[]} args
    */
   function underHeap(args) {
-    const res = spawnSync(process.execPath, [`--max-old-space-size=${HEAP_MB}`, ...args], { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 24 });
+    const res = spawnSync(process.execPath, [`--max-old-space-size=${HEAP_MB}`, ...args], { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 24, timeout: READER_TIMEOUT_MS, killSignal: 'SIGKILL' });
+    assert.strictEqual(res.error, undefined, `a reader under ${HEAP_MB} MB did not end within ${READER_TIMEOUT_MS} ms`);
     return { status: res.status, signal: res.signal, out: res.status === 0 ? JSON.parse(res.stdout) : null, err: res.stderr.slice(0, 400) };
   }
 
@@ -244,6 +247,21 @@ describe('refusals', () => {
     assert.match(refuses(dir, ['ledger', 'record', UNIT, '--topic', 'note-window']).error, /^Usage: engine ledger record /);
     assert.match(refuses(dir, ['ledger', 'record', 'mint']).error, /^ledger record: there is no work unit "mint"$/);
     assert.match(refuses(dir, ['ledger', 'map', UNIT, 'menu-bar']).error, /^ledger map: fumi has no topic "menu-bar"$/);
+  });
+
+  it('stops every read and every write on a line repeating an id an earlier line holds, naming both lines, writing and committing nothing (5.4.4)', () => {
+    const question = ask(NOTE, 'Is a note a window?');
+    decide(NOTE, question, 'A panel.');
+    const id = full(question);
+    const file = statePath(dir, LEDGER);
+    fs.appendFileSync(file, `${rawLines()[0]}\n`);
+    const before = [fs.readFileSync(file, 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])];
+    const refusal = `line 3 of the ledger repeats the id ${id}, which line 1 holds`;
+
+    for (const args of [['map', UNIT, 'note-window'], ['record', UNIT], ['since', UNIT], ['product']]) assert.strictEqual(refuses(dir, ['ledger', ...args]).error, refusal, args.join(' '));
+    assert.strictEqual(refuses(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Is a note a sheet?' }) }).error, refusal);
+
+    assert.deepStrictEqual([fs.readFileSync(file, 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])], before);
   });
 
   it('answers a ledger with no entries yet with nothing current', () => {

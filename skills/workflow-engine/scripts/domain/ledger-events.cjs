@@ -47,6 +47,7 @@
 //   release. It is never read: the engine stops, to be updated.
 // ---------------------------------------------------------------------------
 
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { isId } = require('./ledger-ids.cjs');
 
 const LEDGER = '.ledger.jsonl';
@@ -226,11 +227,6 @@ class LedgerNewer extends Error {
     this.reads = reads;
     this.payload = { stop: 'ledger' };
   }
-}
-
-/** @param {unknown} value @returns {value is Record<string, unknown>} */
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /** The version that added a field. @param {Field} f */

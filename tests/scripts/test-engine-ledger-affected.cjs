@@ -6,9 +6,11 @@
 // (domain/ledger-fold.cjs): every current question, finding and decision
 // relying on an entry whose way to its current form passes a live
 // replacement — one written after it, or one set aside as it was written
-// that has come back — each entry it relies on cleared on its own by a live
-// "still holds" naming the latest replacement on that way, and flagged
-// again by a later one; leaving the list on its own replacement; a chain
+// that has come back — and every answer to a question reworded since it
+// was written, which a merge or a move of the question never flags; each
+// entry it is held against cleared on its own by a live "still holds"
+// naming the latest replacement on that way, and flagged again by a later
+// one; leaving the list on its own replacement; a chain
 // passing on through replacements alone, and past a merge that holds, which
 // a confirmation follows too; in a unit under way, waiting on the topic it
 // stands on, however closed; in a finished unit, flagged in the work that
@@ -26,7 +28,7 @@ const fs = require('fs');
 
 const { ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers, ledgerReadHelpers } = require('./ledger-world.cjs');
 
 const MINT = 'mint.discussion.mint';
 
@@ -46,6 +48,7 @@ afterEach(() => {
 });
 
 const ledger = ledgerHelpers(() => dir);
+const { reword, answered } = ledgerReadHelpers(() => dir);
 
 /** One ledger write that must succeed: its short id. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
 function write(verb, address, flags, content) {
@@ -102,9 +105,9 @@ function listed(...place) {
   return { ids: res.affected.map((/** @type {{id: string}} */ e) => e.id), waiting: res.waiting };
 }
 
-/** What changed under an affected entry: each entry it relies on, and the replacements on its way, by id. @param {Record<string, any>} entry */
+/** What changed under an affected entry: each entry it is held against, and the replacements on its way, by id. @param {Record<string, any>} entry */
 function changesOf(entry) {
-  return entry.changed.map((/** @type {{relied_on: string, replacements: {id: string}[]}} */ c) => [c.relied_on, c.replacements.map((r) => r.id)]);
+  return entry.changed.map((/** @type {{held_against: string, replacements: {id: string}[]}} */ c) => [c.held_against, c.replacements.map((r) => r.id)]);
 }
 
 /** What changed under each affected entry in the unit, by the entry's id. */
@@ -137,7 +140,7 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
       ...shown(decision, UNIT, 'space-homing'),
       standing: { unit: UNIT, topic: 'space-homing' },
       waits: ['space-homing'],
-      changed: [{ relied_on: relied, replacements: [replacing] }],
+      changed: [{ held_against: relied, replacements: [replacing] }],
     });
     assert.deepStrictEqual(res.affected.map((/** @type {{id: string}} */ e) => e.id), [decision, question, finding]);
     assert.deepStrictEqual(listed(UNIT, 'space-homing'), { ids: [decision, question, finding], waiting: ['space-homing'] });
@@ -199,6 +202,59 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     assert.deepStrictEqual(changes(), { [relying]: [[panel, [framed, clear]]] });
     assert.strictEqual(refused('hold', SPACE, ['--entry', relying, '--after', framed], MADE),
       `ledger hold --after names ${framed}, an earlier change on the way of ${panel} — a hold names the latest: ${clear}`);
+  });
+
+  it('holds an answer against the question it answers: a rewording leaves it answering and affected, a confirmation naming the rewording clears it, a further rewording flags it again, and the answer\'s replacement clears it (5.S41)', () => {
+    const question = ask(NOTE, 'What is a note?');
+    const answer = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note is a panel.', why: 'Furniture.' });
+    const reworded = reword(NOTE, question, 'What is a note on screen?');
+    assert.deepStrictEqual(answered('note-window'), [[reworded, 'answered', [answer]]]);
+    assert.deepStrictEqual(changes(), { [answer]: [[question, [reworded]]] });
+    assert.deepStrictEqual(listed(UNIT, 'note-window').waiting, ['note-window']);
+
+    hold(NOTE, answer, reworded);
+    assert.deepStrictEqual(changes(), {});
+
+    const again = reword(NOTE, reworded, 'What is a note on every display?');
+    assert.deepStrictEqual(changes(), { [answer]: [[question, [reworded, again]]] });
+    assert.strictEqual(refused('hold', NOTE, ['--entry', answer, '--after', reworded], MADE),
+      `ledger hold --after names ${reworded}, an earlier change on the way of ${question} — a hold names the latest: ${again}`);
+
+    const replacement = change(NOTE, answer, 'A note is a frameless window.');
+    assert.deepStrictEqual([answered('note-window'), changes()], [[[again, 'answered', [replacement]]], {}]);
+    const third = reword(NOTE, again, 'What is a note, drawn?');
+    assert.deepStrictEqual(changes(), { [replacement]: [[again, [third]]] });
+  });
+
+  it('holds a replacement against the wording live as it was written: a rewording set aside then flags it each time it is back, as it does an answer written beside it (5.6.10)', () => {
+    const question = ask(NOTE, 'What is a note?');
+    const answer = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note is a panel.', why: 'Furniture.' });
+    const reworded = reword(MINT, question, 'What is a note in Mint?');
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    const replacement = change(NOTE, answer, 'A note is a frameless window.');
+    const beside = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note keeps its size.', why: 'Furniture.' });
+    assert.deepStrictEqual(changes(), {});
+
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+
+    const flagged = { [replacement]: [[question, [reworded]]], [beside]: [[question, [reworded]]] };
+    assert.deepStrictEqual(changes(), flagged);
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    assert.deepStrictEqual(changes(), {});
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+    assert.deepStrictEqual(changes(), flagged);
+  });
+
+  it('flags no answer to a question merged or moved, neither being a rewording (5.S41)', () => {
+    const question = ask(NOTE, 'Does a note follow the person?');
+    const answer = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note stays put.', why: 'Furniture.' });
+    const duplicate = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'Notes float.', why: 'Furniture.' });
+    const into = decide(SPACE, 'Notes float above every Space.');
+    write('merge', NOTE, ['--question', question, '--into', into, '--duplicate', duplicate], MADE);
+    assert.deepStrictEqual(listed(UNIT), { ids: [], waiting: [] });
+    write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
+    assert.deepStrictEqual(answered('space-homing')[0], [question, 'merged', [answer, into]]);
+    assert.deepStrictEqual(listed(UNIT), { ids: [], waiting: [] });
   });
 
   it('flags an entry relying on what a replacement set aside as it was written replaced, once that replacement is back — a postponed topic pulled back, a cancelled unit reactivated — its way in the ledger\'s order, the latest last', () => {

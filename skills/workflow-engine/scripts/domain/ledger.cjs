@@ -16,15 +16,27 @@
 // - The ledger is read a line at a time, never whole and never through a
 //   pipe (kernel/file-stream), each line validated against the shape its
 //   version names, a field a later version added taking its default
-//   (ledger-events). A line a newer release wrote stops the engine. A read
-//   that shows entries keeps where each line sits and reads the ones it
-//   shows again, from the file it opened.
+//   (ledger-events), and its id held by no earlier line: a line that is no
+//   entry, or repeats an id, is refused, naming it — and the line holding
+//   the id first — so every read stops on it (5.4.4), and every write,
+//   which reads the ledger under the lock before it appends. A line a
+//   newer release wrote stops the engine. A read that shows entries keeps
+//   where each line sits and reads the ones it shows again, from the file
+//   it opened.
 // - An entry is appended under the writer lock, its id, version and time
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
 //   line added and renamed over, so a read meets the ledger before the
 //   append or after it, never half a line (5.4.6). Nothing is ever edited
 //   (5.3.4).
+// - Entries a write appended and a kill, or a commit git refused, left
+//   uncommitted are committed whole by the next commit of the ledger: a
+//   write's, or boot's before its catch-up (4.7.8). Boot counts them past
+//   the ledger the branch holds once a landing a kill cut short is
+//   finished, since that landing rewrote the file first, and commits them
+//   only where each is a whole line a read takes, by the same rule: a line
+//   written outside the engine, committed, would stop every read and write
+//   on every clone. Else it commits nothing and says which line it found.
 // - Every stop on the ledger is kept for its screen (`render ledger-stop`).
 // ---------------------------------------------------------------------------
 
@@ -34,10 +46,10 @@ const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
 const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
-const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
+const { LEDGER, LEDGER_VERSION, LedgerLineError, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
-const { idsOf, keepStop, keptStop, ledgerStopped, diskChange } = require('./ledger-check.cjs');
-const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock } = require('./state-worktree.cjs');
+const { idOf, idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
+const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock, commitHere } = require('./state-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { ledgerStop, ledgerNewerStop, idInLine } = require('./projections/ledger.cjs');
@@ -89,6 +101,70 @@ function checkLedger(root, notes) {
   });
 }
 
+/** A line read as an entry, refused where it is none. @typedef {(line: string, number: number) => {id?: unknown}} EntryReader */
+
+/**
+ * The ids a read of the ledger meets, line by line: one an earlier line
+ * holds is refused, naming both lines (5.4.4).
+ * @returns {(id: unknown, number: number) => void}
+ */
+function eachIdOnce() {
+  /** @type {Map<unknown, number>} */
+  const lines = new Map();
+  return (id, number) => {
+    const first = lines.get(id);
+    if (first !== undefined) throw new LedgerLineError(`line ${number} of the ledger repeats the id ${id}, which line ${first} holds`);
+    lines.set(id, number);
+  };
+}
+
+/**
+ * How many entries the ledger holds past the one the state branch last
+ * committed, where it starts with that one, each line read by `read`.
+ * Refuses, naming the line, one `read` refuses, an id an earlier line
+ * holds, and a last line with no newline. Takes no lock.
+ * @param {string} root @param {EntryReader} read
+ */
+function uncommittedEntries(root, read) {
+  const [committed] = ledgerBlobs(checkedTree(root).git, [BRANCH_REF]);
+  const file = ledgerFile(root);
+  const from = committed?.size ?? 0;
+  if (!fs.existsSync(file) || fs.statSync(file).size <= from || !fileStartsWith(file, committed)) return 0;
+  const once = eachIdOnce();
+  let [number, entries] = [0, 0];
+  const fd = fs.openSync(file, 'r');
+  try {
+    for (const { text, span } of fdLines(fd)) {
+      number += 1;
+      const tail = span.offset >= from;
+      const id = tail ? read(text, number).id : idOf(text);
+      if (id !== undefined) once(id, number);
+      if (tail) entries += 1;
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  if (!endsWithNewline(file)) throw new Error(`line ${number} of the ledger is unfinished: it has no newline`);
+  return entries;
+}
+
+/**
+ * Commit the entries past the committed ledger, pushing nothing, each line
+ * read by `read` — today's schema unless given: how many, and what the
+ * commit and a landing it finished said. Commits nothing where a line is
+ * refused, refusing it. The caller holds the writer lock.
+ * @param {string} root @param {string} message @param {EntryReader} [read]
+ * @returns {{entries: number, warnings: string[]}}
+ */
+function commitUncommitted(root, message, read = parseEntry) {
+  if (uncommittedEntries(root, read) === 0) return { entries: 0, warnings: [] };
+  const worktree = openWorktree(root);
+  const warnings = worktree.opened ? finishLanding(worktree, STATE_BRANCH) : [];
+  const entries = uncommittedEntries(root, read);
+  if (entries > 0) warnings.push(...commitHere(root, [LEDGER], message).warnings);
+  return { entries, warnings };
+}
+
 /**
  * Line `number` read as an entry; a newer release's line stops the engine,
  * the stop kept.
@@ -124,31 +200,18 @@ function openChecked(root, notes) {
 
 /**
  * The entries of the ledger open at `fd`, in order, each with where its line
- * sits. Refuses a line that is no entry.
+ * sits. Refuses a line that is no entry, or that repeats an id.
  * @param {string} root @param {number} fd
  * @returns {Generator<{event: Record<string, unknown>, place: EntryPlace}>}
  */
 function* entriesAt(root, fd) {
+  const once = eachIdOnce();
   let number = 0;
   for (const { text, span } of fdLines(fd)) {
     number += 1;
-    yield { event: entryAt(root, text, number), place: { number, ...span } };
-  }
-}
-
-/**
- * The ledger's entries in order, checked first, each line read as an event
- * of the shape its version names. Refuses a line that is not one.
- * @param {string} root @param {string[]} notes what a landing the check finished said, pushed to
- * @returns {Generator<Record<string, unknown>>}
- */
-function* readLedger(root, notes) {
-  const fd = openChecked(root, notes);
-  if (fd === null) return;
-  try {
-    for (const { event } of entriesAt(root, fd)) yield event;
-  } finally {
-    fs.closeSync(fd);
+    const event = entryAt(root, text, number);
+    once(event.id, number);
+    yield { event, place: { number, ...span } };
   }
 }
 
@@ -213,6 +276,21 @@ function appendLine(file, line) {
     fs.closeSync(fd);
   }
   fs.renameSync(tmp, file);
+}
+
+/**
+ * Every line of the ledger read as a read takes it, the first it refuses
+ * refused (5.4.4): for a writer that read the ledger before taking the
+ * lock, so a line written outside the engine meanwhile is never committed
+ * with its own.
+ * @param {string} root
+ * @param {string[]} notes what a landing the check finished said, pushed to
+ */
+function checkLines(root, notes) {
+  withLedger(root, notes, (ledger) => {
+    const lines = ledger.entries();
+    while (!lines.next().done);
+  });
 }
 
 /**
@@ -282,4 +360,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, withLedger, appendEntry, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, checkLedger, checkLines, commitUncommitted, withLedger, appendEntry, carrying, ledgerStopSurface };

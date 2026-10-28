@@ -218,17 +218,21 @@ function ledgerReadHelpers(dir) {
   /**
    * Assert a topic's map and its record agree: the record shows each question
    * standing on the map, and every answer the map shows it, among its own
-   * decisions or from where it stands, tied to the question it answers.
+   * decisions or from where it stands — tied to the question it answers,
+   * where that question stands on the topic.
    * @param {string} topic
    */
   function assertAgree(topic) {
     const record = read('record', UNIT, topic);
-    const rows = read('map', UNIT, topic).questions.filter((/** @type {{stands: string}} */ r) => r.stands !== 'moved-away');
-    assert.deepStrictEqual(ids(rows), ids(record.questions), `${topic}'s map and record show different questions`);
+    const rows = read('map', UNIT, topic).questions;
+    const standing = rows.filter((/** @type {{stands: string}} */ r) => !['moved-away', 'elsewhere', 'question-set-aside'].includes(r.stands));
+    assert.deepStrictEqual(ids(standing), ids(record.questions), `${topic}'s map and record show different questions`);
     for (const row of rows) {
+      if (row.stands === 'question-set-aside') assert.ok([...ids(record.decisions), ...ids(record.other_topics)].includes(row.id), `${topic}'s record does not show ${row.id}, which its map shows as a row of its own`);
       for (const { id } of row.answers) {
         const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => o.id === id);
-        assert.ok(ids(record.decisions).includes(id) || elsewhere?.named.includes(row.id), `${topic}'s record does not show ${id}, which its map shows answering ${row.id}`);
+        const shown = standing.includes(row) ? elsewhere?.named.includes(row.id) : elsewhere !== undefined;
+        assert.ok(ids(record.decisions).includes(id) || shown, `${topic}'s record does not show ${id}, which its map shows answering ${row.id}`);
       }
     }
   }

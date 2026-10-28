@@ -253,10 +253,11 @@ describe('engine harness — a keyword-only checkout', () => {
     assert.deepStrictEqual(harness.indexedFiles(dir), ['pay/research/pay.md']);
   });
 
-  it('holds nothing where the checkout was never set up — the index a warning, no store built', () => {
+  it('holds nothing where the checkout was never set up — the index a warning, no store built, and a read of what it holds refused', () => {
     const res = ok(dir, ['topic', 'complete', 'pay', 'research', 'pay']);
     assert.match(res.warnings[0], /^knowledge index failed: No knowledge store here/);
-    assert.deepStrictEqual(harness.indexedFiles(dir), []);
+    assert.strictEqual(harness.hasStore(dir), false);
+    assert.throws(() => harness.indexedFiles(dir), { message: `no knowledge store in ${dir}` });
   });
 
   it('is one whose index fails, deterministically, where the store cannot be loaded', () => {

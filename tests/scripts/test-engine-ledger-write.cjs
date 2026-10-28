@@ -26,14 +26,13 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync, spawn } = require('child_process');
 const {
-  ENGINE, git, lockAttempts, ok, output, refuses, stateGit, statePath, setupGitFixture, cleanupFixture,
+  ENGINE, git, lockAttempts, ok, output, refuses, stateGit, statePath, ledgerEntries, setupGitFixture, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
-const { readLedger } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
@@ -507,7 +506,7 @@ describe('the writer lock and the commit', () => {
 
     assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed', 'note', 'warnings']);
     assert.strictEqual(res.committed, null);
-    assert.strictEqual(res.note, 'commit pending — the entry is in the ledger, and the next ledger write commits it');
+    assert.strictEqual(res.note, 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it');
     assert.match(res.warnings[0], /^commit failed: git commit-tree failed: fatal: refused here$/);
     assert.strictEqual(stateTip(), tip);
     assert.strictEqual(entries().at(-1).text, 'Committed later?');
@@ -591,11 +590,13 @@ describe('the writer lock and the commit', () => {
       '  if (res.code !== 0) { process.stderr.write(res.stderr); process.exit(1); }',
       '}',
     ].join('\n');
+    const WRITER_TIMEOUT_MS = 30000;
+    const READS = 6000;
     const writers = ['session-a', 'session-b'].map((session) => {
-      const child = spawn('node', ['-e', script, ENGINE, dir, session], { stdio: ['ignore', 'ignore', 'pipe'] });
+      const child = spawn('node', ['-e', script, ENGINE, dir, session], { stdio: ['ignore', 'ignore', 'pipe'], timeout: WRITER_TIMEOUT_MS, killSignal: 'SIGKILL' });
       let stderr = '';
       child.stderr.on('data', (chunk) => { stderr += chunk; });
-      return new Promise((resolve) => child.on('close', (code) => resolve({ code, stderr })));
+      return new Promise((resolve) => child.on('close', (code, signal) => resolve({ code, stderr: signal ? `killed after ${WRITER_TIMEOUT_MS}ms\n${stderr}` : stderr })));
     });
     let done = false;
     const landed = Promise.all(writers).finally(() => { done = true; });
@@ -603,12 +604,13 @@ describe('the writer lock and the commit', () => {
     let meanwhile = 0;
     let read = 0;
 
-    while (!done) {
+    for (let reads = 0; !done; reads += 1) {
+      assert.ok(reads < READS, `the two writers had not both ended after ${READS} reads`);
       if (fs.existsSync(file)) {
         const text = fs.readFileSync(file, 'utf8');
         assert.ok(text.endsWith('\n'), `a read met half a line: …${JSON.stringify(text.slice(-60))}`);
         const count = text.split('\n').slice(0, -1).map((line) => JSON.parse(line)).length;
-        const through = [...readLedger(statePath(dir), [])].length;
+        const through = ledgerEntries(statePath(dir)).length;
         assert.ok(through >= count, 'the engine\'s read met fewer entries than the file held before it');
         read = Math.max(read, through);
         if (count > 0 && count < 2 * EACH) meanwhile += 1;

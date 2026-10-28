@@ -11,9 +11,9 @@
 //   exists only before the spec (4.11.2) and must hold an item in the phase;
 //   from the spec on every entry is the unit's, carrying no topic (5.2.3).
 //   The unit and topic must be live (5.8.17), as a move's destination must,
-//   both before the lock and again under it.
-//   The session is the conversation's own (CLAUDE_CODE_SESSION_ID); a write
-//   without one is refused.
+//   both before the lock and again under it. The session is the
+//   conversation's own (CLAUDE_CODE_SESSION_ID); a write without one is
+//   refused.
 // - What: the content comes as one JSON object on stdin, the links as flags.
 //   Content never carries a link, nor anything the engine gives. A link names
 //   an entry by a prefix of its id, resolved as git resolves a short hash
@@ -23,7 +23,8 @@
 //   its siblings untouched (5.3.13) — a question is answered, has parts,
 //   moves or merges only while current, and a merge goes into a current
 //   decision — current by the one rule every read decides by
-//   (ledger-fold.cjs).
+//   (ledger-fold.cjs), so a question is named in its wording, the last of
+//   its line.
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
 //   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
@@ -34,18 +35,24 @@
 //   on: another topic's change goes to it by message (5.6.9, 10.2.2).
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
-//   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
-//   a hold names the latest live replacement on the way to its current
-//   form, past each merge that holds, of an entry the held entry relies on
-//   (5.6.10); a replacement's cause is never what it replaces, a new fact's
-//   being a finding and another topic's a decision standing on a topic
-//   other than the one the replaced entry stands on (5.3.8); who moved whom
-//   is what the departure rule allows (ledger-verdicts.cjs) — never the
-//   person's answer standing over Claude's lean on an entry Claude made,
-//   and on the person's replacement of a decision, what its reason and the
+//   by any of its wordings, standing or set aside (ledger-fold.cjs), other
+//   than the one it goes into (5.5.4, 5.5.5); a hold names the latest live
+//   replacement on the way to its current form, past each merge that holds,
+//   of an entry the held entry is held against: one it relies on, or the
+//   question an answer answers (5.6.10); a replacement's cause is never what
+//   it replaces, a new fact's being a finding and another topic's a decision
+//   standing on a topic other than the one the replaced entry stands on
+//   (5.3.8); who moved whom is what the departure rule allows
+//   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
+//   lean on an entry Claude made, and on the person's replacement of a
+//   decision carrying no sealed answer of Claude's, what its reason and the
 //   entry it replaces allow.
-// - What the engine sets: a replacement's kind, the question a replaced
-//   decision answers or a replaced question is part of, and, where the
+// - What the engine sets: a replacement's kind; the question a replaced
+//   decision answers, in its wording as the replacement is written — the
+//   last of its line, whatever wording the replaced decision named — so it
+//   is held against what it saw as an answer is (ledger-affected.cjs), or
+//   the wording the replaced decision named where every wording is set
+//   aside; the question a replaced question is part of; and, where the
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
 //   and who moved whom where the departure rule settles it; a decision's
 //   being unchecked, where the one-decision check could not judge it
@@ -76,13 +83,14 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { derivedMove, movedRefusal } = require('./ledger-verdicts.cjs');
+const { heldAgainst } = require('./ledger-affected.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -510,26 +518,28 @@ function checkCause(linked, read) {
 
 /**
  * Refuse a confirmation of an entry after anything but the latest live
- * replacement on the way to its current form of an entry it relies on
- * (5.6.10): one on no such way, or an earlier one, naming the latest.
+ * replacement on the way to its current form of an entry it is held
+ * against — one it relies on, or the question an answer answers (5.6.10,
+ * ledger-affected.cjs): one on no such way, or an earlier one, naming the
+ * latest.
  * @param {Linked} linked @param {Folded} read
  */
 function checkHeld(linked, read) {
   const [entry, after] = /** @type {string[]} */ ([linked.entry, linked.after]);
-  const ways = factsOf(read, entry).relies_on.map((relied) => ({ relied, way: replacementsOf(read, relied) }));
-  if (ways.some(({ way }) => way.at(-1) === after)) return;
+  const ways = heldAgainst(read, entry);
+  if (ways.some(({ replacements }) => replacements.at(-1) === after)) return;
   const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
-  const passed = ways.find(({ way }) => way.includes(after));
+  const passed = ways.find(({ replacements }) => replacements.includes(after));
   if (passed === undefined) {
-    throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} changed — it holds an entry relying on one whose way to its current form the replacement is on`);
+    throw new Error(`ledger hold --entry names ${short(entry)}, which is held against nothing ${short(after)} changed — it holds an entry relying on or answering one whose way to its current form the replacement is on`);
   }
-  throw new Error(`ledger hold --after names ${short(after)}, an earlier change on the way of ${short(passed.relied)} — a hold names the latest: ${short(/** @type {string} */ (passed.way.at(-1)))}`);
+  throw new Error(`ledger hold --after names ${short(after)}, an earlier change on the way of ${short(passed.held_against)} — a hold names the latest: ${short(/** @type {string} */ (passed.replacements.at(-1)))}`);
 }
 
 /**
  * Refuse a merge's duplicate that is the entry it goes into, or that answers
- * another question than the one merged, in any of its wordings (5.3.13,
- * 5.5.4, 5.5.5).
+ * another question than the one merged, by any of its wordings, standing or
+ * set aside (5.3.13, 5.5.4, 5.5.5).
  * @param {Linked} linked @param {Folded} read
  */
 function checkDuplicate(linked, read) {
@@ -539,24 +549,29 @@ function checkDuplicate(linked, read) {
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   const where = `ledger merge --duplicate names ${short(duplicate)}`;
   if (duplicate === into) throw new Error(`${where}, the decision --into names — a duplicate is another entry`);
-  const answers = /** @type {string} */ (/** @type {IdFacts} */ (facts.get(duplicate)).answers);
-  if (![question, ...replacedChain(read, question)].includes(answers)) {
+  const answers = /** @type {string} */ (factsOf(read, duplicate).answers);
+  if (factsOf(read, answers).root !== factsOf(read, question).root) {
     throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}, in any of its wordings`);
   }
 }
 
 /**
  * What follows from a replacement's link to what it replaces: the kind it
- * stands for, and the question a decision answers or a question is part of.
- * Nothing for any other write.
- * @param {Write} write @param {Linked} linked @param {Map<string, IdFacts>} facts
+ * stands for; for a decision, the question it answers in its wording as the
+ * replacement is written, whatever wording the replaced decision named — or
+ * that one, where every wording is set aside; for a question, the question
+ * it is part of. Nothing for any other write.
+ * @param {Write} write @param {Linked} linked @param {Folded} read
  * @returns {Record<string, unknown>}
  */
-function followed(write, linked, facts) {
+function followed(write, linked, read) {
   if (write.event !== 'replaced') return {};
-  const replaced = /** @type {IdFacts} */ (facts.get(/** @type {string} */ (linked.replaces)));
+  const replaced = factsOf(read, /** @type {string} */ (linked.replaces));
   const of = replaced.kind;
-  if (of === 'decision') return { of, answers: replaced.answers };
+  if (of === 'decision') {
+    const named = /** @type {string} */ (replaced.answers);
+    return { of, answers: wordingOf(read, named) ?? named };
+  }
   if (of === 'question') return { of, part_of: replaced.part_of };
   return { of };
 }
@@ -690,7 +705,7 @@ function eventOf(request, read) {
   write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked } : {}),
+    ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? { unchecked } : {}),
   };
 }
 
@@ -749,7 +764,7 @@ function land(cwd, request, warnings) {
  * `ledger <verb>`: one event appended and committed, then the knowledge
  * base's copies rendered and indexed. Answers the entry's short id, the
  * commit, and any warnings; a commit git refused is pending, and the next
- * write's commit takes the ledger whole.
+ * write's commit, or boot's, takes the ledger whole.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
  * @returns {{id: string, committed: string|null, note?: string, warnings?: string[]}}
  */
@@ -762,7 +777,7 @@ function writeLedger(cwd, verb, args, stdin) {
     refreshLedgerCopies(cwd, warnings);
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
     const result = { id, committed: outcome.committed };
-    if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write commits it';
+    if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
     if (warnings.length > 0) result.warnings = warnings;
     return result;
   } catch (err) {

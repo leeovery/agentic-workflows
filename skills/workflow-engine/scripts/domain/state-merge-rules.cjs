@@ -34,6 +34,7 @@
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
+const { isObject } = require('../kernel/manifest-io.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
 
@@ -136,11 +137,6 @@ function entryId(line, side, number) {
 /** A migrations record line's key, the migration's id. @type {KeyOf} */
 function migrationId(line) {
   return line.trim();
-}
-
-/** @param {unknown} value @returns {value is Record<string, unknown>} */
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /** A key's value, or undefined where the key is not the object's own. @param {unknown} object @param {string} key */

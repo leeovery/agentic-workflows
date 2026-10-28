@@ -6,13 +6,13 @@
 // 22.6.6), and the product record's file, which it never does (5.8.13,
 // 22.6.12). They are a cache, rebuilt from the ledger (22.6.7).
 //
-// - What is rendered: every place a live event stands in whose record holds
-//   a current entry — a topic's, or a unit's own level's (ledger-fold.cjs) —
-//   each showing its current answers only, never what they replaced, and the
-//   current entries elsewhere it rests on; and once the ledger exists, the
-//   product record. A place whose record holds nothing has no copy: a
-//   cancelled topic or unit, or a postponed topic while it waits, has its
-//   copy removed, and gets it back when it is live again (5.8.17).
+// - What is rendered: every place whose record shows a current entry — a
+//   topic's, or a unit's own level's (ledger-fold.cjs) — each showing its
+//   current answers only, never what they replaced, and the current entries
+//   elsewhere made there or that it rests on (5.8.19); and once the ledger
+//   exists, the product record. A place whose record shows nothing has no
+//   copy: a cancelled topic or unit, or a postponed topic while it waits,
+//   has its copy removed, and gets it back when it is live again (5.8.17).
 // - When: the whole set is rendered against the ledger after a ledger write
 //   commits and its lock is released, and after any command that changes
 //   what is live — the engine's dispatcher stamps the units' manifests
@@ -46,8 +46,10 @@
 //   through is never matched against a mark that render is about to replace.
 // - The fold's check finishes a landing a kill cut short under the writer
 //   lock (ledger.cjs): a writer checks the ledger before it claims the
-//   render, so that wait is taken with the claim free. A fold never renders
-//   what the branch has not committed (5.4.3).
+//   render, so that wait is taken with the claim free. A fold renders what
+//   the append-only check passed: the branch's committed ledger and any
+//   tail appended after it, a killed write's uncommitted tail among them
+//   (5.4.3).
 // - Indexing follows each render inside the claim, once a checkout's
 //   knowledge base is set up: each copy written indexed and each removed
 //   taken out. The keyword side lands at once, the vectors left to the
@@ -66,7 +68,7 @@ const { sleepSync } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
-const { ID_FACTS, readFolded, factsOf, standingOf, currentsOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, factsOf, standingOf, wordingOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
 const { showerOf } = require('./ledger-read.cjs');
 const { liveness, manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -101,13 +103,13 @@ function textOf(shower, id) {
 }
 
 /**
- * The question a decision answers, in its current wording, or null where
- * none is current: its topic or unit set aside, or leading nowhere current.
+ * The question a decision answers, by any wording (ledger-fold.cjs), in its
+ * current wording, or null where none is current: every wording set aside.
  * @param {Shower} shower @param {string} decision
  * @returns {string|null}
  */
 function questionOf(shower, decision) {
-  return currentsOf(shower.folded, /** @type {string} */ (factsOf(shower.folded, decision).answers))[0] ?? null;
+  return wordingOf(shower.folded, /** @type {string} */ (factsOf(shower.folded, decision).answers));
 }
 
 /**
@@ -133,7 +135,8 @@ function byQuestion(shower, decisions, inCopy) {
 /**
  * A record's copy: its questions with their answers, then the questions
  * elsewhere its own decisions answer; its findings; and the entries
- * elsewhere it rests on that answer none of its questions.
+ * elsewhere made there or that it rests on that answer none of its
+ * questions.
  * @param {Shower} shower @param {string} unit @param {string|null} topic @param {RecordIds} ids
  */
 function recordText(shower, unit, topic, ids) {
@@ -177,7 +180,7 @@ function copiesOf(root, notes) {
     /** @type {Map<string, string>} */
     const copies = new Map();
     for (const { unit, topic, record } of placeRecords(shower.folded)) {
-      if (record.questions.length + record.findings.length + record.decisions.length === 0) continue;
+      if (record.questions.length + record.findings.length + record.decisions.length + record.other_topics.length === 0) continue;
       copies.set(recordFile(unit, topic), recordText(shower, unit, topic, record));
     }
     copies.set(PRODUCT_FILE, productText(shower));

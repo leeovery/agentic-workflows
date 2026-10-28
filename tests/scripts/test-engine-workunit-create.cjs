@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  ENGINE, git, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+  ENGINE, git, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
 } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
@@ -254,7 +254,7 @@ describe('engine workunit create — a name already taken refuses', () => {
     assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.inbox/bugs/2026-06-02--login-loop.md')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/seeds')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/manifest.json')));
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.strictEqual(hasStore(fix.project), false, 'a refused create built a knowledge store');
   }
 
   it('an existing same-type unit refuses with the clash named — nothing touched', () => {
@@ -441,11 +441,11 @@ describe('engine workunit create — missing imports fail fast', () => {
 
     assert.match(err.error, /import path\(s\) not found/);
     assert.deepStrictEqual(err.missing_imports, ['notes/ghost.md', 'notes/phantom.md']);
-    // No manifest, no copies, no seed move, no commit, nothing indexed.
+    // No manifest, no copies, no seed move, no commit, no store built.
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
     assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.strictEqual(commitCount(fix), '0');
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.strictEqual(hasStore(fix.project), false);
   });
 
   it('a directory among the imports refuses before any copy — no half-landed batch', () => {
@@ -460,7 +460,7 @@ describe('engine workunit create — missing imports fail fast', () => {
     assert.deepStrictEqual(err.missing_imports, ['notes/album']);
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments')));
     assert.strictEqual(commitCount(fix), '0');
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.strictEqual(hasStore(fix.project), false);
   });
 });
 
