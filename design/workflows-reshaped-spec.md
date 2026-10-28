@@ -102,7 +102,7 @@ How to read it:
 
 ### 1.4 When the release is ready
 
-1.4.1 The release is ready only when every condition in 1.4.2 to 1.4.7 holds. [plan 1.4; Claude's]
+1.4.1 The release is ready only when every condition in 1.4.2, 1.4.3, 1.4.6 and 1.4.7 holds; the prose tests and the context figures are none (1.4.4, 1.4.5). [plan 1.4; Claude's; ruled by the person 2026-10-27 and 2026-10-28: neither the prose tests nor the context budget is a release condition]
 
 1.4.2 The gates pass: `npm test`, `test:cli`, `test:migrations`, `typecheck` and `test:mod`. [plan 1.4; Claude's]
 
@@ -1263,7 +1263,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 6.3.1 The commit door confines and serialises what a commit takes, as it does today, and also requires a task for code. [R35]
 
-6.3.2 State commits leave the prose: every verb commits its own writes in the state worktree, together with any log file in the layout changed since, then pushes (4.3.2). [plan 6.3; Claude's; R23]
+6.3.2 State commits leave the prose: every verb commits its own writes in the state worktree, together with any log file in the layout changed since, then pushes (4.3.2); while the migration runs, the verbs it and its directives call write without committing, and their writes land in the migration's commit (21.9.3). [plan 6.3; Claude's; R23; Claude's derivation 2026-10-28: nothing is committed before the migration's commit (21.9.3)]
 
 6.3.3 A code commit names its task. The engine checks the task is in flight in this conversation, read from the task in flight the engine records per conversation, and writes the commit message with the task's id. [plan 6.3; Claude's; R35]
 
@@ -1484,7 +1484,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 7.1.1 Tasks go through the engine to a driver, replacing the three plan formats chosen per plan. [R35; ruled by the person 2026-10-17; plan 3.9]
 
-7.1.2 The engine's `task` verbs — create a phase, create a task with the task template's fields (§12), set an open task's type, link, ready, start, done, close (a task ended without being done, with its reason), list a phase, show a task — are the only way anything in the workflows touches a tracker. [R35, plan 3.9]
+7.1.2 The engine's `task` verbs — create a phase, create a task with the task template's fields (§12), add to a task (13.11.3), set the type of a task neither done nor closed (21.5.21), link, ready, start, done, close (a task ended without being done, with its reason), list a phase, show a task — are the only way anything in the workflows touches a tracker. [R35, plan 3.9; Claude's derivation 2026-10-28: an addition before dispatch goes onto the task (13.11.3), and the migration types its unfinished tasks (21.5.21)]
 
 7.1.3 The verb that creates a task takes the task's text from a file, one call per task. [R15; agreed by the person 2026-10-19; plan 3.6]
 
@@ -1500,7 +1500,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 7.1.9 Nothing relies on task state travelling with a commit, since a hosted tracker's does not. [R35]
 
-7.1.10 The tracker is named only in its driver, test fixtures (its conformance fixtures in `tests/drivers/{name}/`), the user docs and design notes — never in a skill, a reference or engine code outside the driver, released migrations aside, since they are never changed. The person's rule, non-negotiable: even their own tool sits at the workflows' edge. [R35; ruled by the person 2026-10-17; plan 3.9; Claude's derivation 2026-10-28: a driver's fixtures stand in for the tool it drives; Claude's derivation 2026-10-28: released migrations name today's tracker in comments, and are never touched]
+7.1.10 The tracker is named only in its driver; test fixtures, its conformance fixtures in `tests/drivers/{name}/` and the knowledge eval's frozen projects among them; released migrations, which are never changed; the user docs and design notes — never in a skill, a reference, an agent definition or engine code outside the driver. The person's rule, non-negotiable: even their own tool sits at the workflows' edge. [R35; ruled by the person 2026-10-17; plan 3.9; Claude's derivation 2026-10-28: a driver's fixtures stand in for the tool it drives; Claude's derivation 2026-10-28: released migrations name today's tracker in comments and are never touched, and test fixtures hold the tool's own data: a driver's stand in for it, and the knowledge eval's frozen projects are kept as they were]
 
 7.1.11 The migration sets every project to the default driver (§21). [R35]
 
@@ -1550,7 +1550,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 7.3.2 There is one conformance suite per kind of driver, run in the hermetic environment. [plan 6.7; Claude's]
 
-7.3.3 The task suite covers: a phase; links across phases; ready returning several; done unblocking; close, and close unblocking; list; show. [plan 6.7; Claude's]
+7.3.3 The task suite covers: a phase; links across phases; ready returning several; done unblocking; close, and close unblocking; an addition to a task; list; show. [plan 6.7; Claude's]
 
 7.3.4 The landing suite covers: a task's pull request, a stack, a phase merged, finish, and a task whose change touches nested repositories (7.2.17). [plan 6.7; Claude's; Claude's derivation, T5]
 
@@ -1582,7 +1582,7 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 7.S1 Given a project set up with the defaults, when its settings are read, then the task driver is Tick; when a task is created through `task`, it appears in Tick. (7.1.1, 7.1.2, 7.1.4)
 
-7.S2 Given the workflows' skills, references and engine code, released migrations aside, when they are searched for the tracker's name and the code host's CLI, then they appear only in their drivers. (7.1.10, 7.2.13)
+7.S2 Given the workflows' skills, references, agent definitions and engine code, released migrations aside, when they are searched for the tracker's name and the code host's CLI, then they appear only in their drivers. (7.1.10, 7.2.13)
 
 7.S3 Given the task writer writing a phase, when it records a task, then it makes one `task` call per task with the task's text taken from a file, and the tracker's task holds that text. (7.1.3)
 
@@ -6279,7 +6279,7 @@ b/back    → Back to the start menu — the rest keep waiting
 
 16.13.2 Only the engine writes the trust log; Claude cannot edit it, the settings, or the record of the person, whose entries the engine writes only on the person's yes (16.18.2). [R25; 16.18.2, 16.18.4]
 
-16.13.3 The trust log holds what the matrix needs and no decision's content, which stays in the project's ledger. The engine writes the ledger entry and the trust log event in the same command; where the event's append fails, the command warns and keeps the event pending in the conversation's folder, retried from there at the conversation's next write to the trust log and at every boot, before boot's tidy-up can remove the folder (22.1.1), and counted once however often it lands, by the event's id. A gate answered by typing is logged as typed, never with its text, which stays in the conversation; the row the separate call reads from it is logged with it (16.19.1, 16.S40). [R25; Claude's derivation 2026-10-28: the trust log spans every project, an event must be neither lost nor doubled, and the matrix counts the row a typed answer picked]
+16.13.3 The trust log holds what the matrix needs and no decision's content, which stays in the project's ledger. The engine writes the ledger entry and the trust log event in the same command; where the event's append fails, the command warns and keeps the event pending in the conversation's folder, retried from there at the conversation's next write to the trust log and at every boot, whose tidy-up keeps a folder while an event in it is pending (22.1.1), and counted once however often it lands, by the event's id. A gate answered by typing is logged as typed, never with its text, which stays in the conversation; the row the separate call reads from it is logged with it (16.19.1, 16.S40). [R25; Claude's derivation 2026-10-28: the trust log spans every project, an event must be neither lost nor doubled, and the matrix counts the row a typed answer picked]
 
 16.13.4 The trust log's events are:
 - each raise, with Claude's sealed answer and the person's answer, by kind, with its label (16.11.5);
@@ -6713,6 +6713,8 @@ Comment → Tell me how to word it
 16.S72 Given a ledger entry whose answer the person gave, of a kind gone quiet, when Claude finds mid-build that it has to change, then replacing it asks the person whatever the counts, in the phase the epic is in; given an entry that was Claude's call, its replacement follows the ask rule. (16.5.7, 12.9.2, 12.15.4)
 
 16.S73 Given Claude's call written to the ledger, and later the person's replacement, for a changed mind and carrying no sealed answer, of a decision that held Claude's lean, when each command returns, then the trust log holds a call event naming the entry and a reversal event naming the entry it reverses, each written by the command that wrote its entry. (16.13.3, 16.13.4, 16.12.1)
+
+16.S74 Given a trust log append that fails, when the command returns, then it has warned and the event waits in the conversation's folder; when the conversation next writes to the trust log, or the next boot runs, then the event lands before any tidy-up, and landing it again counts it once. (16.13.3)
 
 ## 17. Measures
 
@@ -10037,7 +10039,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.5.20 The move mints the project's id on its manifest (16.13.5). [Claude's derivation 2026-10-28]
 
-21.5.21 Once the tracker's store has moved (21.5.18), each task still open in a unit whose building has started is given a type (12.4.1) through the task verbs, in the migration's commit (21.9.3): fix in a bugfix or quick-fix unit, feat in any other. It is the one change the migration makes to a task (21.8.8). [Claude's derivation 2026-10-28: today's tasks have no type, landing names a task's branch and pull request from it (7.2.18), and a type filled in at runtime would be code handling an old shape]
+21.5.21 Once the tracker's store has moved (21.5.18), each task neither done nor closed in a unit whose building has started is given a type (12.4.1) through the task verbs, the change landing in the migration's commit (21.9.3): fix in a bugfix or quick-fix unit, feat in any other. It is the one change the migration makes to a building unit's tasks (21.8.8). [Claude's derivation 2026-10-28: today's tasks have no type, landing names a task's branch and pull request from it (7.2.18), and a type filled in at runtime would be code handling an old shape]
 
 ### 21.6 Step 4: the records
 
@@ -10091,7 +10093,7 @@ Screen, drawn by Claude: the guard's refusal, uncommitted changes under .workflo
 
 21.8.7 Building started: a phase not started or partly done gets its full cut entry — scenarios, the sections it draws on, what it relies on — written by the directive from the plan's phase and its acceptance criteria, the scenarios' text into `spec.md` beside the joined specs, where the `cut` verb finds them (11.5.9); the dependencies between the old specs become relies-on lines. [R37; ruled by the person 2026-10-17; the scenarios' text in `spec.md`, Claude's derivation]
 
-21.8.8 Building started: tasks keep their ids and their tracker state, the tracker's state is left as it stands but for each open task's type (21.5.21), its store moved but otherwise unchanged (21.5.18), and the cut names each phase's existing tracker parent. Banked findings become notes for later; approved staging goes. A spec built but never reviewed needs nothing, since the review phase reads the whole unit. Where the manifest and the tracker disagree, the tracker wins and the disagreement becomes an open note. [R37; ruled by the person 2026-10-17; 21.5.18]
+21.8.8 Building started: tasks keep their ids and their tracker state, the tracker's state is left as it stands but for the type of each task neither done nor closed (21.5.21), its store moved but otherwise unchanged (21.5.18), and the cut names each phase's existing tracker parent. Banked findings become notes for later; approved staging goes. A spec built but never reviewed needs nothing, since the review phase reads the whole unit. Where the manifest and the tracker disagree, the tracker wins and the disagreement becomes an open note. [R37; ruled by the person 2026-10-17; 21.5.18, 21.5.21]
 
 21.8.9 Mixed: a building unit cannot take a topic its spec does not cover. Topics not started, in progress, or decided but in no spec leave it, and the directive asks the person, per unit, where they go:
 - a new epic the person names, the topics moving whole and starting in discussion; or
@@ -10279,7 +10281,7 @@ Screen, drawn by Claude: boot's refusal past an unfinished directive. [Claude's 
 
 21.S27 Given a unit with three unbuilt specs and a plan with tasks in the tracker, when the migration runs, then the specs and plan sit in `assets/`, the tracker tasks are closed through the task verbs, the topics keep their states, and the unit sits in discussion; once every topic is decided, one spec is written fresh through the review and ready to build. (21.8.2, 21.8.3, 21.8.4)
 
-21.S28 Given a unit with two specs, one built and one at 167 of 210 tasks, when the migration runs, then `spec.md` holds both specs verbatim, one part each, in build order; the built plan's phases appear in the cut with name, goal and "built"; the unfinished phases carry scenarios, sections and relies-on; task ids are unchanged, and tracker state is unchanged but for the open tasks' types; and each cut phase names its tracker parent. (21.5.21, 21.7.1, 21.8.5, 21.8.6, 21.8.7, 21.8.8)
+21.S28 Given a unit with two specs, one built and one at 167 of 210 tasks, when the migration runs, then `spec.md` holds both specs verbatim, one part each, in build order; the built plan's phases appear in the cut with name, goal and "built"; the unfinished phases carry scenarios, sections and relies-on; task ids are unchanged, and tracker state is unchanged but that each task neither done nor closed now has the type feat; and each cut phase names its tracker parent. (21.5.21, 21.7.1, 21.8.5, 21.8.6, 21.8.7, 21.8.8)
 
 21.S29 Given a building unit whose manifest credits a task the tracker has open, when the migration runs, then the tracker's state stands and the disagreement is an open note. (21.8.8)
 
@@ -10812,8 +10814,8 @@ projections, from new fixtures: the discussion phase's map, the new start
 and epic menus, and the build's progress. [plan 9.3; Claude's]
 
 23.1.3 No help screen, walkthrough fixture, help content file or glossary
-entry names the tracker or the code host's CLI: each is named only in its
-driver, the user docs and design notes. [R35; ruled by the person 2026-10-17
+entry names the tracker or the code host's CLI: each is named only where
+7.1.10 allows: its driver, test fixtures, the user docs and design notes. [R35; ruled by the person 2026-10-17
 and 2026-10-18; Claude's derivation, O92]
 
 23.1.4 Help, the glossary and the user docs call the product "the
@@ -10946,8 +10948,8 @@ subject. [plan 9.4, record 3599–3603; Claude's; Claude's derivation, T24]
 23.4.4 planning.md goes, and the tracker moves to the configuration and
 build chapters. [plan 9.4; Claude's]
 
-23.4.5 The docs are one of the three places a driver's tool may be named,
-beside its driver and design notes. [plan 9.4, R35; Claude's]
+23.4.5 The docs are one of the places a driver's tool may be named, beside
+its driver, test fixtures and design notes (7.1.10). [plan 9.4, R35; Claude's]
 
 23.4.6 The person's internal products are never named in the docs, only
 described. [plan 9.4; Claude's]
@@ -11717,7 +11719,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.4.4 Relies on: 29.3. [R14; Claude's derivation]
 
-29.4.5 Proven by: 3.S6, 6.S18, 16.S73, 4.S39 (4). [R14; Claude's derivation]
+29.4.5 Proven by: 3.S6, 6.S18, 16.S73, 4.S39, 16.S74 (5). [R14; Claude's derivation]
 
 ### 29.5 The decision point
 
@@ -11939,7 +11941,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 863 listed are the 863 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 864 listed are the 864 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
