@@ -24,8 +24,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const {
+  lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, cleanupFixture,
+} = require('./engine-harness.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -33,12 +35,7 @@ const { catchUpState } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
-const UNIT = 'fumi';
-const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
-const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const TOPICS = Object.freeze(['note-window', 'space-homing', 'menu-bar']);
-const NOTE = `${UNIT}.discussion.note-window`;
-const SPACE = `${UNIT}.discussion.space-homing`;
 
 /** @type {string} */
 let dir;
@@ -46,12 +43,8 @@ let dir;
 let asked;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-since-');
+  dir = ledgerWorld('ledger-since-', { discussion: { items: Object.fromEntries(TOPICS.map((topic) => [topic, { status: 'in-progress' }])) } });
   asked = new Map();
-  createManifest(dir, UNIT, {
-    work_type: 'epic',
-    phases: { discussion: { items: Object.fromEntries(TOPICS.map((topic) => [topic, { status: 'in-progress' }])) } },
-  });
 });
 
 afterEach(() => {

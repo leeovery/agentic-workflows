@@ -24,20 +24,11 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
-const UNIT = 'fumi';
-const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
-const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
-const NOTE = `${UNIT}.discussion.note-window`;
-const SPACE = `${UNIT}.discussion.space-homing`;
 const MINT = 'mint.discussion.mint';
-
-/** A discovery map row a topic's cancel takes. @param {number} order @param {string} summary */
-function row(order, summary) {
-  return { order, summary, routing: 'discussion', source: 'discovery' };
-}
 
 /** @type {string} */
 let dir;
@@ -45,15 +36,8 @@ let dir;
 let asked;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-affected-');
+  dir = ledgerWorld('ledger-affected-');
   asked = new Map();
-  createManifest(dir, UNIT, {
-    work_type: 'epic',
-    phases: {
-      discovery: { items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') } },
-      discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
-    },
-  });
   createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
 });
 
@@ -61,9 +45,11 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
+const ledger = ledgerHelpers(() => dir);
+
 /** One ledger write that must succeed: its short id. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
 function write(verb, address, flags, content) {
-  return ok(dir, ['ledger', verb, address, ...flags], { env: SESSION, stdin: JSON.stringify(content) }).id;
+  return ledger.write(verb, address, flags, content).id;
 }
 
 /** The ledger as it stands, and the state branch's tip. */

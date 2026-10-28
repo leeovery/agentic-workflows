@@ -16,8 +16,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { ok, refuses, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ok, refuses, statePath, cleanupFixture } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const {
@@ -25,14 +24,13 @@ const {
 } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
 
-const { UNIT, SESSION, MADE, NOTE, SPACE, MENU, PHASES, ledgerReadHelpers } = require('./ledger-read-world.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, MENU, ledgerReadHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-read-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-read-');
 });
 
 afterEach(() => {

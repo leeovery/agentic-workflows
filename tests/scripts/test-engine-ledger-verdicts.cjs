@@ -23,17 +23,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, row, ledgerWorld } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { trustLog } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
 
-const UNIT = 'fumi';
-const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
-const NOTE = `${UNIT}.discussion.note-window`;
-const SPACE = `${UNIT}.discussion.space-homing`;
-const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
 /** The person's answer, and who moved whom on it. @param {string} moved */
 function persons(moved) {
@@ -46,15 +41,11 @@ let dir;
 let asked;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-verdicts-');
-  asked = new Map();
-  createManifest(dir, UNIT, {
-    work_type: 'epic',
-    phases: {
-      discovery: { items: { 'note-window': { order: 1, summary: 'The note window', routing: 'discussion', source: 'discovery' } } },
-      discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
-    },
+  dir = ledgerWorld('ledger-verdicts-', {
+    discovery: { items: { 'note-window': row(1, 'The note window') } },
+    discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
   });
+  asked = new Map();
 });
 
 afterEach(() => {
@@ -86,7 +77,7 @@ function refused(verb, address, flags, content) {
 
 /** A decision answering the place's question, made and moved as `made` says. @param {string} text @param {Record<string, unknown>} made @param {string} [address] */
 function decide(text, made, address = NOTE) {
-  if (!asked.has(address)) asked.set(address, write('ask', address, [], { ...CLAUDES, text: 'What is a note?' }));
+  if (!asked.has(address)) asked.set(address, write('ask', address, [], { ...MADE, text: 'What is a note?' }));
   return write('decide', address, ['--answers', /** @type {string} */ (asked.get(address))], { ...made, text, why: `Why: ${text}` });
 }
 
@@ -109,7 +100,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
   it('waits on nothing where the person took Claude\'s lean or came round to it, and a departure is a decision: never Claude\'s own call, nor a finding', () => {
     decide('A panel.', { ...persons('none'), sealed: 'A panel.' });
     decide('A frameless window.', { ...persons('claude-moved-person'), sealed: 'A frameless window.' });
-    decide('Notes snap to the grid.', CLAUDES);
+    decide('Notes snap to the grid.', MADE);
     write('find', NOTE, [], { ...persons('person-moved-claude'), text: 'Panels take no focus.', how: 'the person tried it' });
 
     assert.deepStrictEqual(ok(dir, ['ledger', 'verdicts']), { ok: true, departures: [] });
@@ -125,7 +116,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
   });
 
   it('holds the person\'s replacement of Claude\'s own call for a changed mind or a mistake — a call overruled when shown — the call it replaced as the lean, the engine setting who moved whom where the writer leaves it out and refusing any other', () => {
-    const call = decide('A panel.', CLAUDES);
+    const call = decide('A panel.', MADE);
     assert.strictEqual(refused(...replacing(call, 'was-wrong', persons('none'))),
       'ledger replace: who_moved_whom is none — the person replacing an answer that held Claude\'s lean, for a changed mind or a mistake, stands over it: person-moved-claude');
 
@@ -160,9 +151,9 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
   });
 
   it('never takes a replacement for a new fact or another topic\'s decision as a departure: new information, not disagreement', () => {
-    const call = decide('A panel.', CLAUDES);
-    const fact = write('find', NOTE, [], { ...CLAUDES, text: 'Panels take no focus.', how: 'a spike' });
-    const theirs = decide('A note opens on the active Space.', CLAUDES, SPACE);
+    const call = decide('A panel.', MADE);
+    const fact = write('find', NOTE, [], { ...MADE, text: 'Panels take no focus.', how: 'a spike' });
+    const theirs = decide('A note opens on the active Space.', MADE, SPACE);
     assert.strictEqual(refused(...replacing(call, 'new-fact', persons('person-moved-claude'), ['--cause', fact])),
       'ledger replace: who_moved_whom is person-moved-claude — a replacement for a new fact brings new information, never the person standing over Claude\'s lean: none or claude-moved-person');
     assert.strictEqual(refused(...replacing(call, 'other-topic', persons('person-moved-claude'), ['--cause', theirs])),
@@ -175,7 +166,7 @@ describe('the verdict queue (5.8.10, 16.10)', () => {
   });
 
   it('refuses an entry Claude made standing over its own lean', () => {
-    const question = write('ask', NOTE, [], { ...CLAUDES, text: 'Is a note a window?' });
+    const question = write('ask', NOTE, [], { ...MADE, text: 'Is a note a window?' });
     assert.strictEqual(refused('decide', NOTE, ['--answers', question], { by: 'claude', who_moved_whom: 'person-moved-claude', text: 'A panel.', why: 'It floats.' }),
       'ledger decide: who_moved_whom is person-moved-claude — an entry Claude made never stands over its own lean: none or claude-moved-person');
   });

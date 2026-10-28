@@ -26,10 +26,11 @@ const path = require('path');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
-const { seams, UNIT, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, PHASES, copiesHelpers } = require('./ledger-copies-world.cjs');
+const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const {
-  ok, callAsync, keywordOnlyKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture,
-} = require('./engine-harness.cjs');
+  UNIT, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, copiesWorld,
+} = require('./ledger-world.cjs');
+const { ok, callAsync, indexedFiles, statePath, stateGit, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
@@ -39,14 +40,11 @@ const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-copies-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
-  keywordOnlyKnowledge(dir);
+  dir = copiesWorld();
 });
 
 afterEach(() => {
-  seams.claimed = null;
-  seams.folded = null;
+  clearSeams();
   cleanupFixture(dir);
 });
 

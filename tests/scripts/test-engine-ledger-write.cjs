@@ -39,15 +39,14 @@ const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const {
-  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, ID, PHASES, AT_NOTE, ledgerWriteHelpers,
-} = require('./ledger-write-world.cjs');
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, ID, WRITE_PHASES, AT_NOTE, ledgerWriteHelpers, ledgerWorld,
+} = require('./ledger-world.cjs');
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-write-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-write-', WRITE_PHASES);
 });
 
 afterEach(() => {
@@ -381,7 +380,7 @@ describe('refusals', () => {
 
   it('refuses a write on a topic set aside or a unit cancelled, and a move to a topic set aside, by the rule every read decides by (5.8.17)', () => {
     const row = (/** @type {number} */ order) => ({ order, summary: 'A topic', routing: 'discussion', source: 'discovery' });
-    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { 'note-window': row(1), 'space-homing': row(2), 'menu-bar': row(3) } } } });
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...WRITE_PHASES, discovery: { items: { 'note-window': row(1), 'space-homing': row(2), 'menu-bar': row(3) } } } });
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const question = ask().id;
     const content = { ...MADE, text: 'Does a note open on the active Space?' };
@@ -564,7 +563,7 @@ describe('the writer lock and the commit', () => {
     const attempts = lockAttempts(t, lock, () => {
       taken += 1;
       if (taken < 2) return;
-      createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { ...PHASES.discovery.items, 'space-homing': { cancelled: true } } } } });
+      createManifest(dir, UNIT, { work_type: 'epic', phases: { ...WRITE_PHASES, discovery: { items: { ...WRITE_PHASES.discovery.items, 'space-homing': { cancelled: true } } } } });
       fs.unlinkSync(lock);
     });
 
@@ -572,7 +571,7 @@ describe('the writer lock and the commit', () => {
       [['ledger', 'ask', SPACE], { ...MADE, text: 'Asked on a topic cancelled meanwhile?' }, 'ledger ask: fumi.discussion.space-homing takes no writes — its topic, space-homing, is cancelled'],
       [['ledger', 'move', NOTE, '--question', question, '--to', 'space-homing'], MADE, 'ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled'],
     ])) {
-      createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+      createManifest(dir, UNIT, { work_type: 'epic', phases: WRITE_PHASES });
       fs.writeFileSync(lock, peer);
       taken = 0;
       assert.strictEqual(refuses(dir, args, { env: SESSION, stdin: JSON.stringify(stdin) }).error, refusal);

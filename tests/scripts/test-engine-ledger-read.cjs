@@ -23,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { ENGINE, ok, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -33,15 +33,14 @@ const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
 
 const {
-  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, HEAP_MB, PHASES, ids, ledgerReadHelpers,
-} = require('./ledger-read-world.cjs');
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, HEAP_MB, ids, ledgerReadHelpers, ledgerWorld,
+} = require('./ledger-world.cjs');
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-read-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-read-');
 });
 
 afterEach(() => {

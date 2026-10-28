@@ -19,17 +19,15 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const { ok, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ok, statePath, cleanupFixture } = require('./engine-harness.cjs');
 
-const { UNIT, MADE, NOTE, SPACE, PHASES, ids, ledgerReadHelpers } = require('./ledger-read-world.cjs');
+const { UNIT, MADE, NOTE, SPACE, ids, ledgerReadHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-read-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-read-');
 });
 
 afterEach(() => {

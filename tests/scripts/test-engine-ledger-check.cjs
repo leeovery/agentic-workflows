@@ -27,8 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 
-const { ENGINE, ok, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ENGINE, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
@@ -38,10 +38,6 @@ const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
-const UNIT = 'fumi';
-const SESSION_ID = 'session-1';
-const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
-const NOTE = `${UNIT}.discussion.note-window`;
 const SPEC = `${UNIT}.specification`;
 const ANSWERS_AT_ONCE_MS = 10000;
 const DETACHED_MS = 20000;
@@ -61,8 +57,7 @@ let dir;
 let log;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-check-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-check-', PHASES);
   log = path.join(dir, 'claude-calls.jsonl');
 });
 
@@ -85,13 +80,15 @@ function rules(...rules) {
   return { rules };
 }
 
+const ledger = ledgerHelpers(() => dir);
+
 /**
  * One ledger write that must succeed: its response.
  * @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content
  * @param {Record<string, unknown>} [answers]
  */
 function write(verb, address, flags, content, answers) {
-  return ok(dir, ['ledger', verb, address, ...flags], { env: armed(answers), stdin: JSON.stringify(content) });
+  return ledger.write(verb, address, flags, content, armed(answers));
 }
 
 /** A question asked at `address`: its short id. @param {string} [address] @param {string} [text] */

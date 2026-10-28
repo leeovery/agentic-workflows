@@ -35,6 +35,7 @@ const { execFileSync, spawn, spawnSync } = require('child_process');
 
 const { git, initRepo, testIdentity, ok, refuses, output, setupGitFixture, cleanupFixture, statePath } = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
+const { MADE } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
@@ -61,7 +62,6 @@ afterEach(() => {
 });
 
 const TAGS = Object.freeze({ unit: 'fumi', topic: 'note-window', phase: 'discussion', session: 'session-1' });
-const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const AT = '2026-10-27T09:00:00Z';
 
 /**

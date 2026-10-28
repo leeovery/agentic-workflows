@@ -1,0 +1,431 @@
+'use strict';
+
+// ---------------------------------------------------------------------------
+// What the ledger's suites share (test-engine-ledger*.cjs): the unit, the
+// session and the topics they write to, the unit's starting phases, and the
+// worlds built from them (`ledgerWorld`, `copiesWorld`); one write that
+// must succeed and the ledger's text and lines (`ledgerHelpers`); and over
+// those, the helpers each aspect's suites share — the reads and the forms an
+// entry takes in a record and a map (`ledgerReadHelpers`), the written line
+// and a refusal asserted (`ledgerWriteHelpers`), and the rendered copies
+// (`copiesHelpers`). The copies' seams are ledger-copies-seams.cjs, which
+// must load before the engine does.
+// ---------------------------------------------------------------------------
+
+require('./hermetic-env.cjs');
+
+const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const { ok, refuses, stateGit, statePath, setupGitFixture, keywordOnlyKnowledge } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
+
+const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
+const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
+const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
+
+const UNIT = 'fumi';
+const SESSION_ID = 'session-1';
+const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION_ID });
+const MADE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
+const NOTE = `${UNIT}.discussion.note-window`;
+const SPACE = `${UNIT}.discussion.space-homing`;
+const MENU = `${UNIT}.discussion.menu-bar`;
+
+/** A discovery map row a topic's cancel and postpone take. @param {number} order @param {string} summary */
+function row(order, summary) {
+  return { order, summary, routing: 'discussion', source: 'discovery' };
+}
+
+// The unit's two topics, each mapped and under discussion.
+const PHASES = Object.freeze({
+  discovery: { items: { 'note-window': row(1, 'The note window'), 'space-homing': row(2, 'Where notes open') } },
+  discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
+});
+
+// The write suites' unit: a third topic, the menu bar, on the map and not
+// yet under discussion.
+const WRITE_PHASES = Object.freeze({
+  discovery: { items: { 'note-window': {}, 'space-homing': {}, 'menu-bar': {} } },
+  discussion: { items: { 'note-window': { status: 'in-progress' }, 'space-homing': { status: 'in-progress' } } },
+});
+
+/**
+ * A project world from the fixture library with the unit's manifest
+ * written there: its folder.
+ * @param {string} prefix temp-directory prefix, so a leftover names its suite
+ * @param {Record<string, unknown>} [phases]
+ */
+function ledgerWorld(prefix, phases = PHASES) {
+  const dir = setupGitFixture(prefix);
+  createManifest(dir, UNIT, { work_type: 'epic', phases });
+  return dir;
+}
+
+/** The copies suites' world: the unit's, its knowledge set up keyword-only. */
+function copiesWorld() {
+  const dir = ledgerWorld('ledger-copies-');
+  keywordOnlyKnowledge(dir);
+  return dir;
+}
+
+/**
+ * The helpers every ledger suite's own share, over the project `dir()`
+ * names, the suite's own fixture.
+ * @param {() => string} dir
+ */
+function ledgerHelpers(dir) {
+  /**
+   * One ledger write that must succeed: its response.
+   * @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content
+   * @param {Record<string, string|undefined>} [env]
+   */
+  function write(verb, address, flags, content, env = SESSION) {
+    return ok(dir(), ['ledger', verb, address, ...flags], { env, stdin: JSON.stringify(content) });
+  }
+
+  /** The ledger's text, '' where there is none. */
+  function ledgerText() {
+    const file = statePath(dir(), LEDGER);
+    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  }
+
+  /** The ledger's lines, as written. */
+  function rawLines() {
+    return ledgerText().split('\n').slice(0, -1);
+  }
+
+  return { write, ledgerText, rawLines };
+}
+
+// ---------------------------------------------------------------------------
+// The read suites (test-engine-ledger-read.cjs, -map, -merges, -stands,
+// -liveness).
+// ---------------------------------------------------------------------------
+
+// Every field of an event that names an entry.
+const LINKS = ['id', 'answers', 'part_of', 'relies_on', 'replaces', 'cause', 'question', 'into', 'duplicate', 'entry', 'after'];
+// What a reader holding the ledger's lines would need many times over, and
+// what the reads need with room to spare.
+const HEAP_MB = 48;
+
+/** @param {{id: string}[]} shown */
+function ids(shown) {
+  return shown.map((entry) => entry.id);
+}
+
+/**
+ * The read suites' helpers over the project `dir()` names, the suite's own
+ * fixture.
+ * @param {() => string} dir
+ */
+function ledgerReadHelpers(dir) {
+  const { write, rawLines } = ledgerHelpers(dir);
+
+  /** A question asked at `address`: its short id. @param {string} address @param {string} text @param {string[]} [flags] */
+  function ask(address, text, flags = []) {
+    return write('ask', address, flags, { ...MADE, text }).id;
+  }
+
+  /** A finding at `address`: its short id. @param {string} address @param {string} text @param {string[]} [flags] @param {Record<string, unknown>} [content] */
+  function find(address, text, flags = [], content = {}) {
+    return write('find', address, flags, { ...MADE, text, how: 'seen in a spike', ...content }).id;
+  }
+
+  /** A decision answering `question` at `address`: its short id. @param {string} address @param {string} question @param {string} text @param {string[]} [flags] @param {Record<string, unknown>} [content] */
+  function decide(address, question, text, flags = [], content = {}) {
+    return write('decide', address, ['--answers', question, ...flags], { ...MADE, text, why: `Why: ${text}`, ...content }).id;
+  }
+
+  /** `old` replaced at `address`, a changed mind: the replacement's short id. @param {string} address @param {string} old @param {string} text */
+  function change(address, old, text) {
+    return write('replace', address, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], text, why: `Why: ${text}` }).id;
+  }
+
+  /** @param {string[]} args */
+  function read(...args) {
+    return ok(dir(), ['ledger', ...args]);
+  }
+
+  /** The ledger's events. @returns {Record<string, any>[]} */
+  function events() {
+    return rawLines().map((line) => JSON.parse(line));
+  }
+
+  /** The full id a short id shows. @param {string} short */
+  function full(short) {
+    const ids = events().map((e) => e.id).filter((id) => id.startsWith(short));
+    assert.strictEqual(ids.length, 1, `${short} names ${ids.length} ids`);
+    return ids[0];
+  }
+
+  /**
+   * The entry `short` names as a read must show it: its line as written but
+   * its version, every id in it in the short form the ledger gives it now.
+   * @param {string} short @returns {Record<string, unknown>}
+   */
+  function line(short) {
+    const all = events();
+    const shorts = shortIds(all.map((e) => e.id));
+    const { v, ...event } = /** @type {Record<string, any>} */ (all.find((e) => e.id === full(short)));
+    assert.strictEqual(v, 1);
+    for (const field of LINKS) {
+      if (Array.isArray(event[field])) event[field] = event[field].map((/** @type {string} */ id) => shorts.get(id));
+      else if (typeof event[field] === 'string') event[field] = shorts.get(event[field]);
+    }
+    return event;
+  }
+
+  /** An entry as a record shows it on its own or in a chain: its line, and the confirmations that it holds. @param {string} short @param {string[]} [holds] */
+  function held(short, holds = []) {
+    return { ...line(short), holds: holds.map(line) };
+  }
+
+  /** A current entry as a record shows it: its line, its confirmations, and the entries it replaced beneath it. @param {string} short @param {string[]} replaced @param {string[]} [holds] */
+  function current(short, replaced = [], holds = []) {
+    return { ...held(short, holds), replaced: replaced.map((old) => held(old)) };
+  }
+
+  /**
+   * A merge as a record shows it: its line, the duplicate it named while that
+   * is live, and whether it holds.
+   * @param {string} short @param {string|null} duplicate @param {boolean} holds
+   */
+  function shownMerge(short, duplicate, holds) {
+    return { ...line(short), duplicate_entry: duplicate === null ? null : line(duplicate), holds };
+  }
+
+  /** A topic's map, each row its question, where it stands, and its answers' ids. @param {string} topic */
+  function answered(topic) {
+    return read('map', UNIT, topic).questions.map((/** @type {{id: string, stands: string, answers: {id: string}[]}} */ r) => [r.id, r.stands, ids(r.answers)]);
+  }
+
+  /**
+   * Assert a topic's map and its record agree: the record shows each question
+   * standing on the map, and every answer the map shows it, among its own
+   * decisions or from where it stands, tied to the question it answers.
+   * @param {string} topic
+   */
+  function assertAgree(topic) {
+    const record = read('record', UNIT, topic);
+    const rows = read('map', UNIT, topic).questions.filter((/** @type {{stands: string}} */ r) => r.stands !== 'moved-away');
+    assert.deepStrictEqual(ids(rows), ids(record.questions), `${topic}'s map and record show different questions`);
+    for (const row of rows) {
+      for (const { id } of row.answers) {
+        const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => o.id === id);
+        assert.ok(ids(record.decisions).includes(id) || elsewhere?.named.includes(row.id), `${topic}'s record does not show ${id}, which its map shows answering ${row.id}`);
+      }
+    }
+  }
+
+  /** `old` replaced from the spec, at the unit's level, a changed mind: the replacement's short id. @param {string} old @param {Record<string, unknown>} content */
+  function changeFromSpec(old, content) {
+    return write('replace', `${UNIT}.specification`, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], ...content }).id;
+  }
+
+  /** `question` reworded at `address`: the new wording's short id. @param {string} address @param {string} question @param {string} text */
+  function reword(address, question, text) {
+    return write('replace', address, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], text }).id;
+  }
+
+  /** A third topic on the unit, the menu bar. */
+  function menuBar() {
+    createManifest(dir(), UNIT, {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { ...PHASES.discovery.items, 'menu-bar': row(3, 'The menu bar') } },
+        discussion: { items: { ...PHASES.discussion.items, 'menu-bar': { status: 'in-progress' } } },
+      },
+    });
+  }
+
+  /** A second unit on the project, mint, a feature discussing itself. */
+  function mint() {
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+  }
+
+  /** A second epic on the project, dock, discussing a topic named as one of fumi's is, space homing, and its badge. */
+  function dock() {
+    createManifest(dir(), 'dock', {
+      work_type: 'epic',
+      phases: {
+        discovery: { items: { 'space-homing': row(1, 'Where the dock homes notes'), badge: row(2, 'The badge') } },
+        discussion: { items: { 'space-homing': { status: 'in-progress' }, badge: { status: 'in-progress' } } },
+      },
+    });
+  }
+
+  /** Each row of a topic's map: its question, where it stands, and the topics it moved in from and away to. @param {string} unit @param {string} topic */
+  function moves(unit, topic) {
+    return read('map', unit, topic).questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.stands, r.moved_from, r.moved_to]);
+  }
+
+  return { write, ask, find, decide, change, read, rawLines, events, full, line, current, shownMerge, answered, assertAgree, changeFromSpec, reword, menuBar, mint, dock, moves };
+}
+
+// ---------------------------------------------------------------------------
+// The write suites (test-engine-ledger-write.cjs, -links).
+// ---------------------------------------------------------------------------
+
+const ID = /^[0-9A-Za-z]{21}$/;
+
+/** @typedef {{phase: string, topic: string|null}} Place */
+
+const AT_NOTE = Object.freeze({ phase: 'discussion', topic: 'note-window' });
+
+/**
+ * The write suites' helpers over the project `dir()` names, the suite's own
+ * fixture, which a test may set up afresh.
+ * @param {() => string} dir
+ */
+function ledgerWriteHelpers(dir) {
+  const { write, ledgerText, rawLines } = ledgerHelpers(dir);
+
+  /** The ledger's entries. @returns {Record<string, any>[]} */
+  function entries() {
+    return rawLines().map((line) => JSON.parse(line));
+  }
+
+  /** The state branch's tip. */
+  function stateTip() {
+    return stateGit(dir(), ['rev-parse', 'HEAD']).trim();
+  }
+
+  /** The full id a short id shows. @param {string} short */
+  function full(short) {
+    const ids = entries().map((e) => e.id).filter((id) => id.startsWith(short));
+    assert.strictEqual(ids.length, 1, `${short} names ${ids.length} ids`);
+    return ids[0];
+  }
+
+  /**
+   * Assert the ledger's last line is exactly the event of `own` made at
+   * `place` by this session: the engine's version first, then its id, the
+   * event and its tags, the time written, and its own fields in the schema's
+   * order. Answers its id.
+   * @param {string} event @param {Place} place @param {Record<string, unknown>} own
+   * @returns {string}
+   */
+  function assertLast(event, place, own) {
+    const raw = /** @type {string} */ (rawLines().at(-1));
+    const { id, at } = JSON.parse(raw);
+    assert.match(id, ID);
+    assert.ok(Math.abs(Date.parse(at) - Date.now()) < 60000, `${at} is not the time written`);
+    assert.strictEqual(raw, JSON.stringify({ v: 1, id, event, unit: UNIT, topic: place.topic, phase: place.phase, session: SESSION_ID, at, ...own }));
+    return id;
+  }
+
+  /**
+   * Assert a response shows the entry's short id — its shortest prefix no other
+   * id in the ledger shares — and the state commit carrying the ledger alone.
+   * @param {Record<string, any>} res @param {string} id
+   */
+  function assertAnswered(res, id) {
+    assert.deepStrictEqual(Object.keys(res), ['ok', 'id', 'committed']);
+    assert.strictEqual(res.id, shortIds(entries().map((e) => e.id)).get(id));
+    assert.strictEqual(res.committed, stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim());
+    assert.strictEqual(stateGit(dir(), ['show', '--name-only', '--pretty=format:', 'HEAD']).trim(), LEDGER);
+    assert.strictEqual(stateGit(dir(), ['show', `HEAD:${LEDGER}`]), ledgerText());
+  }
+
+  /**
+   * A write that must be refused, appending nothing and committing nothing:
+   * its refusal.
+   * @param {string} verb @param {string} address @param {string[]} flags @param {unknown} content
+   * @param {RegExp} pattern @param {Record<string, string|undefined>} [env]
+   */
+  function refused(verb, address, flags, content, pattern, env = SESSION) {
+    const before = { ledger: ledgerText(), tip: stateTip() };
+    const res = refuses(dir(), ['ledger', verb, address, ...flags], { env, stdin: typeof content === 'string' ? content : JSON.stringify(content) });
+    assert.match(res.error, pattern);
+    assert.deepStrictEqual({ ledger: ledgerText(), tip: stateTip() }, before, 'a refusal appended or committed');
+    return res;
+  }
+
+  /** A question asked on the note window: its response. @param {string} [text] */
+  function ask(text = 'What is a note, at its most basic?') {
+    return write('ask', NOTE, [], { ...MADE, text });
+  }
+
+  /** A finding found on the note window, relying on what `flags` name: its response. @param {string[]} [flags] */
+  function find(flags = []) {
+    return write('find', NOTE, flags, { ...MADE, text: 'Spaces keep their ids across restarts.', how: 'seen in a spike' });
+  }
+
+  /** A decision answering `question` on the note window: its response. @param {string} question @param {Record<string, unknown>} [content] */
+  function decide(question, content = {}) {
+    return write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A near-frameless floating note.', why: 'Notes are furniture on the desk.', ...content });
+  }
+
+  /** A replacement of `old` on the note window, a changed mind: its response. @param {string} old @param {Record<string, unknown>} [content] */
+  function change(old, content = { text: 'A frameless surface.', why: 'Lighter.' }) {
+    return write('replace', NOTE, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old wording'], ...content });
+  }
+
+  /** Each event the verbs write, one of each, on the note window: their short ids. */
+  function oneOfEach() {
+    const q = ask().id;
+    const d = decide(q).id;
+    const f = find(['--relies-on', d]).id;
+    const r = change(d).id;
+    const h = write('hold', NOTE, ['--entry', f, '--after', r], MADE).id;
+    const m = write('move', NOTE, ['--question', ask('Which display does a note open on?').id, '--to', 'space-homing'], MADE).id;
+    return { q, f, d, r, h, m };
+  }
+
+  return { write, ledgerText, rawLines, entries, stateTip, full, assertLast, assertAnswered, refused, ask, find, decide, change, oneOfEach };
+}
+
+// ---------------------------------------------------------------------------
+// The copies suites (test-engine-ledger-copies.cjs, -boot, -race).
+// ---------------------------------------------------------------------------
+
+const NOTE_COPY = '.knowledge/records/fumi/note-window.md';
+const SPACE_COPY = '.knowledge/records/fumi/space-homing.md';
+
+/**
+ * The copies suites' helpers over the project `dir()` names, the suite's own
+ * fixture.
+ * @param {() => string} dir
+ */
+function copiesHelpers(dir) {
+  const { write } = ledgerHelpers(dir);
+
+  /** A question asked at `address`: its short id. @param {string} address @param {string} text */
+  function ask(address, text) {
+    return write('ask', address, [], { ...MADE, text }).id;
+  }
+
+  /** A decision answering `question` at `address`: its short id. @param {string} address @param {string} question @param {string} text @param {string[]} [flags] @param {Record<string, unknown>} [content] */
+  function decide(address, question, text, flags = [], content = {}) {
+    return write('decide', address, ['--answers', question, ...flags], { ...MADE, text, why: 'It follows the person.', ...content }).id;
+  }
+
+  /** A copy's text, state-relative, or null where there is none. @param {string} rel */
+  function copy(rel) {
+    const file = statePath(dir(), rel);
+    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  }
+
+  /** The text of every chunk the store holds. */
+  function indexedText() {
+    return store.allChunks(store.loadStore(knowledgeFiles(statePath(dir())).store)).map((c) => c.content).join('\n');
+  }
+
+  /** A decision on the note window, a floating panel ruling out a document window: its question's and its own short ids. */
+  function floatingPanel() {
+    const question = ask(NOTE, 'Is a note a window?');
+    return { question, decision: decide(NOTE, question, 'A floating panel.', [], { rules_out: ['a document window', 'a sheet'] }) };
+  }
+
+  return { write, ask, decide, copy, indexedText, floatingPanel };
+}
+
+module.exports = {
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, copiesWorld, ledgerHelpers,
+  LINKS, HEAP_MB, ids, ledgerReadHelpers,
+  ID, AT_NOTE, ledgerWriteHelpers,
+  NOTE_COPY, SPACE_COPY, copiesHelpers,
+};

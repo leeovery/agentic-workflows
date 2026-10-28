@@ -26,23 +26,20 @@ const { spawn } = require('child_process');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
-const { seams, UNIT, SESSION, MADE, NOTE, NOTE_COPY, PHASES, copiesHelpers } = require('./ledger-copies-world.cjs');
-const { ENGINE, ok, keywordOnlyKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
+const { UNIT, SESSION, MADE, NOTE, NOTE_COPY, copiesHelpers, copiesWorld } = require('./ledger-world.cjs');
+const { ENGINE, ok, indexedFiles, statePath, stateGit, cleanupFixture } = require('./engine-harness.cjs');
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-copies-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
-  keywordOnlyKnowledge(dir);
+  dir = copiesWorld();
 });
 
 afterEach(() => {
-  seams.claimed = null;
-  seams.folded = null;
+  clearSeams();
   cleanupFixture(dir);
 });
 

@@ -22,12 +22,9 @@ const fs = require('fs');
 const path = require('path');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { UNIT, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, PHASES, copiesHelpers } = require('./ledger-copies-world.cjs');
+const { UNIT, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, copiesWorld } = require('./ledger-world.cjs');
 const manifestIo = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
-const {
-  ok, keywordOnlyKnowledge, indexedFiles, statePath, stateGit, setupGitFixture, cleanupFixture,
-} = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { ok, indexedFiles, statePath, stateGit, cleanupFixture } = require('./engine-harness.cjs');
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { followingLiveness } = require(path.join(SCRIPTS, 'domain/ledger-copies.cjs'));
@@ -38,9 +35,7 @@ const { ExitSignal } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-copies-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
-  keywordOnlyKnowledge(dir);
+  dir = copiesWorld();
 });
 
 afterEach(() => {

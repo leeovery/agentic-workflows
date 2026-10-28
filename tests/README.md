@@ -57,7 +57,7 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | `knowledge-harness.cjs` | the stand-in embeddings endpoint, `heldCall`, `recordLaunches`, `withoutBackoff` |
 | `gate-audit.cjs` | a gate payload held against the menu it states |
 | `claude-stub.cjs`, `tmux-stub.cjs` | the stand-ins for `claude` and `tmux` |
-| `{family}-world.cjs` | what one family's suites share and no other suite uses: its constants, its seams, and its helpers over the suite's own world (`state-merge-world.cjs`, `ledger-copies-world.cjs`) |
+| `{family}-world.cjs` | what one family's suites share and no other suite uses: its constants, its worlds, and its helpers over the suite's own world (`state-merge-world.cjs`, `ledger-world.cjs`); a seam that must load before the engine does is a module of its own (`ledger-copies-seams.cjs`) |
 | `pipeline-oracle.cjs`, `pipeline-world.cjs` | the simulation's oracle; its world, `Sim` and the steps the prose takes (§11) |
 
 Not yet in the library: the remote and two-machine worlds (the state and ledger suites each build their own today), the layout helper beyond `statePath`, `refusedPristine`, the state reads beyond `stateGit`, one stub engine tree (two suites build their own), and the frozen clock (only `tests/prose/lib/fake-clock.cjs` has one, as `withFrozenClock`). The project world is a template made once per process and copied for each test, and a world of a suite's own is built once through `fixtureFrom` and copied the same way; the remote and two-machine worlds are not templates yet, and are built for each test over `bareRepo`.

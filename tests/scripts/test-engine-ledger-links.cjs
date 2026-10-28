@@ -19,21 +19,20 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { ID_FACTS, foldLedger, standingOf } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
 const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
 
-const { UNIT, MADE, NOTE, SPACE, PHASES, ledgerWriteHelpers } = require('./ledger-write-world.cjs');
+const { UNIT, MADE, NOTE, SPACE, WRITE_PHASES, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');
 
 /** @type {string} */
 let dir;
 
 beforeEach(() => {
-  dir = setupGitFixture('ledger-write-');
-  createManifest(dir, UNIT, { work_type: 'epic', phases: PHASES });
+  dir = ledgerWorld('ledger-write-', WRITE_PHASES);
 });
 
 afterEach(() => {
@@ -101,7 +100,7 @@ describe('whose entries a link names, and how they relate', () => {
   });
 
   it('reads a question as standing on the topic it was last moved to: it is moved and answered from there alone, and moves to another topic of its unit (5.3.3)', () => {
-    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, specification: { items: { 'notes-spec': {} } } } });
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...WRITE_PHASES, specification: { items: { 'notes-spec': {} } } } });
     const question = ask().id;
     const staying = ask('Does a note remember its size?').id;
 
