@@ -32,6 +32,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
+const { tryClaimFile } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
 const UNIT = 'fumi';
@@ -87,6 +88,27 @@ function decide(address, question, text, flags = [], content = {}) {
 /** `old` replaced at `address`, a changed mind: the response. @param {string} address @param {string} old @param {Record<string, unknown>} content */
 function change(address, old, content) {
   return write('replace', address, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old one'], ...content });
+}
+
+/**
+ * One ledger write run as its own process: its pid, and its exit code once it ends.
+ * @param {string[]} args @param {Record<string, unknown>} content
+ */
+function spawnWrite(args, content) {
+  const child = spawn('node', [ENGINE, 'ledger', ...args], { cwd: dir, env: { ...process.env, ...SESSION } });
+  child.stdin.end(JSON.stringify({ ...MADE, ...content }));
+  return { pid: child.pid, done: new Promise((resolve) => child.on('close', resolve)) };
+}
+
+/** The state branch's commit count. */
+function commits() {
+  return Number(stateGit(dir, ['rev-list', '--count', 'HEAD']));
+}
+
+/** A barrier: waits until `reached` holds, failing with `what` after half a minute. @param {() => boolean} reached @param {string} what */
+async function until(reached, what) {
+  for (let tries = 0; !reached() && tries < 600; tries += 1) await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.ok(reached(), what);
 }
 
 /** A copy's text, state-relative, or null where there is none. @param {string} rel */
@@ -194,34 +216,50 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   it('renders one at a time, the ledger folded under the copies\' lock: two writers whose renders wait behind one that folded before either leave a copy holding both writes', async () => {
     const question = ask(NOTE, 'Is a note a window?');
     const folded = /** @type {string} */ (copy(NOTE_COPY));
-    const lock = knowledgeFiles(statePath(dir)).copies;
-    fs.writeFileSync(lock, String(process.pid));
-    const commits = () => Number(stateGit(dir, ['rev-list', '--count', 'HEAD']));
+    const release = /** @type {() => void} */ (tryClaimFile(knowledgeFiles(statePath(dir)).copies));
     const before = commits();
 
     const writers = [
-      { args: ['ledger', 'decide', NOTE, '--answers', question], stdin: { ...MADE, text: 'A floating panel.', why: 'It follows the person.' } },
-      { args: ['ledger', 'find', NOTE], stdin: { ...MADE, text: 'Panels float above every Space.', how: 'a spike' } },
-    ].map(({ args, stdin }) => {
-      const child = spawn('node', [ENGINE, ...args], { cwd: dir, env: { ...process.env, ...SESSION } });
-      child.stdin.end(JSON.stringify(stdin));
-      return new Promise((resolve) => child.on('close', resolve));
-    });
-    // The barrier: both writes committed, both renders waiting on the lock.
-    for (let tries = 0; commits() < before + 2 && tries < 600; tries += 1) await new Promise((resolve) => setTimeout(resolve, 50));
-    assert.strictEqual(commits(), before + 2, 'the two writes did not both commit');
+      spawnWrite(['decide', NOTE, '--answers', question], { text: 'A floating panel.', why: 'It follows the person.' }),
+      spawnWrite(['find', NOTE], { text: 'Panels float above every Space.', how: 'a spike' }),
+    ];
+    await until(() => commits() === before + 2, 'the two writes did not both commit');
     assert.strictEqual(copy(NOTE_COPY), folded, 'a render ran while another held the copies\' lock');
 
     // The render holding the lock folded before either write: it lands its text, then lets go.
     fs.writeFileSync(statePath(dir, NOTE_COPY), folded);
-    fs.unlinkSync(lock);
-    assert.deepStrictEqual(await Promise.all(writers), [0, 0]);
+    release();
+    assert.deepStrictEqual(await Promise.all(writers.map((w) => w.done)), [0, 0]);
 
     const text = /** @type {string} */ (copy(NOTE_COPY));
     assert.match(text, /^A floating panel\.$/m);
     assert.match(text, /^## Finding: Panels float above every Space\.$/m);
     assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
     assert.match(await byArea('floating'), /^A floating panel\.$/m);
+  });
+
+  it('indexes under the copies\' lock: a later render waits for an earlier one\'s index pass, so the store ends with the later text, the replaced answer gone from it (5.S22)', async () => {
+    const { decision } = floatingPanel();
+    const files = knowledgeFiles(statePath(dir));
+    fs.writeFileSync(files.lock, String(process.pid));
+    const before = commits();
+
+    const earlier = spawnWrite(['replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], { text: 'A framed panel.', why: 'Frames read as furniture.', drops: ['the old one'] });
+    await until(() => commits() === before + 1 && /A framed panel\./.test(copy(NOTE_COPY) ?? ''), 'the replace did not commit and render');
+    const later = spawnWrite(['find', NOTE], { text: 'Panels float above every Space.', how: 'a spike' });
+    await until(() => commits() === before + 2, 'the finding did not commit');
+
+    // The barrier: the earlier render waits on the store inside its index pass, the later render behind it.
+    assert.strictEqual(JSON.parse(fs.readFileSync(files.copies, 'utf8')).pid, earlier.pid, 'the copies\' lock was let go before the index pass');
+    assert.doesNotMatch(/** @type {string} */ (copy(NOTE_COPY)), /Finding/);
+    fs.unlinkSync(files.lock);
+    assert.deepStrictEqual([await earlier.done, await later.done], [0, 0]);
+
+    assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^## Finding: Panels float above every Space\.$/m);
+    const indexed = indexedText();
+    assert.match(indexed, /A framed panel\./);
+    assert.match(indexed, /Panels float above every Space\./);
+    assert.doesNotMatch(indexed, /floating/i);
   });
 
   it('keeps each entry inside its own section, whatever its text holds: a line that would open a heading or a fence reads as text', () => {

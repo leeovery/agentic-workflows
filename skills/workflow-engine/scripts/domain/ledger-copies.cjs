@@ -26,13 +26,15 @@
 //   every write committed before it, and no render folded earlier lands
 //   over a later one. A replaced answer is out of every copy once the
 //   render after its write is done.
-// - Indexing follows a render, outside its lock, once a checkout's knowledge
-//   base is set up: each copy written and still there indexed, from the file
-//   as it stands then, and each removed and still gone taken out — a later
-//   render may have changed either meanwhile. The keyword side lands at
-//   once, the vectors left to the background fill (knowledge/sync.cjs). Boot
-//   renders before its own knowledge pass, which brings the store in line
-//   with the copies.
+// - Indexing follows a render inside the same lock, once a checkout's
+//   knowledge base is set up: each copy written indexed and each removed
+//   taken out, so no index built from an earlier render lands over a later
+//   one's, in the store as in the copies (5.S22). The keyword side lands at
+//   once, the vectors left to the background fill (knowledge/sync.cjs). The
+//   lock is held across a pass that waits on the store's own lock, so its
+//   holder is known by its process — never broken while it runs, taken over
+//   once it is gone. Boot renders alone before its own knowledge pass, which
+//   brings the store in line with the copies.
 // - A render or an index that fails is a warning, never a refusal: what
 //   called it stands, and the next start renders and indexes it again
 //   (22.6.15).
@@ -41,7 +43,7 @@
 const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
-const { acquireLockFile, releaseLockFile } = require('../kernel/manifest-io.cjs');
+const { withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile } = require('./ledger.cjs');
@@ -223,22 +225,18 @@ function readOrNull(file) {
 /**
  * The copies brought in line with the ledger, under their lock, the ledger
  * folded inside it: each whose text differs from what is on disk written,
- * and each no record holds removed, a unit's folder with it once empty. A
- * project with no ledger and no knowledge directory has nothing to render,
- * and the directory is not made for it.
+ * and each no record holds removed, a unit's folder with it once empty —
+ * then, still holding it, `after` given what changed. A project with no
+ * ledger and no knowledge directory has nothing to render, and the
+ * directory is not made for it.
  * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
- * @returns {Rendered}
+ * @param {(rendered: Rendered) => void} after
  */
-function renderCopies(root, notes) {
+function renderCopies(root, notes, after) {
   const { dir, copies: lock } = knowledgeFiles(root);
-  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(dir)) return { written: [], removed: [] };
+  if (!fs.existsSync(ledgerFile(root)) && !fs.existsSync(dir)) return;
   fs.mkdirSync(dir, { recursive: true });
-  acquireLockFile(lock, 'Timed out waiting for the lock on the ledger\'s copies');
-  try {
-    return renderLocked(root, notes);
-  } finally {
-    releaseLockFile(lock);
-  }
+  withStateLockFile(lock, () => after(renderLocked(root, notes)));
 }
 
 /**
@@ -268,36 +266,32 @@ function renderLocked(root, notes) {
 }
 
 /**
- * The copies rendered against the ledger, a failure a warning: what changed,
- * or null where the render failed.
+ * The copies rendered against the ledger, a failure a warning.
  * @param {string} cwd @param {string[]} warnings
- * @returns {Rendered|null}
+ * @param {(rendered: Rendered) => void} [after] run holding the copies' lock
  */
-function renderLedgerCopies(cwd, warnings) {
+function renderLedgerCopies(cwd, warnings, after = () => {}) {
   try {
-    return renderCopies(stateRoot(cwd), warnings);
+    renderCopies(stateRoot(cwd), warnings, after);
   } catch (err) {
     warnings.push(`knowledge record render failed: ${messageOf(err)} — the next start renders it again`);
-    return null;
   }
 }
 
 /**
  * The copies rendered against the ledger and, where the checkout's knowledge
- * base is set up, indexed: each written and still there indexed, each
- * removed and still gone taken out — a later render may have changed either
- * meanwhile. A failure is a warning.
+ * base is set up, indexed under the same lock: each written indexed, each
+ * removed taken out. A failure of either is a warning.
  * @param {string} cwd @param {string[]} warnings
  */
 function refreshLedgerCopies(cwd, warnings) {
-  const rendered = renderLedgerCopies(cwd, warnings);
-  const root = stateRoot(cwd);
-  if (rendered === null || !fs.existsSync(knowledgeFiles(root).config)) return;
-  const there = (/** @type {string} */ file) => fs.existsSync(path.join(root, file));
-  syncKnowledge(cwd, [
-    ...rendered.written.filter(there).map((file) => ({ index: file, label: `knowledge index (${file})` })),
-    ...rendered.removed.filter((file) => !there(file)).map((file) => ({ remove: recordScope(file), label: `knowledge remove (${file})` })),
-  ], warnings);
+  renderLedgerCopies(cwd, warnings, (rendered) => {
+    if (!fs.existsSync(knowledgeFiles(stateRoot(cwd)).config)) return;
+    syncKnowledge(cwd, [
+      ...rendered.written.map((file) => ({ index: file, label: `knowledge index (${file})` })),
+      ...rendered.removed.map((file) => ({ remove: recordScope(file), label: `knowledge remove (${file})` })),
+    ], warnings);
+  });
 }
 
 module.exports = { renderLedgerCopies, refreshLedgerCopies };
