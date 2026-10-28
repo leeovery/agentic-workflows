@@ -402,7 +402,7 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
 
   it('refuses illegal cc names — dots/slashes, phase names, reserved names', () => {
     fix = setupFixture();
-    refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'bad.name', '--description', 'd'], /must not contain dots or slashes/);
+    refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'bad.name', '--description', 'd'], /must be a kebab-case slug/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'research', '--description', 'd'], /conflicts with a phase name/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'project', '--description', 'd'], /is reserved/);
     refusedPristine(['workunit', 'promote', 'payments', 'caching-strategy', '--to', 'baseline', '--description', 'd'], /is reserved/);

@@ -45,27 +45,17 @@ const { todayStamp, isoNow } = require('./dates.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const {
   VALID_WORK_TYPES,
-  VALID_PHASES,
-  RESERVED_WORK_UNIT_NAMES,
+  workUnitNameRefusal,
 } = require('../kernel/manifest-schema.cjs');
 
 /**
- * Refuse an illegal work-unit name — dots and slashes break manifest
- * addressing, phase names collide with dot-path segments, and reserved names
- * route to the project manifest. One rule for every verb that mints a work
- * unit (create, promote).
+ * Refuse a name `workUnitNameRefusal` refuses, for every verb that mints a
+ * work unit (create, promote).
  * @param {string} workUnit
  */
 function assertLegalWorkUnitName(workUnit) {
-  if (workUnit.includes('.') || workUnit.includes('/')) {
-    throw new Error(`Work unit name "${workUnit}" must not contain dots or slashes`);
-  }
-  if (VALID_PHASES.includes(workUnit)) {
-    throw new Error(`Work unit name "${workUnit}" conflicts with a phase name`);
-  }
-  if (RESERVED_WORK_UNIT_NAMES.includes(workUnit)) {
-    throw new Error(`Work unit name "${workUnit}" is reserved`);
-  }
+  const refusal = workUnitNameRefusal(workUnit);
+  if (refusal !== null) throw new Error(refusal);
 }
 
 /**

@@ -5,48 +5,56 @@
 // and the `land` verbs (the code host) (7.1.4, 7.2.1).
 //
 // A driver is a folder the workflows ship, `drivers/{kind}/{name}/driver.cjs`,
-// and never one loaded from elsewhere (7.1.7): the loader lists the shipped
+// and never one loaded from elsewhere (7.1.7): the loader reads the shipped
 // folders. A driver declares its kind, its name, whether it is its kind's
-// default, and the tools it needs, each with the oldest version it works
-// with and where that tool's update instructions live (22.4.9). It carries
-// every method of its kind; a driver short of one is refused.
+// default, and the tools it needs: each with the oldest version it works
+// with, where its update instructions live, and how to find the version
+// installed (22.4.9). It carries every required method of its kind, and an
+// optional one only where its tool has the capability. A driver short of a
+// required method, or declaring any of that amiss, is refused.
 //
-// The project manifest's `drivers: {task, landing}` picks one of each kind.
-// Absent, the task driver is the one flagged default (22.4.2); the landing
-// driver is GitHub's where the project's remote is on GitHub, and the one
-// flagged default otherwise, the local driver (22.4.3). A setting naming a
-// driver the workflows don't ship is refused, naming those they do.
+// The project manifest's `drivers: {task, landing}` names one of each kind.
+// Where a kind's setting is absent, the first verb that resolves it settles
+// the default and writes it there, so a driver never changes under a build
+// (7.1.4): the task driver flagged default (22.4.2); for landing, the driver
+// that serves the project's remote, else the one flagged default, the local
+// driver (22.4.3, 7.2.16). A setting naming a driver the workflows don't ship
+// is refused, naming those they do. The loader names no host: a driver for
+// another one is a folder of its own and nothing else.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { readProjectManifest } = require('../kernel/manifest.cjs');
+const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { DRIVER_KINDS } = require('../kernel/manifest-schema.cjs');
-const { stateRepository } = require('./github-rule.cjs');
+const { remoteUrl } = require('./remote.cjs');
 
 /** @typedef {typeof DRIVER_KINDS[number]} DriverKind */
 
 const DRIVERS_ROOT = path.join(__dirname, '..', 'drivers');
 const ENTRY = 'driver.cjs';
 
-/** GitHub's landing driver: the landing default where the remote is on GitHub. */
-const GITHUB_LANDING = 'github';
-
-/** The methods each kind of driver carries. */
+/** The methods every driver of a kind carries, and those it carries only where its tool can. */
 const METHODS = Object.freeze({
-  task: /** @type {const} */ ([
-    'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
-    'createUnit', 'createPhase', 'createTask', 'link',
-    'ready', 'start', 'done', 'close', 'list', 'show',
-  ]),
-  landing: /** @type {const} */ (['open', 'chain', 'mergePhase', 'finish']),
+  task: {
+    required: /** @type {const} */ ([
+      'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
+      'createUnit', 'createPhase', 'createTask', 'link',
+      'ready', 'start', 'done', 'close', 'list', 'show',
+    ]),
+    optional: /** @type {const} */ ([]),
+  },
+  landing: {
+    required: /** @type {const} */ (['serves', 'open', 'chain', 'mergePhase', 'finish']),
+    optional: /** @type {const} */ ([]),
+  },
 });
 
 /**
- * A tool a driver needs: the oldest version it works with, and where its
- * update instructions live.
- * @typedef {{tool: string, floor: string, update: string}} DriverNeed
+ * A tool a driver needs: the oldest version it works with, where its update
+ * instructions live, and the version installed, or null where it is not.
+ * @typedef {{tool: string, floor: string, update: string, found: () => string|null}} DriverNeed
  */
 
 /**
@@ -55,8 +63,15 @@ const METHODS = Object.freeze({
  */
 
 /** @typedef {(...args: any[]) => any} DriverMethod */
-/** @typedef {DriverDeclaration & Record<typeof METHODS.task[number], DriverMethod>} TaskDriver */
-/** @typedef {DriverDeclaration & Record<typeof METHODS.landing[number], DriverMethod>} LandingDriver */
+/**
+ * @template {{required: readonly string[], optional: readonly string[]}} M
+ * @typedef {Record<M['required'][number], DriverMethod> & Partial<Record<M['optional'][number], DriverMethod>>} MethodsOf
+ */
+/** @typedef {DriverDeclaration & MethodsOf<typeof METHODS.task>} TaskDriver */
+/**
+ * A landing driver; `serves` answers whether it serves a remote's URL.
+ * @typedef {DriverDeclaration & MethodsOf<typeof METHODS.landing> & {serves: (url: string) => boolean}} LandingDriver
+ */
 /** @typedef {TaskDriver | LandingDriver} Driver */
 
 /** @param {unknown} kind @returns {asserts kind is DriverKind} */
@@ -66,36 +81,77 @@ function assertKind(kind) {
   }
 }
 
-/**
- * The driver a folder holds, refused where it declares another kind or name
- * than its folder's, or lacks a method of its kind.
- * @param {DriverKind} kind @param {string} name @param {any} driver
- * @returns {Driver}
- */
-function checked(kind, name, driver) {
-  const refuse = (/** @type {string} */ why) => new Error(`drivers: the ${kind} driver in ${kind}/${name}/ ${why}`);
-  if (!isObject(driver) || driver.kind !== kind || driver.name !== name) {
-    throw refuse(`must declare kind "${kind}" and name "${name}"`);
-  }
-  const missing = METHODS[kind].filter((method) => typeof driver[method] !== 'function');
-  if (missing.length > 0) throw refuse(`lacks ${missing.join(', ')}`);
-  return /** @type {Driver} */ (driver);
+/** @param {unknown} value @returns {boolean} */
+function isText(value) {
+  return typeof value === 'string' && value !== '';
+}
+
+/** @param {unknown} need @returns {boolean} */
+function isNeed(need) {
+  return isObject(need) && isText(need.tool) && isText(need.floor) && isText(need.update) && typeof need.found === 'function';
 }
 
 /**
- * The shipped drivers of a kind, by name. `root` is the drivers' folder, a
- * test's own; the workflows' is the only one the engine reads.
- * @param {DriverKind} kind @param {string} [root]
- * @returns {Driver[]}
+ * What is amiss in what a driver declares or carries, or null where nothing is.
+ * @param {DriverKind} kind @param {string} name @param {any} driver
+ * @returns {string|null}
  */
-function listDrivers(kind, root = DRIVERS_ROOT) {
+function faultOf(kind, name, driver) {
+  if (!isObject(driver) || driver.kind !== kind || driver.name !== name) {
+    return `must declare kind "${kind}" and name "${name}", as its folder does`;
+  }
+  if (typeof driver.isDefault !== 'boolean') return 'must declare isDefault, true or false';
+  if (!Array.isArray(driver.needs) || !driver.needs.every(isNeed)) return 'must declare its needs as a list of {tool, floor, update, found}';
+  const { required, optional } = METHODS[kind];
+  const missing = required.filter((method) => typeof driver[method] !== 'function');
+  if (missing.length > 0) return `lacks ${missing.join(', ')}`;
+  const amiss = /** @type {readonly string[]} */ (optional).filter((method) => method in driver && typeof driver[method] !== 'function');
+  return amiss.length > 0 ? `carries ${amiss.join(', ')} as other than a method` : null;
+}
+
+/** A kind's folder, refused where none of its drivers ships. @param {DriverKind} kind @param {string} root @returns {string} */
+function kindFolder(kind, root) {
   assertKind(kind);
   const folder = path.join(root, kind);
+  if (!fs.existsSync(folder)) throw new Error(`drivers: no ${kind} driver ships — there is no ${kind}/ folder of drivers`);
+  return folder;
+}
+
+/** The driver folders of a kind, by name. @param {string} folder @returns {string[]} */
+function namesIn(folder) {
   return fs.readdirSync(folder, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
-    .sort()
-    .map((name) => checked(kind, name, require(path.join(folder, name, ENTRY))));
+    .sort();
+}
+
+/**
+ * The shipped driver of a kind by its name. Refuses a name no driver ships,
+ * naming those that do, and a driver whose folder or declaration is amiss.
+ * `root` is the drivers' folder, a test's own; the workflows' is the only
+ * one the engine reads.
+ * @param {DriverKind} kind @param {string} name @param {string} [root]
+ * @returns {Driver}
+ */
+function loadDriver(kind, name, root = DRIVERS_ROOT) {
+  const folder = kindFolder(kind, root);
+  const shipped = namesIn(folder);
+  if (!shipped.includes(name)) throw new Error(`drivers: no ${kind} driver "${name}" ships — the ${kind} drivers are ${shipped.join(', ') || 'none'}`);
+  const entry = path.join(folder, name, ENTRY);
+  if (!fs.existsSync(entry)) throw new Error(`drivers: the ${kind} driver in ${kind}/${name}/ has no ${ENTRY}`);
+  const driver = require(entry);
+  const fault = faultOf(kind, name, driver);
+  if (fault !== null) throw new Error(`drivers: the ${kind} driver in ${kind}/${name}/ ${fault}`);
+  return driver;
+}
+
+/**
+ * Every shipped driver of a kind, by name.
+ * @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
+ * @returns {Driver[]}
+ */
+function listDrivers(kind, root = DRIVERS_ROOT) {
+  return namesIn(kindFolder(kind, root)).map((name) => loadDriver(kind, name, root));
 }
 
 /** @param {Driver[]} drivers @returns {string} */
@@ -104,16 +160,20 @@ function namesOf(drivers) {
 }
 
 /**
- * The name of a kind's default driver: GitHub's for landing where the remote
- * is on GitHub, else the one driver flagged default.
- * @param {DriverKind} kind @param {Driver[]} drivers @param {boolean} onGithub
- * @returns {string}
+ * A kind's default among its drivers: for landing, the one driver that
+ * serves the remote's URL where there is one; else the one flagged default.
+ * @param {DriverKind} kind @param {Driver[]} drivers @param {string|null} url the remote's
+ * @returns {Driver}
  */
-function defaultDriverName(kind, drivers, onGithub) {
-  if (kind === 'landing' && onGithub) return GITHUB_LANDING;
+function defaultDriver(kind, drivers, url) {
+  if (kind === 'landing' && url !== null) {
+    const serving = /** @type {LandingDriver[]} */ (drivers).filter((driver) => driver.serves(url));
+    if (serving.length > 1) throw new Error(`drivers: several landing drivers serve ${url} — ${namesOf(serving)}`);
+    if (serving.length === 1) return serving[0];
+  }
   const flagged = drivers.filter((driver) => driver.isDefault);
   if (flagged.length !== 1) throw new Error(`drivers: one ${kind} driver is flagged default — flagged: ${namesOf(flagged)}`);
-  return flagged[0].name;
+  return flagged[0];
 }
 
 /**
@@ -131,18 +191,24 @@ function settingOf(project, kind) {
 }
 
 /**
- * The project's driver of a kind: its setting, else the kind's default.
- * Refuses a setting naming a driver the workflows don't ship.
- * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `listDrivers`'s
- * @returns {Driver}
+ * The project's driver of a kind: the one its setting names, or, where the
+ * setting is absent, the kind's default, written to the project manifest
+ * under the writer lock as the setting from then on. `written` says this
+ * call wrote it, for the caller's commit to carry. Refuses a setting naming
+ * a driver the workflows don't ship.
+ * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
+ * @returns {{driver: Driver, written: boolean}}
  */
-function projectDriver(cwd, kind, root = DRIVERS_ROOT) {
-  const drivers = listDrivers(kind, root);
-  const name = settingOf(readProjectManifest(cwd), kind)
-    ?? defaultDriverName(kind, drivers, kind === 'landing' && stateRepository(cwd) !== null);
-  const driver = drivers.find((shipped) => shipped.name === name);
-  if (driver === undefined) throw new Error(`drivers: no ${kind} driver "${name}" ships — the ${kind} drivers are ${namesOf(drivers)}`);
-  return driver;
+function resolveDriver(cwd, kind, root = DRIVERS_ROOT) {
+  const set = settingOf(readProjectManifest(cwd), kind);
+  if (set !== null) return { driver: loadDriver(kind, set, root), written: false };
+  const driver = defaultDriver(kind, listDrivers(kind, root), kind === 'landing' ? remoteUrl(cwd) : null);
+  withProjectLock(cwd, () => {
+    const manifest = readProjectManifest(cwd);
+    manifest.drivers = { ...(isObject(manifest.drivers) ? manifest.drivers : {}), [kind]: driver.name };
+    writeProjectManifestAtomic(cwd, manifest);
+  });
+  return { driver, written: true };
 }
 
-module.exports = { METHODS, GITHUB_LANDING, listDrivers, defaultDriverName, projectDriver };
+module.exports = { METHODS, loadDriver, listDrivers, defaultDriver, resolveDriver };

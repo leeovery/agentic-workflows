@@ -3,22 +3,25 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the task's id, the one shape the task verbs and the land verbs
 // share. The internal id is `{unit}-{phase}-{n}`, lasting: it goes into
-// commit messages and onto screens. Screens show it `{phase}.{n}`, the form
-// the verbs take beside the unit. A unit's name may hold hyphens, so the id
-// is read from its end. The tracker's own ids never leave its driver.
+// commit subjects, branch names and onto screens. Screens show it
+// `{phase}.{n}`, the form the verbs take beside the unit. The unit is held to
+// the rule that mints units (`workUnitNameRefusal`): a kebab-case slug, so
+// the id is safe wherever it goes. A unit's name may hold hyphens and digits,
+// so the id is read from its end. The tracker's own ids never leave its
+// driver.
 // ---------------------------------------------------------------------------
 
-const { illegalNameReason } = require('../kernel/manifest-schema.cjs');
+const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 
 /** @typedef {{unit: string, phase: number, n: number}} TaskRef */
 
 const INTERNAL_ID = /^(.+)-([1-9][0-9]*)-([1-9][0-9]*)$/;
 const SHOWN = /^([1-9][0-9]*)\.([1-9][0-9]*)$/;
 
-/** Refuses a unit name no work unit can take. @param {unknown} unit */
+/** Refuses a name no work unit can take. @param {unknown} unit */
 function assertUnit(unit) {
-  const illegal = illegalNameReason('work unit', unit);
-  if (illegal !== null) throw new Error(`task-id: ${illegal}`);
+  const refusal = workUnitNameRefusal(unit);
+  if (refusal !== null) throw new Error(`task-id: ${refusal}`);
 }
 
 /** Refuses a phase or task number that is not a whole number from 1. @param {string} what @param {unknown} value */
@@ -37,7 +40,7 @@ function taskId({ unit, phase, n }) {
 /** The task an internal id names. Refuses another shape. @param {string} id @returns {TaskRef} */
 function parseTaskId(id) {
   const named = INTERNAL_ID.exec(id);
-  if (named === null || illegalNameReason('work unit', named[1]) !== null) {
+  if (named === null || workUnitNameRefusal(named[1]) !== null) {
     throw new Error(`task-id: "${id}" is not a task's id — it is {unit}-{phase}-{n}`);
   }
   return { unit: named[1], phase: Number(named[2]), n: Number(named[3]) };

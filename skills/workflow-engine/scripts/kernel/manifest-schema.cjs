@@ -243,6 +243,24 @@ const NO_ARGUMENT = 'none';
 // placeholder must never name a unit.
 const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT];
 
+/**
+ * Why a name can't be a work unit's, or null when it can: a unit's name is a
+ * kebab-case slug, since it goes into paths, commit subjects, branch names
+ * and task ids, and it is neither a phase's name, which would collide with a
+ * dot-path segment, nor a reserved one. One rule for every verb that mints a
+ * unit and for the task id.
+ * @param {unknown} name
+ * @returns {string|null}
+ */
+function workUnitNameRefusal(name) {
+  if (typeof name !== 'string' || !KEBAB_SLUG_PATTERN.test(name)) {
+    return `Work unit name "${String(name)}" must be a kebab-case slug — lowercase letters and digits, joined by single hyphens`;
+  }
+  if (VALID_PHASES.includes(name)) return `Work unit name "${name}" conflicts with a phase name`;
+  if (RESERVED_WORK_UNIT_NAMES.includes(name)) return `Work unit name "${name}" is reserved`;
+  return null;
+}
+
 // The kinds of driver, each picked by the project manifest's
 // `drivers.{kind}` setting: the tracker behind the `task` verbs and the code
 // host behind the `land` verbs.
@@ -278,5 +296,6 @@ module.exports = {
   PROJECT_IDENTITIES,
   NO_ARGUMENT,
   RESERVED_WORK_UNIT_NAMES,
+  workUnitNameRefusal,
   DRIVER_KINDS,
 };

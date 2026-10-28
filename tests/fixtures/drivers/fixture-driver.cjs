@@ -1,17 +1,18 @@
 'use strict';
 
-// A stand-in driver for the driver seam's suite: what it declares, and every
-// method of its kind but those it is to lack.
+// A stand-in driver for the driver seam's suites: what it declares, and every
+// required method of its kind, each answering its own name, but those it is
+// to lack, with any it is given in their place.
 
 const { METHODS } = require('../../../skills/workflow-engine/scripts/domain/drivers.cjs');
 
 /**
- * @param {{kind: 'task'|'landing', name: string, isDefault: boolean}} declared
- * @param {{lacking?: string[]}} [opts]
+ * @param {{kind: 'task'|'landing', name: string, isDefault?: unknown, needs?: unknown}} declared
+ * @param {{lacking?: string[], methods?: Record<string, Function>}} [opts]
  */
-module.exports = function fixtureDriver(declared, { lacking = [] } = {}) {
-  const methods = METHODS[declared.kind]
+module.exports = function fixtureDriver(declared, { lacking = [], methods = {} } = {}) {
+  const stubs = METHODS[declared.kind].required
     .filter((method) => !lacking.includes(method))
     .map((method) => [method, () => method]);
-  return { ...declared, needs: [], ...Object.fromEntries(methods) };
+  return { needs: [], ...declared, ...Object.fromEntries(stubs), ...methods };
 };

@@ -17,22 +17,18 @@
 const { spawnSync } = require('child_process');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
 const { commitStateScoped, noteIfNothingCommitted, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { STATE_BRANCH, stateRemoteUrl } = require('./state-worktree.cjs');
+const { STATE_BRANCH } = require('./state-worktree.cjs');
+const { remoteUrl, githubRepository } = require('./remote.cjs');
 
 /** What the project manifest records once the offer is answered. */
 const STATUSES = /** @type {const} */ (['set', 'declined', 'failed']);
 
 /** @typedef {typeof STATUSES[number]} GithubRuleStatus */
 /** @typedef {{status: GithubRuleStatus, reason?: string}} GithubRuleRecord */
-/** @typedef {{owner: string, repo: string}} GithubRepository */
 
 const GITHUB_HOST = 'github.com';
 const GH_TIMEOUT_MS = 30000;
-
-// A remote on GitHub, as a URL (https, ssh, git) or scp-like (`git@github.com:o/r`).
-const GITHUB_URL = /^(?:(?:https?|ssh|git):\/\/(?:[^@/]+@)?github\.com(?::\d+)?\/|[^@/:]+@github\.com:)([^/]+)\/([^/]+?)(?:\.git)?\/?$/i;
 
 /** The ruleset the yes sets: `leeway-state` never deleted, never pushed but by a fast-forward. */
 const RULESET = Object.freeze({
@@ -43,20 +39,9 @@ const RULESET = Object.freeze({
   rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
 });
 
-/**
- * The GitHub repository a remote URL names, or null where it is not on
- * GitHub.
- * @param {string} url
- * @returns {GithubRepository|null}
- */
-function githubRepository(url) {
-  const named = GITHUB_URL.exec(url.trim());
-  return named === null ? null : { owner: named[1], repo: named[2] };
-}
-
-/** The state's remote's GitHub repository, or null. @param {string} cwd @returns {GithubRepository|null} */
+/** The state's remote's GitHub repository, or null. @param {string} cwd @returns {import('./remote.cjs').GithubRepository|null} */
 function stateRepository(cwd) {
-  const url = stateRemoteUrl(stateRoot(cwd));
+  const url = remoteUrl(cwd);
   return url === null ? null : githubRepository(url);
 }
 
@@ -92,7 +77,7 @@ function githubRuleOffered(cwd) {
 /**
  * Set the rule on the repository through `gh`: null where it is set, else
  * why it is not.
- * @param {GithubRepository} repository
+ * @param {import('./remote.cjs').GithubRepository} repository
  * @returns {string|null}
  */
 function setRule({ owner, repo }) {
@@ -157,4 +142,4 @@ function answerGithubRule(cwd, answer) {
   return result;
 }
 
-module.exports = { RULESET, githubRepository, stateRepository, githubRuleOffered, answerGithubRule };
+module.exports = { RULESET, githubRuleOffered, answerGithubRule };
