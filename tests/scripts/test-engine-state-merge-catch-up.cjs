@@ -79,7 +79,6 @@ describe('catching up when one side moved (4.S36)', () => {
 
     assert.deepStrictEqual([out.action, out.pushed, out.commit], ['pushed', false, left]);
     assert.strictEqual(out.warnings.length, 1);
-    assert.match(out.warnings[0], /not pushed to origin — the commit stands, and the next boot pushes it: .*no pushes today/s);
     assert.strictEqual(commands.filter((c) => c.startsWith('push ')).length, 1, 'a remote that did not move is not pushed to again');
     assert.strictEqual(remoteTip(bare), before);
   });

@@ -11,7 +11,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 | Gate | What it runs |
 |---|---|
 | `npm test` | every node suite (`tests/scripts/test-*.cjs`), listed one by one in `package.json`; its budget is 1.5 min on an idle machine |
-| `npm run test:cli` | the three shell contract suites |
+| `npm run test:cli` | the two shell contract suites |
 | `npm run test:migrations` | the frozen `test-migration-*.sh` fleet |
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
 | `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
@@ -33,7 +33,7 @@ Every test belongs to one layer, and every file sits in one. The layer decides h
 | **migration** | One suite per migration, against a plain temp project of the shape it migrates from (§9) | `run()` called in process | — | `test-migration-070.cjs` |
 | **prose** | The prose harness's own units and its corpus perimeter (§13) | `tests/prose/` | — | `test-prose-invariants.cjs` |
 
-The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The three `test:cli` suites become verb-layer node suites, or are deleted with their behaviour. Nothing new is written in bash.
+The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The two `test:cli` suites become verb-layer node suites, or are deleted with their behaviour. Nothing new is written in bash.
 
 ## 3. The fixture library
 

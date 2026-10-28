@@ -52,6 +52,27 @@ function presenceRecord(dir, wu, phase, topic) {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
+/**
+ * Run `fn` with this process's environment holding `values`, an undefined
+ * one unset, and put every key back as it was, whatever `fn` throws.
+ * @param {Record<string, string|undefined>} values @param {() => void} fn
+ */
+function withProcessEnv(values, fn) {
+  const earlier = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
+  const assign = (/** @type {Record<string, string|undefined>} */ set) => {
+    for (const [key, value] of Object.entries(set)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+  assign(values);
+  try {
+    fn();
+  } finally {
+    assign(earlier);
+  }
+}
+
 describe('engine.run — the invocation is the caller\'s', () => {
   let dir;
 
@@ -122,28 +143,24 @@ describe('engine.run — the invocation is the caller\'s', () => {
   });
 
   it('an environment key is held for the call and restored after it, absent keys included', () => {
-    delete process.env.CLAUDE_CODE_SESSION_ID;
-    process.env.CLAUDE_PID = 'ambient';
-    engine.run(['presence', 'beat', 'payments', 'research', 'payments'],
-      { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: 'held-session', CLAUDE_PID: String(process.pid) } });
-    assert.strictEqual(presenceRecord(dir, 'payments', 'research', 'payments').session_id, 'held-session',
-      'the call\'s environment reached the domain');
-    assert.ok(!('CLAUDE_CODE_SESSION_ID' in process.env), 'a key that was absent is absent again');
-    assert.strictEqual(process.env.CLAUDE_PID, 'ambient', 'a key that was set is what it was');
-    delete process.env.CLAUDE_PID;
+    withProcessEnv({ CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: 'ambient' }, () => {
+      engine.run(['presence', 'beat', 'payments', 'research', 'payments'],
+        { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: 'held-session', CLAUDE_PID: String(process.pid) } });
+      assert.strictEqual(presenceRecord(dir, 'payments', 'research', 'payments').session_id, 'held-session',
+        'the call\'s environment reached the domain');
+      assert.ok(!('CLAUDE_CODE_SESSION_ID' in process.env), 'a key that was absent is absent again');
+      assert.strictEqual(process.env.CLAUDE_PID, 'ambient', 'a key that was set is what it was');
+    });
   });
 
   it('a key the caller takes away is gone for the call', () => {
-    process.env.CLAUDE_CODE_SESSION_ID = 'ambient-session';
-    try {
+    withProcessEnv({ CLAUDE_CODE_SESSION_ID: 'ambient-session' }, () => {
       engine.run(['presence', 'beat', 'payments', 'research', 'payments'],
         { cwd: dir, env: { CLAUDE_CODE_SESSION_ID: undefined, CLAUDE_PID: String(process.pid) } });
       assert.strictEqual(presenceRecord(dir, 'payments', 'research', 'payments').session_id, null,
         'the engine saw no session id at all');
       assert.strictEqual(process.env.CLAUDE_CODE_SESSION_ID, 'ambient-session', 'and it came back');
-    } finally {
-      delete process.env.CLAUDE_CODE_SESSION_ID;
-    }
+    });
   });
 
   it('the display width resolves per call, and the process keeps its own', () => {

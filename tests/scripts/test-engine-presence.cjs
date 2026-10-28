@@ -122,7 +122,7 @@ describe('engine presence', () => {
 
   it('held_sources counts held source rows alone — a dead source session is not one', () => {
     const dead = spawnSync('node', ['-e', '']);
-    craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: null, session_id: 'gone' });
+    craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: EPOCH_START, session_id: 'gone' });
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     engine(dir, ['presence', 'beat', 'pay', 'planning', 'gamma'], PEER);
 
@@ -278,9 +278,9 @@ describe('engine presence', () => {
   });
 
   it('a start-time-less record falls back to process aliveness', () => {
-    const dead = spawnSync('node', ['-e', '']);
     craftRecord(dir, 'discussion', 'alpha', { pid: process.pid, pid_start: null, session_id: 'a' });
-    craftRecord(dir, 'research', 'beta', { pid: dead.pid, pid_start: null, session_id: 'b' });
+    // No OS issues a pid this high; a dead pid the OS reused would read alive here.
+    craftRecord(dir, 'research', 'beta', { pid: 2147483646, pid_start: null, session_id: 'b' });
     const rows = engineWith(dir, ['presence', 'scan', 'pay']).sessions;
     assert.strictEqual(rows.find((r) => r.topic === 'alpha').held, true);
     assert.strictEqual(rows.find((r) => r.topic === 'beta').held, false);
