@@ -2,11 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // The render catalogue's surfaces (domain/render.cjs) for the walkthrough.
-// They go with setup and help (29.18), which replaces them.
+// They go with setup and help (29.18), which removes their callers.
 //
-// Layer: unit, the domain's renderSurface called in process, every gate
-// payload audited against its menu (gate-audit.cjs). World: the project world
-// (setupFixture), its manifests and payloads written per test.
+// Layer: verb. World: the project world (setupFixture), a copied git project,
+// its manifests and payloads written per test; the domain's renderSurface is
+// called in process, every gate payload audited against its menu
+// (gate-audit.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

@@ -2,11 +2,12 @@
 
 // ---------------------------------------------------------------------------
 // The render catalogue's surfaces (domain/render.cjs) for discovery. They go
-// with the discovery phase (29.12), which replaces them.
+// with the discovery phase (29.12), which removes their callers.
 //
-// Layer: unit, the domain's renderSurface called in process, every gate
-// payload audited against its menu (gate-audit.cjs). World: the project world
-// (setupFixture), its manifests and payloads written per test.
+// Layer: verb. World: the project world (setupFixture), a copied git project,
+// its manifests and payloads written per test; the domain's renderSurface is
+// called in process, every gate payload audited against its menu
+// (gate-audit.cjs).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -16,183 +17,6 @@ const assert = require('node:assert');
 
 const { DOTS } = require('../../skills/workflow-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
-
-describe('render opener', () => {
-  const STOP_MARKER = '=== DISPLAY: opener (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===';
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  const inbox = (rel) => writePayload(dir, `.leeway/.inbox/${rel}`, '# Item\n');
-  const opener = (args) => renderSurface(dir, 'opener', args);
-
-  describe('inbox — before any work unit exists', () => {
-    it('names the set by kind and counts each kind where several, then the sketch and the question that closes on the files invite', () => {
-      const paths = [inbox('ideas/2026-01-01--a.md'), inbox('bugs/2026-01-02--b.md'), inbox('ideas/2026-01-03--c.md')];
-      const file = writePayload(dir, 'o.json', { sketch: 'Saved filters that follow the user.', question: 'Who reaches for them first?' });
-      assert.strictEqual(opener({ variant: 'inbox', path: paths.join(','), file }), [
-        STOP_MARKER,
-        "I've read your 2 ideas and a bug. Here's the shape I'm picking up:",
-        '',
-        'Saved filters that follow the user.',
-        '',
-        "Who reaches for them first? If you have any related notes, screenshots, or files, share the path(s) and I'll read them too.",
-        '',
-      ].join('\n'));
-    });
-
-    it('a lone item is its bare noun; several of one kind are counted; a lone first kind takes no article', () => {
-      const file = writePayload(dir, 'o.json', { sketch: 's', question: 'q?' });
-      const read = (paths) => opener({ variant: 'inbox', path: paths.join(','), file }).split('\n')[1];
-      assert.strictEqual(read([inbox('bugs/2026-01-01--a.md')]), "I've read your bug. Here's the shape I'm picking up:");
-      assert.strictEqual(read([inbox('ideas/2026-01-01--a.md'), inbox('ideas/2026-01-02--b.md'), inbox('ideas/2026-01-03--c.md')]),
-        "I've read your 3 ideas. Here's the shape I'm picking up:");
-      assert.strictEqual(read([inbox('quickfixes/2026-01-01--q.md'), inbox('ideas/2026-01-01--a.md'), inbox('bugs/2026-01-01--b.md')]),
-        "I've read your idea, a bug and a quick-fix. Here's the shape I'm picking up:");
-      assert.strictEqual(read([inbox('quickfixes/2026-01-01--q.md'), inbox('quickfixes/2026-01-02--r.md'), inbox('bugs/2026-01-01--b.md')]),
-        "I've read your bug and 2 quick-fixes. Here's the shape I'm picking up:");
-    });
-
-    it('refuses an address, a path outside the live inbox, a missing payload, and an empty field by name', () => {
-      const path1 = inbox('ideas/2026-01-01--a.md');
-      const file = writePayload(dir, 'o.json', { sketch: 's', question: 'q?' });
-      assert.throws(() => opener({ variant: 'inbox', dotpath: 'pay', path: path1, file }),
-        /render opener: --variant inbox takes no address — no work unit exists yet/);
-      assert.throws(() => opener({ variant: 'inbox', file }), /render opener: --path is required — the inbox seeds read, comma-joined/);
-      assert.throws(() => opener({ variant: 'inbox', path: '.leeway/.inbox/ideas/2026-09-09--gone.md', file }),
-        /render opener: inbox file not found/);
-      assert.throws(() => opener({ variant: 'inbox', path: '.leeway/.inbox/.archived/ideas/x.md', file }), /render opener: not a live inbox path/);
-      assert.throws(() => opener({ variant: 'inbox', path: path1 }), /render opener: --file <payload\.json> is required/);
-      assert.throws(() => opener({ variant: 'inbox', path: path1, file: writePayload(dir, 'n.json', { question: 'q?' }) }),
-        /render opener: "sketch" must be a non-empty string/);
-      assert.throws(() => opener({ variant: 'inbox', path: path1, file: writePayload(dir, 'n.json', { sketch: 's' }) }),
-        /render opener: "question" must be a non-empty string/);
-    });
-  });
-
-  describe('seeded — an epic\'s first session over its seeds and imports', () => {
-    const seeds = (...sources) => sources.map((source, i) => ({ path: `seeds/s${i}.md`, source }));
-    const imports = (n) => Array.from({ length: n }, (_, i) => ({ path: `imports/i${i}.md`, imported_at: '2026-01-01', origin: 'discovery' }));
-
-    it('names the seeds by their source tags and the imports, then the sketch and the questions after the dash', () => {
-      writeManifest(dir, 'pay', { seeds: seeds('inbox:idea'), imports: imports(2) });
-      const file = writePayload(dir, 'o.json', { sketch: 'A checkout that survives a dropped connection.', questions: 'where does a retry start, and who sees it?' });
-      assert.strictEqual(opener({ variant: 'seeded', dotpath: 'pay', file }), [
-        STOP_MARKER,
-        "Read your idea and 2 imports. Here's the shape I'm picking up:",
-        '',
-        'A checkout that survives a dropped connection.',
-        '',
-        "Before we name topics, let's pull on a few things — where does a retry start, and who sees it?",
-        '',
-      ].join('\n'));
-    });
-
-    it('questions that end on no mark take the full stop; seeds alone, imports alone, and a mix read as they hold', () => {
-      const file = writePayload(dir, 'o.json', { sketch: 's', questions: 'the retry boundary' });
-      const read = () => opener({ variant: 'seeded', dotpath: 'pay', file });
-      writeManifest(dir, 'pay', { seeds: seeds('inbox:bug', 'inbox:quickfix', 'inbox:bug'), imports: [] });
-      assert.match(read(), /^Read your 2 bugs and a quick-fix\. Here's/m);
-      assert.match(read(), /let's pull on a few things — the retry boundary\.$/m);
-      writeManifest(dir, 'pay', { imports: imports(1) });
-      assert.match(read(), /^Read your import\. Here's/m);
-      writeManifest(dir, 'pay', { seeds: seeds('inbox:idea', 'inbox:bug'), imports: imports(1) });
-      assert.match(read(), /^Read your idea, a bug and an import\. Here's/m);
-    });
-
-    it('refuses a unit holding neither, and a payload missing its questions', () => {
-      writeManifest(dir, 'pay', {});
-      const file = writePayload(dir, 'o.json', { sketch: 's', questions: 'q?' });
-      assert.throws(() => opener({ variant: 'seeded', dotpath: 'pay', file }),
-        /render opener: "pay" holds no seeds or imports — the seeded opener reads what they describe/);
-      writeManifest(dir, 'pay', { imports: imports(1) });
-      assert.throws(() => opener({ variant: 'seeded', dotpath: 'pay', file: writePayload(dir, 'n.json', { sketch: 's', question: 'q?' }) }),
-        /render opener: "questions" must be a non-empty string/);
-      assert.throws(() => opener({ variant: 'seeded', dotpath: 'pay.discovery.x', file }), /address must be a bare <work_unit>/);
-    });
-  });
-
-  describe('discussion — a fresh discussion\'s core-problem question', () => {
-    it('names the topic from the address', () => {
-      writeManifest(dir, 'pay', { phases: { discussion: { items: { 'retry-policy': { status: 'in-progress' } } } } });
-      assert.strictEqual(opener({ variant: 'discussion', dotpath: 'pay.discussion.retry-policy' }), [
-        STOP_MARKER,
-        'New discussion: retry-policy',
-        '',
-        "What's the core problem or decision we need to work through?",
-        '',
-      ].join('\n'));
-    });
-
-    it('refuses an address in another phase', () => {
-      writeManifest(dir, 'pay', {});
-      assert.throws(() => opener({ variant: 'discussion', dotpath: 'pay.research.retry-policy' }),
-        /render opener: --variant discussion takes <work_unit>\.discussion\.<topic>, got phase "research"/);
-    });
-  });
-
-  it('refuses an unknown variant', () => {
-    assert.throws(() => opener({ variant: 'roadmap' }), /render opener: --variant must be one of inbox, seeded, discussion, got "roadmap"/);
-    assert.throws(() => opener({}), /--variant must be one of inbox, seeded, discussion, got ""/);
-  });
-});
-
-describe('render import-reprompt', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => teardown(dir));
-
-  it('names the refused paths in the fence, and offers the correction or the skip', () => {
-    const file = writePayload(dir, 'reprompt.json', { missing: ['shots/dockset 05.JPEG', 'notes/ghost.md'] });
-    assert.strictEqual(renderSurface(dir, 'import-reprompt', { file }), [
-      '=== DISPLAY: missing imports (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
-      'One or more paths could not be landed — nothing at the path, a',
-      'folder rather than a file, or unreadable:',
-      '',
-      '  • shots/dockset 05.JPEG',
-      '  • notes/ghost.md',
-      '',
-      "=== MENU: import reprompt (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ How would you like to proceed?`**',
-      '',
-      '**`s/skip`**             → Land nothing for these paths',
-      '**Provide file paths** → one or more, space or newline separated',
-      '',
-    ].join('\n'));
-  });
-
-  it('wraps a long path inside the fence, under the bullet text column', () => {
-    const file = writePayload(dir, 'long.json', {
-      missing: ['design/Dockset onboarding screenshots/05 permissions ask — final.png'],
-    });
-    const out = renderSurface(dir, 'import-reprompt', { file });
-    assert.ok(out.includes([
-      '  • design/Dockset onboarding screenshots/05 permissions ask —',
-      '    final.png',
-    ].join('\n')), out);
-    // The fence does not re-flow, so every line the engine puts in it is
-    // already inside the display width.
-    for (const line of out.slice(out.indexOf('\n') + 1, out.indexOf('=== MENU')).split('\n')) {
-      assert.ok(line.length <= 65, `overflows the fence: ${line}`);
-    }
-  });
-
-  it('takes no address — the work unit a refused landing was aimed at may not exist yet', () => {
-    const file = writePayload(dir, 'one.json', { missing: ['notes/ghost.md'] });
-    assert.ok(renderSurface(dir, 'import-reprompt', { file, dotpath: 'no-such-unit.research.nope' })
-      .includes('  • notes/ghost.md'));
-  });
-
-  it('refuses an absent file and a payload short of its one field', () => {
-    assert.throws(() => renderSurface(dir, 'import-reprompt', {}), /--file <payload\.json> is required/);
-    assert.throws(() => renderSurface(dir, 'import-reprompt', { file: 'nope.json' }), /payload file not found: nope\.json/);
-    const bad = (name, obj) => () => renderSurface(dir, 'import-reprompt', { file: writePayload(dir, name, obj) });
-    assert.throws(bad('m.json', {}), /"missing" must be a non-empty array of the refused paths/);
-    assert.throws(bad('e.json', { missing: [] }), /"missing" must be a non-empty array of the refused paths/);
-    assert.throws(bad('b.json', { missing: ['ok', ''] }), /missing\[1\] must be a non-empty string/);
-  });
-});
 
 describe('render map-op-gate', () => {
   let dir;
@@ -576,44 +400,24 @@ describe('render candidate-gate', () => {
   });
 });
 
-describe('render complexity-gate / first-phase-gate', () => {
+describe('render — the adopted cross-flow static gates', () => {
   let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'support-email', { work_type: 'quick-fix' });
-  });
+  beforeEach(() => { dir = setup(); });
   afterEach(() => teardown(dir));
 
-  it('first-phase-gate carries the read as a statement above its question and the two routes', () => {
-    writeManifest(dir, 'support-email', { work_type: 'feature' });
-    const file = writePayload(dir, 'read.json', { read: "The concern is an open unknown — I'd start with research." });
-    assert.strictEqual(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }), [
-      "=== MENU: first phase gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      "The concern is an open unknown — I'd start with research.",
-      '',
-      '**`◆ Which phase first?`**',
-      '',
-      '**`r/research`**   → Explore feasibility and options first, no',
-      `${NB(15)}decisions yet`,
-      '**`d/discussion`** → Ready to discuss and make decisions',
-      '',
-    ].join('\n'));
+  it('shape-gate: the work-type commit confirm', () => {
+    const out = renderSurface(dir, 'shape-gate', {});
+    assert.match(out, /`◆ Have I read this right\?`/);
+    assert.match(out, /`y\/yes`.*That's the right shape, set it up/);
+    assert.match(out, /`o\/other`.*It's something else \(tell me what\)/);
+    assert.match(out, /\*\*Keep shaping\*\*.*Tell me what I'm missing/);
   });
 
-  it('first-phase-gate refuses a fixed-first-phase type, a missing payload, and a read that is not one line', () => {
-    const file = writePayload(dir, 'read.json', { read: 'The shape is clear.' });
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }),
-      /a quick-fix has a fixed first phase — the choice belongs to feature and cross-cutting work/);
-    writeManifest(dir, 'support-email', { work_type: 'cross-cutting' });
-    assert.ok(renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file }).includes('The shape is clear.'));
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email' }),
-      /--file <payload\.json> is required/);
-    const blank = writePayload(dir, 'blank.json', { read: '' });
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file: blank }),
-      /"read" must be a non-empty string/);
-    const split = writePayload(dir, 'split.json', { read: 'The shape is clear.\nI would discuss it.' });
-    assert.throws(() => renderSurface(dir, 'first-phase-gate', { dotpath: 'support-email', file: split }),
-      /"read" must be a single line — it becomes the menu's statement label/);
+  it('synthesis-gate: the epic topic sort confirm', () => {
+    const out = renderSurface(dir, 'synthesis-gate', {});
+    assert.match(out, /`◆ Commit these topics\?`/);
+    assert.match(out, /`y\/yes`.*Commit these topics and conclude/);
+    assert.match(out, /`e\/explore`.*Go back to exploration; not ready to commit yet/);
+    assert.match(out, /\*\*Adjust\*\*.*split, merge, rename,/);
   });
 });
