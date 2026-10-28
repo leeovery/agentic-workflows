@@ -1,23 +1,25 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the ledger's suites share (test-engine-ledger*.cjs): the unit, the
+// What the ledger suites share (test-engine-ledger*.cjs): the unit, the
 // session and the topics they write to, the unit's starting phases, and the
-// worlds built from them (`ledgerWorld`, `copiesWorld`); one write that
-// must succeed and the ledger's text and lines (`ledgerHelpers`); and over
-// those, the helpers each aspect's suites share — the reads and the forms an
-// entry takes in a record and a map (`ledgerReadHelpers`), the written line
-// and a refusal asserted (`ledgerWriteHelpers`), and the rendered copies
-// (`copiesHelpers`). The copies' seams are ledger-copies-seams.cjs, which
-// must load before the engine does.
+// worlds built from them (`ledgerWorld`, and the copies suites' hook
+// `useCopiesWorld`); one write that must succeed, the ledger's text, lines
+// and entries, and an entry's full id (`ledgerHelpers`); and over those, the
+// helpers each aspect's suites share: the reads and the forms an entry takes
+// in a record and a map (`ledgerReadHelpers`), the written line and a refusal
+// asserted (`ledgerWriteHelpers`), and the rendered copies (`copiesHelpers`).
+// The copies' seams are ledger-copies-seams.cjs, which must load before the
+// engine does.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
+const { beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { ok, refuses, stateGit, statePath, setupGitFixture, keywordOnlyKnowledge } = require('./engine-harness.cjs');
+const { ok, refuses, stateGit, statePath, setupGitFixture, keywordOnlyKnowledge, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -64,11 +66,22 @@ function ledgerWorld(prefix, phases = PHASES) {
   return dir;
 }
 
-/** The copies suites' world: the unit's, its knowledge set up keyword-only. */
-function copiesWorld() {
-  const dir = ledgerWorld('ledger-copies-');
-  keywordOnlyKnowledge(dir);
-  return dir;
+/**
+ * The copies suites' world for each test of the calling file — the unit's,
+ * its knowledge set up keyword-only — made before it and removed after it.
+ * @returns {() => string} the running test's project
+ */
+function useCopiesWorld() {
+  /** @type {string} */
+  let dir;
+  beforeEach(() => {
+    dir = ledgerWorld('ledger-copies-');
+    keywordOnlyKnowledge(dir);
+  });
+  afterEach(() => {
+    cleanupFixture(dir);
+  });
+  return () => dir;
 }
 
 /**
@@ -97,7 +110,19 @@ function ledgerHelpers(dir) {
     return ledgerText().split('\n').slice(0, -1);
   }
 
-  return { write, ledgerText, rawLines };
+  /** The ledger's entries. @returns {Record<string, any>[]} */
+  function entries() {
+    return rawLines().map((line) => JSON.parse(line));
+  }
+
+  /** The full id a short id shows. @param {string} short */
+  function full(short) {
+    const ids = entries().map((e) => e.id).filter((id) => id.startsWith(short));
+    assert.strictEqual(ids.length, 1, `${short} names ${ids.length} ids`);
+    return ids[0];
+  }
+
+  return { write, ledgerText, rawLines, entries, full };
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +147,7 @@ function ids(shown) {
  * @param {() => string} dir
  */
 function ledgerReadHelpers(dir) {
-  const { write, rawLines } = ledgerHelpers(dir);
+  const { write, rawLines, entries, full } = ledgerHelpers(dir);
 
   /** A question asked at `address`: its short id. @param {string} address @param {string} text @param {string[]} [flags] */
   function ask(address, text, flags = []) {
@@ -149,25 +174,13 @@ function ledgerReadHelpers(dir) {
     return ok(dir(), ['ledger', ...args]);
   }
 
-  /** The ledger's events. @returns {Record<string, any>[]} */
-  function events() {
-    return rawLines().map((line) => JSON.parse(line));
-  }
-
-  /** The full id a short id shows. @param {string} short */
-  function full(short) {
-    const ids = events().map((e) => e.id).filter((id) => id.startsWith(short));
-    assert.strictEqual(ids.length, 1, `${short} names ${ids.length} ids`);
-    return ids[0];
-  }
-
   /**
    * The entry `short` names as a read must show it: its line as written but
    * its version, every id in it in the short form the ledger gives it now.
    * @param {string} short @returns {Record<string, unknown>}
    */
   function line(short) {
-    const all = events();
+    const all = entries();
     const shorts = shortIds(all.map((e) => e.id));
     const { v, ...event } = /** @type {Record<string, any>} */ (all.find((e) => e.id === full(short)));
     assert.strictEqual(v, 1);
@@ -262,7 +275,7 @@ function ledgerReadHelpers(dir) {
     return read('map', unit, topic).questions.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.stands, r.moved_from, r.moved_to]);
   }
 
-  return { write, ask, find, decide, change, read, rawLines, events, full, line, current, shownMerge, answered, assertAgree, changeFromSpec, reword, menuBar, mint, dock, moves };
+  return { write, ask, find, decide, change, read, rawLines, entries, full, line, current, shownMerge, answered, assertAgree, changeFromSpec, reword, menuBar, mint, dock, moves };
 }
 
 // ---------------------------------------------------------------------------
@@ -281,23 +294,11 @@ const AT_NOTE = Object.freeze({ phase: 'discussion', topic: 'note-window' });
  * @param {() => string} dir
  */
 function ledgerWriteHelpers(dir) {
-  const { write, ledgerText, rawLines } = ledgerHelpers(dir);
-
-  /** The ledger's entries. @returns {Record<string, any>[]} */
-  function entries() {
-    return rawLines().map((line) => JSON.parse(line));
-  }
+  const { write, ledgerText, rawLines, entries, full } = ledgerHelpers(dir);
 
   /** The state branch's tip. */
   function stateTip() {
     return stateGit(dir(), ['rev-parse', 'HEAD']).trim();
-  }
-
-  /** The full id a short id shows. @param {string} short */
-  function full(short) {
-    const ids = entries().map((e) => e.id).filter((id) => id.startsWith(short));
-    assert.strictEqual(ids.length, 1, `${short} names ${ids.length} ids`);
-    return ids[0];
   }
 
   /**
@@ -424,7 +425,7 @@ function copiesHelpers(dir) {
 }
 
 module.exports = {
-  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, copiesWorld, ledgerHelpers,
+  UNIT, SESSION_ID, SESSION, MADE, NOTE, SPACE, MENU, row, PHASES, WRITE_PHASES, ledgerWorld, useCopiesWorld, ledgerHelpers,
   LINKS, HEAP_MB, ids, ledgerReadHelpers,
   ID, AT_NOTE, ledgerWriteHelpers,
   NOTE_COPY, SPACE_COPY, copiesHelpers,

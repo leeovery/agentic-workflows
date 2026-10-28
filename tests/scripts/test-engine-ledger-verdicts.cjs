@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
-const { UNIT, SESSION, MADE, NOTE, SPACE, row, ledgerWorld } = require('./ledger-world.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, row, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { trustLog } = require(path.join(SCRIPTS, 'domain/ledger-verdicts.cjs'));
@@ -51,6 +51,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanupFixture(dir);
 });
+
+const { full } = ledgerHelpers(() => dir);
 
 /** @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
 function args(verb, address, flags, content) {
@@ -89,11 +91,6 @@ function replacing(old, reason, made, flags = []) {
 /** The departures waiting on a verdict, each by id and with its lean. */
 function waiting() {
   return ok(dir, ['ledger', 'verdicts']).departures.map((/** @type {{id: string, lean: string}} */ d) => [d.id, d.lean]);
-}
-
-/** The full id a short id shows. @param {string} short */
-function full(short) {
-  return /** @type {string} */ (fs.readFileSync(statePath(dir, '.ledger.jsonl'), 'utf8').split('\n').slice(0, -1).map((l) => JSON.parse(l).id).find((id) => id.startsWith(short)));
 }
 
 describe('the verdict queue (5.8.10, 16.10)', () => {

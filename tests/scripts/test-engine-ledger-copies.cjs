@@ -19,7 +19,7 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
@@ -27,28 +27,17 @@ const path = require('path');
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
-const {
-  UNIT, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, copiesWorld,
-} = require('./ledger-world.cjs');
-const { ok, callAsync, indexedFiles, statePath, stateGit, cleanupFixture } = require('./engine-harness.cjs');
+const { UNIT, SESSION, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');
+const { ok, callAsync, indexedFiles, statePath, stateGit } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
-/** @type {string} */
-let dir;
+const dir = useCopiesWorld();
+afterEach(clearSeams);
 
-beforeEach(() => {
-  dir = copiesWorld();
-});
-
-afterEach(() => {
-  clearSeams();
-  cleanupFixture(dir);
-});
-
-const { write, ask, decide, copy, floatingPanel } = copiesHelpers(() => dir);
+const { write, ask, decide, copy, floatingPanel } = copiesHelpers(dir);
 
 /** `old` replaced at `address`, a changed mind: the response. @param {string} address @param {string} old @param {Record<string, unknown>} content */
 function change(address, old, content) {
@@ -57,13 +46,13 @@ function change(address, old, content) {
 
 /** The identities the store holds, `{unit}/{phase}/{topic}`, sorted. */
 function identities() {
-  const file = knowledgeFiles(statePath(dir)).store;
+  const file = knowledgeFiles(statePath(dir())).store;
   return [...new Set(store.allChunks(store.loadStore(file)).map((c) => `${c.work_unit}/${c.phase}/${c.topic}`))].sort();
 }
 
 /** A read by area: the knowledge base searched over the records alone. @param {string[]} terms */
 async function byArea(...terms) {
-  const res = await callAsync(dir, ['knowledge', 'query', ...terms, '--phase', 'record']);
+  const res = await callAsync(dir(), ['knowledge', 'query', ...terms, '--phase', 'record']);
   assert.strictEqual(res.code, 0, res.stderr);
   return res.stdout;
 }
@@ -106,10 +95,10 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       `Found by Claude. Entry ${finding}.`,
       '',
     ].join('\n'));
-    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
-    assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--', '.knowledge', '.cache']), '');
-    assert.strictEqual(stateGit(dir, ['ls-tree', '-r', '--name-only', 'HEAD', '--', '.knowledge', '.cache']), '');
-    assert.deepStrictEqual(fs.readdirSync(statePath(dir, UNIT)), ['manifest.json'], 'a record file sits in the unit\'s tree');
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
+    assert.strictEqual(stateGit(dir(), ['status', '--porcelain', '--', '.knowledge', '.cache']), '');
+    assert.strictEqual(stateGit(dir(), ['ls-tree', '-r', '--name-only', 'HEAD', '--', '.knowledge', '.cache']), '');
+    assert.deepStrictEqual(fs.readdirSync(statePath(dir(), UNIT)), ['manifest.json'], 'a record file sits in the unit\'s tree');
   });
 
   it('shows the answer that replaced one and drops the one replaced, from the copy and from a read by area, the ledger never indexed (5.S22, 22.S16, 5.S29)', async () => {
@@ -124,8 +113,8 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.doesNotMatch(text, /floating|document window/);
     assert.match(await byArea('floating'), /\[0 results\]/);
     assert.match(await byArea('framed'), /\[record \| fumi\/note-window /);
-    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
-    assert.ok(fs.existsSync(statePath(dir, LEDGER)));
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
+    assert.ok(fs.existsSync(statePath(dir(), LEDGER)));
   });
 
   it('renders again where a record relies on an answer that is replaced, the new answer shown from its own topic (5.8.4, 5.S20)', () => {
@@ -141,7 +130,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   });
 
   it('renders again once it lets the claim go, where a write marked the copies as it did', () => {
-    const files = knowledgeFiles(statePath(dir));
+    const files = knowledgeFiles(statePath(dir()));
     let renders = 0;
     seams.claimed = (release) => {
       renders += 1;
@@ -157,7 +146,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   });
 
   it('takes over the claim from a render whose process is gone', () => {
-    const files = knowledgeFiles(statePath(dir));
+    const files = knowledgeFiles(statePath(dir()));
     fs.writeFileSync(files.copies, JSON.stringify({ pid: 2 ** 22 + 1, pid_start: 'long gone' }));
     floatingPanel();
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^A floating panel\.$/m);
@@ -185,23 +174,23 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     const question = ask(NOTE, 'Is a note a zebrawindow?');
     decide(`${UNIT}.specification`, question, 'Notes float as panels.', [], { product_wide: true });
 
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+    ok(dir(), ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
 
     const own = /** @type {string} */ (copy('.knowledge/records/fumi.md'));
     assert.match(own, /^## Notes float as panels\.\n\nNotes float as panels\.$/m);
     assert.doesNotMatch(own, /zebrawindow/);
     assert.doesNotMatch(/** @type {string} */ (copy('.knowledge/product.md')), /zebrawindow/);
     assert.match(/** @type {string} */ (copy('.knowledge/product.md')), /^## Notes float as panels\.$/m);
-    assert.match(await callAsync(dir, ['knowledge', 'query', 'zebrawindow']).then((r) => r.stdout), /\[0 results\]/);
+    assert.match(await callAsync(dir(), ['knowledge', 'query', 'zebrawindow']).then((r) => r.stdout), /\[0 results\]/);
   });
 
   it('removes a temporary file a render killed before its rename left behind, and a mark\'s once it is older than any live writer\'s', () => {
     floatingPanel();
-    const left = [statePath(dir, '.knowledge/records/fumi/.note-window.md.99999.tmp'), statePath(dir, '.knowledge/.product.md.99999.tmp')];
+    const left = [statePath(dir(), '.knowledge/records/fumi/.note-window.md.99999.tmp'), statePath(dir(), '.knowledge/.product.md.99999.tmp')];
     for (const file of left) fs.writeFileSync(file, 'half a copy');
-    const marks = ['.copies-outdated', '.copies-rendered', '.copies-live.json'].map((name) => statePath(dir, `.knowledge/.${name}.99999.tmp`));
+    const marks = ['.copies-outdated', '.copies-rendered', '.copies-live.json'].map((name) => statePath(dir(), `.knowledge/.${name}.99999.tmp`));
     for (const file of marks) fs.writeFileSync(file, 'half a mark');
-    const writing = statePath(dir, '.knowledge/..copies-outdated.99998.tmp');
+    const writing = statePath(dir(), '.knowledge/..copies-outdated.99998.tmp');
     fs.writeFileSync(writing, 'a writer\'s, being written');
     for (const file of marks) fs.utimesSync(file, new Date(Date.now() - 120000), new Date(Date.now() - 120000));
     left.push(...marks);
@@ -213,7 +202,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   });
 
   it('gives a unit\'s own level a record of its own, apart from a topic named as the unit is (5.2.3)', () => {
-    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     ask('mint.discussion.mint', 'Does Mint float its notes?');
     ask('mint.specification', 'Does the spec cover a second display?');
 
@@ -234,9 +223,9 @@ describe('the product record\'s file (5.8.13, 8.9.13, 22.6.12)', () => {
     assert.match(product, /^# The product record\n/);
     assert.match(product, /^## Finding: Notes are tools\.$/m);
     assert.doesNotMatch(product, /furniture/);
-    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
-    assert.match(await callAsync(dir, ['knowledge', 'query', 'tools']).then((r) => r.stdout), /\[1 results\][\s\S]*\[record \| fumi\/note-window /);
-    assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--', '.knowledge']), '');
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
+    assert.match(await callAsync(dir(), ['knowledge', 'query', 'tools']).then((r) => r.stdout), /\[1 results\][\s\S]*\[record \| fumi\/note-window /);
+    assert.strictEqual(stateGit(dir(), ['status', '--porcelain', '--', '.knowledge']), '');
   });
 });
 
@@ -244,66 +233,66 @@ describe('a place set aside (5.8.17)', () => {
   it('loses its copy and its chunks while its topic is cancelled, and another unit\'s records follow a unit\'s cancel and reactivate, all back once reactivated (5.S32)', async () => {
     const { decision } = floatingPanel();
 
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+    ok(dir(), ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
     assert.strictEqual(copy(NOTE_COPY), null);
-    assert.deepStrictEqual(indexedFiles(dir), []);
+    assert.deepStrictEqual(indexedFiles(dir()), []);
     assert.match(await byArea('floating'), /\[0 results\]/);
-    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+    ok(dir(), ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
-    assert.deepStrictEqual(indexedFiles(dir), [NOTE_COPY]);
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY]);
 
-    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     change('mint.discussion.mint', decision, { text: 'A framed panel.', why: 'Mint frames its notes.' });
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
-    ok(dir, ['workunit', 'cancel', 'mint']);
+    ok(dir(), ['workunit', 'cancel', 'mint']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
     assert.match(await byArea('floating'), /\[record \| fumi\/note-window /);
-    ok(dir, ['workunit', 'reactivate', 'mint']);
+    ok(dir(), ['workunit', 'reactivate', 'mint']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
     assert.match(await byArea('floating'), /\[0 results\]/);
   });
 
   it('follows every change to what is live, however it is made: a feature absorbed into an epic, and a topic set aside by a field write', async () => {
     const { decision } = floatingPanel();
-    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     change('mint.discussion.mint', decision, { text: 'A framed panel.', why: 'Mint frames its notes.' });
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A framed panel\./);
-    fs.mkdirSync(statePath(dir, 'mint/discussion'));
-    fs.writeFileSync(statePath(dir, 'mint/discussion/mint.md'), '# Mint\n');
+    fs.mkdirSync(statePath(dir(), 'mint/discussion'));
+    fs.writeFileSync(statePath(dir(), 'mint/discussion/mint.md'), '# Mint\n');
 
-    ok(dir, ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes']);
+    ok(dir(), ['workunit', 'absorb', 'mint', '--into', UNIT, '--topic', 'mint-notes']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
     assert.match(await byArea('framed'), /\[0 results\]/);
 
-    ok(dir, ['manifest', 'set', `${UNIT}.discovery.note-window`, 'cancelled', 'true']);
+    ok(dir(), ['manifest', 'set', `${UNIT}.discovery.note-window`, 'cancelled', 'true']);
     assert.strictEqual(copy(NOTE_COPY), null);
     assert.match(await byArea('floating'), /\[0 results\]/);
   });
 
   it('loses a unit\'s copies while it is cancelled, and has them back when it is completed from there', () => {
     const finished = { items: { mint: { status: 'completed' } } };
-    createManifest(dir, 'mint', {
+    createManifest(dir(), 'mint', {
       work_type: 'feature',
       phases: { discussion: finished, specification: finished, planning: finished, implementation: finished, review: finished },
     });
     ask('mint.discussion.mint', 'Does Mint float its notes?');
 
-    ok(dir, ['workunit', 'cancel', 'mint']);
+    ok(dir(), ['workunit', 'cancel', 'mint']);
     assert.strictEqual(copy('.knowledge/records/mint/mint.md'), null);
-    assert.deepStrictEqual(indexedFiles(dir), []);
-    ok(dir, ['workunit', 'complete', 'mint', '-m', 'workflow(mint): complete']);
+    assert.deepStrictEqual(indexedFiles(dir()), []);
+    ok(dir(), ['workunit', 'complete', 'mint', '-m', 'workflow(mint): complete']);
     assert.match(/** @type {string} */ (copy('.knowledge/records/mint/mint.md')), /^## Does Mint float its notes\?$/m);
-    assert.deepStrictEqual(indexedFiles(dir), ['.knowledge/records/mint/mint.md']);
+    assert.deepStrictEqual(indexedFiles(dir()), ['.knowledge/records/mint/mint.md']);
   });
 
   it('loses its copy while its topic is postponed, and has it back once pulled back into its own epic (5.S32)', async () => {
     floatingPanel();
 
-    ok(dir, ['topic', 'postpone', UNIT, 'note-window', '--horizon', 'later']);
+    ok(dir(), ['topic', 'postpone', UNIT, 'note-window', '--horizon', 'later']);
     assert.strictEqual(copy(NOTE_COPY), null);
     assert.match(await byArea('floating'), /\[0 results\]/);
 
-    ok(dir, ['roadmap', 'pull-forward', 'note-window', '--into', UNIT]);
+    ok(dir(), ['roadmap', 'pull-forward', 'note-window', '--into', UNIT]);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /A floating panel\./);
     assert.match(await byArea('floating'), /\[record \| fumi\/note-window /);
   });
@@ -312,12 +301,12 @@ describe('a place set aside (5.8.17)', () => {
 describe('a command run under the writer lock', () => {
   it('renders nothing where it leaves what is live as it was, and renders where it moves it', () => {
     ask(NOTE, 'Is a note a window?');
-    fs.rmSync(statePath(dir, NOTE_COPY));
+    fs.rmSync(statePath(dir(), NOTE_COPY));
 
-    ok(dir, ['manifest', 'set', `${UNIT}.discovery.note-window`, 'summary', 'The note window, floating']);
+    ok(dir(), ['manifest', 'set', `${UNIT}.discovery.note-window`, 'summary', 'The note window, floating']);
     assert.strictEqual(copy(NOTE_COPY), null, 'a command that moved nothing live rendered the copies');
 
-    ok(dir, ['manifest', 'set', `${UNIT}.discovery.space-homing`, 'cancelled', 'true']);
+    ok(dir(), ['manifest', 'set', `${UNIT}.discovery.space-homing`, 'cancelled', 'true']);
     assert.match(/** @type {string} */ (copy(NOTE_COPY)), /^## Is a note a window\?$/m);
   });
 });
@@ -325,10 +314,10 @@ describe('a command run under the writer lock', () => {
 describe('the knowledge base\'s reach (22.6.1)', () => {
   it('finds one unit\'s records from a session in another (22.S20)', async () => {
     floatingPanel();
-    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     ask('mint.discussion.mint', 'Does Mint float its notes?');
 
-    const found = await callAsync(dir, ['knowledge', 'query', 'float', 'floating', '--phase', 'record'], { env: SESSION });
+    const found = await callAsync(dir(), ['knowledge', 'query', 'float', 'floating', '--phase', 'record'], { env: SESSION });
     assert.match(found.stdout, /\[record \| fumi\/note-window /);
     assert.match(found.stdout, /\[record \| mint\/mint /);
   });

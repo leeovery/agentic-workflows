@@ -18,7 +18,7 @@
 
 require('./hermetic-env.cjs');
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
@@ -27,23 +27,14 @@ const { spawn } = require('child_process');
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
-const { UNIT, SESSION, MADE, NOTE, NOTE_COPY, copiesHelpers, copiesWorld } = require('./ledger-world.cjs');
-const { ENGINE, ok, indexedFiles, statePath, stateGit, cleanupFixture } = require('./engine-harness.cjs');
+const { UNIT, SESSION, MADE, NOTE, NOTE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');
+const { ENGINE, ok, indexedFiles, statePath, stateGit } = require('./engine-harness.cjs');
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 
-/** @type {string} */
-let dir;
+const dir = useCopiesWorld();
+afterEach(clearSeams);
 
-beforeEach(() => {
-  dir = copiesWorld();
-});
-
-afterEach(() => {
-  clearSeams();
-  cleanupFixture(dir);
-});
-
-const { write, ask, copy, indexedText, floatingPanel } = copiesHelpers(() => dir);
+const { write, ask, copy, indexedText, floatingPanel } = copiesHelpers(dir);
 
 /**
  * One engine command run as its own process: its pid, and once it ends its
@@ -55,7 +46,7 @@ const { write, ask, copy, indexedText, floatingPanel } = copiesHelpers(() => dir
  */
 function spawnEngine(args, content, atExit) {
   const stdin = stdinFile(content);
-  const child = spawn('node', [ENGINE, ...args], { cwd: dir, env: { ...process.env, ...SESSION }, stdio: [stdin, 'ignore', 'ignore'] });
+  const child = spawn('node', [ENGINE, ...args], { cwd: dir(), env: { ...process.env, ...SESSION }, stdio: [stdin, 'ignore', 'ignore'] });
   fs.closeSync(stdin);
   return { pid: child.pid, done: new Promise((resolve) => child.on('close', (code) => resolve({ code, seen: atExit?.() }))) };
 }
@@ -67,10 +58,10 @@ function spawnEngine(args, content, atExit) {
  * @param {string[]} args @param {Record<string, unknown>} content
  */
 function spawnReaped(args, content) {
-  const pidFile = path.join(dir, `pid-${spawned += 1}`);
+  const pidFile = path.join(dir(), `pid-${spawned += 1}`);
   const input = stdinPath(content);
   const shell = spawn('sh', ['-c', '"$@" < "$LEEWAY_TEST_STDIN" & echo $! > "$LEEWAY_TEST_PID"; wait', 'sh', 'node', ENGINE, ...args], {
-    cwd: dir, env: { ...process.env, ...SESSION, LEEWAY_TEST_STDIN: input, LEEWAY_TEST_PID: pidFile }, stdio: 'ignore',
+    cwd: dir(), env: { ...process.env, ...SESSION, LEEWAY_TEST_STDIN: input, LEEWAY_TEST_PID: pidFile }, stdio: 'ignore',
   });
   return { pid: () => (fs.existsSync(pidFile) ? Number(fs.readFileSync(pidFile, 'utf8')) || null : null), done: new Promise((resolve) => shell.on('close', resolve)) };
 }
@@ -82,7 +73,7 @@ function stdinFile(content) {
 
 /** A command's stdin written to a file: its path. @param {Record<string, unknown>|null} content none where null */
 function stdinPath(content) {
-  const input = path.join(dir, `stdin-${spawned += 1}.json`);
+  const input = path.join(dir(), `stdin-${spawned += 1}.json`);
   fs.writeFileSync(input, content === null ? '' : JSON.stringify({ ...MADE, ...content }));
   return input;
 }
@@ -98,7 +89,7 @@ function holdUntil(reached) {
 
 /** The state branch's commit count. */
 function commits() {
-  return Number(stateGit(dir, ['rev-list', '--count', 'HEAD']));
+  return Number(stateGit(dir(), ['rev-list', '--count', 'HEAD']));
 }
 
 /** A barrier: waits until `reached` holds, failing with `what` after half a minute. @param {() => boolean} reached @param {string} what */
@@ -110,7 +101,7 @@ async function until(reached, what) {
 describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
   it('renders one at a time and no writer waits on its claim: a write that lands while a render holds it returns once the holder has rendered and indexed it, the store ending with the later text (5.8.12, 5.S22)', async () => {
     const { decision } = floatingPanel();
-    const files = knowledgeFiles(statePath(dir));
+    const files = knowledgeFiles(statePath(dir()));
     fs.writeFileSync(files.lock, String(process.pid));
     const before = commits();
     const holder = spawnEngine(['ledger', 'replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], { text: 'A framed panel.', why: 'Frames read as furniture.', drops: ['the old one'] });
@@ -147,8 +138,8 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
 
   it('follows a change to what is live that undoes another while its render is part way through: the copies end as the last change left them (5.8.17)', async () => {
     ask(NOTE, 'Is a note a window?');
-    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
-    const files = knowledgeFiles(statePath(dir));
+    ok(dir(), ['topic', 'cancel', UNIT, 'discovery', 'note-window']);
+    const files = knowledgeFiles(statePath(dir()));
     /** @type {ReturnType<typeof spawnEngine>|null} */
     let undoing = null;
     seams.folded = () => {
@@ -158,16 +149,16 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
       holdUntil(() => fs.readFileSync(files.copiesOutdated, 'utf8') !== marked);
     };
 
-    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
+    ok(dir(), ['topic', 'reactivate', UNIT, 'discovery', 'note-window']);
     assert.strictEqual((await /** @type {NonNullable<typeof undoing>} */ (undoing).done).code, 0);
 
     assert.strictEqual(copy(NOTE_COPY), null);
-    assert.deepStrictEqual(indexedFiles(dir), []);
+    assert.deepStrictEqual(indexedFiles(dir()), []);
   });
 
   it('leaves no write behind where its render fails part way: the claim comes free, and the writer it held back renders its own write (22.6.15)', async () => {
     const question = ask(NOTE, 'Is a note a window?');
-    const files = knowledgeFiles(statePath(dir));
+    const files = knowledgeFiles(statePath(dir()));
     /** @type {ReturnType<typeof spawnEngine<string|null>>|null} */
     let waiting = null;
     seams.folded = () => {
@@ -190,7 +181,7 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
 
   it('takes the claim over from a holder killed part way, once its process is gone: the writer waiting on it renders its own write', async () => {
     const { decision } = floatingPanel();
-    const files = knowledgeFiles(statePath(dir));
+    const files = knowledgeFiles(statePath(dir()));
     fs.writeFileSync(files.lock, String(process.pid));
     const before = commits();
     const holder = spawnReaped(['ledger', 'replace', NOTE, '--replaces', decision, '--reason', 'changed-mind'], { text: 'A framed panel.', why: 'Frames read as furniture.', drops: ['the old one'] });

@@ -33,7 +33,7 @@ afterEach(() => {
 });
 
 const {
-  write, ask, decide, change, read, rawLines, events, full, line, current, shownMerge, answered, assertAgree, reword, menuBar, mint, dock, moves,
+  write, ask, decide, change, read, rawLines, entries, full, line, current, shownMerge, answered, assertAgree, reword, menuBar, mint, dock, moves,
 } = ledgerReadHelpers(() => dir);
 
 describe('a topic\'s map (5.8.5)', () => {
@@ -75,7 +75,7 @@ describe('a topic\'s map (5.8.5)', () => {
     const merged = write('merge', SPACE, ['--question', reached, '--into', owners], MADE).id;
 
     assert.deepStrictEqual(rawLines().slice(0, -1), before, 'the merge edited a line before it');
-    assert.deepStrictEqual(events().filter((e) => e.event === 'decided' || e.event === 'replaced').map((e) => e.id), [full(owners)], 'the ledger holds a second decision');
+    assert.deepStrictEqual(entries().filter((e) => e.event === 'decided' || e.event === 'replaced').map((e) => e.id), [full(owners)], 'the ledger holds a second decision');
     const [rowShown] = read('map', UNIT, 'space-homing').questions;
     assert.deepStrictEqual([rowShown.id, rowShown.stands, rowShown.answers], [reached, 'merged', [{ id: owners, unit: UNIT, topic: 'note-window', by: 'claude', text: 'Notes float above every Space.' }]]);
     const record = read('record', UNIT, 'space-homing');

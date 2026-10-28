@@ -47,7 +47,7 @@ afterEach(() => {
   cleanupFixture(dir);
 });
 
-const { write, ask, find, decide, change, read, rawLines, events, full, line, current } = ledgerReadHelpers(() => dir);
+const { write, ask, find, decide, change, read, rawLines, entries, full, line, current } = ledgerReadHelpers(() => dir);
 
 describe('a record (5.6.5, 5.8.4)', () => {
   it('shows a decision replaced through `ledger replace` with "a changed mind" by the replacement, the decision folded beneath it, its line byte for byte unchanged (2.S11, 5.S8)', () => {
@@ -58,7 +58,7 @@ describe('a record (5.6.5, 5.8.4)', () => {
     const replacement = change(NOTE, old, 'A frameless surface.');
 
     assert.deepStrictEqual(rawLines().slice(0, -1), before, 'the replacement edited a line before it');
-    assert.deepStrictEqual([events().at(-1).event, events().at(-1).replaces, events().at(-1).reason], ['replaced', full(old), 'changed-mind']);
+    assert.deepStrictEqual([entries().at(-1).event, entries().at(-1).replaces, entries().at(-1).reason], ['replaced', full(old), 'changed-mind']);
     const record = read('record', UNIT, 'note-window');
     assert.deepStrictEqual(record, {
       ok: true, unit: UNIT, topic: 'note-window', live: true,
@@ -120,7 +120,7 @@ describe('a record (5.6.5, 5.8.4)', () => {
 
     const moved = write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE).id;
 
-    assert.deepStrictEqual([events().at(-1).event, events().at(-1).question, events().at(-1).to], ['moved', full(question), 'space-homing']);
+    assert.deepStrictEqual([entries().at(-1).event, entries().at(-1).question, entries().at(-1).to], ['moved', full(question), 'space-homing']);
     const old = read('record', UNIT, 'note-window');
     assert.deepStrictEqual([old.moved, old.questions], [[{ ...line(moved), text: 'Which Space does a new note open on?' }], []]);
     assert.deepStrictEqual(read('record', UNIT, 'space-homing').questions, [current(question)]);
@@ -147,7 +147,7 @@ describe('a record (5.6.5, 5.8.4)', () => {
     createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     const question = write('ask', NOTE, [], { ...MADE, text: 'Is a note a window?' }, { CLAUDE_CODE_SESSION_ID: 'fumi-session' }).id;
     const decided = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A panel.', why: 'It floats.' }, { CLAUDE_CODE_SESSION_ID: 'fumi-session' }).id;
-    assert.deepStrictEqual(events().map((e) => [e.unit, e.session]), [[UNIT, 'fumi-session'], [UNIT, 'fumi-session']]);
+    assert.deepStrictEqual(entries().map((e) => [e.unit, e.session]), [[UNIT, 'fumi-session'], [UNIT, 'fumi-session']]);
 
     write('ask', 'mint.discussion.mint', [], { ...MADE, text: 'Does Mint import Fumi\'s notes?' }, { CLAUDE_CODE_SESSION_ID: 'mint-session' });
     const fromMint = ok(dir, ['ledger', 'record', UNIT], { env: { CLAUDE_CODE_SESSION_ID: 'mint-session' } });
@@ -160,7 +160,7 @@ describe('a record (5.6.5, 5.8.4)', () => {
     const question = ask(NOTE, 'Is a note a window?');
     const old = decide(NOTE, question, 'A window.');
     const here = change(NOTE, old, 'A panel.');
-    const fields = /** @type {Record<string, any>} */ (events().find((e) => e.id === full(here)));
+    const fields = /** @type {Record<string, any>} */ (entries().find((e) => e.id === full(here)));
     const { v: _v, id: _id, at: _at, ...replacement } = fields;
     const there = /** @type {string} */ (appendEntry(statePath(dir), { ...replacement, session: 'other-clone', text: 'A sheet.' }, []).id).slice(0, 6);
 
