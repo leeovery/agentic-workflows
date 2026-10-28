@@ -7,11 +7,12 @@
 // event, tagged with its unit, topic, phase and session, and committing the
 // ledger to the state branch; its content as JSON on stdin and its links as
 // flags, each naming an entry by a prefix of its id that the engine resolves
-// to the full id; what follows from a link set by the engine; every refusal
-// appending nothing and committing nothing; the writer lock taken by the
-// verb itself, a refusal it needs no ledger for answering while a peer holds
-// it; two processes appending at once; and a ledger changed outside the
-// engine stopping the next write, showing the line found.
+// to the full id; what follows from a link set by the engine; a write made
+// on a live unit and topic alone; every refusal appending nothing and
+// committing nothing; the writer lock taken by the verb itself, a refusal it
+// needs no ledger for answering while a peer holds it; two processes
+// appending at once; and a ledger changed outside the engine stopping the
+// next write, showing the line found.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there. A `git` first on PATH plays a commit git
@@ -33,7 +34,8 @@ const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { LEDGER, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId, shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { readLedger } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
-const { ID_FACTS, foldLedger } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
+const { ID_FACTS, foldLedger, standingOf } = require(path.join(SCRIPTS, 'domain/ledger-fold.cjs'));
+const { liveness } = require(path.join(SCRIPTS, 'domain/ledger-units.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
@@ -406,7 +408,7 @@ describe('content and links', () => {
     refused('hold', NOTE, ['--entry', question], {}, /^ledger hold needs --after <id> — Usage: engine ledger hold <work-unit>\.<phase>\[\.<topic>\] --entry <id> --after <id>/);
     refuses(dir, ['ledger', 'ask'], { env: SESSION, stdin: JSON.stringify(content) });
     refused('ask', NOTE, [SPACE], content, /^Usage: engine ledger ask /);
-    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge> …\nledger ask /);
+    assert.match(refuses(dir, ['ledger', 'note'], { env: SESSION }).error, /^Usage: engine ledger <ask\|find\|decide\|replace\|hold\|move\|merge\|record\|map\|product> …\nledger ask [^]*\nledger record /);
   });
 
   it('resolves each link from any prefix of four characters or more to the full id, and shows an id by its shortest prefix no other id shares', () => {
@@ -489,7 +491,7 @@ describe('refusals', () => {
 
     const facts = foldLedger(statePath(dir), ID_FACTS, []);
     assert.deepStrictEqual([first, sibling, replacement, siblingReplacement, current].map((id) => facts.get(full(id)).replaced_by), [
-      full(replacement), full(siblingReplacement), full(current), null, null,
+      [full(replacement)], [full(siblingReplacement)], [full(current)], [], [],
     ]);
     assert.deepStrictEqual([current, siblingReplacement].map((id) => entries().find((e) => e.id === full(id)).answers), [full(question), full(question)]);
   });
@@ -500,6 +502,29 @@ describe('refusals', () => {
     refused('move', NOTE, ['--question', f, '--to', 'space-homing'], MADE, new RegExp(`^ledger move --question names ${f}, a finding — it must name a question$`));
     refused('merge', SPACE, ['--question', r, '--into', r], MADE, new RegExp(`^ledger merge --question names ${r}, a decision — it must name a question$`));
     refused('merge', SPACE, ['--question', f, '--into', r], MADE, new RegExp(`^ledger merge --question names ${f}, a finding — it must name a question$`));
+  });
+
+  it('refuses a write on a topic set aside or a unit cancelled, and a move to a topic set aside, by the rule every read decides by (5.8.17)', () => {
+    const row = (/** @type {number} */ order) => ({ order, summary: 'A topic', routing: 'discussion', source: 'discovery' });
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { 'note-window': row(1), 'space-homing': row(2), 'menu-bar': row(3) } } } });
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const question = ask().id;
+    const content = { ...MADE, text: 'Does a note open on the active Space?' };
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
+    refused('ask', SPACE, [], content, /^ledger ask: fumi\.discussion\.space-homing takes no writes — its topic, space-homing, is cancelled$/);
+    refused('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE,
+      /^ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled$/);
+    ok(dir, ['topic', 'postpone', UNIT, 'menu-bar', '--horizon', 'later']);
+    refused('move', NOTE, ['--question', question, '--to', 'menu-bar'], MADE, /^ledger move: --to names menu-bar, which takes no question — its topic, menu-bar, is postponed$/);
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    refused('ask', 'mint.discussion.mint', [], content, /^ledger ask: mint\.discussion\.mint takes no writes — mint is cancelled$/);
+    refused('find', 'mint.specification', [], { ...MADE, text: 'Notes sync.', how: 'the brief' }, /^ledger find: mint\.specification takes no writes — mint is cancelled$/);
+
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
+    write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
+    write('ask', SPACE, [], content);
   });
 
   it('refuses a move to a topic the unit does not have, and a move made at the unit\'s level, from no topic', () => {
@@ -581,24 +606,44 @@ describe('whose entries a link names, and how they relate', () => {
     write('decide', SPACE, ['--answers', question], DECISION);
     write('move', SPACE, ['--question', question, '--to', 'menu-bar'], MADE);
     refused('move', SPACE, ['--question', question, '--to', 'note-window'], MADE, /a question on menu-bar — /);
-    assert.strictEqual(foldLedger(statePath(dir), ID_FACTS, []).get(full(question)).topic, 'menu-bar');
+    const folded = { facts: foldLedger(statePath(dir), ID_FACTS, []), live: liveness(statePath(dir)) };
+    assert.deepStrictEqual(standingOf(folded, full(question)), { unit: UNIT, topic: 'menu-bar' });
 
     refused('move', NOTE, ['--question', staying, '--to', 'note-window'], MADE, /^ledger move: --to names note-window, the topic it moves from — a question moves to another topic$/);
     refused('move', NOTE, ['--question', staying, '--to', 'notes-spec'], MADE, /^ledger move: fumi has no topic "notes-spec" to move the question to$/);
   });
 
-  it('moves and merges a question only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
+  it('reads an entry as standing where the first entry of its chain stands: one replaced, or a question reworded, from the spec is written on from its topic alone (5.6.9)', () => {
+    const question = ask().id;
+    const decision = decide(question).id;
+    const fromSpec = write('replace', `${UNIT}.specification`, ['--replaces', decision, '--reason', 'changed-mind'], CHANGE).id;
+    const reworded = write('replace', `${UNIT}.specification`, ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note, at its simplest?' }).id;
+
+    refused('replace', SPACE, ['--replaces', fromSpec, '--reason', 'changed-mind'], CHANGE, new RegExp(`^ledger replace --replaces names ${fromSpec}, a decision on note-window — ${BEFORE_THE_SPEC}$`));
+    refused('decide', SPACE, ['--answers', reworded], DECISION, new RegExp(`^ledger decide --answers names ${reworded}, a question on note-window — ${BEFORE_THE_SPEC}$`));
+
+    write('replace', NOTE, ['--replaces', fromSpec, '--reason', 'changed-mind'], { ...CHANGE, text: 'A frameless panel.' });
+    write('decide', NOTE, ['--answers', reworded], DECISION);
+  });
+
+  it('answers a question, asks a part of it, and moves and merges it only while current, naming the one that superseded it, so no stale question goes on a map (5.3.13)', () => {
     const asked = ask().id;
     const reworded = write('replace', NOTE, ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['basic'], text: 'What is a note, at its simplest?' }).id;
     const owned = decide(ask('Is a note a window?').id).id;
-    const superseded = (/** @type {string} */ verb) => new RegExp(`^ledger ${verb} --question names ${asked}, which ${reworded} replaced — the current one is ${reworded}$`);
+    const superseded = (/** @type {string} */ verb, /** @type {string} */ flag) => new RegExp(`^ledger ${verb} ${flag} names ${asked}, which ${reworded} replaced — the current one is ${reworded}$`);
 
-    refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move'));
-    refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge'));
+    refused('decide', NOTE, ['--answers', asked], DECISION, superseded('decide', '--answers'));
+    refused('ask', NOTE, ['--part-of', asked], { ...MADE, text: 'Is a note a window?' }, superseded('ask', '--part-of'));
+    refused('move', NOTE, ['--question', asked, '--to', 'space-homing'], MADE, superseded('move', '--question'));
+    refused('merge', NOTE, ['--question', asked, '--into', owned], MADE, superseded('merge', '--question'));
 
+    write('decide', NOTE, ['--answers', reworded], DECISION);
+    write('ask', NOTE, ['--part-of', reworded], { ...MADE, text: 'Is a note a window?' });
     write('move', NOTE, ['--question', reworded, '--to', 'space-homing'], MADE);
     write('merge', SPACE, ['--question', reworded, '--into', owned], MADE);
-    assert.deepStrictEqual(entries().slice(-2).map((e) => [e.event, e.question]), [['moved', full(reworded)], ['merged', full(reworded)]]);
+    assert.deepStrictEqual(entries().slice(-4).map((e) => [e.event, e.answers ?? e.part_of ?? e.question]), [
+      ['decided', full(reworded)], ['asked', full(reworded)], ['moved', full(reworded)], ['merged', full(reworded)],
+    ]);
   });
 
   it('merges into a current decision, a duplicate being another current decision answering the question merged (5.5.4, 5.5.5)', () => {
@@ -612,12 +657,23 @@ describe('whose entries a link names, and how they relate', () => {
     merge(['--into', owned], new RegExp(`^ledger merge --into names ${owned}, which ${current} replaced — the current one is ${current}$`));
     merge(['--into', current, '--duplicate', current], new RegExp(`^ledger merge --duplicate names ${current}, the decision --into names — a duplicate is another entry$`));
     merge(['--into', current, '--duplicate', elsewhere.decision],
-      new RegExp(`^ledger merge --duplicate names ${elsewhere.decision}, which answers ${elsewhere.question} — a duplicate answers the question merged, ${here}$`));
+      new RegExp(`^ledger merge --duplicate names ${elsewhere.decision}, which answers ${elsewhere.question} — a duplicate answers the question merged, ${here}, in any of its wordings$`));
     const reworded = write('replace', SPACE, ['--replaces', duplicate, '--reason', 'changed-mind'], CHANGE).id;
     merge(['--into', current, '--duplicate', duplicate], new RegExp(`^ledger merge --duplicate names ${duplicate}, which ${reworded} replaced — the current one is ${reworded}$`));
 
     write('merge', SPACE, ['--question', here, '--into', current, '--duplicate', reworded], MADE);
     assert.deepStrictEqual([entries().at(-1).into, entries().at(-1).duplicate], [full(current), full(reworded)]);
+  });
+
+  it('takes a duplicate answering an earlier wording of the question merged, as a reworded question keeps its answers (5.3.13, 5.5.5)', () => {
+    const owned = decide(ask().id).id;
+    const asked = write('ask', SPACE, [], { ...MADE, text: 'Is a note a window?' }).id;
+    const duplicate = write('decide', SPACE, ['--answers', asked], DECISION).id;
+    const reworded = write('replace', SPACE, ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['window'], text: 'Is a note a window or a panel?' }).id;
+
+    write('merge', SPACE, ['--question', reworded, '--into', owned, '--duplicate', duplicate], MADE);
+
+    assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(reworded), full(duplicate)]);
   });
 
   it('holds a current entry relying on what the replacement replaced, or on an earlier entry of its chain (5.6.10)', () => {
@@ -662,6 +718,20 @@ describe('whose entries a link names, and how they relate', () => {
     write('replace', NOTE, ['--replaces', ours, '--reason', 'new-fact', '--cause', finding], CHANGE);
     write('replace', NOTE, ['--replaces', sibling, '--reason', 'changed-mind', '--cause', theirs], CHANGE);
     assert.deepStrictEqual(entries().slice(-2).map((e) => [e.reason, e.cause]), [['new-fact', full(finding)], ['changed-mind', full(theirs)]]);
+  });
+
+  it('judges another topic\'s decision by where it and the replaced entry stand: another unit\'s replacement standing here is changed for a decision of its unit\'s topic, and one replaced from the spec never for a decision on the topic it stands on (5.3.8)', () => {
+    const mint = mints();
+    const ours = decide(ask().id).id;
+    const minted = write('replace', 'mint.discussion.dock-icon', ['--replaces', ours, '--reason', 'changed-mind'], CHANGE).id;
+    write('replace', NOTE, ['--replaces', minted, '--reason', 'other-topic', '--cause', mint.decision], { ...CHANGE, text: 'A frameless panel, as Mint has no dock icon.' });
+
+    const here = decide(ask('Does a note snap?').id, { text: 'Notes snap to the grid.' }).id;
+    const sibling = decide(ask('Does a note resize?').id, { text: 'Notes resize from any edge.' }).id;
+    const fromSpec = write('replace', `${UNIT}.specification`, ['--replaces', here, '--reason', 'changed-mind'], CHANGE).id;
+    refused('replace', NOTE, ['--replaces', fromSpec, '--reason', 'other-topic', '--cause', sibling], CHANGE,
+      new RegExp(`^ledger replace --cause names ${sibling}, a decision on note-window — --reason other-topic needs a decision on a topic other than the replaced entry's$`));
+    refused('replace', `${UNIT}.specification`, ['--replaces', fromSpec, '--reason', 'other-topic', '--cause', sibling], CHANGE, /a decision on note-window — --reason other-topic needs/);
   });
 
   it('keeps the replaced entry\'s product-wide mark where the replacement leaves it out, and takes the one it gives (5.2.5)', () => {
@@ -818,6 +888,33 @@ describe('the writer lock and the commit', () => {
     assert.deepStrictEqual(entries().map((e) => e.text), ['What is a note, at its most basic?', 'Waited its turn?']);
     assert.strictEqual(stateGit(dir, ['show', `HEAD:${LEDGER}`]), ledgerText());
     assert.ok(!fs.existsSync(lock));
+  });
+
+  it('reads the place a write is made, and a move\'s destination, live again under the lock: a topic cancelled while the write waited takes nothing', async () => {
+    const question = ask().id;
+    const lock = statePath(dir, '.lock');
+    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const env = { ...process.env, ...SESSION };
+    const waiting = [
+      { args: ['ledger', 'ask', SPACE], stdin: { ...MADE, text: 'Asked on a topic cancelled meanwhile?' } },
+      { args: ['ledger', 'move', NOTE, '--question', question, '--to', 'space-homing'], stdin: MADE },
+    ].map(({ args, stdin }) => {
+      const child = spawn('node', [ENGINE, ...args], { cwd: dir, env });
+      child.stdin.end(JSON.stringify(stdin));
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      return new Promise((resolve) => child.on('close', (code) => resolve({ code, stderr })));
+    });
+    const raced = await Promise.race([Promise.all(waiting).then(() => 'exited'), new Promise((resolve) => setTimeout(() => resolve('waiting'), 1500))]);
+    assert.strictEqual(raced, 'waiting', 'the writes did not wait on the lock');
+
+    createManifest(dir, UNIT, { work_type: 'epic', phases: { ...PHASES, discovery: { items: { ...PHASES.discovery.items, 'space-homing': { cancelled: true } } } } });
+    fs.unlinkSync(lock);
+
+    const [asked, moved] = /** @type {{code: number, stderr: string}[]} */ (await Promise.all(waiting));
+    assert.deepStrictEqual([asked.code, JSON.parse(asked.stderr).error], [1, 'ledger ask: fumi.discussion.space-homing takes no writes — its topic, space-homing, is cancelled']);
+    assert.deepStrictEqual([moved.code, JSON.parse(moved.stderr).error], [1, 'ledger move: --to names space-homing, which takes no question — its topic, space-homing, is cancelled']);
+    assert.deepStrictEqual(entries().map((e) => e.event), ['asked'], 'a write landed in a topic cancelled while it waited');
   });
 
   it('lands two processes\' appends made at once, under ids that differ and are no sequence, a read made meanwhile meeting whole lines only (5.S2)', async () => {

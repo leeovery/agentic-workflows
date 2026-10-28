@@ -16,7 +16,9 @@
 // - The ledger is read a line at a time, never whole and never through a
 //   pipe (kernel/file-stream), each line validated against the shape its
 //   version names, a field a later version added taking its default
-//   (ledger-events). A line a newer release wrote stops the engine.
+//   (ledger-events). A line a newer release wrote stops the engine. A read
+//   that shows entries keeps where each line sits and reads the ones it
+//   shows again, from the file it opened.
 // - An entry is appended under the writer lock, its id, version and time
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
@@ -29,7 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
-const { fileLines, endsWithNewline } = require('../kernel/file-stream.cjs');
+const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
 const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
@@ -102,6 +104,38 @@ function entryAt(root, line, number) {
   }
 }
 
+/** Where an entry's line sits: its number, from 1, and its span. @typedef {{number: number} & import('../kernel/file-stream.cjs').LineSpan} EntryPlace */
+
+/**
+ * The ledger checked, then opened for reading: its file descriptor, or null
+ * where there is no ledger yet.
+ * @param {string} root @param {string[]} notes what a landing the check finished said, pushed to
+ * @returns {number|null}
+ */
+function openChecked(root, notes) {
+  checkLedger(root, notes);
+  try {
+    return fs.openSync(ledgerFile(root), 'r');
+  } catch (err) {
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+/**
+ * The entries of the ledger open at `fd`, in order, each with where its line
+ * sits. Refuses a line that is no entry.
+ * @param {string} root @param {number} fd
+ * @returns {Generator<{event: Record<string, unknown>, place: EntryPlace}>}
+ */
+function* entriesAt(root, fd) {
+  let number = 0;
+  for (const { text, span } of fdLines(fd)) {
+    number += 1;
+    yield { event: entryAt(root, text, number), place: { number, ...span } };
+  }
+}
+
 /**
  * The ledger's entries in order, checked first, each line read as an event
  * of the shape its version names. Refuses a line that is not one.
@@ -109,11 +143,53 @@ function entryAt(root, line, number) {
  * @returns {Generator<Record<string, unknown>>}
  */
 function* readLedger(root, notes) {
-  checkLedger(root, notes);
-  const file = ledgerFile(root);
-  if (!fs.existsSync(file)) return;
-  let number = 0;
-  for (const line of fileLines(file)) yield entryAt(root, line, ++number);
+  const fd = openChecked(root, notes);
+  if (fd === null) return;
+  try {
+    for (const { event } of entriesAt(root, fd)) yield event;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/**
+ * The ledger as `withLedger` hands it over: its entries in order, each with
+ * where its line sits, and the entry at any place read again.
+ * @typedef {{
+ *   entries: () => Generator<{event: Record<string, unknown>, place: EntryPlace}>,
+ *   entryAt: (place: EntryPlace) => Record<string, unknown>,
+ * }} OpenLedger
+ */
+
+/** @type {OpenLedger} */
+const NO_LEDGER = Object.freeze({
+  * entries() {},
+  entryAt: () => {
+    throw new Error(`there is no ${LEDGER} to read an entry from`);
+  },
+});
+
+/**
+ * `read` given the ledger opened once, checked first: its entries in order,
+ * each line read as an event of the shape its version names, and the entry
+ * at any place read again — both from the one file opened, so an append or
+ * a landing, each renaming a new file in, never shows mid-read.
+ * @template T
+ * @param {string} root @param {string[]} notes what a landing the check finished said, pushed to
+ * @param {(ledger: OpenLedger) => T} read
+ * @returns {T}
+ */
+function withLedger(root, notes, read) {
+  const fd = openChecked(root, notes);
+  if (fd === null) return read(NO_LEDGER);
+  try {
+    return read({
+      entries: () => entriesAt(root, fd),
+      entryAt: (place) => entryAt(root, lineAt(fd, place), place.number),
+    });
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 /**
@@ -181,6 +257,18 @@ function shortIdOf(root, found) {
 }
 
 /**
+ * A refusal carrying, beside its own payload, what a landing finished on the
+ * way said.
+ * @param {unknown} err @param {string[]} notes
+ * @returns {unknown}
+ */
+function carrying(err, notes) {
+  if (notes.length === 0 || !(err instanceof Error)) return err;
+  const { payload } = /** @type {Error & {payload?: object}} */ (err);
+  return Object.assign(err, { payload: { ...payload, warnings: notes } });
+}
+
+/**
  * `render ledger-stop`: the screen of the engine's last stop on the ledger,
  * as the stop found it.
  * @param {string} cwd @param {object} _args
@@ -194,4 +282,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, appendEntry, ledgerStopSurface };
+module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, withLedger, appendEntry, carrying, ledgerStopSurface };

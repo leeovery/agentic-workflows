@@ -48,7 +48,8 @@ const { stampAnalysisCache } = require('./domain/cache.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { boot } = require('./domain/boot.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
-const { LEDGER_USAGE, writeLedger } = require('./domain/ledger-write.cjs');
+const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
+const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
 const { answerGithubRule } = require('./domain/github-rule.cjs');
 const { beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, scanPresence, scanProject, cleanupPresence, deferralSection, CODE_PHASES } = require('./domain/presence.cjs');
 const { applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel, recordLabelChoice } = require('./domain/session-label.cjs');
@@ -165,6 +166,7 @@ Commands:
   manifest key-of <dotpath> <field.path> <value>
   manifest resolve <work-unit>.<phase>[.<topic>]
 ${LEDGER_USAGE.replace(/^/gm, '  ')}
+${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   workunit create <work-unit> <work-type> --description <text> --session-log-file <path>
                   [--import <path> …] [--seed <path> …]
   workunit import <work-unit> <path> [<path> …] --from <origin>
@@ -474,19 +476,23 @@ function runManifest(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// ledger — the project's stream of questions, findings and decisions
-// (domain/ledger-write.cjs). Each write verb appends one event and commits
-// the ledger to the state branch: its content as JSON on stdin, its links as
+// ledger — the project's stream of questions, findings and decisions. Each
+// write verb (domain/ledger-write.cjs) appends one event and commits the
+// ledger to the state branch: its content as JSON on stdin, its links as
 // flags naming entries by short id. A write holds the writer lock itself,
 // never runCli's: around its fold of the ledger, the append and the commit
-// alone, so what its request alone refuses never waits on a peer.
+// alone, so what its request alone refuses never waits on a peer. Each read
+// verb (domain/ledger-read.cjs) answers a projection of the ledger as JSON,
+// holding no lock.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runLedger(call, argv) {
-  const [verb, ...rest] = argv;
+  const [verb = '', ...rest] = argv;
   try {
-    respond(call, writeLedger(call.cwd, verb ?? '', rest, call.stdin));
+    if (READ_VERBS.includes(verb)) respond(call, readLedgerVerb(call.cwd, verb, rest));
+    else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
+    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}`);
   } catch (err) {
     failJson(call, err);
   }
@@ -2264,12 +2270,13 @@ const COMMANDS = Object.freeze({
 // the writer lock around each state write it makes and no longer, so its
 // knowledge pass never holds a peer up; a `ledger` write holds it around its
 // read of the ledger, the append and the commit alone, so what it does
-// before and after holds no peer up; `presence`, `session label`, `repair`,
-// `cleanup` and `resume`, and the hold `topic mailbox` refreshes write only
-// the session files the state ignores; a conversation's folder is outside
-// the project; and the rest read, `layout guard` among them, run before
-// every file Claude writes. `manifest` takes it to write alone, and `commit`
-// but for a code commit (`--paths`).
+// before and after holds no peer up, and a `ledger` read takes none;
+// `presence`, `session label`, `repair`, `cleanup` and `resume`, and the
+// hold `topic mailbox` refreshes write only the session files the state
+// ignores; a conversation's folder is outside the project; and the rest
+// read, `layout guard` among them, run before every file Claude writes.
+// `manifest` takes it to write alone, and `commit` but for a code commit
+// (`--paths`).
 const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */ (Object.freeze({
   knowledge: '*',
   boot: '*',

@@ -143,8 +143,10 @@ function auditState(dir, label) {
 
   // The ledger reads whole: it starts byte for byte with the one the state
   // branch last committed, and every line is an event of its version's shape.
+  // Its projections show what is current in it.
   if (fs.existsSync(statePath(dir, LEDGER))) {
     assert.doesNotThrow(() => [...readLedger(statePath(dir), [])], ctx('the ledger does not read'));
+    auditLedger(dir, ctx);
   }
 
   for (const wu of listWorkUnits(dir)) {
@@ -260,6 +262,223 @@ function auditState(dir, label) {
       auditRoutes(dir, view().keys, `${label} — ${name} view`);
     }
   }
+}
+
+// The ledger's projections, held to properties the events and the manifests
+// settle whatever the fold does inside, both read here directly: a unit is
+// live while its manifest is there and not cancelled, a topic while its map
+// row is neither cancelled nor postponed; an event is in a live place while
+// the unit and topic it was made on are live — a move while its unit is, a
+// question's wording made on the topic the last move its unit made of the
+// question in a live place took it to — and an entry stands where the
+// earliest entry of its chain in a live place was made, or where the first
+// was when none is. Current is what the records show. Every entry in a live
+// place is shown, or leads to a shown entry down its live replacements or,
+// with none, its live merges; a shown entry is in a live place, no live
+// replacement names it, no live merge that would still lead to a shown
+// entry took it as a duplicate, and it shows exactly once in its unit's
+// record and once in its topic's. Each map holds a row for each shown
+// question standing on the topic — answered by the shown entries answering
+// any wording of it and those its leading merges lead to, merged while one
+// leads, moved in from where the last live move the map's unit made of it
+// was made, while that is live — and a row for each shown question
+// standing on another topic of the map's unit that the unit moved away from
+// the topic by a live move, leading to where it stands now. Each record
+// shows those answers, with exactly the entries standing elsewhere that its
+// entries rely on, its leading merges went into or that answer its
+// questions; its live moves and merges, a merge's duplicate where it is
+// live and whether the merge leads; each entry's live confirmations, and
+// its chain down to the first entry not in a live place. A place that is
+// not live shows nothing; the product record holds the shown entries marked
+// product-wide.
+/** @param {string} dir @param {(msg: string) => string} ctx */
+function auditLedger(dir, ctx) {
+  const root = statePath(dir);
+  /** @type {Record<string, any>[]} */
+  const events = fs.readFileSync(path.join(root, LEDGER), 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line));
+  const byId = new Map(events.map((e) => [e.id, e]));
+  /** @param {string} short */
+  const full = (short) => /** @type {Record<string, any>} */ (events.find((e) => e.id.startsWith(short))).id;
+  /** @type {Map<string, Record<string, any>|null>} */
+  const manifests = new Map();
+  /** @param {string} unit @param {string|null} topic */
+  const placeLive = (unit, topic) => {
+    if (!manifests.has(unit)) {
+      const file = path.join(root, unit, 'manifest.json');
+      manifests.set(unit, fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
+    }
+    const manifest = manifests.get(unit);
+    const row = topic === null ? undefined : manifest?.phases?.discovery?.items?.[topic];
+    return manifest != null && manifest.status !== 'cancelled' && row?.cancelled !== true && row?.postponed !== true;
+  };
+  const ENTRIES = ['asked', 'found', 'decided', 'replaced'];
+  /** The entry `id` replaced, or null. @param {string} id @returns {string|null} */
+  const replacedBy = (id) => (byId.get(id).event === 'replaced' ? byId.get(id).replaces : null);
+  /** @param {string} id @returns {string[]} the entry and every earlier one of its chain */
+  const chainOf = (id) => (replacedBy(id) === null ? [id] : [id, ...chainOf(/** @type {string} */ (replacedBy(id)))]);
+  /** @param {string} id @returns {Record<string, any>} */
+  const firstOf = (id) => byId.get(/** @type {string} */ (chainOf(id).at(-1)));
+  /** @param {Record<string, any>} e */
+  const isQuestion = (e) => e.event === 'asked' || e.of === 'question';
+  const moves = events.filter((e) => e.event === 'moved' && placeLive(e.unit, null));
+  /** The moves in a live place `unit` made of `id`'s question, in the ledger's order. @param {string} id @param {string} unit */
+  const movesOf = (id, unit) => moves.filter((m) => m.unit === unit && firstOf(m.question).id === firstOf(id).id);
+  /** @type {Map<string, string|null>} */
+  const madeOn = new Map();
+  /** The topic `id` was made on: a question's, the one the last move its unit made of it in a live place took it to, if any. @param {string} id */
+  const topicOf = (id) => {
+    if (!madeOn.has(id)) {
+      const e = byId.get(id);
+      const move = isQuestion(e) ? movesOf(id, e.unit).at(-1) : undefined;
+      madeOn.set(id, move === undefined ? e.topic : move.to);
+    }
+    return /** @type {string|null} */ (madeOn.get(id));
+  };
+  /** @param {string} id */
+  const inLivePlace = (id) => placeLive(byId.get(id).unit, topicOf(id));
+  /** @param {string} id @returns {{unit: string, topic: string|null}} */
+  const standing = (id) => {
+    const at = /** @type {string} */ (chainOf(id).filter(inLivePlace).at(-1) ?? chainOf(id).at(-1));
+    return { unit: byId.get(at).unit, topic: topicOf(at) };
+  };
+  const liveEvents = (/** @type {string} */ event) => events.filter((e) => e.event === event && inLivePlace(e.id));
+  const replacements = liveEvents('replaced');
+  const merges = liveEvents('merged');
+  const confirmations = liveEvents('still-holds');
+
+  /** @param {string[]} args */
+  const ledger = (args) => {
+    const res = engine.run(['ledger', ...args], { cwd: dir });
+    assert.strictEqual(res.code, 0, ctx(`ledger ${args.join(' ')} does not read: ${res.stderr}`));
+    return JSON.parse(res.stdout);
+  };
+  const units = [...new Set(events.flatMap((e) => [e.unit, standing(e.id).unit]))];
+  const topics = [...new Set(events.flatMap((e) => [[e.unit, e.topic], [standing(e.id).unit, standing(e.id).topic], ...(e.event === 'moved' ? [[e.unit, e.to]] : [])])
+    .filter(([, topic]) => topic !== null).map((pair) => pair.join('\0')))].map((key) => key.split('\0'));
+  /** @type {Map<string, Record<string, any>>} */
+  const records = new Map([...units.map((unit) => [`${unit}\0`, ledger(['record', unit])]), ...topics.map(([unit, topic]) => [`${unit}\0${topic}`, ledger(['record', unit, topic])])]);
+  const maps = new Map(topics.map(([unit, topic]) => [`${unit}\0${topic}`, ledger(['map', unit, topic])]));
+  /** @param {Record<string, any>} record @returns {Record<string, any>[]} */
+  const main = (record) => [...record.questions, ...record.findings, ...record.decisions];
+  /** @type {Map<string, string[]>} */
+  const shownAt = new Map();
+  for (const [place, record] of records) for (const e of main(record)) shownAt.set(full(e.id), [...(shownAt.get(full(e.id)) ?? []), place]);
+  const shown = (/** @type {string} */ id) => shownAt.has(id);
+
+  /** Where `id` leads while not shown: its live replacements, or, with none, the entries its live merges went into. @param {string} id */
+  const next = (id) => {
+    const replacers = replacements.filter((r) => r.replaces === id).map((r) => r.id);
+    return replacers.length > 0 ? replacers : merges.filter((m) => m.duplicate === id).map((m) => m.into);
+  };
+  /** The shown entries `id` leads to, never through `avoid`. @param {string} id @param {string|null} [avoid] @returns {string[]} */
+  const reach = (id, avoid = null) => {
+    const seen = new Set([avoid]);
+    /** @type {Set<string>} */
+    const found = new Set();
+    const walk = (/** @type {string} */ at) => {
+      if (seen.has(at)) return;
+      seen.add(at);
+      if (shown(at)) found.add(at);
+      else next(at).forEach(walk);
+    };
+    walk(id);
+    return [...found].sort();
+  };
+  /** Whether a merge leads somewhere: its duplicate, if any, is not shown, and what it went into leads to a shown entry. @param {Record<string, any>} m */
+  const leads = (m) => (m.duplicate === null || !shown(m.duplicate)) && reach(m.into, m.duplicate).length > 0;
+  /** @param {string} question */
+  const answersOf = (question) => {
+    const asked = chainOf(question);
+    const own = events.filter((e) => asked.includes(e.answers) && shown(e.id)).map((e) => e.id);
+    const leading = merges.filter((m) => asked.includes(m.question) && leads(m));
+    return { answers: [...new Set([...own, ...leading.flatMap((m) => reach(m.into, m.duplicate))])].sort(), merged: leading.length > 0 };
+  };
+  /** @param {string} id */
+  const placesOf = (id) => [`${standing(id).unit}\0`, ...(standing(id).topic === null ? [] : [`${standing(id).unit}\0${standing(id).topic}`])];
+
+  for (const e of events.filter((ev) => ENTRIES.includes(ev.event))) {
+    if (shown(e.id)) {
+      assert.ok(inLivePlace(e.id), ctx(`${e.id} shows from a place that is not live`));
+      assert.deepStrictEqual([...(shownAt.get(e.id) ?? [])].sort(), placesOf(e.id).sort(), ctx(`${e.id} does not show once in its unit's record and once in its topic's`));
+      assert.ok(replacements.every((r) => r.replaces !== e.id), ctx(`${e.id} shows though a live replacement names it`));
+      for (const m of merges.filter((merge) => merge.duplicate === e.id)) {
+        assert.deepStrictEqual(reach(m.into, e.id), [], ctx(`${e.id} shows though ${m.id}, a merge that leads to a shown entry, took it as a duplicate`));
+      }
+    } else if (inLivePlace(e.id)) {
+      assert.ok(reach(e.id).length > 0, ctx(`${e.id}, in a live place, neither shows nor leads to an entry that does`));
+    }
+  }
+
+  for (const [place, record] of records) {
+    const [unit, topic] = /** @type {[string, string]} */ (place.split('\0'));
+    const at = { unit, topic: topic === '' ? null : topic };
+    const within = (/** @type {string} */ id) => standing(id).unit === unit && (at.topic === null || standing(id).topic === at.topic);
+    const made = (/** @type {Record<string, any>} */ e) => e.unit === unit && (at.topic === null || e.topic === at.topic);
+    if (!placeLive(at.unit, at.topic)) {
+      assert.deepStrictEqual([main(record), record.moved, record.merged, record.other_topics], [[], [], [], []], ctx(`${place}'s record, not live, shows something`));
+      continue;
+    }
+    for (const e of main(record)) {
+      const id = full(e.id);
+      const beneath = chainOf(id).slice(1);
+      const cut = beneath.findIndex((old) => !inLivePlace(old));
+      assert.deepStrictEqual(e.replaced.map((/** @type {{id: string}} */ r) => full(r.id)), cut === -1 ? beneath : beneath.slice(0, cut),
+        ctx(`${place} does not fold ${e.id}'s live chain beneath it`));
+      for (const shownEntry of [e, ...e.replaced]) {
+        assert.deepStrictEqual(shownEntry.holds.map((/** @type {{id: string}} */ h) => full(h.id)), confirmations.filter((c) => c.entry === full(shownEntry.id)).map((c) => c.id),
+          ctx(`${place} does not show ${shownEntry.id}'s live confirmations alone`));
+      }
+    }
+    assert.deepStrictEqual(record.moved.map((/** @type {{id: string, text: string}} */ m) => [full(m.id), m.text]), moves.filter(made).map((m) => [m.id, byId.get(m.question).text]),
+      ctx(`${place}'s record does not show its live moves`));
+    assert.deepStrictEqual(record.merged.map((/** @type {{id: string, duplicate_entry: {id: string}|null, holds: boolean}} */ m) => [full(m.id), m.duplicate_entry === null ? null : full(m.duplicate_entry.id), m.holds]),
+      merges.filter(made).map((m) => [m.id, m.duplicate !== null && inLivePlace(m.duplicate) ? m.duplicate : null, leads(m)]), ctx(`${place}'s record does not show its live merges, each holding while it leads`));
+    /** @type {Map<string, Set<string>>} */
+    const expected = new Map();
+    const tie = (/** @type {string[]} */ ids, /** @type {string} */ to) => {
+      for (const id of ids.filter((shownId) => !within(shownId))) expected.set(id, new Set([...(expected.get(id) ?? []), to]));
+    };
+    for (const e of main(record)) {
+      const id = full(e.id);
+      for (const relied of byId.get(id).relies_on) tie(reach(relied), relied);
+      if (isQuestion(byId.get(id))) tie(answersOf(id).answers, id);
+    }
+    for (const m of merges.filter(made).filter(leads)) tie(reach(m.into), m.into);
+    assert.deepStrictEqual(new Map(record.other_topics.map((/** @type {{id: string, named: string[]}} */ o) => [full(o.id), new Set(o.named.map(full))])), expected,
+      ctx(`${place}'s record does not show exactly the entries standing elsewhere tied to it`));
+  }
+
+  for (const [place, map] of maps) {
+    const [unit, topic] = /** @type {[string, string]} */ (place.split('\0'));
+    const record = /** @type {Record<string, any>} */ (records.get(place));
+    if (!placeLive(unit, topic)) {
+      assert.deepStrictEqual(map.questions, [], ctx(`${place}'s map, not live, shows something`));
+      continue;
+    }
+    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'moved-away');
+    assert.deepStrictEqual(standingHere.map((/** @type {{id: string}} */ row) => full(row.id)).sort(), [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && standing(id).unit === unit && standing(id).topic === topic).sort(),
+      ctx(`${place}'s map does not hold a row for each shown question standing on it`));
+    for (const row of standingHere) {
+      const movedIn = movesOf(full(row.id), unit).at(-1);
+      assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, null],
+        ctx(`${place}'s map does not show the live topic ${row.id} moved in from by its unit's last live move`));
+      const { answers, merged } = answersOf(full(row.id));
+      assert.deepStrictEqual([row.answers.map((/** @type {{id: string}} */ a) => full(a.id)).sort(), row.stands], [answers, merged ? 'merged' : answers.length > 0 ? 'answered' : 'open'],
+        ctx(`${place}'s map does not answer ${row.id} by its shown answers`));
+      for (const answer of answers) {
+        const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => full(o.id) === answer);
+        assert.ok(main(record).some((e) => full(e.id) === answer) || elsewhere?.named.map(full).includes(full(row.id)), ctx(`${place}'s record does not show ${answer}, answering ${row.id}`));
+      }
+    }
+    const away = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands === 'moved-away');
+    const movedAway = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && standing(id).unit === unit && standing(id).topic !== topic && movesOf(id, unit).some((m) => m.topic === topic));
+    assert.deepStrictEqual(away.map((/** @type {{id: string, moved_from: string|null, moved_to: string}} */ row) => [full(row.id), row.moved_from, row.moved_to]).sort(), movedAway.map((id) => [id, null, standing(id).topic]).sort(),
+      ctx(`${place}'s map does not lead each shown question its unit moved away from it to where it stands now`));
+  }
+
+  const product = ledger(['product']);
+  assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
+    ctx('the product record does not hold the shown entries marked product-wide'));
 }
 
 // The skills a menu's route reaches in place: another menu, or help.
@@ -3605,7 +3824,7 @@ describe('pipeline simulation', () => {
     assert.strictEqual(sim.run(['roadmap', 'state']).items.find((i) => i.name === 'researched').state, 'waiting');
   });
 
-  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch', () => {
+  it('the ledger: an epic\'s questions, findings and decisions go through the write verbs, each committing the ledger alone on the state branch, and read back as its records, its maps and the product record', () => {
     const wu = 'fumi';
     mappedEpic(sim, wu, ['note-window', 'space-homing']);
     sim.run(['topic', 'start', wu, 'discussion', 'note-window']);
@@ -3621,16 +3840,16 @@ describe('pipeline simulation', () => {
     };
 
     const question = ledger(['ask', note], { ...made, text: 'Is a note a window?' });
-    const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike' });
+    const finding = ledger(['find', note], { ...made, text: 'Panels float above every Space.', how: 'a spike', product_wide: true });
     const decision = ledger(['decide', note, '--answers', question, '--relies-on', finding], { ...made, text: 'A floating panel.', why: 'It follows the person.' });
     const relying = ledger(['ask', note, '--relies-on', decision], { ...made, text: 'Does a floating panel take focus?' });
     const replacement = ledger(['replace', note, '--replaces', decision, '--reason', 'new-fact', '--cause', finding], { ...made, drops: ['a window'], text: 'A frameless panel.', why: 'Lighter on the desk.' });
     sim.refuses(['ledger', 'hold', note, '--entry', finding, '--after', replacement], /which relies on nothing \w+ replaced/, null, JSON.stringify(made));
-    ledger(['hold', note, '--entry', relying, '--after', replacement], made);
+    const held = ledger(['hold', note, '--entry', relying, '--after', replacement], made);
     const moving = ledger(['ask', note], { ...made, text: 'Which Space does a new note open on?' });
-    ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
-    ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
-    ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
+    const moved = ledger(['move', note, '--question', moving, '--to', 'space-homing'], made);
+    const merged = ledger(['merge', `${wu}.discussion.space-homing`, '--question', moving, '--into', replacement], made);
+    const review = ledger(['ask', `${wu}.specification`], { by: 'review', who_moved_whom: 'none', text: 'Does the spec cover a second display?' });
     sim.refuses(['ledger', 'decide', note], /^ledger decide needs --answers <id>/, null, JSON.stringify({ ...made, text: 'Unanchored.', why: 'No question.' }));
     sim.refuses(['ledger', 'replace', note, '--replaces', decision, '--reason', 'changed-mind'], /the current one is/, null, JSON.stringify({ ...made, drops: [], text: 'Again.', why: 'Again.' }));
 
@@ -3642,6 +3861,83 @@ describe('pipeline simulation', () => {
       ['asked', null, 'sim-session'],
     ]);
     assert.strictEqual(stateGit(sim.dir, ['show', `HEAD:${LEDGER}`]), fs.readFileSync(statePath(sim.dir, LEDGER), 'utf8'));
+
+    /** @param {{id: string}[]} shown */
+    const ids = (shown) => shown.map((e) => e.id);
+    const record = sim.run(['ledger', 'record', wu, 'note-window']);
+    assert.deepStrictEqual([ids(record.questions), ids(record.findings), ids(record.decisions)], [[question, relying], [finding], [replacement]]);
+    assert.deepStrictEqual([ids(record.decisions[0].replaced), ids(record.questions[1].holds), ids(record.moved), record.moved[0].to], [[decision], [held], [moved], 'space-homing']);
+    const homing = sim.run(['ledger', 'map', wu, 'space-homing']);
+    assert.deepStrictEqual(homing.questions.map((/** @type {Record<string, any>} */ q) => [q.id, q.stands, q.moved_from, ids(q.answers)]), [[moving, 'merged', 'note-window', [replacement]]]);
+    const there = sim.run(['ledger', 'record', wu, 'space-homing']);
+    assert.deepStrictEqual([ids(there.merged), ids(there.other_topics)], [[merged], [replacement]]);
+    const unit = sim.run(['ledger', 'record', wu]);
+    assert.deepStrictEqual(ids(unit.questions), [question, relying, moving, review]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'product']).findings), [finding]);
+
+    const homingAt = `${wu}.discussion.space-homing`;
+    const reached = ledger(['ask', homingAt], { ...made, text: 'Does a note stay on its Space?' });
+    const duplicate = ledger(['decide', homingAt, '--answers', reached], { ...made, text: 'Notes float above every Space.', why: 'Furniture.' });
+    ledger(['merge', homingAt, '--question', reached, '--into', replacement, '--duplicate', duplicate], made);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'map', wu, 'space-homing']).questions[1].answers), [replacement]);
+
+    sim.run(['topic', 'cancel', wu, 'discovery', 'note-window']);
+    const cancelledOwner = sim.run(['ledger', 'map', wu, 'space-homing']).questions;
+    assert.deepStrictEqual([cancelledOwner[0].id, cancelledOwner[0].moved_from], [moving, null], 'a move did not outlive the topic it was made from');
+    assert.deepStrictEqual(cancelledOwner[0].answers, [], 'a cancelled topic\'s entry answered a question');
+    assert.deepStrictEqual(ids(cancelledOwner[1].answers), [duplicate], 'a duplicate merged into a cancelled topic\'s entry stayed set aside');
+    assert.deepStrictEqual(sim.run(['ledger', 'product']).findings, []);
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'note-window']);
+    assert.deepStrictEqual(sim.run(['ledger', 'record', wu, 'note-window']), record);
+
+    // Another unit's replacement counts while that unit is live, and of two
+    // merges crossing each other the later holds: the note window's question
+    // merged into space homing's answer, the other unit's replacement its
+    // duplicate; that unit cancelled, so the entry it replaced stands again
+    // and space homing's question is merged the other way, into it; the unit
+    // reactivated, the later merge still holds.
+    const mint = 'mint';
+    sim.run(['workunit', 'create', mint, 'feature', '--description', 'Mint', '--session-log-file', sessionLog(sim, mint)]);
+    sim.run(['topic', 'start', mint, 'discussion', mint]);
+    const overruled = ledger(['replace', `${mint}.discussion.${mint}`, '--replaces', replacement, '--reason', 'changed-mind'],
+      { ...made, drops: ['frameless'], text: 'A framed panel.', why: 'Mint frames its notes.' });
+    const overruling = sim.run(['ledger', 'record', wu, 'note-window']);
+    assert.deepStrictEqual([ids(overruling.decisions), ids(overruling.decisions[0].replaced)], [[overruled], [replacement, decision]]);
+    const follows = ledger(['ask', homingAt], { ...made, text: 'Does a note follow the person across Spaces?' });
+    const following = ledger(['decide', homingAt, '--answers', follows], { ...made, text: 'A note follows the person.', why: 'Furniture moves with you.' });
+    ledger(['merge', note, '--question', question, '--into', following, '--duplicate', overruled], made);
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'record', wu, 'note-window']).decisions), [replacement]);
+    ledger(['merge', homingAt, '--question', follows, '--into', replacement, '--duplicate', following], made);
+    sim.run(['workunit', 'reactivate', mint]);
+    const answer = (/** @type {string} */ topic, /** @type {string} */ asked) => {
+      const row = sim.run(['ledger', 'map', wu, topic]).questions.find((/** @type {{id: string}} */ q) => q.id === asked);
+      return [row.stands, ids(row.answers)];
+    };
+    assert.deepStrictEqual([answer('note-window', question), answer('space-homing', follows)], [['answered', [overruled]], ['merged', [overruled]]]);
+
+    // The unit whose decision mint replaced cancelled: the replacement, the
+    // earliest entry of its chain in a live place, stands in mint meanwhile,
+    // and back in the note window once the unit is reactivated.
+    sim.run(['workunit', 'cancel', wu]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'record', mint]).decisions), [overruled]);
+    sim.run(['workunit', 'reactivate', wu]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'record', mint]).decisions), []);
+
+    // A merge counts only while it is live: space homing, holding a merge
+    // whose duplicate stands on the note window, cancelled, the duplicate
+    // stands again; reactivated, the merge holds again.
+    const sized = ledger(['decide', note, '--answers', ledger(['ask', note], { ...made, text: 'Is a note\'s size its own?' })], { ...made, text: 'A note keeps its own size.', why: 'Furniture keeps its shape.' });
+    const keeps = ledger(['ask', note], { ...made, text: 'Does a note keep its size across Spaces?' });
+    const kept = ledger(['decide', note, '--answers', keeps], { ...made, text: 'It keeps its size.', why: 'Furniture keeps its shape.' });
+    ledger(['move', note, '--question', keeps, '--to', 'space-homing'], made);
+    ledger(['merge', homingAt, '--question', keeps, '--into', sized, '--duplicate', kept], made);
+    const decided = () => ids(sim.run(['ledger', 'record', wu, 'note-window']).decisions);
+    assert.ok(!decided().includes(kept), 'a duplicate a holding merge took stayed current');
+    sim.run(['topic', 'cancel', wu, 'discovery', 'space-homing']);
+    assert.ok(decided().includes(kept), 'a merge on a cancelled topic still set its duplicate aside');
+    sim.run(['topic', 'reactivate', wu, 'discovery', 'space-homing']);
+    assert.ok(!decided().includes(kept), 'a reactivated merge no longer set its duplicate aside');
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {
