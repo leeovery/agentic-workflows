@@ -16,7 +16,7 @@ Run all of them before every commit. Never pipe a gate's output: a pipe swallows
 | `npm run typecheck` | the JSDoc type contracts (`tsc`) |
 | `npm run test:mod` | the gate mods' own suites under `claude plugin test`; owed for any change under `skills/workflow-gates*/` |
 
-A new node suite is added to the `test` script in `package.json`, or it never runs.
+`package.json` lists the node suites one by one, slowest first by each one's CPU time run alone, so no long file starts last and runs on alone; a new suite goes where its time places it. `test-suite-list.cjs` holds the script to the folder: a suite the script leaves out or names twice, or a file it names that is no suite, fails it. A suite is any `.cjs` that takes a test from `node:test`, whatever its name.
 
 ## 2. The layers
 
@@ -52,19 +52,21 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 | Module | What it owns |
 |---|---|
 | `hermetic-env.cjs` | the pinned environment. Every node suite requires it first; `test-hermetic-env.cjs` enforces that. |
-| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, and the project world (`setupGitFixture`) |
-| `discovery-test-utils.cjs` | the project world's template, made once per process and copied; `statePath`, `createManifest`, `createFile`, `datedAt` |
+| `engine-harness.cjs` | the in-process engine's shapes, `stateGit`, `commitAll`, `initRepo`, `addSubmodule`, `githubOffline`, keyword-only knowledge, the project world (`setupGitFixture`), and `fixtureFrom(prefix, build)`: a world of a suite's own, built once per process at its first call and copied at every call |
+| `discovery-test-utils.cjs` | the project world's template, made once per process and copied; `templateFolder(prefix)`, the temp folder a world made once is built in, every template removed at exit by one listener; `bareRepo(dir)`, a bare remote with auto maintenance off; `statePath`, `createManifest`, `createFile`, `datedAt` |
 | `knowledge-harness.cjs` | the stand-in embeddings endpoint, `heldCall`, `recordLaunches`, `withoutBackoff` |
 | `gate-audit.cjs` | a gate payload held against the menu it states |
 | `claude-stub.cjs`, `tmux-stub.cjs` | the stand-ins for `claude` and `tmux` |
 | `{family}-world.cjs` | what one family's suites share and no other suite uses: its constants, its seams, and its helpers over the suite's own world (`state-merge-world.cjs`, `ledger-copies-world.cjs`) |
 | `pipeline-oracle.cjs`, `pipeline-world.cjs` | the simulation's oracle; its world, `Sim` and the steps the prose takes (§11) |
 
-Not yet in the library: the remote and two-machine worlds (the state and ledger suites each build their own today), the layout helper beyond `statePath`, `refusedPristine`, the state reads beyond `stateGit`, one stub engine tree (two suites build their own), and the frozen clock (only `tests/prose/lib/fake-clock.cjs` has one, as `withFrozenClock`). Fixtures are being built once per process now for speed, and the surviving state suites then adopt the library.
+Not yet in the library: the remote and two-machine worlds (the state and ledger suites each build their own today), the layout helper beyond `statePath`, `refusedPristine`, the state reads beyond `stateGit`, one stub engine tree (two suites build their own), and the frozen clock (only `tests/prose/lib/fake-clock.cjs` has one, as `withFrozenClock`). The project world is a template made once per process and copied for each test, and a world of a suite's own is built once through `fixtureFrom` and copied the same way; the remote and two-machine worlds are not templates yet, and are built for each test over `bareRepo`.
 
 `knowledge-eval*.cjs` and `knowledge-openai-smoke.cjs` sit beside the suites but are tools, not support.
 
 **The rule:** a helper used by two suites moves into the library in the same change, or into its family's module where only that family's suites use it. No suite keeps a file-local copy of a library helper (`readManifest`, `writeFile`, a local `engine` wrapper over `ok`, a local `setupGitFixture`).
+
+**Every remote comes from `bareRepo`.** A hand-written `git init --bare` brings git's auto maintenance back: it starts at the end of every push the remote receives, and outlives the call. `test-engine-harness.cjs` holds the tests to the one bare init.
 
 ## 4. Writing a suite
 

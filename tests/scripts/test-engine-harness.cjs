@@ -3,7 +3,8 @@
 // The shared engine runner's own contract: each shape answers what its name
 // says, the refusal shape asserts the refusal, the call's environment and
 // stdin reach the engine, the git fixture is a repo with its state worktree
-// that an engine commit lands in, a world made once is copied whole and
+// that an engine commit lands in, every remote in the tests is a bare repo
+// that runs no maintenance, a world made once is copied whole and
 // apart, a keyword-only checkout is one a transaction's index builds a real
 // store in, a call's attempts at a lock are seen as it makes them, and the
 // `ps` that fails does.
@@ -174,6 +175,15 @@ describe('engine harness — the git fixture', () => {
     } finally {
       cleanupFixture(world);
     }
+  });
+
+  it('is the one bare init in the tests: every other remote comes from it, so none runs maintenance', () => {
+    const tests = path.join(__dirname, '..');
+    const inits = /** @type {string[]} */ (fs.readdirSync(tests, { recursive: true }))
+      .filter((name) => /\.(cjs|js|sh)$/.test(name) && !name.includes('node_modules'))
+      .filter((name) => /\binit\b.*--bare/.test(fs.readFileSync(path.join(tests, name), 'utf8')))
+      .sort();
+    assert.deepStrictEqual(inits, ['scripts/discovery-test-utils.cjs']);
   });
 });
 
