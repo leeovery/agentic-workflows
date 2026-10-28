@@ -25,14 +25,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const readline = require('readline');
-const { execFileSync, spawn, spawnSync } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { COMMANDS, WRITER_LOCK_EXEMPT } = require('../../skills/workflow-engine/scripts/engine.cjs');
 
-const { ENGINE, stateGit, commitAll, cleanupFixture, lockAttempts, ok: engine } = harness;
+const { stateGit, commitAll, cleanupFixture, lockAttempts, ok: engine } = harness;
 
 const setupGitFixture = () => harness.setupGitFixture('engine-io-');
 
@@ -73,6 +73,20 @@ const live = () => JSON.stringify({ pid: process.pid, pid_start: processStartTim
 /** A claim another live process holds: the one running this suite. */
 const peer = () => JSON.stringify({ pid: process.ppid, pid_start: processStartTime(process.ppid) });
 
+/**
+ * `fn` run in this process with `ps` failing, its PATH put back after.
+ * @template T @param {{path: string}} ps @param {() => T} fn @returns {T}
+ */
+function whilePsFails(ps, fn) {
+  const saved = process.env.PATH;
+  process.env.PATH = ps.path;
+  try {
+    return fn();
+  } finally {
+    process.env.PATH = saved;
+  }
+}
+
 const IO_PATH = path.join(__dirname, '../../skills/workflow-engine/scripts/kernel/manifest-io.cjs');
 
 /**
@@ -91,13 +105,20 @@ const CONTENDER = [
 ].join('\n');
 
 /**
- * One contender, a node child running `script`: the `lines` it prints;
- * `printed(n)`, resolved once it has printed `n` of them or exited; and
- * `done`, with its exit code, its stderr and its lines.
+ * Well inside the writer lock's 60s wait: a contender still running then
+ * has hung on a lock that never comes free, and is killed.
+ */
+const CONTENDER_TIMEOUT_MS = 30000;
+
+/**
+ * One contender, a node child running `script`, killed should it run past
+ * CONTENDER_TIMEOUT_MS: the `lines` it prints; `printed(n)`, resolved once
+ * it has printed `n` of them or exited; and `done`, with its exit code, the
+ * signal that killed it, its stderr and its lines.
  * @param {string} script @param {string[]} args @param {NodeJS.ProcessEnv} env
  */
 function contender(script, args, env) {
-  const child = spawn(process.execPath, ['-e', script, ...args], { env });
+  const child = spawn(process.execPath, ['-e', script, ...args], { env, timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL' });
   child.stdin.on('error', () => {}); // one that has exited has no stdin left to write to
   /** @type {string[]} */
   const lines = [];
@@ -108,8 +129,8 @@ function contender(script, args, env) {
   const changed = () => { for (const wake of waiters) wake(); };
   child.stderr.on('data', (chunk) => { stderr += chunk; });
   readline.createInterface({ input: child.stdout }).on('line', (line) => { lines.push(line); changed(); });
-  /** @type {Promise<{code: number|null, stderr: string, lines: string[]}>} */
-  const done = new Promise((resolve) => child.on('close', (code) => { exited = true; changed(); resolve({ code, stderr, lines }); }));
+  /** @type {Promise<{code: number|null, signal: NodeJS.Signals|null, stderr: string, lines: string[]}>} */
+  const done = new Promise((resolve) => child.on('close', (code, signal) => { exited = true; changed(); resolve({ code, signal, stderr, lines }); }));
   /** @param {number} count @returns {Promise<void>} */
   const printed = (count) => new Promise((resolve) => {
     const check = () => {
@@ -141,7 +162,9 @@ async function contend(n, body, args, env = process.env) {
   }
   for (const run of runs) run.child.stdin.end();
   const results = await Promise.all(runs.map((run) => run.done));
-  for (const { code, stderr } of results) assert.strictEqual(code, 0, stderr);
+  for (const { code, signal, stderr } of results) {
+    assert.strictEqual(code, 0, signal ? `a contender still running after ${CONTENDER_TIMEOUT_MS}ms was killed\n${stderr}` : stderr);
+  }
   return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
 }
 
@@ -283,6 +306,20 @@ describe('manifest-io — shared lock constants and IO contract', () => {
     assert.ok(attempts.length <= timeoutMs / io.LOCK_RETRY_MS + 1, `${attempts.length} attempts in ${timeoutMs}ms — a busy wait`);
   });
 
+  it('a contended wait tries until its deadline and never past it: one attempt a retry interval, the whole timeout through', (t) => {
+    const lock = path.join(dir, '.lock');
+    fs.writeFileSync(lock, String(process.pid)); // fresh — never breakable
+    let now = Date.now();
+    t.mock.method(Date, 'now', () => now);
+    const intervals = 5;
+    const attempts = lockAttempts(t, lock, (taken) => {
+      assert.ok(taken <= intervals, 'tried again past the deadline');
+      now += io.LOCK_RETRY_MS;
+    });
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', intervals * io.LOCK_RETRY_MS), /Timed out/);
+    assert.strictEqual(attempts.length, intervals, 'gave up before the deadline');
+  });
+
   it('write sweeps orphaned temp files past TMP_STALE_MS and spares fresh ones', () => {
     fs.mkdirSync(path.join(dir, 'unit'));
     const orphan = path.join(dir, 'unit', '.manifest.json.11111.tmp');
@@ -304,20 +341,26 @@ describe('stale-lock break is atomic — one winner, mutual exclusion holds', ()
   beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lock-break-')); });
   afterEach(() => { fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
-  it('contenders that each judged a lock stale race to break it: exactly one breaks it, and no guard is left', async () => {
+  it('a lock broken and taken again after a contender judged it stale is never broken by that contender: inside the guard it asks again', (t) => {
     const lock = path.join(dir, '.lock');
     fs.writeFileSync(lock, '99999');
     makeStale(lock);
-    const reports = await contend(6, [
-      'const [lock] = process.argv.slice(1);',
-      'const stale = Date.now() - fs.statSync(lock).mtimeMs > io.LOCK_STALE_MS;',
-      'atBarrier();',
-      'report({ stale, won: io.breakStaleLockFile(lock) });',
-    ].join('\n'), [lock]);
+    const theirs = String(process.ppid);
+    const openSync = /** @type {(...args: any[]) => number} */ (fs.openSync);
+    let guarded = 0;
+    // Between the contender's stale judgment and its guard, a peer breaks the lock and takes it, fresh.
+    t.mock.method(fs, 'openSync', (/** @type {any[]} */ ...args) => {
+      if (args[0] === `${lock}.breaking` && guarded++ === 0) {
+        fs.unlinkSync(lock);
+        fs.writeFileSync(lock, theirs);
+      }
+      return openSync(...args);
+    });
 
-    assert.deepStrictEqual(reports.map((report) => report.stale), reports.map(() => true), 'every contender judged the lock stale before any broke it');
-    assert.strictEqual(reports.filter((report) => report.won).length, 1, `exactly one breaker:\n${JSON.stringify(reports)}`);
-    assert.deepStrictEqual(fs.readdirSync(dir), [], 'the stale lock gone, and no breaker\'s guard left beside it');
+    assert.throws(() => io.acquireLockFile(lock, 'Timed out', 4 * io.LOCK_RETRY_MS), /Timed out/);
+    assert.strictEqual(guarded, 1, 'the contender went on to break the lock it judged stale, once');
+    assert.strictEqual(fs.readFileSync(lock, 'utf8'), theirs, 'the peer\'s fresh lock broken');
+    assert.deepStrictEqual(fs.readdirSync(dir), ['.lock'], 'a breaker\'s guard left beside the lock');
   });
 
   it('contenders racing a dead holder\'s claim through withProjectLock: each holds it in turn while the rest wait, never two at once', async () => {
@@ -394,6 +437,30 @@ describe('the claim — one holder at a time, never waited on', () => {
     assert.ok(fs.existsSync(claim), 'a claim another took is theirs to release');
   });
 
+  it('while `ps` fails, a live owner\'s claim stands and a gone owner\'s is still taken over', () => {
+    const ps = harness.failingPs(dir);
+    const theirs = peer();
+    fs.writeFileSync(claim, theirs);
+    assert.strictEqual(whilePsFails(ps, () => io.tryClaimFile(claim)), null, 'a start time that cannot be read proves nothing');
+    assert.strictEqual(fs.readFileSync(claim, 'utf8'), theirs);
+
+    fs.writeFileSync(claim, JSON.stringify({ pid: 2147483646, pid_start: 'gone' }));
+    const release = whilePsFails(ps, () => io.tryClaimFile(claim));
+    assert.ok(release, 'a pid that is gone needs no start time');
+    assert.strictEqual(JSON.parse(fs.readFileSync(claim, 'utf8')).pid, process.pid);
+    release();
+  });
+
+  it('reads its own start time once: a later claim asks `ps` nothing, and still names it', () => {
+    /** @type {() => void} */ (io.tryClaimFile(claim))();
+    const own = live();
+    const ps = harness.failingPs(dir);
+    const release = whilePsFails(ps, () => io.tryClaimFile(claim));
+    assert.strictEqual(fs.readFileSync(claim, 'utf8'), own);
+    /** @type {() => void} */ (release)();
+    assert.deepStrictEqual(ps.runs(), []);
+  });
+
   it('a claim found gone is made again, never broken: a claim another makes meanwhile is never removed', (t) => {
     const theirs = peer();
     fs.writeFileSync(claim, theirs);
@@ -447,7 +514,10 @@ describe('the claim — one holder at a time, never waited on', () => {
       'atBarrier();',
       'for (let i = 0; i < Number(holds); i++) {',
       '  let release;',
-      '  while ((release = io.tryClaimFile(claim)) === null) taken += 1;',
+      '  for (let tries = 1; (release = io.tryClaimFile(claim)) === null; tries++) {',
+      '    taken += 1;',
+      "    if (tries === 10000) throw new Error('the claim never came free in 10000 tries');",
+      '  }',
       "  let alone = true; try { fs.closeSync(fs.openSync(inside, 'wx')); } catch { alone = false; twice += 1; }",
       "  let owner = null; try { owner = JSON.parse(fs.readFileSync(claim, 'utf8')).pid; } catch { /* removed */ }",
       '  if (owner !== process.pid) lost += 1;',
@@ -551,12 +621,6 @@ describe('structurally corrupt manifests refuse writes', () => {
 });
 
 /**
- * Well inside the writer lock's 60s wait: a call still running at this
- * point was waiting on the lock, and is killed.
- */
-const ANSWERS_AT_ONCE_MS = 10000;
-
-/**
  * One call per entry of the writer lock's exempt table, each one that
  * succeeds in the epic fixture with a specification beside its research.
  * Boot and the ledger's writes are the table's verbs that wait on the lock,
@@ -627,22 +691,21 @@ describe('engine writes take the writer lock', () => {
     assert.ok(!fs.existsSync(lock));
   });
 
-  it('a command the engine does not dispatch answers the usage at once — no lock waited on, no state looked for', () => {
+  it('a command the engine does not dispatch answers the usage without trying the lock, nor looking for a state', (t) => {
     fs.writeFileSync(lock, live());
+    const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
     const stateless = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-io-stateless-'));
-    try {
-      for (const [where, args] of [[dir, ['not-a-verb']], [dir, []], [dir, ['toString']], [stateless, ['not-a-verb']], [stateless, []]]) {
-        const res = spawnSync('node', [ENGINE, ...args], { cwd: where, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
-        assert.strictEqual(res.status, 1, `engine ${args.join(' ')} in ${where}: ${res.signal ? 'waited on the lock' : res.stderr}`);
-        assert.match(res.stderr, /^Usage: engine <command>/);
-      }
-    } finally {
-      fs.rmSync(stateless, { recursive: true, force: true });
+    t.after(() => fs.rmSync(stateless, { recursive: true, force: true }));
+    for (const [where, args] of [[dir, ['not-a-verb']], [dir, []], [dir, ['toString']], [stateless, ['not-a-verb']], [stateless, []]]) {
+      const res = harness.call(where, args);
+      assert.strictEqual(res.code, 1, `engine ${args.join(' ')} in ${where}: ${res.stderr}`);
+      assert.match(res.stderr, /^Usage: engine <command>/);
     }
+    assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers at once while a live holder has the lock — none but boot and the ledger take it anywhere', () => {
+  it('every exempt command answers without trying the lock while a live holder has it — none but boot and the ledger take it anywhere', (t) => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
     assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside');
@@ -652,11 +715,13 @@ describe('engine writes take the writer lock', () => {
     manifest.phases.specification = { items: { 'auth-flow': { status: 'in-progress', sources: {} } } };
     writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     fs.writeFileSync(lock, live());
+    const attempts = lockAttempts(t, lock, () => { throw new Error('waited on the lock'); });
 
     for (const args of EXEMPT_CALLS) {
-      const res = spawnSync('node', [ENGINE, ...args], { cwd: dir, encoding: 'utf8', timeout: ANSWERS_AT_ONCE_MS });
-      assert.strictEqual(res.status, 0, `engine ${args.join(' ')}: ${res.signal ? 'waited on the lock' : res.stderr}`);
+      const res = harness.call(dir, args);
+      assert.strictEqual(res.code, 0, `engine ${args.join(' ')}: ${res.stderr}`);
     }
+    assert.deepStrictEqual(attempts, []);
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 

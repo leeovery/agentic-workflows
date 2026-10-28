@@ -217,6 +217,23 @@ function githubOffline(dir) {
 }
 
 /**
+ * A `ps` that fails, made in `dir`: `path` puts it first on the PATH, where
+ * every start-time read comes back empty, as when `ps` cannot be spawned;
+ * `runs()` answers the arguments of each run it was asked for.
+ * @param {string} dir
+ * @returns {{path: string, runs: () => string[]}}
+ */
+function failingPs(dir) {
+  const bin = fs.mkdtempSync(path.join(dir, 'ps-'));
+  const log = path.join(bin, 'runs');
+  fs.writeFileSync(path.join(bin, 'ps'), `#!/bin/sh\necho "$*" >> "${log}"\nexit 1\n`, { mode: 0o755 });
+  return {
+    path: `${bin}:${process.env.PATH}`,
+    runs: () => (fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').slice(0, -1) : []),
+  };
+}
+
+/**
  * A temp world — the git repo, its state worktree, a test identity and no
  * signing — that an engine commit lands in. Content is the suite's own;
  * `cleanupFixture` removes it.
@@ -282,6 +299,6 @@ module.exports = {
   ENGINE, harness,
   call, callAsync, ok, okSections, refuses, output, lockAttempts,
   keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
-  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, initRepo, githubOffline,
+  STATE_DIR_NAME, statePath, git, stateGit, commitAll, testIdentity, initRepo, githubOffline, failingPs,
   setupGitFixture, setupFixtureAt, addSubmodule, cleanupFixture,
 };
