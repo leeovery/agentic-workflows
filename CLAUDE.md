@@ -80,6 +80,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Project-level** — `workflow-roadmap` (the product roadmap), `workflow-baseline` (the brownfield assessment), `workflow-help` (the walkthrough and reference cards).
 - **Shared references** (`skills/workflow-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
 - **Engine** (`workflow-engine`) — state, derivation and rendering; `workflow-migrate` holds the migrations; `workflow-legacy-research-split` converts pre-discovery epics.
+- **Drivers** (`skills/workflow-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. Only a driver names its tool.
 - **Gate mods** (`workflow-gates`, `workflow-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
 - **Agents** — `agents/` are the subagents the product dispatches (`docs/agents.md`).
 - **Development only** — `.claude/agents/` and `.claude/skills/` (`create-output-format`, `prose-test`, `review-work`) serve work on this repo and never ship.
@@ -126,6 +127,8 @@ Use `/create-output-format` to scaffold a new plan output format: five files und
 - `skills/workflow-planning-process/references/output-formats/{format}/` - individual format directories
 - `README.md` - user-facing documentation where format options are presented
 - `skills/workflow-engine/content/walkthrough/fixtures/` - the one recorded exception: the walkthrough's sample surfaces render from these fixtures through the real projections, and a planning row carries its plan's format in its tag, so the fixture behind the epic-dashboard sample has to name one, and the test that pins that sample's render carries it too
+- `skills/workflow-engine/scripts/drivers/**` - the drivers, each the one place that names its tool
+- `tests/drivers/**` - a driver's test fixtures, which find and pin its real tool; the generic suites name none
 
 Other phases reference a format through the plan's `format` manifest field, and load only the per-concern file they need (e.g. `{format}/reading.md`).
 

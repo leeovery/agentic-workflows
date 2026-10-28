@@ -157,4 +157,4 @@ function answerGithubRule(cwd, answer) {
   return result;
 }
 
-module.exports = { RULESET, githubRepository, githubRuleOffered, answerGithubRule };
+module.exports = { RULESET, githubRepository, stateRepository, githubRuleOffered, answerGithubRule };

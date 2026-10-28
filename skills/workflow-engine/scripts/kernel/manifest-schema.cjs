@@ -243,6 +243,11 @@ const NO_ARGUMENT = 'none';
 // placeholder must never name a unit.
 const RESERVED_WORK_UNIT_NAMES = ['project', ...PROJECT_IDENTITIES, NO_ARGUMENT];
 
+// The kinds of driver, each picked by the project manifest's
+// `drivers.{kind}` setting: the tracker behind the `task` verbs and the code
+// host behind the `land` verbs.
+const DRIVER_KINDS = /** @type {const} */ (['task', 'landing']);
+
 module.exports = {
   VALID_WORK_TYPES,
   VALID_PHASES,
@@ -273,4 +278,5 @@ module.exports = {
   PROJECT_IDENTITIES,
   NO_ARGUMENT,
   RESERVED_WORK_UNIT_NAMES,
+  DRIVER_KINDS,
 };
