@@ -19,7 +19,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -180,6 +180,19 @@ describe('whose entries a link names, and how they relate', () => {
     write('merge', SPACE, ['--question', reworded, '--into', owned, '--duplicate', duplicate], MADE);
 
     assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(reworded), full(duplicate)]);
+  });
+
+  it('takes a duplicate answering a later wording another unit made, set aside since, as an answer to any wording answers the question (5.3.13, 5.8.17)', () => {
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const owned = decide(ask().id).id;
+    const asked = write('ask', SPACE, [], { ...MADE, text: 'Is a note a window?' }).id;
+    const reworded = write('replace', 'mint.discussion.mint', ['--replaces', asked, '--reason', 'changed-mind'], { ...MADE, drops: ['window'], text: 'Is a note a window in Mint?' }).id;
+    const duplicate = write('decide', SPACE, ['--answers', reworded], DECISION).id;
+    ok(dir, ['workunit', 'cancel', 'mint']);
+
+    write('merge', SPACE, ['--question', asked, '--into', owned, '--duplicate', duplicate], MADE);
+
+    assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(asked), full(duplicate)]);
   });
 
   it('holds a current entry after the latest replacement on the way to its current form of an entry it relies on: what it replaced, or an earlier entry of its chain (5.6.10)', () => {

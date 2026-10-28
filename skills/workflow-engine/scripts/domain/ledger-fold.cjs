@@ -12,9 +12,9 @@
 // entry; who made it, and who moved whom; the unit and topic it was written
 // on; the first entry of its chain; its links; every entry linking back to
 // it — the replacements naming it, the merges that took it as a duplicate,
-// the entries answering it, the merges of it, the questions part of it
-// (5.3.11), the confirmations that it still holds, and on the first entry of
-// a question's chain, the moves of any wording; and where its line sits, so
+// the confirmations that it still holds, and on the first entry of a
+// question's chain, the answers to, the parts of (5.3.11), the merges of
+// and the moves of any wording; and where its line sits, so
 // a read shows an entry by reading that one line again. It keeps one thing a
 // read shows that the entry's line never holds: what the late one-decision
 // check last found of a decision that landed unchecked (16.19.8).
@@ -63,9 +63,12 @@
 //   down every live replacement, and through each merge that holds to the
 //   entry the duplicate was merged into; and the live replacements met on
 //   the way, which are what changed it, the latest last.
-// - A question's current answer: every current entry naming it or any
-//   earlier wording of it, so a replaced sibling never touches the others
-//   and a rewording keeps its answers (5.3.13).
+// - A question's current answer: every current entry naming any wording of
+//   it, earlier or later, standing or set aside, so a replaced sibling never
+//   touches the others, a rewording keeps its answers (5.3.13), and an
+//   answer to a wording set aside answers the one that stands again
+//   (5.8.17). What a question's merges resolve to answers it too, a merge
+//   of any wording alike.
 // - The chain (5.6.5): the entries a current one replaced, newest first,
 //   down to the first that is not live, as though it were not there.
 // - A topic's map (5.8.5): its questions, where each stands, and the
@@ -78,10 +81,13 @@
 //   made on the topic, or that an answer placed on the topic answers, shows
 //   as standing elsewhere. A row of a question standing off the topic shows
 //   the answers placed on the topic that no question standing on it shows.
-//   A current answer placed on the topic whose question is set aside, which
-//   no question's row shows, is a row of its own, headed by its own text, as
-//   the record shows it — so a map shows every current answer placed on its
-//   topic.
+//   A current answer placed on the topic that no current question answers
+//   — every wording of its question set aside, and no merge that holds
+//   leading another question to it — is a row of its own, headed by itself,
+//   as the record shows it, saying where it stands where that is another
+//   place; so a map shows every current answer placed on its topic, and a
+//   question that stands is never shown open while an answer to any of its
+//   wordings is current.
 // - A record: the current entries standing in a unit or a topic, the moves
 //   and merges made there while live, and the current entries standing
 //   elsewhere that were made there, that its entries rely on, that its
@@ -174,6 +180,15 @@ function named(facts, id) {
 }
 
 /**
+ * The first entry of the chain of the entry `id` names: a question's, the
+ * question every wording of it is, standing or set aside.
+ * @param {Map<string, IdFacts>} facts @param {unknown} id @returns {string}
+ */
+function chainRoot(facts, id) {
+  return named(facts, id).root;
+}
+
+/**
  * `id` linked back from the id `to` names, appended to its list `back`; a
  * list still the shared empty one taking a list of its own.
  * @param {Map<string, IdFacts>} facts @param {unknown} to @param {BackLinks} back @param {string} id
@@ -219,13 +234,13 @@ const ID_FACTS = {
       holds: NONE,
       late_check: null,
     });
-    if (kind === 'decision') linkBack(facts, event.answers, 'answered_by', id);
-    if (kind === 'question' && event.part_of !== null) linkBack(facts, event.part_of, 'parts', id);
+    if (kind === 'decision') linkBack(facts, chainRoot(facts, event.answers), 'answered_by', id);
+    if (kind === 'question' && event.part_of !== null) linkBack(facts, chainRoot(facts, event.part_of), 'parts', id);
     if (event.event === 'replaced') linkBack(facts, event.replaces, 'replaced_by', id);
     if (event.event === 'still-holds') linkBack(facts, event.entry, 'holds', id);
-    if (event.event === 'moved') linkBack(facts, named(facts, event.question).root, 'moves', id);
+    if (event.event === 'moved') linkBack(facts, chainRoot(facts, event.question), 'moves', id);
     if (event.event === 'merged') {
-      linkBack(facts, event.question, 'merges', id);
+      linkBack(facts, chainRoot(facts, event.question), 'merges', id);
       if (event.duplicate !== null) linkBack(facts, event.duplicate, 'merged_by', id);
     }
     if (event.event === 'checked') named(facts, event.entry).late_check = /** @type {'one'|'several'} */ (event.rules);
@@ -542,32 +557,39 @@ function foldedBeneath(folded, id) {
   return replaced === null || !isLive(folded, replaced) ? [] : [replaced, ...foldedBeneath(folded, replaced)];
 }
 
-/** A question and its every earlier wording. @param {Folded} folded @param {string} question */
-function wordingsOf(folded, question) {
-  return [question, ...replacedChain(folded, question)];
-}
-
 /** @param {Folded} folded @param {Iterable<string>} ids the ids, in the ledger's order and once each */
 function inLedgerOrder(folded, ids) {
   return [...new Set(ids)].sort((a, b) => factsOf(folded, a).place.number - factsOf(folded, b).place.number);
 }
 
 /**
- * A question's current answer (5.3.13): every current entry naming it or any
- * earlier wording of it.
+ * The question an answer answers, as the first wording of its chain: an
+ * answer to any wording of a question, standing or set aside, answers that
+ * question (5.3.13, 5.8.17). Every read crediting an answer to a question,
+ * and every write checking one, goes by it.
+ * @param {Folded} folded @param {string} answer
+ * @returns {string}
+ */
+function questionAnswered(folded, answer) {
+  return chainRoot(folded.facts, factsOf(folded, answer).answers);
+}
+
+/**
+ * A question's current answer (5.3.13): every current entry answering it,
+ * by `questionAnswered`, in the ledger's order.
  * @param {Folded} folded @param {string} question
  */
 function currentAnswer(folded, question) {
-  return inLedgerOrder(folded, wordingsOf(folded, question).flatMap((w) => factsOf(folded, w).answered_by).filter((id) => isCurrent(folded, id)));
+  return factsOf(folded, factsOf(folded, question).root).answered_by.filter((id) => isCurrent(folded, id));
 }
 
 /**
  * What the merges of a question resolve to: the current form of each entry
- * a merge that holds took it, or an earlier wording of it, into (5.5.5).
+ * a merge that holds took any wording of it into (5.5.5).
  * @param {Folded} folded @param {string} question
  */
 function mergedAnswer(folded, question) {
-  const merges = wordingsOf(folded, question).flatMap((w) => factsOf(folded, w).merges).filter((m) => mergeHolds(folded, m));
+  const merges = factsOf(folded, factsOf(folded, question).root).merges.filter((m) => mergeHolds(folded, m));
   return [...new Set(merges.flatMap((m) => currentsOf(folded, intoOf(folded, m))))];
 }
 
@@ -630,8 +652,8 @@ function showsIn(folded, id) {
  * Where a question stands on its map: open, answered, merged — answered by
  * the entry another topic holds, which a merge took it into (5.5.5) — moved
  * away to another topic, or standing elsewhere, shown for what was placed on
- * the topic (5.8.19); or, on the row of an answer whose question is set
- * aside, that.
+ * the topic (5.8.19); or, on the row of an answer no current question
+ * answers, its question set aside.
  * @typedef {'open'|'answered'|'merged'|'moved-away'|'elsewhere'|'question-set-aside'} Stands
  */
 
@@ -641,7 +663,7 @@ function showsIn(folded, id) {
  * for one standing elsewhere, where; its current answers, its own and those
  * a merge resolves to — on the row of a question standing off the topic,
  * those placed on the topic; and the question it is part of, in its current
- * wording, and the current questions part of it (5.3.11).
+ * wording, and the current questions part of any wording of it (5.3.11).
  * @typedef {{
  *   id: string, stands: Stands, moved_from: string|null, moved_to: string|null, stands_in: Standing|null,
  *   answers: string[], part_of: string|null, parts: string[],
@@ -653,9 +675,9 @@ function movedFrom(folded, move) {
   return /** @type {string} */ (factsOf(folded, move).topic);
 }
 
-/** The question a part is part of, in its current wording: the first current form of it, or itself where it has none. @param {Folded} folded @param {string|null} whole */
+/** The question a part is part of, by any wording, in its current wording: the first current form of it, or the wording named where it has none. @param {Folded} folded @param {string|null} whole */
 function wholeOf(folded, whole) {
-  return whole === null ? null : currentsOf(folded, whole)[0] ?? whole;
+  return whole === null ? null : currentsOf(folded, chainRoot(folded.facts, whole))[0] ?? whole;
 }
 
 /**
@@ -669,7 +691,7 @@ function standingRow(folded, id, unit) {
   const answers = answersOf(folded, id);
   const lastMove = liveMovesBy(folded, factsOf(folded, id).root, unit).at(-1);
   const from = lastMove === undefined ? null : movedFrom(folded, lastMove);
-  const parts = wordingsOf(folded, id).flatMap((w) => factsOf(folded, w).parts).filter((part) => isCurrent(folded, part));
+  const parts = factsOf(folded, factsOf(folded, id).root).parts.filter((part) => isCurrent(folded, part));
   return {
     id,
     stands: mergedAnswer(folded, id).length > 0 ? 'merged' : answers.length > 0 ? 'answered' : 'open',
@@ -678,7 +700,7 @@ function standingRow(folded, id, unit) {
     stands_in: null,
     answers,
     part_of: wholeOf(folded, factsOf(folded, id).part_of),
-    parts: inLedgerOrder(folded, parts),
+    parts,
   };
 }
 
@@ -704,13 +726,15 @@ function awayRow(folded, id, map, answers) {
 }
 
 /**
- * A current answer placed on a map's topic whose question is set aside, as
- * a row of its own, headed by itself.
- * @param {string} id
+ * A current answer placed on a map's topic that no current question
+ * answers, as a row of its own, headed by itself: where it stands, where
+ * that is not the map's topic.
+ * @param {Folded} folded @param {string} id @param {Standing} map the map's unit and topic
  * @returns {MapRow}
  */
-function aloneRow(id) {
-  return { id, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: null, answers: [], part_of: null, parts: [] };
+function aloneRow(folded, id, map) {
+  const standing = standingOf(folded, id);
+  return { id, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: samePlace(standing, map) ? null : standing, answers: [], part_of: null, parts: [] };
 }
 
 /** Whether `id` stands at `unit` and, given one, `topic`. @param {Folded} folded @param {string} id @param {string} unit @param {string|null} topic */
@@ -725,7 +749,8 @@ function standsAt(folded, id, unit, topic) {
  * current question standing elsewhere that was made on it, or that an
  * answer placed on it and shown by no question standing there answers
  * (5.8.19); and every current answer placed on it that no question's row
- * shows, its question set aside. None on a topic that is not live.
+ * shows, as no current question answers it. None on a topic that is not
+ * live.
  * @param {Folded} folded @param {string} unit @param {string} topic
  * @returns {MapRow[]}
  */
@@ -744,7 +769,7 @@ function mapOf(folded, unit, topic) {
   }
   const onRows = new Set(rows.flatMap((row) => row.answers));
   for (const [id, facts] of folded.facts) {
-    if (facts.kind === 'decision' && !onRows.has(id) && isCurrent(folded, id) && placesOf(folded, id).some((place) => samePlace(place, map))) rows.push(aloneRow(id));
+    if (facts.kind === 'decision' && !onRows.has(id) && isCurrent(folded, id) && placesOf(folded, id).some((place) => samePlace(place, map))) rows.push(aloneRow(folded, id, map));
   }
   return rows.sort((a, b) => factsOf(folded, a.id).place.number - factsOf(folded, b.id).place.number);
 }
@@ -867,5 +892,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, namesTopic, factsOf, madeOn, standingOf, inPlace, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  replacedChain, foldedBeneath, answersOf, showsIn, mapOf, recordOf, placeRecords, productOf,
+  replacedChain, foldedBeneath, questionAnswered, answersOf, showsIn, mapOf, recordOf, placeRecords, productOf,
 };

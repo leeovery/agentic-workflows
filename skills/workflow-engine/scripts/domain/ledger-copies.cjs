@@ -68,7 +68,7 @@ const { sleepSync } = require('../kernel/process.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { RECORDS_DIR, PRODUCT_FILE, knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { ledgerFile, checkLedger } = require('./ledger.cjs');
-const { ID_FACTS, readFolded, factsOf, standingOf, currentsOf, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
+const { ID_FACTS, readFolded, standingOf, currentsOf, questionAnswered, answersOf, placeRecords, productOf } = require('./ledger-fold.cjs');
 const { showerOf } = require('./ledger-read.cjs');
 const { liveness, manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -103,13 +103,13 @@ function textOf(shower, id) {
 }
 
 /**
- * The question a decision answers, in its current wording, or null where
- * none is current: its topic or unit set aside, or leading nowhere current.
+ * The question a decision answers, by any wording (ledger-fold.cjs), in its
+ * current wording, or null where none is current: every wording set aside.
  * @param {Shower} shower @param {string} decision
  * @returns {string|null}
  */
 function questionOf(shower, decision) {
-  return currentsOf(shower.folded, /** @type {string} */ (factsOf(shower.folded, decision).answers))[0] ?? null;
+  return currentsOf(shower.folded, questionAnswered(shower.folded, decision))[0] ?? null;
 }
 
 /**

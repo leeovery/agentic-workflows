@@ -213,6 +213,17 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     assert.deepStrictEqual(identities(), ['mint/record/.unit', 'mint/record/mint']);
   });
 
+  it('heads a decision answering a question elsewhere with the question in the wording that stands, though the wording it names is set aside (5.3.13, 5.8.17)', () => {
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const question = ask(NOTE, 'Does a note open on the active Space?');
+    const reworded = write('replace', 'mint.discussion.mint', ['--replaces', question, '--reason', 'changed-mind'], { ...MADE, drops: ['active'], text: 'Does a Mint note open on the active Space?' }).id;
+    decide(`${UNIT}.specification`, reworded, 'It opens where the person is.');
+
+    ok(dir(), ['workunit', 'cancel', 'mint']);
+
+    assert.match(/** @type {string} */ (copy('.knowledge/records/fumi.md')), /^## Does a note open on the active Space\?\n\nIt opens where the person is\.$/m);
+  });
+
   it('shows another unit\'s replacement of an answer in both places: the current answer where the answer stands, and in the record of the topic it was made on, from there (5.8.19)', () => {
     const { decision } = floatingPanel();
     createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });

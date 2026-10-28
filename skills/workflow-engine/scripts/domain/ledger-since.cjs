@@ -23,7 +23,9 @@
 //   unpushed ones, and a call made there was never shown here. A look at any
 //   place a call shows in shows it for every place: the look adds it to its
 //   own unit's mark, and a read counts it shown where any unit's mark on
-//   this machine holds it, a unit set aside since among them.
+//   this machine holds it, a unit set aside since among them. Another
+//   unit's mark that cannot be read is passed over, with a warning naming
+//   it: a call only it holds shows again. The read's own unit's refuses.
 // - Only `ledger shown` moves the mark: opening the board is not looking. It
 //   answers as `ledger since` does, and adds each call it showed to the mark
 //   — on the topic named, or across the unit. The ledger is folded first,
@@ -82,15 +84,31 @@ function marksOf(root, unit) {
 }
 
 /**
- * The calls a look on this machine has shown: those every unit's mark
- * holds, the read's own unit's as `own` holds it.
- * @param {string} root @param {string} unit @param {Marks} own
+ * Another unit's mark, or nothing shown where it cannot be read, a warning
+ * naming it pushed to `warnings`.
+ * @param {string} root @param {string} unit @param {string[]} warnings
+ * @returns {Marks}
+ */
+function otherMarks(root, unit, warnings) {
+  try {
+    return marksOf(root, unit);
+  } catch (err) {
+    warnings.push(`${messageOf(err)} — passed over, so a call only it holds shows again`);
+    return { shown: [] };
+  }
+}
+
+/**
+ * The calls a look on this machine has shown: those any unit's mark holds,
+ * the read's own unit's as `own` holds it; another's that cannot be read
+ * passed over, a warning naming it pushed to `warnings`.
+ * @param {string} root @param {string} unit @param {Marks} own @param {string[]} warnings
  * @returns {Set<string>}
  */
-function shownHere(root, unit, own) {
+function shownHere(root, unit, own, warnings) {
   const shown = new Set(own.shown);
   const others = fs.existsSync(marksDir(root)) ? fs.readdirSync(marksDir(root)).filter((name) => name.endsWith('.json') && name !== `${unit}.json`) : [];
-  for (const name of others) for (const id of marksOf(root, name.slice(0, -'.json'.length)).shown) shown.add(id);
+  for (const name of others) for (const id of otherMarks(root, name.slice(0, -'.json'.length), warnings).shown) shown.add(id);
   return shown;
 }
 
@@ -130,23 +148,23 @@ function answerOf({ folded, show }, { unit, topic }, calls) {
 /**
  * `ledger since`: Claude's calls a unit or a topic shows that no look on
  * this machine has shown. Moves no mark.
- * @param {Shower} shower @param {Place} place @param {string} root
+ * @param {Shower} shower @param {Place} place @param {string} root @param {string[]} warnings
  */
-function answerSince(shower, place, root) {
+function answerSince(shower, place, root, warnings) {
   const unit = /** @type {string} */ (place.unit);
-  return answerOf(shower, place, callsSince(shower.folded, place, shownHere(root, unit, marksOf(root, unit))));
+  return answerOf(shower, place, callsSince(shower.folded, place, shownHere(root, unit, marksOf(root, unit), warnings)));
 }
 
 /**
  * `ledger shown`: what `ledger since` answers, each call it shows added to
  * the unit's mark under the mark's lock, taken once the ledger is folded.
- * @param {Shower} shower @param {Place} place @param {string} root
+ * @param {Shower} shower @param {Place} place @param {string} root @param {string[]} warnings
  */
-function answerShown(shower, place, root) {
+function answerShown(shower, place, root, warnings) {
   const unit = /** @type {string} */ (place.unit);
   const calls = withMarkLock(root, unit, () => {
     const marks = marksOf(root, unit);
-    const shown = callsSince(shower.folded, place, shownHere(root, unit, marks));
+    const shown = callsSince(shower.folded, place, shownHere(root, unit, marks, warnings));
     if (shown.length > 0) writeJsonAtomic(marksFile(root, unit), { shown: [...marks.shown, ...shown] });
     return shown;
   });

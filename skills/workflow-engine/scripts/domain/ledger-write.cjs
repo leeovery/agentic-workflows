@@ -34,7 +34,8 @@
 //   on: another topic's change goes to it by message (5.6.9, 10.2.2).
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
-//   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
+//   by any of its wordings, standing or set aside (ledger-fold.cjs), other
+//   than the one it goes into (5.5.4, 5.5.5);
 //   a hold names the latest live replacement on the way to its current
 //   form, past each merge that holds, of an entry the held entry is held
 //   against: one it relies on, or the question an answer answers (5.6.10);
@@ -46,8 +47,9 @@
 //   and on the person's replacement of a decision carrying no sealed answer
 //   of Claude's, what its reason and the entry it replaces allow.
 // - What the engine sets: a replacement's kind; the question a replaced
-//   decision answers, in the wording current as the replacement is written,
-//   so it is held against what it saw as an answer is (ledger-affected.cjs);
+//   decision answers, in the wording live as the replacement is written,
+//   found from the question's first wording, so it is held against what it
+//   saw as an answer is (ledger-affected.cjs);
 //   the question a replaced question is part of; and, where the
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
 //   and who moved whom where the departure rule settles it; a decision's
@@ -79,7 +81,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, questionAnswered } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
@@ -534,8 +536,8 @@ function checkHeld(linked, read) {
 
 /**
  * Refuse a merge's duplicate that is the entry it goes into, or that answers
- * another question than the one merged, in any of its wordings (5.3.13,
- * 5.5.4, 5.5.5).
+ * another question than the one merged, by any of its wordings, standing or
+ * set aside (5.3.13, 5.5.4, 5.5.5).
  * @param {Linked} linked @param {Folded} read
  */
 function checkDuplicate(linked, read) {
@@ -545,26 +547,29 @@ function checkDuplicate(linked, read) {
   const short = (/** @type {string} */ id) => shortId(id, facts.keys());
   const where = `ledger merge --duplicate names ${short(duplicate)}`;
   if (duplicate === into) throw new Error(`${where}, the decision --into names — a duplicate is another entry`);
-  const answers = /** @type {string} */ (/** @type {IdFacts} */ (facts.get(duplicate)).answers);
-  if (![question, ...replacedChain(read, question)].includes(answers)) {
+  if (questionAnswered(read, duplicate) !== factsOf(read, question).root) {
+    const answers = /** @type {string} */ (factsOf(read, duplicate).answers);
     throw new Error(`${where}, which answers ${short(answers)} — a duplicate answers the question merged, ${short(question)}, in any of its wordings`);
   }
 }
 
 /**
  * What follows from a replacement's link to what it replaces: the kind it
- * stands for; for a decision, the question it answers in its latest live
- * wording; for a question, the question it is part of. Nothing for any
- * other write.
+ * stands for; for a decision, the question it answers in the wording live
+ * as it is written — the latest live rewording of the question's first
+ * wording, or that wording where none is — whatever wording the replaced
+ * decision named; for a question, the question it is part of. Nothing for
+ * any other write.
  * @param {Write} write @param {Linked} linked @param {Folded} read
  * @returns {Record<string, unknown>}
  */
 function followed(write, linked, read) {
   if (write.event !== 'replaced') return {};
-  const replaced = factsOf(read, /** @type {string} */ (linked.replaces));
+  const replaces = /** @type {string} */ (linked.replaces);
+  const replaced = factsOf(read, replaces);
   const of = replaced.kind;
   if (of === 'decision') {
-    const question = /** @type {string} */ (replaced.answers);
+    const question = questionAnswered(read, replaces);
     return { of, answers: replacementsOf(read, question).at(-1) ?? question };
   }
   if (of === 'question') return { of, part_of: replaced.part_of };

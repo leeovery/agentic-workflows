@@ -522,7 +522,7 @@ describe('the append', () => {
     assert.strictEqual(tip(main, STATE_BRANCH), committed);
   });
 
-  it('commits nothing of a tail holding a line that is no entry — not JSON, JSON that is no entry, an id an earlier line holds, a last line with no newline — refused by the line the reads stop on; a tail of entries alone commits (4.7.8)', () => {
+  it('commits nothing of a tail holding a line no read takes — not JSON, JSON that is no entry, an id an earlier line holds, named with the line holding it — or a last line with no newline, refused, naming the line; a tail of entries alone commits (4.7.8, 5.4.4)', () => {
     const { main, root } = project();
     const [first] = threeCommitted(root);
     const committed = [ledgerText(root), tip(main, STATE_BRANCH)];
@@ -531,8 +531,8 @@ describe('the append', () => {
     for (const [after, refusal] of /** @type {[string, RegExp][]} */ ([
       ['oops, not JSON\n', /^line 5 of the ledger is not JSON: oops, not JSON$/],
       ['{"v":1,"id":"AAAAAAAAAAAAAAAAAAAAA","event":"decided"}\n', /^line 5 of the ledger is no ledger entry: /],
-      [`${first}\n`, /^line 5 of the ledger repeats the id \w+, which an earlier line holds$/],
-      [`${kept}\n`, /^line 5 of the ledger repeats the id \w+, which an earlier line holds$/],
+      [`${first}\n`, /^line 5 of the ledger repeats the id \w+, which line 1 holds$/],
+      [`${kept}\n`, /^line 5 of the ledger repeats the id \w+, which line 4 holds$/],
       ['{"v":1,"id":"BBBB', /^line 5 of the ledger is not JSON: /],
       [kept.replace(/"id":"\w+"/, `"id":"${newId()}"`), /^line 5 of the ledger is unfinished: it has no newline$/],
     ])) {
@@ -859,13 +859,14 @@ describe('the conversion door (5.S25)', () => {
     assert.throws(() => commitLedger(root), LedgerChanged);
   });
 
-  it('refuses a copy that drops an event, adds one, changes an id, reorders them or is no entry, changing nothing', () => {
+  it('refuses a copy that drops an event, adds one, repeats one, changes an id, reorders them or is no entry, changing nothing', () => {
     const { main, root } = project();
     const original = oldShapeCommitted(root);
     const [first, second] = original.trim().split('\n').map((line) => JSON.parse(line).id);
     const converters = [
       ['function* (events) { let n = 0; for (const { v, type, ...rest } of events) if (n++ === 0) yield { v: 1, event: type, ...rest }; }', `at line 2 the ledger holds ${second} and the copy none`],
       [`function* (events) { yield* (${TO_CURRENT})(events); yield { id: 'added' }; }`, 'at line 3 the ledger holds no event and the copy added'],
+      [`function* (events) { const all = [...(${TO_CURRENT})(events)]; yield all[0]; yield* all; }`, `at line 2 the ledger holds ${second} and the copy ${first}`],
       ['function* (events) { for (const { v, type, ...rest } of events) yield { v: 1, event: type, ...rest, id: `${rest.id}x` }; }', `at line 1 the ledger holds ${first} and the copy ${first}x`],
       [`function* (events) { yield* [...(${TO_CURRENT})(events)].reverse(); }`, `at line 1 the ledger holds ${first} and the copy ${second}`],
       ['function* (events) { for (const e of events) yield null; }', 'line 1 of the converted copy is not an entry with an id'],
@@ -943,6 +944,22 @@ describe('the conversion door (5.S25)', () => {
     assert.notStrictEqual(commitLedger(root, 'chore: migrate the ledger').commit, null);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}^:${LEDGER}`]), `${original}${tail}`);
     assert.deepStrictEqual(ledgerEntries(root).map((e) => e.text), ['What is a fumi, at its most basic?', 'A near-frameless floating note.', 'Left uncommitted?']);
+  });
+
+  it('commits and converts nothing where a line left uncommitted is no entry with an id, or holds an id an earlier line holds', () => {
+    const { main, root } = project();
+    const original = oldShapeCommitted(root);
+    const [first] = original.split('\n');
+    const before = tip(main, STATE_BRANCH);
+    const migration = migrationAt('migrations/900-convert.cjs', TO_CURRENT);
+    for (const [tail, refusal] of /** @type {[string, RegExp][]} */ ([
+      ['not an entry\n', /^line 3 of the ledger is not an entry with an id — nothing converted$/],
+      [`${first}\n`, /^line 3 of the ledger repeats the id \w+, which line 1 holds$/],
+    ])) {
+      writeLedger(root, `${original}${tail}`);
+      assert.throws(() => migration.run({ projectDir: main }), { message: refusal }, tail);
+      assert.deepStrictEqual([tip(main, STATE_BRANCH), ledgerText(root)], [before, `${original}${tail}`], `committed or converted a tail of ${tail}`);
+    }
   });
 
   it('honours a pass only where its copy, stored in git, keeps the door\'s rule: a pass written by hand lifts no removed line from a read or a commit', () => {

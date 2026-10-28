@@ -249,6 +249,21 @@ describe('refusals', () => {
     assert.match(refuses(dir, ['ledger', 'map', UNIT, 'menu-bar']).error, /^ledger map: fumi has no topic "menu-bar"$/);
   });
 
+  it('stops every read and every write on a line repeating an id an earlier line holds, naming both lines, writing and committing nothing (5.4.4)', () => {
+    const question = ask(NOTE, 'Is a note a window?');
+    decide(NOTE, question, 'A panel.');
+    const id = full(question);
+    const file = statePath(dir, LEDGER);
+    fs.appendFileSync(file, `${rawLines()[0]}\n`);
+    const before = [fs.readFileSync(file, 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])];
+    const refusal = `line 3 of the ledger repeats the id ${id}, which line 1 holds`;
+
+    for (const args of [['map', UNIT, 'note-window'], ['record', UNIT], ['since', UNIT], ['product']]) assert.strictEqual(refuses(dir, ['ledger', ...args]).error, refusal, args.join(' '));
+    assert.strictEqual(refuses(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Is a note a sheet?' }) }).error, refusal);
+
+    assert.deepStrictEqual([fs.readFileSync(file, 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])], before);
+  });
+
   it('answers a ledger with no entries yet with nothing current', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window'), {
       ok: true, unit: UNIT, topic: 'note-window', live: true, questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [],

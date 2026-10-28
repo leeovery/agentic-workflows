@@ -8,10 +8,11 @@
 // that no look on this machine has shown, the build's calls among them;
 // `engine ledger shown`, the one read that adds the calls it showed to the
 // mark, under the mark's own lock, taken once the read's fold is done, a
-// look anywhere a call shows clearing it everywhere; the mark kept on each
-// machine in the cache, never committed, through a merge that lays the
-// other machine's calls before ones shown here and through the unit's
-// cancel; and nothing any ledger read answers left on disk.
+// look anywhere a call shows clearing it everywhere, another unit's mark it
+// cannot read passed over with a warning; the mark kept on each machine in
+// the cache, never committed, through a merge that lays the other
+// machine's calls before ones shown here and through the unit's cancel; and
+// nothing any ledger read answers left on disk.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there; a bare remote and a second clone stand for
@@ -297,6 +298,22 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     assert.deepStrictEqual(calls('shown', 'note-window'), [sized, noted]);
 
     assert.deepStrictEqual(markLocked, [false]);
+  });
+
+  it('passes over another unit\'s mark it cannot read, warning of it by its file, a look adding to its own unit\'s mark alone', () => {
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const noted = call(NOTE, 'A note is a panel.');
+    const other = statePath(dir, '.cache', '.marks', 'mint.json');
+    fs.mkdirSync(path.dirname(other), { recursive: true });
+    fs.writeFileSync(other, '[]');
+    const warning = `the last-looked mark at ${other} is not {"shown": [<id>, …]}, the ids of the calls shown — passed over, so a call only it holds shows again`;
+
+    for (const verb of ['since', 'shown']) {
+      const res = ok(dir, ['ledger', verb, UNIT]);
+      assert.deepStrictEqual([res.calls.map((/** @type {{id: string}} */ c) => c.id), res.warnings], [[noted], [warning]], verb);
+    }
+
+    assert.deepStrictEqual([marks(), fs.readFileSync(other, 'utf8')], [{ shown: [full(noted)] }, '[]']);
   });
 
   it('refuses a read naming no unit, a topic the unit does not have, or a mark it cannot read, naming the mark', () => {

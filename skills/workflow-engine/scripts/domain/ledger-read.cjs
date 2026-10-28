@@ -25,9 +25,9 @@
 //   hold went into, or that answer its questions (5.8.4, 5.8.19). `ledger
 //   map` reads a topic's questions as they stand now, each answered as its
 //   record shows it, those standing elsewhere that it shows for what was
-//   made on it, and each current answer placed on it whose question is set
-//   aside, a row headed by the answer itself. A unit or topic that is not
-//   live has no current entry to show.
+//   made on it, and each current answer placed on it that no current
+//   question answers, a row headed by the answer as a row shows one. A unit
+//   or topic that is not live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
 //   as written but its schema version; a decision the late one-decision
 //   check judged shows beside it what the check found, `late_check`, one
@@ -49,6 +49,7 @@ const { answerSince, answerShown } = require('./ledger-since.cjs');
 const { answerVerdicts } = require('./ledger-verdicts.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
+/** @typedef {import('./ledger-fold.cjs').MapRow} MapRow */
 /** @typedef {Record<string, unknown>} Shown */
 
 /**
@@ -65,11 +66,11 @@ const { answerVerdicts } = require('./ledger-verdicts.cjs');
 
 /**
  * A read verb: its usage, how many places it names, and its answer, given
- * the project's state root.
+ * the project's state root, what it says on the way pushed to `warnings`.
  * @typedef {{
  *   usage: string,
  *   names: number[],
- *   answer: (shower: Shower, place: Place, root: string) => Record<string, unknown>,
+ *   answer: (shower: Shower, place: Place, root: string, warnings: string[]) => Record<string, unknown>,
  * }} Read
  */
 
@@ -170,6 +171,17 @@ function rowAnswer({ show }, answer) {
 }
 
 /**
+ * A map row's head: its question's id, text, whose and when; on the row of
+ * an answer no current question answers, the answer as a row shows one,
+ * and when.
+ * @param {Shower} shower @param {MapRow} row
+ */
+function rowHead(shower, row) {
+  const { id, text, by, at } = shower.show(row.id);
+  return row.stands === 'question-set-aside' ? { ...rowAnswer(shower, row.id), at } : { id, text, by, at };
+}
+
+/**
  * `ledger map`: a topic's questions, each with where it stands and its
  * current answers.
  * @param {Shower} shower @param {Place} place
@@ -180,19 +192,16 @@ function answerMap(shower, { unit, topic }) {
     unit,
     topic,
     live: shower.folded.live(/** @type {string} */ (unit), topic) === null,
-    questions: rows.map((row) => {
-      const { id, text, by, at } = shower.show(row.id);
-      return {
-        id, text, by, at,
-        stands: row.stands,
-        moved_from: row.moved_from,
-        moved_to: row.moved_to,
-        stands_in: row.stands_in,
-        part_of: row.part_of === null ? null : shower.short(row.part_of),
-        parts: row.parts.map(shower.short),
-        answers: row.answers.map((answer) => rowAnswer(shower, answer)),
-      };
-    }),
+    questions: rows.map((row) => ({
+      ...rowHead(shower, row),
+      stands: row.stands,
+      moved_from: row.moved_from,
+      moved_to: row.moved_to,
+      stands_in: row.stands_in,
+      part_of: row.part_of === null ? null : shower.short(row.part_of),
+      parts: row.parts.map(shower.short),
+      answers: row.answers.map((answer) => rowAnswer(shower, answer)),
+    })),
   };
 }
 
@@ -239,7 +248,7 @@ function namedPlace(root, verb, args) {
 /**
  * `ledger <record|map|product|affected|since|shown|verdicts>`: the
  * projection read, as JSON, and as warnings what a landing its check
- * finished said.
+ * finished said, and what the read said on the way.
  * @param {string} cwd @param {string} verb @param {string[]} args
  * @returns {Record<string, unknown>}
  */
@@ -251,7 +260,7 @@ function readLedgerVerb(cwd, verb, args) {
     const place = namedPlace(root, verb, args);
     const live = liveness(root);
     const answerOf = READS[verb].answer;
-    const answer = readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answerOf(showerOf({ facts, live }, entryAt), place, root));
+    const answer = readFolded(root, ID_FACTS, warnings, (facts, entryAt) => answerOf(showerOf({ facts, live }, entryAt), place, root, warnings));
     return warnings.length > 0 ? { ...answer, warnings } : answer;
   } catch (err) {
     throw carrying(err, warnings);

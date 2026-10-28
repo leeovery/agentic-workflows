@@ -16,9 +16,12 @@
 // - The ledger is read a line at a time, never whole and never through a
 //   pipe (kernel/file-stream), each line validated against the shape its
 //   version names, a field a later version added taking its default
-//   (ledger-events). A line a newer release wrote stops the engine. A read
-//   that shows entries keeps where each line sits and reads the ones it
-//   shows again, from the file it opened.
+//   (ledger-events), and its id held by no earlier line: a line that is no
+//   entry, or repeats an id, is refused, naming it — and the line holding
+//   the id first — so every read stops on it (5.4.4), and every write,
+//   which reads the ledger before it appends. A line a newer release wrote
+//   stops the engine. A read that shows entries keeps where each line sits
+//   and reads the ones it shows again, from the file it opened.
 // - An entry is appended under the writer lock, its id, version and time
 //   the engine's own, the time taken under the lock so the lines' order is
 //   their times': the ledger is checked, then copied beside itself with the
@@ -30,10 +33,9 @@
 //   write's, or boot's before its catch-up (4.7.8). Boot counts them past
 //   the ledger the branch holds once a landing a kill cut short is
 //   finished, since that landing rewrote the file first, and commits them
-//   only where each is a whole line that reads as an entry with an id no
-//   earlier line holds: a line written outside the engine, committed, would
-//   stop every read on every clone. Else it commits nothing and says which
-//   line the reads stop on.
+//   only where each is a whole line a read takes, by the same rule: a line
+//   written outside the engine, committed, would stop every read and write
+//   on every clone. Else it commits nothing and says which line it found.
 // - Every stop on the ledger is kept for its screen (`render ledger-stop`).
 // ---------------------------------------------------------------------------
 
@@ -43,7 +45,7 @@ const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
 const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
-const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
+const { LEDGER, LEDGER_VERSION, LedgerLineError, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { idOf, idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
 const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock, commitHere } = require('./state-worktree.cjs');
@@ -101,6 +103,21 @@ function checkLedger(root, notes) {
 /** A line read as an entry, refused where it is none. @typedef {(line: string, number: number) => {id?: unknown}} EntryReader */
 
 /**
+ * The ids a read of the ledger meets, line by line: one an earlier line
+ * holds is refused, naming both lines (5.4.4).
+ * @returns {(id: unknown, number: number) => void}
+ */
+function eachIdOnce() {
+  /** @type {Map<unknown, number>} */
+  const lines = new Map();
+  return (id, number) => {
+    const first = lines.get(id);
+    if (first !== undefined) throw new LedgerLineError(`line ${number} of the ledger repeats the id ${id}, which line ${first} holds`);
+    lines.set(id, number);
+  };
+}
+
+/**
  * How many entries the ledger holds past the one the state branch last
  * committed, where it starts with that one, each line read by `read`.
  * Refuses, naming the line, one `read` refuses, an id an earlier line
@@ -112,20 +129,16 @@ function uncommittedEntries(root, read) {
   const file = ledgerFile(root);
   const from = committed?.size ?? 0;
   if (!fs.existsSync(file) || fs.statSync(file).size <= from || !fileStartsWith(file, committed)) return 0;
-  const ids = new Set();
+  const once = eachIdOnce();
   let [number, entries] = [0, 0];
   const fd = fs.openSync(file, 'r');
   try {
     for (const { text, span } of fdLines(fd)) {
       number += 1;
-      if (span.offset < from) {
-        ids.add(idOf(text));
-        continue;
-      }
-      const { id } = read(text, number);
-      if (ids.has(id)) throw new Error(`line ${number} of the ledger repeats the id ${id}, which an earlier line holds`);
-      ids.add(id);
-      entries += 1;
+      const tail = span.offset >= from;
+      const id = tail ? read(text, number).id : idOf(text);
+      if (id !== undefined) once(id, number);
+      if (tail) entries += 1;
     }
   } finally {
     fs.closeSync(fd);
@@ -186,15 +199,18 @@ function openChecked(root, notes) {
 
 /**
  * The entries of the ledger open at `fd`, in order, each with where its line
- * sits. Refuses a line that is no entry.
+ * sits. Refuses a line that is no entry, or that repeats an id.
  * @param {string} root @param {number} fd
  * @returns {Generator<{event: Record<string, unknown>, place: EntryPlace}>}
  */
 function* entriesAt(root, fd) {
+  const once = eachIdOnce();
   let number = 0;
   for (const { text, span } of fdLines(fd)) {
     number += 1;
-    yield { event: entryAt(root, text, number), place: { number, ...span } };
+    const event = entryAt(root, text, number);
+    once(event.id, number);
+    yield { event, place: { number, ...span } };
   }
 }
 

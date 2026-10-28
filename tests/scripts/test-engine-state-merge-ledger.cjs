@@ -126,6 +126,16 @@ describe('the ledger through a catch-up', () => {
     });
   }
 
+  it('lays each id once: an entry both machines hold lands once, as the merge laid it, through a landing a kill cut short that a read finishes (5.4.4)', () => {
+    const [both, a1, b1] = ['Both?', 'Here?', 'There?'].map(askedLine);
+    const { here, base } = killedLanding({ here: `${both}${a1}`, there: `${both}${b1}` });
+
+    const read = ledgerEntries(here.root, []);
+
+    assert.deepStrictEqual(read.map((e) => e.id), [base, both, b1, a1].map((line) => JSON.parse(line).id));
+    assert.strictEqual(readFile(here.root, '.ledger.jsonl'), `${base}${both}${b1}${a1}`);
+  });
+
   it('counts no entry of a fast-forward a kill cut short as one a write left uncommitted: the landing is finished first, and nothing else committed', () => {
     const base = askedLine('Base?');
     const there1 = askedLine('There?');

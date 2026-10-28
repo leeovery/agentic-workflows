@@ -13,12 +13,14 @@
 //   live confirmation that it still holds names the latest replacement on
 //   that way, each entry it is held against cleared on its own; a later
 //   replacement flags it again. A question, a finding and a decision alike
-//   (5.6.11). An entry relies only on what is current as it is written, a
-//   decision answers only a current question, and a replacement answers its
-//   question in the wording live as it is written (ledger-write.cjs), so
-//   every live replacement on those ways is one it never saw: written after
-//   it, or set aside while it was written — wherever a merge has laid it in
-//   the ledger. Its own replacement takes an entry off the list. The
+//   (5.6.11). An entry relies only on what is current as it is written, so
+//   every live replacement on the way of one it relies on is one it never
+//   saw: written after it, or set aside while it was written — wherever a
+//   merge has laid it in the ledger. An answer is held against its
+//   question's way from the question's first wording, less the wording it
+//   names and every earlier one, which it saw: a decision answers only a
+//   current question, and a replacement the wording live as it is written
+//   (ledger-write.cjs). Its own replacement takes an entry off the list. The
 //   confirmation's write is held to the same ways (`heldAgainst`).
 // - What relies on an affected entry is not affected by it: only once that
 //   entry is replaced.
@@ -29,7 +31,7 @@
 //   confirms or replaces it, the finished unit left finished.
 // ---------------------------------------------------------------------------
 
-const { factsOf, standingOf, madeOn, isCurrent, holdsOf, replacementsOf } = require('./ledger-fold.cjs');
+const { factsOf, standingOf, madeOn, isCurrent, holdsOf, replacementsOf, replacedChain, questionAnswered } = require('./ledger-fold.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -39,22 +41,26 @@ const { finishedUnits } = require('./ledger-units.cjs');
 
 /**
  * An entry another is held against — one it relies on, or the question it
- * answers — and the live replacements on its way to its current form, in
- * the ledger's order, the latest last.
+ * answers — and the live replacements on its way to its current form that
+ * the other never saw, in the ledger's order, the latest last.
  * @typedef {{held_against: string, replacements: string[]}} Change
  */
 
 /**
  * What an entry is held against (5.6.10): each entry it relies on, and for
- * an answer the question it answers, in the wording it answers, each with
- * its way, changed or not.
+ * an answer the question it answers, in the wording it names, each with its
+ * way, changed or not.
  * @param {Folded} folded @param {string} id
  * @returns {Change[]}
  */
 function heldAgainst(folded, id) {
   const facts = factsOf(folded, id);
-  const held = facts.kind === 'decision' && facts.answers !== null ? [...facts.relies_on, facts.answers] : facts.relies_on;
-  return held.map((against) => ({ held_against: against, replacements: replacementsOf(folded, against) }));
+  const relied = facts.relies_on.map((held) => ({ held_against: held, replacements: replacementsOf(folded, held) }));
+  if (facts.kind !== 'decision') return relied;
+  const named = /** @type {string} */ (facts.answers);
+  const saw = new Set([named, ...replacedChain(folded, named)]);
+  const rewordings = replacementsOf(folded, questionAnswered(folded, id)).filter((wording) => !saw.has(wording));
+  return [...relied, { held_against: named, replacements: rewordings }];
 }
 
 /**

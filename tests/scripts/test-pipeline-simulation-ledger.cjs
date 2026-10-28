@@ -182,6 +182,18 @@ describe('pipeline simulation: ledger', () => {
     sim.run(['topic', 'reactivate', wu, 'discovery', 'space-homing']);
     assert.ok(!decided().includes(kept), 'a reactivated merge no longer set its duplicate aside');
 
+    // A replacement written while mint's rewording of a question is live
+    // answers that wording; mint cancelled, the question stands again in its
+    // first wording, still answered by it, and back with mint, reworded.
+    const dimming = ledger(['ask', note], { ...made, text: 'Does a note dim when idle?' });
+    const dims = ledger(['decide', note, '--answers', dimming], { ...made, text: 'It dims after a minute.', why: 'Quiet furniture.' });
+    const unfocused = ledger(['replace', `${mint}.discussion.${mint}`, '--replaces', dimming, '--reason', 'changed-mind'], { ...made, drops: ['idle'], text: 'Does a note dim when unfocused?' });
+    const dimmer = ledger(['replace', note, '--replaces', dims, '--reason', 'changed-mind'], { ...made, drops: ['a minute'], text: 'It dims at once.', why: 'Quieter.' });
+    sim.run(['workunit', 'cancel', mint]);
+    assert.deepStrictEqual(answer('note-window', dimming), ['answered', [dimmer]], 'a question answered by an answer to a wording set aside shows open');
+    sim.run(['workunit', 'reactivate', mint]);
+    assert.deepStrictEqual(answer('note-window', unfocused), ['answered', [dimmer]]);
+
     // The verdict queue: nothing waits while every answer is Claude's; the
     // person's replacement of Claude's own call, for a mistake, stands over
     // its lean and waits on a verdict.
