@@ -59,6 +59,10 @@ describe('prose-test snapshots', { concurrency: POOL_SIZE }, () => {
   const pool = createVerifyPool();
   after(() => pool.close());
 
+  it('holds no cases until the prose tests are rewritten at the end of the build', () => {
+    assert.deepStrictEqual(all.map((c) => c.id), []);
+  });
+
   // A snapshot holds world state at whatever path the engine wrote it, so an
   // ignore rule matching inside one keeps the file out of the commit: the
   // checkout that snapped it still has it on disk and verifies clean, and
