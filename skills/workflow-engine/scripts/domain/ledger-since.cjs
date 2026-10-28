@@ -7,10 +7,12 @@
 // draws from as it shows in the conversation.
 //
 // - Claude's calls: the current decisions Claude made, `by` claude, the
-//   build's included (5.1.6), that a place shows (5.8.19): a topic, those on
-//   its map; a unit, those it shows anywhere, its topics' maps and its own
-//   level's list alike — each by where it shows (ledger-fold.cjs), so a
-//   later unit's replacement of an earlier unit's decision is new in both.
+//   build's included (5.1.6), that a place shows (5.8.19): a topic, those
+//   its map shows — its rows' answers, and an answer whose question is set
+//   aside on a row of its own; a unit, those it shows anywhere, its topics'
+//   maps and its own level's list alike — each by where it shows
+//   (ledger-fold.cjs), so a later unit's replacement of an earlier unit's
+//   decision is new in both.
 // - The mark is the machine's own: the ids of the calls a screen has shown
 //   on this machine, each topic's map and the spec's list alike, kept in the
 //   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
@@ -20,8 +22,8 @@
 //   a catch-up merge lays the other machine's entries before this one's
 //   unpushed ones, and a call made there was never shown here. A look at any
 //   place a call shows in shows it for every place: the look adds it to its
-//   own unit's mark, and a read counts it shown where the mark of any unit it
-//   shows in holds it.
+//   own unit's mark, and a read counts it shown where any unit's mark on
+//   this machine holds it, a unit set aside since among them.
 // - Only `ledger shown` moves the mark: opening the board is not looking. It
 //   answers as `ledger since` does, and adds each call it showed to the mark
 //   — on the topic named, or across the unit. The ledger is folded first,
@@ -80,20 +82,16 @@ function marksOf(root, unit) {
 }
 
 /**
- * Whether a look on this machine has shown a call that shows in `places`:
- * the mark of any unit among them holds it. Each mark is read once; the
- * read's own unit's is `own`, as the read found it.
+ * The calls a look on this machine has shown: those every unit's mark
+ * holds, the read's own unit's as `own` holds it.
  * @param {string} root @param {string} unit @param {Marks} own
- * @returns {(id: string, places: Standing[]) => boolean}
+ * @returns {Set<string>}
  */
-function lookedOn(root, unit, own) {
-  /** @type {Map<string, Set<string>>} */
-  const marks = new Map([[unit, new Set(own.shown)]]);
-  const markOf = (/** @type {string} */ at) => {
-    if (!marks.has(at)) marks.set(at, new Set(marksOf(root, at).shown));
-    return /** @type {Set<string>} */ (marks.get(at));
-  };
-  return (id, places) => places.some((place) => markOf(place.unit).has(id));
+function shownHere(root, unit, own) {
+  const shown = new Set(own.shown);
+  const others = fs.existsSync(marksDir(root)) ? fs.readdirSync(marksDir(root)).filter((name) => name.endsWith('.json') && name !== `${unit}.json`) : [];
+  for (const name of others) for (const id of marksOf(root, name.slice(0, -'.json'.length)).shown) shown.add(id);
+  return shown;
 }
 
 /**
@@ -101,18 +99,17 @@ function lookedOn(root, unit, own) {
  * shown, in the ledger's order: on a topic, those it shows on its map;
  * across a unit, those it shows anywhere. None on a unit or topic that is
  * not live.
- * @param {Folded} folded @param {Place} place @param {(id: string, places: Standing[]) => boolean} looked
+ * @param {Folded} folded @param {Place} place @param {Set<string>} shown
  * @returns {string[]}
  */
-function callsSince(folded, { unit, topic }, looked) {
+function callsSince(folded, { unit, topic }, shown) {
   const at = /** @type {string} */ (unit);
   if (folded.live(at, topic) !== null) return [];
   /** @type {string[]} */
   const calls = [];
   for (const [id, facts] of folded.facts) {
-    if (facts.kind !== 'decision' || facts.by !== 'claude') continue;
-    const places = showsIn(folded, id);
-    if (places.some((shown) => inPlace(shown, at, topic)) && !looked(id, places)) calls.push(id);
+    if (facts.kind !== 'decision' || facts.by !== 'claude' || shown.has(id)) continue;
+    if (showsIn(folded, id).some((place) => inPlace(place, at, topic))) calls.push(id);
   }
   return calls;
 }
@@ -137,7 +134,7 @@ function answerOf({ folded, show }, { unit, topic }, calls) {
  */
 function answerSince(shower, place, root) {
   const unit = /** @type {string} */ (place.unit);
-  return answerOf(shower, place, callsSince(shower.folded, place, lookedOn(root, unit, marksOf(root, unit))));
+  return answerOf(shower, place, callsSince(shower.folded, place, shownHere(root, unit, marksOf(root, unit))));
 }
 
 /**
@@ -149,7 +146,7 @@ function answerShown(shower, place, root) {
   const unit = /** @type {string} */ (place.unit);
   const calls = withMarkLock(root, unit, () => {
     const marks = marksOf(root, unit);
-    const shown = callsSince(shower.folded, place, lookedOn(root, unit, marks));
+    const shown = callsSince(shower.folded, place, shownHere(root, unit, marks));
     if (shown.length > 0) writeJsonAtomic(marksFile(root, unit), { shown: [...marks.shown, ...shown] });
     return shown;
   });

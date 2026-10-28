@@ -188,13 +188,16 @@ describe('the product record (5.8.6)', () => {
 });
 
 describe('a large ledger (5.7.6, 5.7.8)', () => {
+  const READER_TIMEOUT_MS = 120000;
+
   /**
    * `args` run by the engine in a process of its own, its heap held to
-   * `HEAP_MB`: what it answered, or how it died.
+   * `HEAP_MB`: what it answered, or how it died — never of its timeout.
    * @param {string[]} args
    */
   function underHeap(args) {
-    const res = spawnSync(process.execPath, [`--max-old-space-size=${HEAP_MB}`, ...args], { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 24 });
+    const res = spawnSync(process.execPath, [`--max-old-space-size=${HEAP_MB}`, ...args], { cwd: dir, encoding: 'utf8', maxBuffer: 1 << 24, timeout: READER_TIMEOUT_MS, killSignal: 'SIGKILL' });
+    assert.strictEqual(res.error, undefined, `a reader under ${HEAP_MB} MB did not end within ${READER_TIMEOUT_MS} ms`);
     return { status: res.status, signal: res.signal, out: res.status === 0 ? JSON.parse(res.stdout) : null, err: res.stderr.slice(0, 400) };
   }
 

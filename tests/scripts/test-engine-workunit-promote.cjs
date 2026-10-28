@@ -357,7 +357,6 @@ describe('engine workunit promote — guards refuse loudly, everything pristine'
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
     return err;
   }
 

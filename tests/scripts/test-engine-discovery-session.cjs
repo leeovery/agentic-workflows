@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+  git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
 } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
@@ -194,7 +194,6 @@ describe('engine discovery-session close — guards refuse loudly, everything pr
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
     return err;
   }
 
@@ -267,13 +266,13 @@ describe('engine discovery-session open — happy path', () => {
       active_session: '003',
     });
 
-    // No commit, nothing indexed — the session is live; the calling flow's
+    // No commit, no store built — the session is live; the calling flow's
     // commit cadence picks up the log and marker.
     assert.strictEqual(commitsSinceInit(fix), 0);
     const status = stateGit(fix.project, ['status', '--porcelain']);
     assert.match(status, /payments\/manifest\.json/);
     assert.match(status, /payments\/discovery\/sessions\/session-003\.md/);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.strictEqual(hasStore(fix.project), false);
 
     // Lock released.
     assert.strictEqual(fs.existsSync(path.join(fix.project, '.leeway/.lock')), false);
@@ -337,7 +336,6 @@ describe('engine discovery-session open — guards refuse loudly, everything pri
     const err = engineFails(fix, args);
     assert.match(err.error, pattern);
     assert.deepStrictEqual(treeSnapshot(fix), before);
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
     return err;
   }
 

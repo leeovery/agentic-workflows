@@ -4,10 +4,11 @@
 // A topic's map and the questions moved across it
 // (workflow-engine/scripts/domain/ledger-read.cjs, `engine ledger map`, with
 // domain/ledger-fold.cjs): a topic's questions, where each stands now and
-// its answers, which its record shows too; a reworded question keeps its
-// answers and its parts; a merged duplicate is no second entry; a question
-// moved in or away shown by a live move the map's own unit made alone, led
-// to its current wording and the topic it stands on now.
+// its answers, which its record shows too, and an answer whose question is
+// set aside on a row of its own; a reworded question keeps its answers and
+// its parts; a merged duplicate is no second entry; a question moved in or
+// away shown by a live move the map's own unit made alone, led to its
+// current wording and the topic it stands on now.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, the work unit's manifest written there.
@@ -189,6 +190,22 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     assert.deepStrictEqual(read('record', UNIT, 'note-window').moved, [{ ...line(moved), text: 'Which Space does a new note open on?' }]);
     ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
     assert.deepStrictEqual(moves(UNIT, 'note-window'), [[question, 'moved-away', null, 'space-homing']]);
+  });
+
+  it('shows a current answer placed on the topic whose question is set aside as a row of its own, headed by the answer, as its record and `since` show it, until the question is back (5.8.19)', () => {
+    const question = ask(NOTE, 'Which Space does a new note open on?');
+    const answer = decide(NOTE, question, 'The active Space.');
+    write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE);
+
+    ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
+
+    const { id, text, by, at } = line(answer);
+    assert.deepStrictEqual(read('map', UNIT, 'note-window').questions, [{ id, text, by, at, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [] }]);
+    assert.deepStrictEqual(read('record', UNIT, 'note-window').decisions.map((/** @type {{id: string}} */ d) => d.id), [answer]);
+    assert.deepStrictEqual(read('since', UNIT, 'note-window').calls.map((/** @type {{id: string}} */ c) => c.id), [answer]);
+    assertAgree('note-window');
+    ok(dir, ['topic', 'reactivate', UNIT, 'discovery', 'space-homing']);
+    assert.deepStrictEqual(answered('note-window'), [[question, 'moved-away', [answer]]]);
   });
 
   it('places a question where the last move its unit made of it took it, a move outliving the topic it was made from: it stands there, set aside with that topic alone, and names where it moved from while that is live', () => {

@@ -45,8 +45,10 @@
 //   person's answer standing over Claude's lean on an entry Claude made,
 //   and on the person's replacement of a decision carrying no sealed answer
 //   of Claude's, what its reason and the entry it replaces allow.
-// - What the engine sets: a replacement's kind, the question a replaced
-//   decision answers or a replaced question is part of, and, where the
+// - What the engine sets: a replacement's kind; the question a replaced
+//   decision answers, in the wording current as the replacement is written,
+//   so it is held against what it saw as an answer is (ledger-affected.cjs);
+//   the question a replaced question is part of; and, where the
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
 //   and who moved whom where the departure rule settles it; a decision's
 //   being unchecked, where the one-decision check could not judge it
@@ -77,7 +79,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, replacedChain } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
@@ -551,16 +553,20 @@ function checkDuplicate(linked, read) {
 
 /**
  * What follows from a replacement's link to what it replaces: the kind it
- * stands for, and the question a decision answers or a question is part of.
- * Nothing for any other write.
- * @param {Write} write @param {Linked} linked @param {Map<string, IdFacts>} facts
+ * stands for; for a decision, the question it answers in its latest live
+ * wording; for a question, the question it is part of. Nothing for any
+ * other write.
+ * @param {Write} write @param {Linked} linked @param {Folded} read
  * @returns {Record<string, unknown>}
  */
-function followed(write, linked, facts) {
+function followed(write, linked, read) {
   if (write.event !== 'replaced') return {};
-  const replaced = /** @type {IdFacts} */ (facts.get(/** @type {string} */ (linked.replaces)));
+  const replaced = factsOf(read, /** @type {string} */ (linked.replaces));
   const of = replaced.kind;
-  if (of === 'decision') return { of, answers: replaced.answers };
+  if (of === 'decision') {
+    const question = /** @type {string} */ (replaced.answers);
+    return { of, answers: replacementsOf(read, question).at(-1) ?? question };
+  }
   if (of === 'question') return { of, part_of: replaced.part_of };
   return { of };
 }
@@ -694,7 +700,7 @@ function eventOf(request, read) {
   write.checkLinked(linked, read);
   return {
     event: write.event, unit: at.unit, topic: at.topic, phase: at.phase, session,
-    ...content, ...linked, ...followed(write, linked, read.facts), ...(kind === 'decision' ? { unchecked } : {}),
+    ...content, ...linked, ...followed(write, linked, read), ...(kind === 'decision' ? { unchecked } : {}),
   };
 }
 

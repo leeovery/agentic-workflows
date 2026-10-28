@@ -223,7 +223,21 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     const replacement = change(NOTE, answer, 'A note is a frameless window.');
     assert.deepStrictEqual([answered('note-window'), changes()], [[[again, 'answered', [replacement]]], {}]);
     const third = reword(NOTE, again, 'What is a note, drawn?');
-    assert.deepStrictEqual(changes(), { [replacement]: [[question, [third]]] });
+    assert.deepStrictEqual(changes(), { [replacement]: [[again, [third]]] });
+  });
+
+  it('holds a replacement against the wording live as it was written: a rewording set aside then flags it once it is back, as it does an answer written beside it (5.6.10)', () => {
+    const question = ask(NOTE, 'What is a note?');
+    const answer = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note is a panel.', why: 'Furniture.' });
+    const reworded = reword(MINT, question, 'What is a note in Mint?');
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    const replacement = change(NOTE, answer, 'A note is a frameless window.');
+    const beside = write('decide', NOTE, ['--answers', question], { ...MADE, text: 'A note keeps its size.', why: 'Furniture.' });
+    assert.deepStrictEqual(changes(), {});
+
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+
+    assert.deepStrictEqual(changes(), { [replacement]: [[question, [reworded]]], [beside]: [[question, [reworded]]] });
   });
 
   it('flags no answer to a question merged or moved, neither being a rewording (5.S41)', () => {

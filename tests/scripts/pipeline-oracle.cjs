@@ -270,8 +270,10 @@ function auditState(dir, label) {
 // each other shown question placed on the topic or with an answer placed
 // there, saying where it stands. A row of a question standing off the topic
 // shows its answers placed on the topic that no question standing there
-// shows. Each record shows its maps' answers, with exactly the entries
-// standing elsewhere that were made there, that its entries rely on, its
+// shows; and a row of its own for each shown answer placed on the topic
+// whose question no shown wording asks, its question set aside. Each
+// record shows its maps' answers, with exactly the entries standing
+// elsewhere that were made there, that its entries rely on, its
 // leading merges went into or that answer its questions; its live moves and
 // merges, a merge's duplicate where it is live and whether the merge leads;
 // each entry's live confirmations, what the late one-decision check last
@@ -456,11 +458,12 @@ function auditLedger(dir, ctx) {
     }
     const on = (/** @type {{unit: string, topic: string|null}} */ p) => p.unit === unit && p.topic === topic;
     const shownRow = (/** @type {{id: string, answers: {id: string}[]}} */ row) => full(row.id);
-    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => !['moved-away', 'elsewhere'].includes(row.stands));
+    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => !['moved-away', 'elsewhere', 'question-set-aside'].includes(row.stands));
     const questionsHere = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && on(standing(id)));
     assert.deepStrictEqual(standingHere.map(shownRow).sort(), [...questionsHere].sort(),
       ctx(`${place}'s map does not hold a row for each shown question standing on it`));
     for (const row of map.questions) {
+      if (row.stands === 'question-set-aside') assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(row.id)), ctx(`${place}'s record does not show ${row.id}, which its map shows as a row of its own`));
       for (const { id: answer } of row.answers) {
         assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(answer)), ctx(`${place}'s record does not show ${answer}, which its map shows answering ${row.id}`));
       }
@@ -489,6 +492,10 @@ function auditLedger(dir, ctx) {
     const elsewhere = offTopic.filter((id) => !movedAway.includes(id) && (placed(id).some(on) || answersHere(id).length > 0));
     assert.deepStrictEqual(rowsOf('elsewhere'), elsewhere.map((id) => [id, null, null, standing(id), answersHere(id)]).sort(),
       ctx(`${place}'s map does not show each shown question standing elsewhere placed on it, or answered by an entry placed there, where it stands (5.8.19)`));
+    const asked = (/** @type {string} */ answer) => [...shownAt.keys()].some((q) => isQuestion(byId.get(q)) && chainOf(q).includes(byId.get(answer).answers));
+    const alone = [...shownAt.keys()].filter((id) => typeof byId.get(id).answers === 'string' && !asked(id) && placed(id).some(on));
+    assert.deepStrictEqual(rowsOf('question-set-aside'), alone.map((id) => [id, null, null, null, []]).sort(),
+      ctx(`${place}'s map does not show each shown answer placed on it whose question is set aside as a row of its own (5.8.19)`));
   }
 
   const product = ledger(['product']);

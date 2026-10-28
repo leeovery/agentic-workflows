@@ -126,4 +126,19 @@ describe('the catch-up at boot (4.7.8)', () => {
       assert.deepStrictEqual(readFile(clone.root, LEDGER).trim().split('\n').map((line) => JSON.parse(line).text), ['Asked first?', 'Written there?', 'Stranded here?']);
     }
   });
+
+  it('commits and pushes nothing of a line appended outside the engine, warning of the line every read stops on', () => {
+    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
+    const { main, root } = setUp({ remote: bare });
+    commitOnState(root, { 'fumi/manifest.json': JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
+    engine.ok(main, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Asked?' }) });
+    fs.appendFileSync(path.join(root, LEDGER), 'not an entry\n');
+    const committed = tip(main, STATE_BRANCH);
+
+    const res = boot(main);
+
+    assert.ok(res.warnings.includes('the ledger\'s uncommitted entries were not committed: line 2 of the ledger is not JSON: not an entry'), res.warnings.join('\n'));
+    assert.deepStrictEqual([tip(main, STATE_BRANCH), remoteTip(bare)], [committed, committed]);
+    assert.strictEqual(git(root, ['status', '--porcelain', '--', LEDGER]), ` M ${LEDGER}\n`);
+  });
 });

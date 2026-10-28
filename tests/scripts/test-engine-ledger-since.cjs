@@ -27,7 +27,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, cleanupFixture,
+  holdLock, lockAttempts, ok, refuses, git, stateGit, statePath, testIdentity, bareRepo, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld } = require('./ledger-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
@@ -36,7 +36,6 @@ const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
-const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const TOPICS = Object.freeze(['note-window', 'space-homing', 'menu-bar']);
 
@@ -162,6 +161,22 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     assert.deepStrictEqual(callsOf(dir, 'shown', 'mint', 'mint'), [sheet]);
 
     assert.deepStrictEqual(since(), [[], [], [], []]);
+    assert.deepStrictEqual([callsOf(dir, 'shown', UNIT), marks()], [[], null]);
+  });
+
+  it('counts a look in a unit set aside since: the call it showed stays shown where it shows now (5.8.15)', () => {
+    createManifest(dir, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+    const decided = call(NOTE, 'A note is a panel.', 'person');
+    ok(dir, ['manifest', 'set', UNIT, 'status', 'completed']);
+    const sheet = writeIn(dir, 'replace', 'mint.discussion.mint', ['--replaces', decided, '--reason', 'changed-mind'], { ...MADE, drops: ['a panel'], text: 'A note is a sheet.', why: 'Mint draws sheets.' });
+    assert.deepStrictEqual(calls('shown', 'note-window'), [sheet]);
+
+    ok(dir, ['workunit', 'reactivate', UNIT]);
+    ok(dir, ['workunit', 'cancel', UNIT]);
+
+    const rows = ok(dir, ['ledger', 'map', 'mint', 'mint']).questions;
+    assert.deepStrictEqual(rows.map((/** @type {{id: string, stands: string}} */ r) => [r.id, r.stands]), [[sheet, 'question-set-aside']]);
+    assert.deepStrictEqual([callsOf(dir, 'since', 'mint'), callsOf(dir, 'since', 'mint', 'mint')], [[], []]);
   });
 
   it('lists a call on the map of the question it answers, moved to another topic, as where it stands, a look at either clearing it from both (5.8.19)', () => {
@@ -241,9 +256,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
 
   it('adds to the mark under the mark\'s own lock: a look waits on a peer holding it and reads the mark only once it holds it, so the peer\'s look is never lost; a plain read never tries the lock', (t) => {
     const [noted, homed, barred] = TOPICS.map((topic) => call(`${UNIT}.discussion.${topic}`, `A call on ${topic}.`));
-    const lock = `${marksFile()}.lock`;
-    fs.mkdirSync(path.dirname(lock), { recursive: true });
-    fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const lock = holdLock(`${marksFile()}.lock`);
     let looking = false;
     /** @type {unknown[]} */
     const whileHeld = [];
@@ -270,8 +283,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
     const [noted, sized] = ['A note is a panel.', 'A note keeps its size.'].map((text) => call(NOTE, text));
     const lines = fs.readFileSync(statePath(dir, '.ledger.jsonl'), 'utf8').split('\n');
     fs.writeFileSync(statePath(dir, '.ledger.jsonl'), [lines[0], lines[2], lines[1], ...lines.slice(3)].join('\n'));
-    const writer = statePath(dir, '.lock');
-    fs.writeFileSync(writer, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const writer = holdLock(statePath(dir, '.lock'));
     /** @type {boolean[]} */
     const markLocked = [];
     // Once the look waits on the writer lock, the landing it waits on lands

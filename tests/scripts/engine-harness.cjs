@@ -17,7 +17,8 @@
 //
 // A suite whose transactions index sets its fixture's knowledge up
 // keyword-only: the store they build is real, what it holds is the
-// assertion, and no vector fill is ever launched.
+// assertion, and no vector fill is ever launched. A read of what a store
+// holds is refused where there is none; its absence is asserted apart.
 //
 // A fixture is a git repository with its state worktree at `.leeway/`
 // (`discovery-test-utils.cjs` makes it). A world many tests start from is
@@ -44,6 +45,7 @@ const {
 } = require('./discovery-test-utils.cjs');
 const store = require('../../skills/workflow-engine/scripts/kernel/knowledge/store.cjs');
 const { findStateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 const { knowledgeFiles } = require('../../skills/workflow-engine/scripts/kernel/knowledge/files.cjs');
 
 const ENGINE = path.join(__dirname, '../../skills/workflow-engine/scripts/engine.cjs');
@@ -155,15 +157,19 @@ function unreadableKnowledge(dir) {
   fs.writeFileSync(files.store, 'not a store');
 }
 
+/** Whether the checkout holds a knowledge store. @param {string} dir */
+function hasStore(dir) {
+  return fs.existsSync(knowledgeFiles(statePath(dir)).store);
+}
+
 /**
- * The files the store holds chunks of, state-relative and sorted — none
- * without a store.
+ * The files the store holds chunks of, state-relative and sorted; refused
+ * where there is no store, which `hasStore` says.
  * @param {string} dir @returns {string[]}
  */
 function indexedFiles(dir) {
-  const file = knowledgeFiles(statePath(dir)).store;
-  if (!fs.existsSync(file)) return [];
-  return [...new Set(store.allChunks(store.loadStore(file)).map((chunk) => chunk.source_file))].sort();
+  assert.ok(hasStore(dir), `no knowledge store in ${dir}`);
+  return [...new Set(store.allChunks(store.loadStore(knowledgeFiles(statePath(dir)).store)).map((chunk) => chunk.source_file))].sort();
 }
 
 /**
@@ -307,6 +313,17 @@ function addSubmodule(dir, rel, source, { force = false } = {}) {
 }
 
 /**
+ * The lock `file` written as held by this live process — a peer holding it,
+ * to any caller.
+ * @param {string} file @returns {string} the lock
+ */
+function holdLock(file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+  return file;
+}
+
+/**
  * Each attempt this process makes at the lock `file` for the rest of the
  * test — a claim linked into place, or a lock file opened exclusively —
  * `made`, or `taken` where another holds it. `onTaken` runs at each attempt
@@ -344,8 +361,8 @@ const { call, callAsync, ok, okSections, refuses, output } = harness();
 
 module.exports = {
   ENGINE, harness,
-  call, callAsync, ok, okSections, refuses, output, lockAttempts,
-  keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+  call, callAsync, ok, okSections, refuses, output, holdLock, lockAttempts,
+  keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, git, stateGit, ledgerEntries, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
   setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,
 };

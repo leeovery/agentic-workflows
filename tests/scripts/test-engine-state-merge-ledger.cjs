@@ -33,7 +33,7 @@ const { LedgerChanged } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'))
 const { catchUpState } = require(MERGE);
 
 const { createFile, readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, blobId, commitOn, commitUnpushed, twoMachines, entry, ledger, json, mergeLeftovers, withPath, killedAfter } = require('./state-merge-world.cjs');
+const { useWorld, blobId, commitOn, commitUnpushed, pushFailing, twoMachines, entry, ledger, json, mergeLeftovers, withPath, killedAfter } = require('./state-merge-world.cjs');
 
 const world = useWorld();
 
@@ -138,6 +138,26 @@ describe('the ledger through a catch-up', () => {
 
     assert.strictEqual(tip(here.main, STATE_BRANCH), remote);
     assert.deepStrictEqual(mergeLeftovers(here.root), []);
+  });
+
+  it('holds a replacement against the wording it saw, though the merge lays a rewording the other machine pushed meanwhile before it (5.6.10)', () => {
+    const { here, there } = twoMachines(UNIT);
+    const made = { by: 'claude', who_moved_whom: 'none' };
+    /** @param {{main: string}} machine @param {string} verb @param {string[]} flags @param {Record<string, unknown>} content */
+    const write = (machine, verb, flags, content) => ok(machine.main, ['ledger', verb, 'fumi.discussion.a', ...flags], { env: SESSION, stdin: JSON.stringify({ ...made, ...content }) }).id;
+    const question = write(there, 'ask', [], { text: 'Is a note a window?' });
+    const answer = write(there, 'decide', ['--answers', question], { text: 'A note is a panel.', why: 'Light.' });
+    catchUpState(here.root);
+    const replacement = pushFailing(here, () => write(here, 'replace', ['--replaces', answer, '--reason', 'changed-mind'], { drops: ['a panel'], text: 'A note is a frameless window.', why: 'Lighter.' }));
+    const reworded = write(there, 'replace', ['--replaces', question, '--reason', 'changed-mind'], { drops: ['a window'], text: 'Is a note a window on screen?' });
+
+    catchUpState(here.root);
+
+    const order = readFile(here.root, '.ledger.jsonl').trim().split('\n').map((line) => JSON.parse(line).id);
+    assert.ok(order.findIndex((id) => id.startsWith(reworded)) < order.findIndex((id) => id.startsWith(replacement)), 'the merge did not lay the rewording first');
+    const { affected } = ok(here.main, ['ledger', 'affected', 'fumi']);
+    assert.deepStrictEqual(affected.map((/** @type {Record<string, any>} */ e) => [e.id, e.changed.map((/** @type {Record<string, any>} */ c) => [c.held_against, c.replacements.map((/** @type {{id: string}} */ r) => r.id)])]),
+      [[replacement, [[question, [reworded]]]]]);
   });
 
   it('checks the merge\'s own commit against the remote\'s ledger: one that fails lands nothing, pushes nothing, and the stop shows the line the check found', () => {

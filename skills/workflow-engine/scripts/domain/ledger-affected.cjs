@@ -13,13 +13,13 @@
 //   live confirmation that it still holds names the latest replacement on
 //   that way, each entry it is held against cleared on its own; a later
 //   replacement flags it again. A question, a finding and a decision alike
-//   (5.6.11). An entry relies only on what is current as it is written, and
-//   a decision answers only a current question (ledger-write.cjs), so every
-//   live replacement on those ways is one it never saw: written after it, or
-//   set aside while it was written. A replacement answers the question as
-//   the entry it replaced named it, so of that question's way it never saw
-//   those written after it. Its own replacement takes an entry off the
-//   list. The confirmation's write is held to the same ways (`heldAgainst`).
+//   (5.6.11). An entry relies only on what is current as it is written, a
+//   decision answers only a current question, and a replacement answers its
+//   question in the wording live as it is written (ledger-write.cjs), so
+//   every live replacement on those ways is one it never saw: written after
+//   it, or set aside while it was written — wherever a merge has laid it in
+//   the ledger. Its own replacement takes an entry off the list. The
+//   confirmation's write is held to the same ways (`heldAgainst`).
 // - What relies on an affected entry is not affected by it: only once that
 //   entry is replaced.
 // - Where an affected entry waits (5.6.12, 5.6.13): in a unit still under
@@ -39,24 +39,22 @@ const { finishedUnits } = require('./ledger-units.cjs');
 
 /**
  * An entry another is held against — one it relies on, or the question it
- * answers — and the live replacements on its way to its current form that
- * the other never saw, in the ledger's order, the latest last.
+ * answers — and the live replacements on its way to its current form, in
+ * the ledger's order, the latest last.
  * @typedef {{held_against: string, replacements: string[]}} Change
  */
 
 /**
  * What an entry is held against (5.6.10): each entry it relies on, and for
- * an answer the question it answers, each with its way, changed or not.
+ * an answer the question it answers, in the wording it answers, each with
+ * its way, changed or not.
  * @param {Folded} folded @param {string} id
  * @returns {Change[]}
  */
 function heldAgainst(folded, id) {
   const facts = factsOf(folded, id);
-  const relied = facts.relies_on.map((held) => ({ held_against: held, replacements: replacementsOf(folded, held) }));
-  if (facts.kind !== 'decision' || facts.answers === null) return relied;
-  const since = facts.event === 'replaced' ? facts.place.number : 0;
-  const rewordings = replacementsOf(folded, facts.answers).filter((r) => factsOf(folded, r).place.number > since);
-  return [...relied, { held_against: facts.answers, replacements: rewordings }];
+  const held = facts.kind === 'decision' && facts.answers !== null ? [...facts.relies_on, facts.answers] : facts.relies_on;
+  return held.map((against) => ({ held_against: against, replacements: replacementsOf(folded, against) }));
 }
 
 /**

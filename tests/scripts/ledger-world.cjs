@@ -225,9 +225,10 @@ function ledgerReadHelpers(dir) {
   function assertAgree(topic) {
     const record = read('record', UNIT, topic);
     const rows = read('map', UNIT, topic).questions;
-    const standing = rows.filter((/** @type {{stands: string}} */ r) => !['moved-away', 'elsewhere'].includes(r.stands));
+    const standing = rows.filter((/** @type {{stands: string}} */ r) => !['moved-away', 'elsewhere', 'question-set-aside'].includes(r.stands));
     assert.deepStrictEqual(ids(standing), ids(record.questions), `${topic}'s map and record show different questions`);
     for (const row of rows) {
+      if (row.stands === 'question-set-aside') assert.ok([...ids(record.decisions), ...ids(record.other_topics)].includes(row.id), `${topic}'s record does not show ${row.id}, which its map shows as a row of its own`);
       for (const { id } of row.answers) {
         const elsewhere = record.other_topics.find((/** @type {{id: string}} */ o) => o.id === id);
         const shown = standing.includes(row) ? elsewhere?.named.includes(row.id) : elsewhere !== undefined;

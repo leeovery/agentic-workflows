@@ -34,6 +34,8 @@ const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
+const MINT_COPY = '.knowledge/records/mint/mint.md';
+
 const dir = useCopiesWorld();
 afterEach(clearSeams);
 
@@ -207,8 +209,30 @@ describe('a record\'s copy (5.8.12, 22.6.6, 22.6.7)', () => {
     ask('mint.specification', 'Does the spec cover a second display?');
 
     assert.match(/** @type {string} */ (copy('.knowledge/records/mint.md')), /^# mint, at the unit's level\n\n## Does the spec cover a second display\?\n\nAsked by Claude\. Entry \w+\.\n\nNot decided yet\.\n$/);
-    assert.match(/** @type {string} */ (copy('.knowledge/records/mint/mint.md')), /^# mint \/ mint\n\n## Does Mint float its notes\?\n/);
+    assert.match(/** @type {string} */ (copy(MINT_COPY)), /^# mint \/ mint\n\n## Does Mint float its notes\?\n/);
     assert.deepStrictEqual(identities(), ['mint/record/.unit', 'mint/record/mint']);
+  });
+
+  it('shows another unit\'s replacement of an answer in both places: the current answer where the answer stands, and in the record of the topic it was made on, from there (5.8.19)', () => {
+    const { decision } = floatingPanel();
+    createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+
+    const framed = change('mint.discussion.mint', decision, { text: 'A framed panel.', why: 'Mint frames its notes.' }).id;
+
+    assert.match(/** @type {string} */ (copy(NOTE_COPY)), new RegExp(`^A framed panel\\.\\n\\nWhy: Mint frames its notes\\.\\n\\nDecided by Claude\\. Entry ${framed}\\.$`, 'm'));
+    assert.strictEqual(copy(MINT_COPY), [
+      '# mint / mint',
+      '',
+      '## From fumi / note-window: A framed panel.',
+      '',
+      'A framed panel.',
+      '',
+      'Why: Mint frames its notes.',
+      '',
+      `Decided by Claude, in fumi / note-window. Entry ${framed}.`,
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY, MINT_COPY]);
   });
 });
 
@@ -278,11 +302,11 @@ describe('a place set aside (5.8.17)', () => {
     ask('mint.discussion.mint', 'Does Mint float its notes?');
 
     ok(dir(), ['workunit', 'cancel', 'mint']);
-    assert.strictEqual(copy('.knowledge/records/mint/mint.md'), null);
+    assert.strictEqual(copy(MINT_COPY), null);
     assert.deepStrictEqual(indexedFiles(dir()), []);
     ok(dir(), ['workunit', 'complete', 'mint', '-m', 'workflow(mint): complete']);
-    assert.match(/** @type {string} */ (copy('.knowledge/records/mint/mint.md')), /^## Does Mint float its notes\?$/m);
-    assert.deepStrictEqual(indexedFiles(dir()), ['.knowledge/records/mint/mint.md']);
+    assert.match(/** @type {string} */ (copy(MINT_COPY)), /^## Does Mint float its notes\?$/m);
+    assert.deepStrictEqual(indexedFiles(dir()), [MINT_COPY]);
   });
 
   it('loses its copy while its topic is postponed, and has it back once pulled back into its own epic (5.S32)', async () => {

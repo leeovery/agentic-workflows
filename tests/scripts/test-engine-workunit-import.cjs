@@ -14,7 +14,7 @@ const os = require('os');
 const path = require('path');
 
 const {
-  git, bareRepo, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles,
+  git, bareRepo, stateGit, commitAll, setupFixtureAt, ok, refuses, keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
 } = require('./engine-harness.cjs');
 
 function writeFile(dir, rel, content) {
@@ -288,7 +288,7 @@ describe('engine workunit import — refusals leave nothing behind', () => {
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/ledger/imports')));
     assert.strictEqual(readManifest(fix, 'ledger').imports, undefined);
     assert.strictEqual(commitsSinceInit(fix), '0');
-    assert.deepStrictEqual(indexedFiles(fix.project), []);
+    assert.strictEqual(hasStore(fix.project), false);
   });
 
   it('a directory among the paths refuses before any copy — no half-landed batch', () => {

@@ -26,7 +26,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { lockAttempts, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
+const { holdLock, lockAttempts, ok, refuses, stateGit, statePath, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
@@ -35,7 +35,6 @@ const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/led
 const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
 const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const claudeCall = require(path.join(SCRIPTS, 'kernel/claude-call.cjs'));
-const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 const SPEC = `${UNIT}.specification`;
 const DETACHED_MS = 20000;
@@ -112,13 +111,6 @@ function eventOf(short) {
 /** What each call handed the stub. @returns {{argv: string[], input: string}[]} */
 function calls() {
   return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
-}
-
-/** The writer lock written as held by this live process — a peer holding it, to any other caller. @returns {string} the lock */
-function holdWriterLock() {
-  const lock = statePath(dir, '.lock');
-  fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-  return lock;
 }
 
 /** The state branch's tip. */
@@ -295,7 +287,7 @@ describe('the one-decision check, as a decision is written (5.5.2, 5.5.3, 16.19.
 
   it('runs before the writer lock: a peer holding the lock never holds the call up — a decision holding several rules is refused without trying the lock, and one holding one is judged before the write waits its turn', (t) => {
     const question = ask();
-    const lock = holdWriterLock();
+    const lock = holdLock(statePath(dir, '.lock'));
     const env = armed({ [BOTH]: rules(PANEL, SYNC), [PANEL]: rules(PANEL) });
     /** @type {{calls: number, entries: number}[]} */
     const whileHeld = [];
@@ -386,9 +378,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
   it('works one at a time: a second check finds the first\'s claim and ends at once, appending nothing; a claim whose owner is gone stands for no one', () => {
     const decision = decide(ask(), PANEL);
-    const claim = statePath(dir, '.cache', '.late-check');
-    fs.mkdirSync(path.dirname(claim), { recursive: true });
-    fs.writeFileSync(claim, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
+    const claim = holdLock(statePath(dir, '.cache', '.late-check'));
     const before = { ledger: ledgerText(), calls: calls().length };
 
     assert.deepStrictEqual(lateCheck({ '': rules(PANEL) }), { ok: true, ran: false });
@@ -427,7 +417,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
   it('runs detached: the launch hands the check a process of its own, which records its result and lets its claim go after the launch has answered', async () => {
     const decision = decide(ask(), PANEL);
     // A peer holds the writer lock until the launch has answered: a check the launch waited on would wait on the lock with it, and never record.
-    const lock = holdWriterLock();
+    const lock = holdLock(statePath(dir, '.lock'));
     const saved = { ...process.env };
     Object.assign(process.env, armed({ '': rules(PANEL, SYNC) }));
     try {

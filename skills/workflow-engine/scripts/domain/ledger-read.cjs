@@ -24,9 +24,10 @@
 //   elsewhere that were made there, that it relies on, that its merges that
 //   hold went into, or that answer its questions (5.8.4, 5.8.19). `ledger
 //   map` reads a topic's questions as they stand now, each answered as its
-//   record shows it, and those standing elsewhere that it shows for what
-//   was made on it. A unit or topic that is not live has no current entry
-//   to show.
+//   record shows it, those standing elsewhere that it shows for what was
+//   made on it, and each current answer placed on it whose question is set
+//   aside, a row headed by the answer itself. A unit or topic that is not
+//   live has no current entry to show.
 // - Every id is shown in its short form (5.2.1), and an entry shows its line
 //   as written but its schema version; a decision the late one-decision
 //   check judged shows beside it what the check found, `late_check`, one

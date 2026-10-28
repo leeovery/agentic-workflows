@@ -35,7 +35,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 
-const { git, initRepo, testIdentity, lockAttempts, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, ledgerEntries, bareRepo, remoteTip } = require('./engine-harness.cjs');
+const { git, initRepo, testIdentity, holdLock, lockAttempts, ok, refuses, output, setupGitFixture, cleanupFixture, statePath, ledgerEntries, bareRepo, remoteTip } = require('./engine-harness.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
@@ -44,13 +44,12 @@ const LEDGER_MODULE = path.join(SCRIPTS, 'domain/ledger.cjs');
 const CONVERSION_MODULE = path.join(SCRIPTS, 'domain/ledger-conversion.cjs');
 const { checkLedger, commitUncommitted, withLedger, appendEntry, ledgerStopSurface } = require(LEDGER_MODULE);
 const { LEDGER, LEDGER_VERSION, SCHEMA, LedgerLineError, LedgerNewer, validEvent, parseEntry } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
-const { ID_LENGTH, SHORT_MIN, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { ID_LENGTH, newId, shortIds, resolveId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged, checkLedgerCommit, keptStop } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
 const { convertLedger } = require(CONVERSION_MODULE);
 const { STATE_BRANCH, createState, withStateLock, commitState, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { ledgerStop } = require(path.join(SCRIPTS, 'domain/projections/ledger.cjs'));
 const { READ_BUDGET_BYTES } = require(path.join(SCRIPTS, 'kernel/git.cjs'));
-const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 
 /** @type {string} */
 let world;
@@ -164,14 +163,6 @@ function traced(fn) {
   }
 }
 
-/** The lock file written as held by this live process — a peer holding the writer lock, to any caller. @param {string} root */
-function holdLock(root) {
-  const lock = path.join(root, '.lock');
-  fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
-  return lock;
-}
-
-
 describe('the events and their schemas', () => {
   const HEADER = ['v', 'id', 'event', 'unit', 'topic', 'phase', 'session', 'at'];
   const BY = ['by', 'who_moved_whom'];
@@ -281,7 +272,6 @@ describe('ids', () => {
 
     assert.deepStrictEqual([...shorts], [[twins[0], 'Xk3vQ9Za'], [twins[1], 'Xk3vQ9Zb'], [lone, 'Xk3vQ9a']]);
     assert.strictEqual(shortIds(['Ab0000000000000000000']).get('Ab0000000000000000000'), 'Ab0000');
-    assert.strictEqual(SHORT_MIN, 6);
   });
 
   it('resolves a prefix as git resolves a short hash: the one id it begins, refused where it begins none or several, or is under four characters', () => {
@@ -474,7 +464,7 @@ describe('the append', () => {
     const { root } = project();
     appendEntry(root, question(), []);
     const before = ledgerText(root);
-    const lock = holdLock(root);
+    const lock = holdLock(path.join(root, '.lock'));
     /** @type {string[]} */
     const whileHeld = [];
     let released = 0;
@@ -530,6 +520,29 @@ describe('the append', () => {
     writeLedger(root, `${b}\n${a}\n${c}\n${a}\n`);
     assert.deepStrictEqual(tail(), { entries: 0, warnings: [] });
     assert.strictEqual(tip(main, STATE_BRANCH), committed);
+  });
+
+  it('commits nothing of a tail holding a line that is no entry — not JSON, JSON that is no entry, an id an earlier line holds, a last line with no newline — refused by the line the reads stop on; a tail of entries alone commits (4.7.8)', () => {
+    const { main, root } = project();
+    const [first] = threeCommitted(root);
+    const committed = [ledgerText(root), tip(main, STATE_BRANCH)];
+    const kept = JSON.stringify(validEvent({ v: 1, id: newId(), at: AT, ...question({ text: 'Left by a kill?' }) }));
+    const tail = () => withStateLock(root, () => commitUncommitted(root, 'state: the tail'));
+    for (const [after, refusal] of /** @type {[string, RegExp][]} */ ([
+      ['oops, not JSON\n', /^line 5 of the ledger is not JSON: oops, not JSON$/],
+      ['{"v":1,"id":"AAAAAAAAAAAAAAAAAAAAA","event":"decided"}\n', /^line 5 of the ledger is no ledger entry: /],
+      [`${first}\n`, /^line 5 of the ledger repeats the id \w+, which an earlier line holds$/],
+      [`${kept}\n`, /^line 5 of the ledger repeats the id \w+, which an earlier line holds$/],
+      ['{"v":1,"id":"BBBB', /^line 5 of the ledger is not JSON: /],
+      [kept.replace(/"id":"\w+"/, `"id":"${newId()}"`), /^line 5 of the ledger is unfinished: it has no newline$/],
+    ])) {
+      writeLedger(root, `${committed[0]}${kept}\n${after}`);
+      assert.throws(tail, { message: refusal }, after);
+      assert.strictEqual(tip(main, STATE_BRANCH), committed[1], `committed a tail ending ${after}`);
+    }
+    writeLedger(root, `${committed[0]}${kept}\n`);
+    assert.deepStrictEqual(tail(), { entries: 1, warnings: [] });
+    assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:${LEDGER}`]), ledgerText(root));
   });
 });
 
@@ -597,7 +610,7 @@ describe('the append-only check on a read', () => {
       'exec "$real" "$@"',
       '',
     ].join('\n'), { mode: 0o755 });
-    const attempts = lockAttempts(t, holdLock(root), () => {
+    const attempts = lockAttempts(t, holdLock(path.join(root, '.lock')), () => {
       throw new Error('the check tried the writer lock');
     });
     const { PATH } = process.env;
@@ -616,7 +629,7 @@ describe('the append-only check on a read', () => {
   it('makes a failed check again under the writer lock before it stops: a landing that rewrote the file before moving the branch passes once it lands', (t) => {
     const { root } = project();
     const [a, b] = threeCommitted(root);
-    const lock = holdLock(root);
+    const lock = holdLock(path.join(root, '.lock'));
     writeLedger(root, `${b}\n${a}\n`);
     // The landing, holding the lock, moves the branch and lets go once the check has found the lock held.
     const attempts = lockAttempts(t, lock, () => {
@@ -651,7 +664,7 @@ describe('the append-only check on a read', () => {
   it('stops once it holds the lock where the ledger is still not as committed', (t) => {
     const { root } = project();
     const [a, b] = threeCommitted(root);
-    const lock = holdLock(root);
+    const lock = holdLock(path.join(root, '.lock'));
     writeLedger(root, `${b}\n${a}\n`);
     const attempts = lockAttempts(t, lock, () => fs.unlinkSync(lock));
 

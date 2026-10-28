@@ -29,19 +29,23 @@
 //   uncommitted are committed whole by the next commit of the ledger: a
 //   write's, or boot's before its catch-up (4.7.8). Boot counts them past
 //   the ledger the branch holds once a landing a kill cut short is
-//   finished, since that landing rewrote the file first.
+//   finished, since that landing rewrote the file first, and commits them
+//   only where each is a whole line that reads as an entry with an id no
+//   earlier line holds: a line written outside the engine, committed, would
+//   stop every read on every clone. Else it commits nothing and says which
+//   line the reads stop on.
 // - Every stop on the ledger is kept for its screen (`render ledger-stop`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
-const { fdLines, lineAt, endsWithNewline, fileChunks, linesOf } = require('../kernel/file-stream.cjs');
+const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
 const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
-const { idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
+const { idOf, idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
 const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock, commitHere } = require('./state-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -94,33 +98,55 @@ function checkLedger(root, notes) {
   });
 }
 
+/** A line read as an entry, refused where it is none. @typedef {(line: string, number: number) => {id?: unknown}} EntryReader */
+
 /**
  * How many entries the ledger holds past the one the state branch last
- * committed, where it starts with that one. Takes no lock.
- * @param {string} root
+ * committed, where it starts with that one, each line read by `read`.
+ * Refuses, naming the line, one `read` refuses, an id an earlier line
+ * holds, and a last line with no newline. Takes no lock.
+ * @param {string} root @param {EntryReader} read
  */
-function uncommittedEntries(root) {
+function uncommittedEntries(root, read) {
   const [committed] = ledgerBlobs(checkedTree(root).git, [BRANCH_REF]);
   const file = ledgerFile(root);
   const from = committed?.size ?? 0;
   if (!fs.existsSync(file) || fs.statSync(file).size <= from || !fileStartsWith(file, committed)) return 0;
-  let entries = 0;
-  for (const _line of linesOf(fileChunks(file, from))) entries += 1;
+  const ids = new Set();
+  let [number, entries] = [0, 0];
+  const fd = fs.openSync(file, 'r');
+  try {
+    for (const { text, span } of fdLines(fd)) {
+      number += 1;
+      if (span.offset < from) {
+        ids.add(idOf(text));
+        continue;
+      }
+      const { id } = read(text, number);
+      if (ids.has(id)) throw new Error(`line ${number} of the ledger repeats the id ${id}, which an earlier line holds`);
+      ids.add(id);
+      entries += 1;
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  if (!endsWithNewline(file)) throw new Error(`line ${number} of the ledger is unfinished: it has no newline`);
   return entries;
 }
 
 /**
- * Commit the entries past the committed ledger, pushing nothing: how many,
- * and what the commit and a landing it finished said. The caller holds the
- * writer lock.
- * @param {string} root @param {string} message
+ * Commit the entries past the committed ledger, pushing nothing, each line
+ * read by `read` — today's schema unless given: how many, and what the
+ * commit and a landing it finished said. Commits nothing where a line is
+ * refused, refusing it. The caller holds the writer lock.
+ * @param {string} root @param {string} message @param {EntryReader} [read]
  * @returns {{entries: number, warnings: string[]}}
  */
-function commitUncommitted(root, message) {
-  if (uncommittedEntries(root) === 0) return { entries: 0, warnings: [] };
+function commitUncommitted(root, message, read = parseEntry) {
+  if (uncommittedEntries(root, read) === 0) return { entries: 0, warnings: [] };
   const worktree = openWorktree(root);
   const warnings = worktree.opened ? finishLanding(worktree, STATE_BRANCH) : [];
-  const entries = uncommittedEntries(root);
+  const entries = uncommittedEntries(root, read);
   if (entries > 0) warnings.push(...commitHere(root, [LEDGER], message).warnings);
   return { entries, warnings };
 }

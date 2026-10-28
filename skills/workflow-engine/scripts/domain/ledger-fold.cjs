@@ -78,6 +78,10 @@
 //   made on the topic, or that an answer placed on the topic answers, shows
 //   as standing elsewhere. A row of a question standing off the topic shows
 //   the answers placed on the topic that no question standing on it shows.
+//   A current answer placed on the topic whose question is set aside, which
+//   no question's row shows, is a row of its own, headed by its own text, as
+//   the record shows it — so a map shows every current answer placed on its
+//   topic.
 // - A record: the current entries standing in a unit or a topic, the moves
 //   and merges made there while live, and the current entries standing
 //   elsewhere that were made there, that its entries rely on, that its
@@ -626,8 +630,9 @@ function showsIn(folded, id) {
  * Where a question stands on its map: open, answered, merged — answered by
  * the entry another topic holds, which a merge took it into (5.5.5) — moved
  * away to another topic, or standing elsewhere, shown for what was placed on
- * the topic (5.8.19).
- * @typedef {'open'|'answered'|'merged'|'moved-away'|'elsewhere'} Stands
+ * the topic (5.8.19); or, on the row of an answer whose question is set
+ * aside, that.
+ * @typedef {'open'|'answered'|'merged'|'moved-away'|'elsewhere'|'question-set-aside'} Stands
  */
 
 /**
@@ -698,6 +703,16 @@ function awayRow(folded, id, map, answers) {
   return shows ? { ...row, stands: 'elsewhere', moved_to: null, stands_in: standing } : null;
 }
 
+/**
+ * A current answer placed on a map's topic whose question is set aside, as
+ * a row of its own, headed by itself.
+ * @param {string} id
+ * @returns {MapRow}
+ */
+function aloneRow(id) {
+  return { id, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: null, answers: [], part_of: null, parts: [] };
+}
+
 /** Whether `id` stands at `unit` and, given one, `topic`. @param {Folded} folded @param {string} id @param {string} unit @param {string|null} topic */
 function standsAt(folded, id, unit, topic) {
   return inPlace(standingOf(folded, id), unit, topic);
@@ -706,10 +721,11 @@ function standsAt(folded, id, unit, topic) {
 /**
  * A topic's map (5.8.5), in the ledger's order: every current question
  * standing on it; every current question standing on another topic of its
- * unit that the unit moved away from it by a live move; and every other
+ * unit that the unit moved away from it by a live move; every other
  * current question standing elsewhere that was made on it, or that an
  * answer placed on it and shown by no question standing there answers
- * (5.8.19). None on a topic that is not live.
+ * (5.8.19); and every current answer placed on it that no question's row
+ * shows, its question set aside. None on a topic that is not live.
  * @param {Folded} folded @param {string} unit @param {string} topic
  * @returns {MapRow[]}
  */
@@ -726,7 +742,11 @@ function mapOf(folded, unit, topic) {
     const row = standing.get(id) ?? awayRow(folded, id, map, answersOf(folded, id).filter(unshownHere));
     if (row !== null) rows.push(row);
   }
-  return rows;
+  const onRows = new Set(rows.flatMap((row) => row.answers));
+  for (const [id, facts] of folded.facts) {
+    if (facts.kind === 'decision' && !onRows.has(id) && isCurrent(folded, id) && placesOf(folded, id).some((place) => samePlace(place, map))) rows.push(aloneRow(id));
+  }
+  return rows.sort((a, b) => factsOf(folded, a.id).place.number - factsOf(folded, b.id).place.number);
 }
 
 /**
