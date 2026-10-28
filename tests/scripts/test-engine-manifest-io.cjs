@@ -482,8 +482,9 @@ const ANSWERS_AT_ONCE_MS = 10000;
 /**
  * One call per entry of the writer lock's exempt table, each one that
  * succeeds in the epic fixture with a specification beside its research.
- * Boot is the table's one verb that waits on the lock, around each state
- * write it makes, so it has none.
+ * Boot and the ledger's writes are the table's verbs that wait on the lock,
+ * each taking it itself around the state writes it makes, so they have none:
+ * the ledger's suite holds its writes to waiting.
  */
 const EXEMPT_CALLS = [
   ['knowledge', 'status'],
@@ -569,10 +570,10 @@ describe('engine writes take the writer lock', () => {
     assert.strictEqual(fs.readFileSync(lock, 'utf8'), live(), 'the holder\'s claim untouched');
   });
 
-  it('every exempt command answers at once while a live holder has the lock — none but boot takes it anywhere', () => {
+  it('every exempt command answers at once while a live holder has the lock — none but boot and the ledger take it anywhere', () => {
     const entries = (/** @type {string[][]} */ calls) => [...new Set(calls.map(([command, sub]) => (WRITER_LOCK_EXEMPT[command] === '*' ? command : `${command} ${sub}`)))];
     const table = Object.entries(WRITER_LOCK_EXEMPT).flatMap(([command, subs]) => (subs === '*' ? [command] : subs.map((sub) => `${command} ${sub}`)));
-    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot'].sort(), table.sort(), 'a call below for every exempt entry, boot aside');
+    assert.deepStrictEqual([...entries(EXEMPT_CALLS), 'boot', 'ledger'].sort(), table.sort(), 'a call below for every exempt entry, boot and the ledger aside');
     assert.deepStrictEqual(Object.keys(WRITER_LOCK_EXEMPT).filter((command) => !Object.hasOwn(COMMANDS, command)), [],
       'the table names dispatched commands alone');
     const manifest = readManifest(dir, 'payments');
