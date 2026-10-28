@@ -18,11 +18,12 @@
 //   Content never carries a link, nor anything the engine gives. A link names
 //   an entry by a prefix of its id, resolved as git resolves a short hash
 //   (5.3.5), and must name what it links to: a decision answers a question
-//   (5.5.1), and only a question moves or merges. An entry is replaced or
-//   held only while current — a replacement names one entry, its siblings
-//   untouched (5.3.13) — a question is answered, has parts, moves or merges
-//   only while current, and a merge goes into a current decision — current
-//   by the one rule every read decides by (ledger-fold.cjs).
+//   (5.5.1), and only a question moves or merges. An entry is replaced,
+//   held or relied on only while current — a replacement names one entry,
+//   its siblings untouched (5.3.13) — a question is answered, has parts,
+//   moves or merges only while current, and a merge goes into a current
+//   decision — current by the one rule every read decides by
+//   (ledger-fold.cjs).
 // - Whose: a decision answers, and a move or a merge takes, a question of the
 //   write's own unit alone, while another unit's entry may be replaced
 //   (5.6.1) or held. An entry is the unit's, and stands on the topic, that
@@ -34,16 +35,21 @@
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
 //   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
-//   a held entry relies on what the replacement replaced, or on an earlier
-//   entry of its chain (5.6.10); a replacement's cause is never what it
-//   replaces, a new fact's being a finding and another topic's a decision
-//   standing on a topic other than the one the replaced entry stands on
-//   (5.3.8).
+//   a hold names the latest live replacement on the way to its current
+//   form, past each merge that holds, of an entry the held entry relies on
+//   (5.6.10); a replacement's cause is never what it replaces, a new fact's
+//   being a finding and another topic's a decision standing on a topic
+//   other than the one the replaced entry stands on (5.3.8); who moved whom
+//   is what the departure rule allows (ledger-verdicts.cjs) — never the
+//   person's answer standing over Claude's lean on an entry Claude made,
+//   and on the person's replacement of a decision, what its reason and the
+//   entry it replaces allow.
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
-//   content leaves it out, the replaced entry's product-wide mark (5.2.5); a
-//   decision's being unchecked, where the one-decision check could not
-//   judge it (ledger-one-decision.cjs).
+//   content leaves them out, the replaced entry's product-wide mark (5.2.5)
+//   and who moved whom where the departure rule settles it; a decision's
+//   being unchecked, where the one-decision check could not judge it
+//   (ledger-one-decision.cjs).
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
@@ -70,12 +76,13 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, standingOf, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, replacedChain } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
+const { derivedMove, movedRefusal } = require('./ledger-verdicts.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -178,10 +185,8 @@ function link(field, what, { required = false, current = false, owner = null } =
   return { field, shown: '<id>', required, many: false, names: what, current, owner };
 }
 
-/** Links to any number of entries. @param {string} field @param {Names} what @returns {Flag} */
-function links(field, what) {
-  return { field, shown: '<id>', required: false, many: true, names: what, current: false, owner: null };
-}
+/** The links to the current entries an entry relies on, any number of them. @type {Flag} */
+const RELIES_ON = Object.freeze({ field: 'relies_on', shown: '<id>', required: false, many: true, names: AN_ENTRY, current: true, owner: null });
 
 /** A plain value, naming no entry. @param {string} field @param {string} shown @returns {Flag} */
 function plain(field, shown) {
@@ -202,14 +207,14 @@ function writeOf(event, flags, { fromTopic = false, checkGiven = nothingToCheck,
 
 /** @type {Readonly<Record<string, Write>>} */
 const WRITES = Object.freeze({
-  ask: writeOf('asked', [link('part_of', A_QUESTION, { current: true }), links('relies_on', AN_ENTRY)]),
-  find: writeOf('found', [links('relies_on', AN_ENTRY)]),
-  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, current: true, owner: 'unit' }), links('relies_on', AN_ENTRY)]),
+  ask: writeOf('asked', [link('part_of', A_QUESTION, { current: true }), RELIES_ON]),
+  find: writeOf('found', [RELIES_ON]),
+  decide: writeOf('decided', [link('answers', A_QUESTION, { required: true, current: true, owner: 'unit' }), RELIES_ON]),
   replace: writeOf('replaced', [
     link('replaces', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
     plain('reason', `<${REASONS.join('|')}>`),
     link('cause', AN_ENTRY),
-    links('relies_on', AN_ENTRY),
+    RELIES_ON,
   ], { checkGiven: checkCauseGiven, checkLinked: checkCause }),
   hold: writeOf('still-holds', [
     link('entry', AN_ENTRY, { required: true, current: true, owner: 'topic' }),
@@ -504,17 +509,21 @@ function checkCause(linked, read) {
 }
 
 /**
- * Refuse a confirmation of an entry that relies on nothing the replacement
- * replaced, down its chain (5.6.10).
+ * Refuse a confirmation of an entry after anything but the latest live
+ * replacement on the way to its current form of an entry it relies on
+ * (5.6.10): one on no such way, or an earlier one, naming the latest.
  * @param {Linked} linked @param {Folded} read
  */
 function checkHeld(linked, read) {
-  const { facts } = read;
   const [entry, after] = /** @type {string[]} */ ([linked.entry, linked.after]);
-  const chain = replacedChain(read, after);
-  if (/** @type {IdFacts} */ (facts.get(entry)).relies_on.some((id) => chain.includes(id))) return;
-  const short = (/** @type {string} */ id) => shortId(id, facts.keys());
-  throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} replaced — it holds an entry relying on what the replacement replaced, or on an earlier entry of its chain`);
+  const ways = factsOf(read, entry).relies_on.map((relied) => ({ relied, way: replacementsOf(read, relied) }));
+  if (ways.some(({ way }) => way.at(-1) === after)) return;
+  const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+  const passed = ways.find(({ way }) => way.includes(after));
+  if (passed === undefined) {
+    throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} changed — it holds an entry relying on one whose way to its current form the replacement is on`);
+  }
+  throw new Error(`ledger hold --after names ${short(after)}, an earlier change on the way of ${short(passed.relied)} — a hold names the latest: ${short(/** @type {string} */ (passed.way.at(-1)))}`);
 }
 
 /**
@@ -631,8 +640,10 @@ function contentFields(verb, write, given, replaced) {
  * it is made, the session, and its content in the shape of the kind it
  * writes, a replacement reading the kind it replaces from the ledger.
  * Refuses argv the verb does not take, a place it cannot write, no session,
- * a value its event cannot hold, stdin holding no JSON object, and content
- * the kind does not hold.
+ * a value its event cannot hold, stdin holding no JSON object, content the
+ * kind does not hold, and who moved whom the departure rule does not allow,
+ * which it sets where the writer leaves it out and the rule allows one
+ * value alone.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin @param {string[]} warnings
  * @returns {Request}
  */
@@ -652,10 +663,15 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const content = stdinContent(verb, stdin());
   const before = readBefore(at, warnings);
   const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, before()) : null;
+  const reason = replaced === null ? null : /** @type {string[]} */ (given.get('reason'))[0];
+  const derived = derivedMove(content, reason, replaced);
+  const fields = contentFields(verb, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
+  const unmoved = movedRefusal(fields, reason, replaced);
+  if (unmoved !== null) throw new Error(`ledger ${verb}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   return {
     verb, write, at, session, given,
     kind: replaced === null ? entryKind({ event: write.event }) : replaced.kind,
-    content: contentFields(verb, write, content, replaced),
+    content: fields,
     unchecked: true,
     before,
   };

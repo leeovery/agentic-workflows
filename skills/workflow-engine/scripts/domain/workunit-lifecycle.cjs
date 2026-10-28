@@ -28,7 +28,6 @@ const {
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
-const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { addItem } = require('./discovery-map.cjs');
 const { revertJoins } = require('./roadmap.cjs');
 const { todayStamp } = require('./dates.cjs');
@@ -96,7 +95,6 @@ function completeWorkUnit(cwd, workUnit, { message }) {
   const warnings = [];
   if (previous === 'cancelled') {
     reindexWorkUnit(cwd, workUnit, warnings);
-    refreshLedgerCopies(cwd, warnings);
   }
 
   purgeWorkUnitCache(cwd, workUnit);
@@ -134,7 +132,6 @@ function cancelWorkUnit(cwd, workUnit) {
   /** @type {string[]} */
   const warnings = [];
   syncKnowledge(cwd, [{ remove: { workUnit } }], warnings);
-  refreshLedgerCopies(cwd, warnings);
 
   // The cancel-revert hop, whole-unit form: every roadmap item joined to
   // the unit returns to waiting (the delivery attempt is over; the record
@@ -206,7 +203,6 @@ function reactivateWorkUnit(cwd, workUnit) {
   const warnings = [];
   if (previous === 'cancelled') {
     reindexWorkUnit(cwd, workUnit, warnings);
-    refreshLedgerCopies(cwd, warnings);
   }
 
   const outcome = commitStateTail(cwd, workUnit, `workflow(${workUnit}): reactivate work unit`, warnings);

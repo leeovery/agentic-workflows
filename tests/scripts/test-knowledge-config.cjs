@@ -1019,20 +1019,22 @@ describe('detectProjectInit', () => {
 
   it('reports all-absent when the directory does not exist', () => {
     const result = detectProjectInit(knowledgeFiles(tmpDir));
-    assert.strictEqual(result.dirExists, false);
     assert.strictEqual(result.configExists, false);
     assert.strictEqual(result.storeExists, false);
     assert.strictEqual(result.fullyInitialised, false);
     assert.strictEqual(result.partiallyInitialised, false);
   });
 
-  it('reports partiallyInitialised when the directory exists but files are missing', () => {
-    const dir = knowledgeFiles(tmpDir).dir;
-    fs.mkdirSync(dir, { recursive: true });
-    const result = detectProjectInit(knowledgeFiles(tmpDir));
-    assert.strictEqual(result.dirExists, true);
+  it('reports nothing set up where the directory holds only the ledger\'s copies, which live there either way (4.11.10)', () => {
+    const files = knowledgeFiles(tmpDir);
+    fs.mkdirSync(path.join(files.dir, 'records', 'fumi'), { recursive: true });
+    fs.writeFileSync(path.join(files.dir, 'records', 'fumi', 'note-window.md'), '# fumi / note-window\n');
+    fs.writeFileSync(path.join(files.dir, 'product.md'), '# The product record\n');
+    fs.writeFileSync(files.copiesOutdated, 'token');
+    fs.writeFileSync(files.copiesLive, '{}');
+    const result = detectProjectInit(files);
     assert.strictEqual(result.fullyInitialised, false);
-    assert.strictEqual(result.partiallyInitialised, true);
+    assert.strictEqual(result.partiallyInitialised, false);
   });
 
   it('reports partiallyInitialised when only some files are present', () => {
