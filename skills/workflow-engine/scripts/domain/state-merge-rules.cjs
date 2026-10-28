@@ -28,7 +28,11 @@
 //   ledger's rule, so independent appends never stop the merge. Any other
 //   divergence on one field, two lists both sides created among them, is a
 //   conflict (4.7.6), resolved by a pick. A pick answers one choice: the
-//   field, and the two values it was between.
+//   field, and the two values it was between. One field is never a choice:
+//   the project manifest's `project_id`, which each clone mints as it sets
+//   the state up, so two set up before either pushed hold one each; where
+//   the sides differ the remote's stands, with or without an ancestor
+//   (4.7.12, 16.13.5).
 // - Any other JSON file is kept whole, never merged line by line: a text
 //   merge of JSON can leave neither side's data.
 // ---------------------------------------------------------------------------
@@ -43,6 +47,7 @@ const MIGRATIONS = '.state/migrations';
 // a dot, so a hidden folder's file is never a unit's manifest.
 const MANIFEST = /^(?:[^./][^/]*\/)?manifest\.json$/;
 const JSON_FILE = /\.jsonl?$/;
+const PROJECT_KEY = ['manifest.json', 'project_id'];
 
 /** @typedef {'ledger'|'migrations'|'manifest'|'whole'|'file'} MergeRule */
 
@@ -216,7 +221,7 @@ function choiceId({ manifest, uncommitted, field, local, remote }) {
 
 /** @typedef {(choice: Choice) => 'local'|'remote'|null} PickOf */
 
-/** @typedef {{conflicts: FieldConflict[], pickOf: PickOf}} FieldMerge */
+/** @typedef {{conflicts: FieldConflict[], pickOf: PickOf, remoteStands: (field: string[]) => boolean}} FieldMerge */
 
 /**
  * One field merged, recursing into objects both sides hold.
@@ -227,6 +232,7 @@ function choiceId({ manifest, uncommitted, field, local, remote }) {
 function mergeValue(base, local, remote, field, merge) {
   if (same(local, remote) || same(local, base)) return remote;
   if (same(remote, base)) return local;
+  if (merge.remoteStands(field)) return remote;
   if (isObject(local) && isObject(remote)) return mergeObject(base, local, remote, field, merge);
   const appended = bothAppended(base, local, remote);
   if (appended !== undefined) return appended;
@@ -255,17 +261,18 @@ function mergeObject(base, local, remote, field, merge) {
 }
 
 /**
- * A manifest merged field by field against the common ancestor (undefined
- * where the manifest is new on both sides). Each conflict carries the pick
- * `pickOf` names for its choice, and takes it; a conflict with no pick takes
- * the remote's value for now, and stops the merge.
+ * The manifest `file` merged field by field against the common ancestor
+ * (undefined where the manifest is new on both sides). Each conflict carries
+ * the pick `pickOf` names for its choice, and takes it; a conflict with no
+ * pick takes the remote's value for now, and stops the merge.
+ * @param {string} file  from the state root
  * @param {unknown} base @param {Record<string, unknown>} local @param {Record<string, unknown>} remote
  * @param {PickOf} [pickOf]
  * @returns {{value: unknown, conflicts: FieldConflict[]}}
  */
-function mergeManifest(base, local, remote, pickOf = () => null) {
+function mergeManifest(file, base, local, remote, pickOf = () => null) {
   /** @type {FieldMerge} */
-  const merge = { conflicts: [], pickOf };
+  const merge = { conflicts: [], pickOf, remoteStands: (field) => same([file, ...field], PROJECT_KEY) };
   const value = mergeValue(base, local, remote, [], merge);
   return { value, conflicts: merge.conflicts };
 }

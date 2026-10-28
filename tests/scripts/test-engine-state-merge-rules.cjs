@@ -49,8 +49,8 @@ describe('the rules each file merges by', () => {
     assert.deepStrictEqual(added('001\n074\n', '073\n001\n', migrationId), ['073']);
   });
 
-  /** @param {unknown} base @param {any} local @param {any} remote @param {any} [pickOf] */
-  const merged = (base, local, remote, pickOf) => mergeManifest(base, local, remote, pickOf);
+  /** A unit's manifest merged. @param {unknown} base @param {any} local @param {any} remote @param {any} [pickOf] */
+  const merged = (base, local, remote, pickOf) => mergeManifest('pay/manifest.json', base, local, remote, pickOf);
 
   it('recurses into nested objects, a field each side changed kept from that side', () => {
     const out = merged({ a: { x: 1, y: 1 }, b: 1 }, { a: { x: 2, y: 1 }, b: 1 }, { a: { x: 1, y: 3 }, b: 1 });
@@ -84,6 +84,14 @@ describe('the rules each file merges by', () => {
   it('stops on a field both sides changed to different values, a change of type included', () => {
     assert.deepStrictEqual(merged({ a: { x: 1 } }, { a: { x: 2 } }, { a: 'flat' }).conflicts,
       [{ field: ['a'], local: { set: true, value: { x: 2 } }, remote: { set: true, value: 'flat' }, pick: null }]);
+  });
+
+  it('keeps the remote\'s project_id where the project manifests hold two, with or without an ancestor, never a choice; elsewhere the field is one like any other (4.7.12)', () => {
+    const [here, there] = [{ project_id: 'here-id', a: 1 }, { project_id: 'there-id', b: 1 }];
+    assert.deepStrictEqual(mergeManifest('manifest.json', undefined, here, there), { value: { project_id: 'there-id', b: 1, a: 1 }, conflicts: [] });
+    assert.deepStrictEqual(mergeManifest('manifest.json', { project_id: 'old' }, here, there).conflicts, []);
+    assert.deepStrictEqual(merged(undefined, here, there).conflicts.map((c) => c.field), [['project_id']]);
+    assert.deepStrictEqual(mergeManifest('manifest.json', {}, { x: { project_id: 'a' } }, { x: { project_id: 'b' } }).conflicts.map((c) => c.field), [['x', 'project_id']]);
   });
 
   it('takes the picked side where a pick is given for the choice', () => {

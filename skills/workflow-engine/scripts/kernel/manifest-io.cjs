@@ -489,15 +489,15 @@ function claimHolder(claimFile) {
 
 /**
  * Claim a state lock, waiting up to `timeoutMs` for a live holder.
- * @param {string} lockFile @param {number} timeoutMs
+ * @param {string} lockFile @param {number} timeoutMs @param {string} name  the lock, as a timeout names it
  * @returns {() => void} the release
  */
-function claimStateLock(lockFile, timeoutMs) {
+function claimStateLock(lockFile, timeoutMs, name) {
   const deadline = Date.now() + timeoutMs;
   let release = tryClaimFile(lockFile);
   while (release === null) {
     if (Date.now() >= deadline) {
-      throw new Error(`Timed out waiting for the state lock (lock file: ${lockFile}) — ${claimHolder(lockFile)} holds it`);
+      throw new Error(`Timed out waiting for ${name} (lock file: ${lockFile}) — ${claimHolder(lockFile)} holds it`);
     }
     sleepSync(LOCK_RETRY_MS);
     release = tryClaimFile(lockFile);
@@ -511,15 +511,16 @@ const stateHolds = new Map();
 /**
  * Run `fn` holding the state lock at `lockFile` — waiting for a live holder,
  * taking over from one that is gone — taken again for nothing where this
- * process holds it already. `fn` runs synchronously.
+ * process holds it already. `fn` runs synchronously. A wait that times out
+ * names the lock `name`.
  * @template T
  * @param {string} lockFile @param {() => T} fn
- * @param {{timeoutMs?: number}} [opts]
+ * @param {{timeoutMs?: number, name?: string}} [opts]
  * @returns {T}
  */
-function withStateLockFile(lockFile, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS } = {}) {
+function withStateLockFile(lockFile, fn, { timeoutMs = WRITER_LOCK_TIMEOUT_MS, name = 'the state lock' } = {}) {
   const depth = stateHolds.get(lockFile) || 0;
-  const release = depth === 0 ? claimStateLock(lockFile, timeoutMs) : null;
+  const release = depth === 0 ? claimStateLock(lockFile, timeoutMs, name) : null;
   stateHolds.set(lockFile, depth + 1);
   try {
     return fn();

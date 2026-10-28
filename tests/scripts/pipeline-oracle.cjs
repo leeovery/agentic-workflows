@@ -5,7 +5,8 @@
 // (pipeline-world.cjs) runs over the whole state after every mutation a
 // scenario makes —
 //   - every manifest parses and is schema-valid (statuses in vocabulary,
-//     discovery items status-less, no phase-named shadow roots),
+//     discovery items status-less, no phase-named shadow roots), the
+//     project's keeping the project_id setup gave it,
 //   - every derivation (lifecycle, phaseStatus, next-phase) computes without
 //     throwing for every item,
 //   - every navigation gateway (start, the continue menus, bridge) reads
@@ -37,6 +38,7 @@ const knowledgeStore = require(path.join(ROOT, 'skills/workflow-engine/scripts/k
 const chunker = require(path.join(ROOT, 'skills/workflow-engine/scripts/kernel/knowledge/chunker.cjs'));
 const RECORD_CHUNKING = JSON.parse(fs.readFileSync(path.join(ROOT, 'skills/workflow-engine/content/knowledge/chunking/record.json'), 'utf8'));
 const { LEDGER } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-events.cjs'));
+const { isId } = require(path.join(ROOT, 'skills/workflow-engine/scripts/domain/ledger-ids.cjs'));
 const START_GATEWAY = require(path.join(ROOT, 'skills/workflow-start/scripts/gateway.cjs'));
 const EPIC_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-epic/scripts/gateway.cjs'));
 const LINEAR_GATEWAY = require(path.join(ROOT, 'skills/workflow-continue-linear/scripts/gateway.cjs'));
@@ -84,12 +86,27 @@ function listWorkUnits(dir) {
     .map((e) => e.name);
 }
 
+// The project_id each project's state was minted with, by its folder, while
+// the state lasts.
+/** @type {Map<string, string>} */
+const mintedIds = new Map();
+
 function auditState(dir, label) {
   const ctx = (msg) => `[${label}] ${msg}`;
 
-  // Project manifest parses.
+  // Project manifest parses, and wherever the state is keeps the id the
+  // trust log knows the project by (16.13.5), the one it was minted with: a
+  // writer that rewrote it whole would drop it, and one that set it would
+  // change it. A state started again mints its own.
   const projPath = path.join(dir, '.leeway', 'manifest.json');
   const project = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : null;
+  if (fs.existsSync(path.join(dir, '.leeway'))) {
+    assert.ok(isId(project?.project_id), ctx(`the project manifest's project_id is ${JSON.stringify(project?.project_id)}`));
+    if (!mintedIds.has(dir)) mintedIds.set(dir, project.project_id);
+    assert.strictEqual(project.project_id, mintedIds.get(dir), ctx('the project manifest\'s project_id is not the one it was minted with'));
+  } else {
+    mintedIds.delete(dir);
+  }
 
   // The roadmap always derives — every item's state lands in vocabulary
   // (lifecycle by join: never stored, so it must always be computable).

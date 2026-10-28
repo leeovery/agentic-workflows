@@ -185,6 +185,12 @@ describe('stateRelative', () => {
     assert.strictEqual(stateRelative(dir, path.join(dir, '.LEEWAY', 'PAY', 'New.md')), 'pay/New.md');
   });
 
+  it('tells whether the filesystem ignores case from a folder named with no letters too, asking the folder above', () => {
+    const digits = path.join(root, '2026', '10');
+    fs.mkdirSync(digits, { recursive: true });
+    assert.strictEqual(ignoresCase(digits), ignoresCase(root));
+  });
+
   it('is null for a path outside the state: the code tree, a parent, a sibling whose name begins with the state\'s', () => {
     assert.strictEqual(stateRelative(dir, path.join(dir, 'src/app.js')), null);
     assert.strictEqual(stateRelative(dir, dir), null);

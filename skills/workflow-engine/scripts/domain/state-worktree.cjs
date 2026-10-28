@@ -8,8 +8,11 @@
 // directory: there is one copy of the state, and no code worktree holds one.
 //
 // - Creating it: the orphan branch's first commit is built with plumbing, so
-//   the main checkout's branch, HEAD and index are never touched; then the
-//   worktree is added and locked. Each piece stands alone too, for the
+//   the main checkout's branch, HEAD and index are never touched — the
+//   state's `.gitignore`, and the project manifest holding the project's id,
+//   `project_id`, given here once and never changed, which keys the
+//   project's evidence in the trust log (16.13.5); then the worktree is
+//   added and locked. Each piece stands alone too, for the
 //   repairs: add the worktree for a local branch, make the local branch from
 //   the remote's or at the commit a folder still there holds, lock the
 //   worktree, relink a worktree whose project folder moved or was copied.
@@ -52,12 +55,13 @@ const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
-const { WRITER_LOCK, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
+const { WRITER_LOCK, jsonText, withWriterLock, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { withPrivateIndex } = require('./state-merge-paths.cjs');
 const { alignIndex } = require('./state-merge-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 const { checkLedgerCommit, spendPass, dropStop } = require('./ledger-check.cjs');
 const { LEDGER } = require('./ledger-events.cjs');
+const { newId } = require('./ledger-ids.cjs');
 
 const STATE_BRANCH = 'leeway-state';
 const STATE_LOCK_REASON = 'workflows state, do not remove';
@@ -288,9 +292,10 @@ function addLockedWorktree(git, root) {
 
 /**
  * Create the state: the orphan `leeway-state` whose first commit holds the
- * state's `.gitignore`, checked out at `root` and locked, then pushed where
- * the project has a remote. Refuses where `root` already exists or the branch
- * does, creating nothing.
+ * state's `.gitignore` and the project manifest with a new `project_id`,
+ * checked out at `root` and locked, then pushed where the project has a
+ * remote. Refuses where `root` already exists or the branch does, creating
+ * nothing.
  * @param {string} root
  * @param {{pushTimeoutMs?: number}} [opts]
  * @returns {CommitOutcome & {commit: string}}
@@ -298,8 +303,9 @@ function addLockedWorktree(git, root) {
 function createState(root, { pushTimeoutMs = PUSH_TIMEOUT_MS } = {}) {
   if (fs.existsSync(root)) throw new Error(`cannot create the state: ${root} already exists`);
   const git = isolatedGit(mainOf(root));
-  const blob = git.run(['hash-object', '-w', '--stdin'], { input: STATE_GITIGNORE }).trim();
-  const tree = git.run(['mktree'], { input: `100644 blob ${blob}\t.gitignore\n` }).trim();
+  const blob = (/** @type {string} */ input) => git.run(['hash-object', '-w', '--stdin'], { input }).trim();
+  const entries = [['.gitignore', blob(STATE_GITIGNORE)], ['manifest.json', blob(jsonText({ project_id: newId() }))]];
+  const tree = git.run(['mktree'], { input: entries.map(([name, oid]) => `100644 blob ${oid}\t${name}\n`).join('') }).trim();
   const commit = git.run(['commit-tree', tree, '-m', FIRST_COMMIT_MESSAGE]).trim();
   createBranchAt(git, commit);
   addLockedWorktree(git, root);

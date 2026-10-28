@@ -28,7 +28,9 @@
 //
 // A suite spawns a process only where the process is the subject: the real
 // CLI's pipe and exit behaviour, a child that must run concurrently (a lock
-// race), a script that is not the engine. A call that must wait on a lock
+// race), a script that is not the engine. A race runs its contenders as
+// children that wait at a barrier until every one is ready and report
+// evidence that they met (`contend`). A call that must wait on a lock
 // another holds runs in process, its attempts at the lock watched
 // (`lockAttempts`): the test lets the lock go at the call's own attempt,
 // never when a timer guesses the call has reached its wait.
@@ -39,6 +41,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const readline = require('readline');
+const { spawn } = require('child_process');
 
 const {
   STATE_DIR_NAME, git, testIdentity, bareRepo, templateFolder, copyWorld, setupFixture, setupFixtureAt, cleanupFixture, statePath,
@@ -357,11 +361,89 @@ function lockAttempts(t, file, onTaken = () => {}) {
   return attempts;
 }
 
+/**
+ * What every contender's script opens with: `fs`, and its calls —
+ * `atBarrier()`, where it says it is ready and waits until every contender
+ * is; `report(r)`, its one line back, last; and `untilAllReported()`, where
+ * it waits, holding what it holds, until every contender has reported.
+ */
+const CONTENDER = [
+  "const fs = require('fs');",
+  "const atBarrier = () => { fs.writeSync(1, 'ready\\n'); fs.readSync(0, Buffer.alloc(1)); };",
+  "const report = (r) => fs.writeSync(1, JSON.stringify(r) + '\\n');",
+  'const untilAllReported = () => fs.readSync(0, Buffer.alloc(1));',
+].join('\n');
+
+/**
+ * Well inside the writer lock's 60s wait: a contender still running then
+ * has hung on a lock that never comes free, and is killed.
+ */
+const CONTENDER_TIMEOUT_MS = 30000;
+
+/**
+ * One contender, a node child running `script`, killed should it run past
+ * CONTENDER_TIMEOUT_MS: the `lines` it prints; `printed(n)`, resolved once
+ * it has printed `n` of them or exited; and `done`, with its exit code, the
+ * signal that killed it, its stderr and its lines.
+ * @param {string} script @param {string[]} args @param {NodeJS.ProcessEnv} env
+ */
+function contender(script, args, env) {
+  const child = spawn(process.execPath, ['-e', script, ...args], { env, timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL' });
+  child.stdin.on('error', () => {}); // one that has exited has no stdin left to write to
+  /** @type {string[]} */
+  const lines = [];
+  let stderr = '';
+  let exited = false;
+  /** @type {Set<() => void>} */
+  const waiters = new Set();
+  const changed = () => { for (const wake of waiters) wake(); };
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  readline.createInterface({ input: child.stdout }).on('line', (line) => { lines.push(line); changed(); });
+  /** @type {Promise<{code: number|null, signal: NodeJS.Signals|null, stderr: string, lines: string[]}>} */
+  const done = new Promise((resolve) => child.on('close', (code, signal) => { exited = true; changed(); resolve({ code, signal, stderr, lines }); }));
+  /** @param {number} count @returns {Promise<void>} */
+  const printed = (count) => new Promise((resolve) => {
+    const check = () => {
+      if (lines.length < count && !exited) return;
+      waiters.delete(check);
+      resolve();
+    };
+    waiters.add(check);
+    check();
+  });
+  return { child, lines, printed, done };
+}
+
+/**
+ * Race `n` contenders, each running CONTENDER and then `body` with argv
+ * `args` — or, where contenders play parts, `args(i)` for the i-th. Each
+ * barrier lifts once every one has reached it, so they go on together
+ * however slowly each got there; their stdin closes once every one has
+ * reported. Answers each one's report.
+ * @param {number} n @param {string} body @param {string[]|((i: number) => string[])} args
+ * @param {NodeJS.ProcessEnv} [env]
+ * @returns {Promise<any[]>}
+ */
+async function contend(n, body, args, env = process.env) {
+  const runs = Array.from({ length: n }, (_, i) => contender(`${CONTENDER}\n${body}`, typeof args === 'function' ? args(i) : args, env));
+  for (let line = 1; ; line++) {
+    await Promise.all(runs.map((run) => run.printed(line)));
+    if (!runs.every((run) => run.lines[line - 1] === 'ready')) break;
+    for (const run of runs) run.child.stdin.write('g');
+  }
+  for (const run of runs) run.child.stdin.end();
+  const results = await Promise.all(runs.map((run) => run.done));
+  for (const { code, signal, stderr } of results) {
+    assert.strictEqual(code, 0, signal ? `a contender still running after ${CONTENDER_TIMEOUT_MS}ms was killed\n${stderr}` : stderr);
+  }
+  return results.map(({ lines }) => JSON.parse(/** @type {string} */ (lines.at(-1))));
+}
+
 const { call, callAsync, ok, okSections, refuses, output } = harness();
 
 module.exports = {
   ENGINE, harness,
-  call, callAsync, ok, okSections, refuses, output, holdLock, lockAttempts,
+  call, callAsync, ok, okSections, refuses, output, holdLock, lockAttempts, contend,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,
   STATE_DIR_NAME, statePath, git, stateGit, ledgerEntries, tip, remoteTip, commitAll, testIdentity, bareRepo, initRepo, githubOffline, failingPs,
   setupGitFixture, setupFixtureAt, fixtureFrom, addSubmodule, cleanupFixture,

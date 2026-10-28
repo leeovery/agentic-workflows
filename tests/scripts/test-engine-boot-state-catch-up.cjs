@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------------------
 // The catch-up at boot (workflow-engine/scripts/domain/boot.cjs with
 // domain/state-merge.cjs): run before the migrations, a merge stop ending
-// boot there, what a failed push left behind pushed, and the ledger's
-// entries a killed write left uncommitted committed first, so the catch-up
-// carries them to the other clone.
+// boot there, what a failed push left behind pushed, the ledger's entries
+// a killed write left uncommitted committed first, so the catch-up carries
+// them to the other clone, and the first clone's project_id kept where two
+// set the state up before either pushed.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -26,9 +27,11 @@ const { git, tip, remoteTip } = harness;
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
+const { record, judgedDepartures } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const { readFile, createFile } = require('./discovery-test-utils.cjs');
-const { useWorld, STUB_ENGINE, engine, cloneOf, boot, setUp, commitOnState } = require('./boot-state-world.cjs');
+const { useWorld, STUB_ENGINE, engine, codeProject, cloneOf, boot, setUp, commitOnState } = require('./boot-state-world.cjs');
 const { SESSION, MADE, NOTE } = require('./ledger-world.cjs');
 
 const world = useWorld();
@@ -140,5 +143,32 @@ describe('the catch-up at boot (4.7.8)', () => {
     assert.ok(res.warnings.includes('the ledger\'s uncommitted entries were not committed: line 2 of the ledger is not JSON: not an entry'), res.warnings.join('\n'));
     assert.deepStrictEqual([tip(main, STATE_BRANCH), remoteTip(bare)], [committed, committed]);
     assert.strictEqual(git(root, ['status', '--porcelain', '--', LEDGER]), ` M ${LEDGER}\n`);
+  });
+
+  it('keeps the first clone\'s project_id where two clones set the state up before either pushed, never stopping on it; what the second logged under its own id is another project\'s (4.S39)', () => {
+    const bare = harness.bareRepo(path.join(world(), 'portal.git'));
+    const first = codeProject({ remote: bare });
+    const second = cloneOf(bare, 'second');
+    git(second, ['config', 'remote.origin.pushurl', path.join(world(), 'nowhere.git')]);
+    boot(second);
+    git(second, ['config', '--unset', 'remote.origin.pushurl']);
+    boot(first);
+    const projectIdOf = (/** @type {string} */ main) => JSON.parse(readFile(main, '.leeway/manifest.json')).project_id;
+    const firstId = projectIdOf(first);
+    assert.notStrictEqual(projectIdOf(second), firstId);
+    const pinned = process.env.WORKFLOWS_CONFIG_DIR;
+    process.env.WORKFLOWS_CONFIG_DIR = path.join(world(), 'config');
+    try {
+      const verdictFrom = (/** @type {string} */ cwd) => record('verdict', { entry: newId(), verdict: 'fix', point: 'decided' }, { cwd, warnings: [] }).entry;
+      const onFirst = verdictFrom(first);
+      verdictFrom(second);
+
+      assert.strictEqual(boot(second).state, 'ready');
+
+      assert.strictEqual(projectIdOf(second), firstId);
+      assert.deepStrictEqual([...judgedDepartures(path.join(second, '.leeway'))], [onFirst]);
+    } finally {
+      process.env.WORKFLOWS_CONFIG_DIR = pinned;
+    }
   });
 });

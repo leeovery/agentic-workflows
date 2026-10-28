@@ -257,6 +257,7 @@ function mergeManifestFile(ctx, file, versions, pickOf) {
   if (versions.local === undefined || versions.remote === undefined) return keepChanged(file, versions);
   const base = versions.base === undefined ? undefined : manifestOf(ctx, file, versions.base, "the common ancestor's");
   const merged = mergeManifest(
+    file,
     base,
     manifestOf(ctx, file, versions.local, "this machine's"),
     manifestOf(ctx, file, versions.remote, "the remote's"),

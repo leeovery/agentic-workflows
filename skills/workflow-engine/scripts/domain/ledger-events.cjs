@@ -48,66 +48,21 @@
 // ---------------------------------------------------------------------------
 
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { isId } = require('./ledger-ids.cjs');
+const { TEXT, ID, FLAG, TIME, VERSION, KINDS, oneOf, nullable, listOf, field, event, readFields } = require('./event-fields.cjs');
 
 const LEDGER = '.ledger.jsonl';
 
-/**
- * What a field holds, said for a refusal, and the test of it; and for a
- * field that names entries, whether it names one or a list.
- * @typedef {{is: string, test: (value: unknown) => boolean, names?: 'one'|'many'}} Type
- */
-
-/**
- * A field of an event: its name and type, and, for a field a release after
- * the first added, that version and the default a line written before it
- * takes.
- * @typedef {{name: string, type: Type, added?: {version: number, default: unknown}}} Field
- */
-
-/** An event's fields after the header, and the version that added it. @typedef {{since: number, fields: Field[]}} EventSchema */
-
-/** The ledger's shape: the latest version, and every event. @typedef {{version: number, events: Record<string, EventSchema>}} Schema */
-
-/** @param {string} is @param {(value: unknown) => boolean} test @returns {Type} */
-function type(is, test) {
-  return { is, test };
-}
-
-const TEXT = type('non-empty text', (v) => typeof v === 'string' && v !== '');
-const ID = { ...type('an entry id', isId), names: /** @type {const} */ ('one') };
-const FLAG = type('true or false', (v) => typeof v === 'boolean');
-const TIME = type('a UTC time', (v) => typeof v === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(v) && !Number.isNaN(Date.parse(v)));
-
-/** @param {...string} values @returns {Type} */
-function oneOf(...values) {
-  return type(`one of ${values.join(', ')}`, (v) => typeof v === 'string' && values.includes(v));
-}
-
-/** @param {Type} item @returns {Type} */
-function nullable(item) {
-  return { ...type(`${item.is}, or null`, (v) => v === null || item.test(v)), ...(item.names === undefined ? {} : { names: item.names }) };
-}
-
-/** @param {Type} item @returns {Type} */
-function listOf(item) {
-  return { ...type(`a list of ${item.is}`, (v) => Array.isArray(v) && v.every(item.test)), ...(item.names === undefined ? {} : { names: 'many' }) };
-}
-
-/** @param {string} name @param {Type} fieldType @returns {Field} */
-function field(name, fieldType) {
-  return { name, type: fieldType };
-}
+/** @typedef {import('./event-fields.cjs').Field} Field */
+/** @typedef {import('./event-fields.cjs').EventSchema} EventSchema */
+/** @typedef {import('./event-fields.cjs').Schema} Schema */
 
 const PEOPLE = ['person', 'claude'];
-// 16.11.3's composed kinds.
-const KINDS = ['process', 'danger', 'contract', 'scope', 'look', 'words', 'behaviour', 'internals'];
 const MOVED = ['none', 'claude-moved-person', 'person-moved-claude'];
 const REASONS = ['new-fact', 'other-topic', 'changed-mind', 'was-wrong'];
 
 /** @type {Field[]} */
 const HEADER = [
-  field('v', type('a schema version', (v) => Number.isInteger(v) && /** @type {number} */ (v) >= 1)),
+  field('v', VERSION),
   field('id', ID),
   field('event', TEXT),
   field('unit', TEXT),
@@ -151,11 +106,6 @@ const CONTENT = {
     field('unchecked', FLAG),
   ],
 };
-
-/** An event of the first version. @param {Field[]} fields @returns {EventSchema} */
-function event(fields) {
-  return { since: 1, fields };
-}
 
 /** @type {Schema} */
 const SCHEMA = {
@@ -229,11 +179,6 @@ class LedgerNewer extends Error {
   }
 }
 
-/** The version that added a field. @param {Field} f */
-function addedIn(f) {
-  return f.added?.version ?? 1;
-}
-
 /**
  * The fields an event holds, in the order its line is written: the header,
  * its own, and for a replacement the content of what it replaces.
@@ -272,23 +217,9 @@ function validEvent(value, schema = SCHEMA) {
   if (typeof value.event !== 'string' || !known.includes(value.event)) {
     throw new LedgerLineError(`its event ${JSON.stringify(value.event)} is none of version ${v}'s: ${known.join(', ')}`);
   }
-  const fields = fieldsOf(value, schema.events[value.event]);
-  /** @type {Record<string, unknown>} */
-  const event = {};
-  for (const f of fields) {
-    if (addedIn(f) > v) {
-      event[f.name] = structuredClone(f.added?.default);
-    } else if (!Object.hasOwn(value, f.name)) {
-      throw new LedgerLineError(`the ${value.event} event needs ${f.name}`);
-    } else if (!f.type.test(value[f.name])) {
-      throw new LedgerLineError(`its ${f.name} is not ${f.type.is}`);
-    } else {
-      event[f.name] = value[f.name];
-    }
-  }
-  const stray = Object.keys(value).find((key) => !fields.some((f) => f.name === key && addedIn(f) <= v));
-  if (stray !== undefined) throw new LedgerLineError(`the ${value.event} event has no field ${stray} at version ${v}`);
-  return event;
+  const read = readFields(value, fieldsOf(value, schema.events[value.event]), v, value.event);
+  if ('not' in read) throw new LedgerLineError(read.not);
+  return read.event;
 }
 
 /**

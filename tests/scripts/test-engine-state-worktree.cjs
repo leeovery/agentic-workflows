@@ -29,6 +29,7 @@ const { REPOSITORY_ENV, isolatedGit, mainCheckout } = require('../../skills/work
 const { processStartTime } = require('../../skills/workflow-engine/scripts/kernel/process.cjs');
 
 const { stateRoot } = require('../../skills/workflow-engine/scripts/kernel/state-root.cjs');
+const { isId } = require('../../skills/workflow-engine/scripts/domain/ledger-ids.cjs');
 
 const {
   STATE_BRANCH, STATE_LOCK_REASON, STATE_GITIGNORE,
@@ -298,15 +299,23 @@ describe('the isolated runner', () => {
 });
 
 describe('creating the state', () => {
-  it('makes leeway-state an orphan whose one commit holds the state\'s .gitignore', () => {
+  it('makes leeway-state an orphan whose one commit holds the state\'s .gitignore and the project manifest, a new project_id its one field (16.13.5)', () => {
     const { main, root } = project();
 
     const created = createState(root);
 
     assert.strictEqual(tip(main, STATE_BRANCH), created.commit);
     assert.deepStrictEqual(git(main, ['rev-list', '--parents', STATE_BRANCH]).trim().split(' '), [created.commit]);
-    assert.deepStrictEqual(git(main, ['ls-tree', '--name-only', STATE_BRANCH]).trim().split('\n'), ['.gitignore']);
+    assert.deepStrictEqual(git(main, ['ls-tree', '--name-only', STATE_BRANCH]).trim().split('\n'), ['.gitignore', 'manifest.json']);
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
+    const manifest = JSON.parse(git(main, ['show', `${STATE_BRANCH}:manifest.json`]));
+    assert.deepStrictEqual(Object.keys(manifest), ['project_id']);
+    assert.ok(isId(manifest.project_id), manifest.project_id);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8')), manifest, 'checked out at the state root');
+
+    const other = project({ name: 'other' });
+    createState(other.root);
+    assert.notStrictEqual(JSON.parse(git(other.main, ['show', `${STATE_BRANCH}:manifest.json`])).project_id, manifest.project_id, 'each project its own');
   });
 
   it('ignores the knowledge base, the cache and the writer lock in the state worktree, and nothing else', () => {
@@ -874,16 +883,16 @@ describe('committing state', () => {
   it('commits exactly the paths given, on leeway-state, whatever else is changed or staged', () => {
     const { root } = project();
     createState(root);
-    write(root, 'manifest.json', '{}\n');
+    write(root, 'pay/manifest.json', '{}\n');
     write(root, 'unit/topics/a/log.md', '# a\n');
     write(root, 'unit/topics/a/brief.md', '# brief\n');
     git(root, ['add', 'unit/topics/a/brief.md']);
 
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: the manifest'));
 
     assert.strictEqual(tip(root, STATE_BRANCH), out.commit);
     assert.strictEqual(git(root, ['log', '-1', '--format=%s', STATE_BRANCH]).trim(), 'state: the manifest');
-    assert.deepStrictEqual(touched(root, out.commit), ['A\tmanifest.json']);
+    assert.deepStrictEqual(touched(root, out.commit), ['A\tpay/manifest.json']);
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), 'A  unit/topics/a/brief.md\n?? unit/topics/a/log.md\n');
   });
 
@@ -1060,11 +1069,11 @@ describe('committing state', () => {
     const index = path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-commit.index']).trim());
     fs.writeFileSync(index, 'left by a killed verb');
     fs.writeFileSync(`${index}.lock`, '');
-    write(root, 'manifest.json', '{}\n');
+    write(root, 'pay/manifest.json', '{}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: the manifest'));
 
-    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tmanifest.json']);
+    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tpay/manifest.json']);
     assert.ok(!fs.existsSync(index) && !fs.existsSync(`${index}.lock`));
   });
 
@@ -1073,16 +1082,16 @@ describe('committing state', () => {
     createState(root);
     const indexLock = path.resolve(root, git(root, ['rev-parse', '--git-path', 'index.lock']).trim());
     fs.writeFileSync(indexLock, '');
-    write(root, 'manifest.json', '{}\n');
+    write(root, 'pay/manifest.json', '{}\n');
 
-    const out = withStateLock(root, () => commitState(root, ['manifest.json'], 'state: the manifest'));
+    const out = withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: the manifest'));
 
-    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tmanifest.json']);
+    assert.deepStrictEqual(touched(root, out.commit || ''), ['A\tpay/manifest.json']);
     assert.strictEqual(out.warnings.length, 1);
     assert.match(out.warnings[0], /^the state worktree's index was not brought into line with leeway-state: .*index\.lock/s);
 
     fs.rmSync(indexLock);
-    assert.deepStrictEqual(withStateLock(root, () => commitState(root, ['manifest.json'], 'state: again')), { commit: null, pushed: false, warnings: [] });
+    assert.deepStrictEqual(withStateLock(root, () => commitState(root, ['pay/manifest.json'], 'state: again')), { commit: null, pushed: false, warnings: [] });
     assert.strictEqual(git(root, ['status', '--porcelain', '--untracked-files=all']), '');
   });
 

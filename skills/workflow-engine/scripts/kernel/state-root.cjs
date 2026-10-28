@@ -168,23 +168,26 @@ function resolvedPath(cwd, given) {
 }
 
 /**
- * Whether the filesystem an existing folder is on ignores case: the folder
- * reached again under its name with the case of each letter turned. A name
- * with no letters tells nothing, and answers no.
+ * Whether the filesystem an existing folder is on ignores case: the nearest
+ * folder at or above it on that filesystem whose name has a letter, reached
+ * again under its name with the case of each letter turned. A name with no
+ * letters tells nothing, so a folder named by digits asks the one above;
+ * with none to ask, the answer is no.
  * @param {string} folder absolute
  * @returns {boolean}
  */
 function ignoresCase(folder) {
-  const name = path.basename(folder);
-  const turned = [...name].map((c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase())).join('');
-  if (turned === name) return false;
   try {
-    const own = fs.statSync(folder);
-    const other = fs.statSync(path.join(path.dirname(folder), turned));
-    return own.dev === other.dev && own.ino === other.ino;
-  } catch {
-    return false;
-  }
+    const { dev } = fs.statSync(folder);
+    for (let at = folder; path.dirname(at) !== at && fs.statSync(at).dev === dev; at = path.dirname(at)) {
+      const name = path.basename(at);
+      const turned = [...name].map((c) => (c === c.toLowerCase() ? c.toUpperCase() : c.toLowerCase())).join('');
+      if (turned === name) continue;
+      const [own, other] = [fs.statSync(at), fs.statSync(path.join(path.dirname(at), turned))];
+      return own.dev === other.dev && own.ino === other.ino;
+    }
+  } catch { /* a folder unread tells nothing */ }
+  return false;
 }
 
 /**

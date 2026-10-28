@@ -266,4 +266,4 @@ function workTree(cwd) {
   return fs.realpathSync(out.trim());
 }
 
-module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf };
+module.exports = { REPOSITORY_ENV, isolatedGit, mainCheckout, workTree, gitfileTarget, realpathOrSelf, within };

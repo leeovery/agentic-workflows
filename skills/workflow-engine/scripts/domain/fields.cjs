@@ -88,6 +88,13 @@ function parseProjectPath(pathArg) {
   return { isProject: false, fieldSegments: [] };
 }
 
+/** Refuse a write to the project's key in the trust log (16.13.5). @param {string[]} fieldSegments */
+function refuseProjectId(fieldSegments) {
+  if (fieldSegments[0] === 'project_id') {
+    fail('project_id is the engine\'s own: it mints it as it creates the state, and it never changes');
+  }
+}
+
 /**
  * Parse a dot-path argument into work unit, phase, and topic.
  * Segment count determines the access level:
@@ -982,6 +989,7 @@ function cmdSet(cwd, args) {
     if (proj.fieldSegments.length === 0 || args.length !== 2) {
       fail('Usage: engine manifest set project.<field.path> <value>');
     }
+    refuseProjectId(proj.fieldSegments);
     const writes = [{ field: proj.fieldSegments.join('.'), value: parseValue(args[1]) }];
     manifestTarget(cwd, true).transact((manifest, save) => {
       for (const write of writes) {
@@ -1044,6 +1052,7 @@ function cmdPush(cwd, args) {
     if (proj.fieldSegments.length === 0 || args.length < 2) {
       fail('Usage: engine manifest push project.<field.path> <value>');
     }
+    refuseProjectId(proj.fieldSegments);
     const value = parseValue(args[1]);
     const length = manifestTarget(cwd, true).transact((manifest, save) => {
       const current = getByPath(manifest, proj.fieldSegments);
@@ -1128,6 +1137,7 @@ function cmdPull(cwd, args) {
     if (proj.fieldSegments.length === 0 || args.length < 2) {
       fail('Usage: engine manifest pull project.<field.path> <value>');
     }
+    refuseProjectId(proj.fieldSegments);
     const value = parseValue(args[1]);
     const result = manifestTarget(cwd, true).transact((manifest, save) => {
       const current = getByPath(manifest, proj.fieldSegments);
@@ -1173,6 +1183,7 @@ function cmdDelete(cwd, args) {
     if (proj.fieldSegments.length === 0) {
       fail('Usage: engine manifest delete project.<field.path>');
     }
+    refuseProjectId(proj.fieldSegments);
     manifestTarget(cwd, true).transact((manifest, save) => {
       if (!deleteByPath(manifest, proj.fieldSegments)) {
         fail(`Path "${proj.fieldSegments.join('.')}" not found in project manifest`);

@@ -199,6 +199,7 @@ describe('engine workunit create — the canonical on-disk documents', () => {
   afterEach(() => { fs.rmSync(fix.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); });
 
   it('writes byte-exact manifest and project-manifest documents', () => {
+    const { project_id: projectId } = JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
     engine(fix, createArgs('payments', 'feature'));
 
     const engineManifest = fs.readFileSync(path.join(fix.project, '.leeway/payments/manifest.json'), 'utf8');
@@ -213,6 +214,7 @@ describe('engine workunit create — the canonical on-disk documents', () => {
 
     const engineProject = fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8');
     assert.strictEqual(engineProject, JSON.stringify({
+      project_id: projectId,
       work_units: { payments: { work_type: 'feature' } },
     }, null, 2) + '\n');
   });
@@ -239,6 +241,7 @@ describe('engine workunit create — a name already taken refuses', () => {
       commits: commitCount(fix),
       status: git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']),
       manifest: fs.readFileSync(path.join(fix.project, '.leeway/payments/manifest.json'), 'utf8'),
+      project: fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'),
     };
   }
 
@@ -253,7 +256,7 @@ describe('engine workunit create — a name already taken refuses', () => {
       before.manifest, 'the existing manifest was rewritten');
     assert.ok(fs.existsSync(path.join(fix.project, '.leeway/.inbox/bugs/2026-06-02--login-loop.md')));
     assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/payments/seeds')));
-    assert.ok(!fs.existsSync(path.join(fix.project, '.leeway/manifest.json')));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'), before.project, 'the project manifest was rewritten');
     assert.strictEqual(hasStore(fix.project), false, 'a refused create built a knowledge store');
   }
 
