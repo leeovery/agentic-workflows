@@ -24,7 +24,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, refuses, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, refuses, stateGit, statePath, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const UNIT = 'fumi';
@@ -41,9 +41,12 @@ function row(order, summary) {
 
 /** @type {string} */
 let dir;
+/** The question each place's decisions answer, asked once a test. @type {Map<string, string>} */
+let asked;
 
 beforeEach(() => {
   dir = setupGitFixture('ledger-affected-');
+  asked = new Map();
   createManifest(dir, UNIT, {
     work_type: 'epic',
     phases: {
@@ -63,6 +66,19 @@ function write(verb, address, flags, content) {
   return ok(dir, ['ledger', verb, address, ...flags], { env: SESSION, stdin: JSON.stringify(content) }).id;
 }
 
+/** The ledger as it stands, and the state branch's tip. */
+function written() {
+  return [fs.readFileSync(statePath(dir, '.ledger.jsonl'), 'utf8'), stateGit(dir, ['rev-parse', 'HEAD'])];
+}
+
+/** One ledger write that must refuse, writing and committing nothing: its error. @param {string} verb @param {string} address @param {string[]} flags @param {Record<string, unknown>} content */
+function refused(verb, address, flags, content) {
+  const before = written();
+  const { error } = refuses(dir, ['ledger', verb, address, ...flags], { env: SESSION, stdin: JSON.stringify(content) });
+  assert.deepStrictEqual(written(), before, `ledger ${verb} refused, yet wrote or committed`);
+  return error;
+}
+
 /** @param {string} address @param {string} text @param {string[]} [flags] */
 function ask(address, text, flags = []) {
   return write('ask', address, flags, { ...MADE, text });
@@ -73,9 +89,10 @@ function find(address, text, flags = []) {
   return write('find', address, flags, { ...MADE, text, how: 'seen in a spike' });
 }
 
-/** A decision answering a question asked with it. @param {string} address @param {string} text @param {string[]} [flags] */
+/** A decision answering the place's question. @param {string} address @param {string} text @param {string[]} [flags] */
 function decide(address, text, flags = []) {
-  return write('decide', address, ['--answers', ask(address, `${text}?`), ...flags], { ...MADE, text, why: `Why: ${text}` });
+  if (!asked.has(address)) asked.set(address, ask(address, 'What is a note?'));
+  return write('decide', address, ['--answers', /** @type {string} */ (asked.get(address)), ...flags], { ...MADE, text, why: `Why: ${text}` });
 }
 
 /** `old` replaced at `address`, a changed mind. @param {string} address @param {string} old @param {string} text */
@@ -179,7 +196,7 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     assert.deepStrictEqual(changes(), { [relying]: [[duplicate, [replacement, again]]] });
   });
 
-  it('clears each entry an entry relies on by its own confirmation, after the latest replacement on its way, a later replacement flagging that one again alone', () => {
+  it('clears each entry an entry relies on by its own confirmation, after the latest replacement on its way, a later replacement flagging that one again alone and a confirmation after an earlier one refused', () => {
     const panel = decide(NOTE, 'A note is a panel.');
     const sized = decide(NOTE, 'A note keeps its size.');
     const relying = find(SPACE, 'A panel keeps its frame on every Space.', ['--relies-on', panel, '--relies-on', sized]);
@@ -194,20 +211,11 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
 
     const clear = change(NOTE, framed, 'A note is a clear window.');
     assert.deepStrictEqual(changes(), { [relying]: [[panel, [framed, clear]]] });
-    hold(SPACE, relying, framed);
-    assert.deepStrictEqual(changes(), { [relying]: [[panel, [framed, clear]]] }, 'a confirmation after an earlier replacement cleared a later one');
+    assert.strictEqual(refused('hold', SPACE, ['--entry', relying, '--after', framed], MADE),
+      `ledger hold --after names ${framed}, an earlier change on the way of ${panel} — a hold names the latest: ${clear}`);
   });
 
-  it('flags an entry relying on what a replacement set aside as it was written replaced, once that replacement is back: a cancelled unit reactivated, a postponed topic pulled back', () => {
-    const panel = decide(NOTE, 'A note is a panel.');
-    const sheet = change(MINT, panel, 'A note is a sheet.');
-    ok(dir, ['workunit', 'cancel', 'mint']);
-    const onPanel = find(SPACE, 'A panel takes no focus.', ['--relies-on', panel]);
-    assert.deepStrictEqual(listed(UNIT).ids, []);
-    ok(dir, ['workunit', 'reactivate', 'mint']);
-    assert.deepStrictEqual(changes(), { [onPanel]: [[panel, [sheet]]] });
-    hold(SPACE, onPanel, sheet);
-
+  it('flags an entry relying on what a replacement set aside as it was written replaced, once that replacement is back — a postponed topic pulled back, a cancelled unit reactivated — its way in the ledger\'s order, the latest last', () => {
     const card = decide(MINT, 'A Mint note is a card.');
     const asFumi = change(NOTE, card, 'A Mint note is a panel, as a Fumi note is.');
     ok(dir, ['topic', 'postpone', UNIT, 'note-window', '--horizon', 'later']);
@@ -215,21 +223,23 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     assert.deepStrictEqual(listed(UNIT).ids, []);
     ok(dir, ['roadmap', 'pull-forward', 'note-window', '--into', UNIT]);
     assert.deepStrictEqual(changes(), { [onCard]: [[card, [asFumi]]] });
+    hold(SPACE, onCard, asFumi);
+
+    const panel = decide(NOTE, 'A note is a panel.');
+    const sheet = change(MINT, panel, 'A note is a sheet.');
+    const rolled = change(MINT, sheet, 'A note is a rolled sheet.');
+    ok(dir, ['workunit', 'cancel', 'mint']);
+    const onPanel = find(SPACE, 'A panel takes no focus.', ['--relies-on', panel]);
+    assert.deepStrictEqual(listed(UNIT).ids, []);
+    const framed = change(NOTE, panel, 'A note is a frameless window.');
+    ok(dir, ['workunit', 'reactivate', 'mint']);
+    assert.deepStrictEqual(changes(), { [onPanel]: [[panel, [sheet, rolled, framed]]] });
   });
 
-  it('counts a replacement, and a confirmation that an entry still holds, only while each is live', () => {
+  it('counts a confirmation that an entry still holds only while it is live', () => {
     const relied = decide(NOTE, 'A note is a panel.');
     const relying = find(SPACE, 'A panel takes no focus.', ['--relies-on', relied]);
-    change(MINT, relied, 'A note is a sheet.');
-    assert.deepStrictEqual(listed(UNIT).ids, [relying]);
-    ok(dir, ['workunit', 'cancel', 'mint']);
-    assert.deepStrictEqual(listed(UNIT).ids, [], 'a cancelled unit\'s replacement still changed what relies on it');
-    ok(dir, ['workunit', 'reactivate', 'mint']);
-    assert.deepStrictEqual(listed(UNIT).ids, [relying]);
-    ok(dir, ['workunit', 'cancel', 'mint']);
-
     const replacement = change(NOTE, relied, 'A note is a frameless window.');
-    ok(dir, ['workunit', 'reactivate', 'mint']);
     hold(MINT, relying, replacement);
     assert.deepStrictEqual(listed(UNIT).ids, []);
     ok(dir, ['workunit', 'cancel', 'mint']);

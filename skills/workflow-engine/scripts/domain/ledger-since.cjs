@@ -29,6 +29,7 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject, writeJsonAtomic, withStateLockFile } = require('../kernel/manifest-io.cjs');
 const { standingOf, isCurrent } = require('./ledger-fold.cjs');
+const { isId } = require('./ledger-ids.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
@@ -48,9 +49,9 @@ function marksFile(root, unit) {
   return path.join(marksDir(root), `${unit}.json`);
 }
 
-/** Whether a mark read is in its shape: the ids shown, and nothing else. @param {unknown} marks @returns {marks is Marks} */
+/** Whether a mark read is in its shape: the ledger ids shown, and nothing else. @param {unknown} marks @returns {marks is Marks} */
 function isMarks(marks) {
-  return isObject(marks) && Object.keys(marks).length === 1 && Array.isArray(marks.shown) && marks.shown.every((id) => typeof id === 'string');
+  return isObject(marks) && Object.keys(marks).length === 1 && Array.isArray(marks.shown) && marks.shown.every(isId);
 }
 
 /**

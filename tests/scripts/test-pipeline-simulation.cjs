@@ -4044,7 +4044,7 @@ describe('pipeline simulation', () => {
     assert.deepStrictEqual(sim.run(['ledger', 'verdicts']).departures, []);
     const departed = ledger(['replace', note, '--replaces', sized, '--reason', 'was-wrong'],
       { by: 'person', who_moved_whom: 'person-moved-claude', drops: ['its own size'], text: 'A note fits its text.', why: 'A note is read, not placed.' });
-    assert.deepStrictEqual(sim.run(['ledger', 'verdicts']).departures.map((/** @type {Record<string, unknown>} */ d) => [d.id, d.lean]), [[departed, 'A note keeps its own size.']]);
+    assert.deepStrictEqual(ids(sim.run(['ledger', 'verdicts']).departures), [departed]);
   });
 
   it('a discovery cancel from inside the conversation releases its own holds, and leaves a peer\'s standing', () => {

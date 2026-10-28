@@ -117,4 +117,4 @@ function answerAffected({ folded, show, short }, { unit, topic }, root) {
   };
 }
 
-module.exports = { affectedIn, answerAffected };
+module.exports = { answerAffected };

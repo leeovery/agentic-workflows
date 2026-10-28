@@ -35,19 +35,21 @@
 // - How each relates: a question moves to another topic of its unit (5.3.3);
 //   a merge's duplicate is a current decision answering the question merged,
 //   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
-//   a held entry relies on an entry whose way to its current form the
-//   replacement is on, past each merge that holds (5.6.10); a replacement's
-//   cause is never what it replaces, a new fact's being a finding and
-//   another topic's a decision standing on a topic other than the one the
-//   replaced entry stands on (5.3.8); who moved whom is what the departure rule allows
-//   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
-//   lean on an entry Claude made, and on the person's replacement of a
-//   decision, what its reason and the entry it replaces make it.
+//   a hold names the latest live replacement on the way to its current
+//   form, past each merge that holds, of an entry the held entry relies on
+//   (5.6.10); a replacement's cause is never what it replaces, a new fact's
+//   being a finding and another topic's a decision standing on a topic
+//   other than the one the replaced entry stands on (5.3.8); who moved whom
+//   is what the departure rule allows (ledger-verdicts.cjs) — never the
+//   person's answer standing over Claude's lean on an entry Claude made,
+//   and on the person's replacement of a decision, what its reason and the
+//   entry it replaces allow.
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
-//   content leaves it out, the replaced entry's product-wide mark (5.2.5); a
-//   decision's being unchecked, where the one-decision check could not
-//   judge it (ledger-one-decision.cjs).
+//   content leaves them out, the replaced entry's product-wide mark (5.2.5)
+//   and who moved whom where the departure rule settles it; a decision's
+//   being unchecked, where the one-decision check could not judge it
+//   (ledger-one-decision.cjs).
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
@@ -80,7 +82,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
-const { movedRefusal } = require('./ledger-verdicts.cjs');
+const { derivedMove, movedRefusal } = require('./ledger-verdicts.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -507,15 +509,21 @@ function checkCause(linked, read) {
 }
 
 /**
- * Refuse a confirmation of an entry that relies on nothing the replacement
- * changed: no entry whose way to its current form it is on (5.6.10).
+ * Refuse a confirmation of an entry after anything but the latest live
+ * replacement on the way to its current form of an entry it relies on
+ * (5.6.10): one on no such way, or an earlier one, naming the latest.
  * @param {Linked} linked @param {Folded} read
  */
 function checkHeld(linked, read) {
   const [entry, after] = /** @type {string[]} */ ([linked.entry, linked.after]);
-  if (factsOf(read, entry).relies_on.some((relied) => replacementsOf(read, relied).includes(after))) return;
+  const ways = factsOf(read, entry).relies_on.map((relied) => ({ relied, way: replacementsOf(read, relied) }));
+  if (ways.some(({ way }) => way.at(-1) === after)) return;
   const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
-  throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} changed — it holds an entry relying on one whose way to its current form the replacement is on`);
+  const passed = ways.find(({ way }) => way.includes(after));
+  if (passed === undefined) {
+    throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} changed — it holds an entry relying on one whose way to its current form the replacement is on`);
+  }
+  throw new Error(`ledger hold --after names ${short(after)}, an earlier change on the way of ${short(passed.relied)} — a hold names the latest: ${short(/** @type {string} */ (passed.way.at(-1)))}`);
 }
 
 /**
@@ -633,7 +641,9 @@ function contentFields(verb, write, given, replaced) {
  * writes, a replacement reading the kind it replaces from the ledger.
  * Refuses argv the verb does not take, a place it cannot write, no session,
  * a value its event cannot hold, stdin holding no JSON object, content the
- * kind does not hold, and who moved whom the departure rule does not allow.
+ * kind does not hold, and who moved whom the departure rule does not allow,
+ * which it sets where the writer leaves it out and the rule allows one
+ * value alone.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin @param {string[]} warnings
  * @returns {Request}
  */
@@ -653,8 +663,10 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const content = stdinContent(verb, stdin());
   const before = readBefore(at, warnings);
   const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, before()) : null;
-  const fields = contentFields(verb, write, content, replaced);
-  const unmoved = movedRefusal(fields, replaced === null ? null : /** @type {string[]} */ (given.get('reason'))[0], replaced);
+  const reason = replaced === null ? null : /** @type {string[]} */ (given.get('reason'))[0];
+  const derived = derivedMove(content, reason, replaced);
+  const fields = contentFields(verb, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
+  const unmoved = movedRefusal(fields, reason, replaced);
   if (unmoved !== null) throw new Error(`ledger ${verb}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   return {
     verb, write, at, session, given,
