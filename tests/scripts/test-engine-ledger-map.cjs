@@ -40,24 +40,35 @@ const {
 } = ledgerReadHelpers(() => dir);
 
 describe('a topic\'s map (5.8.5)', () => {
-  it('shows each question with where it stands, who asked it, and its current answers with whose they are', () => {
+  it('shows each question with where it stands, who asked it, and its current answers with whose they are; a reworded question keeps its answers, a decision naming any earlier wording answering the current one, beside one naming it (5.3.13)', () => {
     const open = ask(NOTE, 'Does a note snap to the grid?');
-    const answered = write('ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'Is a note a window?' }).id;
-    const answer = decide(NOTE, answered, 'A panel.', [], { by: 'person' });
+    const asked = write('ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'Is a note a window?' }).id;
+    const answer = decide(NOTE, asked, 'A panel.', [], { by: 'person', product_wide: true });
 
     const map = read('map', UNIT, 'note-window');
 
     assert.deepStrictEqual(map.questions, [
       { id: open, text: 'Does a note snap to the grid?', by: 'claude', at: line(open).at, stands: 'open', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [] },
       {
-        id: answered, text: 'Is a note a window?', by: 'person', at: line(answered).at, stands: 'answered', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [],
+        id: asked, text: 'Is a note a window?', by: 'person', at: line(asked).at, stands: 'answered', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [],
         answers: [{ id: answer, unit: UNIT, topic: 'note-window', by: 'person', text: 'A panel.' }],
       },
     ]);
     assert.deepStrictEqual([map.unit, map.topic, map.live], [UNIT, 'note-window', true]);
+
+    const reworded = reword(NOTE, asked, 'Is a note a window or a panel?');
+
+    assert.deepStrictEqual(answered('note-window'), [[open, 'open', []], [reworded, 'answered', [answer]]]);
+    const record = read('record', UNIT, 'note-window');
+    assert.deepStrictEqual([record.questions, record.decisions], [[current(open), current(reworded, [asked])], [current(answer)]]);
+    assert.deepStrictEqual(read('product').decisions, [current(answer)]);
+    const later = decide(NOTE, reworded, 'A panel, on every display.');
+    assert.deepStrictEqual(answered('note-window')[1], [reworded, 'answered', [answer, later]]);
+    assertAgree('note-window');
   });
 
-  it('puts the unsettled part of a question an answer settles in part on the map as its own question, linked to the first, and lists a reworded question\'s parts, each shown part of its current wording (5.S15, 5.3.11)', () => {
+  it('puts the unsettled part of a question an answer settles in part on the map as its own question, linked to the first, and lists a reworded question\'s parts, each shown part of its current wording — a part asked of a wording set aside since too, the question standing again in the wording before it (5.S15, 5.3.11, 5.8.17)', () => {
+    mint();
     const whole = ask(NOTE, 'How does a note look and behave?');
     decide(NOTE, whole, 'It looks frameless.');
 
@@ -68,6 +79,12 @@ describe('a topic\'s map (5.8.5)', () => {
     const reworded = reword(NOTE, whole, 'How does a note look, behave and sound?');
     const later = ask(NOTE, 'How does a note sound?', ['--part-of', reworded]);
     assert.deepStrictEqual(rows(), [[part, 'open', reworded, []], [reworded, 'answered', null, [part, later]], [later, 'open', reworded, []]]);
+    const inMint = reword(MINT, reworded, 'How does a Mint note look, behave and sound?');
+    const third = ask(NOTE, 'How does a Mint note sound?', ['--part-of', inMint]);
+
+    ok(dir, ['workunit', 'cancel', 'mint']);
+
+    assert.deepStrictEqual(rows(), [[part, 'open', reworded, []], [reworded, 'answered', null, [part, later, third]], [later, 'open', reworded, []], [third, 'open', reworded, []]]);
   });
 
   it('keeps one entry, the owner\'s, unchanged, where another topic reaches the same decision, and shows that topic\'s question answered by it, reworded or not, followed down the owner\'s chain to the current entry (5.S17, 5.5.5)', () => {
@@ -93,41 +110,20 @@ describe('a topic\'s map (5.8.5)', () => {
     assertAgree('space-homing');
   });
 
-  it('takes a duplicate merged where it is found out of the current entries, so its question stands answered by the owner\'s entry alone, and no write names it as current (5.5.4, 5.5.5)', () => {
-    const owners = decide(NOTE, ask(NOTE, 'Does a note float above every Space?'), 'Notes float above every Space.');
-    const reached = ask(SPACE, 'Does a note stay on its Space?');
-    const duplicate = decide(SPACE, reached, 'Notes float above every Space.');
-
-    const merged = write('merge', SPACE, ['--question', reached, '--into', owners, '--duplicate', duplicate], MADE).id;
-
-    const record = read('record', UNIT, 'space-homing');
-    assert.deepStrictEqual([record.decisions, record.merged], [[], [shownMerge(merged, duplicate, true)]], 'the merge does not show the duplicate it set aside');
-    assert.deepStrictEqual(read('map', UNIT, 'space-homing').questions[0].answers.map((/** @type {{id: string}} */ a) => a.id), [owners]);
-    const refusal = refuses(dir, ['ledger', 'replace', SPACE, '--replaces', duplicate, '--reason', 'changed-mind'], { env: SESSION, stdin: JSON.stringify({ ...MADE, drops: [], text: 'Again.', why: 'Again.' }) });
-    assert.match(refusal.error, new RegExp(`^ledger replace --replaces names ${duplicate}, which ${merged} merged as a duplicate — the current one is ${owners}$`));
-  });
-
-  it('keeps a reworded question\'s answers: a decision naming any earlier wording answers the current one, beside one naming it (5.3.13)', () => {
-    const first = ask(NOTE, 'Is a note a window?');
-    const decided = decide(NOTE, first, 'A panel.', [], { product_wide: true });
-
-    const reworded = reword(NOTE, first, 'Is a note a window or a panel?');
-
-    assert.deepStrictEqual(answered('note-window'), [[reworded, 'answered', [decided]]]);
-    const record = read('record', UNIT, 'note-window');
-    assert.deepStrictEqual([record.questions, record.decisions], [[current(reworded, [first])], [current(decided)]]);
-    assert.deepStrictEqual(read('product').decisions, [current(decided)]);
-    const later = decide(NOTE, reworded, 'A panel, on every display.');
-    assert.deepStrictEqual(answered('note-window'), [[reworded, 'answered', [decided, later]]]);
-    assertAgree('note-window');
-  });
-
-  it('keeps a question merged by a merge of a wording set aside since, which stands again in its first wording (5.5.5, 5.8.17)', () => {
+  it('takes a duplicate merged where it is found out of the current entries, so its question stands answered by the owner\'s entry alone, and no write names it as current; merged in a wording set aside since, the question stays merged, standing again in its first wording (5.5.4, 5.5.5, 5.8.17)', () => {
     mint();
     const owners = decide(NOTE, ask(NOTE, 'Does a note float above every Space?'), 'Notes float above every Space.');
     const reached = ask(SPACE, 'Does a note stay on its Space?');
+    const duplicate = decide(SPACE, reached, 'Notes float above every Space.');
     const reworded = reword(MINT, reached, 'Does a Mint note stay on its Space?');
-    write('merge', SPACE, ['--question', reworded, '--into', owners], MADE);
+
+    const merged = write('merge', SPACE, ['--question', reworded, '--into', owners, '--duplicate', duplicate], MADE).id;
+
+    const record = read('record', UNIT, 'space-homing');
+    assert.deepStrictEqual([record.decisions, record.merged], [[], [shownMerge(merged, duplicate, true)]], 'the merge does not show the duplicate it set aside');
+    assert.deepStrictEqual(answered('space-homing'), [[reworded, 'merged', [owners]]]);
+    const refusal = refuses(dir, ['ledger', 'replace', SPACE, '--replaces', duplicate, '--reason', 'changed-mind'], { env: SESSION, stdin: JSON.stringify({ ...MADE, drops: [], text: 'Again.', why: 'Again.' }) });
+    assert.match(refusal.error, new RegExp(`^ledger replace --replaces names ${duplicate}, which ${merged} merged as a duplicate — the current one is ${owners}$`));
 
     ok(dir, ['workunit', 'cancel', 'mint']);
 
@@ -135,17 +131,6 @@ describe('a topic\'s map (5.8.5)', () => {
     assertAgree('space-homing');
   });
 
-  it('keeps a part asked of a wording set aside since a part of the question, which stands again in its first wording (5.3.11, 5.8.17)', () => {
-    mint();
-    const whole = ask(NOTE, 'How does a note look and behave?');
-    const reworded = reword(MINT, whole, 'How does a note look and behave in Mint?');
-    const part = ask(NOTE, 'How does a note behave?', ['--part-of', reworded]);
-
-    ok(dir, ['workunit', 'cancel', 'mint']);
-
-    const rows = read('map', UNIT, 'note-window').questions;
-    assert.deepStrictEqual(rows.map((/** @type {Record<string, unknown>} */ r) => [r.id, r.part_of, r.parts]), [[whole, null, [part]], [part, whole, []]]);
-  });
 });
 
 describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
@@ -177,7 +162,7 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     assert.deepStrictEqual(read('record', 'dock', 'space-homing').moved, [{ ...line(moved), text: 'Does a note badge the dock icon?' }]);
   });
 
-  it('shows no row for a question moved to a topic set aside, the topic it moved from keeping the move on its record as history alone, and a current answer to it placed there as a row of its own: laid in the ledger\'s order among the questions\' rows, headed as a row\'s answer shows one — where it was made, and what the late check found of it — as its record and `since` show it, and saying where it stands on the map of a place it was made in alone; until the topic it moved to is reactivated (5.8.19)', () => {
+  it('shows no row for a question moved to a topic set aside, the topic it moved from keeping the move on its record as history alone, and a current answer to it placed there as a row of its own: laid in the ledger\'s order among the questions\' rows, headed as a row\'s answer shows one — where it was made, and what the late check found of it, nothing before the check judges it — as its record and `since` show it, and saying where it stands on the map of a place it was made in alone; until the topic it moved to is reactivated (5.8.19)', () => {
     mint();
     const open = ask(NOTE, 'Does a note snap to the grid?');
     const question = ask(NOTE, 'Which Space does a new note open on?');
@@ -186,14 +171,14 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     const later = ask(NOTE, 'Does a note dim when idle?');
     const moved = write('move', NOTE, ['--question', question, '--to', 'space-homing'], MADE).id;
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'space-homing']);
-    ok(dir, ['ledger', 'late-check'], { env: { CLAUDE_CODE_SESSION_ID: 'session-2', CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) } });
 
     const { id, unit, topic, by, text, at } = line(framed);
-    const row = { id, unit, topic, by, text, late_check: 'one', at, stands: 'question-set-aside', moved_from: null, moved_to: null, part_of: null, parts: [], answers: [] };
+    const unjudged = { id, unit, topic, by, text, at, stands: 'question-set-aside', moved_from: null, moved_to: null, stands_in: null, part_of: null, parts: [], answers: [] };
+    assert.deepStrictEqual(read('map', UNIT, 'note-window').questions[1], unjudged);
+    ok(dir, ['ledger', 'late-check'], { env: { CLAUDE_CODE_SESSION_ID: 'session-2', CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) } });
+    const row = { ...unjudged, late_check: 'one' };
     const rows = read('map', UNIT, 'note-window').questions;
-    assert.deepStrictEqual([ids(rows), rows[1], read('map', 'mint', 'mint').questions], [
-      [open, framed, later], { ...row, stands_in: null }, [{ ...row, stands_in: { unit: UNIT, topic: 'note-window' } }],
-    ]);
+    assert.deepStrictEqual([ids(rows), rows[1], read('map', 'mint', 'mint').questions], [[open, framed, later], row, [{ ...row, stands_in: { unit: UNIT, topic: 'note-window' } }]]);
     const record = read('record', UNIT, 'note-window');
     assert.deepStrictEqual([ids(record.decisions), record.moved], [[framed], [{ ...line(moved), text: 'Which Space does a new note open on?' }]]);
     assert.deepStrictEqual(ids(read('since', UNIT, 'note-window').calls), [framed]);
@@ -229,5 +214,4 @@ describe('a question moved, as its map shows it now (5.3.3, 5.8.5)', () => {
     ok(dir, ['topic', 'cancel', UNIT, 'discovery', 'menu-bar']);
     assert.deepStrictEqual(maps(), [[[once, 'moved-away', null, 'space-homing']], [[once, 'open', 'note-window', null]], []]);
   });
-
 });
