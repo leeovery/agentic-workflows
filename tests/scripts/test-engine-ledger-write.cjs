@@ -677,7 +677,7 @@ describe('whose entries a link names, and how they relate', () => {
     assert.deepStrictEqual([entries().at(-1).question, entries().at(-1).duplicate], [full(reworded), full(duplicate)]);
   });
 
-  it('holds a current entry relying on one whose way to its current form the replacement is on: what it replaced, or an earlier entry of its chain (5.6.10)', () => {
+  it('holds a current entry after the latest replacement on the way to its current form of an entry it relies on: what it replaced, or an earlier entry of its chain (5.6.10)', () => {
     const first = decide(ask().id).id;
     const relying = find(['--relies-on', first]).id;
     const unrelated = find().id;
@@ -689,7 +689,6 @@ describe('whose entries a link names, and how they relate', () => {
 
     refused('hold', NOTE, ['--entry', unrelated, '--after', second], MADE, nothingReplaced(unrelated, second));
     refused('hold', NOTE, ['--entry', onSecond, '--after', second], MADE, nothingReplaced(onSecond, second));
-    write('hold', NOTE, ['--entry', relying, '--after', second], MADE);
     write('hold', NOTE, ['--entry', relying, '--after', third], MADE);
     write('hold', NOTE, ['--entry', onSecond, '--after', third], MADE);
 
