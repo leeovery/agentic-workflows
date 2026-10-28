@@ -4,7 +4,7 @@
 // (projections/roadmap.cjs): the pull working set and the harvest proposal
 // overlay, a bug or a quick-fix row marked with its kind and an idea row
 // unmarked. The map view and gates are covered through their render surfaces
-// (test-engine-render-surfaces.cjs).
+// (test-engine-render-surfaces-roadmap-inbox.cjs).
 
 require('./hermetic-env.cjs');
 
