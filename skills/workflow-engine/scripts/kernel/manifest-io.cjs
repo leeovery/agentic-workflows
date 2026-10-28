@@ -237,25 +237,34 @@ function readProjectManifest(stateDir) {
 }
 
 /**
- * Every work unit's manifest: the registered names, or — while none are
- * registered — the directories in the state. A name whose manifest is
- * missing or unreadable is passed over; no state, no manifests. Loud on a
- * corrupt project manifest, as its read is.
+ * Every work unit's name: the registered names, or — while none are
+ * registered — the directories in the state; none where there is no state.
+ * Loud on a corrupt project manifest, as its read is.
+ * @param {string} stateDir
+ * @param {Record<string, any>} [project]  the project manifest, where the caller has read it already
+ * @returns {string[]}
+ */
+function workUnitNames(stateDir, project) {
+  if (!fs.existsSync(stateDir)) return [];
+  const registered = Object.keys((project || readProjectManifest(stateDir)).work_units || {});
+  return registered.length > 0
+    ? registered
+    : fs.readdirSync(stateDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+      .map((e) => e.name);
+}
+
+/**
+ * Every work unit's manifest, by `workUnitNames`. A name whose manifest is
+ * missing or unreadable is passed over.
  * @param {string} stateDir
  * @param {Record<string, any>} [project]  the project manifest, where the caller has read it already
  * @returns {Array<Record<string, any>>}
  */
 function listWorkUnitManifests(stateDir, project) {
-  if (!fs.existsSync(stateDir)) return [];
-  const registered = Object.keys((project || readProjectManifest(stateDir)).work_units || {});
-  const names = registered.length > 0
-    ? registered
-    : fs.readdirSync(stateDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-      .map((e) => e.name);
   /** @type {Array<Record<string, any>>} */
   const manifests = [];
-  for (const name of names) {
+  for (const name of workUnitNames(stateDir, project)) {
     try {
       manifests.push(readWorkUnitManifest(stateDir, name));
     } catch {
@@ -566,6 +575,7 @@ module.exports = {
   writeJsonAtomic,
   writeWorkUnitManifestAtomic,
   readProjectManifest,
+  workUnitNames,
   listWorkUnitManifests,
   writeProjectManifestAtomic,
   withStateLockFile,

@@ -9,10 +9,10 @@
 // The fold keeps, of each id the ledger holds, what the reads decide by and
 // never what they show: the event that wrote it; the kind of entry it is, a
 // replacement taking the kind it stands for, or none for an event that is no
-// entry; who made it; the unit and topic it was written on; the first entry
-// of its chain; its links; every entry linking back to it — the
-// replacements naming it, the merges that took it as a duplicate, the
-// entries answering it, the merges of it, the questions part of it
+// entry; who made it, and who moved whom; the unit and topic it was written
+// on; the first entry of its chain; its links; every entry linking back to
+// it — the replacements naming it, the merges that took it as a duplicate,
+// the entries answering it, the merges of it, the questions part of it
 // (5.3.11), the confirmations that it still holds, and on the first entry of
 // a question's chain, the moves of any wording; and where its line sits, so
 // a read shows an entry by reading that one line again. It keeps one thing a
@@ -55,7 +55,7 @@
 // - The current form of an entry: the current entries its chain leads to,
 //   down every live replacement, and through each merge that holds to the
 //   entry the duplicate was merged into; and the live replacements met on
-//   the way, which are what changed it.
+//   the way, which are what changed it, the latest last.
 // - A question's current answer: every current entry naming it or any
 //   earlier wording of it, so a replaced sibling never touches the others
 //   and a rewording keeps its answers (5.3.13).
@@ -76,7 +76,8 @@
 //   from what its map shows: the question may stand elsewhere now, or not
 //   be current.
 //   A unit's own level has a record of its own: the entries standing in the
-//   unit on no topic.
+//   unit on no topic. Every place's record is built in one pass, each id's
+//   standing worked out once.
 // - The product record: the current entries marked product-wide (5.8.6).
 // ---------------------------------------------------------------------------
 
@@ -98,6 +99,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   event: string,
  *   kind: EntryKind|null,
  *   by: string|null,
+ *   who_moved_whom: string|null,
  *   unit: string,
  *   topic: string|null,
  *   root: string,
@@ -112,6 +114,7 @@ const { entryKind } = require('./ledger-events.cjs');
  *   into: string|null,
  *   duplicate: string|null,
  *   entry: string|null,
+ *   after: string|null,
  *   replaced_by: readonly string[],
  *   merged_by: readonly string[],
  *   answered_by: readonly string[],
@@ -174,6 +177,7 @@ const ID_FACTS = {
       event: /** @type {string} */ (event.event),
       kind,
       by: typeof event.by === 'string' ? event.by : null,
+      who_moved_whom: typeof event.who_moved_whom === 'string' ? event.who_moved_whom : null,
       unit: /** @type {string} */ (event.unit),
       topic: idOrNull(event.topic),
       root: event.event === 'replaced' ? named(facts, event.replaces).root : id,
@@ -188,6 +192,7 @@ const ID_FACTS = {
       into: idOrNull(event.into),
       duplicate: idOrNull(event.duplicate),
       entry: idOrNull(event.entry),
+      after: idOrNull(event.after),
       replaced_by: NONE,
       merged_by: NONE,
       answered_by: NONE,
@@ -283,15 +288,27 @@ function isLive(folded, id) {
 }
 
 /**
+ * Where each id stands, as worked out for one folded ledger.
+ * @type {WeakMap<Folded, Map<string, Standing>>}
+ */
+const STANDINGS = new WeakMap();
+
+/**
  * Where `id` stands: where the earliest entry of its chain, back to the
  * first, made in a live place was made; where none is, where the first was.
  * @param {Folded} folded @param {string} id
  * @returns {Standing}
  */
 function standingOf(folded, id) {
-  let earliest = factsOf(folded, id).root;
-  for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
-  return madeOn(folded, earliest);
+  let known = STANDINGS.get(folded);
+  if (known === undefined) STANDINGS.set(folded, known = new Map());
+  let standing = known.get(id);
+  if (standing === undefined) {
+    let earliest = factsOf(folded, id).root;
+    for (let at = /** @type {string|null} */ (id); at !== null; at = factsOf(folded, at).replaces) if (isLive(folded, at)) earliest = at;
+    known.set(id, standing = madeOn(folded, earliest));
+  }
+  return standing;
 }
 
 /** The live replacements naming `id`. @param {Folded} folded @param {string} id */
@@ -427,14 +444,15 @@ function replacementsDown(folded, holding, id, seen) {
 }
 
 /**
- * What changed `id`: the live replacements down its chain to its current
- * forms, past each merge that holds, a merge changing nothing — a duplicate
- * gives the same answer (5.5.5). None while it is current.
+ * What changed `id`: the live replacements on its way to its current forms,
+ * past each merge that holds, a merge changing nothing — a duplicate gives
+ * the same answer (5.5.5) — in the ledger's order, the latest last. None
+ * while it is current.
  * @param {Folded} folded @param {string} id
  * @returns {string[]}
  */
 function replacementsOf(folded, id) {
-  return [...new Set(replacementsDown(folded, holdingMerges(folded), id, new Set()))];
+  return inLedgerOrder(folded, replacementsDown(folded, holdingMerges(folded), id, new Set()));
 }
 
 /** The confirmations that `id` still holds, made where it is live. @param {Folded} folded @param {string} id */
@@ -606,14 +624,15 @@ function mapOf(folded, unit, topic) {
  */
 
 /**
- * The record of the entries `here` names in `unit`: what it shows, by id.
- * Nothing on a unit or topic that is not live, nor a move or merge made on
- * one.
+ * The record of the entries among `ids` that `here` names in `unit`: what
+ * it shows, by id. Nothing on a unit or topic that is not live, nor a move
+ * or merge made on one.
  * @param {Folded} folded @param {string} unit @param {string|null} topic the place whose liveness decides
+ * @param {Iterable<string>} ids the ids it may hold, in the ledger's order
  * @param {(id: string) => boolean} here whether `id` stands in the record
  * @returns {RecordIds}
  */
-function recordWhere(folded, unit, topic, here) {
+function recordFrom(folded, unit, topic, ids, here) {
   /** @type {RecordIds} */
   const record = { questions: [], findings: [], decisions: [], moved: [], merged: [], other_topics: [] };
   if (folded.live(unit, topic) !== null) return record;
@@ -627,7 +646,8 @@ function recordWhere(folded, unit, topic, here) {
       outside.set(id, ties);
     }
   };
-  for (const [id, facts] of folded.facts) {
+  for (const id of ids) {
+    const facts = factsOf(folded, id);
     if (!here(id) || !isLive(folded, id)) continue;
     if (facts.event === 'moved') record.moved.push(id);
     if (facts.event === 'merged') {
@@ -649,38 +669,34 @@ function recordWhere(folded, unit, topic, here) {
  * @returns {RecordIds}
  */
 function recordOf(folded, unit, topic) {
-  return recordWhere(folded, unit, topic, (id) => standsAt(folded, id, unit, topic));
-}
-
-/**
- * The record of a unit's own level: the entries standing in it on no topic,
- * as every entry from the spec on does (5.2.3).
- * @param {Folded} folded @param {string} unit
- * @returns {RecordIds}
- */
-function unitLevelRecordOf(folded, unit) {
-  return recordWhere(folded, unit, null, (id) => {
-    const standing = standingOf(folded, id);
-    return standing.unit === unit && standing.topic === null;
-  });
+  return recordFrom(folded, unit, topic, folded.facts.keys(), (id) => standsAt(folded, id, unit, topic));
 }
 
 /**
  * Every place a live event stands in — a unit, and a topic or none at its
- * own level — once each, in the ledger's order.
+ * own level — with its record, in the ledger's order: each id's standing
+ * worked out once, and each record built from the ids standing in it alone.
  * @param {Folded} folded
- * @returns {Standing[]}
+ * @returns {{unit: string, topic: string|null, record: RecordIds}[]}
  */
-function placesOf(folded) {
-  /** @type {Map<string, Standing>} */
+function placeRecords(folded) {
+  /** @type {Map<string, {standing: Standing, ids: string[]}>} */
   const places = new Map();
   for (const id of folded.facts.keys()) {
     if (!isLive(folded, id)) continue;
     const standing = standingOf(folded, id);
     const key = `${standing.unit}\0${standing.topic ?? ''}`;
-    if (!places.has(key)) places.set(key, standing);
+    const place = places.get(key) ?? { standing, ids: [] };
+    place.ids.push(id);
+    places.set(key, place);
   }
-  return [...places.values()];
+  return [...places.values()].map(({ standing: { unit, topic }, ids }) => {
+    const here = (/** @type {string} */ id) => {
+      const standing = standingOf(folded, id);
+      return standing.unit === unit && standing.topic === topic;
+    };
+    return { unit, topic, record: recordFrom(folded, unit, topic, ids, here) };
+  });
 }
 
 /**
@@ -702,5 +718,5 @@ function productOf(folded) {
 
 module.exports = {
   ID_FACTS, readFolded, foldLedger, factsOf, madeOn, standingOf, isLive, mergeHolds, notCurrent, isCurrent, currentsOf, replacementsOf, holdsOf,
-  replacedChain, foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, unitLevelRecordOf, placesOf, productOf,
+  replacedChain, foldedBeneath, currentAnswer, answersOf, mapOf, recordOf, placeRecords, productOf,
 };

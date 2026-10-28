@@ -14,7 +14,8 @@
 // Each manifest's read-modify-write runs under its own lock (epic, then the
 // map add's own, then the project lock — one at a time, never nested, so the
 // multi-manifest transaction cannot deadlock); the feature manifest is only
-// read, and its directory is deleted, so it takes no lock.
+// read, and its directory is deleted, so it takes no lock. Its last-looked
+// mark goes last, under the mark's own lock (ledger-since.cjs).
 //
 // The import link rewrite: the engine rewrites only a path its own rename
 // broke, in a document its own move relocated.
@@ -34,6 +35,7 @@ const {
 } = require('../kernel/manifest.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
+const { dropMarks } = require('./ledger-since.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
 const { INDEXED_ARTIFACTS } = require('./knowledge/artifacts.cjs');
 const { dedupe, isIndexableImport, importArtifact, importLinkPattern } = require('./import-landing.cjs');
@@ -42,7 +44,7 @@ const { addItem } = require('./discovery-map.cjs');
 const { reaimAbsorbed } = require('./roadmap.cjs');
 const { mailboxStatus } = require('./transitions.cjs');
 const { mailboxDir } = require('./derivations.cjs');
-const { statePath } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 
 // A feature with any of these phases has moved past discussion — absorption
 // would orphan the downstream artifacts, so the guard refuses.
@@ -458,6 +460,7 @@ function absorbWorkUnit(cwd, feature, { into, topic }) {
   ], warnings);
 
   purgeWorkUnitCache(cwd, feature);
+  dropMarks(stateRoot(cwd), feature);
   const outcome = commitStateTail(cwd, [feature, into, 'manifest.json'], `workflow(${feature}): absorb into ${into}`, warnings);
 
   /** @type {WorkUnitAbsorbResult} */

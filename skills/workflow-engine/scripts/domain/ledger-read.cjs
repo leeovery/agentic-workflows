@@ -2,10 +2,11 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the ledger's read verbs (5.8.3, 6.1.4) — a record, a topic's
-// map, the product record, what a replacement affects (ledger-affected.cjs)
-// and Claude's calls since the person last looked (ledger-since.cjs) — each
-// a projection of the ledger worked out when read, never kept (5.8.2),
-// answered as JSON; what the person sees of them is drawn later.
+// map, the product record, what a replacement affects (ledger-affected.cjs),
+// Claude's calls since the person last looked (ledger-since.cjs) and the
+// verdict queue (ledger-verdicts.cjs) — each a projection of the ledger
+// worked out when read, never kept (5.8.2), answered as JSON; what the
+// person sees of them is drawn later.
 //
 // - Each read folds the ledger in one streamed pass (ledger-fold.cjs) and
 //   reads again the lines of the entries it shows alone, from the file the
@@ -41,6 +42,7 @@ const { ID_FACTS, readFolded, factsOf, isLive, mergeHolds, holdsOf, foldedBeneat
 const { hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { answerAffected } = require('./ledger-affected.cjs');
 const { answerSince, answerShown, withMarkLock } = require('./ledger-since.cjs');
+const { answerVerdicts } = require('./ledger-verdicts.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {Record<string, unknown>} Shown */
@@ -208,6 +210,7 @@ const READS = Object.freeze({
   affected: { usage: 'ledger affected <work-unit> [<topic>]', names: [1, 2], answer: answerAffected },
   since: { usage: 'ledger since <work-unit> [<topic>]', names: [1, 2], answer: answerSince },
   shown: { usage: 'ledger shown <work-unit> [<topic>]', names: [1, 2], answer: answerShown, around: withMarkLock },
+  verdicts: { usage: 'ledger verdicts', names: [0], answer: answerVerdicts },
 });
 
 /** The read verbs' usage, a line each. */
@@ -231,8 +234,9 @@ function namedPlace(root, verb, args) {
 }
 
 /**
- * `ledger <record|map|product|affected|since|shown>`: the projection read,
- * as JSON, and as warnings what a landing its check finished said.
+ * `ledger <record|map|product|affected|since|shown|verdicts>`: the
+ * projection read, as JSON, and as warnings what a landing its check
+ * finished said.
  * @param {string} cwd @param {string} verb @param {string[]} args
  * @returns {Record<string, unknown>}
  */
