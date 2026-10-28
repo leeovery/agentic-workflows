@@ -1119,6 +1119,8 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 
 5.8.19 An entry shows on the map and in the record of the place it stands, and also in those of the place it was made where that differs: a later unit's replacement of an earlier unit's decision shows in the later unit's too, as another place's current answer (5.8.4). "Since you last looked" for a place lists Claude's calls on its map — at a unit's own level, its list of calls (5.8.14) — that no look on this machine has shown; a look that shows a call marks it shown for every place it shows in (5.8.15). [Claude's derivation 2026-10-28: a call made in the work under way reaches that work's "since you last looked" (5.1.3, 5.8.7), wherever its chain stands, and an entry the person made there reaches that work's record, and so its spec (29.13.1)]
 
+5.8.20 A question's live wordings, in the order the ledger holds them, read as one line: a set-aside wording drops out, a wording reworded from it reads as rewording the live wording before it, and of two live rewordings of one wording the later replaces the earlier. The last is the question's wording and the others are its earlier wordings (5.3.13), so a question shows once, under the wording that stands, and an earlier wording on the line is not current (5.8.17). An entry naming a set-aside wording reads as naming the live wording it grew from. [Claude's derivation 2026-10-28: 5.8.17 judged entry by entry leaves two wordings of one question current once a unit is cancelled or brought back, so the question would show twice, or stand open beside its own answer]
+
 ### 5.9 The log stays out of the ledger
 
 5.9.1 The journey stays out of the ledger: a topic's log, one dated heading per session, free prose written as the conversation goes, enough for a fresh session to carry on alone, pointing at entries by short id rather than restating them (§9). [R23, R11]
@@ -1206,6 +1208,8 @@ Screen, drawn by Claude: the engine stopped by a ledger a newer Leeway wrote. [C
 5.S40 Given a cancelled topic whose decision contradicts a live topic's, when the live topic's closing pass looks for a contradiction with another record, then the cancelled decision is not read; once reactivated, it is. (5.8.17, 9.9.3)
 
 5.S41 Given a question answered by a decision, when the question is reworded, then the decision still answers it and is affected; a "still holds" naming the rewording clears it, and a further rewording flags it again. (5.3.13, 5.6.10)
+
+5.S42 Given a question reworded in unit mint, then reworded in unit sage while mint was cancelled, and an answer to each wording, when mint is reactivated, then the question shows once, under sage's wording, with both answers, and the answer to mint's wording is affected until it is confirmed or replaced; given instead sage's rewording made from mint's, when mint is cancelled, then the question shows once, under sage's wording, and keeps every answer. (5.8.20, 5.3.13, 5.8.17)
 
 ## 6. The engine's doors
 
@@ -11710,7 +11714,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.3.6 Relies on: 29.2. [R14; Claude's derivation]
 
-29.3.7 Proven by: 2.S11, 4.S14, 4.S24, 4.S25, 5.S1, 5.S2, 5.S3, 5.S4, 5.S5, 5.S6, 5.S7, 5.S8, 5.S9, 5.S10, 5.S12, 5.S13, 5.S14, 5.S15, 5.S16, 5.S17, 5.S18, 5.S19, 5.S20, 5.S21, 5.S22, 5.S24, 5.S25, 5.S28, 5.S29, 5.S31, 5.S32, 8.S26, 22.S16, 22.S18, 22.S19, 22.S20, 22.S24, 22.S36, 5.S33, 5.S34, 5.S35, 5.S36, 5.S37, 5.S38, 5.S39, 5.S41 (46). [R14; Claude's derivation]
+29.3.7 Proven by: 2.S11, 4.S14, 4.S24, 4.S25, 5.S1, 5.S2, 5.S3, 5.S4, 5.S5, 5.S6, 5.S7, 5.S8, 5.S9, 5.S10, 5.S12, 5.S13, 5.S14, 5.S15, 5.S16, 5.S17, 5.S18, 5.S19, 5.S20, 5.S21, 5.S22, 5.S24, 5.S25, 5.S28, 5.S29, 5.S31, 5.S32, 8.S26, 22.S16, 22.S18, 22.S19, 22.S20, 22.S24, 22.S36, 5.S33, 5.S34, 5.S35, 5.S36, 5.S37, 5.S38, 5.S39, 5.S41, 5.S42 (47). [R14; Claude's derivation]
 
 ### 29.4 The trust log and logging
 
@@ -11944,7 +11948,7 @@ the rest from the phase cut on the unit's manifest. (28.2.1)
 
 29.S1 Given the cut, when the release is built, then its phases are built in the order 29.2 to 29.20, and no phase starts before the phases it relies on are built. (29.1.7, 29.1.8)
 
-29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 864 listed are the 864 in §1 to §28. (29.1.10)
+29.S2 Given the scenarios of §1 to §28, when the cut's lists are read, then each scenario appears under exactly one phase, and the 865 listed are the 865 in §1 to §28. (29.1.10)
 
 29.S3 Given a scenario observing what two phases build, when the cut places it, then it is listed under the later of the two. (29.1.10)
 
