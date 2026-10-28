@@ -272,12 +272,13 @@ function claimRender(root, notes) {
 }
 
 /**
- * The copies brought in line with the ledger, holding their lock.
+ * The copies brought in line with the ledger, holding their claim, and —
+ * where there is a ledger — what is live stored beside them.
  * @param {string} root @param {string[]} notes
  * @returns {Rendered}
  */
 function renderLocked(root, notes) {
-  const live = livenessMarks(root);
+  const live = fs.existsSync(ledgerFile(root)) ? livenessMarks(root) : null;
   const copies = copiesOf(root, notes);
   /** @type {Rendered} */
   const rendered = { written: [], removed: [] };
@@ -295,7 +296,7 @@ function renderLocked(root, notes) {
   for (const dir of new Set(rendered.removed.map((file) => path.dirname(file)))) {
     if (dir !== RECORDS_DIR && fs.readdirSync(path.join(root, dir)).length === 0) fs.rmdirSync(path.join(root, dir));
   }
-  writeWhole(knowledgeFiles(root).copiesLive, JSON.stringify(live));
+  if (live !== null) writeWhole(knowledgeFiles(root).copiesLive, JSON.stringify(live));
   return rendered;
 }
 
