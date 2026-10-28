@@ -25,19 +25,24 @@
 //   line added and renamed over, so a read meets the ledger before the
 //   append or after it, never half a line (5.4.6). Nothing is ever edited
 //   (5.3.4).
+// - Entries a write appended and a kill, or a commit git refused, left
+//   uncommitted are committed whole by the next commit of the ledger: a
+//   write's, or boot's before its catch-up (4.7.8). Boot counts them past
+//   the ledger the branch holds once a landing a kill cut short is
+//   finished, since that landing rewrote the file first.
 // - Every stop on the ledger is kept for its screen (`render ledger-stop`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { isolatedGit, gitfileTarget } = require('../kernel/isolated-git.cjs');
-const { fdLines, lineAt, endsWithNewline } = require('../kernel/file-stream.cjs');
+const { fdLines, lineAt, endsWithNewline, fileChunks, linesOf } = require('../kernel/file-stream.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { isoNow } = require('./dates.cjs');
 const { LEDGER, LEDGER_VERSION, LedgerNewer, parseEntry, validEvent } = require('./ledger-events.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
-const { idsOf, keepStop, keptStop, ledgerStopped, diskChange } = require('./ledger-check.cjs');
-const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock } = require('./state-worktree.cjs');
+const { idsOf, keepStop, keptStop, ledgerStopped, diskChange, ledgerBlobs, fileStartsWith } = require('./ledger-check.cjs');
+const { STATE_BRANCH, BRANCH_REF, openWorktree, withStateLock, commitHere } = require('./state-worktree.cjs');
 const { finishLanding } = require('./state-merge-landing.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { ledgerStop, ledgerNewerStop, idInLine } = require('./projections/ledger.cjs');
@@ -87,6 +92,37 @@ function checkLedger(root, notes) {
     const change = ledgerChange(root);
     if (change !== null) throw ledgerStopped(checkedTree(root), change, 'the engine stops here');
   });
+}
+
+/**
+ * How many entries the ledger holds past the one the state branch last
+ * committed, where it starts with that one. Takes no lock.
+ * @param {string} root
+ */
+function uncommittedEntries(root) {
+  const [committed] = ledgerBlobs(checkedTree(root).git, [BRANCH_REF]);
+  const file = ledgerFile(root);
+  const from = committed?.size ?? 0;
+  if (!fs.existsSync(file) || fs.statSync(file).size <= from || !fileStartsWith(file, committed)) return 0;
+  let entries = 0;
+  for (const _line of linesOf(fileChunks(file, from))) entries += 1;
+  return entries;
+}
+
+/**
+ * Commit the entries past the committed ledger, pushing nothing: how many,
+ * and what the commit and a landing it finished said. The caller holds the
+ * writer lock.
+ * @param {string} root @param {string} message
+ * @returns {{entries: number, warnings: string[]}}
+ */
+function commitUncommitted(root, message) {
+  if (uncommittedEntries(root) === 0) return { entries: 0, warnings: [] };
+  const worktree = openWorktree(root);
+  const warnings = worktree.opened ? finishLanding(worktree, STATE_BRANCH) : [];
+  const entries = uncommittedEntries(root);
+  if (entries > 0) warnings.push(...commitHere(root, [LEDGER], message).warnings);
+  return { entries, warnings };
 }
 
 /**
@@ -282,4 +318,4 @@ function ledgerStopSurface(cwd, _args) {
   return ledgerStop(projectName(cwd), stop, shortIdOf(root, stop.found));
 }
 
-module.exports = { ledgerFile, ledgerChange, checkLedger, readLedger, withLedger, appendEntry, carrying, ledgerStopSurface };
+module.exports = { ledgerFile, ledgerChange, checkLedger, commitUncommitted, readLedger, withLedger, appendEntry, carrying, ledgerStopSurface };

@@ -12,12 +12,13 @@
 // state folder kept out of every branch, the branch and its worktree put in
 // place — or set up, or, lost, the stop whose yes is `boot --start-again`,
 // or, on the layout before the state branch, the stop for the migration —
-// then, under the writer lock, the catch-up from the remote, whose stop on a
-// field both clones changed ends boot there for the person's pick
-// (state-merge.cjs). Then the session's own `.gitignore` keeps the state's
-// ignore line, the workflows' trace, committed through the code door
-// (code-trace.cjs), and the migrations run, all under that one hold, so a
-// second boot meanwhile finds each done.
+// then, under the writer lock, the ledger's entries a killed write left
+// uncommitted committed, a warning counting them, and the catch-up from the
+// remote, which carries them, whose stop on a field both clones changed ends
+// boot there for the person's pick (state-merge.cjs). Then the session's own
+// `.gitignore` keeps the state's ignore line, the workflows' trace,
+// committed through the code door (code-trace.cjs), and the migrations run,
+// all under that one hold, so a second boot meanwhile finds each done.
 //
 // Migrations are the durability-critical leg: a failing migrate.cjs is a hard
 // error — migrations must never half-run silently. The run records into the
@@ -79,6 +80,7 @@ const { dropPosition } = require('./position.cjs');
 const { baselineState, baselineSignal } = require('./baseline.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
+const { commitUncommitted } = require('./ledger.cjs');
 
 // Resolved against this file so it works wherever the skill tree is installed.
 const MIGRATE_CJS = path.join(path.resolve(__dirname, '..', '..', '..'), 'workflow-migrate', 'scripts', 'migrate.cjs');
@@ -250,6 +252,7 @@ function boot(cwd, { startAgain = false } = {}) {
   const root = stateRoot(cwd);
   const warnings = [...placed.warnings];
   const migrated = withStateLock(root, () => {
+    commitLedgerTail(root, warnings);
     const caught = catchUpState(root, { listing: placed.listing });
     warnings.push(...caught.warnings);
     if (caught.action === 'stopped') return null;
@@ -282,6 +285,22 @@ function boot(cwd, { startAgain = false } = {}) {
   // mode choice, or fall back to the terminal wizard) without extra probes.
   if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
   return result;
+}
+
+/**
+ * Commit the ledger's entries a write appended and a kill, or a commit git
+ * refused, left uncommitted, so the catch-up carries them (4.7.8). A commit
+ * that fails is a warning: the entries stand in the ledger.
+ * @param {string} root @param {string[]} warnings
+ */
+function commitLedgerTail(root, warnings) {
+  try {
+    const { entries, warnings: notes } = commitUncommitted(root, 'ledger: the entries a write left uncommitted');
+    warnings.push(...notes);
+    if (entries > 0) warnings.push(`committed ${entries} ledger ${entries === 1 ? 'entry' : 'entries'} a write left uncommitted`);
+  } catch (err) {
+    warnings.push(`the ledger's uncommitted entries were not committed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /**

@@ -254,26 +254,30 @@ function auditState(dir, label) {
 // question's wording made on the topic the last move its unit made of the
 // question in a live place took it to — and an entry stands where the
 // earliest entry of its chain in a live place was made, or where the first
-// was when none is. Current is what the records show. Every entry in a live
-// place is shown, or leads to a shown entry down its live replacements or,
-// with none, its live merges; a shown entry is in a live place, no live
-// replacement names it, no live merge that would still lead to a shown
-// entry took it as a duplicate, and it shows exactly once in its unit's
-// record and once in its topic's. Each map holds a row for each shown
-// question standing on the topic — answered by the shown entries answering
-// any wording of it and those its leading merges lead to, merged while one
-// leads, moved in from where the last live move the map's unit made of it
-// was made, while that is live — and a row for each shown question
+// was when none is; it is placed where it stands, and where it was made
+// where that differs (5.8.19). Current is what the records show. Every
+// entry in a live place is shown, or leads to a shown entry down its live
+// replacements or, with none, its live merges; a shown entry is in a live
+// place, no live replacement names it, no live merge that would still lead
+// to a shown entry took it as a duplicate, and it shows exactly once in its
+// unit's record and once in its topic's. Each map holds a row for each
+// shown question standing on the topic — answered by the shown entries
+// answering any wording of it and those its leading merges lead to, merged
+// while one leads, moved in from where the last live move the map's unit
+// made of it was made, while that is live; a row for each shown question
 // standing on another topic of the map's unit that the unit moved away from
-// the topic by a live move, leading to where it stands now. Each record
-// shows those answers, with exactly the entries standing elsewhere that its
-// entries rely on, its leading merges went into or that answer its
-// questions; its live moves and merges, a merge's duplicate where it is
-// live and whether the merge leads; each entry's live confirmations, what
-// the late one-decision check last found of it where it found anything, and
-// its chain down to the first entry not in a live place. A place that is
-// not live shows nothing; the product record holds the shown entries marked
-// product-wide.
+// the topic by a live move, leading to where it stands now; and a row for
+// each other shown question placed on the topic or with an answer placed
+// there, saying where it stands. A row of a question standing off the topic
+// shows its answers placed on the topic that no question standing there
+// shows. Each record shows its maps' answers, with exactly the entries
+// standing elsewhere that were made there, that its entries rely on, its
+// leading merges went into or that answer its questions; its live moves and
+// merges, a merge's duplicate where it is live and whether the merge leads;
+// each entry's live confirmations, what the late one-decision check last
+// found of it where it found anything, and its chain down to the first
+// entry not in a live place. A place that is not live shows nothing; the
+// product record holds the shown entries marked product-wide.
 /** @param {string} dir @param {(msg: string) => string} ctx */
 function auditLedger(dir, ctx) {
   const root = statePath(dir);
@@ -323,6 +327,12 @@ function auditLedger(dir, ctx) {
   const standing = (id) => {
     const at = /** @type {string} */ (chainOf(id).filter(inLivePlace).at(-1) ?? chainOf(id).at(-1));
     return { unit: byId.get(at).unit, topic: topicOf(at) };
+  };
+  /** Where `id` is placed: where it stands, and where it was made where that differs. @param {string} id */
+  const placed = (id) => {
+    const at = standing(id);
+    const made = { unit: byId.get(id).unit, topic: topicOf(id) };
+    return at.unit === made.unit && at.topic === made.topic ? [at] : [at, made];
   };
   const liveEvents = (/** @type {string} */ event) => events.filter((e) => e.event === event && inLivePlace(e.id));
   const replacements = liveEvents('replaced');
@@ -430,6 +440,9 @@ function auditLedger(dir, ctx) {
       if (isQuestion(byId.get(id))) tie(answersOf(id).answers, id);
     }
     for (const m of merges.filter(made).filter(leads)) tie(reach(m.into), m.into);
+    for (const id of shownAt.keys()) {
+      if (!within(id) && placed(id).some((p) => p.unit === unit && (at.topic === null || p.topic === at.topic))) expected.set(id, expected.get(id) ?? new Set());
+    }
     assert.deepStrictEqual(new Map(record.other_topics.map((/** @type {{id: string, named: string[]}} */ o) => [full(o.id), new Set(o.named.map(full))])), expected,
       ctx(`${place}'s record does not show exactly the entries standing elsewhere tied to it`));
   }
@@ -441,9 +454,17 @@ function auditLedger(dir, ctx) {
       assert.deepStrictEqual(map.questions, [], ctx(`${place}'s map, not live, shows something`));
       continue;
     }
-    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands !== 'moved-away');
-    assert.deepStrictEqual(standingHere.map((/** @type {{id: string}} */ row) => full(row.id)).sort(), [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && standing(id).unit === unit && standing(id).topic === topic).sort(),
+    const on = (/** @type {{unit: string, topic: string|null}} */ p) => p.unit === unit && p.topic === topic;
+    const shownRow = (/** @type {{id: string, answers: {id: string}[]}} */ row) => full(row.id);
+    const standingHere = map.questions.filter((/** @type {{stands: string}} */ row) => !['moved-away', 'elsewhere'].includes(row.stands));
+    const questionsHere = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && on(standing(id)));
+    assert.deepStrictEqual(standingHere.map(shownRow).sort(), [...questionsHere].sort(),
       ctx(`${place}'s map does not hold a row for each shown question standing on it`));
+    for (const row of map.questions) {
+      for (const { id: answer } of row.answers) {
+        assert.ok([...main(record), ...record.other_topics].some((e) => full(e.id) === full(answer)), ctx(`${place}'s record does not show ${answer}, which its map shows answering ${row.id}`));
+      }
+    }
     for (const row of standingHere) {
       const movedIn = movesOf(full(row.id), unit).at(-1);
       assert.deepStrictEqual([row.moved_from, row.moved_to], [movedIn === undefined || !placeLive(unit, movedIn.topic) ? null : movedIn.topic, null],
@@ -456,22 +477,30 @@ function auditLedger(dir, ctx) {
         assert.ok(main(record).some((e) => full(e.id) === answer) || elsewhere?.named.map(full).includes(full(row.id)), ctx(`${place}'s record does not show ${answer}, answering ${row.id}`));
       }
     }
-    const away = map.questions.filter((/** @type {{stands: string}} */ row) => row.stands === 'moved-away');
-    const movedAway = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && standing(id).unit === unit && standing(id).topic !== topic && movesOf(id, unit).some((m) => m.topic === topic));
-    assert.deepStrictEqual(away.map((/** @type {{id: string, moved_from: string|null, moved_to: string}} */ row) => [full(row.id), row.moved_from, row.moved_to]).sort(), movedAway.map((id) => [id, null, standing(id).topic]).sort(),
-      ctx(`${place}'s map does not lead each shown question its unit moved away from it to where it stands now`));
+    const shownHere = new Set(questionsHere.flatMap((id) => answersOf(id).answers));
+    const answersHere = (/** @type {string} */ id) => answersOf(id).answers.filter((a) => !shownHere.has(a) && placed(a).some(on));
+    /** @param {string} stands */
+    const rowsOf = (stands) => map.questions.filter((/** @type {{stands: string}} */ row) => row.stands === stands)
+      .map((/** @type {{id: string, moved_from: string|null, moved_to: string|null, stands_in: object|null, answers: {id: string}[]}} */ row) => [full(row.id), row.moved_from, row.moved_to, row.stands_in, row.answers.map((a) => full(a.id)).sort()]).sort();
+    const offTopic = [...shownAt.keys()].filter((id) => isQuestion(byId.get(id)) && !on(standing(id)));
+    const movedAway = offTopic.filter((id) => standing(id).unit === unit && movesOf(id, unit).some((m) => m.topic === topic));
+    assert.deepStrictEqual(rowsOf('moved-away'), movedAway.map((id) => [id, null, standing(id).topic, null, answersHere(id)]).sort(),
+      ctx(`${place}'s map does not lead each shown question its unit moved away from it to where it stands now, with its answers placed there`));
+    const elsewhere = offTopic.filter((id) => !movedAway.includes(id) && (placed(id).some(on) || answersHere(id).length > 0));
+    assert.deepStrictEqual(rowsOf('elsewhere'), elsewhere.map((id) => [id, null, null, standing(id), answersHere(id)]).sort(),
+      ctx(`${place}'s map does not show each shown question standing elsewhere placed on it, or answered by an entry placed there, where it stands (5.8.19)`));
   }
 
   const product = ledger(['product']);
   assert.deepStrictEqual([...product.findings, ...product.decisions].map((/** @type {{id: string}} */ e) => full(e.id)).sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record does not hold the shown entries marked product-wide'));
 
-  auditCopies(root, events, shownAt, standing, full, ctx);
+  auditCopies(root, events, shownAt, placed, full, ctx);
 }
 
 // The ledger's copies in the knowledge directory, held to the records: a
-// copy for each place a shown entry stands in — its unit's own level, or a
-// topic — and for no other; each naming every entry shown there and no entry
+// copy for each place a shown entry is placed in — its unit's own level, or
+// a topic — and for no other; each naming every entry shown there and no entry
 // that is not shown, so no replaced answer is in one; the product record's
 // file naming the shown entries marked product-wide alone; no words of an
 // entry that is not shown — a question's wording, an answer's text, its why
@@ -480,21 +509,22 @@ function auditLedger(dir, ctx) {
 // record's file.
 /**
  * @param {string} root @param {Record<string, any>[]} events @param {Map<string, string[]>} shownAt
- * @param {(id: string) => {unit: string, topic: string|null}} standing
+ * @param {(id: string) => {unit: string, topic: string|null}[]} placed
  * @param {(short: string) => string} full @param {(msg: string) => string} ctx
  */
-function auditCopies(root, events, shownAt, standing, full, ctx) {
+function auditCopies(root, events, shownAt, placed, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
   for (const id of shownAt.keys()) {
-    const { unit, topic } = standing(id);
-    const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
-    expected.set(file, [...(expected.get(file) ?? []), id]);
+    for (const { unit, topic } of placed(id)) {
+      const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
+      expected.set(file, [...(expected.get(file) ?? []), id]);
+    }
   }
   const markdown = (/** @type {string} */ rel) => (fs.existsSync(path.join(root, rel)) ? fs.readdirSync(path.join(root, rel), { withFileTypes: true }) : [])
     .flatMap((entry) => (entry.isDirectory() ? markdown(`${rel}/${entry.name}`) : entry.name.endsWith('.md') ? [`${rel}/${entry.name}`] : []));
   const copies = markdown(RECORDS_DIR).sort();
-  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry stands in'));
+  assert.deepStrictEqual(copies, [...expected.keys()].sort(), ctx('the record copies are not one for each place a shown entry is placed in'));
   /** @param {string} rel */
   const named = (rel) => [...fs.readFileSync(path.join(root, rel), 'utf8').matchAll(/Entry (\w+)\.$/gm)].map((m) => full(m[1]));
   for (const [file, ids] of expected) {

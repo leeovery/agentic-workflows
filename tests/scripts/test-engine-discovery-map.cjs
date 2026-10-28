@@ -9,6 +9,7 @@ const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
 const harness = require('./engine-harness.cjs');
+const { SESSION, MADE } = require('./ledger-world.cjs');
 
 const { git, stateGit, commitAll } = harness;
 
@@ -676,6 +677,25 @@ describe('engine CLI: discovery-map operations', () => {
 
       const err = runFail(dir, ['rename', 'payments', 'handled-topic', 'anything-else']);
       assert.match(err.error, /it is closed as a dead end and stays on the map as record/);
+    });
+
+    it('remove and rename refuse a fresh topic the ledger names — an entry written on it, or a question moved to it — writing nothing; reroute takes it', () => {
+      const ledger = (verb, flags, content) => harness.ok(dir, ['ledger', verb, 'payments.discovery.fresh-topic', ...flags], { env: SESSION, stdin: JSON.stringify(content) });
+      const question = ledger('ask', [], { ...MADE, text: 'Does checkout work offline?' }).id;
+      ledger('move', ['--question', question, '--to', 'rich-fresh'], MADE);
+      const before = JSON.stringify(readManifest(dir));
+
+      for (const [topic, verb, args] of [
+        ['fresh-topic', 'removed', ['remove', 'payments', 'fresh-topic']],
+        ['fresh-topic', 'renamed', ['rename', 'payments', 'fresh-topic', 'anything-else']],
+        ['rich-fresh', 'removed', ['remove', 'payments', 'rich-fresh']],
+        ['rich-fresh', 'renamed', ['rename', 'payments', 'rich-fresh', 'anything-else']],
+      ]) {
+        assert.strictEqual(runFail(dir, args).error,
+          `"${topic}" can't be ${verb} — the ledger holds entries on it, which name it for good; cancel from the epic menu instead`, args.join(' '));
+      }
+      assert.strictEqual(JSON.stringify(readManifest(dir)), before);
+      assert.strictEqual(runOk(dir, ['reroute', 'payments', 'fresh-topic', 'research']).routing, 'research');
     });
   });
 

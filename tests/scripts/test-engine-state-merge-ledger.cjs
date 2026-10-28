@@ -4,8 +4,10 @@
 // The ledger through a catch-up (workflow-engine/scripts/domain/state-merge.cjs
 // with domain/ledger.cjs): a landing a kill cut short finished under the
 // writer lock by a ledger read, an append or a ledger verb, which hands on
-// what the landing said; and the merge's own commit checked against the
-// remote's ledger, one that fails landing nothing and pushing nothing.
+// what the landing said, and by boot's commit of the entries a killed write
+// left uncommitted before it counts them; and the merge's own commit checked
+// against the remote's ledger, one that fails landing nothing and pushing
+// nothing.
 //
 // Layer: git. World: real repositories in a temp folder per test, a project
 // on a bare remote and a second clone of it on "another machine", each with
@@ -23,8 +25,8 @@ const { git, ok, refuses, tip, remoteTip } = require('./engine-harness.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
-const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
-const { readLedger, appendEntry, ledgerChange, ledgerStopSurface } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
+const { STATE_BRANCH, withStateLock } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { readLedger, appendEntry, ledgerChange, ledgerStopSurface, commitUncommitted } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { LedgerChanged } = require(path.join(SCRIPTS, 'domain/ledger-check.cjs'));
@@ -123,6 +125,20 @@ describe('the ledger through a catch-up', () => {
       assert.deepStrictEqual(notes, [chartNote()]);
     });
   }
+
+  it('counts no entry of a fast-forward a kill cut short as one a write left uncommitted: the landing is finished first, and nothing else committed', () => {
+    const base = askedLine('Base?');
+    const there1 = askedLine('There?');
+    const { here, there } = twoMachines({ '.ledger.jsonl': base, ...UNIT });
+    const remote = commitOn(there, { '.ledger.jsonl': `${base}${there1}` }).commit;
+    killedAfter(here.root, 'merge.catchUpState(root)', 'reset --quiet');
+    assert.deepStrictEqual([readFile(here.root, '.ledger.jsonl'), git(here.main, ['show', `${STATE_BRANCH}:.ledger.jsonl`])], [`${base}${there1}`, base], 'the kill did not leave the remote\'s ledger written and the branch unmoved');
+
+    assert.deepStrictEqual(withStateLock(here.root, () => commitUncommitted(here.root, 'state: the tail')), { entries: 0, warnings: [] });
+
+    assert.strictEqual(tip(here.main, STATE_BRANCH), remote);
+    assert.deepStrictEqual(mergeLeftovers(here.root), []);
+  });
 
   it('checks the merge\'s own commit against the remote\'s ledger: one that fails lands nothing, pushes nothing, and the stop shows the line the check found', () => {
     const { here, there, bare } = twoMachines({ '.ledger.jsonl': ledger('base') });

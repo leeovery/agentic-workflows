@@ -36,14 +36,15 @@
 //   a merge's duplicate is a current decision answering the question merged,
 //   in any of its wordings, other than the one it goes into (5.5.4, 5.5.5);
 //   a hold names the latest live replacement on the way to its current
-//   form, past each merge that holds, of an entry the held entry relies on
-//   (5.6.10); a replacement's cause is never what it replaces, a new fact's
-//   being a finding and another topic's a decision standing on a topic
-//   other than the one the replaced entry stands on (5.3.8); who moved whom
+//   form, past each merge that holds, of an entry the held entry is held
+//   against: one it relies on, or the question an answer answers (5.6.10);
+//   a replacement's cause is never what it replaces, a new fact's being a
+//   finding and another topic's a decision standing on a topic other than
+//   the one the replaced entry stands on (5.3.8); who moved whom
 //   is what the departure rule allows (ledger-verdicts.cjs) — never the
 //   person's answer standing over Claude's lean on an entry Claude made,
-//   and on the person's replacement of a decision, what its reason and the
-//   entry it replaces allow.
+//   and on the person's replacement of a decision carrying no sealed answer
+//   of Claude's, what its reason and the entry it replaces allow.
 // - What the engine sets: a replacement's kind, the question a replaced
 //   decision answers or a replaced question is part of, and, where the
 //   content leaves them out, the replaced entry's product-wide mark (5.2.5)
@@ -76,13 +77,14 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntry, carrying } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { shortId, resolveId } = require('./ledger-ids.cjs');
-const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacementsOf, replacedChain } = require('./ledger-fold.cjs');
+const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, replacedChain } = require('./ledger-fold.cjs');
 const { TOPIC_PHASES, hasItem, hasTopic, manifestOf, liveness } = require('./ledger-units.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { checkOneDecision } = require('./ledger-one-decision.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { derivedMove, movedRefusal } = require('./ledger-verdicts.cjs');
+const { heldAgainst } = require('./ledger-affected.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -510,20 +512,22 @@ function checkCause(linked, read) {
 
 /**
  * Refuse a confirmation of an entry after anything but the latest live
- * replacement on the way to its current form of an entry it relies on
- * (5.6.10): one on no such way, or an earlier one, naming the latest.
+ * replacement on the way to its current form of an entry it is held
+ * against — one it relies on, or the question an answer answers (5.6.10,
+ * ledger-affected.cjs): one on no such way, or an earlier one, naming the
+ * latest.
  * @param {Linked} linked @param {Folded} read
  */
 function checkHeld(linked, read) {
   const [entry, after] = /** @type {string[]} */ ([linked.entry, linked.after]);
-  const ways = factsOf(read, entry).relies_on.map((relied) => ({ relied, way: replacementsOf(read, relied) }));
-  if (ways.some(({ way }) => way.at(-1) === after)) return;
+  const ways = heldAgainst(read, entry);
+  if (ways.some(({ replacements }) => replacements.at(-1) === after)) return;
   const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
-  const passed = ways.find(({ way }) => way.includes(after));
+  const passed = ways.find(({ replacements }) => replacements.includes(after));
   if (passed === undefined) {
-    throw new Error(`ledger hold --entry names ${short(entry)}, which relies on nothing ${short(after)} changed — it holds an entry relying on one whose way to its current form the replacement is on`);
+    throw new Error(`ledger hold --entry names ${short(entry)}, which is held against nothing ${short(after)} changed — it holds an entry relying on or answering one whose way to its current form the replacement is on`);
   }
-  throw new Error(`ledger hold --after names ${short(after)}, an earlier change on the way of ${short(passed.relied)} — a hold names the latest: ${short(/** @type {string} */ (passed.way.at(-1)))}`);
+  throw new Error(`ledger hold --after names ${short(after)}, an earlier change on the way of ${short(passed.held_against)} — a hold names the latest: ${short(/** @type {string} */ (passed.replacements.at(-1)))}`);
 }
 
 /**
@@ -749,7 +753,7 @@ function land(cwd, request, warnings) {
  * `ledger <verb>`: one event appended and committed, then the knowledge
  * base's copies rendered and indexed. Answers the entry's short id, the
  * commit, and any warnings; a commit git refused is pending, and the next
- * write's commit takes the ledger whole.
+ * write's commit, or boot's, takes the ledger whole.
  * @param {string} cwd @param {string} verb @param {string[]} args @param {() => string} stdin
  * @returns {{id: string, committed: string|null, note?: string, warnings?: string[]}}
  */
@@ -762,7 +766,7 @@ function writeLedger(cwd, verb, args, stdin) {
     refreshLedgerCopies(cwd, warnings);
     /** @type {{id: string, committed: string|null, note?: string, warnings?: string[]}} */
     const result = { id, committed: outcome.committed };
-    if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write commits it';
+    if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
     if (warnings.length > 0) result.warnings = warnings;
     return result;
   } catch (err) {

@@ -39,13 +39,13 @@ function blobToFile(git, oid, file) {
 }
 
 /**
- * An open file's bytes from its start, a chunk at a time; each chunk holds
- * until the next is read.
- * @param {number} fd @returns {Generator<Buffer>}
+ * An open file's bytes from `from`, its start unless given, a chunk at a
+ * time; each chunk holds until the next is read.
+ * @param {number} fd @param {number} [from] @returns {Generator<Buffer>}
  */
-function* fdChunks(fd) {
+function* fdChunks(fd, from = 0) {
   const chunk = Buffer.alloc(CHUNK_BYTES);
-  let position = 0;
+  let position = from;
   for (let read = fs.readSync(fd, chunk, 0, CHUNK_BYTES, position); read > 0; read = fs.readSync(fd, chunk, 0, CHUNK_BYTES, position)) {
     yield chunk.subarray(0, read);
     position += read;
@@ -53,14 +53,14 @@ function* fdChunks(fd) {
 }
 
 /**
- * A file's bytes, a chunk at a time; each chunk holds until the next is
- * read.
- * @param {string} file @returns {Generator<Buffer>}
+ * A file's bytes from `from`, its start unless given, a chunk at a time;
+ * each chunk holds until the next is read.
+ * @param {string} file @param {number} [from] @returns {Generator<Buffer>}
  */
-function* fileChunks(file) {
+function* fileChunks(file, from = 0) {
   const fd = fs.openSync(file, 'r');
   try {
-    yield* fdChunks(fd);
+    yield* fdChunks(fd, from);
   } finally {
     fs.closeSync(fd);
   }
@@ -174,4 +174,4 @@ function blobIds(file, lengths, objectFormat) {
   return hashes.map((hash, i) => (read >= lengths[i] ? hash.digest('hex') : null));
 }
 
-module.exports = { runToFile, blobToFile, fileChunks, fileLineBytes, fileLines, fdLines, lineAt, endsWithNewline, blobIds };
+module.exports = { runToFile, blobToFile, fileChunks, linesOf, fileLineBytes, fileLines, fdLines, lineAt, endsWithNewline, blobIds };

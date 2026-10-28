@@ -3,7 +3,9 @@
 // ---------------------------------------------------------------------------
 // The catch-up at boot (workflow-engine/scripts/domain/boot.cjs with
 // domain/state-merge.cjs): run before the migrations, a merge stop ending
-// boot there, and what a failed push left behind pushed.
+// boot there, what a failed push left behind pushed, and the ledger's
+// entries a killed write left uncommitted committed first, so the catch-up
+// carries them to the other clone.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -17,14 +19,17 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { execFileSync, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { git, tip, remoteTip } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
+const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
-const { readFile } = require('./discovery-test-utils.cjs');
-const { useWorld, engine, cloneOf, boot, setUp, commitOnState } = require('./boot-state-world.cjs');
+const { readFile, createFile } = require('./discovery-test-utils.cjs');
+const { useWorld, STUB_ENGINE, engine, cloneOf, boot, setUp, commitOnState } = require('./boot-state-world.cjs');
+const { SESSION, MADE, NOTE } = require('./ledger-world.cjs');
 
 const world = useWorld();
 
@@ -89,5 +94,36 @@ describe('the catch-up at boot (4.7.8)', () => {
     assert.strictEqual(boot(here.main).state, 'ready');
 
     assert.strictEqual(remoteTip(bare), unpushed);
+  });
+
+  it('commits the entries a write killed before its commit left in the ledger, warning of them, before the catch-up merges them onto what the other clone pushed meanwhile', () => {
+    const { bare, there, here } = twoClones();
+    commitOnState(there.root, { 'fumi/manifest.json': JSON.stringify({ name: 'fumi', work_type: 'feature', status: 'in-progress', phases: { discussion: { items: { 'note-window': { status: 'in-progress' } } } } }) });
+    const ask = (/** @type {string} */ dir, /** @type {string} */ text) => engine.ok(dir, ['ledger', 'ask', NOTE], { env: SESSION, stdin: JSON.stringify({ ...MADE, text }) });
+    ask(there.main, 'Asked first?');
+    boot(here.main);
+    const real = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim();
+    const wrapper = fs.mkdtempSync(path.join(world(), 'git-'));
+    createFile(wrapper, 'git', `#!/bin/sh\ncase "$*" in *commit-tree*) kill -9 "$PPID"; exit 1 ;; esac\nexec "${real}" "$@"\n`);
+    fs.chmodSync(path.join(wrapper, 'git'), 0o755);
+    const committed = tip(here.main, STATE_BRANCH);
+
+    const killed = spawnSync('node', [STUB_ENGINE, 'ledger', 'ask', NOTE], {
+      cwd: here.main, encoding: 'utf8', timeout: 20000, input: JSON.stringify({ ...MADE, text: 'Stranded here?' }), env: { ...process.env, ...SESSION, PATH: `${wrapper}:${process.env.PATH}` },
+    });
+    assert.strictEqual(killed.signal, 'SIGKILL', killed.stderr);
+    assert.strictEqual(git(here.root, ['status', '--porcelain', '--', LEDGER]), ` M ${LEDGER}\n`);
+    assert.strictEqual(tip(here.main, STATE_BRANCH), committed);
+    ask(there.main, 'Written there?');
+
+    const res = boot(here.main);
+
+    assert.deepStrictEqual([res.state, res.warnings], ['ready', ['committed 1 ledger entry a write left uncommitted']]);
+    assert.strictEqual(git(here.root, ['status', '--porcelain', '--', LEDGER]), '');
+    assert.strictEqual(remoteTip(bare), tip(here.main, STATE_BRANCH));
+    boot(there.main);
+    for (const clone of [here, there]) {
+      assert.deepStrictEqual(readFile(clone.root, LEDGER).trim().split('\n').map((line) => JSON.parse(line).text), ['Asked first?', 'Written there?', 'Stranded here?']);
+    }
   });
 });
