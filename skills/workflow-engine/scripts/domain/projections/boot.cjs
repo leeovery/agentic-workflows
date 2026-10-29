@@ -3,10 +3,11 @@
 // ---------------------------------------------------------------------------
 // Domain ring: workflow-start's boot gates — the menus Step 0 puts to the
 // user before any work is on the table: the state lost, the GitHub rule's
-// offer, the migration confirm, the label opt-in — and the knowledge gate's
-// displays. Pure renderers; none reads state (the calling prose branches on
-// the boot response and fetches the gate at its display point, and the
-// render surface reads what a display names).
+// offer, the migration confirm, the label opt-in — the stop on a git below
+// the engine's floor, and the knowledge gate's displays. Pure renderers;
+// none reads state (the calling prose branches on the boot response and
+// fetches the gate at its display point, and the render surface reads what
+// a display names).
 // ---------------------------------------------------------------------------
 
 const { section, menu, cmdOption, promptOption, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
@@ -76,6 +77,28 @@ function stateLostGate(project) {
       cmdOption('y', 'yes', { head: 'Start again', tail: `a fresh state branch, then the product researcher reads ${name}'s code to rebuild what it can` }),
       cmdOption('n', 'no', { head: 'Not now', tail: 'look for another clone first; nothing is written' }),
     ], { question: 'Start again with a fresh state?' })),
+  ].join('\n');
+}
+
+/**
+ * Boot's stop where the git on the PATH is older than the engine's floor, or
+ * none runs: the floor, what boot found, and where to get one at the floor.
+ * @param {string} floor the oldest git the engine runs on
+ * @param {string|null} found the version boot found, or null where no git runs
+ * @returns {string}
+ */
+function gitFloorStop(floor, found) {
+  const [title, what] = found === null
+    ? ['Leeway found no git to run', 'and boot found no git it could run on this machine.']
+    : ['this git is older than Leeway needs', `and the git on this machine is ${found}.`];
+  const account = [
+    `> Leeway runs on git ${floor} or newer, ${what}`,
+    '>',
+    `> Install git ${floor} or newer, then start a new session in this project. git-scm.com/downloads gives the ways to get one on each system; on a Mac, Homebrew's git takes over from the one Apple's command-line tools bring.`,
+  ];
+  return [
+    section('DISPLAY: git floor stop', emitAs('properties'), `⚑ Boot stopped: ${title}`),
+    section('DISPLAY: git floor account', emitAs('markdown'), account.join('\n')),
   ].join('\n');
 }
 
@@ -236,4 +259,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, githubRuleGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, githubRuleGate, labelGate, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };

@@ -393,7 +393,15 @@ describe('pipeline simulation: sessions', () => {
     sim.run(['topic', 'complete', wu, 'discussion', wu]);
   });
 
-  it('boot: lost state stops at its screen and the yes starts it again; a GitHub remote gets the rule\'s offer once, and the no is recorded', () => {
+  it('boot: a git below the floor stops at its screen; lost state stops at its screen and the yes starts it again; a GitHub remote gets the rule\'s offer once, and the no is recorded', () => {
+    // A machine whose git is older than the engine's floor stops before
+    // anything runs.
+    const bin = fs.mkdtempSync(path.join(sim.configDir, 'old-git-'));
+    fs.writeFileSync(path.join(bin, 'git'), "#!/bin/sh\necho 'git version 2.39.5 (Apple Git-154)'\n", { mode: 0o755 });
+    const oldGit = { PATH: bin };
+    assert.deepStrictEqual(sim.run(['boot'], oldGit), { ok: true, state: 'git', warnings: [] });
+    assert.match(sim.render(['git-floor-stop'], { expect: 'content', identity: oldGit }), /Leeway runs on git 2\.40\.0 or newer/);
+
     // The state branch and its worktree gone, the code tree still ignoring
     // the state: lost, here and with no remote to restore it from.
     git(sim.dir, ['worktree', 'remove', '--force', '--force', statePath(sim.dir)]);

@@ -8,6 +8,9 @@
 // vectors it awaits to the background fill — a start never waits on
 // embedding.
 //
+// Before all of it, boot reads the git on the PATH, once: one older than the
+// engine's floor, or none, stops boot with nothing written (git-floor.cjs).
+//
 // The state comes first, before anything writes it (state-checks.cjs): the
 // state folder kept out of every branch, the branch and its worktree put in
 // place — or set up, or, lost, the stop whose yes is `boot --start-again`,
@@ -81,6 +84,7 @@ const { renderLedgerCopies } = require('./ledger-copies.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
 const { labelConfigStatus, repairSessionLabels, resolveEnabled, syncSessionHooks, commitSessionHooks } = require('./session-label.cjs');
 const { gateSurface } = require('./gate-surface.cjs');
+const { gitShortfall } = require('./git-floor.cjs');
 const { tidyConversations } = require('./conversation.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { dropPosition } = require('./position.cjs');
@@ -143,7 +147,9 @@ const MIGRATIONS_RECORD = '.state/migrations';
  */
 
 /**
- * Boot stopped by the state, before anything wrote it: `lost`, the state
+ * Boot stopped before anything wrote the state: `git`, the git on the PATH
+ * older than the engine's floor, or none, read before anything else runs —
+ * `render git-floor-stop` draws the stop; `lost`, the state
  * branch gone here and on the remote in a project holding the workflows'
  * trace — `render state-lost-gate` draws the stop, and its yes is `boot
  * --start-again`; `migrate`, the project on the layout before the state
@@ -151,7 +157,7 @@ const MIGRATIONS_RECORD = '.state/migrations';
  * moves it; `merge`, the catch-up stopped by a field both clones changed —
  * `render state-merge-gate` draws it, and `state-merge pick` answers it.
  * @typedef {object} BootStop
- * @property {'lost'|'migrate'|'merge'} state
+ * @property {'git'|'lost'|'migrate'|'merge'} state
  * @property {string[]} warnings
  */
 
@@ -253,6 +259,7 @@ function trimReport(stdout) {
  * @returns {BootResult|BootStop}
  */
 function boot(cwd, { startAgain = false } = {}) {
+  if (gitShortfall() !== null) return { state: 'git', warnings: [] };
   dropPosition(handedSession());
   /** @type {string[]} */
   const warnings = [];

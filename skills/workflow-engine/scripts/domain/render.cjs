@@ -74,6 +74,7 @@ const { gateOf, counterOf, FIX_THRESHOLD, CYCLE_LIMIT } = require('./tasks.cjs')
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
+const { gitFloorStopSurface } = require('./git-floor.cjs');
 const { projectName } = require('./state-checks.cjs');
 
 // The payload-facing status vocabulary — the staging values the two
@@ -7255,6 +7256,7 @@ const SURFACES = {
   'migrations-applied': migrationsAppliedSurface,
   'migration-gate': () => migrationGate(),
   'state-lost-gate': (cwd) => stateLostGate(projectName(cwd)),
+  'git-floor-stop': () => gitFloorStopSurface(),
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,

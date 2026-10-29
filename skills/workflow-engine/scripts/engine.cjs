@@ -451,6 +451,7 @@ ${LAND_USAGE.replace(/^/gm, '  ')}
   render migrations-applied --file <payload.json>
   render migration-gate
   render state-lost-gate
+  render git-floor-stop
   render github-rule-gate
   render label-gate
   render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
@@ -1749,10 +1750,11 @@ function runAgent(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// boot — the entry pipeline: the state put in place and caught up (a lost
-// state or a merge waiting on a pick stops it), migrations (hard error on
-// failure), knowledge check (failure reports not-ready), and when ready the
-// keyword side brought in line, compacted and the vector fill launched
+// boot — the entry pipeline: a git below the engine's floor, or none, stops
+// it first; the state put in place and caught up (a lost state or a merge
+// waiting on a pick stops it), migrations (hard error on failure),
+// knowledge check (failure reports not-ready), and when ready the keyword
+// side brought in line, compacted and the vector fill launched
 // (warn-don't-block). `--start-again` is the person's yes at the lost-state
 // stop.
 // ---------------------------------------------------------------------------

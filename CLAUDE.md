@@ -151,6 +151,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 - **Node suites** require `tests/scripts/hermetic-env.cjs` first and drive the engine through `tests/scripts/engine-harness.cjs`.
 - **How a test is written** — its layer, its fixtures, its assertions, its cost — is `tests/README.md`; read it before writing a suite.
 - **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/workflow-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
+- **The git floor** is one value — the engine's `GIT_FLOOR` (`skills/workflow-engine/scripts/domain/git-floor.cjs`), behind boot's stop on an older git or none — and the docs that name it, held equal by `tests/scripts/test-git-floor.cjs`. A change that runs a git command or option a newer git brought raises it, and those docs, in the same PR.
 - **Any change to the workflows updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation-*.cjs`, its oracle `pipeline-oracle.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
 
