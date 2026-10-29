@@ -17,10 +17,14 @@
 // slot missing or twice, is refused before anything is read.
 //
 // The filled brief is stored in the calling conversation's folder,
-// `briefs/{id}.md`, its id a new one (`newId`), written whole by a link to
-// a file written beside it, so it is never seen half written and never
-// written over another; it goes with the folder (conversation.cjs). Its
-// first line names it, `Brief {id} — the builder's, for {unit} task {N.M}`.
+// `briefs/{id}.md`, its id a new one (`newId`), exactly what the agent is
+// handed; beside it `briefs/{id}.json` says whose it is, `{role, agent,
+// unit, task}`, the unit and the task null for a role that takes neither.
+// Each is written whole by a link to a file written beside it, so it is
+// never seen half written and never written over another, the record first,
+// so a brief always has its record; both go with the folder
+// (conversation.cjs). The brief's first line names it, `Brief {id} — the
+// builder's, for {unit} task {N.M}`.
 // The dispatch carries the brief's pointer, `brief:{id}`, alone, and the
 // hook before Agent and SendMessage hands the agent the stored brief.
 //
@@ -121,28 +125,45 @@ function briefPath(session, id) {
   return path.join(conversationDir(session), BRIEFS, `${id}.md`);
 }
 
+/** Where a conversation keeps the record of whose a brief is. @param {string} session @param {string} id */
+function issuedPath(session, id) {
+  return path.join(conversationDir(session), BRIEFS, `${id}.json`);
+}
+
+/** @typedef {{role: string, agent: string, unit: string|null, task: string|null}} Issued */
+
 /** The pointer a dispatch carries for a brief. @param {string} id */
 function pointerOf(id) {
   return `${POINTER}${id}`;
 }
 
 /**
- * A brief stored whole at `file`: written beside it, then linked in place,
+ * `text` stored whole at `file`: written beside it, then linked in place,
  * which refuses a file already there.
  * @param {string} file @param {string} text
  */
-function storeBrief(file, text) {
+function linkWhole(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const written = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
   fs.writeFileSync(written, text);
   try {
     fs.linkSync(written, file);
   } catch (err) {
-    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'EEXIST') throw new Error(`brief: a brief is stored at ${file} already`);
+    if (/** @type {NodeJS.ErrnoException} */ (err).code === 'EEXIST') throw new Error(`brief: ${file} is stored already`);
     throw err;
   } finally {
     fs.rmSync(written, { force: true });
   }
+}
+
+/**
+ * A brief stored in a conversation's folder under its id: the record of
+ * whose it is, then the brief.
+ * @param {string} session @param {string} id @param {string} text @param {Issued} issued
+ */
+function storeBrief(session, id, text, issued) {
+  linkWhole(issuedPath(session, id), JSON.stringify(issued) + '\n');
+  linkWhole(briefPath(session, id), text);
 }
 
 /**
@@ -184,11 +205,13 @@ function issueBrief(cwd, [role, ...rest]) {
     const drawn = Object.fromEntries(records.map((record) => [record, RECORDS[record].draw(filling, warnings)]));
     const id = newId();
     const named = `Brief ${id} — ${whose}${ref === null ? '' : `, for ${ref.unit} task ${shownTask(ref)}`}`;
-    storeBrief(briefPath(session, id), `${named}\n\n${filled(template, drawn)}`);
+    storeBrief(session, id, `${named}\n\n${filled(template, drawn)}`, {
+      role, agent, unit: ref === null ? null : ref.unit, task: ref === null ? null : shownTask(ref),
+    });
     return { id, role, agent, pointer: pointerOf(id), ...(committed === undefined ? {} : { committed }), ...(warnings.length > 0 ? { warnings } : {}) };
   } catch (err) {
     throw carrying(err, warnings);
   }
 }
 
-module.exports = { ROLES, BRIEFS, BRIEF_USAGE, issueBrief, templateOf, storeBrief, briefPath, pointerOf };
+module.exports = { ROLES, BRIEFS, BRIEF_USAGE, issueBrief, templateOf, storeBrief, briefPath, issuedPath, pointerOf };

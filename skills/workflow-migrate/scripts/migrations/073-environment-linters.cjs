@@ -17,7 +17,8 @@
 // empty list where every array is empty. A project whose environment already
 // records its linters keeps them. The old fields go: `defaults.linters`, the
 // `defaults` object with it once empty, and every implementation topic's
-// `linters`. An entry of no shape above is not carried, and named in the
+// `linters`. An entry of no shape above is not carried, nor is a linter
+// whose name is carried already with another command; each is named in the
 // verification addendum.
 //
 // The state is `.leeway/` in the repository's main checkout, found through
@@ -134,6 +135,8 @@ module.exports = {
     const lists = [];
     /** @type {string[]} */
     const uncarried = [];
+    /** @type {string[]} */
+    const clashing = [];
     const defaults = isObject(project.defaults) ? project.defaults : null;
     const projectChanged = defaults !== null && 'linters' in defaults;
     if (projectChanged) {
@@ -159,8 +162,10 @@ module.exports = {
       const linters = new Map();
       for (const entry of lists.flat()) {
         const linter = linterOf(entry);
+        const carried = linter === null ? undefined : linters.get(linter.name);
         if (linter === null) uncarried.push(JSON.stringify(entry));
-        else if (!linters.has(linter.name)) linters.set(linter.name, linter);
+        else if (carried === undefined) linters.set(linter.name, linter);
+        else if (carried.command !== linter.command) clashing.push(`${linter.name} (${linter.command})`);
       }
       project.environment = { ...environment, linters: [...linters.values()] };
     }
@@ -177,8 +182,10 @@ module.exports = {
       fs.writeFileSync(file, jsonText(manifest));
       reportUpdate();
     }
-    return uncarried.length === 0 ? undefined : {
-      verify: `These linter entries were not carried into environment.linters, being of no shape a linter was recorded in: ${uncarried.join(', ')}. Add any still wanted to environment.linters as {name, command}.`,
-    };
+    const notes = [
+      ...(uncarried.length === 0 ? [] : [`These linter entries were not carried into environment.linters, being of no shape a linter was recorded in: ${uncarried.join(', ')}.`]),
+      ...(clashing.length === 0 ? [] : [`These linters were not carried into environment.linters, a linter of the same name being carried already with another command: ${[...new Set(clashing)].join(', ')}.`]),
+    ];
+    return notes.length === 0 ? undefined : { verify: `${notes.join(' ')} Add any still wanted to environment.linters as {name, command}.` };
   },
 };

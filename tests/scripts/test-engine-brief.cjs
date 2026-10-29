@@ -6,20 +6,24 @@
 // brief <role> [<unit> <task>]`. Its answer, the id, the role, the agent and
 // the pointer; the brief stored in the calling conversation's folder under
 // its id, its first line naming it, the template's slots filled with each
-// record in its fixed form — the task whole with each addition marked as
-// whose it is, the sections its spec reference cites verbatim, the unit's
-// current decisions at its own level, the linters from the environment —
-// and nothing of the project's CLAUDE.md or its skills (6.S15); the product
-// researcher's brief in a project with no unit; the fill under the writer
-// lock; every refusal writing nothing, no brief among it; a template's
-// slots held to its role; a brief never stored over another.
+// record in its fixed form — the task whole, its headings a level down, with
+// each addition under a heading saying whose it is, the sections its spec
+// reference cites verbatim, the unit's current decisions at its own level,
+// each one list item, the linters from the environment — and nothing of the
+// project's CLAUDE.md or its skills (6.S15); beside it the record of whose
+// it is; the product researcher's brief in a project with no unit; the fill
+// under the writer lock; every refusal writing nothing, no brief and no
+// record among it; a template's slots held to its role; a brief and its
+// record never stored over another's.
 //
-// Layer: verb. World: a project with one work unit, its first phase written
-// in the tracker, its tasks made through the default driver — a task with
-// two additions, a task done, a task closed, a task citing a section its
-// spec lacks — its spec, its linters, decisions at the unit's level and on
-// its topic, and a CLAUDE.md and a project skill in the code tree, built
-// once and copied; and a project with no unit, from the fixture library.
+// Layer: verb. World: a project with two work units, built once and copied:
+// one with its first phase written in the tracker, its tasks made through
+// the default driver — a task with two additions and a spec reference over
+// two lines, a task done, a task closed, a task citing a section its spec
+// lacks — its spec, decisions at its level, one over several lines, and on
+// its topic; the other with its spec and a task and no decision; the
+// project's linters, and a CLAUDE.md and a project skill in the code tree.
+// And a project with no unit, from the fixture library.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -35,7 +39,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
-const { ROLES, templateOf, storeBrief, briefPath } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
+const { ROLES, templateOf, storeBrief, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
@@ -90,12 +94,16 @@ function decided(dir, address, decision) {
 /** What the world's decisions are, by name, as their short ids. @type {Record<string, string>} */
 const calls = {};
 
+/** Task 1.1's spec reference: an area and a part, over two lines. */
+const TAKE_A_CARD = 'Refunds, §2;\nthe form, §1.1';
+
 /**
  * The unit: its spec, its linters, a CLAUDE.md and a project skill; its
  * first phase written — 1.1 citing an area and a part with two additions,
- * 1.2 done, 1.3 closed, 1.4 citing a section the spec lacks; Claude's and
- * the person's decisions at its own level, one replaced, and one on its
- * topic.
+ * 1.2 done, 1.3 closed, 1.4 citing a section the spec lacks; Claude's
+ * decision over several lines and the person's at its own level, one
+ * replaced, and one on its topic. Beside it a second unit, `refund`, with
+ * its spec and a task, and no decision.
  */
 const unitWorld = fixtureFrom('brief-', (dir) => {
   createManifest(dir, UNIT, { phases: { discussion: { items: { [UNIT]: { status: 'in-progress' } } } } });
@@ -109,15 +117,20 @@ const unitWorld = fixtureFrom('brief-', (dir) => {
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
   const root = statePath(dir);
   const task = (/** @type {number} */ n) => ({ unit: UNIT, phase: 1, n });
-  [['Take a card', '§2, §1.1'], ['Show a receipt', '§1.2'], ['Store a card', '§1'], ['Send a refund', '§2, §7.1']].forEach(([title, reference], i) => {
+  [['Take a card', TAKE_A_CARD], ['Show a receipt', '§1.2'], ['Store a card', '§1'], ['Send a refund', '§2, §7.1']].forEach(([title, reference], i) => {
     DRIVER.createTask(root, task(i + 1), readTaskText(taskText(title, reference)));
   });
   DRIVER.add(root, task(1), { by: 'orchestrator', text: 'The form moved to checkout/.' });
   DRIVER.add(root, task(1), { by: 'person', text: 'Keep the old endpoint.' });
   DRIVER.done(root, task(2));
   DRIVER.close(root, task(3), 'folded into 1.1');
+  createManifest(dir, 'refund', {});
+  writeState(dir, layout.unit('refund', SPEC_FILE), SPEC);
+  DRIVER.createUnit(root, 'refund');
+  DRIVER.createPhase(root, 'refund', 1, 'Refunds');
+  DRIVER.createTask(root, { unit: 'refund', phase: 1, n: 1 }, readTaskText(taskText('Refund', '§2')));
   commitAll(dir, 'the first phase written');
-  calls.claude = decided(dir, AT_UNIT, { by: 'claude', text: 'A card is tokenised.', why: 'No card number is kept.' });
+  calls.claude = decided(dir, AT_UNIT, { by: 'claude', text: 'A card is tokenised.\nIts number is never kept.', why: 'No card number is kept.\nThe audit stays small.' });
   const old = decided(dir, AT_UNIT, { by: 'person', text: 'Refunds by hand.', why: 'They are rare.' });
   calls.person = write(dir, ['ledger', 'replace', AT_UNIT, '--replaces', old, '--reason', 'changed-mind'], {
     by: 'person', ...MADE, text: 'Refunds through the API.', why: 'They come weekly now.', drops: ['refunds by hand'],
@@ -144,7 +157,7 @@ function useWorld(world) {
   });
 }
 
-/** The briefs the conversation holds, by file name. */
+/** The files the conversation's briefs folder holds, by name. */
 const stored = () => {
   const folder = path.dirname(briefPath(SESSION_ID, 'x'));
   return fs.existsSync(folder) ? fs.readdirSync(folder) : [];
@@ -177,27 +190,29 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     assert.match(res.id, /^[0-9A-Za-z]{21}$/);
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'builder', agent: 'leeway-builder', pointer: `brief:${res.id}` });
     const task = [
-      taskText('Take a card', '§2, §1.1'), 'Added by the orchestrator:', 'The form moved to checkout/.', 'Added by the person:', 'Keep the old endpoint.',
+      taskText('Take a card', TAKE_A_CARD).replace(/^#/gm, '##'), '## Added by the orchestrator', 'The form moved to checkout/.', '## Added by the person', 'Keep the old endpoint.',
     ].join('\n\n');
     const decisions = [
-      `- ${calls.claude}, Claude's: A card is tokenised.\n  Why: No card number is kept.`,
+      `- ${calls.claude}, Claude's: A card is tokenised.\n  Its number is never kept.\n  Why: No card number is kept.\n  The audit stays small.`,
       `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
     ].join('\n');
     assert.strictEqual(brief, `Brief ${res.id} — the builder's, for pay task 1.1\n\n${filledTemplate('builder', {
       task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit',
     })}`);
     assert.ok(!brief.includes(PROJECT_WORDS) && !brief.includes('Prefer tabs.'), 'nothing of CLAUDE.md or a skill reaches the brief');
-    assert.deepStrictEqual(stored(), [`${res.id}.md`]);
+    assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
+  });
+
+  it('beside the brief, a record of whose it is: its role, its agent, its unit and its task', () => {
+    const { res } = issued(['builder', UNIT, '1.1']);
+
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1' });
   });
 
   it('a project with no linters and a unit with no decision of its own draw each as none recorded', () => {
     const project = JSON.parse(readState(dir, layout.projectManifest));
     delete project.environment;
     writeState(dir, layout.projectManifest, JSON.stringify(project));
-    createManifest(dir, 'refund', {});
-    ok(dir, ['task', 'phase', 'refund', '1', '--title', 'Refunds']);
-    writeState(dir, layout.unit('refund', SPEC_FILE), SPEC);
-    ok(dir, ['task', 'create', 'refund', '1', '--file', besideFile(dir, 'refund.md', taskText('Refund', '§2'))]);
 
     const { brief } = issued(['builder', 'refund', '1.1']);
 
@@ -220,7 +235,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     const second = issued(['builder', UNIT, '1.1']).res;
 
     assert.notStrictEqual(first.id, second.id);
-    assert.deepStrictEqual(stored().sort(), [`${first.id}.md`, `${second.id}.md`].sort());
+    assert.deepStrictEqual(stored().sort(), [`${first.id}.json`, `${first.id}.md`, `${second.id}.json`, `${second.id}.md`].sort());
   });
 
   it('the fill runs under the writer lock: a live holder keeps the brief unstored until it lets go', (t) => {
@@ -234,7 +249,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
 
     const { res } = issued(['builder', UNIT, '1.1']);
 
-    assert.deepStrictEqual([attempts, whileHeld, stored()], [['taken', 'made'], [[]], [`${res.id}.md`]]);
+    assert.deepStrictEqual([attempts, whileHeld, stored()], [['taken', 'made'], [[]], [`${res.id}.json`, `${res.id}.md`]]);
   });
 
   it('the builder\'s template carries the stance on a failed review (13.5.7) and keeps the workflows\' references out of the product (13.11.14)', () => {
@@ -260,6 +275,7 @@ describe('the product researcher\'s brief', () => {
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'product-researcher', agent: 'leeway-product-researcher', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the product researcher's\n\n${filledTemplate('product-researcher', {})}`);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'leeway-product-researcher', unit: null, task: null });
   });
 });
 
@@ -296,7 +312,7 @@ describe('the refusals, nothing written and no brief stored', () => {
   });
 
   it('a spec reference citing a section the spec lacks, or none', () => {
-    refusedUnissued(['builder', UNIT, '1.4'], /^the spec has no §7\.1$/);
+    refusedUnissued(['builder', UNIT, '1.4'], /^the spec reference "§2, §7\.1" cites §7\.1, which the spec lacks$/);
     ok(dir, ['task', 'create', UNIT, '1', '--file', besideFile(dir, 'none.md', taskText('Uncited', 'the card form'))]);
     refusedUnissued(['builder', UNIT, '1.5'], /^the spec reference "the card form" cites no section/);
   });
@@ -329,11 +345,12 @@ describe('the templates and the store', () => {
     assert.throws(() => templateOf('builder', '{{task}}\n{{spec-sections}}\n{{linters}}\n'), /— no slot for decided-calls$/);
   });
 
-  it('a brief is never stored over another', () => {
-    const file = briefPath(SESSION_ID, 'held');
-    storeBrief(file, 'Brief held — the first\n');
+  it('a brief and its record are never stored over another\'s', () => {
+    const first = { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1' };
+    storeBrief(SESSION_ID, 'held', 'Brief held — the first\n', first);
 
-    assert.throws(() => storeBrief(file, 'Brief held — the second\n'), /^Error: brief: a brief is stored at .*held\.md already$/);
-    assert.deepStrictEqual([fs.readFileSync(file, 'utf8'), fs.readdirSync(path.dirname(file))], ['Brief held — the first\n', ['held.md']]);
+    assert.throws(() => storeBrief(SESSION_ID, 'held', 'Brief held — the second\n', { ...first, task: '1.2' }), /^Error: brief: .*held\.json is stored already$/);
+    const read = (/** @type {string} */ file) => fs.readFileSync(file, 'utf8');
+    assert.deepStrictEqual([read(briefPath(SESSION_ID, 'held')), JSON.parse(read(issuedPath(SESSION_ID, 'held'))), stored()], ['Brief held — the first\n', first, ['held.json', 'held.md']]);
   });
 });

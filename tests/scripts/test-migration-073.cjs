@@ -6,9 +6,10 @@
 // The project default's linters and each implementation topic's carried onto
 // the project manifest as environment.linters, each {name, command} — the
 // default first, then a topic's not already there, by name, units and topics
-// in name order; a name alone, as a string or {name}, its own command; a
-// {name, detail} as discovery recorded it, the detail its command; empty
-// arrays carried as an empty list — and the old fields removed, the defaults
+// in name order, a name carried already with another command named in the
+// verification addendum; a name alone, as a string or {name}, its own
+// command; a {name, detail} as discovery recorded it, the detail its command;
+// empty arrays carried as an empty list — and the old fields removed, the defaults
 // object with them once empty; a project whose environment records its
 // linters keeping them, the old fields still removed; an entry of no
 // linter's shape left out and named in the verification addendum; the state
@@ -76,12 +77,14 @@ afterEach(() => {
 });
 
 describe('migration 073: the linters move to the project\'s environment', () => {
-  it('carries the default\'s linters and each topic\'s onto environment.linters, by name, and removes the old fields, every other field kept', () => {
+  it('carries the default\'s linters and each topic\'s onto environment.linters, by name, a name carried already with another command named in the verification addendum, and removes the old fields, every other field kept', () => {
     writeState('manifest.json', { project_id: 'p1', work_units: { pay: {}, cards: {} }, defaults: { project_skills: ['go'], linters: [{ name: 'eslint', detail: 'npx eslint .', installed: true }] } });
     unit('pay', { checkout: ['tsc', { name: 'eslint', command: 'eslint src' }] });
     unit('cards', { form: [{ name: 'prettier', command: 'npx prettier --check .' }], store: [{ name: 'vet' }] });
 
-    assert.strictEqual(run(), undefined);
+    assert.deepStrictEqual(run(), {
+      verify: 'These linters were not carried into environment.linters, a linter of the same name being carried already with another command: eslint (eslint src). Add any still wanted to environment.linters as {name, command}.',
+    });
 
     assert.deepStrictEqual(readState('manifest.json'), {
       project_id: 'p1', work_units: { pay: {}, cards: {} }, defaults: { project_skills: ['go'] },

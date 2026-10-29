@@ -5,14 +5,16 @@
 // drawn in one fixed form, so what an agent is told is what the records
 // say and nothing else (6.5.6):
 //
-//   task           the task's text whole, as the tracker holds it, then each
-//                  addition, in order, marked as the orchestrator's or the
-//                  person's (13.11.3)
+//   task           the task's text whole, as the tracker holds it, each of
+//                  its headings a level down, under the template's own; then
+//                  each addition, in order, under a heading of its own saying
+//                  whether the orchestrator or the person added it (13.11.3)
 //   spec-sections  each section the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs)
 //   decided-calls  the unit's current decisions at its own level, the
-//                  person's and Claude's alike, each with its id, whose it
-//                  is, its answer and why, in the ledger's order
+//                  person's and Claude's alike, in the ledger's order, each
+//                  one list item: its id, whose it is, its answer and why,
+//                  every line after its first indented
 //   linters        the project's linters, each its name and its command,
 //                  from the environment on the project manifest (22.5.12)
 //
@@ -28,7 +30,7 @@ const { readProjectManifest } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { recordOf, standingOf } = require('./ledger-fold.cjs');
-const { readCitedSections } = require('./spec-sections.cjs');
+const { readCitedSections, headingLevels } = require('./spec-sections.cjs');
 const { specReferenceOf } = require('./task-file.cjs');
 const { taskName } = require('./task-id.cjs');
 
@@ -63,10 +65,20 @@ function taskOf({ ref, task }) {
   return { ref, task };
 }
 
+/** Markdown with each heading a level down, a fenced block's lines aside. @param {string} text */
+function headingsDown(text) {
+  const lines = text.split('\n');
+  const levels = headingLevels(lines);
+  return lines.map((line, at) => (levels[at] > 0 ? `#${line}` : line)).join('\n');
+}
+
+/** Text whose every line after its first is indented, to stay in a list item. @param {string} text */
+const indented = (text) => text.split('\n').join('\n  ');
+
 /** @param {Filling} filling */
 function drawTask(filling) {
   const { task } = taskOf(filling);
-  return [task.text, ...task.additions.map(({ by, text }) => `Added by the ${by}:\n\n${text}`)].join('\n\n');
+  return [headingsDown(task.text), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
 }
 
 /** @param {Filling} filling */
@@ -85,7 +97,7 @@ function drawDecidedCalls(filling, warnings) {
       .filter((id) => standingOf(folded, id).topic === null)
       .map((id) => {
         const { id: short, by, text, why } = show(id);
-        return `- ${short}, ${WHOSE[/** @type {string} */ (by)]}: ${text}\n  Why: ${why}`;
+        return `- ${short}, ${WHOSE[/** @type {string} */ (by)]}: ${indented(String(text))}\n  Why: ${indented(String(why))}`;
       }),
   ));
 }
