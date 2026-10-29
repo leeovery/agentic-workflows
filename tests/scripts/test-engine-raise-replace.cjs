@@ -11,19 +11,21 @@
 // replace`'s checks run before anything is drawn or sealed (16.5.7,
 // 29.5.2); each answer — a proposal picked, the person's own words, `keep`,
 // "I don't follow" — with its ledger line, its raise event, who moved whom
-// (5.3.10) and the verdict queue; a keep changing nothing current, so
-// nothing relying on the decision is affected (5.6.10), and every reader
-// passing it by or showing it beside the decision; the keep landed once
-// across a kill; and a call the decision point lets proceed landed as
-// Claude's replacement.
+// (5.3.10) and the verdict queue, read through this machine's trust log
+// (domain/trust-evidence.cjs); a keep changing nothing current, so nothing
+// relying on the decision is affected (5.6.10), its raise event a departure
+// this machine alone judges, and every reader passing it by or showing it
+// beside the decision; the keep landed once across a kill; and a call the
+// decision point lets proceed landed as Claude's replacement.
 //
 // Layer: verb, and beside it process — the answer killed in a child at a
 // file call on its way. World: the ledger suites' unit with a question, a
 // finding, Claude's decision answering the question and a question relying
 // on that decision, written once on the note window and copied for each
 // test; each test keeps its conversation and the trust log in a config
-// folder of its own. The separate call is the stub binary, unarmed: no
-// login, so every row is drawn unjudged.
+// folder of its own, and a second machine's in a folder within it. The
+// separate call is the stub binary, unarmed: no login, so every row is
+// drawn unjudged.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -194,8 +196,16 @@ function raiseEvent(entry, own = {}) {
   };
 }
 
-/** The verdict queue: each departure's full id and the lean beside it. */
-const queue = () => ok(dir, ['verdict', 'queue']).departures.map((/** @type {{id: string, lean: string}} */ d) => [full(d.id), d.lean]);
+/** A second machine: a config folder of its own, the trust log in it. */
+const secondMachine = () => ({ WORKFLOWS_CONFIG_DIR: path.join(config(), 'second-machine') });
+
+/**
+ * The verdict queue read through the trust log of the machine `env` names —
+ * the conversation's where it names none: each departure's full id and the
+ * lean beside it.
+ * @param {Record<string, string|undefined>} [env]
+ */
+const queue = (env = conversation()) => ok(dir, ['verdict', 'queue'], { env }).departures.map((/** @type {{id: string, lean: string}} */ d) => [full(d.id), d.lean]);
 
 /** What a replacement affects in the unit, by full id. */
 const affected = () => ok(dir, ['ledger', 'affected', UNIT]).affected.map((/** @type {{id: string}} */ e) => full(e.id));
@@ -331,12 +341,21 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
 });
 
 describe('a keep changes nothing current (5.6.10)', () => {
-  it('the person keeps an entry Claude proposed to replace: the departure waits in the queue with Claude\'s proposal as its lean, nothing that relied on the entry is affected, and no confirmation can name the keep, as none needs to', async () => {
+  it('the person keeps an entry Claude proposed to replace: its raise event stands as a departure, so the keep waits in this machine\'s queue with Claude\'s proposal as its lean until its verdict is given; a second machine holds the keep in its ledger, none in its queue, and refuses a verdict on it; nothing that relied on the entry is affected, and no confirmation can name the keep, as none needs to', async () => {
     const kept = await draw();
 
     answer(kept, ['--pick', 'keep'], null);
 
     assert.deepStrictEqual(queue(), [[kept, MAIN.text]]);
+    const elsewhere = secondMachine();
+    const { decisions } = ok(dir, ['ledger', 'record', UNIT, 'note-window'], { env: elsewhere });
+    const decision = decisions.find((/** @type {{id: string}} */ d) => full(d.id) === full(made.opens));
+    assert.deepStrictEqual([decision?.kept.map((/** @type {{id: string}} */ k) => full(k.id)), queue(elsewhere)], [[kept], []]);
+    const refused = refusedPristine(dir, ['verdict', 'give', kept, 'skip', '--at', 'queue'], { env: elsewhere });
+    assert.match(refused.error, /^verdict give: \w+ is no departure this machine logged — a departure's verdict is given on the machine where it was made/);
+    assert.ok(!fs.existsSync(path.join(/** @type {string} */ (elsewhere.WORKFLOWS_CONFIG_DIR), TRUST_LOG)), 'the second machine logged a verdict it refused');
+    const given = ok(dir, ['verdict', 'give', kept, 'nothing', '--at', 'queue'], { env: conversation() });
+    assert.deepStrictEqual([full(given.entry), given.verdict, queue()], [kept, 'nothing', []]);
     assert.deepStrictEqual(affected(), []);
     const hold = refusedPristine(dir, ['ledger', 'hold', NOTE, '--entry', made.focus, '--after', kept], { env: conversation(), stdin: JSON.stringify(MADE) });
     assert.match(hold.error, /^ledger hold --after names \w+, a kept event — it must name a replacement$/);
