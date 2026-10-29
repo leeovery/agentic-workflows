@@ -171,7 +171,7 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
     assert.deepStrictEqual([calls.map((event) => event.type), logged()], [['call', 'raise'], calls]);
   });
 
-  it('refuses, appending, committing and logging nothing, the person\'s decision or replacement carrying Claude\'s sealed answer, naming raise: the person\'s answer to Claude\'s lean goes through raise alone (P4)', () => {
+  it('refuses, appending, committing and logging nothing, the person\'s decision or replacement carrying Claude\'s sealed answer, and the person\'s decision saying it moved anyone, each naming raise answer; the person\'s decision moves no one, the engine saying so where it is left out: the person\'s answer to Claude\'s lean goes through raise alone (P4)', () => {
     const question = ask().id;
     const call = decide(question).id;
     const before = logged();
@@ -180,7 +180,14 @@ describe('calls and reversals (16.13.3, 16.13.4, 16.12.1)', () => {
 
     refused('decide', NOTE, ['--answers', question], person, sealed);
     refused('replace', NOTE, ['--replaces', call, '--reason', 'changed-mind'], { ...person, drops: ['a floating note'] }, sealed);
+    for (const moved of ['person-moved-claude', 'claude-moved-person']) {
+      const { sealed: _sealed, ...unsealed } = person;
+      refused('decide', NOTE, ['--answers', question], { ...unsealed, who_moved_whom: moved },
+        new RegExp(`^ledger decide: who_moved_whom is ${moved} — the person's decision written here holds no lean of Claude's to move, their answer to Claude's lean being recorded by raise answer: none$`));
+    }
+    write('decide', NOTE, ['--answers', question], { by: 'person', text: 'A sheet.', why: 'Sheets stay put.' });
 
+    assert.strictEqual(entries().at(-1)?.who_moved_whom, 'none');
     assert.deepStrictEqual(logged(), before);
   });
 

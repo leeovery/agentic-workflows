@@ -41,15 +41,15 @@
 //   is the id its entry lands as; the menu it is declared as, `raise —
 //   <id>`; the rows whose answer and what it rules out the check judged one
 //   rule; the decision point's reason; when it was shown; its answer once
-//   given — when, the row's key, null for the person's own words, and how
-//   it came — null until then; and how many times the person did not
-//   follow it. It is written before the command answers, and one that
-//   cannot be written refuses the raise. A raise of a question the
-//   conversation holds an open seal for — the same place and the same
-//   question — draws that seal, the call it is given set aside, and says it
-//   kept it: the pick is measured against the first lean. A seal of another
-//   version is never matched, and stays as written. The layout hook refuses
-//   Claude's own writes to it (layout-hook.cjs).
+//   given — when, and the row's key, null for the person's own words —
+//   null until then; and how many times the person did not follow it. It
+//   is written before the command answers, and one that cannot be written
+//   refuses the raise. A raise of a question the conversation holds an open
+//   seal for — the same place and the same question — draws that seal, the
+//   call it is given set aside, and says it kept it: the pick is measured
+//   against the first lean. A seal of another version is never matched, and
+//   stays as written. The layout hook refuses Claude's own writes to it
+//   (layout-hook.cjs).
 // - The decision point's answer is the response's, with its reason. An ask
 //   draws the screen. A proceed lands Claude's call, drawing nothing and
 //   sealing nothing: Claude's decision answering the question — the lean
@@ -85,12 +85,17 @@
 //   announced itself and its last press sent that row from this raise's
 //   menu after the raise was drawn (gate.cjs); anything else was typed.
 // - Once (E3): under the writer lock, a ledger holding the minted id means
-//   the raise is answered, and a rerun after a kill writes no second entry
-//   and logs no second event; else the question must still be open, or
-//   nothing is recorded, the person's answer staying in the conversation.
-//   The seal is marked answered after the commit, and keeps the answer it
-//   was first marked with, so the ledger, not the seal, says whether a
-//   raise is answered.
+//   the raise is answered: a rerun, after a kill past the append or once
+//   the answer landed, writes no second entry and logs no second event, and
+//   says the raise was answered already, with the row the entry holds — its
+//   text the row's, else the person's own words — so Claude knows its own
+//   answer did not land. A rerun after a kill before the append lands its
+//   own answer, the event the killed run kept let go (trust-log.cjs). Else
+//   the question must still be open, or nothing is recorded, the person's
+//   answer staying in the conversation. The seal is marked answered after
+//   the commit, with the answer the ledger holds, and keeps the first it was
+//   marked with: the ledger, not the seal, says whether a raise is
+//   answered.
 // - "I don't follow" logs a raise event in the trust log alone — no entry,
 //   no answer, no reading (16.9.3, 16.12.3) — and counts it on the seal;
 //   the raise stays open, to be shown again.
@@ -128,7 +133,7 @@ const decisionPoint = require('./decision-point.cjs');
  */
 /** @typedef {import('./ledger-write.cjs').Place} Place */
 /** @typedef {'pressed'|'typed'} Via */
-/** The person's answer as the seal keeps it. @typedef {{at: string, answer: string|null, via: Via}} Answered */
+/** The person's answer as the seal keeps it: when, and the row's key, null for their own words. @typedef {{at: string, answer: string|null}} Answered */
 /**
  * A raise as sealed in the conversation's folder.
  * @typedef {object} Seal
@@ -415,7 +420,7 @@ function sessionOf(said) {
  */
 function proceeded(cwd, place, linked, call, warnings) {
   const lean = leanRow(call);
-  return landRaised(cwd, {
+  const { landed } = landRaised(cwd, {
     said: SAID,
     place,
     answers: /** @type {string} */ (linked.answers),
@@ -425,6 +430,7 @@ function proceeded(cwd, place, linked, call, warnings) {
     logs: callLogged(call.sort),
     checkLinked: (resolved, read) => checkOpen(/** @type {string} */ (resolved.answers), read),
   }, warnings);
+  return landed;
 }
 
 /**
@@ -596,16 +602,37 @@ function raiseEvent({ call }, { entry, answer, via, with_text: withText, didnt_f
 }
 
 /**
+ * The row of `call` whose answer the entry `held` holds, by its text: its
+ * key, or null for the person's own words.
+ * @param {Call} call @param {Record<string, unknown>} held
+ * @returns {string|null}
+ */
+function heldAnswer({ rows }, held) {
+  return rows.find((row) => row.text === held.text)?.key ?? null;
+}
+
+/**
+ * The seal marked answered with `answer`, where it is not already: the
+ * first answer marked stands.
+ * @param {string} session @param {Record<string, unknown>} seals @param {Seal} seal @param {string|null} answer
+ */
+function markAnswered(session, seals, seal, answer) {
+  if (seal.answered === null) writeSeal(session, seals, { ...seal, answered: { at: new Date().toISOString(), answer } });
+}
+
+/**
  * The person's answer landed as their decision at the raise's id, its raise
- * event with it, then the seal marked answered.
+ * event with it, then the seal marked answered. Where the ledger held the
+ * entry already, the seal is marked with the answer it holds, and the
+ * response says the raise was answered already, and with which row.
  * @param {string} cwd @param {string} session @param {Record<string, unknown>} seals @param {Seal} seal @param {Given} given
- * @returns {Landed & {raise: string}}
+ * @returns {Landed & {raise: string, already?: true, answer?: string|null}}
  */
 function recordAnswer(cwd, session, seals, seal, given) {
   /** @type {string[]} */
   const warnings = [];
   const { text, why, rules_out: rulesOut, who_moved_whom: moved, answer, via, with_text: withText } = given;
-  const landed = landRaised(cwd, {
+  const { landed, held } = landRaised(cwd, {
     said: ANSWER_SAID,
     place: seal.place,
     answers: seal.answers,
@@ -615,8 +642,9 @@ function recordAnswer(cwd, session, seals, seal, given) {
     logs: ({ id }) => ({ type: 'raise', fields: raiseEvent(seal, { entry: id, answer, via, with_text: withText, didnt_follow: false }) }),
     checkLinked: (linked, read) => checkStillOpen(/** @type {string} */ (linked.answers), read),
   }, warnings);
-  writeSeal(session, seals, { ...seal, answered: seal.answered ?? { at: new Date().toISOString(), answer, via } });
-  return { raise: seal.id, ...landed };
+  const first = held === null ? answer : heldAnswer(seal.call, held);
+  markAnswered(session, seals, seal, first);
+  return { raise: seal.id, ...landed, ...(held === null ? {} : { already: true, answer: first }) };
 }
 
 /**

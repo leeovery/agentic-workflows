@@ -9,12 +9,12 @@
 // and its raise event in the trust log, one command writing both (16.S44);
 // who moved whom the engine's alone; pressed or typed (6.6.4); "I don't
 // follow" logged in the trust log alone, the raise left open (F1); every
-// refusal writing nothing; a rerun after a kill between the commit and the
-// seal landing nothing twice (E3); and a call the decision point lets
-// proceed landed as Claude's (E7).
+// refusal writing nothing; an answer given again, after a kill at a step
+// the raise adds or once it landed, landing nothing twice (E3); and a call
+// the decision point lets proceed landed as Claude's (E7).
 //
-// Layer: verb, and beside it process — the answer killed in a child between
-// its commit and marking its seal. World: the ledger suites' unit with two
+// Layer: verb, and beside it process — the answer killed in a child at a
+// file call on its way. World: the ledger suites' unit with two
 // questions asked on the note window, built once and copied for each test;
 // each test keeps its conversation and the trust log in a config folder of
 // its own. The separate call is the stub binary, unarmed: no login, so
@@ -38,6 +38,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/workflow-engine/scripts');
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 
 // A Claude Code session's id.
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
@@ -173,12 +174,30 @@ function raiseEvent(entry, own = {}) {
 }
 
 /**
- * The mod's record of its last press: `answer` sent from the menu `gate`,
- * after every raise was drawn.
- * @param {string} gate @param {string} answer
+ * The mod's record of its last press: `answer` sent from the menu `gate` at
+ * `at`, by default after every raise was drawn.
+ * @param {string} gate @param {string} answer @param {string} [at]
  */
-function pressed(gate, answer) {
-  fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate, answer, at: new Date(Date.now() + 1000).toISOString() }));
+function pressed(gate, answer, at = new Date(Date.now() + 1000).toISOString()) {
+  fs.writeFileSync(inFolder(PRESSED), JSON.stringify({ gate, answer, at }));
+}
+
+/** The answer of the row `key` of Claude's call. @param {string} key */
+const rowText = (key) => /** @type {{text: string}} */ (CALL.rows.find((row) => row.key === key)).text;
+
+// Where an answer is killed: between keeping its event and the ledger's
+// append; between the append and the landing; and between the state commit
+// and marking its seal.
+const KEPT = Object.freeze({ method: 'appendFileSync', file: PENDING, when: 'after' });
+const APPENDED = Object.freeze({ method: 'renameSync', file: LEDGER, when: 'after' });
+const COMMITTED = Object.freeze({ method: 'renameSync', file: RAISE_SHOWN, when: 'before' });
+
+/**
+ * The person's pick of `key` on the raise `id`, its command killed at `point`.
+ * @param {import('./engine-harness.cjs').KillPoint} point @param {string} id @param {string} key
+ */
+function killedPick(point, id, key) {
+  killedAt(point, dir, ['raise', 'answer', id, '--pick', key], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
 }
 
 const ANNOUNCED = Object.freeze({ WORKFLOWS_GATE_SURFACE: '1' });
@@ -199,7 +218,7 @@ describe('the answer recorded (16.S44, 6.1.5)', () => {
     assert.deepStrictEqual(words.filter((said) => logText().includes(said)), [], 'the trust line holds the call\'s words');
     const { at, ...answered } = seals()[id].answered;
     assert.ok(!Number.isNaN(Date.parse(at)), `when it was answered is no time: ${at}`);
-    assert.deepStrictEqual(answered, { answer: '1', via: 'typed' });
+    assert.deepStrictEqual(answered, { answer: '1' });
   });
 
   it('the person\'s own words land with their text and why, and what they rule out where Claude gives it, none else; standing over the lean, logged as free text, typed, naming no row, its reading null', async () => {
@@ -269,35 +288,65 @@ describe('pressed or typed (6.6.4)', () => {
     answer(id, ['--pick', '2'], { why: WHY }, ANNOUNCED);
 
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2', via: 'pressed' })]);
-    assert.strictEqual(seals()[id].answered.via, 'pressed');
   });
 
-  it('anything else is typed: a press from another raise\'s menu, a press of another row, and a press with the mod not announced', async () => {
+  it('anything else is typed: a press from another raise\'s menu, a press of another row, a press with the mod not announced, and a press made before the raise was drawn', async () => {
     const id = await draw();
     const other = await draw(asked.size);
-    /** @type {[string, string, Record<string, string>][]} */
+    const [after, before] = [1000, -1000].map((by) => new Date(Date.parse(seals()[id].at) + by).toISOString());
+    /** @type {[string, string, Record<string, string>, string][]} */
     const presses = [
-      [`raise — ${id}`, 'explain', ANNOUNCED],
-      [`raise — ${other}`, 'explain', ANNOUNCED],
-      [`raise — ${id}`, '1', ANNOUNCED],
-      [`raise — ${id}`, 'explain', {}],
+      [`raise — ${id}`, 'explain', ANNOUNCED, after],
+      [`raise — ${other}`, 'explain', ANNOUNCED, after],
+      [`raise — ${id}`, '1', ANNOUNCED, after],
+      [`raise — ${id}`, 'explain', {}, after],
+      [`raise — ${id}`, 'explain', ANNOUNCED, before],
     ];
 
-    for (const [menu, sent, env] of presses) {
-      pressed(menu, sent);
+    for (const [menu, sent, env, at] of presses) {
+      pressed(menu, sent, at);
       answer(id, ['--didnt-follow'], null, env);
     }
 
-    assert.deepStrictEqual(logged().map((event) => event.via), ['pressed', 'typed', 'typed', 'typed']);
+    assert.deepStrictEqual(logged().map((event) => event.via), ['pressed', 'typed', 'typed', 'typed', 'typed']);
   });
 });
 
 describe('once (E3)', () => {
-  it('killed between the state commit and marking its seal: the ledger says the raise is answered, and the rerun writes no second entry and no second event, marks the seal and answers as the first would have', async () => {
-    const id = await draw();
-    const pick = ['raise', 'answer', id, '--pick', '2'];
+  it('killed between keeping its event and the ledger\'s append: the rerun lands one entry and one event, its own, whether it picks the row the killed run picked or another — the event the killed run kept let go', async () => {
+    for (const [question, first, rerun] of [[asked.where, '2', '2'], [asked.size, '2', '1']]) {
+      const id = await draw(question);
+      killedPick(KEPT, id, first);
+      assert.deepStrictEqual(entries().filter((entry) => entry.id === id), []);
 
-    killedAt({ method: 'renameSync', file: RAISE_SHOWN, when: 'before' }, dir, pick, { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
+      const res = answer(id, ['--pick', rerun]);
+
+      assert.strictEqual(res.already, undefined);
+      assert.deepStrictEqual(entries().filter((entry) => entry.id === id).map((entry) => entry.text), [rowText(rerun)]);
+      assert.deepStrictEqual(logged().filter((event) => event.entry === id), [raiseEvent(id, { answer: rerun })]);
+    }
+    assert.ok(!fs.existsSync(inFolder(PENDING)), 'an event the killed runs kept still waits');
+  });
+
+  it('killed between the ledger\'s append and the landing: the rerun appends nothing, lands the event the killed run kept and commits the ledger, saying the raise was answered already, with the row the ledger holds — not the rerun\'s — and marks the seal with it', async () => {
+    const id = await draw();
+    killedPick(APPENDED, id, '2');
+    const lines = entries().length;
+    assert.deepStrictEqual(logged(), []);
+
+    const res = answer(id, ['--pick', '1']);
+
+    assert.deepStrictEqual(res, { ok: true, raise: id, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), already: true, answer: '2' });
+    assert.strictEqual(full(res.id), id);
+    assert.strictEqual(stateGit(dir, ['show', `HEAD:${layout.ledger}`]), ledgerText());
+    assert.deepStrictEqual([entries().length, logged()], [lines, [raiseEvent(id, { answer: '2' })]]);
+    assert.strictEqual(seals()[id].answered.answer, '2');
+  });
+
+  it('killed between the state commit and marking its seal: the ledger says the raise is answered, and the rerun writes no second entry and no second event, saying the raise was answered already, with the row the ledger holds, and marks the seal with it', async () => {
+    const id = await draw();
+
+    killedPick(COMMITTED, id, '2');
 
     const lines = entries().length;
     assert.strictEqual(seals()[id].answered, null);
@@ -306,22 +355,26 @@ describe('once (E3)', () => {
     assert.deepStrictEqual([row.stands, row.answers.map((/** @type {{id: string}} */ a) => full(a.id))], ['answered', [id]]);
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2' })]);
 
-    const res = answer(id, ['--pick', '2']);
+    const res = answer(id, ['--pick', '1']);
 
-    assert.deepStrictEqual(res, { ok: true, raise: id, id: row.answers[0].id, committed: null });
+    assert.deepStrictEqual(res, { ok: true, raise: id, id: row.answers[0].id, committed: null, already: true, answer: '2' });
     assert.deepStrictEqual([entries().length, logged()], [lines, [raiseEvent(id, { answer: '2' })]]);
-    assert.deepStrictEqual(seals()[id].answered.answer, '2');
+    assert.strictEqual(seals()[id].answered.answer, '2');
   });
 
-  it('answered again — after a compaction, say, another row or the same — writes no second entry and no second event, and the seal keeps the first answer, which the ledger holds', async () => {
+  it('answered again — after a compaction, say — writes no second entry and no second event, saying the raise was answered already, with the row the ledger holds, null for the person\'s own words; the seal keeps the first answer', async () => {
     const id = await draw();
+    const own = await draw(asked.size);
     const first = answer(id, ['--pick', '2']);
-    const [lines, events, sealed] = [entries().length, logged(), seals()[id].answered];
+    answer(own, ['--own'], { text: 'Half the screen', why: WHY });
+    const [lines, events, sealed] = [entries().length, logged(), seals()];
 
     const again = answer(id, ['--pick', '1']);
+    const ownAgain = answer(own, ['--pick', '1']);
 
-    assert.deepStrictEqual(again, { ...first, committed: null });
-    assert.deepStrictEqual([entries().length, logged(), seals()[id].answered], [lines, events, sealed]);
+    assert.deepStrictEqual(again, { ...first, committed: null, already: true, answer: '2' });
+    assert.deepStrictEqual([ownAgain.already, ownAgain.answer], [true, null]);
+    assert.deepStrictEqual([entries().length, logged(), seals()], [lines, events, sealed]);
   });
 });
 

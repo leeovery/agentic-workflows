@@ -51,8 +51,9 @@
 //   (ledger-verdicts.cjs) — never the person's answer standing over Claude's
 //   lean on an entry Claude made, and on the person's replacement of a
 //   decision, what its reason and the entry it replaces allow. The person's
-//   entry carries no sealed answer of Claude's: their answer to Claude's
-//   lean is a raise's, which sealed the lean before they answered.
+//   entry carries no sealed answer of Claude's, and their decision moves no
+//   one: their answer to Claude's lean is a raise's, which sealed the lean
+//   before they answered.
 // - What the engine sets: a replacement's kind; the question a replaced
 //   decision answers, in its wording as the replacement is written — the
 //   last of its line, whatever wording the replaced decision named — so it
@@ -85,9 +86,11 @@
 //   in the ledger, and lets it go where the entry never came, so it is
 //   neither lost nor doubled (trust-log.cjs). A raise's decision lands as
 //   the id its raise minted, so its rerun after a kill past the append finds
-//   the ledger holding it, appends and logs nothing again, and finishes what
-//   the kill left: the event kept ahead of the entry landed, the ledger
-//   committed.
+//   the ledger holding it, appends and logs nothing again, finishes what
+//   the kill left — the event kept ahead of the entry landed, the ledger
+//   committed — and answers the entry the ledger holds; its rerun after a
+//   kill before the append keeps its own event in place of the one the
+//   killed run kept, so the entry has one event, the rerun's.
 // - When: all that the request alone settles is refused before the writer
 //   lock — its argv, its place, its content in the shape of the kind it
 //   writes, a replacement reading that kind from the ledger — so a malformed
@@ -114,7 +117,7 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { VALID_PHASES, WORK_TYPE_PIPELINES } = require('../kernel/manifest-schema.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { appendEntry, carrying } = require('./ledger.cjs');
+const { appendEntry, carrying, withLedger } = require('./ledger.cjs');
 const { LEDGER, HEADER, REASONS, entryKind, eventFields } = require('./ledger-events.cjs');
 const { newId, shortId, resolveId } = require('./ledger-ids.cjs');
 const { ID_FACTS, foldLedger, factsOf, standingOf, notCurrent, currentsOf, wordingOf } = require('./ledger-fold.cjs');
@@ -208,6 +211,12 @@ const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
  * A write landed: the entry's short id, the commit, a note where the commit
  * is pending, and any warnings.
  * @typedef {{id: string, committed: string|null, note?: string, warnings?: string[]}} Landed
+ */
+
+/**
+ * A raise's decision landed, and the entry the ledger already held at its
+ * id — written by an earlier run, so nothing was appended — or null.
+ * @typedef {{landed: Landed, held: Record<string, unknown>|null}} RaiseLanded
  */
 
 /** Where a raise was drawn: its unit, its phase, and its topic, or null at the unit's level. @typedef {{unit: string, phase: string, topic: string|null}} Place */
@@ -748,7 +757,7 @@ const REVERSAL_LOGGED = ({ id, replaces }) => ({ type: 'reversal', fields: { ent
 function trustEventOf(kind, content, reason, replaced) {
   if (kind !== 'decision') return null;
   if (content.by === 'claude') return callLogged(null);
-  return reverses(content, reason, replaced) ? REVERSAL_LOGGED : null;
+  return reverses(content, kind, reason, replaced) ? REVERSAL_LOGGED : null;
 }
 
 /**
@@ -823,11 +832,11 @@ function requestOf(cwd, verb, args, stdin, warnings) {
   const before = readBefore(at, warnings);
   const replaced = write.event === 'replaced' ? replacedEntry(verb, at, given, before()) : null;
   const reason = replaced === null ? null : /** @type {string[]} */ (given.get('reason'))[0];
-  const derived = derivedMove(content, reason, replaced);
-  const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
-  const unmoved = movedRefusal(fields, reason, replaced);
-  if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   const kind = replaced === null ? entryKind({ event: write.event }) : replaced.kind;
+  const derived = derivedMove(content, kind, reason, replaced);
+  const fields = contentFields(said, write, derived === null ? content : { who_moved_whom: derived, ...content }, replaced);
+  const unmoved = movedRefusal(fields, kind, reason, replaced);
+  if (unmoved !== null) throw new Error(`${said}: who_moved_whom is ${fields.who_moved_whom} — ${unmoved}`);
   return {
     verb, said, write, at, session, given, kind,
     content: fields,
@@ -931,14 +940,15 @@ function commitLedger(cwd, { at, write }, id, warnings) {
 /**
  * Under the writer lock: the ledger folded; where it already holds the id
  * the request's raise minted, the write a rerun of one killed past its
- * append, finished as the kill left it — its event, kept ahead of the
- * entry, landed, and the ledger committed — nothing appended again. Else
- * the places the write names read live again, the trust log's event built
- * and kept waiting in the conversation, the entry appended, the event
- * landed in the trust log, and the ledger committed to the state branch.
- * Answers the entry's short id and the commit.
+ * append, or of one that finished, done as the first run left it — its
+ * event, kept ahead of the entry, landed, and the ledger committed —
+ * nothing appended again. Else the places the write names read live again,
+ * the trust log's event built and kept waiting in the conversation, the
+ * entry appended, the event landed in the trust log, and the ledger
+ * committed to the state branch. Answers the entry's short id, the commit,
+ * and the entry the ledger already held, or null.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
- * @returns {{id: string, outcome: {committed: string|null, failed: boolean}}}
+ * @returns {{id: string, outcome: {committed: string|null, failed: boolean}, held: Record<string, unknown>|null}}
  */
 function land(cwd, request, warnings) {
   const { said, at, write, given, logs } = request;
@@ -946,8 +956,9 @@ function land(cwd, request, warnings) {
   const id = request.id ?? newId();
   const short = shortId(id, read.facts.keys());
   if (read.facts.has(id)) {
+    const held = withLedger(at.root, warnings, (ledger) => ledger.entryAt(factsOf(read, id).place));
     if (logs !== null) landKept(cwd, warnings);
-    return { id: short, outcome: commitLedger(cwd, request, id, warnings) };
+    return { id: short, outcome: commitLedger(cwd, request, id, warnings), held };
   }
   checkPlaceLive(said, at, read.live);
   write.checkLive(at, given, read.live);
@@ -958,23 +969,24 @@ function land(cwd, request, warnings) {
   }
   appendEntry(at.root, fields, warnings, id);
   if (logs !== null) landKept(cwd, warnings);
-  return { id: short, outcome: commitLedger(cwd, request, id, warnings) };
+  return { id: short, outcome: commitLedger(cwd, request, id, warnings), held: null };
 }
 
 /**
  * A request landed under the writer lock, then the knowledge base's copies
- * rendered and indexed against the ledger.
+ * rendered and indexed against the ledger; with the entry the ledger
+ * already held at its id, or null.
  * @param {string} cwd @param {Request} request @param {string[]} warnings
- * @returns {Landed}
+ * @returns {RaiseLanded}
  */
 function landed(cwd, request, warnings) {
-  const { id, outcome } = withStateLock(request.at.root, () => land(cwd, request, warnings));
+  const { id, outcome, held } = withStateLock(request.at.root, () => land(cwd, request, warnings));
   refreshLedgerCopies(cwd, warnings);
   /** @type {Landed} */
   const result = { id, committed: outcome.committed };
   if (outcome.failed) result.note = 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it';
   if (warnings.length > 0) result.warnings = warnings;
-  return result;
+  return { landed: result, held };
 }
 
 /**
@@ -989,7 +1001,7 @@ function writeLedger(cwd, verb, args, stdin) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    return landed(cwd, oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings)), warnings);
+    return landed(cwd, oneDecisionChecked(requestOf(cwd, verb, args, stdin, warnings)), warnings).landed;
   } catch (err) {
     throw carrying(err, warnings);
   }
@@ -998,9 +1010,10 @@ function writeLedger(cwd, verb, args, stdin) {
 /**
  * The decision a raise lands, through the lock `ledger decide` lands
  * through: answered as `writeLedger` answers, `warnings` the raise's own
- * among them. A rerun whose first run appended it lands nothing again.
+ * among them, beside the entry the ledger already held at its id — a rerun
+ * whose first run appended it lands nothing again — or null.
  * @param {string} cwd @param {Raised} raised @param {string[]} warnings
- * @returns {Landed}
+ * @returns {RaiseLanded}
  */
 function landRaised(cwd, raised, warnings) {
   try {

@@ -16,7 +16,8 @@
 //   An entry Claude made never stands over its own lean. The person's
 //   answer to Claude's lean is a raise's, which says who moved whom against
 //   the lean it sealed (raise.cjs); the write verbs take no sealed answer on
-//   the person's entry (5.3.10). The person's replacement of a
+//   the person's entry (5.3.10), and the person's decision they write holds
+//   no lean to move, so moves no one. The person's replacement of a
 //   decision, for a changed mind or a mistake, stands over the lean where
 //   the entry it replaces held it — Claude's own call, or the person's
 //   answer that was the lean or came round to it: a later reversal, or a
@@ -45,6 +46,7 @@ const { judgedDepartures } = require('./trust-log.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
+/** @typedef {import('./ledger-events.cjs').EntryKind} EntryKind */
 /** @typedef {import('./ledger-read.cjs').Shower} Shower */
 
 const OVER_THE_LEAN = 'person-moved-claude';
@@ -66,16 +68,18 @@ function heldTheLean({ who_moved_whom: moved }) {
 }
 
 /**
- * The values who moved whom may take on an entry, and why, by who made it
- * and, for the person's replacement of a decision, its reason and the entry
- * it replaces; null where the departure rule leaves it to the writer.
+ * The values who moved whom may take on an entry, and why, by who made it,
+ * the kind it is and, for the person's replacement of a decision, its
+ * reason and the entry it replaces; null where the departure rule leaves it
+ * to the writer.
  * @param {Record<string, unknown>} content the entry's, its maker among it
- * @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
+ * @param {EntryKind|null} kind @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
  * @returns {{moves: readonly string[], why: string}|null}
  */
-function ruleFor({ by }, reason, replaced) {
+function ruleFor({ by }, kind, reason, replaced) {
   if (by === 'claude') return { moves: NOT_OVER, why: 'an entry Claude made never stands over its own lean' };
-  if (replaced === null || replaced.kind !== 'decision') return null;
+  if (kind !== 'decision') return null;
+  if (replaced === null) return { moves: ['none'], why: 'the person\'s decision written here holds no lean of Claude\'s to move, their answer to Claude\'s lean being recorded by raise answer' };
   if (!DISAGREEING.includes(/** @type {string} */ (reason))) {
     const brings = NEW_INFORMATION[/** @type {keyof typeof NEW_INFORMATION} */ (reason)];
     return { moves: NOT_OVER, why: `a replacement for ${brings} brings new information, never the person standing over Claude's lean` };
@@ -90,11 +94,11 @@ function ruleFor({ by }, reason, replaced) {
  * Who moved whom where the departure rule allows one value alone, for the
  * engine to set where the writer leaves it out; null where it allows more.
  * @param {Record<string, unknown>} content the entry's, its maker among it
- * @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
+ * @param {EntryKind|null} kind @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
  * @returns {string|null}
  */
-function derivedMove(content, reason, replaced) {
-  const rule = ruleFor(content, reason, replaced);
+function derivedMove(content, kind, reason, replaced) {
+  const rule = ruleFor(content, kind, reason, replaced);
   return rule !== null && rule.moves.length === 1 ? rule.moves[0] : null;
 }
 
@@ -102,21 +106,21 @@ function derivedMove(content, reason, replaced) {
  * Whether the entry reverses the one it replaces (16.12.1): the departure
  * rule allows it only to stand over a lean the replaced entry held.
  * @param {Record<string, unknown>} content the entry's, its maker among it
- * @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
+ * @param {EntryKind|null} kind @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
  */
-function reverses(content, reason, replaced) {
-  return derivedMove(content, reason, replaced) === OVER_THE_LEAN;
+function reverses(content, kind, reason, replaced) {
+  return derivedMove(content, kind, reason, replaced) === OVER_THE_LEAN;
 }
 
 /**
  * Why who moved whom cannot stand on an entry as written, or null where it
  * can: a value the departure rule does not allow.
  * @param {Record<string, unknown>} content the entry's, its maker and who moved whom among it
- * @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
+ * @param {EntryKind|null} kind @param {string|null} reason a replacement's @param {IdFacts|null} replaced the entry a replacement replaces
  * @returns {string|null}
  */
-function movedRefusal(content, reason, replaced) {
-  const rule = ruleFor(content, reason, replaced);
+function movedRefusal(content, kind, reason, replaced) {
+  const rule = ruleFor(content, kind, reason, replaced);
   return rule === null || rule.moves.includes(/** @type {string} */ (content.who_moved_whom)) ? null : `${rule.why}: ${rule.moves.join(' or ')}`;
 }
 
